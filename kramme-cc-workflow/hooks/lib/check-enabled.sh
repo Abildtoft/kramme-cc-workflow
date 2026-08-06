@@ -43,34 +43,48 @@ is_hook_disabled_without_jq() {
   [ "$found" = "true" ]
 }
 
-default_hook_state_file() {
-  local state_home="${XDG_STATE_HOME:-}"
+# Shared resolver for hook state/config paths that follow XDG Base Directory
+# precedence: an explicit override env var, then the XDG (or platform
+# default) directory, then an optional legacy path -- but only when the
+# XDG/default file does not already exist.
+# Usage: resolve_kramme_path OVERRIDE_VAR XDG_VAR XDG_DEFAULT_SUBDIR FILENAME [LEGACY_PATH]
+resolve_kramme_path() {
+  local override_var="$1"
+  local xdg_var="$2"
+  local xdg_default_subdir="$3"
+  local filename="$4"
+  local legacy_path="${5:-}"
+  local override_value
+  local xdg_base
+  local default_path
 
-  if [ -z "$state_home" ]; then
-    state_home="${HOME:-}/.local/state"
+  override_value="${!override_var:-}"
+  if [ -n "$override_value" ]; then
+    printf '%s\n' "$override_value"
+    return 0
   fi
 
-  printf '%s\n' "${state_home}/kramme-cc-workflow/hook-state.json"
+  xdg_base="${!xdg_var:-}"
+  if [ -z "$xdg_base" ]; then
+    xdg_base="${HOME:-}/${xdg_default_subdir}"
+  fi
+  default_path="${xdg_base}/kramme-cc-workflow/${filename}"
+
+  if [ -z "$legacy_path" ] || [ -f "$default_path" ] || [ ! -f "$legacy_path" ]; then
+    printf '%s\n' "$default_path"
+    return 0
+  fi
+
+  printf '%s\n' "$legacy_path"
 }
 
 resolve_hook_state_file() {
-  local default_state_file
-  local legacy_state_file
-
-  if [ -n "${KRAMME_HOOK_STATE_FILE:-}" ]; then
-    printf '%s\n' "$KRAMME_HOOK_STATE_FILE"
-    return 0
-  fi
-
-  default_state_file="$(default_hook_state_file)"
-  legacy_state_file="${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json"
-
-  if [ -f "$default_state_file" ] || [ ! -f "$legacy_state_file" ]; then
-    printf '%s\n' "$default_state_file"
-    return 0
-  fi
-
-  printf '%s\n' "$legacy_state_file"
+  resolve_kramme_path \
+    "KRAMME_HOOK_STATE_FILE" \
+    "XDG_STATE_HOME" \
+    ".local/state" \
+    "hook-state.json" \
+    "${CLAUDE_PLUGIN_ROOT}/hooks/hook-state.json"
 }
 
 is_hook_enabled() {

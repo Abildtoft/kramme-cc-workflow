@@ -99,23 +99,12 @@ resolve_command() {
   command -v "$cmd" 2> /dev/null || true
 }
 
-default_autoformat_trust_file() {
-  local config_home="${XDG_CONFIG_HOME:-}"
-
-  if [ -z "$config_home" ]; then
-    config_home="${HOME:-}/.config"
-  fi
-
-  printf '%s\n' "${config_home}/kramme-cc-workflow/autoformat-trusted-roots"
-}
-
 resolve_autoformat_trust_file() {
-  if [ -n "${KRAMME_AUTOFORMAT_TRUST_FILE:-}" ]; then
-    printf '%s\n' "$KRAMME_AUTOFORMAT_TRUST_FILE"
-    return 0
-  fi
-
-  default_autoformat_trust_file
+  resolve_kramme_path \
+    "KRAMME_AUTOFORMAT_TRUST_FILE" \
+    "XDG_CONFIG_HOME" \
+    ".config" \
+    "autoformat-trusted-roots"
 }
 
 is_project_trusted_for_claude_formatter() {

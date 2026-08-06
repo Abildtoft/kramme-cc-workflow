@@ -10,18 +10,11 @@ source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "skill-usage-stats" "json"
 
 usage_diagnostic_file() {
-  if [ -n "${KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE:-}" ]; then
-    printf '%s\n' "$KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE"
-    return 0
-  fi
-
-  local state_home="${XDG_STATE_HOME:-}"
-  if [ -z "$state_home" ]; then
-    [ -n "${HOME:-}" ] || return 1
-    state_home="$HOME/.local/state"
-  fi
-
-  printf '%s\n' "$state_home/kramme-cc-workflow/skill-usage-diagnostics.log"
+  resolve_kramme_path \
+    "KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE" \
+    "XDG_STATE_HOME" \
+    ".local/state" \
+    "skill-usage-diagnostics.log"
 }
 
 usage_diagnostic_max_lines() {
@@ -83,12 +76,34 @@ if [ ! -f "$recorder" ]; then
   exit 0
 fi
 
-output=$(printf '%s' "$input" | node "$recorder" record 2> /dev/null)
-status=$?
+# Keep only the first 200 characters of the recorder's first stderr line.
+# The canonical recorder formats failures without including event payloads.
+sanitize_recorder_cause() {
+  head -n 1 -- "$1" 2> /dev/null | tr -d '\r' | cut -c1-200
+}
+
+recorder_stderr_file="$(mktemp "${TMPDIR:-/tmp}/skill-usage-stats.XXXXXX" 2> /dev/null)" || recorder_stderr_file=""
+recorder_cause=""
+
+if [ -n "$recorder_stderr_file" ]; then
+  output=$(printf '%s' "$input" | node "$recorder" record 2> "$recorder_stderr_file")
+  status=$?
+  if [ -s "$recorder_stderr_file" ]; then
+    recorder_cause="$(sanitize_recorder_cause "$recorder_stderr_file")"
+  fi
+  rm -f "$recorder_stderr_file" 2> /dev/null || true
+else
+  output=$(printf '%s' "$input" | node "$recorder" record 2> /dev/null)
+  status=$?
+fi
 
 if [ "$status" -ne 0 ] || [ -z "$output" ]; then
   if [ "$status" -ne 0 ]; then
-    record_usage_diagnostic "record failed status=$status"
+    if [ -n "$recorder_cause" ]; then
+      record_usage_diagnostic "record failed status=$status cause=$recorder_cause"
+    else
+      record_usage_diagnostic "record failed status=$status"
+    fi
   else
     record_usage_diagnostic "record produced empty output"
   fi

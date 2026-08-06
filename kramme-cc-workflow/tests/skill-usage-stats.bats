@@ -251,6 +251,58 @@ create_usage_plugin_root() {
 	[ "$status" -eq 0 ]
 }
 
+@test "usage hook surfaces a sanitized recorder failure cause in diagnostics" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	create_usage_plugin_root "$PLUGIN_ROOT"
+	printf '%s\n' \
+		'#!/usr/bin/env node' \
+		'process.stderr.write("skill-usage: write usage file failed code=EACCES file=/blocked/skill-usage.jsonl\n");' \
+		'process.exit(1);' \
+		>"$PLUGIN_ROOT/scripts/skill-usage.js"
+
+	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
+		'{"prompt":"/kramme:blocked","session_id":"session-eacces"}' \
+		"$PLUGIN_ROOT" \
+		"$USAGE_FILE" \
+		"$DIAGNOSTIC_FILE"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+
+	run grep -F "skill-usage-stats: record failed status=1 cause=skill-usage: write usage file failed code=EACCES file=/blocked/skill-usage.jsonl" "$DIAGNOSTIC_FILE"
+	[ "$status" -eq 0 ]
+}
+
+@test "usage hook bounds an overlong recorder failure cause" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	create_usage_plugin_root "$PLUGIN_ROOT"
+	printf '%s\n' \
+		'#!/usr/bin/env node' \
+		'process.stderr.write("x".repeat(1000) + "\n");' \
+		'process.exit(1);' \
+		>"$PLUGIN_ROOT/scripts/skill-usage.js"
+
+	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
+		'{"prompt":"/kramme:overlong-cause","session_id":"session-overlong"}' \
+		"$PLUGIN_ROOT" \
+		"$USAGE_FILE" \
+		"$DIAGNOSTIC_FILE"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+
+	diagnostic_line="$(grep -F "record failed status=1 cause=" "$DIAGNOSTIC_FILE")"
+	[ -n "$diagnostic_line" ]
+	cause="${diagnostic_line#*cause=}"
+	[ "${#cause}" -le 200 ]
+}
+
 @test "usage hook preserves diagnostic file permissions when pruning" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for skill usage tests"

@@ -222,3 +222,42 @@ run_exit_if_hook_disabled_without_jq() {
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
+
+run_resolve_kramme_path() {
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" bash -c \
+		'source "$1"; shift; resolve_kramme_path "$@"' _ "$LIB" "$@"
+}
+
+@test "resolve_kramme_path prefers the override env var over XDG and legacy paths" {
+	local override_file="$BATS_TEST_TMPDIR/override.config"
+	local xdg_home="$BATS_TEST_TMPDIR/xdg-config"
+	mkdir -p "$xdg_home/kramme-cc-workflow"
+	printf 'xdg\n' >"$xdg_home/kramme-cc-workflow/thing.config"
+	printf 'legacy\n' >"$TEST_PLUGIN_ROOT/hooks/thing.config"
+	printf 'override\n' >"$override_file"
+
+	KRAMME_TEST_OVERRIDE="$override_file" XDG_TEST_HOME="$xdg_home" \
+		run_resolve_kramme_path "KRAMME_TEST_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config" \
+		"$TEST_PLUGIN_ROOT/hooks/thing.config"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "$override_file" ]
+}
+
+@test "resolve_kramme_path falls back to the XDG default subdir when the XDG var is unset" {
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" HOME="$BATS_TEST_TMPDIR/home" bash -c \
+		'source "$1"; unset XDG_TEST_HOME KRAMME_TEST_UNSET_OVERRIDE; resolve_kramme_path "KRAMME_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"' _ "$LIB"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "$BATS_TEST_TMPDIR/home/.config/kramme-cc-workflow/thing.config" ]
+}
+
+@test "resolve_kramme_path never falls back to a legacy path when none is given" {
+	printf 'legacy\n' >"$TEST_PLUGIN_ROOT/hooks/thing.config"
+	local xdg_home="$BATS_TEST_TMPDIR/xdg-config-empty"
+
+	XDG_TEST_HOME="$xdg_home" run_resolve_kramme_path "KRAMME_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "$xdg_home/kramme-cc-workflow/thing.config" ]
+}
