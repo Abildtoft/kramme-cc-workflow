@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import json
+
 from ..frontmatter import frontmatter_type_errors, parse_frontmatter
 from ..io import read_text, rel, skill_paths
 from ..schema import skill_frontmatter_required_fields
 from .types import CheckResult, LintContext
+
+SKILL_CONTRACT_KINDS = {"executable", "evaluation", "guidance", "registry"}
 
 
 def check_mechanical(context: LintContext) -> CheckResult:
@@ -58,6 +62,17 @@ def check_mechanical(context: LintContext) -> CheckResult:
     result.failures.extend(size_result.failures)
     result.warnings.extend(size_result.warnings)
 
+    require_skill_contract_coverage = config.get("require_skill_contract_coverage", False)
+    if not isinstance(require_skill_contract_coverage, bool):
+        result.failures.append("mechanical: require_skill_contract_coverage must be a boolean")
+        require_skill_contract_coverage = False
+    coverage_result = check_skill_contract_coverage(
+        context,
+        required=require_skill_contract_coverage,
+    )
+    result.failures.extend(coverage_result.failures)
+    result.warnings.extend(coverage_result.warnings)
+
     if warn_lines <= 0:
         return result
 
@@ -73,6 +88,112 @@ def check_mechanical(context: LintContext) -> CheckResult:
             f"mechanical: long-skill burndown: {relative} has {line_count} lines "
             f"({status}; warn at {warn_lines}, fail above {max_lines})"
         )
+    return result
+
+
+def check_skill_contract_coverage(context: LintContext, *, required: bool = False) -> CheckResult:
+    result = CheckResult()
+    config = context.registry.get("skill_contract_coverage")
+    if config is None:
+        if required:
+            result.failures.append("mechanical: skill_contract_coverage is required")
+        return result
+    if not isinstance(config, dict):
+        result.failures.append("mechanical: skill_contract_coverage must be an object")
+        return result
+
+    inventory_relative = config.get("inventory")
+    mechanical_only = config.get("mechanical_only")
+    if not isinstance(inventory_relative, str) or not inventory_relative:
+        result.failures.append(
+            "mechanical: skill_contract_coverage.inventory must be a non-empty repository-relative path"
+        )
+        return result
+    if not isinstance(mechanical_only, list) or not all(isinstance(path, str) and path for path in mechanical_only):
+        result.failures.append("mechanical: skill_contract_coverage.mechanical_only must be an array of skill paths")
+        return result
+
+    inventory_path = (context.root / inventory_relative).resolve()
+    try:
+        inventory_path.relative_to(context.root)
+    except ValueError:
+        result.failures.append(f"mechanical: skill contract inventory escapes repository root: {inventory_relative}")
+        return result
+
+    try:
+        inventory = json.loads(read_text(inventory_path))
+    except (OSError, json.JSONDecodeError) as error:
+        result.failures.append(f"mechanical: cannot load skill contract inventory {inventory_relative}: {error}")
+        return result
+    if not isinstance(inventory, dict):
+        result.failures.append(f"mechanical: skill contract inventory {inventory_relative} must be a JSON object")
+        return result
+
+    contracts = inventory.get("skill_contracts")
+    if not isinstance(contracts, list):
+        result.failures.append(f"mechanical: {inventory_relative}.skill_contracts must be an array")
+        return result
+
+    mechanical_config = context.registry.get("mechanical", {})
+    pattern = mechanical_config.get("skill_glob", "kramme-cc-workflow/skills/*/SKILL.md")
+    discovered = {rel(path, context.root) for path in skill_paths(context.root, pattern)}
+    mapped: set[str] = set()
+    relationships: set[tuple[str, str]] = set()
+
+    for index, contract in enumerate(contracts):
+        label = f"mechanical: skill contract mapping {index + 1}"
+        if not isinstance(contract, dict):
+            result.failures.append(f"{label} must be an object")
+            continue
+        suite = contract.get("suite")
+        kind = contract.get("kind")
+        skills = contract.get("skills")
+        if not isinstance(suite, str) or not suite:
+            result.failures.append(f"{label} requires a non-empty suite path")
+            continue
+        if not isinstance(kind, str) or kind not in SKILL_CONTRACT_KINDS:
+            result.failures.append(f"{label} kind must be one of {', '.join(sorted(SKILL_CONTRACT_KINDS))}")
+            continue
+        if not isinstance(skills, list) or not skills or not all(isinstance(path, str) and path for path in skills):
+            result.failures.append(f"{label} requires a non-empty array of skill paths")
+            continue
+
+        suite_path = (context.root / suite).resolve()
+        try:
+            suite_path.relative_to(context.root)
+        except ValueError:
+            result.failures.append(f"{label} suite escapes repository root: {suite}")
+        else:
+            if not suite_path.is_file():
+                result.failures.append(f"{label} suite does not exist: {suite}")
+
+        for skill in skills:
+            relationship = (skill, suite)
+            if relationship in relationships:
+                result.failures.append(f"mechanical: duplicate skill contract mapping: {skill} -> {suite}")
+            relationships.add(relationship)
+            mapped.add(skill)
+            if skill not in discovered:
+                result.failures.append(f"{label} skill does not exist: {skill}")
+
+    baseline = set(mechanical_only)
+    if len(baseline) != len(mechanical_only):
+        result.failures.append("mechanical: skill_contract_coverage.mechanical_only contains duplicate paths")
+    for skill in sorted(mapped & baseline):
+        result.failures.append(f"mechanical: covered skill is still listed as mechanical-only: {skill}")
+    for skill in sorted(baseline - discovered):
+        result.failures.append(f"mechanical: mechanical-only skill is not discovered: {skill}; remove or fix the entry")
+    for skill in sorted(discovered - mapped - baseline):
+        result.failures.append(
+            f"mechanical: skill contract coverage is unclassified: {skill}; "
+            "map a behavioral suite or add an explicit mechanical-only burndown entry"
+        )
+    for skill in sorted(baseline & discovered):
+        result.warnings.append(
+            f"mechanical: skill-contract burndown: {skill} has mechanical checks only; "
+            "add a behavioral contract mapping"
+        )
+
     return result
 
 

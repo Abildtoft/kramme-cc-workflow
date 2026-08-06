@@ -111,6 +111,226 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py": 15
     }
   },
+  "skill_contracts": [
+    {
+      "kind": "registry",
+      "suite": "kramme-cc-workflow/tests/lint-skill-contracts.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:optimize/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:debug:triage-to-issue/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:complete-work/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:resolve-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:walkthrough/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:qa/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:continue/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:implementation-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-reindex/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:remove/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:visual:diagram/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:visual:onboarding/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:visual:plan-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:visual:project-recap/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/agent-description-length.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:docs:feature-spec/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/check-environment.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:setup/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/clean-gone-branches.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/demo-reel-skill.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/discovery-delegation-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:discovery:interview/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/github-review-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/issue-and-plan-to-pr-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:complete-work/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-to-pr/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/launch-rollout-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:launch:rollout/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/linear-issue-implement-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/linear-issue-to-pr-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/lint-skill-contracts.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:learn:verify-understanding/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/optimize-skill.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:code:optimize/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/outside-view-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:code:outside-view/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/pr-create-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/pr-generate-description-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/pr-walkthrough.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:pr:walkthrough/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/recreate-commits-push-target.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/refactor-pass-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/resolve-stack-membership.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md"
+      ]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/session-search-scripts.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:session:search/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/siw-issue-reservation.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md"
+      ]
+    },
+    {
+      "kind": "evaluation",
+      "suite": "kramme-cc-workflow/tests/skillopt-candidate-review.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:skill:review/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/skill-resource-references.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"]
+    },
+    {
+      "kind": "registry",
+      "suite": "kramme-cc-workflow/tests/workflow-artifacts-cleanup.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+      ]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/worktree-helper.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:git:worktree/SKILL.md"]
+    }
+  ],
   "shell": {
     "contract_only": {
       "kramme-cc-workflow/evals/skillopt/scripts/export-candidate.sh": [

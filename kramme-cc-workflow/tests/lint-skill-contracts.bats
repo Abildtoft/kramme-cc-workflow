@@ -3141,6 +3141,226 @@ EOF
   [[ "$output" == *"frontmatter name 'sample-agent' does not match agent filename 'kramme:sample-agent'"* ]]
 }
 
+@test "skill contract coverage accepts one suite protecting multiple skills" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "# A"
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/b/SKILL.md" "# B"
+  write_file "$TMP_ROOT/kramme-cc-workflow/tests/shared-guidance.bats" <<'EOF'
+#!/usr/bin/env bats
+EOF
+  write_file "$TMP_ROOT/config/coverage.json" <<'EOF'
+{
+  "skill_contracts": [
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/shared-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/a/SKILL.md",
+        "kramme-cc-workflow/skills/b/SKILL.md"
+      ]
+    }
+  ]
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "skill_contract_coverage": {
+    "inventory": "config/coverage.json",
+    "mechanical_only": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "skill contract coverage fails when required configuration is missing" {
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "require_skill_contract_coverage": true
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"mechanical: skill_contract_coverage is required"* ]]
+}
+
+@test "skill contract coverage rejects mappings to missing skills" {
+  write_file "$TMP_ROOT/kramme-cc-workflow/tests/guidance.bats" <<'EOF'
+#!/usr/bin/env bats
+EOF
+  write_file "$TMP_ROOT/config/coverage.json" <<'EOF'
+{
+  "skill_contracts": [
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/missing/SKILL.md"]
+    }
+  ]
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "skill_contract_coverage": {
+    "inventory": "config/coverage.json",
+    "mechanical_only": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"skill does not exist: kramme-cc-workflow/skills/missing/SKILL.md"* ]]
+}
+
+@test "skill contract coverage rejects mappings to missing suites" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "# A"
+  write_file "$TMP_ROOT/config/coverage.json" <<'EOF'
+{
+  "skill_contracts": [
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/missing.bats",
+      "skills": ["kramme-cc-workflow/skills/a/SKILL.md"]
+    }
+  ]
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "skill_contract_coverage": {
+    "inventory": "config/coverage.json",
+    "mechanical_only": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"suite does not exist: kramme-cc-workflow/tests/missing.bats"* ]]
+}
+
+@test "skill contract coverage rejects non-string contract kinds" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "# A"
+  write_file "$TMP_ROOT/kramme-cc-workflow/tests/guidance.bats" <<'EOF'
+#!/usr/bin/env bats
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "skill_contract_coverage": {
+    "inventory": "config/coverage.json",
+    "mechanical_only": []
+  }
+}
+EOF
+
+  for kind in '[]' '{}'; do
+    write_file "$TMP_ROOT/config/coverage.json" <<EOF
+{
+  "skill_contracts": [
+    {
+      "kind": $kind,
+      "suite": "kramme-cc-workflow/tests/guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/a/SKILL.md"]
+    }
+  ]
+}
+EOF
+
+    run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"kind must be one of evaluation, executable, guidance, registry"* ]]
+    [[ "$output" != *"Traceback"* ]]
+  done
+}
+
+@test "skill contract coverage rejects duplicate relationships" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" "# A"
+  write_file "$TMP_ROOT/kramme-cc-workflow/tests/guidance.bats" <<'EOF'
+#!/usr/bin/env bats
+EOF
+  write_file "$TMP_ROOT/config/coverage.json" <<'EOF'
+{
+  "skill_contracts": [
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/a/SKILL.md",
+        "kramme-cc-workflow/skills/a/SKILL.md"
+      ]
+    }
+  ]
+}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "skill_contract_coverage": {
+    "inventory": "config/coverage.json",
+    "mechanical_only": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"duplicate skill contract mapping: kramme-cc-workflow/skills/a/SKILL.md -> kramme-cc-workflow/tests/guidance.bats"* ]]
+}
+
+@test "skill contract coverage requires new skills to be classified" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/new/SKILL.md" "# New"
+  write_file "$TMP_ROOT/config/coverage.json" <<'EOF'
+{"skill_contracts": []}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "skill_contract_coverage": {
+    "inventory": "config/coverage.json",
+    "mechanical_only": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"skill contract coverage is unclassified: kramme-cc-workflow/skills/new/SKILL.md"* ]]
+}
+
+@test "skill contract coverage warns for explicit mechanical-only debt" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/uncovered/SKILL.md" "# Uncovered"
+  write_file "$TMP_ROOT/config/coverage.json" <<'EOF'
+{"skill_contracts": []}
+EOF
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "skill_contract_coverage": {
+    "inventory": "config/coverage.json",
+    "mechanical_only": [
+      "kramme-cc-workflow/skills/uncovered/SKILL.md"
+    ]
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning::mechanical: skill-contract burndown: kramme-cc-workflow/skills/uncovered/SKILL.md has mechanical checks only"* ]]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
 @test "mechanical long-skill warning reports near-threshold candidates" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/below/SKILL.md" "$(make_body_lines 4)"
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/near/SKILL.md" "$(make_body_lines 6)"
