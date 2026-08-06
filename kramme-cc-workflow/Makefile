@@ -264,11 +264,11 @@ test-git-worktree:
 
 # Check visual shared resources against their canonical identity-group copies
 check-visual-shared-assets:
-	@python3 scripts/generate-visual-shared-assets.py --check
+	@python3 scripts/generate-synced-files.py --group-prefix visual- --check
 
 # Sync visual shared resources from their canonical identity-group copies
 sync-visual-shared-assets:
-	@python3 scripts/generate-visual-shared-assets.py --write
+	@python3 scripts/generate-synced-files.py --group-prefix visual- --write
 
 skill-security: check-security-deps
 	@./scripts/run-skillspector.sh --all --format "$(SKILLSPECTOR_FORMAT)" --fail-on "$(SKILLSPECTOR_FAIL_ON)"

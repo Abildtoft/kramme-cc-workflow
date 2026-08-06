@@ -6,7 +6,6 @@ setup() {
   TMP_ROOT="$(mktemp -d)"
   SCRIPT="$BATS_TEST_DIRNAME/../scripts/lint-skill-contracts.py"
   SYNCED_FILES_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-synced-files.py"
-  VISUAL_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-visual-shared-assets.py"
   COMPONENT_GENERATOR="$BATS_TEST_DIRNAME/../scripts/generate-component-reference.py"
   ISSUE_DEFINE_RESERVATION_HELPER="$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh"
   GENERATE_PHASES_RESERVATION_HELPER="$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh"
@@ -292,7 +291,7 @@ make_body_lines() {
   local consumer
   local fixture
 
-  for consumer in "$SCRIPT" "$COMPONENT_GENERATOR" "$VISUAL_GENERATOR"; do
+  for consumer in "$SCRIPT" "$COMPONENT_GENERATOR" "$SYNCED_FILES_GENERATOR"; do
     for fixture in "null" "[]" '"scalar"' "false" "42"; do
       printf '%s\n' "$fixture" >"$TMP_ROOT/registry.yaml"
 
@@ -336,10 +335,10 @@ make_body_lines() {
 }
 
 @test "visual shared asset generator passes current tree" {
-  run python3 "$VISUAL_GENERATOR" --check
+  run python3 "$SYNCED_FILES_GENERATOR" --group-prefix visual- --check
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"visual shared assets are in sync."* ]]
+  [[ "$output" == *"declared file mirrors are in sync."* ]]
 }
 
 @test "readme skill sync accepts source-generated frontmatter rows" {
@@ -1996,10 +1995,10 @@ EOF
 }
 EOF
 
-  run python3 "$VISUAL_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --group-prefix visual- --check
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"visual shared assets are in sync."* ]]
+  [[ "$output" == *"declared file mirrors are in sync."* ]]
 }
 
 @test "visual shared asset generator check reports drift" {
@@ -2024,13 +2023,13 @@ EOF
 }
 EOF
 
-  run python3 "$VISUAL_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --group-prefix visual- --check
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"visual shared asset sync check failed:"* ]]
+  [[ "$output" == *"synced file sync check failed:"* ]]
   [[ "$output" == *"visual-fixture-shared"* ]]
   [[ "$output" == *"differs from canonical"* ]]
-  [[ "$output" == *"generate-visual-shared-assets.py --write"* ]]
+  [[ "$output" == *"generate-synced-files.py --group-prefix visual- --write"* ]]
 }
 
 @test "visual shared asset generator write syncs from canonical copy" {
@@ -2055,10 +2054,10 @@ EOF
 }
 EOF
 
-  run python3 "$VISUAL_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --group-prefix visual- --write
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"synced 1 visual shared asset file(s)."* ]]
+  [[ "$output" == *"synced 1 file mirror(s)."* ]]
   [ "$(cat "$TMP_ROOT/kramme-cc-workflow/skills/kramme:visual:b/references/shared.md")" = "canonical" ]
 }
 
@@ -2095,10 +2094,10 @@ EOF
 }
 EOF
 
-  run python3 "$VISUAL_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  run python3 "$SYNCED_FILES_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --group-prefix visual- --write
 
   [ "$status" -eq 0 ]
-  [[ "$output" == *"visual shared assets are in sync."* ]]
+  [[ "$output" == *"declared file mirrors are in sync."* ]]
   [ "$(cat "$TMP_ROOT/policy/mirror.md")" = "drifted" ]
 }
 

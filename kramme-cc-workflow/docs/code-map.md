@@ -41,7 +41,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Skill-review eval | `kramme-cc-workflow/evals/skill-review/` | `make -C kramme-cc-workflow test-skill-review-eval`, `make -C kramme-cc-workflow skill-eval-skill-review` |
 | Skill-review scorer | `kramme-cc-workflow/evals/skill-review/scorer.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/scorer.test.js` |
 | SkillOpt adapter | `kramme-cc-workflow/evals/skillopt/` | `bats kramme-cc-workflow/tests/skillopt-adapter.bats kramme-cc-workflow/tests/skillopt-candidate-review.bats` |
-| Visual shared assets | `kramme-cc-workflow/scripts/generate-visual-shared-assets.py`, visual skill shared assets | `make -C kramme-cc-workflow check-visual-shared-assets` |
+| Synced file mirrors (incl. visual shared assets) | `kramme-cc-workflow/scripts/generate-synced-files.py`, mirrored files declared in `scripts/synced-contracts.yaml` | `bats kramme-cc-workflow/tests/lint-skill-contracts.bats`, `make -C kramme-cc-workflow check-visual-shared-assets` |
 
 ## Skill Contract Lookup
 
