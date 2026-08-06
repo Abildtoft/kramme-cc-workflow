@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: run-skillopt-skill-review.sh [--dry-run] [--run-id <id>] [--out-root <path>]
 
 Builds and optionally runs the external SkillOpt command for the skill-review
@@ -15,6 +15,8 @@ EOF
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 workflow_root="$(cd "$script_dir/../../.." && pwd -P)"
 repo_root="$(cd "$workflow_root/.." && pwd -P)"
+# shellcheck source=../../../scripts/lib/shell-helpers.sh
+source "$workflow_root/scripts/lib/shell-helpers.sh"
 skillopt_env_name="kramme_skill_review"
 
 dry_run=false
@@ -28,22 +30,16 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --run-id)
-      if [ "$#" -lt 2 ]; then
-        echo "run-skillopt: --run-id requires a value" >&2
-        exit 2
-      fi
+      require_value "$1" "${2-}" 2 "run-skillopt: "
       run_id="$2"
       shift 2
       ;;
     --out-root)
-      if [ "$#" -lt 2 ]; then
-        echo "run-skillopt: --out-root requires a path" >&2
-        exit 2
-      fi
+      require_value "$1" "${2-}" 2 "run-skillopt: "
       out_root="$2"
       shift 2
       ;;
-    --help|-h)
+    --help | -h)
       usage
       exit 0
       ;;
@@ -55,17 +51,12 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "run-skillopt: python3 is required" >&2
-  exit 1
-fi
-
 if [ -z "$run_id" ]; then
   run_id="$(date -u +%Y%m%dT%H%M%SZ)"
 fi
 
 case "$run_id" in
-  *[!A-Za-z0-9._-]*|"")
+  *[!A-Za-z0-9._-]* | "")
     echo "run-skillopt: run id must contain only letters, numbers, dots, underscores, and dashes" >&2
     exit 2
     ;;
@@ -79,27 +70,14 @@ if [ -z "$out_root" ]; then
   out_root="$repo_root/.context/skillopt-runs/skill-review/$run_id/skillopt-output"
 fi
 
-out_root_real="$(python3 - "$repo_root" "$out_root" <<'PY'
-import sys
-from pathlib import Path
-
-repo_root = Path(sys.argv[1]).resolve()
-out_root = Path(sys.argv[2]).expanduser()
-if not out_root.is_absolute():
-    out_root = repo_root / out_root
-
-print(out_root.resolve())
-PY
-)"
-case "$out_root_real/" in
-  "$repo_root/.context/skillopt-runs/skill-review/"*) ;;
-  *)
-    echo "run-skillopt: output root must stay under $repo_root/.context/skillopt-runs/skill-review" >&2
-    exit 1
-    ;;
+case "$out_root" in
+  /* | ~*) ;;
+  *) out_root="$repo_root/$out_root" ;;
 esac
 
-bash "$script_dir/prepare-splits.sh" --check-only --split-dir "$split_dir" >/dev/null
+out_root_real="$(require_scratch_boundary "$repo_root" ".context/skillopt-runs/skill-review" "$out_root" "run-skillopt: output root ")"
+
+bash "$script_dir/prepare-splits.sh" --check-only --split-dir "$split_dir" > /dev/null
 
 if [ ! -f "$config_path" ]; then
   echo "run-skillopt: missing config: $config_path" >&2
@@ -157,7 +135,7 @@ if [ -z "${SKILLOPT_CMD:-}" ] && [ ! -f "$skillopt_repo/scripts/train.py" ]; the
   exit 1
 fi
 
-if [ -z "${SKILLOPT_CMD:-}" ] && ! grep -R -q "$skillopt_env_name" "$skillopt_repo/scripts" "$skillopt_repo/skillopt" 2>/dev/null; then
+if [ -z "${SKILLOPT_CMD:-}" ] && ! grep -R -q "$skillopt_env_name" "$skillopt_repo/scripts" "$skillopt_repo/skillopt" 2> /dev/null; then
   echo "run-skillopt: default command requires SkillOpt environment '$skillopt_env_name' to be registered in SKILLOPT_REPO" >&2
   echo "run-skillopt: use an external checkout/fork with that EnvAdapter, or set SKILLOPT_CMD for your custom runner" >&2
   exit 1

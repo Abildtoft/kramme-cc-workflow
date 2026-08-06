@@ -24,6 +24,60 @@ quote_assignment() {
   printf '%s=%q\n' "$name" "$value"
 }
 
+# require_scratch_boundary <repo-root> <boundary-relative-path> <path> <error-prefix>
+#
+# Resolves <path> to a canonical absolute path (expanding "~" and following
+# symlinks) and requires it to be <repo-root>/<boundary-relative-path> or a
+# path nested beneath it. <repo-root> is canonicalized the same way before
+# comparison, so containment is judged on resolved paths rather than literal
+# substrings: a path that merely mentions the boundary directory name, or a
+# symlink that resolves outside it, is rejected (fail-closed). Prints the
+# canonical resolved path on stdout. Exits 1 with an "${error_prefix}..."
+# diagnostic on stderr when python3 is unavailable, resolution fails, or the
+# resolved path escapes the boundary. Requires python3.
+require_scratch_boundary() {
+  local repo_root="$1"
+  local boundary_relative="$2"
+  local path="$3"
+  local error_prefix="$4"
+
+  if ! command -v python3 > /dev/null 2>&1; then
+    echo "${error_prefix}python3 is required to validate scratch paths" >&2
+    exit 1
+  fi
+
+  local repo_root_real
+  repo_root_real="$(cd "$repo_root" && pwd -P)"
+  local boundary_real="$repo_root_real/$boundary_relative"
+
+  local resolved
+  if ! resolved="$(
+    python3 - "$path" << 'PY'
+import sys
+from pathlib import Path
+
+try:
+    print(Path(sys.argv[1]).expanduser().resolve())
+except (OSError, RuntimeError) as exc:
+    print(exc, file=sys.stderr)
+    sys.exit(1)
+PY
+  )"; then
+    echo "${error_prefix}failed to resolve path: $path" >&2
+    exit 1
+  fi
+
+  case "$resolved/" in
+    "$boundary_real"/*) ;;
+    *)
+      echo "${error_prefix}path must stay under $boundary_real: $resolved" >&2
+      exit 1
+      ;;
+  esac
+
+  printf '%s\n' "$resolved"
+}
+
 # emit_json_object <missing-python-message> (<kind>:<key> <value>)...
 #
 # Emits one compact JSON object built from ordered key/value pairs on

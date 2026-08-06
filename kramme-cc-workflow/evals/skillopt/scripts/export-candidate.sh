@@ -2,14 +2,20 @@
 set -euo pipefail
 
 usage() {
-  cat <<'EOF'
+  cat << 'EOF'
 Usage: export-candidate.sh --run-dir <path> [--dest-dir <path>]
 
-Copies SkillOpt candidate artifacts into a candidate-review directory under a
-.context/skillopt-runs/ path. The helper refuses destinations outside that
-scratch boundary.
+Copies SkillOpt candidate artifacts into a candidate-review directory under
+this repository's .context/skillopt-runs/ scratch boundary. When --dest-dir is
+omitted, the sibling candidate-review directory must remain inside that boundary.
 EOF
 }
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+workflow_root="$(cd "$script_dir/../../.." && pwd -P)"
+repo_root="$(cd "$workflow_root/.." && pwd -P)"
+# shellcheck source=../../../scripts/lib/shell-helpers.sh
+source "$workflow_root/scripts/lib/shell-helpers.sh"
 
 run_dir=""
 dest_dir=""
@@ -17,22 +23,16 @@ dest_dir=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --run-dir)
-      if [ "$#" -lt 2 ]; then
-        echo "export-candidate: --run-dir requires a path" >&2
-        exit 2
-      fi
+      require_value "$1" "${2-}" 2 "export-candidate: "
       run_dir="$2"
       shift 2
       ;;
     --dest-dir)
-      if [ "$#" -lt 2 ]; then
-        echo "export-candidate: --dest-dir requires a path" >&2
-        exit 2
-      fi
+      require_value "$1" "${2-}" 2 "export-candidate: "
       dest_dir="$2"
       shift 2
       ;;
-    --help|-h)
+    --help | -h)
       usage
       exit 0
       ;;
@@ -61,26 +61,7 @@ if [ -z "$dest_dir" ]; then
   dest_dir="$(dirname "$run_dir_real")/candidate-review"
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "export-candidate: python3 is required to validate destination paths" >&2
-  exit 1
-fi
-
-dest_dir_real="$(python3 - "$dest_dir" <<'PY'
-import sys
-from pathlib import Path
-
-print(Path(sys.argv[1]).expanduser().resolve())
-PY
-)"
-
-case "$dest_dir_real/" in
-  */.context/skillopt-runs/*) ;;
-  *)
-    echo "export-candidate: destination must stay under a .context/skillopt-runs path: $dest_dir_real" >&2
-    exit 1
-    ;;
-esac
+dest_dir_real="$(require_scratch_boundary "$repo_root" ".context/skillopt-runs" "$dest_dir" "export-candidate: destination ")"
 
 mkdir -p "$dest_dir_real"
 
@@ -108,7 +89,7 @@ artifacts_dir="$dest_dir_real/artifacts"
 while IFS= read -r -d '' artifact; do
   relative="${artifact#"$run_dir_real"/}"
   case "$relative" in
-    best_skill.md|history.json|config.json|runtime_state.json) continue ;;
+    best_skill.md | history.json | config.json | runtime_state.json) continue ;;
   esac
   copy_if_present "$artifact" "$artifacts_dir/$relative"
 done < <(
@@ -119,7 +100,7 @@ done < <(
     -name '*metric*.json' -o \
     -name '*result*.json' -o \
     -name '*results*.json' \
-  \) -print0
+    \) -print0
 )
 
 echo "$dest_dir_real"

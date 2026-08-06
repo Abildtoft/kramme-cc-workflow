@@ -16,18 +16,32 @@ source_skill() {
   printf "%s/skills/kramme:skill:review/SKILL.md" "$(workflow_root)"
 }
 
+boundary_dir() {
+  printf "%s/.context/skillopt-runs/skill-review" "$(repo_root)"
+}
+
 @test "skillopt candidate review script passes bash syntax check" {
   run bash -n "$(script_path)"
 
   [ "$status" -eq 0 ]
 }
 
+@test "skillopt candidate review requires a value for --run-dir" {
+  run bash "$(script_path)" --run-dir
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"--run-dir requires a value"* ]]
+}
+
 @test "skillopt candidate review rejects missing best skill" {
-  run_dir="$BATS_TEST_TMPDIR/.context/skillopt-runs/skill-review/missing/skillopt-output"
+  mkdir -p "$(boundary_dir)"
+  scratch_dir="$(mktemp -d "$(boundary_dir)/bats-missing-XXXXXX")"
+  run_dir="$scratch_dir/skillopt-output"
   mkdir -p "$run_dir"
 
   run bash "$(script_path)" "$run_dir"
 
+  rm -r "$scratch_dir"
   [ "$status" -eq 1 ]
   [[ "$output" == *"missing best_skill.md"* ]]
 }
@@ -40,16 +54,75 @@ source_skill() {
   run bash "$(script_path)" "$run_dir"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"must stay under a .context/skillopt-runs/skill-review path"* ]]
+  [[ "$output" == *"run directory path must stay under"* ]]
+}
+
+@test "skillopt candidate review rejects a run directory that merely resembles the context boundary" {
+  run_dir="$BATS_TEST_TMPDIR/.context/skillopt-runs/skill-review/escape/skillopt-output"
+  mkdir -p "$run_dir"
+  printf "# Candidate\n" > "$run_dir/best_skill.md"
+
+  run bash "$(script_path)" "$run_dir"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"run directory path must stay under"* ]]
+}
+
+@test "skillopt candidate review rejects a run directory sitting beside the boundary directory" {
+  repo_root="$(repo_root)"
+  fixture_dir="$(mktemp -d "$repo_root/.context/skillopt-runs/skill-review-legacy-XXXXXX")"
+  run_dir="$fixture_dir/skillopt-output"
+  mkdir -p "$run_dir"
+  printf "# Candidate\n" > "$run_dir/best_skill.md"
+
+  run bash "$(script_path)" "$run_dir"
+
+  rm -r "$fixture_dir"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"run directory path must stay under"* ]]
+}
+
+@test "skillopt candidate review rejects a run directory that escapes the boundary via traversal" {
+  boundary_dir="$(boundary_dir)"
+  repo_root="$(repo_root)"
+  mkdir -p "$boundary_dir"
+  outside_dir="$(mktemp -d "$repo_root/.context/escape-via-traversal-XXXXXX")"
+  printf "# Candidate\n" > "$outside_dir/best_skill.md"
+
+  run bash "$(script_path)" "$boundary_dir/../../$(basename "$outside_dir")"
+
+  rm -r "$outside_dir"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"run directory path must stay under"* ]]
+}
+
+@test "skillopt candidate review rejects a run directory reached through a symlink that escapes the repository" {
+  boundary_dir="$(boundary_dir)"
+  mkdir -p "$boundary_dir"
+  outside_target="$BATS_TEST_TMPDIR/escape-target"
+  mkdir -p "$outside_target/skillopt-output"
+  printf "# Candidate\n" > "$outside_target/skillopt-output/best_skill.md"
+  symlink_fixture="$(mktemp -d "$boundary_dir/bats-review-symlink-escape-XXXXXX")"
+  symlink_path="$symlink_fixture/link"
+  ln -s "$outside_target" "$symlink_path"
+
+  run bash "$(script_path)" "$symlink_path/skillopt-output"
+
+  rm -r "$symlink_fixture"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"run directory path must stay under"* ]]
 }
 
 @test "skillopt candidate review writes review packet and source-applicable patch" {
+  mkdir -p "$(boundary_dir)"
+  scratch_dir="$(mktemp -d "$(boundary_dir)/bats-review-XXXXXX")"
+
   run bash -c '
     set -euo pipefail
     workflow_root="'"$(workflow_root)"'"
     repo_root="'"$(repo_root)"'"
     source_skill="'"$(source_skill)"'"
-    run_dir="'"$BATS_TEST_TMPDIR"'/.context/skillopt-runs/skill-review/fake-run/skillopt-output"
+    run_dir="'"$scratch_dir"'/skillopt-output"
     mkdir -p "$run_dir"
     review_dir="$(cd "$(dirname "$run_dir")" && pwd -P)/candidate-review"
 
@@ -84,14 +157,18 @@ source_skill() {
     " "$review_dir/score-report.json"
   '
 
+  rm -r "$scratch_dir"
   [ "$status" -eq 0 ]
 }
 
 @test "skillopt candidate review does not accept malformed candidate content" {
+  mkdir -p "$(boundary_dir)"
+  scratch_dir="$(mktemp -d "$(boundary_dir)/bats-malformed-XXXXXX")"
+
   run bash -c '
     set -euo pipefail
     workflow_root="'"$(workflow_root)"'"
-    run_dir="'"$BATS_TEST_TMPDIR"'/.context/skillopt-runs/skill-review/malformed/skillopt-output"
+    run_dir="'"$scratch_dir"'/skillopt-output"
     mkdir -p "$run_dir"
     printf "# not a valid skill\n" > "$run_dir/best_skill.md"
 
@@ -106,15 +183,19 @@ source_skill() {
     " "$review_dir/score-report.json"
   '
 
+  rm -r "$scratch_dir"
   [ "$status" -eq 0 ]
 }
 
 @test "skillopt candidate review reports no-change candidates without source edits" {
+  mkdir -p "$(boundary_dir)"
+  scratch_dir="$(mktemp -d "$(boundary_dir)/bats-no-change-XXXXXX")"
+
   run bash -c '
     set -euo pipefail
     workflow_root="'"$(workflow_root)"'"
     source_skill="'"$(source_skill)"'"
-    run_dir="'"$BATS_TEST_TMPDIR"'/.context/skillopt-runs/skill-review/no-change/skillopt-output"
+    run_dir="'"$scratch_dir"'/skillopt-output"
     mkdir -p "$run_dir"
     review_dir="$(cd "$(dirname "$run_dir")" && pwd -P)/candidate-review"
     cp "$source_skill" "$run_dir/best_skill.md"
@@ -134,5 +215,6 @@ source_skill() {
     " "$review_dir/score-report.json"
   '
 
+  rm -r "$scratch_dir"
   [ "$status" -eq 0 ]
 }
