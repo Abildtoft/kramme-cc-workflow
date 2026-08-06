@@ -47,33 +47,9 @@ class SyncAction:
     reason: str
 
 
-@dataclass(frozen=True)
-class OutputStyle:
-    description: str
-    success_subject: str
-    failure_subject: str
-    synced_label: str
-    command: str
-    no_groups_message: str
-
-
-GENERIC_OUTPUT = OutputStyle(
-    description="Check or sync declared file mirrors from explicit canonical sources",
-    success_subject="declared file mirrors",
-    failure_subject="synced file sync",
-    synced_label="file mirror(s)",
-    command="scripts/generate-synced-files.py",
-    no_groups_message="no file identity groups found in registry",
-)
-
-
-def parse_cli(
-    argv: Sequence[str] | None = None,
-    *,
-    output: OutputStyle = GENERIC_OUTPUT,
-) -> argparse.Namespace:
+def parse_cli(argv: Sequence[str] | None = None) -> argparse.Namespace:
     script_dir = Path(__file__).resolve().parent
-    parser = argparse.ArgumentParser(description=output.description)
+    parser = argparse.ArgumentParser(description="Check or sync declared file mirrors from explicit canonical sources")
     parser.add_argument(
         "--repo-root",
         type=Path,
@@ -85,6 +61,11 @@ def parse_cli(
         type=Path,
         default=script_dir / "synced-contracts.yaml",
         help="Path to synced-contracts.yaml.",
+    )
+    parser.add_argument(
+        "--group-prefix",
+        default=None,
+        help="Only check/sync identity groups whose name starts with this prefix.",
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument(
@@ -159,17 +140,13 @@ def parse_identity_groups(
                 group_failures.append(f"{name}: paths must not contain duplicates")
 
         if isinstance(canonical, str) and canonical and paths.count(canonical) != 1:
-            group_failures.append(
-                f"{name}: canonical path must appear exactly once in paths"
-            )
+            group_failures.append(f"{name}: canonical path must appear exactly once in paths")
         if not group_failures:
             for path in paths:
                 normalized = str(Path(path))
                 owner = seen_paths.get(normalized)
                 if owner is not None:
-                    group_failures.append(
-                        f"{name}: path {path} is already registered in group {owner}"
-                    )
+                    group_failures.append(f"{name}: path {path} is already registered in group {owner}")
 
         failures.extend(group_failures)
         if not group_failures and isinstance(canonical, str):
@@ -219,9 +196,7 @@ def validate_registered_path(
             failures.append(f"{group}: registered path must not be a symlink: {relative}")
             return None, failures
         if index < len(lexical.parts) - 1 and not stat.S_ISDIR(metadata.st_mode):
-            failures.append(
-                f"{group}: registered path ancestor must be a directory: {relative}"
-            )
+            failures.append(f"{group}: registered path ancestor must be a directory: {relative}")
             return None, failures
 
     try:
@@ -277,9 +252,7 @@ def planned_actions(
             source_bytes = source.absolute.read_bytes()
             source_mode = stat.S_IMODE(source.absolute.lstat().st_mode)
         except OSError as exc:
-            failures.append(
-                f"{group.name}: cannot read canonical path {group.canonical}: {exc}"
-            )
+            failures.append(f"{group.name}: cannot read canonical path {group.canonical}: {exc}")
             continue
 
         for mirror_relative in group.mirrors:
@@ -301,18 +274,14 @@ def planned_actions(
                 mirror_bytes = mirror.absolute.read_bytes()
                 mirror_mode = stat.S_IMODE(mirror.absolute.lstat().st_mode)
             except OSError as exc:
-                failures.append(
-                    f"{group.name}: cannot read mirror path {mirror.relative}: {exc}"
-                )
+                failures.append(f"{group.name}: cannot read mirror path {mirror.relative}: {exc}")
                 continue
 
             reasons: list[str] = []
             if mirror_bytes != source_bytes:
                 reasons.append(f"content differs from canonical {group.canonical}")
             if mirror_mode != source_mode:
-                reasons.append(
-                    f"mode {mirror_mode:04o} differs from canonical mode {source_mode:04o}"
-                )
+                reasons.append(f"mode {mirror_mode:04o} differs from canonical mode {source_mode:04o}")
             if reasons:
                 actions.append(
                     SyncAction(
@@ -371,54 +340,53 @@ def report_actions(actions: Sequence[SyncAction]) -> None:
         print(f"{action.group}: {action.target} {action.reason}")
 
 
-def report_failures(output: OutputStyle, failures: Sequence[str]) -> None:
-    print(f"{output.failure_subject} failed:")
+def report_failures(failures: Sequence[str]) -> None:
+    print("synced file sync failed:")
     for failure in failures:
         print(f"::error::{failure}")
 
 
-def run_cli(
-    argv: Sequence[str] | None = None,
-    *,
-    group_prefix: str | None = None,
-    output: OutputStyle = GENERIC_OUTPUT,
-) -> int:
-    args = parse_cli(argv, output=output)
+def run_cli(argv: Sequence[str] | None = None) -> int:
+    args = parse_cli(argv)
     root = args.repo_root.resolve()
     if not root.is_dir():
-        report_failures(output, [f"repository root is not a directory: {root}"])
+        report_failures([f"repository root is not a directory: {root}"])
         return 1
 
     registry = load_registry(args.registry.resolve())
-    groups, failures = parse_identity_groups(registry, group_prefix=group_prefix)
+    groups, failures = parse_identity_groups(registry, group_prefix=args.group_prefix)
     if not groups and not failures:
-        failures.append(output.no_groups_message)
+        failures.append("no file identity groups found in registry")
 
     actions, path_failures = planned_actions(root, groups)
     failures.extend(path_failures)
     if failures:
-        report_failures(output, failures)
+        report_failures(failures)
         return 1
+
+    command = "scripts/generate-synced-files.py"
+    if args.group_prefix:
+        command += f" --group-prefix {args.group_prefix}"
 
     if args.write:
         write_failures = write_actions(root, actions)
         if write_failures:
-            report_failures(output, write_failures)
+            report_failures(write_failures)
             return 1
         if actions:
             report_actions(actions)
-            print(f"synced {len(actions)} {output.synced_label}.")
+            print(f"synced {len(actions)} file mirror(s).")
         else:
-            print(f"{output.success_subject} are in sync.")
+            print("declared file mirrors are in sync.")
         return 0
 
     if actions:
-        print(f"{output.failure_subject} check failed:")
+        print("synced file sync check failed:")
         report_actions(actions)
-        print(f"run {output.command} --write to sync copies")
+        print(f"run {command} --write to sync copies")
         return 1
 
-    print(f"{output.success_subject} are in sync.")
+    print("declared file mirrors are in sync.")
     return 0
 
 
