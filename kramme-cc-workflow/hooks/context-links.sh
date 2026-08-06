@@ -67,34 +67,34 @@ load_context_links_config() {
     line="${line#export }"
 
     case "$line" in
-    CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=* | CONTEXT_LINKS_LINEAR_TEAM_KEYS=* | CONTEXT_LINKS_LINEAR_ISSUE_REGEX=*)
-      key="${line%%=*}"
-      value="${line#*=}"
-      value=$(printf '%s' "$value" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
-      case "$value" in
-      \"*\")
-        value="${value#\"}"
-        value="${value%\"}"
+      CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=* | CONTEXT_LINKS_LINEAR_TEAM_KEYS=* | CONTEXT_LINKS_LINEAR_ISSUE_REGEX=*)
+        key="${line%%=*}"
+        value="${line#*=}"
+        value=$(printf '%s' "$value" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+        case "$value" in
+          \"*\")
+            value="${value#\"}"
+            value="${value%\"}"
+            ;;
+          \'*\')
+            value="${value#\'}"
+            value="${value%\'}"
+            ;;
+        esac
+        case "$key" in
+          CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG)
+            CONTEXT_LINKS_CONFIG_LINEAR_WORKSPACE_SLUG="$value"
+            ;;
+          CONTEXT_LINKS_LINEAR_TEAM_KEYS)
+            CONTEXT_LINKS_CONFIG_LINEAR_TEAM_KEYS="$value"
+            ;;
+          CONTEXT_LINKS_LINEAR_ISSUE_REGEX)
+            CONTEXT_LINKS_CONFIG_LINEAR_ISSUE_REGEX="$value"
+            ;;
+        esac
         ;;
-      \'*\')
-        value="${value#\'}"
-        value="${value%\'}"
-        ;;
-      esac
-      case "$key" in
-      CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG)
-        CONTEXT_LINKS_CONFIG_LINEAR_WORKSPACE_SLUG="$value"
-        ;;
-      CONTEXT_LINKS_LINEAR_TEAM_KEYS)
-        CONTEXT_LINKS_CONFIG_LINEAR_TEAM_KEYS="$value"
-        ;;
-      CONTEXT_LINKS_LINEAR_ISSUE_REGEX)
-        CONTEXT_LINKS_CONFIG_LINEAR_ISSUE_REGEX="$value"
-        ;;
-      esac
-      ;;
     esac
-  done <"$config_file"
+  done < "$config_file"
 }
 
 load_context_links_config "$CONTEXT_LINKS_CONFIG_FILE"
@@ -109,7 +109,7 @@ LINEAR_TEAM_KEYS="${CONTEXT_LINKS_LINEAR_TEAM_KEYS:-${CONTEXT_LINKS_CONFIG_LINEA
 LINEAR_ISSUE_REGEX="${CONTEXT_LINKS_LINEAR_ISSUE_REGEX:-${CONTEXT_LINKS_CONFIG_LINEAR_ISSUE_REGEX:-${LINEAR_ISSUE_REGEX:-}}}"
 
 # Get current branch
-BRANCH=$(git branch --show-current 2>/dev/null)
+BRANCH=$(git branch --show-current 2> /dev/null)
 if [ -z "$BRANCH" ]; then
   echo '{}'
   exit 0
@@ -130,7 +130,7 @@ while IFS= read -r TEAM_KEY; do
   else
     LINEAR_TEAM_KEYS_REGEX="${LINEAR_TEAM_KEYS_REGEX}|${TEAM_KEY}"
   fi
-done <<<"$(printf '%s' "$LINEAR_TEAM_KEYS" | tr ', ' '\n\n')"
+done <<< "$(printf '%s' "$LINEAR_TEAM_KEYS" | tr ', ' '\n\n')"
 if [ -z "$LINEAR_ISSUE_REGEX" ] && [ -n "$LINEAR_TEAM_KEYS_REGEX" ]; then
   LINEAR_ISSUE_REGEX="(${LINEAR_TEAM_KEYS_REGEX})-[0-9]+"
 fi
@@ -139,18 +139,18 @@ fi
 # Pattern controlled by LINEAR_ISSUE_REGEX (or derived from LINEAR_TEAM_KEYS)
 ISSUE_ID=""
 if [ -n "$LINEAR_ISSUE_REGEX" ]; then
-  ISSUE_ID=$(echo "$BRANCH" | grep -oiE "$LINEAR_ISSUE_REGEX" 2>/dev/null | head -1 | tr '[:lower:]' '[:upper:]')
+  ISSUE_ID=$(echo "$BRANCH" | grep -oiE "$LINEAR_ISSUE_REGEX" 2> /dev/null | head -1 | tr '[:lower:]' '[:upper:]')
 fi
 if [ -n "$ISSUE_ID" ] && [ -n "$LINEAR_WORKSPACE_SLUG" ]; then
   LINEAR_LINK="https://linear.app/${LINEAR_WORKSPACE_SLUG}/issue/${ISSUE_ID}"
 fi
 
 # Check for open PR
-REMOTE_URL=$(git remote get-url origin 2>/dev/null)
+REMOTE_URL=$(git remote get-url origin 2> /dev/null)
 if echo "$REMOTE_URL" | grep -q "github.com"; then
-  PR_JSON=$(run_with_timeout "$CONTEXT_LINKS_PR_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json url,number 2>/dev/null)
+  PR_JSON=$(run_with_timeout "$CONTEXT_LINKS_PR_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json url,number 2> /dev/null)
   if [ $? -eq 0 ] && [ -n "$PR_JSON" ]; then
-    PR_URL=$(printf '%s' "$PR_JSON" | jq -r '.url // empty' 2>/dev/null)
+    PR_URL=$(printf '%s' "$PR_JSON" | jq -r '.url // empty' 2> /dev/null)
     if [ -n "$PR_URL" ]; then
       PR_LINK="GitHub: ${PR_URL}"
     fi
