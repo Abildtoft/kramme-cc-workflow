@@ -92,7 +92,9 @@ SHELL_OPTIONS_WITH_VALUE = {
     "+O",
 }
 
-NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
+# Control tokens after which environment set earlier in the command list is
+# still in effect. Shared by the noninteractive and commit-contexts modes.
+ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 # SHELL_RESERVED_COMMAND_WORDS plus a trailing ")". Used wherever a leading
 # token is skipped as a boundary keyword, which a subshell close also is:
 # the noninteractive and commit-contexts env/export scans, and the
@@ -1661,7 +1663,7 @@ def _parse_noninteractive_git_commands(
         parsed = parse_env_wrapped_segment(segment, inherited_env=persisted_env)
         if parsed is not None:
             parsed_commands.append(parsed)
-        if separator in NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS:
+        if separator in ENV_PERSISTING_CONTROL_TOKENS:
             current_env = persisted_env
             current_shell_vars = persisted_shell_vars
         else:
@@ -2261,7 +2263,6 @@ def run_rm_rf(command: str) -> int:
     return 0
 
 
-COMMIT_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 COMMIT_REPLAY_ENV_VARS = {
     "GIT_DIR",
     "GIT_WORK_TREE",
@@ -2566,7 +2567,7 @@ def parse_commit_contexts(
             depth=depth,
         )
         contexts.extend(segment_result.contexts)
-        if separator in COMMIT_ENV_PERSISTING_CONTROL_TOKENS:
+        if separator in ENV_PERSISTING_CONTROL_TOKENS:
             current_git_env = segment_result.persisted_git_env
             current_shell_git_vars = segment_result.persisted_shell_git_vars
         else:
