@@ -8,7 +8,6 @@ import shlex
 import sys
 import os
 import json
-from dataclasses import dataclass
 from typing import Iterator, Optional, TypedDict, cast
 
 
@@ -37,6 +36,26 @@ class CommitContext(TypedDict, total=False):
     pathspec_file_nul: bool
     selection_error: str
     parse_error: str
+
+
+class _StructValue:
+    """Minimal dataclass replacement: __slots__ plus value equality/repr.
+
+    Avoids `import dataclasses`, which pulls in inspect/dis/tokenize/ast and
+    is a measurable fraction of this file's import cost on every Bash tool
+    call. Field order/names must match each subclass's __init__ signature.
+    """
+
+    __slots__: tuple[str, ...] = ()
+
+    def __eq__(self, other: object) -> bool:
+        if other.__class__ is not self.__class__:
+            return NotImplemented
+        return all(getattr(self, name) == getattr(other, name) for name in self.__slots__)
+
+    def __repr__(self) -> str:
+        fields = ", ".join(f"{name}={getattr(self, name)!r}" for name in self.__slots__)
+        return f"{self.__class__.__name__}({fields})"
 
 
 CONTROL_TOKENS = {";", ";;", "&&", "||", "|", "|&", "&"}
@@ -73,45 +92,77 @@ SHELL_OPTIONS_WITH_VALUE = {
     "+O",
 }
 
-NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
-NONINTERACTIVE_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
-NONINTERACTIVE_SHELL_KEYWORDS = {
-    "!",
-    "if",
-    "then",
-    "elif",
-    "else",
-    "fi",
-    "do",
-    "done",
-    "while",
-    "until",
-    "for",
-    "in",
-    "case",
-    "esac",
-    "{",
-    "}",
-    "(",
-    ")",
-}
-NONINTERACTIVE_SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}
+# Control tokens after which environment set earlier in the command list is
+# still in effect. Shared by the noninteractive and commit-contexts modes.
+ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
+# SHELL_RESERVED_COMMAND_WORDS plus a trailing ")". Used wherever a leading
+# token is skipped as a boundary keyword, which a subshell close also is:
+# the noninteractive and commit-contexts env/export scans, and the
+# command-prefix normalizer's own leading-keyword skip. The bare set is used
+# only in _detect_rm_rf_segment, which scans for a command word rather than
+# skipping a prefix, so a ")" there is not a boundary to step over.
+SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE = SHELL_RESERVED_COMMAND_WORDS | {")"}
 NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND = "__parse_error__"
-NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE = {
+# Shared by the noninteractive and rm-rf modes. Both walk past xargs's own
+# options to find the command xargs will invoke. Only options whose value is
+# a *mandatory separate token* belong here, because membership means "skip
+# the next token too". Both directions of error hide the real command from
+# either gate: omitting `-a FILE` makes the walker read FILE as the invoked
+# command, while listing an option that takes no separate token makes it
+# skip past the command itself. The set spans both implementations, since
+# either can be the xargs on PATH: `-J`, `-R`, and `-S` are BSD-only,
+# `--arg-file` and `--process-slot-var` GNU-only.
+#
+# Options taking an optional, attached-only value must therefore stay out
+# (GNU `-i[replace-str]`, `--replace[=str]`, `--eof[=str]`,
+# `--max-lines[=n]`, `-e[eof-str]`, `-l[max-lines]`): in `xargs -i git
+# commit` the next token is the command, so the generic leading-dash branch
+# in _skip_xargs_options handles them correctly. Their mandatory-value
+# counterparts `-I`, `-E`, and `-L` do belong here.
+XARGS_OPTIONS_WITH_VALUE = {
+    "-a",
     "-d",
     "-E",
     "-I",
+    "-J",
     "-L",
     "-P",
+    "-R",
+    "-S",
     "-n",
     "-s",
+    "--arg-file",
     "--delimiter",
-    "--eof",
     "--max-args",
     "--max-chars",
     "--max-procs",
-    "--replace",
+    "--process-slot-var",
 }
+
+
+def _skip_xargs_options(args: list[str]) -> int:
+    """Return the index of the command xargs will invoke, past its own options.
+
+    Attached-value forms (`-n5`, `--max-args=5`, `-i{}`) need no entry of
+    their own: they start with a dash and consume no separate token, so the
+    generic leading-dash branch already advances past them correctly.
+    """
+    idx = 0
+    while idx < len(args):
+        token = args[idx]
+        if token == "--":
+            idx += 1
+            break
+        if token in XARGS_OPTIONS_WITH_VALUE:
+            idx += 2
+            continue
+        if token.startswith("-"):
+            idx += 1
+            continue
+        break
+    return idx
+
+
 # Git global options that consume the following token as their value. Both
 # parser modes share this compatibility vocabulary: a mode that
 # misses one of these mistakes the option's value for the subcommand, which
@@ -200,11 +251,13 @@ MAX_ENV_SPLIT_STRING_EXPANSIONS = 64
 MAX_ENV_SPLIT_STRING_EXPANSION_WORK = 100_000
 
 
-@dataclass
-class NoninteractiveParseResult:
-    env: dict[str, str]
-    subcmd: str
-    args: list[str]
+class NoninteractiveParseResult(_StructValue):
+    __slots__ = ("env", "subcmd", "args")
+
+    def __init__(self, env: dict[str, str], subcmd: str, args: list[str]) -> None:
+        self.env = env
+        self.subcmd = subcmd
+        self.args = args
 
 
 class ShellWord(str):
@@ -656,14 +709,31 @@ def _shell_invocation_reads_stdin(args: list[str]) -> bool:
     return True
 
 
-@dataclass
-class NormalizedCommandPrefix:
-    executable: Optional[str]
-    arguments: list[str]
-    environment: list[str]
-    repository_modifiers: list[str]
-    nested_shell_command: Optional[str]
-    shell_builtins_allowed: bool
+class NormalizedCommandPrefix(_StructValue):
+    __slots__ = (
+        "executable",
+        "arguments",
+        "environment",
+        "repository_modifiers",
+        "nested_shell_command",
+        "shell_builtins_allowed",
+    )
+
+    def __init__(
+        self,
+        executable: Optional[str],
+        arguments: list[str],
+        environment: list[str],
+        repository_modifiers: list[str],
+        nested_shell_command: Optional[str],
+        shell_builtins_allowed: bool,
+    ) -> None:
+        self.executable = executable
+        self.arguments = arguments
+        self.environment = environment
+        self.repository_modifiers = repository_modifiers
+        self.nested_shell_command = nested_shell_command
+        self.shell_builtins_allowed = shell_builtins_allowed
 
 
 def _set_environment_assignment(environment: dict[str, str], assignment: str) -> None:
@@ -747,7 +817,7 @@ def normalize_command_prefix(
     while (
         shell_keywords_allowed
         and idx < len(working_tokens)
-        and (working_tokens[idx] in SHELL_RESERVED_COMMAND_WORDS or working_tokens[idx] == ")")
+        and working_tokens[idx] in SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE
     ):
         idx += 1
 
@@ -1353,16 +1423,20 @@ def extract_placeholder_indexes(tokens: list[str]) -> list[int]:
     return indexes
 
 
-def _noninteractive_is_assignment(token: str) -> bool:
-    return NONINTERACTIVE_ASSIGNMENT.match(token) is not None
+def _basename_no_unescape(token: str) -> str:
+    """Shared by the noninteractive and commit-contexts modes.
 
-
-def _noninteractive_basename(token: str) -> str:
+    Unlike _basename(), this does not strip a leading backslash, so a token
+    that still carries one after tokenization -- `\\git`, from a command
+    string containing `\\\\git` -- is not recognized as `git` here. The
+    rm-rf detector uses _basename() instead and does catch the escaped
+    form. Keep this delta explicit rather than merging the two helpers.
+    """
     return os.path.basename(token)
 
 
 def _noninteractive_is_git_exec(token: str) -> bool:
-    return _noninteractive_basename(token) == "git"
+    return _basename_no_unescape(token) == "git"
 
 
 def _unset_editor_env(env: dict[str, str], key: str) -> None:
@@ -1381,12 +1455,12 @@ def _apply_exported_editor_env(
     shell_env_persists = True
     pending_shell_vars: dict[str, str] = {}
 
-    while idx < len(tokens) and tokens[idx] in NONINTERACTIVE_SHELL_KEYWORDS:
+    while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE:
         if tokens[idx] == "(":
             shell_env_persists = False
         idx += 1
 
-    while idx < len(tokens) and _noninteractive_is_assignment(tokens[idx]):
+    while idx < len(tokens) and _is_assignment(tokens[idx]):
         key, value = tokens[idx].split("=", 1)
         if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
             pending_shell_vars[key] = value
@@ -1400,7 +1474,7 @@ def _apply_exported_editor_env(
     if not shell_env_persists:
         return env, shell_vars
 
-    command_name = _noninteractive_basename(tokens[idx])
+    command_name = _basename_no_unescape(tokens[idx])
     if command_name == "export":
         shell_vars.update(pending_shell_vars)
         idx += 1
@@ -1418,7 +1492,7 @@ def _apply_exported_editor_env(
                 _unset_editor_env(env, token[2:])
                 idx += 1
                 continue
-            if _noninteractive_is_assignment(token):
+            if _is_assignment(token):
                 key, value = token.split("=", 1)
                 if key in {"GIT_EDITOR", "GIT_SEQUENCE_EDITOR"}:
                     shell_vars[key] = value
@@ -1476,36 +1550,12 @@ def parse_env_wrapped_segment(
     normalized = normalize_command_prefix(tokens, inherited_environment=inherited_assignments)
 
     while normalized.executable is not None:
-        command_name = _noninteractive_basename(normalized.executable)
+        command_name = _basename_no_unescape(normalized.executable)
         args = normalized.arguments
         idx = 0
 
         if command_name == "xargs":
-            while idx < len(args):
-                token = args[idx]
-                if token == "--":
-                    idx += 1
-                    break
-                if token in NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE:
-                    idx += 2
-                    continue
-                if any(
-                    token.startswith(prefix)
-                    for prefix in (
-                        "--delimiter=",
-                        "--eof=",
-                        "--max-args=",
-                        "--max-chars=",
-                        "--max-procs=",
-                        "--replace=",
-                    )
-                ):
-                    idx += 1
-                    continue
-                if token.startswith("-"):
-                    idx += 1
-                    continue
-                break
+            idx = _skip_xargs_options(args)
         elif command_name == "find":
             while idx < len(args) and args[idx] not in {"-exec", "-execdir"}:
                 idx += 1
@@ -1529,14 +1579,14 @@ def parse_env_wrapped_segment(
 
     env = {assignment.split("=", 1)[0]: assignment.split("=", 1)[1] for assignment in normalized.environment}
     exec_token = normalized.executable
-    if _noninteractive_basename(exec_token) == "alias":
+    if _basename_no_unescape(exec_token) == "alias":
         return NoninteractiveParseResult(
             env=env,
             subcmd=NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND,
             args=[],
         )
 
-    if _noninteractive_basename(exec_token) in NONINTERACTIVE_SHELL_EXECUTABLES:
+    if _basename_no_unescape(exec_token) in SHELL_EXECUTABLES:
         nested_command = normalized.nested_shell_command
         if nested_command is None:
             return None
@@ -1617,7 +1667,7 @@ def _parse_noninteractive_git_commands(
         parsed = parse_env_wrapped_segment(segment, inherited_env=persisted_env)
         if parsed is not None:
             parsed_commands.append(parsed)
-        if separator in NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS:
+        if separator in ENV_PERSISTING_CONTROL_TOKENS:
             current_env = persisted_env
             current_shell_vars = persisted_shell_vars
         else:
@@ -1636,315 +1686,325 @@ def _parse_noninteractive_git_commands(
     return parsed_commands, substitutions
 
 
+NONINTERACTIVE_PARSE_ERROR_REASON = "Unable to safely parse command. Refusing potentially interactive git command."
+
+COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES = set("mFCctSu")
+COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE = set("mFCct")
+COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE = {
+    "--author",
+    "--date",
+    "--message",
+    "--file",
+    "--reuse-message",
+    "--reedit-message",
+    "--fixup",
+    "--squash",
+    "--cleanup",
+    "--trailer",
+    "--pathspec-from-file",
+}
+MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES = set("mFsSX")
+MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE = set("mFsX")
+MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE = {
+    "--message",
+    "--file",
+    "--strategy",
+    "--strategy-option",
+    "--cleanup",
+    "--into-name",
+}
+
+
+def _has_long_option(args: list[str], *names: str) -> bool:
+    names_set = set(names)
+    for arg in args:
+        if arg == "--":
+            break
+        if arg in names_set:
+            return True
+        if arg.startswith("--"):
+            for name in names_set:
+                if arg.startswith(name + "="):
+                    return True
+    return False
+
+
+def _has_short_option(args: list[str], *letters: str) -> bool:
+    wanted = set(letters)
+    for arg in args:
+        if arg == "--":
+            break
+        if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
+            continue
+        for letter in arg[1:]:
+            if letter in wanted:
+                return True
+    return False
+
+
+def _has_short_option_value_aware(args: list[str], wanted: str, options_with_values: set[str]) -> bool:
+    for arg in args:
+        if arg == "--":
+            break
+        if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
+            continue
+        for letter in arg[1:]:
+            if letter == wanted:
+                return True
+            if letter in options_with_values:
+                break
+    return False
+
+
+def _short_option_consumes_next_value(arg: str, options_with_values: set[str]) -> bool:
+    if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
+        return False
+    letters = arg[1:]
+    for idx, letter in enumerate(letters):
+        if letter in options_with_values:
+            return idx == len(letters) - 1
+    return False
+
+
+def _has_long_option_value_aware(
+    args: list[str],
+    wanted: str,
+    short_options_with_values: set[str],
+    long_options_with_values: set[str],
+) -> bool:
+    skip_next = False
+    for arg in args:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--":
+            break
+        if arg == wanted or arg.startswith(wanted + "="):
+            return True
+        if _short_option_consumes_next_value(arg, short_options_with_values):
+            skip_next = True
+            continue
+        if arg in long_options_with_values:
+            skip_next = True
+    return False
+
+
+def _fixup_value_is_interactive(value: str) -> bool:
+    return value.startswith("amend:") or value.startswith("reword:")
+
+
+def _classify_commit_fixup(args: list[str]) -> str:
+    skip_next = False
+    expecting_fixup_value = False
+    for arg in args:
+        if expecting_fixup_value:
+            return "interactive" if _fixup_value_is_interactive(arg) else "safe"
+        if skip_next:
+            skip_next = False
+            continue
+        if arg == "--":
+            break
+        if arg == "--fixup":
+            expecting_fixup_value = True
+            continue
+        if arg.startswith("--fixup="):
+            return "interactive" if _fixup_value_is_interactive(arg.split("=", 1)[1]) else "safe"
+        if _short_option_consumes_next_value(arg, COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE):
+            skip_next = True
+            continue
+        if arg in COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE:
+            skip_next = True
+    return "none"
+
+
+def _has_safe_fixup(args: list[str]) -> bool:
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--":
+            break
+        if arg == "--fixup":
+            if idx + 1 >= len(args):
+                return False
+            return not args[idx + 1].startswith(("amend:", "reword:"))
+        if arg.startswith("--fixup="):
+            return not arg.split("=", 1)[1].startswith(("amend:", "reword:"))
+        idx += 1
+    return False
+
+
+def _commit_requests_editor(args: list[str]) -> bool:
+    idx = 0
+    while idx < len(args):
+        arg = args[idx]
+        if arg == "--":
+            break
+        if arg in ("--edit", "--reedit-message") or arg.startswith("--reedit-message="):
+            return True
+        if arg in ("--message", "--file", "--reuse-message", "--fixup"):
+            idx += 2
+            continue
+        if arg.startswith(("--message=", "--file=", "--reuse-message=", "--fixup=")):
+            idx += 1
+            continue
+        if arg.startswith("-") and arg != "-" and not arg.startswith("--"):
+            cluster = arg[1:]
+            consume_next = False
+            for pos, letter in enumerate(cluster):
+                if letter in ("e", "c"):
+                    return True
+                if letter in ("m", "F", "C"):
+                    consume_next = pos == len(cluster) - 1
+                    break
+            idx += 2 if consume_next else 1
+            continue
+        idx += 1
+    return False
+
+
+def _merge_edit_is_safe(args: list[str]) -> bool:
+    return _has_long_option(args, "--ff-only") and not _has_long_option(args, "--no-ff")
+
+
+def _evaluate_noninteractive_commands(
+    parsed_commands: list[NoninteractiveParseResult],
+    substitutions: list[NoninteractiveSubstitution],
+    depth: int = 0,
+) -> Optional[str]:
+    if depth > 4:
+        return NONINTERACTIVE_PARSE_ERROR_REASON
+
+    for substitution in substitutions:
+        try:
+            nested_commands, nested_substitutions = _parse_noninteractive_git_commands(
+                substitution["command"],
+                inherited_env=substitution["env"],
+                inherited_shell_vars=substitution["env"],
+            )
+        except ValueError:
+            return NONINTERACTIVE_PARSE_ERROR_REASON
+        reason = _evaluate_noninteractive_commands(nested_commands, nested_substitutions, depth=depth + 1)
+        if reason is not None:
+            return reason
+
+    for parsed in parsed_commands:
+        subcmd = parsed.subcmd
+        args = parsed.args
+        env = parsed.env
+
+        if subcmd == NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND:
+            return NONINTERACTIVE_PARSE_ERROR_REASON
+
+        if subcmd == "__shell_c__":
+            try:
+                nested_commands, nested_substitutions = _parse_noninteractive_git_commands(
+                    args[0],
+                    inherited_env=env,
+                    inherited_shell_vars=env,
+                )
+            except ValueError:
+                return NONINTERACTIVE_PARSE_ERROR_REASON
+            reason = _evaluate_noninteractive_commands(nested_commands, nested_substitutions, depth=depth + 1)
+            if reason is not None:
+                return reason
+            continue
+
+        if subcmd == "commit":
+            if _has_short_option_value_aware(
+                args, "e", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES
+            ) or _has_long_option_value_aware(
+                args,
+                "--edit",
+                COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
+                COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE,
+            ):
+                return "git commit --edit opens an editor. Remove --edit to keep the commit non-interactive."
+            commit_fixup_mode = _classify_commit_fixup(args)
+            has_no_edit = _has_long_option(args, "--no-edit")
+            if commit_fixup_mode == "interactive" and not has_no_edit:
+                return "git commit --fixup=amend:<commit> and --fixup=reword:<commit> open an editor unless you also pass --no-edit."
+            has_message_source = not _commit_requests_editor(args) and (
+                _has_short_option_value_aware(args, "m", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                or _has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                or _has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                or _has_safe_fixup(args)
+                or _has_long_option(args, "--message", "--file", "--reuse-message")
+                or commit_fixup_mode == "safe"
+                or _has_long_option(args, "--no-edit")
+            )
+            if not has_message_source:
+                return 'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
+
+        elif subcmd == "rebase":
+            if _has_short_option(args, "i") or _has_long_option(args, "--interactive"):
+                if "GIT_SEQUENCE_EDITOR" not in env:
+                    return "Interactive rebase will open an editor. Use: GIT_SEQUENCE_EDITOR=true git rebase -i ..."
+            if _has_long_option(args, "--continue"):
+                if "GIT_EDITOR" not in env:
+                    return "git rebase --continue may open an editor. Use: GIT_EDITOR=true git rebase --continue"
+
+        elif subcmd == "add":
+            if _has_short_option(args, "p", "i") or _has_long_option(args, "--patch", "--interactive"):
+                return "Interactive git add opens a prompt. Use explicit paths: git add <files>"
+
+        elif subcmd == "merge":
+            if (
+                _has_short_option_value_aware(args, "e", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+                or _has_long_option_value_aware(
+                    args,
+                    "--edit",
+                    MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
+                    MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE,
+                )
+            ) and not _merge_edit_is_safe(args):
+                return "git merge --edit opens an editor. Remove --edit to keep the merge non-interactive."
+            is_explicitly_safe = _has_long_option(
+                args,
+                "--abort",
+                "--quit",
+                "--no-edit",
+                "--no-commit",
+                "--squash",
+                "--ff-only",
+                "--ff",
+                "--message",
+                "--file",
+            )
+            if not is_explicitly_safe:
+                is_explicitly_safe = _has_short_option_value_aware(
+                    args, "m", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES
+                ) or _has_short_option_value_aware(args, "F", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
+            if not is_explicitly_safe:
+                return "git merge may open an editor for the merge commit message. Use: git merge --no-edit <branch>"
+
+        elif subcmd == "cherry-pick":
+            is_explicitly_safe = _has_long_option(
+                args,
+                "--continue",
+                "--abort",
+                "--quit",
+                "--skip",
+                "--no-edit",
+                "--no-commit",
+            ) or _has_short_option(args, "n")
+            if not is_explicitly_safe:
+                return "git cherry-pick may open an editor. Use: git cherry-pick --no-edit <commit>"
+
+    return None
+
+
 def run_noninteractive(command: str) -> int:
     """Emit the `noninteractive` mode decision.
 
     See README.md#git-command-parser-mode-contracts.
     """
-    PARSE_ERROR_REASON = "Unable to safely parse command. Refusing potentially interactive git command."
-
-    def has_long_option(args: list[str], *names: str) -> bool:
-        names_set = set(names)
-        for arg in args:
-            if arg == "--":
-                break
-            if arg in names_set:
-                return True
-            if arg.startswith("--"):
-                for name in names_set:
-                    if arg.startswith(name + "="):
-                        return True
-        return False
-
-    def fixup_value_is_interactive(value: str) -> bool:
-        return value.startswith("amend:") or value.startswith("reword:")
-
-    def classify_commit_fixup(args: list[str]) -> str:
-        skip_next = False
-        expecting_fixup_value = False
-        for arg in args:
-            if expecting_fixup_value:
-                return "interactive" if fixup_value_is_interactive(arg) else "safe"
-            if skip_next:
-                skip_next = False
-                continue
-            if arg == "--":
-                break
-            if arg == "--fixup":
-                expecting_fixup_value = True
-                continue
-            if arg.startswith("--fixup="):
-                return "interactive" if fixup_value_is_interactive(arg.split("=", 1)[1]) else "safe"
-            if short_option_consumes_next_value(arg, COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE):
-                skip_next = True
-                continue
-            if arg in COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE:
-                skip_next = True
-        return "none"
-
-    def merge_edit_is_safe(args: list[str]) -> bool:
-        return has_long_option(args, "--ff-only") and not has_long_option(args, "--no-ff")
-
-    def has_short_option(args: list[str], *letters: str) -> bool:
-        wanted = set(letters)
-        for arg in args:
-            if arg == "--":
-                break
-            if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
-                continue
-            for letter in arg[1:]:
-                if letter in wanted:
-                    return True
-        return False
-
-    COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES = set("mFCctSu")
-    COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE = set("mFCct")
-    COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE = {
-        "--author",
-        "--date",
-        "--message",
-        "--file",
-        "--reuse-message",
-        "--reedit-message",
-        "--fixup",
-        "--squash",
-        "--cleanup",
-        "--trailer",
-        "--pathspec-from-file",
-    }
-    MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES = set("mFsSX")
-    MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE = set("mFsX")
-    MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE = {
-        "--message",
-        "--file",
-        "--strategy",
-        "--strategy-option",
-        "--cleanup",
-        "--into-name",
-    }
-
-    def has_short_option_value_aware(args: list[str], wanted: str, options_with_values: set[str]) -> bool:
-        for arg in args:
-            if arg == "--":
-                break
-            if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
-                continue
-            for letter in arg[1:]:
-                if letter == wanted:
-                    return True
-                if letter in options_with_values:
-                    break
-        return False
-
-    def short_option_consumes_next_value(arg: str, options_with_values: set[str]) -> bool:
-        if not arg.startswith("-") or arg == "-" or arg.startswith("--"):
-            return False
-        letters = arg[1:]
-        for idx, letter in enumerate(letters):
-            if letter in options_with_values:
-                return idx == len(letters) - 1
-        return False
-
-    def has_long_option_value_aware(
-        args: list[str],
-        wanted: str,
-        short_options_with_values: set[str],
-        long_options_with_values: set[str],
-    ) -> bool:
-        skip_next = False
-        for arg in args:
-            if skip_next:
-                skip_next = False
-                continue
-            if arg == "--":
-                break
-            if arg == wanted or arg.startswith(wanted + "="):
-                return True
-            if short_option_consumes_next_value(arg, short_options_with_values):
-                skip_next = True
-                continue
-            if arg in long_options_with_values:
-                skip_next = True
-        return False
-
-    def has_safe_fixup(args: list[str]) -> bool:
-        idx = 0
-        while idx < len(args):
-            arg = args[idx]
-            if arg == "--":
-                break
-            if arg == "--fixup":
-                if idx + 1 >= len(args):
-                    return False
-                return not args[idx + 1].startswith(("amend:", "reword:"))
-            if arg.startswith("--fixup="):
-                return not arg.split("=", 1)[1].startswith(("amend:", "reword:"))
-            idx += 1
-        return False
-
-    def commit_requests_editor(args: list[str]) -> bool:
-        idx = 0
-        while idx < len(args):
-            arg = args[idx]
-            if arg == "--":
-                break
-            if arg in ("--edit", "--reedit-message") or arg.startswith("--reedit-message="):
-                return True
-            if arg in ("--message", "--file", "--reuse-message", "--fixup"):
-                idx += 2
-                continue
-            if arg.startswith(("--message=", "--file=", "--reuse-message=", "--fixup=")):
-                idx += 1
-                continue
-            if arg.startswith("-") and arg != "-" and not arg.startswith("--"):
-                cluster = arg[1:]
-                consume_next = False
-                for pos, letter in enumerate(cluster):
-                    if letter in ("e", "c"):
-                        return True
-                    if letter in ("m", "F", "C"):
-                        consume_next = pos == len(cluster) - 1
-                        break
-                idx += 2 if consume_next else 1
-                continue
-            idx += 1
-        return False
-
-    def evaluate(
-        parsed_commands: list[NoninteractiveParseResult],
-        substitutions: list[NoninteractiveSubstitution],
-        depth: int = 0,
-    ) -> Optional[str]:
-        if depth > 4:
-            return PARSE_ERROR_REASON
-
-        for substitution in substitutions:
-            try:
-                nested_commands, nested_substitutions = _parse_noninteractive_git_commands(
-                    substitution["command"],
-                    inherited_env=substitution["env"],
-                    inherited_shell_vars=substitution["env"],
-                )
-            except ValueError:
-                return PARSE_ERROR_REASON
-            reason = evaluate(nested_commands, nested_substitutions, depth=depth + 1)
-            if reason is not None:
-                return reason
-
-        for parsed in parsed_commands:
-            subcmd = parsed.subcmd
-            args = parsed.args
-            env = parsed.env
-
-            if subcmd == NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND:
-                return PARSE_ERROR_REASON
-
-            if subcmd == "__shell_c__":
-                try:
-                    nested_commands, nested_substitutions = _parse_noninteractive_git_commands(
-                        args[0],
-                        inherited_env=env,
-                        inherited_shell_vars=env,
-                    )
-                except ValueError:
-                    return PARSE_ERROR_REASON
-                reason = evaluate(nested_commands, nested_substitutions, depth=depth + 1)
-                if reason is not None:
-                    return reason
-                continue
-
-            if subcmd == "commit":
-                if has_short_option_value_aware(
-                    args, "e", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES
-                ) or has_long_option_value_aware(
-                    args,
-                    "--edit",
-                    COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
-                    COMMIT_LONG_OPTIONS_CONSUME_NEXT_VALUE,
-                ):
-                    return "git commit --edit opens an editor. Remove --edit to keep the commit non-interactive."
-                commit_fixup_mode = classify_commit_fixup(args)
-                has_no_edit = has_long_option(args, "--no-edit")
-                if commit_fixup_mode == "interactive" and not has_no_edit:
-                    return "git commit --fixup=amend:<commit> and --fixup=reword:<commit> open an editor unless you also pass --no-edit."
-                has_message_source = not commit_requests_editor(args) and (
-                    has_short_option_value_aware(args, "m", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                    or has_short_option_value_aware(args, "F", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                    or has_short_option_value_aware(args, "C", COMMIT_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                    or has_safe_fixup(args)
-                    or has_long_option(args, "--message", "--file", "--reuse-message")
-                    or commit_fixup_mode == "safe"
-                    or has_long_option(args, "--no-edit")
-                )
-                if not has_message_source:
-                    return 'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
-
-            elif subcmd == "rebase":
-                if has_short_option(args, "i") or has_long_option(args, "--interactive"):
-                    if "GIT_SEQUENCE_EDITOR" not in env:
-                        return "Interactive rebase will open an editor. Use: GIT_SEQUENCE_EDITOR=true git rebase -i ..."
-                if has_long_option(args, "--continue"):
-                    if "GIT_EDITOR" not in env:
-                        return "git rebase --continue may open an editor. Use: GIT_EDITOR=true git rebase --continue"
-
-            elif subcmd == "add":
-                if has_short_option(args, "p", "i") or has_long_option(args, "--patch", "--interactive"):
-                    return "Interactive git add opens a prompt. Use explicit paths: git add <files>"
-
-            elif subcmd == "merge":
-                if (
-                    has_short_option_value_aware(args, "e", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                    or has_long_option_value_aware(
-                        args,
-                        "--edit",
-                        MERGE_SHORT_OPTIONS_CONSUME_NEXT_VALUE,
-                        MERGE_LONG_OPTIONS_CONSUME_NEXT_VALUE,
-                    )
-                ) and not merge_edit_is_safe(args):
-                    return "git merge --edit opens an editor. Remove --edit to keep the merge non-interactive."
-                is_explicitly_safe = has_long_option(
-                    args,
-                    "--abort",
-                    "--quit",
-                    "--no-edit",
-                    "--no-commit",
-                    "--squash",
-                    "--ff-only",
-                    "--ff",
-                    "--message",
-                    "--file",
-                )
-                if not is_explicitly_safe:
-                    is_explicitly_safe = has_short_option_value_aware(
-                        args, "m", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES
-                    ) or has_short_option_value_aware(args, "F", MERGE_SHORT_OPTIONS_WITH_ATTACHED_VALUES)
-                if not is_explicitly_safe:
-                    return (
-                        "git merge may open an editor for the merge commit message. Use: git merge --no-edit <branch>"
-                    )
-
-            elif subcmd == "cherry-pick":
-                is_explicitly_safe = has_long_option(
-                    args,
-                    "--continue",
-                    "--abort",
-                    "--quit",
-                    "--skip",
-                    "--no-edit",
-                    "--no-commit",
-                ) or has_short_option(args, "n")
-                if not is_explicitly_safe:
-                    return "git cherry-pick may open an editor. Use: git cherry-pick --no-edit <commit>"
-
-        return None
-
     try:
         parsed_commands, substitutions = _parse_noninteractive_git_commands(command)
     except ValueError:
-        print(json.dumps({"block": PARSE_ERROR_REASON}))
+        print(json.dumps({"block": NONINTERACTIVE_PARSE_ERROR_REASON}))
         return 0
 
-    reason = evaluate(parsed_commands, substitutions)
+    reason = _evaluate_noninteractive_commands(parsed_commands, substitutions)
     print(json.dumps({"block": reason}))
     return 0
 
@@ -2033,70 +2093,7 @@ def _detect_process_substitutions(tokens: list[str], substitutions: list[str], d
 
 
 def _detect_xargs(args: list[str], substitutions: list[str], depth: int) -> Optional[str]:
-    idx = 0
-    xargs_options_with_value = {
-        "-d",
-        "-E",
-        "-I",
-        "-i",
-        "-J",
-        "-L",
-        "-P",
-        "-a",
-        "-n",
-        "-s",
-        "--arg-file",
-        "--delimiter",
-        "--eof",
-        "--max-args",
-        "--max-chars",
-        "--max-lines",
-        "--max-procs",
-        "--process-slot-var",
-        "--replace",
-    }
-    xargs_long_attached = (
-        "--arg-file=",
-        "--delimiter=",
-        "--eof=",
-        "--max-args=",
-        "--max-chars=",
-        "--max-lines=",
-        "--max-procs=",
-        "--process-slot-var=",
-        "--replace=",
-    )
-    xargs_short_attached = (
-        "-a",
-        "-d",
-        "-E",
-        "-I",
-        "-i",
-        "-J",
-        "-L",
-        "-P",
-        "-n",
-        "-s",
-    )
-
-    while idx < len(args):
-        token = args[idx]
-        if token == "--":
-            idx += 1
-            break
-        if token in xargs_options_with_value:
-            idx += 2
-            continue
-        if token.startswith(xargs_long_attached):
-            idx += 1
-            continue
-        if any(token.startswith(prefix) and token != prefix for prefix in xargs_short_attached):
-            idx += 1
-            continue
-        if token.startswith("-"):
-            idx += 1
-            continue
-        break
+    idx = _skip_xargs_options(args)
 
     if idx >= len(args):
         return None
@@ -2270,28 +2267,6 @@ def run_rm_rf(command: str) -> int:
     return 0
 
 
-COMMIT_ASSIGNMENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
-COMMIT_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
-COMMIT_SHELL_KEYWORDS = {
-    "!",
-    "if",
-    "then",
-    "elif",
-    "else",
-    "fi",
-    "do",
-    "done",
-    "while",
-    "until",
-    "for",
-    "in",
-    "case",
-    "esac",
-    "{",
-    "}",
-    "(",
-    ")",
-}
 COMMIT_REPLAY_ENV_VARS = {
     "GIT_DIR",
     "GIT_WORK_TREE",
@@ -2533,11 +2508,18 @@ class ParseError(Exception):
     pass
 
 
-@dataclass
-class CommitSegmentResult:
-    contexts: list[CommitContext]
-    persisted_git_env: list[str]
-    persisted_shell_git_vars: list[str]
+class CommitSegmentResult(_StructValue):
+    __slots__ = ("contexts", "persisted_git_env", "persisted_shell_git_vars")
+
+    def __init__(
+        self,
+        contexts: list[CommitContext],
+        persisted_git_env: list[str],
+        persisted_shell_git_vars: list[str],
+    ) -> None:
+        self.contexts = contexts
+        self.persisted_git_env = persisted_git_env
+        self.persisted_shell_git_vars = persisted_shell_git_vars
 
 
 def parse_commit_contexts(
@@ -2589,7 +2571,7 @@ def parse_commit_contexts(
             depth=depth,
         )
         contexts.extend(segment_result.contexts)
-        if separator in COMMIT_ENV_PERSISTING_CONTROL_TOKENS:
+        if separator in ENV_PERSISTING_CONTROL_TOKENS:
             current_git_env = segment_result.persisted_git_env
             current_shell_git_vars = segment_result.persisted_shell_git_vars
         else:
@@ -2636,13 +2618,13 @@ def parse_commit_segment(
     shell_env_persists = True
     pending_shell_git_vars: list[str] = []
 
-    while idx < len(tokens) and tokens[idx] in COMMIT_SHELL_KEYWORDS:
+    while idx < len(tokens) and tokens[idx] in SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE:
         if tokens[idx] == "(":
             shell_env_persists = False
         idx += 1
 
     assignment_start = idx
-    while idx < len(tokens) and COMMIT_ASSIGNMENT.match(tokens[idx]):
+    while idx < len(tokens) and _is_assignment(tokens[idx]):
         key, value = tokens[idx].split("=", 1)
         if key in COMMIT_REPLAY_ENV_VARS:
             set_replay_env(git_env, key, value)
@@ -2675,7 +2657,7 @@ def parse_commit_segment(
         )
 
     while idx < len(tokens):
-        base = os.path.basename(tokens[idx])
+        base = _basename_no_unescape(tokens[idx])
         if base == "alias" and normalized.shell_builtins_allowed:
             raise ParseError("shell alias definitions are not supported")
 
@@ -2701,7 +2683,7 @@ def parse_commit_segment(
                     unset_replay_env(git_env, token[2:])
                     idx += 1
                     continue
-                if COMMIT_ASSIGNMENT.match(token):
+                if _is_assignment(token):
                     key, value = token.split("=", 1)
                     if key in COMMIT_REPLAY_ENV_VARS:
                         set_replay_env(shell_git_vars, key, value)
@@ -2789,7 +2771,7 @@ def parse_commit_segment(
             persisted_shell_git_vars=persisted_shell_git_vars,
         )
 
-    if idx >= len(tokens) or os.path.basename(tokens[idx]) != "git":
+    if idx >= len(tokens) or _basename_no_unescape(tokens[idx]) != "git":
         persisted_shell_git_env = shell_git_env if shell_env_persists else inherited_shell_git_env
         persisted_shell_git_vars = shell_git_vars if shell_env_persists else inherited_shell_git_vars
         return CommitSegmentResult(

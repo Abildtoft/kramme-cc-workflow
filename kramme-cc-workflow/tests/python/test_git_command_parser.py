@@ -150,11 +150,20 @@ class GitCommandLexerTest(unittest.TestCase):
             "extract_placeholder_indexes",
             "_decode_ansi_c_string",
             "_expand_ansi_c_quoted_strings",
+            "_is_assignment",
+            "_skip_xargs_options",
         ]
 
         for helper in helpers:
             with self.subTest(helper=helper):
                 self.assertEqual(source.count(f"def {helper}"), 1)
+
+        # The assignment-word regex has one definition. It was previously
+        # duplicated byte-for-byte as NONINTERACTIVE_ASSIGNMENT and
+        # COMMIT_ASSIGNMENT; neither name should come back.
+        self.assertEqual(source.count("ASSIGNMENT_WORD = re.compile"), 1)
+        self.assertNotIn("NONINTERACTIVE_ASSIGNMENT", source)
+        self.assertNotIn("COMMIT_ASSIGNMENT", source)
 
     def test_expand_ansi_c_quoted_strings_decodes_shell_escapes(self) -> None:
         cases = [
@@ -169,6 +178,194 @@ class GitCommandLexerTest(unittest.TestCase):
         for command, expected in cases:
             with self.subTest(command=command):
                 self.assertEqual(PARSER._expand_ansi_c_quoted_strings(command), expected)
+
+
+class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
+    """Pins the cross-mode primitive invariants.
+
+    The `noninteractive`, `commit-contexts`, and `rm-rf` parser modes each
+    used to carry their own copy of these primitives. The byte-identical
+    copies are now canonicalized to one definition apiece; the one pair
+    that carries a real behavioral delta (`_basename` vs
+    `_basename_no_unescape`) stays separate. These tests fail if a
+    canonical primitive is duplicated again or if the real delta is erased.
+    """
+
+    ASSIGNMENT_CASES = [
+        ("FOO=bar", True),
+        ("FOO=", True),
+        ("_FOO9=bar=baz", True),
+        ("9FOO=bar", False),
+        ("FOO", False),
+        ("FOO.BAR=baz", False),
+        ("=bar", False),
+        ("", False),
+    ]
+
+    def test_assignment_predicate_is_canonical_across_modes(self) -> None:
+        # ASSIGNMENT_WORD/_is_assignment is the single canonical primitive
+        # shared by the noninteractive, commit-contexts, and rm-rf modes
+        # (formerly three byte-identical copies: ASSIGNMENT_WORD,
+        # NONINTERACTIVE_ASSIGNMENT, COMMIT_ASSIGNMENT).
+        for token, expected in self.ASSIGNMENT_CASES:
+            with self.subTest(token=token):
+                self.assertIs(PARSER._is_assignment(token), expected)
+                self.assertIs(bool(PARSER.ASSIGNMENT_WORD.match(token)), expected)
+
+    def test_shell_reserved_words_and_keyword_sets_differ_only_by_closing_paren(self) -> None:
+        # SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE replaces the byte-identical
+        # NONINTERACTIVE_SHELL_KEYWORDS and COMMIT_SHELL_KEYWORDS copies. It
+        # is SHELL_RESERVED_COMMAND_WORDS plus ")", for the sites that skip a
+        # leading boundary keyword; the bare set is for sites that do not
+        # treat a subshell close as one.
+        self.assertEqual(PARSER.SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE - PARSER.SHELL_RESERVED_COMMAND_WORDS, {")"})
+        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("NONINTERACTIVE_SHELL_KEYWORDS", source)
+        self.assertNotIn("COMMIT_SHELL_KEYWORDS", source)
+
+    def test_xargs_option_vocabulary_is_canonical_across_modes(self) -> None:
+        # XARGS_OPTIONS_WITH_VALUE/_skip_xargs_options replace the incomplete
+        # NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE copy and the separate
+        # inline vocabulary in _detect_xargs. XargsOptionVocabularyParityTest
+        # covers the behavior; this pins that the copies stay gone.
+        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE", source)
+        self.assertEqual(source.count("XARGS_OPTIONS_WITH_VALUE = "), 1)
+
+    def test_shell_executable_set_is_canonical_across_modes(self) -> None:
+        # SHELL_EXECUTABLES replaces the byte-identical
+        # NONINTERACTIVE_SHELL_EXECUTABLES copy and is shared by the
+        # command-prefix normalizer, rm-rf detector, and noninteractive
+        # parser.
+        self.assertEqual(PARSER.SHELL_EXECUTABLES, {"sh", "bash", "zsh", "dash", "ksh"})
+        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("NONINTERACTIVE_SHELL_EXECUTABLES", source)
+
+    BASENAME_CASES = [
+        # token, _basename() result, _basename_no_unescape() result
+        ("git", "git", "git"),
+        ("/usr/bin/git", "git", "git"),
+        (r"\git", "git", r"\git"),
+        (r"\ls", "ls", r"\ls"),
+        ("sh", "sh", "sh"),
+    ]
+
+    def test_basename_helpers_differ_only_in_backslash_unescaping(self) -> None:
+        # _basename() strips a leading backslash, so the rm-rf detector still
+        # recognizes `\rm -rf`; _basename_no_unescape() does not, so the
+        # noninteractive and commit-contexts git/alias/export/unset checks do
+        # not recognize `\git`. It replaces the private
+        # _noninteractive_basename plus two bare os.path.basename() calls
+        # inlined in the commit-contexts path.
+        for token, expected_basename, expected_no_unescape in self.BASENAME_CASES:
+            with self.subTest(token=token):
+                self.assertEqual(PARSER._basename(token), expected_basename)
+                self.assertEqual(PARSER._basename_no_unescape(token), expected_no_unescape)
+
+        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("_noninteractive_basename", source)
+        self.assertEqual(source.count("def _basename_no_unescape"), 1)
+
+
+class GitCommandNoninteractiveHelperTest(unittest.TestCase):
+    """Direct tests for the option-consumption helpers promoted out of
+    run_noninteractive's closure to module scope."""
+
+    def test_has_long_option_matches_bare_and_attached_forms(self) -> None:
+        self.assertTrue(PARSER._has_long_option(["--no-edit"], "--no-edit"))
+        self.assertTrue(PARSER._has_long_option(["--message=x"], "--message"))
+        self.assertFalse(PARSER._has_long_option(["--", "--no-edit"], "--no-edit"))
+        self.assertFalse(PARSER._has_long_option(["--no-edits"], "--no-edit"))
+
+    def test_has_short_option_scans_clustered_flags_until_separator(self) -> None:
+        self.assertTrue(PARSER._has_short_option(["-pi"], "p"))
+        self.assertFalse(PARSER._has_short_option(["--", "-p"], "p"))
+        self.assertFalse(PARSER._has_short_option(["-"], "p"))
+
+    def test_short_option_consumes_next_value_only_when_trailing(self) -> None:
+        value_opts = PARSER.COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE
+        self.assertTrue(PARSER._short_option_consumes_next_value("-m", value_opts))
+        self.assertTrue(PARSER._short_option_consumes_next_value("-am", value_opts))
+        self.assertFalse(PARSER._short_option_consumes_next_value("-ma", value_opts))
+        self.assertFalse(PARSER._short_option_consumes_next_value("--message", value_opts))
+
+    def test_classify_commit_fixup_distinguishes_safe_and_interactive_values(self) -> None:
+        self.assertEqual(PARSER._classify_commit_fixup(["--fixup=amend:HEAD"]), "interactive")
+        self.assertEqual(PARSER._classify_commit_fixup(["--fixup=reword:HEAD"]), "interactive")
+        self.assertEqual(PARSER._classify_commit_fixup(["--fixup", "HEAD"]), "safe")
+        self.assertEqual(PARSER._classify_commit_fixup(["-m", "amend:not-a-fixup-value"]), "none")
+        self.assertEqual(PARSER._classify_commit_fixup(["--", "--fixup=amend:HEAD"]), "none")
+
+    def test_commit_requests_editor_detects_clustered_and_separate_flags(self) -> None:
+        self.assertTrue(PARSER._commit_requests_editor(["-e"]))
+        self.assertTrue(PARSER._commit_requests_editor(["--edit"]))
+        self.assertTrue(PARSER._commit_requests_editor(["-ae"]))
+        self.assertFalse(PARSER._commit_requests_editor(["-m", "message"]))
+        self.assertFalse(PARSER._commit_requests_editor(["--message=x"]))
+
+    def test_merge_edit_is_safe_requires_ff_only_without_no_ff(self) -> None:
+        self.assertTrue(PARSER._merge_edit_is_safe(["--ff-only"]))
+        self.assertFalse(PARSER._merge_edit_is_safe(["--ff-only", "--no-ff"]))
+        self.assertFalse(PARSER._merge_edit_is_safe([]))
+
+    def test_evaluate_noninteractive_commands_stops_recursion_at_depth_limit(self) -> None:
+        reason = PARSER._evaluate_noninteractive_commands([], [], depth=5)
+
+        self.assertEqual(reason, PARSER.NONINTERACTIVE_PARSE_ERROR_REASON)
+
+
+class StructValueTest(unittest.TestCase):
+    """Pins the equality and repr that _StructValue hand-rolls.
+
+    The parse-result structs are compared whole in the boundary tests
+    below, so those assertions are only as strong as this equality. A
+    dataclass got it right by construction; this base does not, and a
+    subclass whose __slots__ drifts from its __init__ would silently drop
+    the missing field from the comparison.
+    """
+
+    def make(self, **overrides: object) -> object:
+        fields: dict[str, object] = {"env": {"A": "1"}, "subcmd": "commit", "args": ["-m", "x"]}
+        fields.update(overrides)
+        return PARSER.NoninteractiveParseResult(**fields)  # type: ignore[arg-type]
+
+    def test_equal_when_every_field_matches(self) -> None:
+        self.assertEqual(self.make(), self.make())
+
+    def test_unequal_when_any_single_field_differs(self) -> None:
+        cases = [
+            ("env", {"A": "2"}),
+            ("subcmd", "rebase"),
+            ("args", ["-m", "y"]),
+        ]
+        for field, value in cases:
+            with self.subTest(field=field):
+                self.assertNotEqual(self.make(), self.make(**{field: value}))
+
+    def test_every_slot_participates_in_equality(self) -> None:
+        # Guards the __slots__/__init__ contract the base docstring states:
+        # a field missing from __slots__ would be skipped by __eq__ above.
+        for struct in (
+            PARSER.NoninteractiveParseResult,
+            PARSER.NormalizedCommandPrefix,
+            PARSER.CommitSegmentResult,
+        ):
+            with self.subTest(struct=struct.__name__):
+                init_params = list(struct.__init__.__code__.co_varnames)[1 : struct.__init__.__code__.co_argcount]
+
+                self.assertEqual(list(struct.__slots__), init_params)
+
+    def test_unequal_across_struct_types_with_matching_field_values(self) -> None:
+        self.assertNotEqual(
+            PARSER.NoninteractiveParseResult(env={}, subcmd="", args=[]),
+            PARSER.CommitSegmentResult(contexts=[], persisted_git_env=[], persisted_shell_git_vars=[]),
+        )
+
+    def test_repr_names_the_class_and_every_field(self) -> None:
+        self.assertEqual(
+            repr(PARSER.NoninteractiveParseResult(env={}, subcmd="commit", args=["-m"])),
+            "NoninteractiveParseResult(env={}, subcmd='commit', args=['-m'])",
+        )
 
 
 class GitCommandParserBoundaryTest(unittest.TestCase):
@@ -926,6 +1123,126 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
 
                 self.assertEqual(noninteractive.stdout, json_line({"block": None}))
                 self.assertEqual(commit_contexts.stdout, json_line([]))
+
+
+class XargsOptionVocabularyParityTest(unittest.TestCase):
+    """The noninteractive and rm-rf modes share one xargs option-consumption
+    vocabulary via _skip_xargs_options().
+
+    Membership in XARGS_OPTIONS_WITH_VALUE means "this option's value is a
+    separate token, skip it too", and both directions of error hide the
+    invoked command from either gate. Omitting a mandatory-value option makes
+    the walker read that value as the command; listing an optional-value
+    option makes it skip past the command itself. This corpus pins both
+    arities against the bare and separate-token forms that distinguish them.
+    """
+
+    maxDiff = None
+
+    # Value is a mandatory separate token: `xargs -a FILE git commit`. This
+    # list mirrors XARGS_OPTIONS_WITH_VALUE exactly (asserted below), so a
+    # new member cannot enter the set without being exercised here.
+    SEPARATE_TOKEN_VALUE_OPTIONS = [
+        "-a",
+        "--arg-file",
+        "-d",
+        "--delimiter",
+        "-n",
+        "--max-args",
+        "-s",
+        "--max-chars",
+        "-P",
+        "--max-procs",
+        "-J",
+        "--process-slot-var",
+        "-I",
+        "-E",
+        "-L",
+        "-R",
+        "-S",
+    ]
+    # GNU value is optional and attached-only, so the next token is the
+    # command: `xargs -i git commit` really does run `git commit`.
+    OPTIONAL_ATTACHED_VALUE_OPTIONS = ["-i", "--replace", "--eof", "--max-lines"]
+
+    def run_parser(self, mode: str, command: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [sys.executable, str(PARSER_PATH), mode, command],
+            check=False,
+            capture_output=True,
+            env=subprocess_env(),
+            text=True,
+        )
+
+    def test_corpus_covers_every_option_in_the_shared_vocabulary(self) -> None:
+        self.assertEqual(set(self.SEPARATE_TOKEN_VALUE_OPTIONS), PARSER.XARGS_OPTIONS_WITH_VALUE)
+
+    def test_skip_xargs_options_advances_past_every_separate_token_value_option(self) -> None:
+        for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
+            with self.subTest(option=option):
+                args = [option, "VALUE", "git", "commit"]
+
+                idx = PARSER._skip_xargs_options(args)
+
+                self.assertEqual(args[idx:], ["git", "commit"])
+
+    def test_skip_xargs_options_keeps_the_command_after_an_optional_value_option(self) -> None:
+        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
+            with self.subTest(option=option):
+                args = [option, "git", "commit"]
+
+                idx = PARSER._skip_xargs_options(args)
+
+                self.assertEqual(args[idx:], ["git", "commit"])
+
+    def test_xargs_wrapped_commit_without_message_source_is_blocked(self) -> None:
+        for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
+            command = f"xargs {option} VALUE git commit"
+            with self.subTest(command=command):
+                result = self.run_parser("noninteractive", command)
+
+                self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
+
+    def test_bare_optional_value_option_cannot_hide_a_commit(self) -> None:
+        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
+            for command in (f"xargs {option} git commit", f"xargs {option}=VALUE git commit"):
+                with self.subTest(command=command):
+                    result = self.run_parser("noninteractive", command)
+
+                    self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
+
+    def test_attached_short_optional_value_option_cannot_hide_a_commit(self) -> None:
+        result = self.run_parser("noninteractive", "xargs -i{} git commit")
+
+        self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
+
+    def test_xargs_wrapped_commit_with_message_is_still_allowed(self) -> None:
+        for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
+            command = f"xargs {option} VALUE git commit -m done"
+            with self.subTest(command=command):
+                result = self.run_parser("noninteractive", command)
+
+                self.assertEqual(result.stdout, json_line({"block": None}))
+
+    def test_optional_value_option_consumes_no_separate_token(self) -> None:
+        # `xargs -i VALUE git commit` runs VALUE, not git, so there is no
+        # git subcommand for the gate to classify.
+        result = self.run_parser("noninteractive", "xargs -i VALUE git commit")
+
+        self.assertEqual(result.stdout, json_line({"block": None}))
+
+    def test_xargs_wrapped_rm_rf_via_separate_token_value_option_is_still_blocked(self) -> None:
+        result = self.run_parser("rm-rf", "xargs -a file.txt rm -rf directory/")
+
+        self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
+
+    def test_xargs_wrapped_rm_rf_behind_optional_value_option_is_blocked(self) -> None:
+        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
+            command = f"xargs {option} rm -rf directory/"
+            with self.subTest(command=command):
+                result = self.run_parser("rm-rf", command)
+
+                self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
 
 
 class RmRfParserCliTest(unittest.TestCase):
