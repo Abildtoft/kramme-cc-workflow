@@ -101,16 +101,24 @@ NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE = SHELL_RESERVED_COMMAND_WORDS | {")"}
 NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND = "__parse_error__"
 # Shared by the noninteractive and rm-rf modes. Both walk past xargs's own
-# options to find the command xargs will invoke. This vocabulary must stay
-# complete: a missing separate-token value option (e.g. `-a FILE`) makes the
-# walker read the option's value as the invoked command and lose track of
-# the real one entirely, silently hiding it from either gate.
+# options to find the command xargs will invoke. Only options whose value is
+# a *mandatory separate token* belong here, because membership means "skip
+# the next token too". Both directions of error hide the real command from
+# either gate: omitting `-a FILE` makes the walker read FILE as the invoked
+# command, while listing an option that takes no separate token makes it
+# skip past the command itself.
+#
+# Options taking an optional, attached-only value must therefore stay out
+# (GNU `-i[replace-str]`, `--replace[=str]`, `--eof[=str]`,
+# `--max-lines[=n]`, `-e[eof-str]`, `-l[max-lines]`): in `xargs -i git
+# commit` the next token is the command, so the generic leading-dash branch
+# in _skip_xargs_options handles them correctly. Their mandatory-value
+# counterparts `-I`, `-E`, and `-L` do belong here.
 XARGS_OPTIONS_WITH_VALUE = {
     "-a",
     "-d",
     "-E",
     "-I",
-    "-i",
     "-J",
     "-L",
     "-P",
@@ -118,41 +126,20 @@ XARGS_OPTIONS_WITH_VALUE = {
     "-s",
     "--arg-file",
     "--delimiter",
-    "--eof",
     "--max-args",
     "--max-chars",
-    "--max-lines",
     "--max-procs",
     "--process-slot-var",
-    "--replace",
 }
-XARGS_LONG_OPTIONS_WITH_ATTACHED_VALUE = (
-    "--arg-file=",
-    "--delimiter=",
-    "--eof=",
-    "--max-args=",
-    "--max-chars=",
-    "--max-lines=",
-    "--max-procs=",
-    "--process-slot-var=",
-    "--replace=",
-)
-XARGS_SHORT_OPTIONS_WITH_ATTACHED_VALUE = (
-    "-a",
-    "-d",
-    "-E",
-    "-I",
-    "-i",
-    "-J",
-    "-L",
-    "-P",
-    "-n",
-    "-s",
-)
 
 
 def _skip_xargs_options(args: list[str]) -> int:
-    """Return the index of the command xargs will invoke, past its own options."""
+    """Return the index of the command xargs will invoke, past its own options.
+
+    Attached-value forms (`-n5`, `--max-args=5`, `-i{}`) need no entry of
+    their own: they start with a dash and consume no separate token, so the
+    generic leading-dash branch already advances past them correctly.
+    """
     idx = 0
     while idx < len(args):
         token = args[idx]
@@ -161,12 +148,6 @@ def _skip_xargs_options(args: list[str]) -> int:
             break
         if token in XARGS_OPTIONS_WITH_VALUE:
             idx += 2
-            continue
-        if token.startswith(XARGS_LONG_OPTIONS_WITH_ATTACHED_VALUE):
-            idx += 1
-            continue
-        if any(token.startswith(prefix) and token != prefix for prefix in XARGS_SHORT_OPTIONS_WITH_ATTACHED_VALUE):
-            idx += 1
             continue
         if token.startswith("-"):
             idx += 1

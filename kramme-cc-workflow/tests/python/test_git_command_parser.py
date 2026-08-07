@@ -1080,21 +1080,24 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
 
 
 class XargsOptionVocabularyParityTest(unittest.TestCase):
-    """W02A: the noninteractive and rm-rf modes now share one xargs
-    option-consumption vocabulary via _skip_xargs_options().
+    """The noninteractive and rm-rf modes share one xargs option-consumption
+    vocabulary via _skip_xargs_options().
 
-    Before this fix, the noninteractive mode's xargs option list was missing
-    several separate-token value options (-a/--arg-file, -J, -i, --max-lines,
-    --process-slot-var) that the rm-rf mode already knew about. A missing
-    entry makes the walker read the option's *value* as the invoked command,
-    losing track of `git` entirely and silently letting an interactive
-    `git commit` through xargs. This corpus pins that the gap is closed and
-    that safe invocations still pass.
+    Membership in XARGS_OPTIONS_WITH_VALUE means "this option's value is a
+    separate token, skip it too", and both directions of error hide the
+    invoked command from either gate. Omitting a mandatory-value option makes
+    the walker read that value as the command; listing an optional-value
+    option makes it skip past the command itself. This corpus pins both
+    arities against the bare and separate-token forms that distinguish them.
     """
 
     maxDiff = None
 
-    SEPARATE_TOKEN_VALUE_OPTIONS = ["-a", "-J", "-i", "--max-lines", "--process-slot-var"]
+    # Value is a mandatory separate token: `xargs -a FILE git commit`.
+    SEPARATE_TOKEN_VALUE_OPTIONS = ["-a", "--arg-file", "-J", "--process-slot-var", "-I", "-E", "-L"]
+    # GNU value is optional and attached-only, so the next token is the
+    # command: `xargs -i git commit` really does run `git commit`.
+    OPTIONAL_ATTACHED_VALUE_OPTIONS = ["-i", "--replace", "--eof", "--max-lines"]
 
     def run_parser(self, mode: str, command: str) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
@@ -1114,6 +1117,15 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
 
                 self.assertEqual(args[idx:], ["git", "commit"])
 
+    def test_skip_xargs_options_keeps_the_command_after_an_optional_value_option(self) -> None:
+        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
+            with self.subTest(option=option):
+                args = [option, "git", "commit"]
+
+                idx = PARSER._skip_xargs_options(args)
+
+                self.assertEqual(args[idx:], ["git", "commit"])
+
     def test_xargs_wrapped_commit_without_message_source_is_blocked(self) -> None:
         for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
             command = f"xargs {option} VALUE git commit"
@@ -1121,6 +1133,19 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
                 result = self.run_parser("noninteractive", command)
 
                 self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
+
+    def test_bare_optional_value_option_cannot_hide_a_commit(self) -> None:
+        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
+            for command in (f"xargs {option} git commit", f"xargs {option}=VALUE git commit"):
+                with self.subTest(command=command):
+                    result = self.run_parser("noninteractive", command)
+
+                    self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
+
+    def test_attached_short_optional_value_option_cannot_hide_a_commit(self) -> None:
+        result = self.run_parser("noninteractive", "xargs -i{} git commit")
+
+        self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
 
     def test_xargs_wrapped_commit_with_message_is_still_allowed(self) -> None:
         for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
@@ -1130,10 +1155,25 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
 
                 self.assertEqual(result.stdout, json_line({"block": None}))
 
+    def test_optional_value_option_consumes_no_separate_token(self) -> None:
+        # `xargs -i VALUE git commit` runs VALUE, not git, so there is no
+        # git subcommand for the gate to classify.
+        result = self.run_parser("noninteractive", "xargs -i VALUE git commit")
+
+        self.assertEqual(result.stdout, json_line({"block": None}))
+
     def test_xargs_wrapped_rm_rf_via_separate_token_value_option_is_still_blocked(self) -> None:
         result = self.run_parser("rm-rf", "xargs -a file.txt rm -rf directory/")
 
         self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
+
+    def test_xargs_wrapped_rm_rf_behind_optional_value_option_is_blocked(self) -> None:
+        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
+            command = f"xargs {option} rm -rf directory/"
+            with self.subTest(command=command):
+                result = self.run_parser("rm-rf", command)
+
+                self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
 
 
 class RmRfParserCliTest(unittest.TestCase):
