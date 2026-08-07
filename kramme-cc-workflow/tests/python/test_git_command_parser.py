@@ -314,6 +314,60 @@ class GitCommandNoninteractiveHelperTest(unittest.TestCase):
         self.assertEqual(reason, PARSER.NONINTERACTIVE_PARSE_ERROR_REASON)
 
 
+class StructValueTest(unittest.TestCase):
+    """Pins the equality and repr that _StructValue hand-rolls.
+
+    The parse-result structs are compared whole in the boundary tests
+    below, so those assertions are only as strong as this equality. A
+    dataclass got it right by construction; this base does not, and a
+    subclass whose __slots__ drifts from its __init__ would silently drop
+    the missing field from the comparison.
+    """
+
+    def make(self, **overrides: object) -> object:
+        fields: dict[str, object] = {"env": {"A": "1"}, "subcmd": "commit", "args": ["-m", "x"]}
+        fields.update(overrides)
+        return PARSER.NoninteractiveParseResult(**fields)  # type: ignore[arg-type]
+
+    def test_equal_when_every_field_matches(self) -> None:
+        self.assertEqual(self.make(), self.make())
+
+    def test_unequal_when_any_single_field_differs(self) -> None:
+        cases = [
+            ("env", {"A": "2"}),
+            ("subcmd", "rebase"),
+            ("args", ["-m", "y"]),
+        ]
+        for field, value in cases:
+            with self.subTest(field=field):
+                self.assertNotEqual(self.make(), self.make(**{field: value}))
+
+    def test_every_slot_participates_in_equality(self) -> None:
+        # Guards the __slots__/__init__ contract the base docstring states:
+        # a field missing from __slots__ would be skipped by __eq__ above.
+        for struct in (
+            PARSER.NoninteractiveParseResult,
+            PARSER.NormalizedCommandPrefix,
+            PARSER.CommitSegmentResult,
+        ):
+            with self.subTest(struct=struct.__name__):
+                init_params = list(struct.__init__.__code__.co_varnames)[1 : struct.__init__.__code__.co_argcount]
+
+                self.assertEqual(list(struct.__slots__), init_params)
+
+    def test_unequal_across_struct_types_with_matching_field_values(self) -> None:
+        self.assertNotEqual(
+            PARSER.NoninteractiveParseResult(env={}, subcmd="", args=[]),
+            PARSER.CommitSegmentResult(contexts=[], persisted_git_env=[], persisted_shell_git_vars=[]),
+        )
+
+    def test_repr_names_the_class_and_every_field(self) -> None:
+        self.assertEqual(
+            repr(PARSER.NoninteractiveParseResult(env={}, subcmd="commit", args=["-m"])),
+            "NoninteractiveParseResult(env={}, subcmd='commit', args=['-m'])",
+        )
+
+
 class GitCommandParserBoundaryTest(unittest.TestCase):
     def test_parse_env_wrapped_segment_exposes_wrapper_state(self) -> None:
         result = PARSER.parse_env_wrapped_segment(
