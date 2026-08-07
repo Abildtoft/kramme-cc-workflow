@@ -23,7 +23,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Agents | `kramme-cc-workflow/agents/*.md` | `bats kramme-cc-workflow/tests/agent-description-length.bats`, `make -C kramme-cc-workflow test-convert` |
 | Hook manifest and hooks | `kramme-cc-workflow/hooks/hooks.json`, `kramme-cc-workflow/hooks/*.sh` | `bats kramme-cc-workflow/tests/{auto-format,block-rm-rf,check-enabled,confirm-review-responses,context-links,noninteractive-git,skill-usage-stats}.bats`, plus the hook-specific tests below |
 | Hook enablement | `kramme-cc-workflow/hooks/lib/check-enabled.sh`, hook scripts that source it | `bats kramme-cc-workflow/tests/check-enabled.bats` |
-| Git command safety parsing | `kramme-cc-workflow/hooks/lib/git_command_parser.py`, `kramme-cc-workflow/hooks/noninteractive-git.sh`, `kramme-cc-workflow/hooks/confirm-review-responses.sh`, `kramme-cc-workflow/hooks/block-rm-rf.sh` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_git_command_parser.py`, `bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats` |
+| Git command safety parsing | `kramme-cc-workflow/hooks/lib/command_safety/`, `kramme-cc-workflow/hooks/lib/git_command_parser.py`, `kramme-cc-workflow/hooks/noninteractive-git.sh`, `kramme-cc-workflow/hooks/confirm-review-responses.sh`, `kramme-cc-workflow/hooks/block-rm-rf.sh` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_git_command_parser.py`, `bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats` |
 | Hook invocation benchmark | `kramme-cc-workflow/scripts/benchmark-hook-overhead.sh` | `bats kramme-cc-workflow/tests/benchmark-hook-overhead.bats` |
 | Auto-format hook | `kramme-cc-workflow/hooks/auto-format.sh` | `make -C kramme-cc-workflow test-format` |
 | Context links hook | `kramme-cc-workflow/hooks/context-links.sh`, `kramme-cc-workflow/hooks/context-links.config.example` | `make -C kramme-cc-workflow test-context` |
@@ -66,7 +66,7 @@ No lookup result means the skill is still listed under `skill_contract_coverage.
 
 When a skill behaves incorrectly, start with its `SKILL.md`, then load only the referenced local files under the same skill directory. Check `scripts/lint-skill-contracts.py` if the issue is frontmatter, naming, description length, platform filtering, or self-contained resource policy.
 
-When a hook blocks or misses a command, inspect the hook script, then the shared helpers under `hooks/lib/` (see `hooks/lib/README.md` for the helper responsibility map). `git_command_parser.py` is the production parser for complex shell and git command shapes used by the command-safety hooks.
+When a hook blocks or misses a command, inspect the hook script, then the shared helpers under `hooks/lib/` (see `hooks/lib/README.md` for the helper responsibility map). `git_command_parser.py` is the executable entry point the hooks invoke; the parser for complex shell and git command shapes lives in `hooks/lib/command_safety/`, one module per policy mode over shared syntax, vocabulary, prefix, and lexer layers.
 
 For skill usage report and scan output, degraded-input diagnostics, and strict mode, see [hooks.md](hooks.md#skill-usage-stats).
 

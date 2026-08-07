@@ -9,8 +9,27 @@ cross-hook parsing and toggle behavior here.
 | File | Responsibility |
 | --- | --- |
 | `check-enabled.sh` | Reads the resolved hook state file, honors disabled hooks, drains stdin on disabled hooks, and optionally emits `{}` for JSON hook events. |
-| `git_command_parser.py` | Production parser for command-safety hooks. It handles shell wrappers, environment propagation, command substitutions, heredocs, and git subcommands, then emits JSON with allow/block details. |
+| `git_command_parser.py` | Executable entry point for the command-safety parser. Holds no parsing logic; it re-exports the dispatcher from `command_safety/` so both `python3 -m git_command_parser` and the direct script path keep working. The module form is the hook-facing one and the only form that works under `PYTHONSAFEPATH=1`, because `safety-hook-parser.sh` passes an explicit `PYTHONPATH=.`. |
+| `command_safety/` | The parser itself. Handles shell wrappers, environment propagation, command substitutions, heredocs, and git subcommands, then emits JSON with allow/block details. See the module map below. |
 | `safety-hook-parser.sh` | Provides fail-closed dependency checks, hook input extraction, parser invocation, and parser-output validation for command-safety hook wrappers. |
+
+### `command_safety/` module map
+
+Modules depend strictly downward in this table, so a mode can be read, changed,
+and tested without loading the other two. Do not add an upward import: a cycle
+here would break every gate at once.
+
+| Module | Responsibility |
+| --- | --- |
+| `structs.py` | `_StructValue`, the `__slots__` value-object base the result types share instead of `dataclasses`. |
+| `syntax.py` | Shell syntax primitives: quoting and ANSI-C decoding, command-substitution readers, heredoc scanning, basename and assignment helpers, and the shared shell keyword/executable/option sets. Imports nothing else in the package. |
+| `vocabulary.py` | How `xargs` and `git` consume their own options, so no two modes can resolve the same prefix to different subcommands. |
+| `prefix.py` | `normalize_command_prefix()` and one handler per execution wrapper (`env`, `sudo`, `nice`, `timeout`, `time`, `nohup`, `exec`, `command`/`builtin`). Reports what actually runs; applies no policy. |
+| `lexer.py` | Heredoc stripping, newline folding, tokenization, segment splitting, and command-substitution placeholders. Uses `prefix.py` to decide whether a heredoc body is executable. |
+| `noninteractive.py` | The `noninteractive` mode: editor- and prompt-opening git detection, plus `run_noninteractive()`. |
+| `rm_rf.py` | The `rm-rf` mode: recursive-deletion detection through wrappers, `find`/`xargs`, `eval`, and substitutions, plus `run_rm_rf()`. |
+| `commit.py` | The `commit-contexts` mode: `CommitContext`, replay environment, content-selection parsing, plus `run_commit_contexts()`. |
+| `cli.py` | `main()`, dispatching one mode per invocation. Imports the chosen mode inside its branch so a gate never pays the other modes' import cost. |
 
 ## Git command parser mode contracts
 
@@ -38,8 +57,8 @@ allowed before parser invocation (`commit-contexts` emits `[]` for that case).
 
 ### Commit-context fields
 
-[`CommitContext`](git_command_parser.py) and `parse_commit_selection()` own the
-parser schema; `confirm-review-responses.sh` validates every field before
+[`CommitContext`](command_safety/commit.py) and `parse_commit_selection()` own
+the parser schema; `confirm-review-responses.sh` validates every field before
 replaying the selection:
 
 | Field | Contract |
@@ -100,5 +119,5 @@ bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/c
 For documentation-only changes, also check the scoped diff:
 
 ```bash
-git diff --check -- kramme-cc-workflow/hooks/lib/README.md kramme-cc-workflow/hooks/lib/git_command_parser.py
+git diff --check -- kramme-cc-workflow/hooks/lib/README.md kramme-cc-workflow/hooks/lib/git_command_parser.py kramme-cc-workflow/hooks/lib/command_safety
 ```
