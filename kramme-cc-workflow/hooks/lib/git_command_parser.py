@@ -93,11 +93,12 @@ SHELL_OPTIONS_WITH_VALUE = {
 }
 
 NONINTERACTIVE_ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
-# Shared by the noninteractive and commit-contexts modes. Identical to
-# SHELL_RESERVED_COMMAND_WORDS plus a trailing ")": both modes treat a
-# subshell close as an env/export-boundary keyword, unlike the shared
-# command-prefix normalizer. Keep this delta explicit rather than merging
-# the two sets.
+# SHELL_RESERVED_COMMAND_WORDS plus a trailing ")". Used wherever a leading
+# token is skipped as a boundary keyword, which a subshell close also is:
+# the noninteractive and commit-contexts env/export scans, and the
+# command-prefix normalizer's own leading-keyword skip. The bare set is used
+# only in _detect_rm_rf_segment, which scans for a command word rather than
+# skipping a prefix, so a ")" there is not a boundary to step over.
 SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE = SHELL_RESERVED_COMMAND_WORDS | {")"}
 NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND = "__parse_error__"
 # Shared by the noninteractive and rm-rf modes. Both walk past xargs's own
@@ -810,7 +811,7 @@ def normalize_command_prefix(
     while (
         shell_keywords_allowed
         and idx < len(working_tokens)
-        and (working_tokens[idx] in SHELL_RESERVED_COMMAND_WORDS or working_tokens[idx] == ")")
+        and working_tokens[idx] in SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE
     ):
         idx += 1
 
@@ -1419,9 +1420,11 @@ def extract_placeholder_indexes(tokens: list[str]) -> list[int]:
 def _basename_no_unescape(token: str) -> str:
     """Shared by the noninteractive and commit-contexts modes.
 
-    Unlike _basename(), this does not strip a leading backslash, so a
-    backslash-escaped invocation like `\\rm -rf` is not recognized as `rm`
-    here. Keep this delta explicit rather than merging the two helpers.
+    Unlike _basename(), this does not strip a leading backslash, so a token
+    that still carries one after tokenization -- `\\git`, from a command
+    string containing `\\\\git` -- is not recognized as `git` here. The
+    rm-rf detector uses _basename() instead and does catch the escaped
+    form. Keep this delta explicit rather than merging the two helpers.
     """
     return os.path.basename(token)
 

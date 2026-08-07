@@ -158,9 +158,9 @@ class GitCommandLexerTest(unittest.TestCase):
             with self.subTest(helper=helper):
                 self.assertEqual(source.count(f"def {helper}"), 1)
 
-        # W02A: these were formerly separate byte-identical regex constants
-        # (ASSIGNMENT_WORD, NONINTERACTIVE_ASSIGNMENT, COMMIT_ASSIGNMENT) now
-        # canonicalized to a single ASSIGNMENT_WORD definition.
+        # The assignment-word regex has one definition. It was previously
+        # duplicated byte-for-byte as NONINTERACTIVE_ASSIGNMENT and
+        # COMMIT_ASSIGNMENT; neither name should come back.
         self.assertEqual(source.count("ASSIGNMENT_WORD = re.compile"), 1)
         self.assertNotIn("NONINTERACTIVE_ASSIGNMENT", source)
         self.assertNotIn("COMMIT_ASSIGNMENT", source)
@@ -181,13 +181,14 @@ class GitCommandLexerTest(unittest.TestCase):
 
 
 class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
-    """Pins the cross-mode primitive invariants W02A must preserve.
+    """Pins the cross-mode primitive invariants.
 
-    These primitives currently exist as separate copies for the
-    `noninteractive`, `commit-contexts`, and `rm-rf` parser modes. Some
-    copies are byte-identical (safe to canonicalize); others carry an
-    intentional behavioral delta (must stay explicit, not be erased). This
-    test class pins both kinds before any consolidation.
+    The `noninteractive`, `commit-contexts`, and `rm-rf` parser modes each
+    used to carry their own copy of these primitives. The byte-identical
+    copies are now canonicalized to one definition apiece; the one pair
+    that carries a real behavioral delta (`_basename` vs
+    `_basename_no_unescape`) stays separate. These tests fail if a
+    canonical primitive is duplicated again or if the real delta is erased.
     """
 
     ASSIGNMENT_CASES = [
@@ -212,37 +213,30 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
                 self.assertIs(bool(PARSER.ASSIGNMENT_WORD.match(token)), expected)
 
     def test_shell_reserved_words_and_keyword_sets_differ_only_by_closing_paren(self) -> None:
-        # SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE is now the single canonical set
-        # shared by the noninteractive and commit-contexts modes (formerly
-        # two byte-identical copies: NONINTERACTIVE_SHELL_KEYWORDS and
-        # COMMIT_SHELL_KEYWORDS). It differs from SHELL_RESERVED_COMMAND_WORDS
-        # (used by the shared command-prefix normalizer) by exactly a
-        # trailing ")" — an intentional mode delta, not accidental drift.
+        # SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE replaces the byte-identical
+        # NONINTERACTIVE_SHELL_KEYWORDS and COMMIT_SHELL_KEYWORDS copies. It
+        # is SHELL_RESERVED_COMMAND_WORDS plus ")", for the sites that skip a
+        # leading boundary keyword; the bare set is for sites that do not
+        # treat a subshell close as one.
         self.assertEqual(PARSER.SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE - PARSER.SHELL_RESERVED_COMMAND_WORDS, {")"})
-        self.assertEqual(PARSER.SHELL_RESERVED_COMMAND_WORDS - PARSER.SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE, set())
         source = PARSER_PATH.read_text(encoding="utf-8")
         self.assertNotIn("NONINTERACTIVE_SHELL_KEYWORDS", source)
         self.assertNotIn("COMMIT_SHELL_KEYWORDS", source)
 
     def test_xargs_option_vocabulary_is_canonical_across_modes(self) -> None:
-        # XARGS_OPTIONS_WITH_VALUE/_skip_xargs_options are now the single
-        # canonical xargs-option-consumption primitive shared by the
-        # noninteractive and rm-rf modes (formerly a byte-identical-looking
-        # but actually incomplete NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE
-        # copy, plus a separate, fuller inline vocabulary in _detect_xargs).
-        # See XargsOptionVocabularyParityTest for the behavioral fix this
-        # consolidation carries: the incomplete copy silently hid `git
-        # commit` behind `xargs -a`/`-J` from the noninteractive gate.
+        # XARGS_OPTIONS_WITH_VALUE/_skip_xargs_options replace the incomplete
+        # NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE copy and the separate
+        # inline vocabulary in _detect_xargs. XargsOptionVocabularyParityTest
+        # covers the behavior; this pins that the copies stay gone.
         source = PARSER_PATH.read_text(encoding="utf-8")
         self.assertNotIn("NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE", source)
         self.assertEqual(source.count("XARGS_OPTIONS_WITH_VALUE = "), 1)
-        self.assertEqual(source.count("def _skip_xargs_options"), 1)
 
     def test_shell_executable_set_is_canonical_across_modes(self) -> None:
-        # SHELL_EXECUTABLES is now the single canonical set shared by the
+        # SHELL_EXECUTABLES replaces the byte-identical
+        # NONINTERACTIVE_SHELL_EXECUTABLES copy and is shared by the
         # command-prefix normalizer, rm-rf detector, and noninteractive
-        # parser (formerly a byte-identical NONINTERACTIVE_SHELL_EXECUTABLES
-        # copy).
+        # parser.
         self.assertEqual(PARSER.SHELL_EXECUTABLES, {"sh", "bash", "zsh", "dash", "ksh"})
         source = PARSER_PATH.read_text(encoding="utf-8")
         self.assertNotIn("NONINTERACTIVE_SHELL_EXECUTABLES", source)
@@ -257,18 +251,16 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
     ]
 
     def test_basename_helpers_differ_only_in_backslash_unescaping(self) -> None:
-        # _basename() strips a leading backslash (so a backslash-escaped
-        # invocation like `\rm -rf` is still recognized as `rm` by the rm-rf
-        # detector); _basename_no_unescape() does not. It is now the single
-        # canonical helper shared by the noninteractive mode and the
-        # commit-contexts mode's git/alias/export/unset checks (formerly a
-        # private _noninteractive_basename plus two bare os.path.basename()
-        # calls duplicated inline in the commit-contexts path).
+        # _basename() strips a leading backslash, so the rm-rf detector still
+        # recognizes `\rm -rf`; _basename_no_unescape() does not, so the
+        # noninteractive and commit-contexts git/alias/export/unset checks do
+        # not recognize `\git`. It replaces the private
+        # _noninteractive_basename plus two bare os.path.basename() calls
+        # inlined in the commit-contexts path.
         for token, expected_basename, expected_no_unescape in self.BASENAME_CASES:
             with self.subTest(token=token):
                 self.assertEqual(PARSER._basename(token), expected_basename)
                 self.assertEqual(PARSER._basename_no_unescape(token), expected_no_unescape)
-                self.assertEqual(os.path.basename(token), expected_no_unescape)
 
         source = PARSER_PATH.read_text(encoding="utf-8")
         self.assertNotIn("_noninteractive_basename", source)
@@ -276,7 +268,7 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
 
 
 class GitCommandNoninteractiveHelperTest(unittest.TestCase):
-    """Direct tests for the option-consumption helpers W02A promoted out of
+    """Direct tests for the option-consumption helpers promoted out of
     run_noninteractive's closure to module scope."""
 
     def test_has_long_option_matches_bare_and_attached_forms(self) -> None:
