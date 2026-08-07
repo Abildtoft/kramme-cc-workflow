@@ -1139,8 +1139,28 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
 
     maxDiff = None
 
-    # Value is a mandatory separate token: `xargs -a FILE git commit`.
-    SEPARATE_TOKEN_VALUE_OPTIONS = ["-a", "--arg-file", "-J", "--process-slot-var", "-I", "-E", "-L"]
+    # Value is a mandatory separate token: `xargs -a FILE git commit`. This
+    # list mirrors XARGS_OPTIONS_WITH_VALUE exactly (asserted below), so a
+    # new member cannot enter the set without being exercised here.
+    SEPARATE_TOKEN_VALUE_OPTIONS = [
+        "-a",
+        "--arg-file",
+        "-d",
+        "--delimiter",
+        "-n",
+        "--max-args",
+        "-s",
+        "--max-chars",
+        "-P",
+        "--max-procs",
+        "-J",
+        "--process-slot-var",
+        "-I",
+        "-E",
+        "-L",
+        "-R",
+        "-S",
+    ]
     # GNU value is optional and attached-only, so the next token is the
     # command: `xargs -i git commit` really does run `git commit`.
     OPTIONAL_ATTACHED_VALUE_OPTIONS = ["-i", "--replace", "--eof", "--max-lines"]
@@ -1153,6 +1173,9 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
             env=subprocess_env(),
             text=True,
         )
+
+    def test_corpus_covers_every_option_in_the_shared_vocabulary(self) -> None:
+        self.assertEqual(set(self.SEPARATE_TOKEN_VALUE_OPTIONS), PARSER.XARGS_OPTIONS_WITH_VALUE)
 
     def test_skip_xargs_options_advances_past_every_separate_token_value_option(self) -> None:
         for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:

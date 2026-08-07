@@ -109,7 +109,9 @@ NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND = "__parse_error__"
 # the next token too". Both directions of error hide the real command from
 # either gate: omitting `-a FILE` makes the walker read FILE as the invoked
 # command, while listing an option that takes no separate token makes it
-# skip past the command itself.
+# skip past the command itself. The set spans both implementations, since
+# either can be the xargs on PATH: `-J`, `-R`, and `-S` are BSD-only,
+# `--arg-file` and `--process-slot-var` GNU-only.
 #
 # Options taking an optional, attached-only value must therefore stay out
 # (GNU `-i[replace-str]`, `--replace[=str]`, `--eof[=str]`,
@@ -125,6 +127,8 @@ XARGS_OPTIONS_WITH_VALUE = {
     "-J",
     "-L",
     "-P",
+    "-R",
+    "-S",
     "-n",
     "-s",
     "--arg-file",
