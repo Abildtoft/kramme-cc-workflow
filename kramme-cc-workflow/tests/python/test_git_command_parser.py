@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -8,7 +10,9 @@ import sys
 import unittest
 from pathlib import Path
 
-PARSER_PATH = Path(__file__).resolve().parents[2] / "hooks" / "lib" / "git_command_parser.py"
+PARSER_LIB_DIR = Path(__file__).resolve().parents[2] / "hooks" / "lib"
+PARSER_PATH = PARSER_LIB_DIR / "git_command_parser.py"
+PARSER_PACKAGE_DIR = PARSER_LIB_DIR / "command_safety"
 
 INTERACTIVE_COMMIT_REASON = (
     'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
@@ -22,9 +26,14 @@ UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion
 INTERACTIVE_REBASE_REASON = "Interactive rebase will open an editor. Use: GIT_SEQUENCE_EDITOR=true git rebase -i ..."
 NONINTERACTIVE_PARSE_ERROR_REASON = "Unable to safely parse command. Refusing potentially interactive git command."
 COMMIT_PARSE_ERROR_REASON = "parse failed"
+# The reason command_safety/cli.py substitutes when a caller omits its own.
+COMMIT_DEFAULT_PARSE_ERROR_REASON = "Unable to safely parse command."
+# Unterminated ANSI-C quote: the shortest command that reaches the parse-error path.
+UNPARSEABLE_COMMIT_COMMAND = "git commit -m $'x"
 
 
-def load_parser_module():
+def load_entry_point_module():
+    """Load the executable shim the hooks and direct callers invoke."""
     spec = importlib.util.spec_from_file_location("git_command_parser", PARSER_PATH)
     assert spec is not None
     assert spec.loader is not None
@@ -34,26 +43,52 @@ def load_parser_module():
     return module
 
 
+def parser_source() -> str:
+    """Every line of parser implementation, entry point and package alike.
+
+    The de-duplication assertions below ask whether a helper or constant is
+    defined once *anywhere in the parser*, so they must read the whole package
+    rather than a single file.
+    """
+    paths = sorted([PARSER_PATH, *PARSER_PACKAGE_DIR.glob("*.py")])
+    return "\n".join(path.read_text(encoding="utf-8") for path in paths)
+
+
 def json_line(value) -> str:
     return json.dumps(value) + "\n"
 
 
 def subprocess_env() -> dict[str, str]:
     env = os.environ.copy()
+    # Safe-path mode drops the script's own directory from sys.path, so an
+    # inherited PYTHONSAFEPATH would break every script-form invocation below
+    # before it could resolve `command_safety`. The module form supplies its
+    # own PYTHONPATH, the way `safety-hook-parser.sh` does.
+    env.pop("PYTHONSAFEPATH", None)
     for key in list(env):
         if key.startswith("GIT_"):
             env.pop(key)
     return env
 
 
-PARSER = load_parser_module()
+sys.path.insert(0, str(PARSER_LIB_DIR))
+
+from command_safety import cli as parser_cli  # noqa: E402
+from command_safety import commit as parser_commit  # noqa: E402
+from command_safety import lexer as parser_lexer  # noqa: E402
+from command_safety import noninteractive as parser_noninteractive  # noqa: E402
+from command_safety import prefix as parser_prefix  # noqa: E402
+from command_safety import syntax as parser_syntax  # noqa: E402
+from command_safety import vocabulary as parser_vocabulary  # noqa: E402
+
+ENTRY_POINT = load_entry_point_module()
 
 
 class GitCommandLexerTest(unittest.TestCase):
     def test_read_dollar_substitution_preserves_escaped_quote_and_space(self) -> None:
         command = r'$(printf "a\"b" a\ b)'
 
-        inner, end = PARSER.read_dollar_substitution(command, 0)
+        inner, end = parser_syntax.read_dollar_substitution(command, 0)
 
         self.assertEqual(inner, r'printf "a\"b" a\ b')
         self.assertEqual(end, len(command))
@@ -61,7 +96,7 @@ class GitCommandLexerTest(unittest.TestCase):
     def test_read_dollar_substitution_preserves_nested_substitutions(self) -> None:
         command = r"$(outer $(inner one))"
 
-        inner, end = PARSER.read_dollar_substitution(command, 0)
+        inner, end = parser_syntax.read_dollar_substitution(command, 0)
 
         self.assertEqual(inner, r"outer $(inner one)")
         self.assertEqual(end, len(command))
@@ -69,7 +104,7 @@ class GitCommandLexerTest(unittest.TestCase):
     def test_read_backtick_substitution_preserves_escaped_backtick(self) -> None:
         command = r"`printf a\`b`"
 
-        inner, end = PARSER.read_backtick_substitution(command, 0)
+        inner, end = parser_syntax.read_backtick_substitution(command, 0)
 
         self.assertEqual(inner, r"printf a\`b")
         self.assertEqual(end, len(command))
@@ -98,32 +133,32 @@ class GitCommandLexerTest(unittest.TestCase):
 
         for name, command, expected_command, expected_substitutions in cases:
             with self.subTest(name=name):
-                stripped, substitutions = PARSER.strip_heredoc_bodies(command)
+                stripped, substitutions = parser_lexer.strip_heredoc_bodies(command)
 
                 self.assertEqual(stripped, expected_command)
                 self.assertEqual(substitutions, expected_substitutions)
 
     def test_strip_heredoc_bodies_preserves_shell_stdin_heredoc_body(self) -> None:
-        stripped, substitutions = PARSER.strip_heredoc_bodies("bash <<'EOF'\nrm -rf directory/\nEOF\n")
+        stripped, substitutions = parser_lexer.strip_heredoc_bodies("bash <<'EOF'\nrm -rf directory/\nEOF\n")
 
         self.assertEqual(stripped, "bash <<'EOF'\nrm -rf directory/\nEOF\n")
         self.assertEqual(substitutions, [])
 
     def test_replace_command_substitutions_collects_placeholder_contents(self) -> None:
-        sanitized, substitutions = PARSER.replace_command_substitutions(r'git commit -m "$(printf a\ b)"')
+        sanitized, substitutions = parser_lexer.replace_command_substitutions(r'git commit -m "$(printf a\ b)"')
 
         self.assertEqual(sanitized, 'git commit -m "__CMD_SUBST_0__"')
         self.assertEqual(substitutions, [r"printf a\ b"])
 
     def test_tokenize_and_split_segments_for_multi_segment_input(self) -> None:
-        tokens = PARSER.tokenize("printf start; git commit -m x && git status")
+        tokens = parser_lexer.tokenize("printf start; git commit -m x && git status")
 
         self.assertEqual(
             tokens,
             ["printf", "start", ";", "git", "commit", "-m", "x", "&&", "git", "status"],
         )
         self.assertEqual(
-            list(PARSER.split_segments(tokens)),
+            list(parser_lexer.split_segments(tokens)),
             [
                 (["printf", "start"], ";"),
                 (["git", "commit", "-m", "x"], "&&"),
@@ -132,12 +167,12 @@ class GitCommandLexerTest(unittest.TestCase):
         )
 
     def test_extract_placeholder_indexes_preserves_first_seen_order(self) -> None:
-        indexes = PARSER.extract_placeholder_indexes(["__CMD_SUBST_2__", "x__CMD_SUBST_1__", "__CMD_SUBST_2__"])
+        indexes = parser_lexer.extract_placeholder_indexes(["__CMD_SUBST_2__", "x__CMD_SUBST_1__", "__CMD_SUBST_2__"])
 
         self.assertEqual(indexes, [2, 1])
 
     def test_shared_lexer_helpers_are_defined_once(self) -> None:
-        source = PARSER_PATH.read_text(encoding="utf-8")
+        source = parser_source()
         helpers = [
             "_extract_body_substitutions",
             "strip_heredoc_bodies",
@@ -177,7 +212,7 @@ class GitCommandLexerTest(unittest.TestCase):
 
         for command, expected in cases:
             with self.subTest(command=command):
-                self.assertEqual(PARSER._expand_ansi_c_quoted_strings(command), expected)
+                self.assertEqual(parser_syntax._expand_ansi_c_quoted_strings(command), expected)
 
 
 class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
@@ -209,8 +244,8 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
         # NONINTERACTIVE_ASSIGNMENT, COMMIT_ASSIGNMENT).
         for token, expected in self.ASSIGNMENT_CASES:
             with self.subTest(token=token):
-                self.assertIs(PARSER._is_assignment(token), expected)
-                self.assertIs(bool(PARSER.ASSIGNMENT_WORD.match(token)), expected)
+                self.assertIs(parser_syntax._is_assignment(token), expected)
+                self.assertIs(bool(parser_syntax.ASSIGNMENT_WORD.match(token)), expected)
 
     def test_shell_reserved_words_and_keyword_sets_differ_only_by_closing_paren(self) -> None:
         # SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE replaces the byte-identical
@@ -218,8 +253,10 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
         # is SHELL_RESERVED_COMMAND_WORDS plus ")", for the sites that skip a
         # leading boundary keyword; the bare set is for sites that do not
         # treat a subshell close as one.
-        self.assertEqual(PARSER.SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE - PARSER.SHELL_RESERVED_COMMAND_WORDS, {")"})
-        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertEqual(
+            parser_syntax.SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE - parser_syntax.SHELL_RESERVED_COMMAND_WORDS, {")"}
+        )
+        source = parser_source()
         self.assertNotIn("NONINTERACTIVE_SHELL_KEYWORDS", source)
         self.assertNotIn("COMMIT_SHELL_KEYWORDS", source)
 
@@ -228,7 +265,7 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
         # NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE copy and the separate
         # inline vocabulary in _detect_xargs. XargsOptionVocabularyParityTest
         # covers the behavior; this pins that the copies stay gone.
-        source = PARSER_PATH.read_text(encoding="utf-8")
+        source = parser_source()
         self.assertNotIn("NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE", source)
         self.assertEqual(source.count("XARGS_OPTIONS_WITH_VALUE = "), 1)
 
@@ -237,8 +274,8 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
         # NONINTERACTIVE_SHELL_EXECUTABLES copy and is shared by the
         # command-prefix normalizer, rm-rf detector, and noninteractive
         # parser.
-        self.assertEqual(PARSER.SHELL_EXECUTABLES, {"sh", "bash", "zsh", "dash", "ksh"})
-        source = PARSER_PATH.read_text(encoding="utf-8")
+        self.assertEqual(parser_syntax.SHELL_EXECUTABLES, {"sh", "bash", "zsh", "dash", "ksh"})
+        source = parser_source()
         self.assertNotIn("NONINTERACTIVE_SHELL_EXECUTABLES", source)
 
     BASENAME_CASES = [
@@ -259,10 +296,10 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
         # inlined in the commit-contexts path.
         for token, expected_basename, expected_no_unescape in self.BASENAME_CASES:
             with self.subTest(token=token):
-                self.assertEqual(PARSER._basename(token), expected_basename)
-                self.assertEqual(PARSER._basename_no_unescape(token), expected_no_unescape)
+                self.assertEqual(parser_syntax._basename(token), expected_basename)
+                self.assertEqual(parser_syntax._basename_no_unescape(token), expected_no_unescape)
 
-        source = PARSER_PATH.read_text(encoding="utf-8")
+        source = parser_source()
         self.assertNotIn("_noninteractive_basename", source)
         self.assertEqual(source.count("def _basename_no_unescape"), 1)
 
@@ -272,46 +309,46 @@ class GitCommandNoninteractiveHelperTest(unittest.TestCase):
     run_noninteractive's closure to module scope."""
 
     def test_has_long_option_matches_bare_and_attached_forms(self) -> None:
-        self.assertTrue(PARSER._has_long_option(["--no-edit"], "--no-edit"))
-        self.assertTrue(PARSER._has_long_option(["--message=x"], "--message"))
-        self.assertFalse(PARSER._has_long_option(["--", "--no-edit"], "--no-edit"))
-        self.assertFalse(PARSER._has_long_option(["--no-edits"], "--no-edit"))
+        self.assertTrue(parser_noninteractive._has_long_option(["--no-edit"], "--no-edit"))
+        self.assertTrue(parser_noninteractive._has_long_option(["--message=x"], "--message"))
+        self.assertFalse(parser_noninteractive._has_long_option(["--", "--no-edit"], "--no-edit"))
+        self.assertFalse(parser_noninteractive._has_long_option(["--no-edits"], "--no-edit"))
 
     def test_has_short_option_scans_clustered_flags_until_separator(self) -> None:
-        self.assertTrue(PARSER._has_short_option(["-pi"], "p"))
-        self.assertFalse(PARSER._has_short_option(["--", "-p"], "p"))
-        self.assertFalse(PARSER._has_short_option(["-"], "p"))
+        self.assertTrue(parser_noninteractive._has_short_option(["-pi"], "p"))
+        self.assertFalse(parser_noninteractive._has_short_option(["--", "-p"], "p"))
+        self.assertFalse(parser_noninteractive._has_short_option(["-"], "p"))
 
     def test_short_option_consumes_next_value_only_when_trailing(self) -> None:
-        value_opts = PARSER.COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE
-        self.assertTrue(PARSER._short_option_consumes_next_value("-m", value_opts))
-        self.assertTrue(PARSER._short_option_consumes_next_value("-am", value_opts))
-        self.assertFalse(PARSER._short_option_consumes_next_value("-ma", value_opts))
-        self.assertFalse(PARSER._short_option_consumes_next_value("--message", value_opts))
+        value_opts = parser_noninteractive.COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE
+        self.assertTrue(parser_noninteractive._short_option_consumes_next_value("-m", value_opts))
+        self.assertTrue(parser_noninteractive._short_option_consumes_next_value("-am", value_opts))
+        self.assertFalse(parser_noninteractive._short_option_consumes_next_value("-ma", value_opts))
+        self.assertFalse(parser_noninteractive._short_option_consumes_next_value("--message", value_opts))
 
     def test_classify_commit_fixup_distinguishes_safe_and_interactive_values(self) -> None:
-        self.assertEqual(PARSER._classify_commit_fixup(["--fixup=amend:HEAD"]), "interactive")
-        self.assertEqual(PARSER._classify_commit_fixup(["--fixup=reword:HEAD"]), "interactive")
-        self.assertEqual(PARSER._classify_commit_fixup(["--fixup", "HEAD"]), "safe")
-        self.assertEqual(PARSER._classify_commit_fixup(["-m", "amend:not-a-fixup-value"]), "none")
-        self.assertEqual(PARSER._classify_commit_fixup(["--", "--fixup=amend:HEAD"]), "none")
+        self.assertEqual(parser_noninteractive._classify_commit_fixup(["--fixup=amend:HEAD"]), "interactive")
+        self.assertEqual(parser_noninteractive._classify_commit_fixup(["--fixup=reword:HEAD"]), "interactive")
+        self.assertEqual(parser_noninteractive._classify_commit_fixup(["--fixup", "HEAD"]), "safe")
+        self.assertEqual(parser_noninteractive._classify_commit_fixup(["-m", "amend:not-a-fixup-value"]), "none")
+        self.assertEqual(parser_noninteractive._classify_commit_fixup(["--", "--fixup=amend:HEAD"]), "none")
 
     def test_commit_requests_editor_detects_clustered_and_separate_flags(self) -> None:
-        self.assertTrue(PARSER._commit_requests_editor(["-e"]))
-        self.assertTrue(PARSER._commit_requests_editor(["--edit"]))
-        self.assertTrue(PARSER._commit_requests_editor(["-ae"]))
-        self.assertFalse(PARSER._commit_requests_editor(["-m", "message"]))
-        self.assertFalse(PARSER._commit_requests_editor(["--message=x"]))
+        self.assertTrue(parser_noninteractive._commit_requests_editor(["-e"]))
+        self.assertTrue(parser_noninteractive._commit_requests_editor(["--edit"]))
+        self.assertTrue(parser_noninteractive._commit_requests_editor(["-ae"]))
+        self.assertFalse(parser_noninteractive._commit_requests_editor(["-m", "message"]))
+        self.assertFalse(parser_noninteractive._commit_requests_editor(["--message=x"]))
 
     def test_merge_edit_is_safe_requires_ff_only_without_no_ff(self) -> None:
-        self.assertTrue(PARSER._merge_edit_is_safe(["--ff-only"]))
-        self.assertFalse(PARSER._merge_edit_is_safe(["--ff-only", "--no-ff"]))
-        self.assertFalse(PARSER._merge_edit_is_safe([]))
+        self.assertTrue(parser_noninteractive._merge_edit_is_safe(["--ff-only"]))
+        self.assertFalse(parser_noninteractive._merge_edit_is_safe(["--ff-only", "--no-ff"]))
+        self.assertFalse(parser_noninteractive._merge_edit_is_safe([]))
 
     def test_evaluate_noninteractive_commands_stops_recursion_at_depth_limit(self) -> None:
-        reason = PARSER._evaluate_noninteractive_commands([], [], depth=5)
+        reason = parser_noninteractive._evaluate_noninteractive_commands([], [], depth=5)
 
-        self.assertEqual(reason, PARSER.NONINTERACTIVE_PARSE_ERROR_REASON)
+        self.assertEqual(reason, parser_noninteractive.NONINTERACTIVE_PARSE_ERROR_REASON)
 
 
 class StructValueTest(unittest.TestCase):
@@ -327,7 +364,7 @@ class StructValueTest(unittest.TestCase):
     def make(self, **overrides: object) -> object:
         fields: dict[str, object] = {"env": {"A": "1"}, "subcmd": "commit", "args": ["-m", "x"]}
         fields.update(overrides)
-        return PARSER.NoninteractiveParseResult(**fields)  # type: ignore[arg-type]
+        return parser_noninteractive.NoninteractiveParseResult(**fields)  # type: ignore[arg-type]
 
     def test_equal_when_every_field_matches(self) -> None:
         self.assertEqual(self.make(), self.make())
@@ -346,9 +383,9 @@ class StructValueTest(unittest.TestCase):
         # Guards the __slots__/__init__ contract the base docstring states:
         # a field missing from __slots__ would be skipped by __eq__ above.
         for struct in (
-            PARSER.NoninteractiveParseResult,
-            PARSER.NormalizedCommandPrefix,
-            PARSER.CommitSegmentResult,
+            parser_noninteractive.NoninteractiveParseResult,
+            parser_prefix.NormalizedCommandPrefix,
+            parser_commit.CommitSegmentResult,
         ):
             with self.subTest(struct=struct.__name__):
                 init_params = list(struct.__init__.__code__.co_varnames)[1 : struct.__init__.__code__.co_argcount]
@@ -357,20 +394,51 @@ class StructValueTest(unittest.TestCase):
 
     def test_unequal_across_struct_types_with_matching_field_values(self) -> None:
         self.assertNotEqual(
-            PARSER.NoninteractiveParseResult(env={}, subcmd="", args=[]),
-            PARSER.CommitSegmentResult(contexts=[], persisted_git_env=[], persisted_shell_git_vars=[]),
+            parser_noninteractive.NoninteractiveParseResult(env={}, subcmd="", args=[]),
+            parser_commit.CommitSegmentResult(contexts=[], persisted_git_env=[], persisted_shell_git_vars=[]),
         )
 
     def test_repr_names_the_class_and_every_field(self) -> None:
         self.assertEqual(
-            repr(PARSER.NoninteractiveParseResult(env={}, subcmd="commit", args=["-m"])),
+            repr(parser_noninteractive.NoninteractiveParseResult(env={}, subcmd="commit", args=["-m"])),
             "NoninteractiveParseResult(env={}, subcmd='commit', args=['-m'])",
         )
 
 
 class GitCommandParserBoundaryTest(unittest.TestCase):
+    # One case per `_WRAPPER_HANDLERS` key, each wrapping the same payload so
+    # only the wrapper's own option handling is under test.
+    WRAPPER_PREFIX_CASES = [
+        ("builtin", ["builtin", "-p", "git", "commit"]),
+        ("command", ["command", "-p", "git", "commit"]),
+        ("env", ["env", "GIT_EDITOR=true", "git", "commit"]),
+        ("exec", ["exec", "-c", "git", "commit"]),
+        ("nice", ["nice", "-n", "10", "git", "commit"]),
+        ("nohup", ["nohup", "--", "git", "commit"]),
+        ("sudo", ["sudo", "-u", "root", "git", "commit"]),
+        ("time", ["time", "-p", "git", "commit"]),
+        ("timeout", ["timeout", "5", "git", "commit"]),
+    ]
+
+    def test_every_wrapper_handler_resolves_the_wrapped_executable(self) -> None:
+        # Parity first, because it is the half nothing else covers: a wrapper
+        # added to the table without a case here is invisible to every other
+        # test. A dropped entry is caught by the per-wrapper cases below, and
+        # by the Bats suites for the wrappers their own matrices exercise.
+        self.assertEqual(
+            {wrapper for wrapper, _ in self.WRAPPER_PREFIX_CASES},
+            set(parser_prefix._WRAPPER_HANDLERS),
+        )
+
+        for wrapper, tokens in self.WRAPPER_PREFIX_CASES:
+            with self.subTest(wrapper=wrapper):
+                normalized = parser_prefix.normalize_command_prefix(tokens)
+
+                self.assertEqual(normalized.executable, "git")
+                self.assertEqual(normalized.arguments, ["commit"])
+
     def test_parse_env_wrapped_segment_exposes_wrapper_state(self) -> None:
-        result = PARSER.parse_env_wrapped_segment(
+        result = parser_noninteractive.parse_env_wrapped_segment(
             [
                 "env",
                 "GIT_EDITOR=true",
@@ -386,7 +454,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
         self.assertEqual(
             result,
-            PARSER.NoninteractiveParseResult(
+            parser_noninteractive.NoninteractiveParseResult(
                 env={"GIT_SEQUENCE_EDITOR": "false", "GIT_EDITOR": "true"},
                 subcmd="__shell_c__",
                 args=["git commit"],
@@ -395,7 +463,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
     def test_normalize_command_prefix_preserves_large_environment_order(self) -> None:
         assignments = [f"KEY_{idx}=initial" for idx in range(2_000)]
-        normalized = PARSER.normalize_command_prefix(
+        normalized = parser_prefix.normalize_command_prefix(
             [
                 *assignments,
                 "env",
@@ -420,7 +488,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
     def test_normalize_command_prefix_applies_exec_environment_options(self) -> None:
         for option in ("-c", "-cl", "-lc"):
             with self.subTest(option=option):
-                normalized = PARSER.normalize_command_prefix(
+                normalized = parser_prefix.normalize_command_prefix(
                     ["exec", option, "git", "rebase", "-i", "main"],
                     inherited_environment=[
                         "GIT_DIR=/tmp/other/.git",
@@ -432,7 +500,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
                 self.assertEqual(normalized.arguments, ["rebase", "-i", "main"])
                 self.assertEqual(normalized.environment, [])
 
-        argv0 = PARSER.normalize_command_prefix(
+        argv0 = parser_prefix.normalize_command_prefix(
             ["exec", "-acommand", "git", "status"],
             inherited_environment=["GIT_DIR=/tmp/other/.git"],
         )
@@ -441,7 +509,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         self.assertEqual(argv0.arguments, ["status"])
         self.assertEqual(argv0.environment, ["GIT_DIR=/tmp/other/.git"])
 
-        grouped_argv0 = PARSER.normalize_command_prefix(
+        grouped_argv0 = parser_prefix.normalize_command_prefix(
             ["exec", "-ca", "custom-name", "git", "status"],
             inherited_environment=["GIT_DIR=/tmp/other/.git"],
         )
@@ -451,34 +519,34 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         self.assertEqual(grouped_argv0.environment, [])
 
     def test_normalize_command_prefix_limits_nested_env_split_strings(self) -> None:
-        allowed = "--split-string=" * PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + "printf"
-        normalized = PARSER.normalize_command_prefix(["env", allowed, "safe"])
+        allowed = "--split-string=" * parser_prefix.MAX_ENV_SPLIT_STRING_EXPANSIONS + "printf"
+        normalized = parser_prefix.normalize_command_prefix(["env", allowed, "safe"])
 
         self.assertEqual(normalized.executable, "printf")
         self.assertEqual(normalized.arguments, ["safe"])
 
         excessive = "--split-string=" + allowed
         with self.assertRaisesRegex(ValueError, "env split-string expansion limit exceeded"):
-            PARSER.normalize_command_prefix(["env", excessive, "safe"])
+            parser_prefix.normalize_command_prefix(["env", excessive, "safe"])
 
-        oversized = "x" * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSION_WORK + 1)
+        oversized = "x" * (parser_prefix.MAX_ENV_SPLIT_STRING_EXPANSION_WORK + 1)
         with self.assertRaisesRegex(ValueError, "env split-string expansion limit exceeded"):
-            PARSER.normalize_command_prefix(["env", f"--split-string={oversized}"])
+            parser_prefix.normalize_command_prefix(["env", f"--split-string={oversized}"])
 
     def test_parse_env_wrapped_segment_marks_aliases_as_parse_errors(self) -> None:
-        result = PARSER.parse_env_wrapped_segment(["alias", "git=git -c alias.x=commit"])
+        result = parser_noninteractive.parse_env_wrapped_segment(["alias", "git=git -c alias.x=commit"])
 
         self.assertEqual(
             result,
-            PARSER.NoninteractiveParseResult(
+            parser_noninteractive.NoninteractiveParseResult(
                 env={},
-                subcmd=PARSER.NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND,
+                subcmd=parser_noninteractive.NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND,
                 args=[],
             ),
         )
 
     def test_parse_commit_segment_exposes_commit_and_persisted_state(self) -> None:
-        result = PARSER.parse_commit_segment(
+        result = parser_commit.parse_commit_segment(
             ["env", "GIT_DIR=/tmp/repo", "git", "-C", "worktree", "commit"],
             git_args=[],
             git_env=[],
@@ -487,7 +555,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
         self.assertEqual(
             result,
-            PARSER.CommitSegmentResult(
+            parser_commit.CommitSegmentResult(
                 contexts=[
                     {
                         "git_args": ["-C", "worktree"],
@@ -502,7 +570,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
     def test_parse_commit_segment_does_not_mutate_git_args(self) -> None:
         git_args = ["--literal-pathspecs"]
 
-        result = PARSER.parse_commit_segment(
+        result = parser_commit.parse_commit_segment(
             ["git", "-C", "worktree", "commit"],
             git_args=git_args,
             git_env=[],
@@ -596,7 +664,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
         for name, tokens, expected_selection in cases:
             with self.subTest(name=name):
-                result = PARSER.parse_commit_segment(
+                result = parser_commit.parse_commit_segment(
                     tokens,
                     git_args=[],
                     git_env=[],
@@ -626,7 +694,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
         for tokens in cases:
             with self.subTest(tokens=tokens):
-                result = PARSER.parse_commit_segment(
+                result = parser_commit.parse_commit_segment(
                     tokens,
                     git_args=[],
                     git_env=[],
@@ -636,7 +704,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
                 self.assertIn("selection_error", result.contexts[0])
 
     def test_parse_commit_segment_exposes_exported_replay_state(self) -> None:
-        result = PARSER.parse_commit_segment(
+        result = parser_commit.parse_commit_segment(
             ["export", "GIT_DIR=/tmp/repo"],
             git_args=[],
             git_env=[],
@@ -645,7 +713,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
         self.assertEqual(
             result,
-            PARSER.CommitSegmentResult(
+            parser_commit.CommitSegmentResult(
                 contexts=[],
                 persisted_git_env=["GIT_DIR=/tmp/repo"],
                 persisted_shell_git_vars=["GIT_DIR=/tmp/repo"],
@@ -653,9 +721,9 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         )
 
     def test_external_wrappers_do_not_persist_shell_builtin_state(self) -> None:
-        for prefix in ("timeout 1", "nice", "nohup", "env", "sudo", "command time"):
+        for prefix in ("timeout 1", "nice", "nohup", "env", "sudo", "exec", "command time"):
             with self.subTest(prefix=prefix):
-                contexts = PARSER.parse_commit_contexts(
+                contexts = parser_commit.parse_commit_contexts(
                     (f"{prefix} export GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other; git commit -m test"),
                     inherited_git_env=[],
                     inherited_shell_git_vars=[],
@@ -678,7 +746,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
             "t$'i'me",
         ):
             with self.subTest(prefix=prefix):
-                contexts = PARSER.parse_commit_contexts(
+                contexts = parser_commit.parse_commit_contexts(
                     (f"{prefix} export GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other; git commit -m test"),
                     inherited_git_env=[],
                     inherited_shell_git_vars=[],
@@ -690,7 +758,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
                 )
 
     def test_wrapper_without_payload_does_not_persist_prefixed_state(self) -> None:
-        contexts = PARSER.parse_commit_contexts(
+        contexts = parser_commit.parse_commit_contexts(
             (
                 "GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other env -i; "
                 "export GIT_DIR GIT_WORK_TREE; git commit -m test"
@@ -705,7 +773,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         )
 
     def test_time_keyword_persists_shell_builtin_state(self) -> None:
-        contexts = PARSER.parse_commit_contexts(
+        contexts = parser_commit.parse_commit_contexts(
             ("time export GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other; git commit -m test"),
             inherited_git_env=[],
             inherited_shell_git_vars=[],
@@ -723,6 +791,32 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
                 }
             ],
         )
+
+    def test_builtin_lookup_wrappers_persist_shell_builtin_state(self) -> None:
+        # The positive counterpart to the external-wrapper case above, and the
+        # only guard on `command`/`builtin` being the one handler pair that
+        # leaves shell_builtins_allowed set: both resolve their payload as a
+        # builtin, so the export they wrap really does redirect the commit.
+        for prefix in ("command", "builtin"):
+            with self.subTest(prefix=prefix):
+                contexts = parser_commit.parse_commit_contexts(
+                    (f"{prefix} export GIT_DIR=/tmp/other/.git GIT_WORK_TREE=/tmp/other; git commit -m test"),
+                    inherited_git_env=[],
+                    inherited_shell_git_vars=[],
+                )
+
+                self.assertEqual(
+                    contexts,
+                    [
+                        {
+                            "git_args": [],
+                            "git_env": [
+                                "GIT_DIR=/tmp/other/.git",
+                                "GIT_WORK_TREE=/tmp/other",
+                            ],
+                        }
+                    ],
+                )
 
 
 class GitCommandParserCliTest(unittest.TestCase):
@@ -894,7 +988,7 @@ class GitCommandParserCliTest(unittest.TestCase):
                 self.assertEqual(result.stdout, expected_stdout)
 
     def test_malformed_payloads_fail_closed(self) -> None:
-        excessive_split_string = "--split-string=" * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1) + "printf"
+        excessive_split_string = "--split-string=" * (parser_prefix.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1) + "printf"
         commands = [
             "bash -c $'git commit",
             "env -S '\"git commit'",
@@ -1175,14 +1269,14 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
         )
 
     def test_corpus_covers_every_option_in_the_shared_vocabulary(self) -> None:
-        self.assertEqual(set(self.SEPARATE_TOKEN_VALUE_OPTIONS), PARSER.XARGS_OPTIONS_WITH_VALUE)
+        self.assertEqual(set(self.SEPARATE_TOKEN_VALUE_OPTIONS), parser_vocabulary.XARGS_OPTIONS_WITH_VALUE)
 
     def test_skip_xargs_options_advances_past_every_separate_token_value_option(self) -> None:
         for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
             with self.subTest(option=option):
                 args = [option, "VALUE", "git", "commit"]
 
-                idx = PARSER._skip_xargs_options(args)
+                idx = parser_vocabulary._skip_xargs_options(args)
 
                 self.assertEqual(args[idx:], ["git", "commit"])
 
@@ -1191,7 +1285,7 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
             with self.subTest(option=option):
                 args = [option, "git", "commit"]
 
-                idx = PARSER._skip_xargs_options(args)
+                idx = parser_vocabulary._skip_xargs_options(args)
 
                 self.assertEqual(args[idx:], ["git", "commit"])
 
@@ -1495,10 +1589,130 @@ class RmRfParserCliTest(unittest.TestCase):
                 self.assertEqual(result.stdout, expected_stdout)
 
     def test_split_string_expansion_limit_fails_closed(self) -> None:
-        excessive_split_string = "--split-string=" * (PARSER.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1) + "printf"
+        excessive_split_string = "--split-string=" * (parser_prefix.MAX_ENV_SPLIT_STRING_EXPANSIONS + 1) + "printf"
 
         result = self.run_parser(f"env {excessive_split_string} safe")
 
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, "")
         self.assertEqual(result.stdout, json_line({"block": RM_RF_REASON}))
+
+
+class GitCommandParserEntryPointTest(unittest.TestCase):
+    """The two supported invocations and the mode dispatcher behind them.
+
+    `safety-hook-parser.sh` runs `python3 -m git_command_parser` from
+    `hooks/lib`; direct callers run the script path. Both must resolve the
+    same dispatcher and produce the same bytes.
+    """
+
+    USAGE = "usage: git_command_parser.py <noninteractive|commit-contexts|rm-rf> <command> [parse-error-reason]\n"
+
+    DISPATCH_CASES = [
+        ("noninteractive", ["noninteractive", "git commit"], json_line({"block": INTERACTIVE_COMMIT_REASON})),
+        ("rm-rf", ["rm-rf", "rm -rf directory/"], json_line({"block": RM_RF_REASON})),
+        (
+            "commit-contexts",
+            ["commit-contexts", "git -C repo commit", COMMIT_PARSE_ERROR_REASON],
+            json_line([{"git_args": ["-C", "repo"], "git_env": []}]),
+        ),
+        (
+            "commit-contexts without a parse-error reason",
+            ["commit-contexts", UNPARSEABLE_COMMIT_COMMAND],
+            json_line([{"parse_error": COMMIT_DEFAULT_PARSE_ERROR_REASON}]),
+        ),
+    ]
+
+    def call_main(self, argv: list[str]) -> tuple[int, str, str]:
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            status = parser_cli.main(argv)
+        return status, stdout.getvalue(), stderr.getvalue()
+
+    def test_entry_point_reexports_the_package_dispatcher(self) -> None:
+        self.assertIs(ENTRY_POINT.main, parser_cli.main)
+
+    def test_main_dispatches_every_known_mode(self) -> None:
+        for name, argv, expected_stdout in self.DISPATCH_CASES:
+            with self.subTest(name=name):
+                status, stdout, stderr = self.call_main(argv)
+
+                self.assertEqual(status, 0)
+                self.assertEqual(stdout, expected_stdout)
+                self.assertEqual(stderr, "")
+
+    def test_main_reports_usage_without_a_command(self) -> None:
+        for name, argv in [("no arguments", []), ("mode only", ["rm-rf"])]:
+            with self.subTest(name=name):
+                status, stdout, stderr = self.call_main(argv)
+
+                self.assertEqual(status, 2)
+                self.assertEqual(stdout, "")
+                self.assertEqual(stderr, self.USAGE)
+
+    def test_main_rejects_an_unknown_mode(self) -> None:
+        status, stdout, stderr = self.call_main(["not-a-mode", "git status"])
+
+        self.assertEqual(status, 2)
+        self.assertEqual(stdout, "")
+        self.assertEqual(stderr, "unknown parser mode: not-a-mode\n")
+
+    def test_module_and_script_invocations_agree(self) -> None:
+        for name, argv, expected_stdout in self.DISPATCH_CASES:
+            with self.subTest(name=name):
+                module_result = subprocess.run(
+                    [sys.executable, "-m", "git_command_parser", *argv],
+                    check=False,
+                    capture_output=True,
+                    cwd=PARSER_LIB_DIR,
+                    env={**subprocess_env(), "PYTHONPATH": "."},
+                    text=True,
+                )
+                script_result = subprocess.run(
+                    [sys.executable, str(PARSER_PATH), *argv],
+                    check=False,
+                    capture_output=True,
+                    env=subprocess_env(),
+                    text=True,
+                )
+
+                self.assertEqual(module_result.returncode, 0)
+                self.assertEqual(module_result.stderr, "")
+                self.assertEqual(module_result.stdout, expected_stdout)
+                self.assertEqual(script_result.returncode, 0)
+                self.assertEqual(script_result.stderr, "")
+                self.assertEqual(script_result.stdout, expected_stdout)
+
+    def test_safe_path_mode_keeps_only_the_module_form_working(self) -> None:
+        """Safe-path mode is why the hooks invoke the module form.
+
+        The wrapper's explicit `PYTHONPATH=.` survives `python3 -P`; the script
+        path's implicit script-directory entry does not. Pinning both halves
+        keeps a `sys.path` bootstrap in the entry point -- the tempting fix for
+        the failing half -- from silently revoking the safe-path guarantee.
+        """
+        argv = ["rm-rf", "rm -rf directory/"]
+
+        module_result = subprocess.run(
+            [sys.executable, "-P", "-m", "git_command_parser", *argv],
+            check=False,
+            capture_output=True,
+            cwd=PARSER_LIB_DIR,
+            env={**subprocess_env(), "PYTHONPATH": "."},
+            text=True,
+        )
+        script_result = subprocess.run(
+            [sys.executable, "-P", str(PARSER_PATH), *argv],
+            check=False,
+            capture_output=True,
+            env=subprocess_env(),
+            text=True,
+        )
+
+        self.assertEqual(module_result.returncode, 0)
+        self.assertEqual(module_result.stderr, "")
+        self.assertEqual(module_result.stdout, json_line({"block": RM_RF_REASON}))
+        self.assertNotEqual(script_result.returncode, 0)
+        self.assertEqual(script_result.stdout, "")
+        self.assertIn("No module named 'command_safety'", script_result.stderr)

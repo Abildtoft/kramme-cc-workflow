@@ -452,7 +452,7 @@ EOF
 			return 1
 		fi
 		[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
-	done < <(printf '%s\n' "timeout 1" "nice" "nohup" "env" "sudo" "command time")
+	done < <(printf '%s\n' "timeout 1" "nice" "nohup" "env" "sudo" "exec" "command time")
 }
 
 @test "does not persist prefixed repo selection through a payload-less wrapper" {
@@ -469,6 +469,20 @@ EOF
 	run run_hook "time export GIT_DIR=other/.git GIT_WORK_TREE=other; git commit -m test"
 	is_blocked
 	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "preserves shell builtin state through builtin lookup prefixes" {
+	local prefix
+	mock_git_staged_for_repo "other" "REVIEW_OVERVIEW.md" "notes.txt"
+
+	while IFS= read -r prefix; do
+		run run_hook "$prefix export GIT_DIR=other/.git GIT_WORK_TREE=other; git commit -m test"
+		if ! is_blocked; then
+			printf 'Expected builtin-lookup export to select the redirected repo: %s\n' "$prefix" >&2
+			return 1
+		fi
+		[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+	done < <(printf '%s\n' "command" "builtin")
 }
 
 @test "treats quoted and escaped time as an external command" {
