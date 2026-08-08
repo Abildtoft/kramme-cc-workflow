@@ -524,8 +524,8 @@ read_decoder_header() {
     esac
     return 1
   fi
-  if [ "$decoder_status" != "OK" ] ||
-    ! IFS= read -r -d '' -u 3 expected_context_count; then
+  if [ "$decoder_status" != "OK" ] \
+    || ! IFS= read -r -d '' -u 3 expected_context_count; then
     echo "$CONTEXT_DECODE_REASON" >&2
     return 1
   fi
