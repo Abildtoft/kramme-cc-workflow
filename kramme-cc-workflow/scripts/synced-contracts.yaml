@@ -631,6 +631,23 @@
       ]
     },
     {
+      "name": "pr-code-review-closeout-loop-independent-verification",
+      "path": "kramme-cc-workflow/skills/kramme:pr:code-review/references/closeout-loop.md",
+      "contains": [
+        "The agent that applied the fixes is not the sole judge of loop termination.",
+        "Before stopping the loop, delegate the accept/terminate assessment to an independent verifier with its own context window.",
+        "This gate runs on every termination path, including when step 2 rejected every finding and no rerun happened.",
+        "Skip it only when the latest review reported no Critical or Important findings at all",
+        "every finding you rejected in step 2 with the evidence behind each rejection",
+        "do not give it your justification for each fix or your own recommendation to stop",
+        "**Claude Code:** run the assessment in a subagent",
+        "**Codex:** run the assessment in an equivalent task sub-agent.",
+        "state in the final output that loop termination was self-certified because independent verification was unavailable",
+        "Continue until the independent verifier reports no accepted/actionable Critical or Important findings",
+        "stop the loop and report it as an unresolved reviewer disagreement with both positions"
+      ]
+    },
+    {
       "name": "pr-convention-review-evidence-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md",
       "frontmatter": {

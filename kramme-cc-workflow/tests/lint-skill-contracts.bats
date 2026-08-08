@@ -1032,6 +1032,33 @@ EOF
   [[ "$resolver_text" != *"Findings outside the filter are skipped with **Resolution status: skipped**"* ]]
 }
 
+@test "pr code review closeout loop requires an independent termination verifier" {
+  local loop_text
+
+  loop_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/closeout-loop.md")"
+
+  [[ "$loop_text" == *"The agent that applied the fixes is not the sole judge of loop termination."* ]]
+  [[ "$loop_text" == *"Before stopping the loop, delegate the accept/terminate assessment to an independent verifier with its own context window."* ]]
+  [[ "$loop_text" == *"This gate runs on every termination path, including when step 2 rejected every finding and no rerun happened."* ]]
+  [[ "$loop_text" == *"Skip it only when the latest review reported no Critical or Important findings at all"* ]]
+  [[ "$loop_text" == *"every finding you rejected in step 2 with the evidence behind each rejection"* ]]
+  [[ "$loop_text" == *"do not give it your justification for each fix or your own recommendation to stop"* ]]
+  [[ "$loop_text" == *"**Claude Code:** run the assessment in a subagent"* ]]
+  [[ "$loop_text" == *"**Codex:** run the assessment in an equivalent task sub-agent."* ]]
+  [[ "$loop_text" == *"state in the final output that loop termination was self-certified because independent verification was unavailable"* ]]
+  [[ "$loop_text" == *"Continue until the independent verifier reports no accepted/actionable Critical or Important findings"* ]]
+  [[ "$loop_text" == *"stop the loop and report it as an unresolved reviewer disagreement with both positions"* ]]
+
+  # The loop keeps its existing anti-recursion rule and its advisory escape hatch.
+  [[ "$loop_text" == *"do not launch a separate wrapper skill"* ]]
+  [[ "$loop_text" == *"when remaining findings are clearly manual/advisory and reported as such"* ]]
+
+  # The description must not re-advertise a model switch the skill cannot enforce.
+  [[ "$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/SKILL.md")" != *"second-model"* ]]
+
+  assert_required_contracts_registered pr-code-review-closeout-loop-independent-verification
+}
+
 @test "verify-understanding supports answer option prompts" {
   local skill_text
   skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:learn:verify-understanding/SKILL.md")"
