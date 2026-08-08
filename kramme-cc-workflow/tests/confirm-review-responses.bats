@@ -5,6 +5,10 @@ load 'test_helper/common'
 
 setup() {
 	HOOK="$BATS_TEST_DIRNAME/../hooks/confirm-review-responses.sh"
+	# Resolve jq before MOCK_DIR joins PATH. Looking it up later would consult
+	# bash's hash table, which `rm -f` does not invalidate, so a helper could
+	# resolve a mock it had just deleted.
+	REAL_JQ="$(command -v jq)"
 	# Create temp directory for git mocking
 	export MOCK_DIR=$(mktemp -d)
 	export PATH="$MOCK_DIR:$PATH"
@@ -91,6 +95,52 @@ fi
 /usr/bin/git "\$@"
 EOF
 	chmod +x "$MOCK_DIR/git"
+}
+
+# Helper: Replace jq with a wrapper that records one line per decoder call.
+# Only decoder invocations are counted, so the tally does not drift when the
+# shared parser wrapper or the bats harness changes how often it calls jq.
+mock_jq_counting_calls() {
+	local counter_file="$1"
+
+	: >"$counter_file"
+	cat >"$MOCK_DIR/jq" <<EOF
+#!/bin/bash
+case "\$*" in
+	*"def context_tokens"*) printf 'call\n' >>"$counter_file" ;;
+esac
+exec "$REAL_JQ" "\$@"
+EOF
+	chmod +x "$MOCK_DIR/jq"
+}
+
+# Helper: Replace jq with a wrapper that drops trailing NUL-delimited tokens
+# from the commit-context decoder's output, simulating a truncated stream.
+# The decoder is recognized by a definition it cannot work without, so tidying
+# a comment can never silently turn the truncation tests into no-ops.
+mock_jq_truncating_decoder() {
+	local dropped_tokens="$1"
+
+	cat >"$MOCK_DIR/jq" <<EOF
+#!/bin/bash
+set -o pipefail
+for arg in "\$@"; do
+	case "\$arg" in
+		*"def context_tokens"*)
+			"$REAL_JQ" "\$@" | python3 -c '
+import sys
+
+tokens = sys.stdin.buffer.read().split(b"\x00")[:-1]
+kept = tokens[: max(0, len(tokens) - $dropped_tokens)]
+sys.stdout.buffer.write(b"".join(token + b"\x00" for token in kept))
+'
+			exit \$?
+			;;
+	esac
+done
+exec "$REAL_JQ" "\$@"
+EOF
+	chmod +x "$MOCK_DIR/jq"
 }
 
 # Helper to run hook with given command
@@ -209,29 +259,192 @@ assert_review_parser_fixture_decision() {
 		'[{"git_args":{},"git_env":[]}]'
 	is_blocked
 	[[ "$output" == *"Unable to safely decode git commit context"* ]]
+	[[ "$output" == *"commit-context field contract"* ]]
 }
 
-@test "blocks when decoded commit context count does not match parser count" {
-	local real_jq
-	real_jq="$(command -v jq)"
-	cat >"$MOCK_DIR/jq" <<EOF
-#!/bin/bash
-for arg in "\$@"; do
-	if [ "\$arg" = '.[]' ]; then
-		"$real_jq" "\$@" | sed '\$d'
-		exit "\${PIPESTATUS[0]}"
-	fi
-done
-exec "$real_jq" "\$@"
-EOF
-	chmod +x "$MOCK_DIR/jq"
+@test "names the failing contract for every malformed commit context field type" {
+	local parser_output
+
+	while IFS= read -r parser_output; do
+		run run_safety_hook_with_parser_output \
+			"$HOOK" \
+			"git commit -m 'test'" \
+			"$parser_output"
+		if ! is_blocked; then
+			printf 'Expected malformed context to be blocked: %s\n' "$parser_output" >&2
+			return 1
+		fi
+		if [[ "$output" != *"commit-context field contract"* ]]; then
+			printf 'Expected contract reason for %s, got: %s\n' "$parser_output" "$output" >&2
+			return 1
+		fi
+	done < <(printf '%s\n' \
+		'["not-an-object"]' \
+		'[{"git_args":{}}]' \
+		'[{"git_env":[1]}]' \
+		'[{"pathspecs":"REVIEW_OVERVIEW.md"}]' \
+		'[{"selection_mode":[]}]' \
+		'[{"pathspec_from_file":null}]' \
+		'[{"pathspec_file_nul":"true"}]' \
+		'[{"parse_error":5}]')
+}
+
+@test "blocks commit contexts carrying a NUL byte instead of truncating them" {
+	local parser_output
+	parser_output="$(jq -nc '[{git_args: ["-C", ("re" + ([0] | implode) + "po")], git_env: []}]')"
+
+	run run_safety_hook_with_parser_output "$HOOK" "git commit -m 'test'" "$parser_output"
+
+	is_blocked
+	[[ "$output" == *"Unable to safely decode git commit context"* ]]
+	[[ "$output" == *"NUL byte"* ]]
+}
+
+@test "preserves special characters when decoding commit context arrays" {
+	local artifact_list="$MOCK_DIR/artifacts.txt"
+	local newline_path=$'first line\nsecond line.txt'
+	local spaced_artifact='odd name.md'
+	local parser_output
+
+	setup_real_commit_repo
+	printf 'base\n' >"$REAL_COMMIT_REPO/$spaced_artifact"
+	printf 'base\n' >"$REAL_COMMIT_REPO/$newline_path"
+	git -C "$REAL_COMMIT_REPO" add "$spaced_artifact" "$newline_path"
+	git -C "$REAL_COMMIT_REPO" commit -qm "add special-character paths"
+	printf 'change\n' >>"$REAL_COMMIT_REPO/$spaced_artifact"
+	printf 'change\n' >>"$REAL_COMMIT_REPO/$newline_path"
+	printf '%s\n' "$spaced_artifact" >"$artifact_list"
+	export CONFIRM_REVIEW_ARTIFACT_LIST_FILE="$artifact_list"
+
+	parser_output="$(
+		jq -nc \
+			--arg repo "$REAL_COMMIT_REPO" \
+			--arg newline_path "$newline_path" \
+			--arg spaced_artifact "$spaced_artifact" \
+			'[{
+				git_args: ["-C", $repo],
+				git_env: [],
+				selection_mode: "only",
+				pathspecs: [$newline_path, $spaced_artifact]
+			}]'
+	)"
+
+	run run_safety_hook_with_parser_output "$HOOK" "git commit -m 'test'" "$parser_output"
+
+	is_blocked
+	[[ "$output" == *"$spaced_artifact"* ]]
+}
+
+@test "blocks when the decoded context stream ends before its context count" {
+	mock_git_staged "notes.txt"
+	mock_jq_truncating_decoder 4
 
 	run run_safety_hook_with_parser_output \
 		"$HOOK" \
 		"git commit -m 'test'" \
 		'[{"git_args":[],"git_env":[]},{"git_args":[],"git_env":[]}]'
 	is_blocked
-	[[ "$output" == *"Unable to safely decode git commit context"* ]]
+	# Assert the specific reason: the shared prefix is also what an empty or
+	# unreadable records file produces, so matching it alone proves nothing.
+	[[ "$output" == *"ended before the parser's context count"* ]]
+}
+
+@test "blocks when the decoded context stream loses its end marker" {
+	mock_git_staged "notes.txt"
+	mock_jq_truncating_decoder 1
+
+	run run_safety_hook_with_parser_output \
+		"$HOOK" \
+		"git commit -m 'test'" \
+		'[{"git_args":[],"git_env":[]},{"git_args":[],"git_env":[]}]'
+	is_blocked
+	# A satisfied context count with a missing frame is the opposite condition
+	# from the test above, and must not report the same reason.
+	[[ "$output" == *"missing their end marker"* ]]
+}
+
+@test "blocks when parser output carries more than one JSON document" {
+	local parser_output
+
+	setup_real_commit_repo
+	printf 'change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	git -C "$REAL_COMMIT_REPO" add REVIEW_OVERVIEW.md
+
+	# jq applies a filter once per input document. A leading empty array must
+	# not let a later document's commit context go uninspected.
+	parser_output="$(
+		printf '[]\n%s' "$(
+			jq -nc --arg repo "$REAL_COMMIT_REPO" '[{git_args: ["-C", $repo], git_env: []}]'
+		)"
+	)"
+
+	run run_safety_hook_with_parser_output "$HOOK" "git commit -m 'test'" "$parser_output"
+
+	is_blocked
+	[[ "$output" == *"commit-context field contract"* ]]
+}
+
+@test "blocks when the private inspection workspace cannot be created" {
+	run env TMPDIR="$BATS_TEST_TMPDIR/absent-tmpdir" bash "$HOOK" \
+		<<<"$(make_bash_input "git commit -m 'test'")"
+
+	is_blocked
+	[[ "$output" == *"private workspace for commit inspection"* ]]
+}
+
+@test "names the failing step when staged commit content cannot be read" {
+	run run_safety_hook_with_parser_output \
+		"$HOOK" \
+		"git commit -m 'test'" \
+		'[{"git_args":["-C","/nonexistent-hook-repo"],"git_env":[]}]'
+
+	is_blocked
+	[[ "$output" == *"Unable to read the already staged commit content"* ]]
+}
+
+@test "names the failing step when the repository index is not a regular file" {
+	local parser_output
+
+	setup_real_commit_repo
+	rm -f "$REAL_COMMIT_REPO/.git/index"
+	mkdir "$REAL_COMMIT_REPO/.git/index"
+	parser_output="$(
+		jq -nc --arg repo "$REAL_COMMIT_REPO" \
+			'[{git_args: ["-C", $repo], git_env: [], selection_mode: "all", pathspecs: []}]'
+	)"
+
+	run run_safety_hook_with_parser_output "$HOOK" "git commit -m 'test'" "$parser_output"
+
+	is_blocked
+	[[ "$output" == *"Repository index is not a regular file"* ]]
+}
+
+@test "decodes commit contexts with a bounded number of jq processes" {
+	local counter="$BATS_TEST_TMPDIR/jq-calls"
+	local small large small_calls large_calls
+
+	mock_git_staged "notes.txt"
+	small="$(jq -nc '[{git_args: [], git_env: [], pathspecs: [], selection_mode: "index"}]')"
+	large="$(jq -nc '[{
+		git_args: [range(200) | "--ignored-\(.)"],
+		git_env: [range(200) | "IGNORED_\(.)=value"],
+		pathspecs: [range(200) | "path-\(.)"],
+		selection_mode: "index"
+	}]')"
+
+	mock_jq_counting_calls "$counter"
+	run run_safety_hook_with_parser_output "$HOOK" "git commit -m 'test'" "$small"
+	[ "$status" -eq 0 ]
+	small_calls="$(grep -c . "$counter")"
+
+	mock_jq_counting_calls "$counter"
+	run run_safety_hook_with_parser_output "$HOOK" "git commit -m 'test'" "$large"
+	[ "$status" -eq 0 ]
+	large_calls="$(grep -c . "$counter")"
+
+	# Decoding must not scale with array length: no jq process per element.
+	[ "$small_calls" -eq "$large_calls" ]
+	[ "$large_calls" -eq 1 ]
 }
 
 @test "commit context decoding does not depend on dev fd process substitution" {
@@ -389,6 +602,11 @@ EOF
 		run run_hook "git -C $REAL_COMMIT_REPO $attr_source commit --only -m test ':(attr:review)'"
 		if ! is_blocked || [[ "$output" != *"alter config or attributes"* ]]; then
 			printf 'Expected attr-source prefix to fail closed: %s\n' "$attr_source" >&2
+			return 1
+		fi
+		# The specific reason replaces the generic one instead of joining it.
+		if [ "${#lines[@]}" -ne 1 ]; then
+			printf 'Expected one reason for %s, got: %s\n' "$attr_source" "$output" >&2
 			return 1
 		fi
 	done
@@ -751,6 +969,14 @@ REVIEW_SUMMARY.md"
 	is_blocked
 }
 
+@test "names an artifact once when several commit contexts stage it" {
+	mock_git_staged "REVIEW_OVERVIEW.md"
+	run run_hook "git commit -m 'first' && git commit -m 'second'"
+	is_blocked
+	# Two contexts resolve to the same file, so the reason must not repeat it.
+	[[ "$output" == *"commit: REVIEW_OVERVIEW.md."* ]]
+}
+
 # ============================================================================
 # COMMIT COMMAND VARIANTS
 # ============================================================================
@@ -833,6 +1059,8 @@ REVIEW_SUMMARY.md"
 
 	is_blocked
 	[[ "$output" == *"configured clean filters"* ]]
+	# The specific reason replaces the generic one instead of joining it.
+	[ "${#lines[@]}" -eq 1 ]
 	[ ! -e "$marker" ]
 }
 
@@ -847,6 +1075,7 @@ REVIEW_SUMMARY.md"
 
 	is_blocked
 	[[ "$output" == *"configured clean filters"* ]]
+	[ "${#lines[@]}" -eq 1 ]
 	[ ! -e "$marker" ]
 }
 
