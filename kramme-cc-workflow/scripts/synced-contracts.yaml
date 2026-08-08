@@ -1578,7 +1578,7 @@
         "baseline": {
           "kramme-cc-workflow/evals/skill-review/run-eval.js": 579,
           "kramme-cc-workflow/hooks/auto-format.sh": 524,
-          "kramme-cc-workflow/hooks/confirm-review-responses.sh": 673,
+          "kramme-cc-workflow/hooks/confirm-review-responses.sh": 758,
           "kramme-cc-workflow/hooks/lib/command_safety/commit.py": 629,
           "kramme-cc-workflow/hooks/lib/command_safety/noninteractive.py": 624,
           "kramme-cc-workflow/hooks/lib/command_safety/prefix.py": 511,
@@ -1611,7 +1611,7 @@
         "warn_lines": 1000,
         "baseline": {
           "kramme-cc-workflow/tests/block-rm-rf.bats": 1042,
-          "kramme-cc-workflow/tests/confirm-review-responses.bats": 1297,
+          "kramme-cc-workflow/tests/confirm-review-responses.bats": 1563,
           "kramme-cc-workflow/tests/lint-skill-contracts.bats": 3508,
           "kramme-cc-workflow/tests/node/converter-core.test.js": 1334,
           "kramme-cc-workflow/tests/node/converter-output.test.js": 3220,
