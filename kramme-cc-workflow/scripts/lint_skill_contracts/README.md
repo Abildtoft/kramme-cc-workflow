@@ -17,6 +17,7 @@ the parsing, validation, synchronization, and reporting behavior.
 | Text and file contracts | `checks/basic.py` | Synced text, inventory, heading order, file identity, or required-file checks are wrong. |
 | Workflow guidance contracts | `checks/base_diff_scope.py`, `checks/epilogue.py`, `checks/ui_relevance.py` | Base-diff guidance, skill epilogue order, or UI-relevance rules and fixtures are wrong. |
 | Manifest, provenance, hook, and mechanical contracts | `checks/marker_manifest.py`, `checks/source_provenance.py`, `checks/hooks_json.py`, `checks/mechanical.py` | Source manifests, copied-source licensing or immutable origin metadata, forbidden source snapshots, hook registration, frontmatter, naming, or skill line budgets are wrong. |
+| Routing distinctness | `checks/routing_distinctness.py` | Skill descriptions overlap too closely for auto-invocation routing, a recorded routing boundary is stale, removable, or missing its positive clause, or the nearest-pair burndown is wrong. |
 | README synchronization | `readme.py`, `checks/readme_sync.py` | Skill, agent, or hook reference rows drift, or generated component-reference output is wrong. |
 | Compact component catalog | `catalog.py`, `checks/component_catalog.py` | The generated JSON component index drifts, omits a component, or emits a path that does not exist. |
 
@@ -68,4 +69,5 @@ python3 kramme-cc-workflow/scripts/lint-skill-contracts.py
 Test sources:
 
 - [`../../tests/python/test_lint_skill_contracts.py`](../../tests/python/test_lint_skill_contracts.py)
+- [`../../tests/python/test_lint_routing_distinctness.py`](../../tests/python/test_lint_routing_distinctness.py)
 - [`../../tests/lint-skill-contracts.bats`](../../tests/lint-skill-contracts.bats)

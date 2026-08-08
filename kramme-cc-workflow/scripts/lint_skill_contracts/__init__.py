@@ -30,6 +30,11 @@ from .checks.marker_manifest import (
     parse_sources_manifest,
 )
 from .checks.mechanical import check_mechanical
+from .checks.routing_distinctness import (
+    check_routing_distinctness,
+    description_tokens,
+    jaccard,
+)
 from .checks.source_provenance import (
     ALLOWED_SOURCE_USAGES,
     check_source_provenance,
@@ -141,11 +146,13 @@ __all__ = [
     "check_readme_skill_sync",
     "check_readme_skill_rows_sync",
     "check_required_file_contracts",
+    "check_routing_distinctness",
     "check_source_provenance",
     "check_text_contracts",
     "check_ui_relevance_contracts",
     "component_catalog_document",
     "contract_schema_path",
+    "description_tokens",
     "escape_markdown_table_cell",
     "expected_arguments",
     "expected_invocation",
@@ -162,6 +169,7 @@ __all__ = [
     "has_suffix",
     "is_empty_value",
     "is_ui_relevant_path",
+    "jaccard",
     "load_contract_schema",
     "load_contract_schema_file",
     "load_default_contract_schema",

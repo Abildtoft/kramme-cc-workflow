@@ -717,6 +717,7 @@ class CheckRegistryTest(unittest.TestCase):
                 "hooks_json",
                 "readme_skill_sync",
                 "component_catalog",
+                "routing_distinctness",
                 "mechanical",
             ],
         )
