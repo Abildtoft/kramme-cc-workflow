@@ -16,6 +16,7 @@ from .hooks_json import check_hooks_json
 from .marker_manifest import check_marker_manifests
 from .mechanical import check_mechanical
 from .readme_sync import check_readme_skill_sync
+from .routing_distinctness import check_routing_distinctness
 from .source_provenance import check_source_provenance
 from .types import CheckFunc, CheckResult, LintContext
 from .ui_relevance import check_ui_relevance_contracts
@@ -33,6 +34,7 @@ CHECKS: tuple[tuple[str, CheckFunc], ...] = (
     ("hooks_json", check_hooks_json),
     ("readme_skill_sync", check_readme_skill_sync),
     ("component_catalog", check_component_catalog),
+    ("routing_distinctness", check_routing_distinctness),
     ("mechanical", check_mechanical),
 )
 

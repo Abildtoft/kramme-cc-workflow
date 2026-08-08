@@ -3625,6 +3625,76 @@ EOF
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+write_routing_skill() {
+  local name="$1"
+  local description="$2"
+  local disable_model_invocation="${3:-false}"
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/$name/SKILL.md" <<EOF
+---
+name: $name
+description: $description
+disable-model-invocation: $disable_model_invocation
+user-invocable: true
+---
+Body.
+EOF
+}
+
+@test "routing distinctness fails overlapping auto-invocable descriptions" {
+  write_routing_skill "alpha" "Review branch changes accessibility problems report findings"
+  write_routing_skill "beta" "Review branch changes accessibility problems report findings keyboard focus contrast"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "routing_distinctness": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "warn_similarity": 0.3,
+    "fail_similarity": 0.6,
+    "stopwords": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::routing distinctness: kramme-cc-workflow/skills/alpha/SKILL.md and kramme-cc-workflow/skills/beta/SKILL.md descriptions score 0.70 (fail at 0.60)"* ]]
+  [[ "$output" == *"routing_distinctness.recorded_boundaries entry with a positive one-clause routing rule"* ]]
+}
+
+@test "routing distinctness records adjudicated pairs and warns on nearest neighbours" {
+  write_routing_skill "alpha" "Review branch changes accessibility problems report findings"
+  write_routing_skill "beta" "Review branch changes accessibility problems report findings keyboard focus contrast"
+  write_routing_skill "epsilon" "Generate release notes merged pull requests"
+  write_routing_skill "zeta" "Generate release notes tagged commits changelog entries"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "routing_distinctness": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "warn_similarity": 0.3,
+    "fail_similarity": 0.6,
+    "stopwords": [],
+    "recorded_boundaries": [
+      {
+        "skills": [
+          "kramme-cc-workflow/skills/alpha/SKILL.md",
+          "kramme-cc-workflow/skills/beta/SKILL.md"
+        ],
+        "boundary": "Alpha audits a whole branch; beta audits one keyboard flow."
+      }
+    ]
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint warnings:"* ]]
+  [[ "$output" == *"::warning::routing distinctness: nearest-pair burndown: kramme-cc-workflow/skills/epsilon/SKILL.md and kramme-cc-workflow/skills/zeta/SKILL.md score 0.30 (warn at 0.30, fail at 0.60)"* ]]
+  [[ "$output" != *"kramme-cc-workflow/skills/alpha/SKILL.md and kramme-cc-workflow/skills/beta/SKILL.md"* ]]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
 @test "mechanical long-skill warning reports near-threshold candidates" {
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/below/SKILL.md" "$(make_body_lines 4)"
   write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/near/SKILL.md" "$(make_body_lines 6)"
