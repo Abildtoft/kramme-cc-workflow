@@ -139,10 +139,10 @@ exit_if_hook_disabled "hook-name" "json" # PostToolUse or Stop
 - **ALWAYS** run the smallest meaningful check first and broaden in proportion to the change:
 
 ```bash
-make -C kramme-cc-workflow test       # Fast default suite
-make -C kramme-cc-workflow lint       # Shell, Python, and JavaScript linting
-make -C kramme-cc-workflow pr-verify  # Normal pre-PR gate
-make -C kramme-cc-workflow verify     # Release-candidate gate
+make -C kramme-cc-workflow test      # Fast default suite
+make -C kramme-cc-workflow lint      # Shell, Python, and JavaScript linting
+make -C kramme-cc-workflow pr-verify # Normal pre-PR gate
+make -C kramme-cc-workflow verify    # Release-candidate gate
 ```
 
 - **ALWAYS** use [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to map changed files to the closest focused tests.
