@@ -6,7 +6,7 @@ This repository ships the `kramme-cc-workflow` Claude Code plugin. The root [REA
 
 Before changing files, read the narrowest docs that match the work:
 
-- [CLAUDE.md](CLAUDE.md) for component conventions.
+- [AGENTS.md](AGENTS.md) for component conventions.
 - [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) for subsystem boundaries.
 - [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) for source-to-test mapping.
 - [docs/decisions/README.md](kramme-cc-workflow/docs/decisions/README.md) for settled repository decisions.

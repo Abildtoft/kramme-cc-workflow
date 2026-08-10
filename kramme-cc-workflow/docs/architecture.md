@@ -12,7 +12,7 @@ user-facing documentation; this file is a short map for maintainers and agents.
   `kramme-cc-workflow/`.
 - `README.md` documents install, usage, skills, agents, hooks, testing, and
   releases.
-- `CLAUDE.md` records local contribution conventions.
+- `AGENTS.md` records local contribution conventions; `CLAUDE.md` imports it for Claude Code.
 - `.agents/skills/` contains repository-maintenance skills that are not shipped
   as part of the public plugin.
 

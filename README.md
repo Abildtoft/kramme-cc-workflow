@@ -733,7 +733,7 @@ The repository also provides an optional managed pre-commit configuration. After
 
 ## Adding Components
 
-See [CLAUDE.md](CLAUDE.md) for detailed conventions. Quick reference:
+See [AGENTS.md](AGENTS.md) for detailed conventions. Quick reference:
 
 - **Agents**: Create markdown files in `kramme-cc-workflow/agents/` with `name`, `description`, `model`, and `color` frontmatter.
 - **Skills**: Create a subdirectory in `kramme-cc-workflow/skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `kramme-platforms`.

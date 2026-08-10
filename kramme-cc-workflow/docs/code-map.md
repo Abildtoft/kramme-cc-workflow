@@ -17,7 +17,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 
 | Area | Source files | Closest tests or checks |
 | --- | --- | --- |
-| Public docs and conventions | `README.md`, `CONTRIBUTING.md`, `CLAUDE.md`, `kramme-cc-workflow/docs/` | `git diff --check -- README.md CONTRIBUTING.md kramme-cc-workflow/docs` |
+| Public docs and conventions | `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, `kramme-cc-workflow/docs/` | `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats`, then `git diff --check -- README.md CONTRIBUTING.md AGENTS.md CLAUDE.md kramme-cc-workflow/docs` |
 | Plugin manifests | `.claude-plugin/marketplace.json`, `kramme-cc-workflow/.claude-plugin/plugin.json` | `make -C kramme-cc-workflow test-convert` |
 | Skills | `kramme-cc-workflow/skills/*/SKILL.md`, skill `references/`, `assets/`, `scripts/` | Look up behavioral suites in `config/coverage-production-sources.json` as shown below; also run `make -C kramme-cc-workflow test-skill-contracts` and `make -C kramme-cc-workflow skill-security-changed` |
 | Agents | `kramme-cc-workflow/agents/*.md` | `bats kramme-cc-workflow/tests/agent-description-length.bats`, `make -C kramme-cc-workflow test-convert` |

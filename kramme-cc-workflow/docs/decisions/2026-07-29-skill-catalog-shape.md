@@ -78,7 +78,7 @@ Keep skills separate when a positive, single-clause routing rule identifies a di
 
 ### Require the canonical two-segment skill structure
 
-New and renamed skills must use exactly `kramme:<domain>:<skill-name>`: two kebab-case segments after the `kramme` prefix. The existing word-order patterns in `CLAUDE.md` govern the final name segment.
+New and renamed skills must use exactly `kramme:<domain>:<skill-name>`: two kebab-case segments after the `kramme` prefix. The existing word-order patterns in `AGENTS.md` govern the final name segment.
 
 An exception must be approved before merge in an accepted ADR or an explicit maintainer-approved amendment to this record. It must identify the exact name, the routing benefit that the canonical form would lose, the canonical alternatives rejected, relevant usage or roadmap evidence, migration costs, and a review or expiry date. Existing outliers are runtime-compatible legacy names, not precedent or implicit exceptions. This record grants no structural naming exceptions.
 
