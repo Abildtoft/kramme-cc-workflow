@@ -28,6 +28,11 @@
       "path": "kramme-cc-workflow/skills/kramme:code:api-design/SKILL.md"
     },
     {
+      "name": "kramme:code:audit-agent-config",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:code:audit-agent-config/SKILL.md"
+    },
+    {
       "name": "kramme:code:breakdown-findings",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md"
