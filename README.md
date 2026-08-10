@@ -663,6 +663,7 @@ The plugin source lives in `kramme-cc-workflow/`; this root README is the canoni
 - [Hooks Reference](https://code.claude.com/docs/en/hooks)
 - [Skills Documentation](https://code.claude.com/docs/en/skills)
 - [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
+- [Agent Autonomy Model](kramme-cc-workflow/docs/agent-autonomy.md)
 - [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
 - [Component Catalog](kramme-cc-workflow/docs/component-catalog.json) (generated compact index of skills, agents, and hooks)
 - [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md)
