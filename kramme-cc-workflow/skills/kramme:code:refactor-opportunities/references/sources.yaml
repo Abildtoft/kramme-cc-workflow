@@ -6,6 +6,13 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-06
     baseline_hash: "sha256:2399a67f0b25ad7c0cc8d67c51c6b0c2f210bd007e0842d06820d55f1aecc759"
+  - id: pocock-improve-codebase-architecture-skill
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/SKILL.md
+    title: "Matt Pocock skills - improve-codebase-architecture (SKILL.md)"
+    rationale: "The commit-history hot-spot seeding for full-codebase scans and the post-report offer to record rejected candidates as ADRs are adapted from this source's Explore phase and grilling loop."
+    usage: inspiration
+    last_reviewed_at: 2026-08-10
+    baseline_hash: "sha256:7b76f01b0eefe49a127754c9027a6235a036a21348df5dad988893d8b2f384d6"
   - id: pocock-improve-codebase-architecture-deepening
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
     title: "Matt Pocock skills - codebase-design (DEEPENING.md)"
