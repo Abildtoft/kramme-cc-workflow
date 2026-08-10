@@ -30,6 +30,8 @@ For Codex, `scripts/convert-plugin.js` is the entry point. It loads the Claude p
 
 Browser and visual workflows use the shared dev-server detector in `scripts/dev-server/`. It resolves an already running local app; it does not start a server.
 
+How much independence skills and agents take at runtime is described in [agent-autonomy.md](agent-autonomy.md).
+
 ## State and Generated Output
 
 - Hook toggle state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json`.
