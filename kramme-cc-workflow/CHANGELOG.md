@@ -16,6 +16,42 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 - **Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`. Existing prompts and automation must remove `--auto`; no-argument calls use the canonical branch review scope, while former base-branch arguments must become explicit file or directory scopes. The replacement verifies and checkpoints scoped uncommitted input, then commits each simplification separately. Ship this command removal only in the next major release.
 
+## [0.72.0] - 2026-08-10
+
+### Added
+
+- Add repository agent config audit (#784)
+- Prioritize architecture review hot spots (#783)
+- Add routing-distinctness check for skill descriptions (#780)
+- Add coarse commit recreation mode (#767)
+- Add in-progress lifecycle state (#766)
+- Add generated component catalog (#758)
+
+### Changed
+
+- Document the agent autonomy model (#785)
+- Make AGENTS.md the canonical instruction source (#782)
+- Reaffirm the committed eval cap with tested evidence (#781)
+- Decode commit contexts in one pass with named failures (#778)
+- Split command-safety parser into per-mode modules (#777)
+- Separate Codex substitution and repair passes (#775)
+- Pair publication hashes with their issue paths (#773)
+- Simplify asset sync and image-gen errors (#769)
+- Align path detection contracts (#763)
+- Consolidate JSON/assignment helpers (#762)
+- Express install orchestration as named phases (#757)
+
+### Fixed
+
+- Remove stale Python coverage floor (#786)
+- Gate --loop termination on independent verification (#779)
+- Close xargs option gaps in git command safety gates (#776)
+- Report malformed registries without tracebacks (#772)
+- Centralize paths and surface usage errors (#771)
+- Enforce repository scratch boundaries (#770)
+- Harden JSON output and formatter status reporting (#768)
+- Guard empty Git prefix arrays in Bash 3.2 (#764)
+
 ## [0.71.0] - 2026-08-05
 
 ### Added
@@ -774,6 +810,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.72.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.71.0...v0.72.0
 [0.71.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.70.0...v0.71.0
 [0.70.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.69.0...v0.70.0
 [0.69.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.68.0...v0.69.0
