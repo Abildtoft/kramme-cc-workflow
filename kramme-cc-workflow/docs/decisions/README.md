@@ -22,8 +22,19 @@ migration steps.
 | Skill catalog shape preserves distinct, evidence-backed entry points. | Permit singleton domains only when they add durable routing information, merge adjacent skills when only a mode separates them, and use `kramme:<domain>:<skill-name>` unless an accepted decision grants an exception. | [2026-07-29-skill-catalog-shape.md](2026-07-29-skill-catalog-shape.md) |
 | Local maintenance skills are not shipped. | `.agents/skills/` supports maintaining this repo and is exposed locally through `.claude/skills`; it is separate from plugin skills under `kramme-cc-workflow/skills/`. | `README.md#local-repository-maintenance` |
 
+## Proposed
+
+Nothing here changes a rule in the table above.
+
+| Decision under consideration | Record |
+| --- | --- |
+| Whether to expand the committed eval cap to `kramme:pr:resolve-review`. Tests the revisit condition in `2026-07-06-skill-quality-regime.md` against a prototype and recommends reaffirming the cap. | [2026-08-08-eval-scope-review.md](2026-08-08-eval-scope-review.md) |
+
 ## Adding Decisions
 
-For a small settled convention, add a row here with a source link. For a
-decision that changes architecture, runtime behavior, or contribution policy,
-add a dated ADR file in this directory and link it from the table.
+For a small settled convention, add a row to the Settled Decisions table with a
+source link. For a decision that changes architecture, runtime behavior, or
+contribution policy, add a dated ADR file in this directory and link it from
+that table. While an ADR is still PROPOSED, list it under Proposed instead; fold
+it into Settled Decisions in the same change that flips its status to ACCEPTED —
+as a new row, or as an amendment to the Source cell of the row it revises.
