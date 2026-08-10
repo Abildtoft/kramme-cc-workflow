@@ -4,7 +4,7 @@ This document is maintainer-facing. It describes how much independence a workflo
 
 Paths below are relative to `kramme-cc-workflow/` unless stated otherwise. Every behavioral claim carries a `file:line` citation and, where the wording matters, the quoted text.
 
-**No skill may link to this file.** `CLAUDE.md` requires that `SKILL.md` files and skill resources carry their runtime policy inside their own directory, because skills ship to environments where `docs/` does not exist. Nothing enforces this automatically: `tests/skill-resource-references.bats` checks that a skill's `references/`, `assets/`, and `scripts/` paths resolve and stay inside that skill, but a link to a repository doc does not match its path pattern and is never inspected. If a skill needs a policy stated here, copy it into that skill's own `references/`.
+**No skill may link to this file.** `AGENTS.md:108` requires keeping "each skill self-contained inside its own directory so installed skills never depend on this repository's `AGENTS.md`, `CLAUDE.md`, `README.md`, or shared `docs/` files" — because skills ship to environments where none of those exist. (`CLAUDE.md` is a one-line `@AGENTS.md` import, so `AGENTS.md` is the canonical source.) Nothing enforces this automatically: `tests/skill-resource-references.bats` checks that a skill's `references/`, `assets/`, and `scripts/` paths resolve and stay inside that skill, but a link to a repository doc does not match its path pattern and is never inspected. If a skill needs a policy stated here, copy it into that skill's own `references/`.
 
 Where the repository does not do something, this document says so rather than stating intent as practice.
 
@@ -32,7 +32,7 @@ Hooks provide a third boundary, outside the agent's instructions entirely. `hook
 
 Back pressure is the principle relating the two loops: **grant autonomy in proportion to how cheaply the result can be verified, and withhold it where a wrong result is expensive or irreversible.**
 
-The repository's first application is catalog-wide and sits in frontmatter, before any question of latitude within a workflow. 79 of the 113 shipped skills set `disable-model-invocation: true`, which `CLAUDE.md` ties directly to side effects: "`true` prevents Claude from auto-invoking; user must trigger via `/` menu. Use for skills with side effects (git operations, file deletion, PR creation)." Reproduce both numbers with `grep -l "disable-model-invocation: true" skills/*/SKILL.md | wc -l` and `ls -d skills/*/ | wc -l`. That gate decides whether an agent may start a workflow at all.
+The repository's first application is catalog-wide and sits in frontmatter, before any question of latitude within a workflow. 79 of the 114 shipped skills set `disable-model-invocation: true`, which `AGENTS.md:68` ties directly to side effects: "**ALWAYS** set `disable-model-invocation: true` for user-triggered skills with side effects such as git mutations, file deletion, or Pull Request creation; use `false` when model auto-invocation is safe." Reproduce both numbers with `grep -l "disable-model-invocation: true" skills/*/SKILL.md | wc -l` and `ls -d skills/*/ | wc -l`. That gate decides whether an agent may start a workflow at all.
 
 Within a workflow, the `--auto` flags apply the same principle one skill at a time. None is a blanket "skip confirmations" switch; each carves out a specific set of decisions it may not make.
 
@@ -62,7 +62,7 @@ The principle predates the rule. `skills/kramme:pr:code-review/references/team-m
 
 ## Roster Composition
 
-Maker/checker separation needs two populations. Measured at commit `5eb0435d`, `agents/` contains 25 agent definitions, classified by what each one's frontmatter `description` and body say it produces:
+Maker/checker separation needs two populations. Measured at commit `c621b223`, `agents/` contains 25 agent definitions, classified by what each one's frontmatter `description` and body say it produces:
 
 | Output | Count |
 | --- | --- |
@@ -82,4 +82,4 @@ Adding a maker-side persona would have to clear an evidence bar. The nearest rec
 
 This repository has a live example of the failure that citation-grounded claims guard against: the separation rule at `closeout-loop.md:13` exists because a skill description promised a capability its implementation lacked (`git show 45ae7f56`).
 
-A document that describes rather than enforces can drift the same way, and nothing checks these citations automatically. When `closeout-loop.md`, `skills/kramme:pr:code-review/references/team-mode.md`, the `--auto` contracts in `kramme:code:optimize`, `kramme:code:migrate`, or `kramme:siw:issue-implement`, or the agent roster change, re-check this document. If agents are added or removed, update the roster counts and the measurement commit in the same Pull Request, or this document's most checkable section becomes its least accurate one.
+A document that describes rather than enforces can drift the same way, and nothing checks these citations automatically. When `AGENTS.md`, `closeout-loop.md`, `skills/kramme:pr:code-review/references/team-mode.md`, the `--auto` contracts in `kramme:code:optimize`, `kramme:code:migrate`, or `kramme:siw:issue-implement`, or the agent roster change, re-check this document. This is not hypothetical: rebasing this branch onto `c621b223` moved the self-containment and `disable-model-invocation` rules out of `CLAUDE.md` into `AGENTS.md` and changed their wording, invalidating both citations in one step. If agents are added or removed, update the roster counts and the measurement commit in the same Pull Request, or this document's most checkable section becomes its least accurate one.
