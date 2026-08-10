@@ -49,7 +49,7 @@ These rejections are pre-filters — apply them before recording a finding, not 
 5. **Read project domain language.** If `UBIQUITOUS_LANGUAGE.md` (or similar: `GLOSSARY.md`, `docs/glossary.md`) exists at the project root, read it and store the canonical domain terms. When naming refactor candidates in Phase 4, prefer these terms over internal helper class names — "the Order intake module" is more useful than "the FooBarHandler". If no glossary file exists, proceed silently — do not flag its absence.
 6. **Read prior rejections.** If `.out-of-scope/` exists at the project root, list its filenames and store them as `KNOWN_OUT_OF_SCOPE`. Do not open file bodies yet — that happens in Phase 3 only when a finding plausibly matches a slug. If no directory exists, proceed silently with `KNOWN_OUT_OF_SCOPE = []`. See `/kramme:docs:track-rejected-enhancements` for the storage skill.
 7. Resolve the effective scan scope. Across all modes, exclude `node_modules`, `dist`, build artifacts, generated files, lock files, vendored code, and binary assets. Then per mode:
-   - **Full**: list source directories from project structure.
+   - **Full**: list source directories from project structure. If the project is a git repository, rank in-scope files by commit frequency (for example `git log --since="12 months ago" --format= --name-only -- <source-dirs> | sort | uniq -c | sort -rn`) and store the top ~20 still-existing files as `HOT_SPOTS` — churn concentrates friction, so these files get scanned first. If the ranking cannot be computed, proceed silently with `HOT_SPOTS = []`.
    - **PR**:
      1. Resolve the base ref in this order:
         - Explicit `--base <ref>`.
@@ -87,7 +87,7 @@ Launch parallel Explore agents to cover the codebase efficiently. Split work by 
 Each agent must:
 
 - Read the checklist reference file for its assigned categories.
-- Scan all files in scope for findings in those categories.
+- Scan all files in scope for findings in those categories. When `HOT_SPOTS` is non-empty, scan those files first and with extra depth; the rest of the scope is still required, hot spots reorder the scan rather than shrink it.
 - Apply the When-NOT-to-flag pre-filter before recording.
 - Record each finding with: location, category, severity, description, suggested fix.
 - When `SCOPE_MODE=pr`, include `PR relevance: <why this is caused by the PR>` on every finding, naming which of the five categories from the **PR relevance gate** (defined in Phase 1) the finding satisfies. "The file was touched" is not enough.
@@ -136,6 +136,7 @@ Each agent must:
    - Total findings by severity
    - Top 3 themes (with automation-candidate flag if applicable)
    - Recommended first refactor to tackle
+8. **Close the rejection loop.** If the user declines a recommended candidate with a load-bearing reason, offer to record the rejection — `/kramme:docs:track-rejected-enhancements` for scoped enhancements, or `/kramme:docs:adr` when the rejection is an architectural decision a future maintainer might re-propose. Recorded rejections are what the Phase 3 `KNOWN_OUT_OF_SCOPE` and `KNOWN_ADRS` filters read, so future scans skip the candidate automatically.
 
 ## Guidelines
 
