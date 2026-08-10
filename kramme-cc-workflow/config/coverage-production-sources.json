@@ -181,6 +181,13 @@
       "skills": ["kramme-cc-workflow/skills/kramme:docs:feature-spec/SKILL.md"]
     },
     {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/audit-agent-config-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:audit-agent-config/SKILL.md"
+      ]
+    },
+    {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/check-environment.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:setup/SKILL.md"]
