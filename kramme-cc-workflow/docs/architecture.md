@@ -1,20 +1,14 @@
 # Repository Architecture
 
-This repo packages a personal workflow plugin for Claude Code and includes a
-Codex conversion path. The root [README.md](../../README.md) is the canonical
-user-facing documentation; this file is a short map for maintainers and agents.
+This repo packages a personal workflow plugin for Claude Code and includes a Codex conversion path. The root [README.md](../../README.md) is the canonical user-facing documentation; this file is a short map for maintainers and agents.
 
 ## Top-Level Shape
 
-- `kramme-cc-workflow/` is the plugin source. Its `.claude-plugin/plugin.json`
-  is the installable plugin manifest.
-- `.claude-plugin/marketplace.json` is the root marketplace entry that points at
-  `kramme-cc-workflow/`.
-- `README.md` documents install, usage, skills, agents, hooks, testing, and
-  releases.
-- `CLAUDE.md` records local contribution conventions.
-- `.agents/skills/` contains repository-maintenance skills that are not shipped
-  as part of the public plugin.
+- `kramme-cc-workflow/` is the plugin source. Its `.claude-plugin/plugin.json` is the installable plugin manifest.
+- `.claude-plugin/marketplace.json` is the root marketplace entry that points at `kramme-cc-workflow/`.
+- `README.md` documents install, usage, skills, agents, hooks, testing, and releases.
+- `AGENTS.md` records local contribution conventions; `CLAUDE.md` imports it for Claude Code.
+- `.agents/skills/` contains repository-maintenance skills that are not shipped as part of the public plugin.
 
 ## Plugin Subsystems
 
@@ -30,30 +24,18 @@ user-facing documentation; this file is a short map for maintainers and agents.
 
 ## Runtime Flow
 
-Claude Code installs the plugin from `kramme-cc-workflow/`. Skills and agents
-are loaded from their directories, and hook events are wired through
-`hooks/hooks.json`. Hook scripts source `hooks/lib/check-enabled.sh` so every
-hook can be disabled by the toggle system without editing the hook manifest.
+Claude Code installs the plugin from `kramme-cc-workflow/`. Skills and agents are loaded from their directories, and hook events are wired through `hooks/hooks.json`. Hook scripts source `hooks/lib/check-enabled.sh` so every hook can be disabled by the toggle system without editing the hook manifest.
 
-For Codex, `scripts/convert-plugin.js` is the entry point. It loads the Claude
-plugin, filters platform-specific skills, converts skills and agents, rewrites
-shared script references, stages output, updates managed install state, and
-writes Codex config tables when hooks or MCP servers are present.
+For Codex, `scripts/convert-plugin.js` is the entry point. It loads the Claude plugin, filters platform-specific skills, converts skills and agents, rewrites shared script references, stages output, updates managed install state, and writes Codex config tables when hooks or MCP servers are present.
 
-Browser and visual workflows use the shared dev-server detector in
-`scripts/dev-server/`. It resolves an already running local app; it does not
-start a server.
+Browser and visual workflows use the shared dev-server detector in `scripts/dev-server/`. It resolves an already running local app; it does not start a server.
 
 ## State and Generated Output
 
-- Hook toggle state defaults to
-  `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json`.
-- Skill usage events default to
-  `~/.local/state/kramme-cc-workflow/skill-usage.jsonl`.
-- Codex conversion writes managed entries under the selected Codex root,
-  defaulting to `~/.codex`.
-- SkillOpt and other local run artifacts belong under `.context/` and must not
-  be committed.
+- Hook toggle state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json`.
+- Skill usage events default to `~/.local/state/kramme-cc-workflow/skill-usage.jsonl`.
+- Codex conversion writes managed entries under the selected Codex root, defaulting to `~/.codex`.
+- SkillOpt and other local run artifacts belong under `.context/` and must not be committed.
 
 ## Verification Model
 
@@ -63,6 +45,4 @@ The fast default check is:
 make -C kramme-cc-workflow test
 ```
 
-Use `make -C kramme-cc-workflow lint` for shell and Python linting, and
-`make -C kramme-cc-workflow verify` before larger PRs or release candidates.
-For focused source-to-test mapping, see [code-map.md](code-map.md).
+Use `make -C kramme-cc-workflow lint` for shell and Python linting, and `make -C kramme-cc-workflow verify` before larger PRs or release candidates. For focused source-to-test mapping, see [code-map.md](code-map.md).

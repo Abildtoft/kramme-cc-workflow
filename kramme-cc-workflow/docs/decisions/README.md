@@ -9,10 +9,10 @@ migration steps.
 | Decision | Current rule | Source |
 | --- | --- | --- |
 | Audience model for kramme-cc-workflow. | Treat the repository as a practice arena / showcase; release, security, CI, portability, and documentation machinery are deliberate exercises, not adoption-justified product taxes. | [0001-audience-model.md](0001-audience-model.md) |
-| Root README is canonical public documentation. | Keep install, usage, component listings, testing, and release links in the root `README.md`. | `README.md`, `CLAUDE.md` |
-| Skills must be self-contained at runtime. | Skill `SKILL.md` files and skill resources must not require repository-level docs after installation. Runtime policy belongs inside the skill directory. | `CLAUDE.md`, `tests/skill-resource-references.bats` |
-| PR titles use Conventional Commits; branch commits do not have to. | Use plain-English branch commit messages. Use Conventional Commits for PR titles because they become merge commits and feed changelog generation. | `README.md#contributing`, `CLAUDE.md` |
-| Every hook supports toggling. | Hook scripts source `hooks/lib/check-enabled.sh` and call `exit_if_hook_disabled`, using JSON mode for hooks that must emit `{}`. | `CLAUDE.md`, `docs/hooks.md`, `tests/check-enabled.bats` |
+| Root README is canonical public documentation. | Keep install, usage, component listings, testing, and release links in the root `README.md`. | `README.md`, `AGENTS.md` |
+| Skills must be self-contained at runtime. | Skill `SKILL.md` files and skill resources must not require repository-level docs after installation. Runtime policy belongs inside the skill directory. | `AGENTS.md`, `tests/skill-resource-references.bats` |
+| PR titles use Conventional Commits; branch commits do not have to. | Use plain-English branch commit messages. Use Conventional Commits for PR titles because they become merge commits and feed changelog generation. | `README.md#contributing`, `AGENTS.md` |
+| Every hook supports toggling. | Hook scripts source `hooks/lib/check-enabled.sh` and call `exit_if_hook_disabled`, using JSON mode for hooks that must emit `{}`. | `AGENTS.md`, `docs/hooks.md`, `tests/check-enabled.bats` |
 | Codex support is generated from the Claude plugin. | Maintain the Claude plugin source as canonical and use `scripts/convert-plugin.js` to install converted Codex skills, agent skills, hooks, MCP config, and shared scripts. | `README.md#codex`, `scripts/convert-plugin.js` |
 | Host adapters remain thin and documented. | Use the portability matrix as the operational contract for canonical, generated, instruction-only, local-only, and unsupported host surfaces. | `docs/agent-portability.md`, `tests/node/converter-*.test.js` |
 | Dev-server detection resolves running servers only. | Browser workflows may auto-detect a reachable local URL, but the detector does not start a server. | `scripts/dev-server/README.md`, `tests/dev-server-scripts.bats` |

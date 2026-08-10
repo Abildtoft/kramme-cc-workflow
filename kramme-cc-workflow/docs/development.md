@@ -1,6 +1,6 @@
 # Development Guide
 
-Contributor reference for testing, verification, skill security scanning, and the SkillOpt eval pilot. For the contribution workflow see [CONTRIBUTING.md](../../CONTRIBUTING.md); for component conventions see the repo-root [CLAUDE.md](../../CLAUDE.md).
+Contributor reference for testing, verification, skill security scanning, and the SkillOpt eval pilot. For the contribution workflow see [CONTRIBUTING.md](../../CONTRIBUTING.md); for component conventions see the repo-root [AGENTS.md](../../AGENTS.md).
 
 ## Running the Tests
 
