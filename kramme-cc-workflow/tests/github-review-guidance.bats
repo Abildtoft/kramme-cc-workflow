@@ -9,20 +9,36 @@ setup() {
 	README="$PLUGIN_ROOT/../README.md"
 }
 
-@test "github review offers the pending-review write after comments are ready" {
+@test "github review materializes the report before offering the pending-review write" {
 	run bash -c '
     set -e
     grep -qF "[--draft-review]" "$1"
     grep -qF -- "--draft-review\` → \`CREATE_DRAFT_REVIEW=true" "$1"
     grep -qF "without asking again" "$1"
     grep -qF "Defaults: \`CREATE_DRAFT_REVIEW=false\`" "$1"
-    grep -qF "## Step 11: Offer to Create a Pending Draft Review" "$1"
+    grep -qF "## Step 11: Materialize the Markdown Report" "$1"
+    grep -qF "## Step 12: Offer or Create a Pending Draft Review" "$1"
+    grep -qF "the report must have been successfully written, or fully presented inline, before showing the pending-review offer or running any GitHub mutation" "$1"
+    grep -qF "not created — awaiting authorization" "$1"
+    grep -qF "not created — authorized; creation not attempted yet" "$1"
+    grep -qF "clear the temporary pre-write sentinel with \`DRAFT_REVIEW_STATUS=\"\"\`" "$1"
     grep -qF "Draft comments are ready:" "$1"
     grep -qF "Stop and wait for the user'\''s answer" "$1"
     grep -qF "Silence or an ambiguous answer is not authorization" "$1"
     grep -qF "If the user declines" "$1"
     grep -qF "never authorizes submitting the review" "$1"
     grep -qF "Never call the submit-review endpoint" "$1"
+    python3 - "$1" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text()
+materialize = text.index("## Step 11: Materialize the Markdown Report")
+offer = text.index("## Step 12: Offer or Create a Pending Draft Review")
+create = text.index("follow Sections 2–4")
+if not materialize < offer < create:
+    raise SystemExit("report materialization must precede the offer and GitHub creation flow")
+PY
   ' _ "$SKILL"
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -163,7 +179,7 @@ if "GitHub was not changed only for statuses that confirm no write occurred" not
     raise SystemExit("skill must distinguish confirmed no-write outcomes")
 if "write outcome unknown" not in skill:
     raise SystemExit("skill must report unknown write outcomes")
-if "--draft-review" not in readme or "offers to create one unsubmitted pending GitHub review" not in readme:
+if "--draft-review" not in readme or "Writes the Markdown report before offering to create one unsubmitted pending GitHub review" not in readme:
     raise SystemExit("public docs must describe the draft-review flow")
 PY
 

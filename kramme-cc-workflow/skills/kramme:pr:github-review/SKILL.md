@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:github-review
-description: "Review a GitHub pull request where you are the assigned reviewer, not the author or assignee. Fetches the PR into an isolated worktree, runs code-quality plus UI review agents, maps existing conversations, skips duplicate findings, and drafts concise inline comments, replies, and a recommended verdict. Once comments are ready, offers to create one unsubmitted pending GitHub review containing every eligible proposed comment; --draft-review skips that confirmation. Not for reviewing your own branch before shipping (use kramme:pr:code-review), responding to reviewers on your own PR (use kramme:pr:github-review-reply), or resolving review findings (use kramme:pr:resolve-review)."
+description: "Review a GitHub pull request where you are the assigned reviewer, not the author or assignee. Fetches the PR into an isolated worktree, runs code-quality plus UI review agents, maps existing conversations, skips duplicate findings, and drafts concise inline comments, replies, and a recommended verdict. Writes the Markdown report before offering to create one unsubmitted pending GitHub review; --draft-review skips that confirmation but still writes the report first. Not for reviewing your own branch before shipping (use kramme:pr:code-review), responding to reviewers on your own PR (use kramme:pr:github-review-reply), or resolving review findings (use kramme:pr:resolve-review)."
 argument-hint: "[pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
@@ -10,7 +10,7 @@ user-invocable: true
 
 Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, and produces a reviewer-facing assessment that can optionally become one pending GitHub review.
 
-This skill does not write to GitHub until the user authorizes it. After the draft comments are ready, it offers to create one pending GitHub review containing the proposed inline comments and summary. The explicit `--draft-review` flag supplies that authorization up front and skips the confirmation. Either path only creates the draft: the skill never submits the review or chooses a verdict on the user's behalf.
+This skill does not write to GitHub until the user authorizes it. It always materializes the Markdown review report before offering or attempting the GitHub write. After the report and draft comments are ready, it offers to create one pending GitHub review containing the proposed inline comments and summary. The explicit `--draft-review` flag supplies that authorization up front and skips the confirmation, but the report still comes first. Either path only creates the draft: the skill never submits the review or chooses a verdict on the user's behalf.
 
 ## Step 0: Parse Arguments
 
@@ -122,7 +122,7 @@ CHANGED_COUNT=$(printf '%s' "$PR_JSON" | jq -r '.changedFiles')
 REVIEW_DECISION=$(printf '%s' "$PR_JSON" | jq -r '.reviewDecision // "none"')
 ```
 
-`ADDITIONS`, `DELETIONS`, `CHANGED_COUNT`, and `REVIEW_DECISION` populate the report header in Step 12.
+`ADDITIONS`, `DELETIONS`, `CHANGED_COUNT`, and `REVIEW_DECISION` populate the report header in Step 11.
 
 Derive the PR's repository from the URL so a URL for another repository does not silently target the local checkout:
 
@@ -327,31 +327,42 @@ When humanize is available:
 - Re-apply the humanized text, preserving the human voice, the Socratic question framing, the calibrated (non-overconfident) wording, factual claims and `UNVERIFIED` hedges, and necessary technical identifiers. If humanize makes an item more assertive, more verbose, more formal, or turns a question into a claim, keep the original wording and make the smallest manual edit needed to remove the AI-sounding phrasing.
 - Mark each humanized item `Humanized: yes`.
 
-## Step 11: Offer to Create a Pending Draft Review
+## Step 11: Materialize the Markdown Report
 
 Read `references/draft-review.md` and complete Section 1 to identify the eligible proposed inline comments and every omission. Do this after humanization so the count and bodies are final.
 
-If `CREATE_DRAFT_REVIEW=false`, show the user a compact offer with the exact eligible comment count, severity breakdown, omission count and reasons, existing-thread reply count, and recommended verdict. Ask:
+Set the pre-write status according to the authorization state:
 
-> Draft comments are ready: <N> eligible inline comments (<severity counts>), <M> omitted, and <R> existing-thread replies kept separate. Would you like me to create one unsubmitted pending GitHub review with those comments and the summary now?
+- `CREATE_DRAFT_REVIEW=false` → `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`.
+- `CREATE_DRAFT_REVIEW=true` → `DRAFT_REVIEW_STATUS="not created — authorized; creation not attempted yet"`.
 
-Stop and wait for the user's answer. A clear affirmative answer sets `CREATE_DRAFT_REVIEW=true` and authorizes this one pending-review write. If the user declines, set `DRAFT_REVIEW_STATUS="declined"`, make no GitHub write, and continue to Step 12. If the user asks to change any draft comments, apply those edits, re-humanize changed bodies when appropriate, recompute the counts, and make the offer again. Silence or an ambiguous answer is not authorization.
+Use `references/report-template.md` to render the full report with that exact status. If `INLINE_MODE=true`, present the report in chat and do not write a file. Otherwise write it to `GITHUB_PR_REVIEW_OVERVIEW.md` at `ORIG_ROOT` (never inside the worktree, which is gone by now). Include the PR number and title in the header so an overwritten file is unambiguous. Treat the file as a working artifact that should not be committed.
 
-If `CREATE_DRAFT_REVIEW=true`—whether from `--draft-review` or the user's confirmation—follow Sections 2–4 of `references/draft-review.md` exactly. They check for head drift and an existing pending review, build and validate the payload, and create the review without an `event` field so GitHub leaves it in `PENDING` state. Never call the submit-review endpoint.
+**Ordering gate:** the report must have been successfully written, or fully presented inline, before showing the pending-review offer or running any GitHub mutation. Do not merely say the comments are ready. If the report cannot be materialized, stop with the error and do not offer or attempt the GitHub write.
 
-Record the resulting draft-review status, review ID/URL, confirmed or unknown included-comment state, run-unique payload path, and any omitted proposed items for the report.
+## Step 12: Offer or Create a Pending Draft Review
 
-## Step 12: Output
+If `CREATE_DRAFT_REVIEW=false`, tell the user the report is ready, including its path when written to disk. Then show a compact offer with the exact eligible comment count, severity breakdown, omission count and reasons, existing-thread reply count, and recommended verdict. Ask:
 
-If `INLINE_MODE=true`, return the full report in chat and do not write a file.
+> `GITHUB_PR_REVIEW_OVERVIEW.md` is ready. Draft comments are ready: <N> eligible inline comments (<severity counts>), <M> omitted, and <R> existing-thread replies kept separate. Would you like me to create one unsubmitted pending GitHub review with those comments and the summary now?
 
-Otherwise write the report to `GITHUB_PR_REVIEW_OVERVIEW.md` at `ORIG_ROOT` (never inside the worktree, which is gone by now). Include the PR number and title in the header so an overwritten file is unambiguous. Treat the file as a working artifact that should not be committed.
+For `--inline`, replace the filename in the offer with "The inline Markdown report is ready."
+
+Stop and wait for the user's answer. A clear affirmative answer sets `CREATE_DRAFT_REVIEW=true` and authorizes this one pending-review write. If the user declines, set `DRAFT_REVIEW_STATUS="declined"`, make no GitHub write, refresh the report, and continue to Step 13. If the user asks to change any draft comments, apply those edits, re-humanize changed bodies when appropriate, recompute the counts, refresh the report first with `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`, and only then make the offer again. Silence or an ambiguous answer is not authorization.
+
+If `CREATE_DRAFT_REVIEW=true`—whether from `--draft-review` or the user's confirmation—clear the temporary pre-write sentinel with `DRAFT_REVIEW_STATUS=""`, then follow Sections 2–4 of `references/draft-review.md` exactly. Those sections use a nonempty `DRAFT_REVIEW_STATUS` to signal a guard failure or final outcome, so never enter them with either pre-write status still set. They check for head drift and an existing pending review, build and validate the payload, and create the review without an `event` field so GitHub leaves it in `PENDING` state. Never call the submit-review endpoint.
+
+After Sections 2–4 finish, record the resulting draft-review status, review ID/URL, confirmed or unknown included-comment state, run-unique payload path, and any omitted proposed items, then refresh the already-materialized report with the final outcome. The initial report must not remain stale.
+
+## Step 13: Final Handoff
+
+If `INLINE_MODE=true`, return the refreshed full report in chat after the user answers or the pre-authorized creation attempt finishes. Otherwise, the report at `ORIG_ROOT/GITHUB_PR_REVIEW_OVERVIEW.md` is already current from Step 12.
 
 End by telling the user: the recommended verdict, the count of findings per severity, the count of threads awaiting your reply, the report path (or that it was returned inline), and the exact draft-review outcome. If a pending review was created, give its URL and say it remains unsubmitted for inspection. Say that GitHub was not changed only for statuses that confirm no write occurred (`declined` or `not created — ...`). For `write outcome unknown — ...` or `unexpected state — ...`, say a write may have occurred, surface every available review ID/URL, and tell the user to inspect GitHub without retrying.
 
 ## Artifact Lifecycle
 
-- **Produces:** `GITHUB_PR_REVIEW_OVERVIEW.md` at the project root (or an inline reply with `--inline`). A fixed name, overwritten on each run; the header records which PR it covers.
+- **Produces first:** `GITHUB_PR_REVIEW_OVERVIEW.md` at the project root (or an inline reply with `--inline`) before any pending-review offer or GitHub write. A fixed name, overwritten on each run; the header records which PR it covers. It is refreshed after the user declines or an authorized creation attempt finishes.
 - **Optional payload:** one run-unique `.context/github-review-drafts/pr-<number>.<suffix>` file when pending-review creation is authorized by either `--draft-review` or the user's confirmation and the payload directory is verified as Git-ignored. It is the exact pending-review payload, retained as a disposable audit artifact when payload construction begins.
 - **Consumed by:** you, when posting the review to GitHub — via the GitHub UI or the report's optional `gh` appendix.
 - **Refreshed by:** re-running this skill on the same or a different PR (overwrites the file).
