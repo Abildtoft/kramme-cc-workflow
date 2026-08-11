@@ -75,7 +75,7 @@ eval "$STACK_RESOLVED"
 | `STACK_MEMBERSHIP=none`, user wants a new stack | **Create** |
 | `STACK_MEMBERSHIP=none`, ordered branches already exist | **Adopt** |
 
-The resolver treats `gh stack view` exit 2 as “not tracked locally,” then queries the branch PR's GraphQL `stack` field. Authentication, API, parsing, and unexpected CLI failures stop the workflow; they are never interpreted as “not stacked.”
+The resolver treats “not tracked locally” as either a `gh stack view` exit 2 or a zero exit with empty output or the known “is not part of a stack” notice — gh-stack v0.1.0 reports an untracked branch through both channels — then queries the branch PR's GraphQL `stack` field. A zero exit only proves local membership when stdout has the documented stack JSON shape and includes the current branch. Authentication, API, parsing, and unexpected CLI failures stop the workflow; they are never interpreted as “not stacked.”
 
 The minimum supported extension version is v0.1.0. Older versions have known unsafe behavior after parent-history rewrites; the resolver stops with the exact `gh extension upgrade stack` command instead of entering a rewrite workflow.
 

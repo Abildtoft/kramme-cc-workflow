@@ -14,6 +14,11 @@
 #
 # Operational failures are never reported as "none": the script exits non-zero
 # so a caller cannot rewrite or push history under an unknown stack state.
+#
+# Local membership requires stack JSON on stdout, not merely a zero exit status
+# from "gh stack view --json": gh-stack v0.1.0 has been observed reporting "is
+# not part of a stack" while still exiting 0, and trusting that exit code alone
+# routes an unstacked branch into stack-wide rebase and push commands.
 
 set -euo pipefail
 
@@ -26,6 +31,35 @@ emit_result() {
   quote_assignment STACK_CLI_AVAILABLE "$STACK_CLI_AVAILABLE"
   quote_assignment STACK_PR_NUMBER "$STACK_PR_NUMBER"
   quote_assignment STACK_NUMBER "$STACK_NUMBER"
+}
+
+# True when "gh stack view --json" printed the documented stack shape and the
+# current branch appears in its branch inventory.
+stack_view_reports_stack() {
+  local output="$1"
+  printf '%s\n' "$output" | jq -e '
+    type == "object"
+      and (.currentBranch | type == "string" and length > 0)
+      and (.branches | type == "array")
+      and (.currentBranch as $current
+        | any(.branches[]?; type == "object" and .name == $current))
+  ' > /dev/null 2>&1
+}
+
+# True when both output streams are empty or contain only the known untracked
+# notice. Other zero-exit output is ambiguous and must fail closed.
+stack_view_reports_untracked() {
+  local stream
+  local trimmed
+  for stream in "$@"; do
+    trimmed="${stream#"${stream%%[![:space:]]*}"}"
+    case "$trimmed" in
+      '') ;;
+      '{'* | '['*) return 1 ;;
+      *'current branch "'*'" is not part of a stack'*) ;;
+      *) return 1 ;;
+    esac
+  done
 }
 
 CURRENT_BRANCH=$(git symbolic-ref --quiet --short HEAD) || {
@@ -83,20 +117,41 @@ if GH_STACK_VERSION_OUTPUT=$(gh stack --version 2>&1); then
     exit 1
   fi
 
+  STACK_VIEW_STDERR_FILE=$(mktemp "${TMPDIR:-/tmp}/resolve-stack-membership-view-stderr.XXXXXX") || {
+    echo "Could not create a temporary file for gh stack output; stack membership is unknown." >&2
+    exit 1
+  }
   set +e
-  STACK_VIEW_OUTPUT=$(gh stack view --json 2>&1)
+  STACK_VIEW_OUTPUT=$(gh stack view --json 2> "$STACK_VIEW_STDERR_FILE")
   STACK_VIEW_STATUS=$?
   set -e
+  STACK_VIEW_STDERR=$(cat "$STACK_VIEW_STDERR_FILE")
+  rm -f "$STACK_VIEW_STDERR_FILE"
 
+  # Exit 2 and the recognized zero-exit untracked output both fall through to
+  # the server-side lookup rather than claiming membership.
   case "$STACK_VIEW_STATUS" in
     0)
-      STACK_MEMBERSHIP="local"
-      emit_result
-      exit 0
+      if stack_view_reports_untracked "$STACK_VIEW_OUTPUT" "$STACK_VIEW_STDERR"; then
+        :
+      elif ! command -v jq > /dev/null 2>&1; then
+        echo "Cannot validate gh stack JSON because jq is unavailable; stack membership is unknown." >&2
+        exit 1
+      elif stack_view_reports_stack "$STACK_VIEW_OUTPUT"; then
+        STACK_MEMBERSHIP="local"
+        emit_result
+        exit 0
+      else
+        [ -z "$STACK_VIEW_OUTPUT" ] || printf '%s\n' "$STACK_VIEW_OUTPUT" >&2
+        [ -z "$STACK_VIEW_STDERR" ] || printf '%s\n' "$STACK_VIEW_STDERR" >&2
+        echo "gh stack view returned invalid stack JSON; stack membership is unknown." >&2
+        exit 1
+      fi
       ;;
     2) ;;
     *)
       [ -z "$STACK_VIEW_OUTPUT" ] || printf '%s\n' "$STACK_VIEW_OUTPUT" >&2
+      [ -z "$STACK_VIEW_STDERR" ] || printf '%s\n' "$STACK_VIEW_STDERR" >&2
       echo "gh stack view failed with exit code $STACK_VIEW_STATUS; stack membership is unknown." >&2
       exit "$STACK_VIEW_STATUS"
       ;;
