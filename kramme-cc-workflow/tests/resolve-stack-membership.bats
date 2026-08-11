@@ -53,8 +53,11 @@ if [ "$1" = "stack" ] && [ "$2" = "--version" ]; then
 fi
 
 if [ "$1" = "stack" ] && [ "$2" = "view" ] && [ "$3" = "--json" ]; then
-  if [ "${MOCK_STACK_VIEW_STATUS:-2}" -eq 0 ]; then
-    printf '{"number":41,"branches":[]}\n'
+  if [ -n "${MOCK_STACK_VIEW_STDOUT+set}" ] || [ -n "${MOCK_STACK_VIEW_STDERR+set}" ]; then
+    [ -z "${MOCK_STACK_VIEW_STDOUT:-}" ] || printf '%s\n' "$MOCK_STACK_VIEW_STDOUT"
+    [ -z "${MOCK_STACK_VIEW_STDERR:-}" ] || printf '%s\n' "$MOCK_STACK_VIEW_STDERR" >&2
+  elif [ "${MOCK_STACK_VIEW_STATUS:-2}" -eq 0 ]; then
+    printf '{"trunk":"main","currentBranch":"feature","branches":[{"name":"feature"}]}\n'
   else
     printf 'mock stack view failure\n' >&2
   fi
@@ -107,6 +110,71 @@ load_assignments() {
 	[ "$STACK_CLI_AVAILABLE" = "1" ]
 	[ "$STACK_PR_NUMBER" = "" ]
 	[ "$STACK_NUMBER" = "" ]
+	! grep -q 'command \[pr\] \[list\]' "$GH_LOG"
+}
+
+@test "treats a zero-exit stack view without stack JSON as untracked" {
+	export MOCK_STACK_VIEW_STATUS=0
+	export MOCK_STACK_VIEW_STDOUT=""
+	export MOCK_STACK_VIEW_STDERR='✗ current branch "feature" is not part of a stack'
+	export MOCK_PR_NUMBER=17
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$STACK_MEMBERSHIP" = "none" ]
+	[ "$STACK_PR_NUMBER" = "17" ]
+	[[ "$output" != *"is not part of a stack"* ]]
+	grep -q 'command \[api\] \[graphql\]' "$GH_LOG"
+}
+
+@test "consults the remote stack when a zero-exit stack view prints plain text" {
+	export MOCK_STACK_VIEW_STATUS=0
+	export MOCK_STACK_VIEW_STDOUT='current branch "feature" is not part of a stack'
+	export MOCK_PR_NUMBER=17
+	export MOCK_STACK_NUMBER=41
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$STACK_MEMBERSHIP" = "remote" ]
+	[ "$STACK_NUMBER" = "41" ]
+}
+
+@test "reports local membership when stack JSON follows leading whitespace" {
+	export MOCK_STACK_VIEW_STATUS=0
+	export MOCK_STACK_VIEW_STDOUT='
+  {"trunk":"main","currentBranch":"feature","branches":[{"name":"feature"}]}'
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$STACK_MEMBERSHIP" = "local" ]
+	! grep -q 'command \[pr\] \[list\]' "$GH_LOG"
+}
+
+@test "fails closed when a zero-exit stack view prints malformed JSON" {
+	export MOCK_STACK_VIEW_STATUS=0
+	export MOCK_STACK_VIEW_STDOUT='{not-json'
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"gh stack view returned invalid stack JSON"* ]]
+	! grep -q 'command \[pr\] \[list\]' "$GH_LOG"
+}
+
+@test "fails closed when a zero-exit stack view prints the wrong JSON shape" {
+	export MOCK_STACK_VIEW_STATUS=0
+	export MOCK_STACK_VIEW_STDOUT='[]'
+
+	run "$SCRIPT"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"gh stack view returned invalid stack JSON"* ]]
 	! grep -q 'command \[pr\] \[list\]' "$GH_LOG"
 }
 
