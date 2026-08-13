@@ -136,6 +136,7 @@
         "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
         "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
         "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:test:audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md",
         "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
