@@ -187,6 +187,11 @@
       ]
     },
     {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/test-audit-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:test:audit/SKILL.md"]
+    },
+    {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/check-environment.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:setup/SKILL.md"]
