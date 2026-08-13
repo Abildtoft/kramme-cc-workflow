@@ -457,6 +457,74 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
 
     plan_validation = _markdown_section(plan_to_pr, r"Step 2: Validate the Plan Set")
     _require_terms(
+        "attachment-first input routing",
+        plan_to_pr,
+        (
+            "Select the input contract from the validated path before applying any plan-set rule",
+            "A file below `.context/attachments/` is always one standalone attachment",
+            "never search for them, require them, or ask the user to attach them",
+            "The validated path is the sole intake classifier",
+            "Do not inspect the repository root or attachment directory for a source index",
+        ),
+    )
+    intake_routing = _markdown_section(plan_to_pr, r"Step 1: Parse Arguments")
+    _ordered_regex_anchors(
+        intake_routing,
+        (
+            ("path classifier", r"validated path is the sole intake classifier"),
+            ("attachment contract load", r"For attachment input, read `references/attachment-input\.md`"),
+            ("root set inventory", r"For root input, require sibling `PR_PLAN_INDEX\.md`"),
+        ),
+        "attachment intake before generated-set inventory",
+    )
+    _require_terms(
+        "attachment-only validation branch",
+        plan_validation,
+        (
+            "Branch on `{plan-input-mode}` before reading companion artifacts",
+            "For `attachment`, read only the selected attachment",
+            "A valid detached `W##L` attachment is not an incomplete generated set",
+            "absence of companion plans is expected",
+            "never replace that diagnosis with a request for the complete `PR_PLAN_*.md` set",
+        ),
+    )
+    _ordered_regex_anchors(
+        plan_validation,
+        (
+            ("attachment-only read", r"For `attachment`, read only the selected attachment"),
+            ("attachment classification", r"For attachment input, set `STANDALONE_ATTACHMENT=true`"),
+            ("indexed-set validation", r"For root or archived input, require the index"),
+        ),
+        "attachment classification before indexed-set validation",
+    )
+    root_classification = re.search(
+        r"(?ms)^\s+- For root input, require the selected basename.*?(?=^\s+- For archived input,)",
+        plan_validation,
+    )
+    if root_classification is None:
+        raise ContractFailure("root input is missing its generated-set classification block")
+    _require_terms(
+        "root generated-set classification",
+        root_classification.group(0),
+        (
+            "set `STANDALONE_ATTACHMENT=false`",
+            "Read the index and every implementation plan it references",
+            "set `PLAN_SCOPE_MODE=exact-files`",
+            "set `PLAN_SCOPE_MODE=containment`",
+        ),
+    )
+    _require_terms(
+        "attachment reference routing invariant",
+        attachment_input,
+        (
+            "the attachment is deliberately the complete input",
+            "Select this contract from its validated location before interpreting its content",
+            "Do not search for or request the source `PR_PLAN_INDEX.md`",
+            "they never change a direct attachment into root input",
+            "Diagnose a failure against the exact self-contained field or evidence requirement",
+        ),
+    )
+    _require_terms(
         "archived status disagreement repair",
         plan_validation,
         (
