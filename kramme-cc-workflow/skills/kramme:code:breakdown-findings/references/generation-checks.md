@@ -13,6 +13,8 @@ These are stop signs, not exceptions:
 - "Multiple auto-detected reports are ambiguous, so I should ask which one to use." Compatible findings-mode reports are intentionally combined into one source set.
 - "Conflicting findings can both be addressed together." Surface the conflict as an open question.
 - "Recon is optional because the findings already say what to do." The executor still needs repo conventions, tradeoffs, and verification commands.
+- "The finding already names the files to change." Source scope is a lead, not proof of closure; trace the behavior and changed contracts through the live repository.
+- "The drift check is clean, so the scope must be correct." Drift establishes freshness only for listed paths and says nothing about omitted controllers, callers, tests, migrations, or generated artifacts.
 - "The plan is technically correct, so product context is optional." Every plan needs a concrete product, workflow, maintainer, reviewer, security, reliability, or data-integrity outcome.
 - "A blocking product question can just stay as a vague open question." Use repo evidence first; when the answer is user-owned and implementation-blocking, pause for discovery or mark `MISSING REQUIREMENT:`.
 - "Excluded findings in the index are enough." Rejections also need stable entries in `PR_PLAN_REJECTIONS.md`.
@@ -45,6 +47,7 @@ Stop and correct the generation pass if any of these appear:
 - A generated plan lacks **Product / Quality Bar**, has no named beneficiary/workflow, or cannot say what outcome is better.
 - A plan makes product or value claims without source evidence, repo evidence, `UNVERIFIED:`, or a `MISSING REQUIREMENT:` marker.
 - A generated plan has no explicit **In Scope** and **Out of Scope** boundary.
+- A generated plan lacks **Scope Closure Evidence**, copies the finding's proposed paths without live end-to-end tracing, leaves any changed-contract reference unclassified, or puts a required edit in **Out of Scope**.
 - A generated plan or `PR_PLAN_INDEX.md` omits, duplicates, or changes the exact opening metadata field `**Scope contract:** exact files`.
 - A generated plan or matching index row starts in any status other than `TODO`, or the index lifecycle omits executor-owned `IN_PROGRESS`.
 - An implementation step lacks a verification command and expected result.
@@ -74,6 +77,9 @@ Verify:
 - Every plan has all template sections populated with concrete content and no `N/A`.
 - Every plan includes a `Planned at` commit SHA or a clear `not-a-git-repo` caveat with a `MISSING REQUIREMENT:` concern in the final summary.
 - Every plan's drift-check paths match its **In Scope** file list.
+- Every plan's **Scope Closure Evidence** maps each acceptance criterion to an implementation path and proof path, accounts for applicable runtime boundaries or non-runtime artifact/reviewer/verification paths plus auxiliary artifacts, and classifies every repository reference to a changed contract as `modify`, `verify-only`, or `irrelevant`.
+- Any findings-mode boundary change discovered during scope closure returned to Phase 2 for dependency/label rebuilding and confirmation; any pre-clustered handoff boundary mismatch stopped for a corrected handoff without revising or splitting its fixed themes.
+- Every `modify` path appears in **In Scope**, every **In Scope** path is justified by an obligation, and no required edit appears in **Out of Scope**.
 - Every plan includes relevant recon/tradeoff context with concrete source citations where available.
 - Every plan includes Impact and Leverage values plus rationale; inferred values are prefixed with `UNVERIFIED:`.
 - Every plan includes current-state evidence from the live code, not only copied source-report text.
