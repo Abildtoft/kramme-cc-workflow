@@ -333,6 +333,7 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
     plan_template = read("skills/kramme:code:breakdown-findings/assets/plan-template.md")
     generated_index = read("skills/kramme:code:breakdown-findings/assets/index-template.md")
     generation_checks = read("skills/kramme:code:breakdown-findings/references/generation-checks.md")
+    scope_closure = read("skills/kramme:code:breakdown-findings/references/scope-closure.md")
     reconcile = read("skills/kramme:code:breakdown-findings/references/reconcile-workflow.md")
     plan_to_pr = read("skills/kramme:code:plan-to-pr/SKILL.md")
     attachment_input = read("skills/kramme:code:plan-to-pr/references/attachment-input.md")
@@ -359,6 +360,65 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
         "detachable-plan generation checks",
         generation_checks,
         ("repository-relative file", "existing directory", "missing path", "one intended file"),
+    )
+    _require_terms(
+        "detachable-plan scope closure workflow",
+        scope_closure,
+        (
+            "acceptance criterion",
+            "all repository references",
+            "manual translation",
+            "call site",
+            "generated artifacts",
+            "modify",
+            "verify-only",
+            "irrelevant",
+            "No required edit appears in **Out of Scope**",
+            "artifact, reviewer, or verification path",
+            "Do not invent a runtime path",
+            "pre-clustered handoff mode",
+            "return to Phase 2",
+            "request a corrected handoff",
+        ),
+    )
+    handoff_boundary = next(
+        (paragraph for paragraph in re.split(r"\n\s*\n", scope_closure) if "pre-clustered handoff mode" in paragraph),
+        "",
+    )
+    if not _has_affirmative_action(handoff_boundary, r"\bstop\b") or not _explicitly_prohibits(
+        handoff_boundary,
+        r"(?:expand|split|merge|resequence)",
+    ):
+        raise ContractFailure("scope closure must stop rather than changing fixed pre-clustered handoff boundaries")
+    non_runtime_trace = next(
+        (
+            paragraph
+            for paragraph in re.split(r"\n\s*\n", scope_closure)
+            if "artifact or workflow entry point" in paragraph
+        ),
+        "",
+    )
+    if not _explicitly_prohibits(non_runtime_trace, r"invent(?:ing)?\s+(?:a\s+)?runtime path"):
+        raise ContractFailure("scope closure must not require fabricated runtime paths for non-runtime work")
+    _require_terms(
+        "detachable-plan scope closure generation",
+        breakdown,
+        (
+            "references/scope-closure.md",
+            "A clean drift check proves only that listed files have not changed",
+            "an acceptance criterion lacks both an implementation path and proof path",
+        ),
+    )
+    _require_terms(
+        "detachable-plan scope closure template",
+        plan_template,
+        (
+            "## Scope Closure Evidence",
+            "Applicable path traced",
+            "Repository search / references",
+            "Path disposition",
+            "modify / verify-only / irrelevant",
+        ),
     )
     _require_terms(
         "standalone attachment index",

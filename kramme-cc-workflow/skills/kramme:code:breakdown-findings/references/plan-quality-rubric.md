@@ -19,6 +19,8 @@ Every plan must pass this gate before it is written. If a draft fails, revise it
 - Each implementation step names exact files, modules, functions, commands, or artifacts.
 - No step relies on vague work such as "clean up", "improve", "harden", "refactor related code", or "make consistent" without concrete scope and verification.
 - The plan's **In Scope** list is the complete allowed edit surface and contains only repository-relative file paths, never existing directories or directory-containment grants; **Out of Scope** names likely temptations and why they are excluded.
+- The plan's **Scope Closure Evidence** traces every acceptance criterion through its applicable runtime, build, artifact, reviewer, or verification path, classifies every repository reference to a changed contract, and accounts for boundary mappers, callers/writers, tests, fixtures, migrations, and generated artifacts without inventing runtime paths for non-runtime work.
+- Every path classified `modify` appears in **In Scope**; every excluded adjacent path has concrete `verify-only` or `irrelevant` evidence rather than an assumption copied from the finding.
 - Risks cover the actual blast radius: compatibility, migration, data integrity, security, performance, rollback, rollout, or reviewer confusion when relevant.
 - The plan does not turn optional polish into required scope unless the source finding or product context justifies it.
 
@@ -71,4 +73,5 @@ Stop and revise before writing final artifacts if any draft has:
 - A validation plan that omits tests or manual QA for user-visible behavior.
 - A scope that would let the executor touch unrelated files without triggering a STOP condition.
 - An **In Scope** entry that resolves to an existing directory or otherwise grants directory containment instead of naming one file.
+- A required edit appears in **Out of Scope**, an acceptance criterion lacks an implementation or proof path, or any repository reference to a changed contract remains unclassified.
 - A dependency whose readiness cannot be decided from concrete evidence embedded in that plan alone.

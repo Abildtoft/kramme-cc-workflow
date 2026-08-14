@@ -99,6 +99,14 @@ Example shape:
 
 - `{{path or area}}` - {{why it is excluded}}
 
+## Scope Closure Evidence
+
+{{Prove that **In Scope** is the complete edit surface for this plan. Trace every acceptance criterion and changed contract through its applicable runtime, build, artifact, reviewer, or verification path, search all repository references, and classify discovered declarations, callers, tests, fixtures, migrations, generated artifacts, and manual mappers. Do not invent a runtime path for non-runtime work. A clean drift check proves freshness of listed files, not completeness of this table.}}
+
+| Obligation / changed contract | Applicable path traced | Repository search / references | Path disposition | Proof |
+| --- | --- | --- | --- | --- |
+| {{Observable outcome or contract}} | {{Runtime, build, artifact, reviewer, or verification path -> verifiable output}} | {{Symbols/keys searched and callers found}} | `{{path}}` — {{modify / verify-only / irrelevant, with reason}} | {{Test, inspection, compatibility rule, or generated-artifact check}} |
+
 ## Dependencies and Sequencing
 
 ### Prerequisites (must land before this PR)
