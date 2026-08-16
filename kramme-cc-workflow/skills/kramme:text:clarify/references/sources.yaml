@@ -6,13 +6,20 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-08-16
     baseline_hash: "sha256:56466ee04d1a2469eb3203744470f46274269e01837bda1937b7a736cc1cfe52"
-  - id: govuk-writing-guidelines
-    url: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/
-    title: "GOV.UK content and publishing guidance - Writing guidelines"
-    rationale: "Its content-design guidance informed the skill's focus on reader needs, information order, active constructions, and plain language."
+  - id: govuk-identify-user-needs
+    url: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/plan-manage-content/identify-user-needs/
+    title: "GOV.UK content and publishing guidance - Identify user needs"
+    rationale: "Its user-needs guidance informed the skill's reader contract and focus on what readers need to understand, decide, or do."
     usage: inspiration
     last_reviewed_at: 2026-08-16
-    baseline_hash: "sha256:fa4019881b140ecd29b3b7d28f89655e429ad3cc9f10bd373bf06bf85ca2bb42"
+    baseline_hash: "sha256:4030bacb2fd97c21f27d3b641c19d8f4973cd0bf2c6a1f15021ba1eead34d939"
+  - id: govuk-clear-language
+    url: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/
+    title: "GOV.UK content and publishing guidance - Use clear language"
+    rationale: "Its guidance on familiar wording, active voice, and concise sentences informed the skill's plain-language editing rubric."
+    usage: inspiration
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:c0c04c9c1900ab67897f8d79b15b52b416908d4c9f057196e7a7e56d7ef20fdb"
   - id: govuk-a-to-z-style-guide
     url: https://www.gov.uk/guidance/style-guide/a-to-z
     title: "GOV.UK content and publishing guidance - A to Z style guide"
