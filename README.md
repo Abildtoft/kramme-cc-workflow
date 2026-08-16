@@ -425,6 +425,7 @@ Linear issue tracking integration.
 | `/kramme:linear:issue-define` | User | `[issue-id] or [description and/or file paths for context] [--auto]` | Requires the Linear MCP server. Create or improve a well-structured Linear issue through guided refinement. Use with --auto to create one new Linear issue from rough input using light clarification, duplicate checking, metadata selection, and approval instead of the full interview. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue). |
 | `/kramme:linear:issue-implement` | User | `<ISSUE-ID> [--auto]` | Requires Linear MCP. Start implementing a Linear issue with branch setup, planning, and guided or --auto workflows. For SIW-tracked work, use kramme:siw:issue-implement instead. |
 | `/kramme:linear:issue-to-pr` | User | `<ISSUE-ID> [--strict] [--ship]` | Requires Linear MCP. Implements one Linear issue end to end, selects applicable code-review, convention, and PR-refactor gates, runs them to bounded convergence, verifies, and optionally opens the PR and iterates on CI and review feedback until green. Use when the user wants a single Linear issue taken from implementation through a clean Pull Request. Not for implementation-only work, SIW-tracked issues, stacked PRs, existing PR updates, or post-merge rollout. |
+| `/kramme:linear:review-pr` | User | `[PR-number\|PR-url] [ISSUE-ID]` | Requires Linear MCP and the GitHub CLI. Reviews an existing Pull Request against the Linear issue it implements, tracing requirements to diff, code, and test evidence and reporting omissions, deviations, undocumented additions, and unverifiable criteria. Use before merge to validate issue-to-implementation completeness. Not for general code quality, PR-description accuracy, or implementing the issue. |
 | `/kramme:linear:select-next` | User | `[team] [--interest <work preference>] [--mine\|--unassigned\|--both] [--project <name>] [--label <name>] [--limit <n>]` | Requires Linear MCP. Selects the most valuable available issue to start from a Linear team by comparing assigned-to-me and unassigned issues, optional work-interest preferences, and parallel-ready candidates. Use when deciding what to pick up next. Not for creating, editing, implementing, or closing Linear issues. |
 
 #### Visual
@@ -592,7 +593,7 @@ These MCP servers enhance the plugin's capabilities. See [docs/mcp-servers.md](k
 
 | Server | Purpose |
 | --- | --- |
-| **Linear** | Issue tracking for `/kramme:linear:issue-to-pr`, `/kramme:linear:issue-implement`, `/kramme:linear:issue-define`, and `/kramme:linear:select-next` |
+| **Linear** | Issue tracking for `/kramme:linear:issue-to-pr`, `/kramme:linear:issue-implement`, `/kramme:linear:issue-define`, `/kramme:linear:review-pr`, and `/kramme:linear:select-next` |
 | **Context7** | Up-to-date library documentation retrieval |
 | **Nx MCP** | Nx monorepo tools for `/kramme:verify:run` in Nx workspaces |
 | **Chrome DevTools** | Browser automation and debugging |

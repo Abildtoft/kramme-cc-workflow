@@ -243,6 +243,11 @@
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md"
     },
     {
+      "name": "kramme:linear:review-pr",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:linear:review-pr/SKILL.md"
+    },
+    {
       "name": "kramme:linear:select-next",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:linear:select-next/SKILL.md"
