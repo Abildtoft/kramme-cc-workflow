@@ -101,7 +101,8 @@ exit_if_hook_disabled "hook-name" "json" # PostToolUse or Stop
 - **ALWAYS** use plain-English branch commit messages without Conventional Commit prefixes.
 - **ALWAYS** use Conventional Commits for PR titles because CI validates them and they become changelog-generating merge commit messages.
 - **PREFER** keeping new or refactored `SKILL.md` files under 500 lines by moving supporting material into the skill directory; legacy skills may exceed the target only until migrated.
-- **ALWAYS** treat `long-skill burndown` warnings at or above 400 lines from `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` as the ordered extraction backlog, starting with the first warning and preserving the 500-line hard-failure budget and existing behavior.
+- **ALWAYS** treat `long-skill burndown` warnings at or above 300 lines from `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` as an ordered review queue, starting with the first warning and preserving the 500-line hard-failure budget and existing behavior; warnings prompt review, not automatic deletion or unsafe trimming.
+- **ALWAYS** treat `long-description burndown` warnings at or above 500 characters as an ordered review queue, starting with the first warning and preserving trigger nouns, safety constraints, and non-derivable context while shrinking.
 - **ALWAYS** keep every skill and agent `description` frontmatter value at or below 1024 characters for Codex compatibility, moving examples and extended trigger guidance into the body.
 - **ALWAYS** resolve shipped skill edits to `kramme-cc-workflow/skills/kramme:<domain>:<skill-name>/` and maintenance skill edits to `.agents/skills/<skill-name>/`.
 - **NEVER** edit installed copies under `~/.codex/skills`, `~/.agents/skills`, `~/.claude/skills`, app bundles, or generated install output when changing repository behavior.
