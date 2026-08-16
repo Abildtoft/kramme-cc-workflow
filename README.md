@@ -753,6 +753,8 @@ This workspace also includes local maintenance skills under `.agents/skills/`, e
 | --- | --- |
 | `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares normalized source hashes without retaining fetched source bodies, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
 
+Run `/kramme:skill:audit-sources` monthly and again before each quarterly catalog review. The audit stays manual because fetching upstream content and trusting its contents are deliberate decisions. A reported upstream change is a prompt to review a skill, never permission to change it: fold suggestions into a `SKILL.md` only after human review, and refresh a `baseline_hash` only from a fetch that returned the real source rather than a redirect, login, or error page.
+
 ## Attribution
 
 This plugin is shaped by work shared across the agent-tooling community. The
