@@ -13,6 +13,13 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:450f8fbf4ef54e691798ba200b199507049bdaf0a033098f9745e4414b797b03"
+  - id: posthog-writing-agent-skills
+    url: https://newsletter.posthog.com/p/what-nobody-tells-you-about-writing
+    title: "PostHog - What nobody tells you about writing agent skills"
+    rationale: "The outcome-contract authoring default in the writing guidelines and both templates (be precise about goal, constraints, non-derivable context, and success evidence while leaving procedure loose), plus the progressive-disclosure and description-size discipline that keeps skill selection accurate, are adapted from this source."
+    usage: inspiration
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:57eb4fdae45cfb85c244883fc6b4a08a7c41854bafb123cfbddf782904a4a328"
   - id: compound-engineering-plugin-skill-workflows
     url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-code-review/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-code-review"

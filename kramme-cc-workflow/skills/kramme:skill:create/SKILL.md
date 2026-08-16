@@ -153,7 +153,9 @@ If any target file already exists during scaffolding, abort and report the confl
 3. Write `SKILL.md` with:
    - The finalized frontmatter (replacing template placeholders)
    - A heading matching the skill's purpose
-   - Numbered workflow steps as TODO placeholders
+   - Goal, constraints, strategy, and verification sections as TODO placeholders
+   - A context section only when the skill needs facts the agent cannot derive from the repository or prompt
+   - An ordered-steps section only when correctness or safety depends on a specific sequence, such as a destructive, security-sensitive, prerequisite-dependent, stateful, or resumable workflow
    - An artifact lifecycle section only when `artifact_lifecycle` was captured
    - A source-tracking section only when `external_sources` were captured
 
@@ -166,7 +168,10 @@ If any target file already exists during scaffolding, abort and report the confl
 3. Read the template from `assets/skill-md-with-resources.md`.
 4. Write `SKILL.md` with:
    - The finalized frontmatter
-   - Workflow steps with JiT loading instructions pointing to resource files
+   - Goal, constraints, strategy, and verification sections
+   - A context section only when the skill needs facts the agent cannot derive from the repository or prompt
+   - JiT loading instructions beside the strategy or ordered step that consumes each resource, including the condition that makes the resource worth loading
+   - An ordered-steps section only when correctness or safety depends on a specific sequence, such as a destructive, security-sensitive, prerequisite-dependent, stateful, or resumable workflow
    - TODO placeholders for the user to fill in
    - An artifact lifecycle section only when `artifact_lifecycle` was captured
    - A source-tracking section only when `external_sources` were captured
@@ -185,11 +190,13 @@ If any target file already exists during scaffolding, abort and report the confl
 
 ### Writing guidelines for SKILL.md content
 
+- Lead with the outcome contract: the goal, the constraints the run must respect, any context the agent cannot derive from the repository or prompt, and the evidence that proves success. Omit the context section when no such facts exist. Be precise about the applicable contract elements and deliberately loose about the rest.
 - Use third-person imperative: "Extract the text..." not "I will extract..."
-- Number steps sequentially; map decision trees explicitly
-- Reference resource files with explicit Read instructions:
+- State strategy as an adaptable default rather than a mandate, and leave out steps the agent already performs reliably
+- Require a mandatory ordered sequence only when correctness or safety depends on order. Common cases include destructive, irreversible, security-sensitive, prerequisite-dependent, stateful, or resumable workflows. There, number the steps, name preconditions when later steps depend on them, and map decision branches or failure paths where they actually exist
+- Reference resource files with explicit point-of-use Read instructions and a load condition:
   ```
-  Read the {reference name} from `references/{file}.md`.
+  Read the {reference name} from `references/{file}.md` when {the condition that makes this resource useful}.
   ```
 - Keep SKILL.md under 500 lines — if approaching the limit, move content to resources
 - For workflow skills that write durable artifacts, document how each artifact is produced, consumed, refreshed, and retired.
@@ -245,7 +252,9 @@ After scaffolding, verify the skill against these checks:
 ### Content
 
 - [ ] Instructions use third-person imperative voice
-- [ ] Workflow steps are numbered sequentially
+- [ ] The skill states its goal, the constraints the run must respect, and the success evidence that proves the goal was met; it states non-derivable context only when such context exists
+- [ ] Strategy is written as an adaptable default, not as a mandated procedure
+- [ ] A mandatory ordered sequence appears only when correctness or safety depends on order; where present, it names required preconditions and maps decision branches or failure paths where they actually exist
 - [ ] Resource files are referenced with explicit JiT Read instructions
 - [ ] No references to repo-root CLAUDE.md or README.md (skills must be self-contained per installation)
 - [ ] No extra documentation files inside the skill directory (for example release notes or status docs)
