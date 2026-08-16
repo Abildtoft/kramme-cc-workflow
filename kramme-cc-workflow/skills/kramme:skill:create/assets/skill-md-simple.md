@@ -7,15 +7,29 @@ user-invocable: { true|false }
 
 # {Skill Title}
 
-{TODO: One-sentence purpose statement.}
+## Goal
 
-## Workflow
+{TODO: The outcome a run must produce, in one or two sentences.}
 
-1. **{Step 1 name}** — {TODO: description in third-person imperative}
+## Constraints
 
-2. **{Step 2 name}** — {TODO: description}
+- {TODO: A boundary the run must respect — files it must not touch, side effects it must confirm first, scope it must not widen. Remove any bullet that does not apply.}
 
-3. **{Step 3 name}** — {TODO: description}
+## Context
+
+{TODO: Facts the agent cannot derive from the repository or the prompt — local conventions, where an artifact belongs, why a surprising rule exists. Remove this section when there are none.}
+
+## Verification
+
+{TODO: The command, output, or artifact that proves the goal was met.}
+
+## Strategy
+
+{TODO: The approach that usually works, in third-person imperative, written as an adaptable default rather than a mandate. Say where departing from it is fine, and leave out steps the agent already performs reliably.}
+
+## Ordered Steps
+
+{TODO: Add numbered steps only when correctness or safety depends on order, such as in a destructive, security-sensitive, prerequisite-dependent, stateful, or resumable workflow. State preconditions when later steps depend on them, and map decision branches or failure paths where they actually exist. Remove this section otherwise.}
 
 ## Artifact Lifecycle
 

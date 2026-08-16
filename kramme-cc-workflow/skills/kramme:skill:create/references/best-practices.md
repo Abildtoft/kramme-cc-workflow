@@ -52,7 +52,7 @@ Keep the context window lean by loading information only when needed.
 - **References are one level deep.** SKILL.md may instruct the agent to read a file in `references/` or `assets/`. Reference files must NOT instruct the agent to read other reference files. The reason: chained references inflate the agent's context unpredictably and make the skill's true cost-of-load opaque to the author. If a reference file feels like it needs a child reference, restructure: either inline the child content, promote the child to a peer reference loaded directly from SKILL.md, or split the workflow into two skills.
 - **Just-in-time loading.** Make the load trigger explicit. For example, use this authoring snippet:
   ```
-  Read the patterns catalog from `references/patterns.md`.
+  Read the patterns catalog from `references/patterns.md` when the task reaches pattern selection.
   ```
 - **Relative paths with forward slashes** regardless of OS.
 
@@ -62,15 +62,41 @@ Keep the context window lean by loading information only when needed.
 - Redundant logic the agent already handles reliably
 - Library code — skills should reference existing tools or contain tiny scripts
 
-## Procedural Instructions
+## Instruction Design
 
-Write instructions for LLMs, not humans.
+Write instructions for LLMs, not humans. An agent can already sequence ordinary work, pick a search tool, and recover from a typo'd command. What it cannot derive is what outcome you want, which boundaries it must respect, which local facts are not visible from the repository, and what counts as proof that the run succeeded.
 
-- **Step-by-step numbering.** Define workflows as strict chronological sequences.
-- **Map decision trees explicitly.** "If X, do Y. Otherwise, skip to Step 3."
-- **Third-person imperative.** "Extract the text..." not "I will extract..." or "You should extract..."
-- **Concrete templates over prose.** Place templates in `assets/` and instruct the agent to copy the structure.
+### Lead with the outcome contract
+
+State the applicable outcome contract before stating any procedure:
+
+- **Goal** — the outcome a run must produce, in one or two sentences.
+- **Constraints** — the boundaries the run must respect: files it must not touch, side effects it must confirm first, scope it must not widen, permissions it must not assume.
+- **Non-derivable context, when present** — facts the agent cannot infer from the repository or the prompt: local conventions, where an artifact belongs, why a surprising rule exists, which tool the team standardized on. Omit this section when the repository and prompt already supply everything needed.
+- **Success evidence** — the command, output, or artifact that proves the goal was met.
+
+Be precise about the applicable contract elements and deliberately loose about the rest. Over-specified procedure substitutes the author's guess for the agent's judgment and turns brittle as soon as the real environment differs from the imagined one.
+
+### Prefer strategy to procedure
+
+- **Describe intent, not keystrokes.** "Locate the failing assertion and the code it exercises" beats a four-step recipe for driving the test runner.
+- **Offer strategy as an adaptable default.** Phrase ordering as guidance the agent may depart from, and say where departing is fine.
+- **Omit what the agent already handles reliably.** Every inferable instruction costs context and crowds out the parts only you can supply.
+- **Concrete templates over prose.** Place output templates in `assets/` and instruct the agent to copy the structure; a template pins the deliverable without scripting the path to it.
 - **Consistent terminology.** Pick one term per concept and use it everywhere.
+- **Third-person imperative.** "Extract the text..." not "I will extract..." or "You should extract..."
+
+### When order is load-bearing
+
+Mandatory ordered steps are the exception, not the default. Require an explicit sequence only when correctness or safety depends on order. Common cases include workflows that are:
+
+- **Destructive or irreversible** — deletes files, rewrites history, force-pushes, drops data.
+- **Security-sensitive** — handles credentials, permissions, or untrusted input, so a check must precede an action.
+- **Stateful** — mutates a remote system, opens a Pull Request, posts a comment, or can leave partial state behind on failure.
+- **Resumable** — must be re-enterable after an interruption, so each step's completion has to be observable.
+- **Prerequisite-dependent** — later analysis would turn failed, invalid, or partial input collection into a misleading result unless collection and validation complete first.
+
+For those workflows, number the steps. Name preconditions when later steps depend on them, map decision branches that actually exist ("If X, do Y. Otherwise, skip to Step 3."), and state what to do when failure needs a distinct stop or fallback. Everywhere else, describe the goal and let the agent choose the route, then judge the run against the success evidence.
 
 ### No time-sensitive info
 
@@ -172,11 +198,13 @@ Ensure instructions are deterministic and don't force hallucination:
 >
 > {SKILL.md contents}
 >
-> Act as an autonomous agent that just triggered this skill. Simulate execution step-by-step. For each step, write your internal monologue:
+> Act as an autonomous agent that just triggered this skill. Describe the observable execution plan you would follow, focusing on:
 >
-> 1. What exactly are you doing?
-> 2. Which file/script are you reading or running?
-> 3. Flag any Execution Blockers where you must guess because instructions are ambiguous.
+> 1. What outcome will you produce, and how will you verify it?
+> 2. Which constraints and non-derivable context affect the run?
+> 3. What strategy will you use, including any file or script you need to read or run?
+> 4. If correctness or safety depends on order, which preconditions, decision branches, and failure paths must the ordered steps preserve?
+> 5. Flag any Execution Blockers where you must guess because instructions are ambiguous.
 
 ### Phase 3: Edge Case Testing
 
@@ -196,7 +224,8 @@ Enforce progressive disclosure and shrink token footprint:
 
 > Based on the edge-case answers, rewrite the SKILL.md enforcing Progressive Disclosure:
 >
-> 1. Keep SKILL.md as high-level steps using third-person imperative commands.
-> 2. Move dense rules, large templates, or complex schemas to `references/` or `assets/` files.
-> 3. Replace removed content with explicit commands to read the new file when needed.
-> 4. Add an Error Handling section at the bottom.
+> 1. Keep SKILL.md focused on the goal, constraints, strategy, verification, and any non-derivable context, using third-person imperative commands.
+> 2. Include ordered steps only when correctness or safety depends on order; otherwise let the strategy guide execution.
+> 3. Move dense rules, large templates, or complex schemas to `references/` or `assets/` files.
+> 4. Replace removed content with explicit point-of-use commands that state when to read the new file.
+> 5. Add an Error Handling section at the bottom.
