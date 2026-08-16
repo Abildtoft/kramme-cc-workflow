@@ -35,9 +35,9 @@ Defines what `scripts/normalize.py` strips and keeps when turning a transient fe
 - Inline links (text + URL). The URL is part of the substance — link target changes are real changes.
 - Blockquotes.
 
-## Markdown sources
+## Markdown and other plain-text sources
 
-If the input is already markdown (e.g. a GitHub raw README), skip HTML parsing and apply only the volatile-noise regex pass and normalization below.
+If the input is already plain text (for example, raw Markdown, a GitHub raw README, or source code served as `text/plain`), skip HTML parsing and apply only the volatile-noise regex pass and normalization below. The CLI's historically named `--type markdown` option is the lossless mode for all such non-HTML text.
 
 ## Final normalization (applied to both HTML and markdown inputs)
 
