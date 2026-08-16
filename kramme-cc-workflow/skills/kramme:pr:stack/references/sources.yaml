@@ -11,23 +11,37 @@ sources:
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:0fe9beb1f46e022036be7c7d825b1eb2b1d96bbbf816259e0411218ae28c24e0"
   - id: github-stacked-prs-docs
-    url: https://github.github.com/gh-stack/
-    title: "GitHub Stacked Pull Requests — documentation"
+    url: https://docs.github.com/en/pull-requests/get-started/about-stacked-prs
+    title: "GitHub Docs — About stacked pull requests"
     rationale: "The stack model (server-side stacks, branch protection and CI evaluated against the stack base, cascading merges) and lifecycle workflow are derived from the official documentation."
     usage: inspiration
-    last_reviewed_at: 2026-07-29
-    baseline_hash: ""
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:f2fc2fbcff4044359d2b855f12a11b9d630f1cc112da9c5ba677cc41e756d5f6"
   - id: github-stacked-prs-graphql-api
-    url: https://github.github.com/gh-stack/reference/graphql-api/
-    title: "GitHub Stacked Pull Requests — GraphQL API"
+    url: https://docs.github.com/en/pull-requests/reference/stacked-pull-requests-rest-and-graphql-apis
+    title: "GitHub Docs — Stacked pull requests APIs and webhooks"
     rationale: "The fail-closed membership resolver uses the documented PullRequest.stack field to distinguish an unstacked PR from a server-side stack that is not tracked by the local extension."
     usage: inspiration
-    last_reviewed_at: 2026-07-29
-    baseline_hash: ""
-  - id: github-gh-stack-v0.1.0
-    url: https://github.com/github/gh-stack/releases/tag/v0.1.0
-    title: "gh-stack v0.1.0 release"
-    rationale: "The minimum supported CLI version, amended-parent and stale-trunk safety requirements, and non-interactive gh stack merge workflow come from the v0.1.0 release."
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:ec1e8942eb15531d6429d1abc7da64f1b6f1859557703a8699f22d3d48409183"
+  - id: github-gh-stack-v0.1.0-merge
+    url: https://raw.githubusercontent.com/github/gh-stack/v0.1.0/cmd/merge.go
+    title: "gh-stack v0.1.0 merge implementation"
+    rationale: "The minimum supported CLI version and non-interactive gh stack merge workflow follow the tagged implementation's explicit target, confirmation, and merge-method handling."
     usage: inspiration
-    last_reviewed_at: 2026-07-29
-    baseline_hash: ""
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:7718414f7c1c45d2d91ff2cf0417b26414694a3d19a045877321d1c24163502e"
+  - id: github-gh-stack-v0.1.0-rebase
+    url: https://raw.githubusercontent.com/github/gh-stack/v0.1.0/cmd/rebase.go
+    title: "gh-stack v0.1.0 rebase implementation"
+    rationale: "The amended-parent and post-rewrite safety requirements follow the tagged implementation's validated rebase boundaries and final stack verification."
+    usage: inspiration
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:4459fd1baa89433f7d537321a2e9870317fd037fcd13e8c8c7f0484cb2138bd5"
+  - id: github-gh-stack-v0.1.0-sync
+    url: https://raw.githubusercontent.com/github/gh-stack/v0.1.0/cmd/sync.go
+    title: "gh-stack v0.1.0 sync implementation"
+    rationale: "The stale-trunk and non-interactive divergence safeguards follow the tagged implementation's remote-trunk fetch, cascade-rebase, verification, and push flow."
+    usage: inspiration
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:558eabaf6d725e19878deafce66e725c4a2505b8ac4c25c8155297d381a984a6"
