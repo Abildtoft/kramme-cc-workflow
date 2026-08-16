@@ -3783,6 +3783,57 @@ EOF
   [[ "$output" == *"::error::mechanical: kramme-cc-workflow/skills/over/SKILL.md has 21 lines, exceeds 20"* ]]
 }
 
+@test "mechanical description warnings are ordered capped and warning-only" {
+  write_routing_skill "below" "four"
+  write_routing_skill "at" "fives"
+  write_routing_skill "middle" "middle"
+  write_routing_skill "zeta" "another"
+  write_routing_skill "alpha" "seventh"
+  write_routing_skill "high" "ninechars"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "max_description_chars": 10,
+    "warn_description_chars": 5,
+    "skill_description_report_limit": 4
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint warnings:"* ]]
+  [[ "$output" == *"::warning::mechanical: long-description burndown: kramme-cc-workflow/skills/high/SKILL.md description is 9 chars"* ]]
+  [[ "$output" == *"::warning::mechanical: long-description burndown: kramme-cc-workflow/skills/alpha/SKILL.md description is 7 chars"* ]]
+  [[ "$output" == *"::warning::mechanical: long-description burndown: kramme-cc-workflow/skills/zeta/SKILL.md description is 7 chars"* ]]
+  [[ "$output" == *"::warning::mechanical: long-description burndown: kramme-cc-workflow/skills/middle/SKILL.md description is 6 chars"* ]]
+  [[ "$output" != *"long-description burndown: kramme-cc-workflow/skills/at/SKILL.md"* ]]
+  [[ "$output" != *"long-description burndown: kramme-cc-workflow/skills/below/SKILL.md"* ]]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "mechanical hard description budget still fails above max" {
+  write_routing_skill "over" "ninechars"
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "mechanical": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "max_description_chars": 8,
+    "warn_description_chars": 5,
+    "skill_description_report_limit": 2
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::warning::mechanical: long-description burndown: kramme-cc-workflow/skills/over/SKILL.md description is 9 chars"* ]]
+  [[ "$output" == *"::error::mechanical: kramme-cc-workflow/skills/over/SKILL.md description is 9 chars, exceeds 8"* ]]
+}
+
 @test "mechanical file size budgets warn for baselined and new executable debt" {
   write_file "$TMP_ROOT/kramme-cc-workflow/scripts/baselined.py" <<'EOF'
 one

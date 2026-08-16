@@ -947,6 +947,37 @@ class MechanicalCheckTest(unittest.TestCase):
             ],
         )
 
+    def test_description_warnings_apply_threshold_order_cap_and_hard_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            fixtures = "below:4 aaa-at:5 zzz-at:5 middle:6 beta:7 alpha:7 high:9 over:10"
+            for fixture in fixtures.split():
+                name, length = fixture.split(":")
+                path = root / "skills" / name / "SKILL.md"
+                path.parent.mkdir(parents=True)
+                skill = (
+                    f"---\nname: {name}\ndescription: {'x' * int(length)}\n"
+                    "disable-model-invocation: false\nuser-invocable: true\n---\nBody.\n"
+                )
+                path.write_text(skill, encoding="utf-8")
+            config = {
+                "skill_glob": "skills/*/SKILL.md",
+                "max_description_chars": 9,
+                "warn_description_chars": 5,
+                "skill_description_report_limit": 6,
+            }
+            context = lint_skill_contracts.LintContext(root=root, registry={"mechanical": config}, schema={})
+            result = lint_skill_contracts.check_mechanical(context)
+
+        self.assertEqual(result.failures, ["mechanical: skills/over/SKILL.md description is 10 chars, exceeds 9"])
+        warning_paths = [warning.split("burndown: ", 1)[1].split(" description", 1)[0] for warning in result.warnings]
+        expected_paths = (
+            "skills/over/SKILL.md skills/high/SKILL.md skills/alpha/SKILL.md "
+            "skills/beta/SKILL.md skills/middle/SKILL.md skills/aaa-at/SKILL.md"
+        ).split()
+        self.assertEqual(warning_paths, expected_paths)
+        self.assertIn("(over hard budget; warn at 5, fail above 9)", result.warnings[0])
+
 
 class CompatibilityEntryPointTest(unittest.TestCase):
     def test_legacy_script_reexports_package_api(self) -> None:
