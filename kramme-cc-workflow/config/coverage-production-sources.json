@@ -333,6 +333,11 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/skill-create-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:skill:create/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/skill-resource-references.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"]
     },
