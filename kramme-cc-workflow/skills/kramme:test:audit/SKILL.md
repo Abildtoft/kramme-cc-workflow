@@ -95,9 +95,11 @@ Scan all in-scope tests for structural leads first, then inspect each lead seman
 - tests with no observable assertion, only unconditional assertions, or an actual and expected value derived from the same source
 - assertions on values configured directly in the test double, fixture, or setup without verifying a system-under-test effect
 - broad `truthy`, `defined`, `not null`, or `does not throw` checks where a concrete contract exists
+- tests that only prove a symbol, route, command, handler, menu entry, or configuration key exists or is registered rather than exercising what it does
 - extensive mocking that may bypass the behavior named by the test
 - assertions on a third-party payload, schema, status code, or error shape the repository neither owns nor monitors
 - tests coupled to private calls, incidental ordering, internal data shapes, exact logs, timing, or oversized snapshots
+- assertions on rendered structure, styling, or copy that no stated contract covers
 - repeated test bodies, equivalent parameter cases, or overlapping unit and integration coverage
 - skipped, quarantined, focused-only, flaky, unusually slow, or non-isolated tests
 - regression tests whose referenced feature, failure path, API, or invariant may no longer exist
