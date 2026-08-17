@@ -53,11 +53,13 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
    - Read existing subagent frontmatter from `agents/*.md`, `kramme-cc-workflow/agents/*.md`, `.claude/agents/*.md`, or any explicit agent directory in the current workspace.
    - Record likely overlaps by name, description, and trigger phrases.
 
-5. Extract repeated patterns from the safe skeletons.
+5. Extract repeated patterns and recurring friction from the safe skeletons.
    - Group similar user asks, manual command sequences, review rituals, debugging loops, release steps, docs updates, CI-fix loops, test triage, changelog work, and PR-prep tasks.
+   - Group friction signals that recur while an existing component is already in use: the user having to clarify or re-steer the same point, failed commands and wrong tool or path assumptions, steps the user repeatedly skips or undoes as unnecessary, stale paths, commands, or versions, and context the agent had to be handed every run.
+   - Treat a prompt-footprint or contract warning from the destination repo's own skill linter, where one exists, as corroborating evidence for a friction signal, never as a candidate on its own.
    - Count independent evidence by session, not just repeated messages inside one session.
    - Preserve the user's phrasing as labels in private notes, but report paraphrased evidence.
-   - Ignore one-off tasks, vague preferences, personal style notes, and work already well covered by an existing skill or agent.
+   - Ignore one-off tasks, vague preferences, personal style notes, and work an existing skill or agent already handles without recurring friction.
 
 6. Classify each candidate.
    - Recommend a **skill** when the repeated work is a reusable workflow with ordered steps, decision gates, side effects, or orchestration across tools.
