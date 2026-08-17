@@ -8,17 +8,18 @@ user-invocable: true
 
 # Automate Repeated Session Work
 
-Find repeated work in recent agent sessions and turn only the practical patterns into simple skills or custom subagents.
+Find repeated work and recurring friction in recent agent sessions, propose improvements to the existing component that owns the work, and turn only the genuinely uncovered patterns into simple new skills or custom subagents.
 
 ## Boundaries
 
-- Use this for session-history mining, repeated-ask detection, and automation candidate creation.
+- Use this for session-history mining, repeated-ask detection, existing-component improvement proposals, and automation candidate creation.
 - Do not use this to summarize one session, write a personal retrospective, review code, or create broad "do everything" agents.
+- Improvements to existing components are report-only. This skill never edits, rewrites, or scaffolds over an existing skill or subagent; applying a proposed improvement is a separate follow-up the user must request explicitly.
 - Treat session logs as private. Use the shared `kramme:session:search` extraction substrate before reading content. Paraphrase evidence unless a short exact phrase is necessary to justify a candidate. Do not copy secrets, customer data, tokens, raw tool payloads, or long user messages into generated files.
 
 ## Workflow
 
-Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `--create`: remove it from the remaining source arguments and scaffold the selected candidates after the usefulness gate. It does not bypass missing session-source handling or existing-destination protection.
+Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `--create`: remove it from the remaining source arguments and scaffold the selected candidates after the usefulness gate. It does not bypass missing session-source handling or existing-destination protection, and it grants no authority to edit an existing skill or subagent.
 
 1. Resolve the shared session-search substrate.
    - Resolve `<skills-root>` as the `skills/` directory containing this skill (this skill lives at `<skills-root>/kramme:session:automate-repeats/`), then use the scripts at `<skills-root>/kramme:session:search/scripts/`. The same pattern works in both the source checkout and an installed plugin.
