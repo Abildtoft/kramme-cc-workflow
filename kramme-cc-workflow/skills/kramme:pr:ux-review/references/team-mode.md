@@ -47,6 +47,15 @@ Create a multi-agent UX review session named `pr-ux-review` and use **delegate m
 - **Claude Code:** create an Agent Team.
 - **Codex:** launch equivalent parallel UX review agents via multi-agent mode.
 
+Every teammate is **read-only**, under `references/shared-working-tree.md`. Team mode is the highest-risk shape for this: teammates work concurrently in one working tree that usually holds uncommitted work, so a file one teammate edits becomes false evidence for every other teammate, and the resulting fabricated findings cite real files and real lines. Give each teammate the constraint verbatim: no creating, editing, deleting, moving, or renaming files; no staging, committing, stashing, resetting, or checking out; no commands that rewrite files as a side effect; and in visual mode, no screenshots, recordings, or traces saved into the repository working tree. Recommended code changes go in the finding text, not into the tree.
+
+Capture the pre-spawn working-tree manifest before creating the session, using the same command as `/kramme:pr:ux-review` Step 7:
+
+```bash
+TREE_MANIFEST_BEFORE=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || exit 1
+"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE" || exit 1
+```
+
 Spawn teammates based on applicable review categories. Each teammate receives:
 
 - The resolved base branch and git diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, using the base resolved in Step 1)
@@ -87,11 +96,12 @@ While teammates work:
 
 ### Step 5: Collect and Aggregate Results
 
-After all tasks complete:
+After all tasks complete, gather the findings from every teammate, then run the **working-tree integrity check** before anything downstream consumes them. Re-capture the manifest into `TREE_MANIFEST_AFTER` with `"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh"` and `diff` it against `TREE_MANIFEST_BEFORE` from Step 2. An empty diff means the tree is intact. Otherwise apply the mutation handling in `references/shared-working-tree.md`: re-read the differing paths from disk, re-verify every finding citing them, drop the findings that no longer reproduce, name the mutated paths in `## Coverage Status`, never revert them, and abandon the audit without writing `UX_REVIEW_OVERVIEW.md` if the mutated paths cover most of the UI-relevant scope. In team mode, also name the teammate whose task window contains the mutation when the task log makes that attributable.
 
-1. Gather findings from all teammates
-2. Apply the relevance-validator's filtering
-3. Filter previously addressed findings (same logic as `/kramme:pr:ux-review` Step 9)
+Then aggregate:
+
+1. Apply the relevance-validator's filtering
+2. Filter previously addressed findings (same logic as `/kramme:pr:ux-review` Step 9)
 
 ### Step 6: Write UX_REVIEW_OVERVIEW.md or Reply Inline
 
@@ -118,6 +128,8 @@ Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same 
 ## Coverage Status (omit when complete)
 
 Coverage degraded: {agent names} failed; findings below exclude {categories}.
+
+Working tree mutated during audit: {paths}; findings citing them were re-verified against disk and {count} were dropped.
 
 ## Critical UX Issues (X found)
 
