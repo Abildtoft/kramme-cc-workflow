@@ -92,6 +92,23 @@ Interaction assertions are valid when the interaction is itself a contract: dura
 
 Default verdict: REPAIR.
 
+### Provider Shape Coupling
+
+The test asserts the shape of a third-party payload, schema, status code, or error format that the repository neither owns nor monitors. The double encodes the provider's wire format as it looked when the test was written, so the test keeps passing after the provider changes that format and keeps failing after a harmless local refactor. This inverts the test's purpose: it reports confidence about an integration it cannot observe.
+
+Strong evidence:
+
+- fixtures or stubs reproduce provider response bodies field by field, and the assertions read those fields instead of the adapter's own output
+- the expected value would have to be hand-edited if the provider changed its format, and nothing in the repository would detect that change first
+- no contract test, recorded interaction, published schema, or generated type backs the fixture
+- the test name claims integration behavior while every provider call is replaced
+
+Distinguish this from legitimate boundary isolation. Mocking at an external boundary is correct and is not the defect. The defect is asserting the provider's shape rather than the adapter's contract: what the repository sends, what it does with a well-formed response, and how it degrades on a malformed, partial, or failing one. Those three remain valuable and are usually the repair.
+
+A provider-shaped fixture is justified when it is generated or verified against the provider's published schema, refreshed by a recorded or contract test, or pinned to a provider version the repository declares and monitors. Record which mechanism applies; absence of any is what makes the coupling misleading rather than merely detailed.
+
+Default verdict: REPAIR toward the adapter's own contract. REMOVE when the test only restates provider data and no repository behavior appears in the trace. INVESTIGATE when a contract or recorded-interaction mechanism exists but its freshness cannot be established.
+
 ### Excessive Test Doubles
 
 Mocks, stubs, spies, or fakes may replace so much behavior that the named system is not meaningfully exercised.

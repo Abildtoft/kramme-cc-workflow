@@ -84,6 +84,16 @@ RUBRIC="skills/kramme:test:audit/references/audit-rubric.md"
 	grep -qF "trap - EXIT HUP INT TERM" "$SKILL"
 }
 
+@test "test audit nominates provider-shaped assertions without condemning boundary doubles" {
+	grep -qF -- "- assertions on a third-party payload, schema, status code, or error shape the repository neither owns nor monitors" "$SKILL"
+	grep -qF "### Provider Shape Coupling" "$RUBRIC"
+	grep -qF "Mocking at an external boundary is correct and is not the defect." "$RUBRIC"
+	grep -qF "The defect is asserting the provider's shape rather than the adapter's contract" "$RUBRIC"
+	grep -qF "A provider-shaped fixture is justified when it is generated or verified against the provider's published schema, refreshed by a recorded or contract test, or pinned to a provider version the repository declares and monitors." "$RUBRIC"
+	grep -qF "Default verdict: REPAIR toward the adapter's own contract." "$RUBRIC"
+	grep -qF "provider-shape-coupled" "$SKILL"
+}
+
 @test "test audit routing preserves the report-only permission boundary" {
 	grep -qF "Use to find poor-quality tests across a repository or path." "$SKILL"
 	grep -qF "editing or pruning tests" "$SKILL"

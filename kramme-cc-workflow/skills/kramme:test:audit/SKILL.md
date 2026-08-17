@@ -1,6 +1,6 @@
 ---
 name: kramme:test:audit
-description: "Audits an existing test suite for low-value, brittle, obsolete, duplicated, or weak tests. Produces a read-only, evidence-backed REMOVE / REPAIR / CONSOLIDATE / INVESTIGATE report. Use to find poor-quality tests across a repository or path. Not for generating or ordinarily running tests, PR coverage review, or editing or pruning tests."
+description: "Audits an existing test suite for low-value, brittle, obsolete, duplicated, provider-shape-coupled, or weak tests. Produces a read-only, evidence-backed REMOVE / REPAIR / CONSOLIDATE / INVESTIGATE report. Use to find poor-quality tests across a repository or path. Not for generating or ordinarily running tests, PR coverage review, or editing or pruning tests."
 argument-hint: "[full | path <file-or-folder> | changed [--base <ref>]] [--max-findings N]"
 disable-model-invocation: false
 user-invocable: true
@@ -96,6 +96,7 @@ Scan all in-scope tests for structural leads first, then inspect each lead seman
 - assertions on values configured directly in the test double, fixture, or setup without verifying a system-under-test effect
 - broad `truthy`, `defined`, `not null`, or `does not throw` checks where a concrete contract exists
 - extensive mocking that may bypass the behavior named by the test
+- assertions on a third-party payload, schema, status code, or error shape the repository neither owns nor monitors
 - tests coupled to private calls, incidental ordering, internal data shapes, exact logs, timing, or oversized snapshots
 - repeated test bodies, equivalent parameter cases, or overlapping unit and integration coverage
 - skipped, quarantined, focused-only, flaky, unusually slow, or non-isolated tests
