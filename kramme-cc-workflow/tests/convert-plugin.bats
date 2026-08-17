@@ -253,6 +253,7 @@ SH
 	[ -x "$TMP_DIR/.codex/scripts/resolve-stack-membership.sh" ]
 	[ -x "$TMP_DIR/.codex/scripts/verify-rewrite-state.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/collect-review-diff.sh" ]
+	[ -x "$TMP_DIR/.codex/scripts/review-tree-fingerprint.sh" ]
 	[ -f "$TMP_DIR/.codex/scripts/skill-usage.js" ]
 
 	run "$TMP_DIR/.codex/scripts/collect-review-diff.sh" --help
