@@ -108,6 +108,16 @@ RUBRIC="skills/kramme:test:audit/references/audit-rubric.md"
 	grep -qF "For a rendering assertion, where there is no registration to weigh, default to REPAIR toward the user-visible behavior the mount stands in for." "$RUBRIC"
 }
 
+@test "test audit flags build-time-guaranteed assertions only where the guarantee is enforced" {
+	grep -qF -- "- assertions the repository's type checker, schema validator, or compiler already guarantees on every path the test covers" "$SKILL"
+	grep -qF "It is not valid when the repository's type checker, schema validator, or compiler already guarantees the asserted property on every path the test covers." "$RUBRIC"
+	grep -qF "Before flagging this, confirm the guarantee is actually enforced." "$RUBRIC"
+	grep -qF "data crossing a deserialization, network, storage, or configuration boundary all mean the type is a claim rather than a proof" "$RUBRIC"
+	grep -qF "At those boundaries the runtime assertion is doing real work and is not a finding." "$RUBRIC"
+	grep -qF "REMOVE only when the type-level guarantee is enforced and the test asserts nothing beyond it." "$RUBRIC"
+	grep -qF "Default verdict: REPAIR. When the flagged property is a build-time guarantee," "$RUBRIC"
+}
+
 @test "test audit routing preserves the report-only permission boundary" {
 	grep -qF "Use to find poor-quality tests across a repository or path." "$SKILL"
 	grep -qF "editing or pruning tests" "$SKILL"

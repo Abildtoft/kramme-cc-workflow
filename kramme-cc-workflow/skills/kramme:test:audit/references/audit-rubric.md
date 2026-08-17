@@ -45,7 +45,11 @@ Strong evidence:
 
 A broad matcher is valid when existence, truthiness, type, or non-throwing behavior is the complete public contract.
 
-Default verdict: REPAIR.
+It is not valid when the repository's type checker, schema validator, or compiler already guarantees the asserted property on every path the test covers. Such a test spends runtime and review attention restating a build-time guarantee, and it cannot fail for any reason the build would not already report.
+
+Before flagging this, confirm the guarantee is actually enforced. An unchecked annotation, an `any`, `interface{}`, `unknown` cast or equivalent escape hatch, a suppressed or disabled rule, an untyped dependency at the call site, or data crossing a deserialization, network, storage, or configuration boundary all mean the type is a claim rather than a proof. At those boundaries the runtime assertion is doing real work and is not a finding.
+
+Default verdict: REPAIR. When the flagged property is a build-time guarantee, strengthen the oracle to the behavior the type cannot express; REMOVE only when the type-level guarantee is enforced and the test asserts nothing beyond it.
 
 ### Obsolete Regression
 
