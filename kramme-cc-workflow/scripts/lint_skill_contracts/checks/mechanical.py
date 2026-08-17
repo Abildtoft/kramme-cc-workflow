@@ -18,6 +18,8 @@ def check_mechanical(context: LintContext) -> CheckResult:
     warn_lines = int(config.get("warn_skill_lines", 0) or 0)
     report_limit = int(config.get("skill_line_report_limit", 20))
     max_description = int(config.get("max_description_chars", 1024))
+    warn_description = int(config.get("warn_description_chars", 0) or 0)
+    description_report_limit = int(config.get("skill_description_report_limit", 20))
     if "contract_schema" in context.registry and "required_frontmatter" in config:
         result.failures.append(
             "mechanical: required_frontmatter must come from contract_schema, not synced-contracts.yaml"
@@ -27,6 +29,7 @@ def check_mechanical(context: LintContext) -> CheckResult:
         required_fields = skill_frontmatter_required_fields(context.schema)
     line_allowlist = set(config.get("allow_line_count_over", []))
     long_skill_entries: list[tuple[int, str]] = []
+    long_description_entries: list[tuple[int, str]] = []
 
     for path in skill_paths(context.root, pattern):
         relative = rel(path, context.root)
@@ -50,10 +53,14 @@ def check_mechanical(context: LintContext) -> CheckResult:
         for field, expected_type in frontmatter_type_errors(text, context.schema):
             result.failures.append(f"mechanical: {relative} frontmatter field {field!r} must be {expected_type}")
         description = frontmatter.get("description")
-        if description is not None and len(description) > max_description:
-            result.failures.append(
-                f"mechanical: {relative} description is {len(description)} chars, exceeds {max_description}"
-            )
+        if description is not None:
+            description_length = len(description)
+            if warn_description > 0 and description_length >= warn_description:
+                long_description_entries.append((description_length, relative))
+            if description_length > max_description:
+                result.failures.append(
+                    f"mechanical: {relative} description is {description_length} chars, exceeds {max_description}"
+                )
 
     agent_result = check_agent_frontmatter_names(context)
     result.failures.extend(agent_result.failures)
@@ -73,21 +80,33 @@ def check_mechanical(context: LintContext) -> CheckResult:
     result.failures.extend(coverage_result.failures)
     result.warnings.extend(coverage_result.warnings)
 
-    if warn_lines <= 0:
-        return result
+    if warn_lines > 0:
+        sorted_long_skills = sorted(long_skill_entries, key=lambda item: (-item[0], item[1]))
+        for line_count, relative in sorted_long_skills[:report_limit]:
+            if line_count > max_lines:
+                status = "over hard budget"
+            elif line_count == max_lines:
+                status = "at hard budget"
+            else:
+                status = f"{max_lines - line_count} lines below hard budget"
+            result.warnings.append(
+                f"mechanical: long-skill burndown: {relative} has {line_count} lines "
+                f"({status}; warn at {warn_lines}, fail above {max_lines})"
+            )
 
-    sorted_long_skills = sorted(long_skill_entries, key=lambda item: (-item[0], item[1]))
-    for line_count, relative in sorted_long_skills[:report_limit]:
-        if line_count > max_lines:
-            status = "over hard budget"
-        elif line_count == max_lines:
-            status = "at hard budget"
-        else:
-            status = f"{max_lines - line_count} lines below hard budget"
-        result.warnings.append(
-            f"mechanical: long-skill burndown: {relative} has {line_count} lines "
-            f"({status}; warn at {warn_lines}, fail above {max_lines})"
-        )
+    if warn_description > 0:
+        sorted_long_descriptions = sorted(long_description_entries, key=lambda item: (-item[0], item[1]))
+        for description_length, relative in sorted_long_descriptions[:description_report_limit]:
+            if description_length > max_description:
+                status = "over hard budget"
+            elif description_length == max_description:
+                status = "at hard budget"
+            else:
+                status = f"{max_description - description_length} chars below hard budget"
+            result.warnings.append(
+                f"mechanical: long-description burndown: {relative} description is {description_length} chars "
+                f"({status}; warn at {warn_description}, fail above {max_description})"
+            )
     return result
 
 
