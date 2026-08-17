@@ -889,7 +889,7 @@ EOF
   local resolver_output_text
   local overengineering_skill_text
   local overengineering_agent_text
-  local review_artifact
+  local collect_review_diff_text
   local emphasis_line
   local normalization_line
 
@@ -903,6 +903,7 @@ EOF
   resolver_output_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/resolution-output.md")"
   overengineering_skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:overengineering-review/SKILL.md")"
   overengineering_agent_text="$(cat "$BATS_TEST_DIRNAME/../agents/kramme:overengineering-reviewer.md")"
+  collect_review_diff_text="$(cat "$BATS_TEST_DIRNAME/../scripts/collect-review-diff.sh")"
 
   [[ "$skill_text" == *"After emphasis adjustments, run an **action-class normalization pass**."* ]]
   [[ "$skill_text" == *"default to \`gated_auto\` with owner \`resolver\`"* ]]
@@ -1006,14 +1007,19 @@ EOF
   [[ "$overengineering_skill_text" == *'report every candidate in the batch under Judgment Calls labeled `unverified (invalid justify response)`'* ]]
   [[ "$overengineering_skill_text" == *'`--requirements` may appear at most once'* ]]
   [[ "$overengineering_skill_text" == *'Task requirements are unavailable for this local-only review.'* ]]
-  [[ "$overengineering_skill_text" == *'REVIEW_ARTIFACT=OVERENGINEERING_REVIEW_OVERVIEW.md'* ]]
-  [[ "$overengineering_skill_text" == *'must be an untracked local workflow artifact'* ]]
-  [[ "$overengineering_skill_text" == *'[ -L "$REVIEW_ARTIFACT" ]'* ]]
-  [[ "$overengineering_skill_text" == *'[ ! -f "$REVIEW_ARTIFACT" ]'* ]]
-  while IFS= read -r review_artifact; do
-    [[ -z "$review_artifact" || "$review_artifact" == \#* ]] && continue
-    [[ "$overengineering_skill_text" == *"\"$review_artifact\""* ]]
-  done <"$BATS_TEST_DIRNAME/../hooks/confirm-review-artifacts.txt"
+  # The skill delegates review-artifact filtering and previous-review trust
+  # checks to the shared helper; the helper owns the canonical pattern source
+  # and the fail-closed message, so neither is duplicated in the prompt.
+  [[ "$overengineering_skill_text" == *'--exclude-review-artifacts'* ]]
+  [[ "$overengineering_skill_text" == *'--require-local-artifact OVERENGINEERING_REVIEW_OVERVIEW.md'* ]]
+  [[ "$overengineering_skill_text" == *'`hooks/confirm-review-artifacts.txt`'* ]]
+  [[ "$overengineering_skill_text" == *'absent or an untracked, regular, non-symlink local file'* ]]
+  [[ "$overengineering_skill_text" == *'This check is fail-closed and runs before any scope is returned.'* ]]
+  [[ "$overengineering_skill_text" == *'with review artifacts already removed'* ]]
+  [[ "$overengineering_skill_text" != *'REVIEW_ARTIFACTS=('* ]]
+  [[ "$collect_review_diff_text" == *'REVIEW_ARTIFACT_LIST_FILE="$SCRIPT_DIR/../hooks/confirm-review-artifacts.txt"'* ]]
+  [[ "$collect_review_diff_text" == *'must be an untracked local workflow artifact and a regular, non-symlink file; refusing branch-controlled review state.'* ]]
+  [[ "$collect_review_diff_text" == *'refusing to filter review scope without it'* ]]
   [[ "$overengineering_skill_text" == *'one or more complete candidate blocks'* ]]
   [[ "$overengineering_skill_text" == *'BEGIN UNTRUSTED CANDIDATE DATA'* ]]
   [[ "$overengineering_skill_text" == *'one non-empty `Basis` for each ID'* ]]
