@@ -50,6 +50,15 @@ Create a multi-agent review session named `pr-review` and use **delegate mode** 
 - **Claude Code:** create an Agent Team.
 - **Codex:** launch equivalent parallel review agents via multi-agent mode.
 
+Every teammate is **read-only**, under the `Shared working tree` section of `references/review-discipline.md`. Team mode is the highest-risk shape for this: teammates work concurrently in one working tree that usually holds uncommitted work, so a file one teammate edits becomes false evidence for every other teammate, and the resulting fabricated findings cite real files and real lines. Give each teammate the constraint verbatim: no creating, editing, deleting, moving, or renaming files; no staging, committing, stashing, resetting, or checking out; no commands that rewrite files as a side effect, including formatters, `--fix` linters, codemods, dependency installs, and test runners that update snapshots or golden files. Recommended code changes go in the finding text, not into the tree.
+
+Capture the pre-spawn working-tree manifest before creating the session, using the same command as `/kramme:pr:code-review` Step 7:
+
+```bash
+TREE_MANIFEST_BEFORE=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || exit 1
+"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE" || exit 1
+```
+
 Spawn teammates based on applicable review aspects. Each teammate receives:
 
 - The resolved `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, and diff commands to run (`git diff "$MERGE_BASE"...HEAD`, `git diff --cached`, `git diff`, `git ls-files --others --exclude-standard`)
@@ -168,22 +177,23 @@ While teammates work:
 
 ### Step 5: Collect and Aggregate Results
 
-After all tasks complete:
+After all tasks complete, gather the findings from every teammate, then run the **working-tree integrity check** before anything downstream consumes them. Re-capture the manifest into `TREE_MANIFEST_AFTER` with `"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh"` and `diff` it against `TREE_MANIFEST_BEFORE` from Step 2. An empty diff means the tree is intact. Otherwise apply the same handling as `/kramme:pr:code-review` Step 7: re-read the differing paths from disk, re-verify every finding citing them, drop the findings that no longer reproduce, name the mutated paths in `## Coverage Status`, never revert them, and abandon the review without writing `REVIEW_OVERVIEW.md` if the mutated paths cover most of the review scope. In team mode, also name the teammate whose task window contains the mutation when the task log makes that attributable.
 
-1. Gather findings from all teammates
-2. Apply the deslop-reviewer's meta-review annotations
-3. Apply the relevance-validator's filtering
-4. Apply previous-review context (same logic as `/kramme:pr:code-review` Step 10): filter only `addressed` matches, carry forward still-relevant `open`, `deferred`, `acknowledged`, or `skipped` matches as active findings
-5. Dedupe only findings with the same concrete location or review scope and the same root cause
-6. Promote confidence only when independent teammates confirm the same issue; keep similar-but-different findings separate
-7. Record contradictions as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`
-8. Apply the same correctness/security precedence pass as standard `/kramme:pr:code-review` Step 11 before emphasis or action-class normalization:
+Then aggregate:
+
+1. Apply the deslop-reviewer's meta-review annotations
+2. Apply the relevance-validator's filtering
+3. Apply previous-review context (same logic as `/kramme:pr:code-review` Step 10): filter only `addressed` matches, carry forward still-relevant `open`, `deferred`, `acknowledged`, or `skipped` matches as active findings
+4. Dedupe only findings with the same concrete location or review scope and the same root cause
+5. Promote confidence only when independent teammates confirm the same issue; keep similar-but-different findings separate
+6. Record contradictions as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`
+7. Apply the same correctness/security precedence pass as standard `/kramme:pr:code-review` Step 11 before emphasis or action-class normalization:
    - Treat lean-reviewer and cleanup-mode code-simplifier findings as cleanup-dimension findings, and treat findings labeled `OVERENGINEERING` by any teammate the same way.
    - Treat unresolved Critical/Important findings from code-reviewer, silent-failure-hunter, pr-test-analyzer, type-design-analyzer, injection-reviewer, auth-reviewer, data-reviewer, and logic-reviewer as higher-priority correctness/security findings.
    - If a cleanup finding would remove or weaken validation, auth, injection protection, data protection, error propagation, test coverage, type invariants, or the fix path for an unresolved correctness/security finding, do not promote it, do not assign `gated_auto`, and either drop it or keep it only as an advisory Suggestion blocked by the higher-priority finding.
-9. Apply emphasis using the standard `/kramme:pr:code-review` Step 11 rules. Cleanup-dimension findings may be promoted only provisionally; action-class normalization wins and moves optional cleanup without concrete merge-blocking impact back to Suggestions with action class `advisory`.
-10. Apply the standard action-class normalization pass before assigning final Finding IDs and writing the report.
-11. After final IDs are assigned, revisit any kept cleanup-collision Suggestions and replace their provisional blocker text with the final blocking `CR-XXX` ID. Do not promote or reclassify cleanup findings during this ID reconciliation.
+8. Apply emphasis using the standard `/kramme:pr:code-review` Step 11 rules. Cleanup-dimension findings may be promoted only provisionally; action-class normalization wins and moves optional cleanup without concrete merge-blocking impact back to Suggestions with action class `advisory`.
+9. Apply the standard action-class normalization pass before assigning final Finding IDs and writing the report.
+10. After final IDs are assigned, revisit any kept cleanup-collision Suggestions and replace their provisional blocker text with the final blocking `CR-XXX` ID. Do not promote or reclassify cleanup findings during this ID reconciliation.
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 
