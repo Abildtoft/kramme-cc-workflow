@@ -1,6 +1,6 @@
 ---
 name: kramme:session:automate-repeats
-description: "Reviews recent agent session transcripts to find repeated manual workflows or repeated user asks, then proposes and optionally scaffolds only useful new skills or custom subagents. Use when the user asks to inspect recent sessions, find automation opportunities, or create reusable workflows from repeated work. Not for summarizing one session, general retrospectives, or codebase refactoring."
+description: "Reviews recent agent sessions to find repeated manual workflows, repeated asks, and recurring friction, then reports evidence-backed improvements to the existing skill or subagent that owns the work before proposing or scaffolding a new one. Use when the user asks to inspect recent sessions, find automation opportunities, improve a skill from how recent runs went, or turn repeated work into reusable workflows. Not for summarizing one session, general retrospectives, or codebase refactoring."
 argument-hint: "[session-paths or --recent N] [--create|--auto]"
 disable-model-invocation: true
 user-invocable: true
