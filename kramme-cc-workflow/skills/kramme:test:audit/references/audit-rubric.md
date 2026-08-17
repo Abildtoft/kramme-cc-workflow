@@ -181,5 +181,6 @@ Rank by:
 2. False confidence or maintenance cost removed.
 3. Breadth of developers or workflows affected.
 4. Cleanup risk and implementation effort, preferring smaller safe actions.
+5. Whether the finding moves protection from a feature's present shape toward a contract that outlives it. Prefer a REPAIR that restates the same protection against the public contract over an equal-confidence REMOVE, because it keeps the protection while removing the brittleness.
 
 Do not use raw file size, test age, line coverage, or stylistic unfamiliarity as priority multipliers.

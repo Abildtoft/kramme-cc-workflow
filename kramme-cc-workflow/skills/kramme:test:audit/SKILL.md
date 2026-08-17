@@ -140,6 +140,8 @@ Before assigning REMOVE, prove all of the following:
 3. Any claimed replacement test exercises the same observable behavior and would fail for the same fault class.
 4. The recommendation includes a focused verification command for a later implementation pass.
 
+When a test protects real behavior but asserts a feature's present shape rather than the contract that outlives it, prefer REPAIR toward that contract over REMOVE. The protection is worth keeping; only the coupling is the defect.
+
 Rank findings by confidence first, then by expected confidence gained relative to cleanup risk and effort. Do not inflate priority from test length or age alone. Cap active findings at `MAX_FINDINGS`; summarize additional proven candidates as deferred counts by verdict.
 
 ## 6. Report Inline

@@ -118,6 +118,12 @@ RUBRIC="skills/kramme:test:audit/references/audit-rubric.md"
 	grep -qF "Default verdict: REPAIR. When the flagged property is a build-time guarantee," "$RUBRIC"
 }
 
+@test "test audit prefers contract-shaped repair over deleting feature-shaped protection" {
+	grep -qF "When a test protects real behavior but asserts a feature's present shape rather than the contract that outlives it, prefer REPAIR toward that contract over REMOVE." "$SKILL"
+	grep -qF "The protection is worth keeping; only the coupling is the defect." "$SKILL"
+	grep -qF "Prefer a REPAIR that restates the same protection against the public contract over an equal-confidence REMOVE" "$RUBRIC"
+}
+
 @test "test audit routing preserves the report-only permission boundary" {
 	grep -qF "Use to find poor-quality tests across a repository or path." "$SKILL"
 	grep -qF "editing or pruning tests" "$SKILL"
