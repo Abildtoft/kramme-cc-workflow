@@ -197,9 +197,42 @@ For each applicable agent, launch the reviewer using the platform's agent-invoca
 - The `app_url` and browser MCP type (if visual mode)
 - If `custom_threshold` was provided: instruct the agent to use this threshold instead of its default (e.g., "Only report findings with confidence >= {custom_threshold}")
 
+Read `references/shared-working-tree.md` and instruct every reviewer that it is **read-only**. Every reviewer in this audit reads the same working tree, which usually holds uncommitted work, so a file one reviewer edits becomes false evidence for the others and produces fabricated findings that cite real files and real lines. No reviewer may create, edit, delete, move, or rename files, mutate git state, or run a command that rewrites files as a side effect, including formatters, `--fix` linters, codemods, dependency installs, and test runners that update snapshots or golden files. In visual mode, browser evidence stays read-only: never save a screenshot, recording, or trace into the repository working tree. Recommended code changes belong in the finding text; applying them is `/kramme:pr:resolve-review`'s job.
+
+Capture the pre-launch working-tree manifest before any reviewer starts:
+
+```bash
+TREE_MANIFEST_BEFORE=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || {
+  echo "Could not create temporary tree-manifest file; stop." >&2
+  exit 1
+}
+"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE" || {
+  rm -f "$TREE_MANIFEST_BEFORE"
+  echo "Working-tree manifest capture failed; see the message above and stop." >&2
+  exit 1
+}
+```
+
 **Sequential (default):** Launch agents one at a time. Easier to read and act on.
 
-**Parallel (if user passes `--parallel`):** Launch all agents simultaneously. Faster but results come back together.
+**Parallel (if user passes `--parallel`):** Launch all agents simultaneously. Faster but results come back together. Parallel reviewers share one working tree; the read-only mandate above is what keeps their evidence independent.
+
+**Working-tree integrity check.** After every reviewer has returned, before relevance validation, re-capture the manifest and compare:
+
+```bash
+TREE_MANIFEST_AFTER=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || {
+  echo "Could not create temporary tree-manifest file; stop." >&2
+  exit 1
+}
+"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_AFTER" || {
+  rm -f "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"
+  echo "Working-tree manifest re-capture failed; see the message above and stop." >&2
+  exit 1
+}
+diff "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"
+```
+
+An empty `diff` means the tree is intact; continue. Any difference means a reviewer mutated the shared tree: collect the differing paths as `MUTATED_PATHS` and apply the mutation handling in `references/shared-working-tree.md` — re-verify every finding citing a mutated path against the text now on disk, drop the ones that no longer reproduce, report the paths in `## Coverage Status`, and never revert or clean them. If `MUTATED_PATHS` covers most of the UI-relevant scope, stop without writing `UX_REVIEW_OVERVIEW.md` and report the mutation instead.
 
 **Mode field:** If `app_url` was provided, set `Mode` to `Visual + Code` in the output template; otherwise `Code-only`.
 

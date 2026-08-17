@@ -450,6 +450,9 @@
       "kramme-cc-workflow/scripts/resolve-stack-membership.sh": [
         "kramme-cc-workflow/tests/resolve-stack-membership.bats"
       ],
+      "kramme-cc-workflow/scripts/review-tree-fingerprint.sh": [
+        "kramme-cc-workflow/tests/review-shared-tree.bats"
+      ],
       "kramme-cc-workflow/scripts/run-skillspector.sh": [
         "kramme-cc-workflow/tests/skillspector-runner.bats"
       ],

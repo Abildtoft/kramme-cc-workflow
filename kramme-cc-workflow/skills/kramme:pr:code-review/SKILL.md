@@ -169,6 +169,8 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Untracked files: `git ls-files --others --exclude-standard`
    - PR description context: parsed title/body/url from `PR_CONTEXT_JSON`, if present
 
+   Instruct every reviewer that it is **read-only**, using the `Shared working tree` section of `references/review-discipline.md`. Every reviewer in this run reads the same working tree, which usually holds uncommitted work, so a file one reviewer edits becomes false evidence for the others and produces fabricated findings that cite real files and real lines. No reviewer may create, edit, delete, move, or rename files, mutate git state, or run a command that rewrites files as a side effect, including formatters, `--fix` linters, codemods, dependency installs, and test runners that update snapshots or golden files. Recommended code changes belong in the finding text; applying them is `/kramme:pr:resolve-review`'s job.
+
    Instruct agents to use the PR description in two ways:
    - As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
    - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction.
@@ -218,9 +220,40 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - **Evidence:** concrete location, trace, reproduction, failing expectation, or reason the finding is marked `UNVERIFIED`
    - **Relevance status:** PR-caused, pre-existing/out-of-scope, previously addressed, or unresolved pending validation
 
+   Capture the pre-launch working-tree manifest before any reviewer starts:
+
+   ```bash
+   TREE_MANIFEST_BEFORE=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || {
+     echo "Could not create temporary tree-manifest file; stop." >&2
+     exit 1
+   }
+   "${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE" || {
+     rm -f "$TREE_MANIFEST_BEFORE"
+     echo "Working-tree manifest capture failed; see the message above and stop." >&2
+     exit 1
+   }
+   ```
+
    Launch the agents resolved in Step 6 using `LAUNCH_MODE` from Step 1:
    - `LAUNCH_MODE=sequential` (default): launch one agent, wait for its report, then launch the next. Use this for interactive review where each report should be readable before the next runs.
-   - `LAUNCH_MODE=parallel`: launch all applicable agents simultaneously and collect results together. Use this when the user passed `--parallel` or the deprecated bare `parallel` alias.
+   - `LAUNCH_MODE=parallel`: launch all applicable agents simultaneously and collect results together. Use this when the user passed `--parallel` or the deprecated bare `parallel` alias. Parallel reviewers share one working tree; the read-only mandate above is what keeps their evidence independent.
+
+   **Working-tree integrity check.** After every reviewer has returned, before relevance validation, re-capture the manifest and compare:
+
+   ```bash
+   TREE_MANIFEST_AFTER=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || {
+     echo "Could not create temporary tree-manifest file; stop." >&2
+     exit 1
+   }
+   "${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_AFTER" || {
+     rm -f "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"
+     echo "Working-tree manifest re-capture failed; see the message above and stop." >&2
+     exit 1
+   }
+   diff "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"
+   ```
+
+   An empty `diff` means the tree is intact; continue. Any difference means a reviewer mutated the shared tree: collect the differing paths as `MUTATED_PATHS` and apply the mutation handling in the `Shared working tree` section of `references/review-discipline.md` — re-verify every finding citing a mutated path against the text now on disk, drop the ones that no longer reproduce, report the paths in `## Coverage Status`, and never revert or clean them. If `MUTATED_PATHS` covers most of the review scope, stop without writing `REVIEW_OVERVIEW.md` and report the mutation instead; a review of a tree that changed underneath it is not a review.
 
    **Agent failure handling.** If a selected reviewer agent is unavailable, times out, or returns output that cannot be parsed as findings, record the failed agent name, review dimension, and what was attempted. Continue only if at least one selected reviewer succeeded, and include a degraded-coverage banner in the final report: `Coverage degraded: <agent names> failed; findings below exclude <dimensions>.` If all selected reviewers fail, or if the relevance validator fails, stop without writing `REVIEW_OVERVIEW.md`. Do not fabricate findings or present a partial review as complete. If the slop meta-review fails after primary reviewers succeeded, continue with a degraded-coverage banner that names the failed meta-review and notes that slop warnings may be incomplete.
 

@@ -1,6 +1,6 @@
 # Output template: REVIEW_OVERVIEW.md
 
-Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting the section. The only conditional sections are `## Coverage Status`, which appears only when coverage is degraded, `## Emphasis Applied`, which appears only when emphasis was requested, and `## Dead Code`, which appears only when there are dead-code findings to summarize.
+Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting the section. The only conditional sections are `## Coverage Status`, which appears only when coverage is degraded or the working tree changed during the review (emit only the lines that apply), `## Emphasis Applied`, which appears only when emphasis was requested, and `## Dead Code`, which appears only when there are dead-code findings to summarize.
 
 ```markdown
 # PR Review Summary
@@ -30,6 +30,8 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 ## Coverage Status (omit when complete)
 
 Coverage degraded: {agent names} failed; findings below exclude {dimensions}.
+
+Working tree mutated during review: {paths}; findings citing them were re-verified against disk and {count} were dropped.
 
 ## Emphasis Applied (omit section if no emphasis)
 

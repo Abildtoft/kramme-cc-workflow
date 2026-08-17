@@ -2,6 +2,26 @@
 
 Guidance for the spawned review agents and for the orchestrator's final-check pass. SKILL.md references this file from Step 7 (when instructing each reviewer) and Step 13 (before posting the aggregated report).
 
+## Shared working tree
+
+Reviewers read one working tree that is shared with every other reviewer in the same run, and that tree usually holds uncommitted work. A file a reviewer edits stops being the code under review and becomes false evidence for everyone else: the next reviewer reads the mutation, cannot see who made it, and reports it as a defect in the author's change. Findings fabricated this way are indistinguishable from real ones because they cite a real file and a real line.
+
+**Every spawned reviewer is read-only.** This is not advice about scope; it is a hard constraint on the tools a reviewer may use.
+
+- Never create, edit, delete, move, or rename a file. Never stage, commit, stash, reset, checkout, or apply a patch.
+- Never run a command that rewrites files as a side effect: formatters, linters with `--fix`, codemods, dependency installs, build steps that write into the tree, or test runners that update snapshots, fixtures, or generated golden files.
+- Read-only verification is encouraged: reading files, `git diff`, `git log`, `git show`, `grep`, and search tools all leave the tree untouched.
+- When a fix requires a code change, put the change in the finding as recommended text. Describing the edit is the deliverable; applying it is `/kramme:pr:resolve-review`'s job.
+- A reviewer that genuinely must execute something that writes has to run alone or in an isolated worktree. It must never do so inside a parallel batch on the shared tree.
+
+The orchestrator captures a working-tree manifest before launching reviewers and again after collecting their findings (`${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh`). A difference means the tree changed mid-review, so:
+
+- Re-read every path that differs, from disk, and re-verify each finding that cites one of those paths against the current text.
+- Drop any finding whose cited code does not reproduce. Do not downgrade it to `UNVERIFIED` and keep it — a finding formed against text that no longer exists is a fabrication, not a weak observation.
+- Report the mutated paths in `## Coverage Status` so the human can inspect them. Never revert or clean them automatically; uncommitted work in that tree may be the user's, not a reviewer's.
+
+The manifest covers tracked paths differing from `HEAD` plus untracked, non-ignored paths. It does not cover ignored files, so build output and caches written by a stray command stay invisible to it.
+
 ## Review speed norm
 
 One business day is the **maximum** time a PR should sit waiting on review, not the target. If the review slips past a day, the diff stales, the author context-switches, and the eventual review skews toward nitpicks because the reviewer is working against the PR instead of with the author.
@@ -126,6 +146,7 @@ If any of these are true, pause and re-scope the review before posting it:
 - Every finding you're about to post is marked **Critical:** — the bucket has lost meaning; re-triage.
 - The review is older than the PR (you've been reviewing longer than the author spent writing).
 - You're rewriting the PR in your head instead of reviewing the diff in front of you.
+- You're about to edit a file, apply a fix, or run a formatter or `--fix` to check whether your recommendation works. The tree is shared; describe the change instead.
 - You're flagging style issues the project doesn't enforce anywhere else.
 - You're requiring defensive checks, logging, retries, or validation layers that nearby code intentionally does not use, and you cannot point to a concrete new failure path.
 - You're asking for flexibility, configurability, abstraction, or edge-case handling for scenarios the requirements don't include — or a recommended fix adds a layer the smallest direct change doesn't need.
@@ -137,6 +158,7 @@ If any of these are true, pause and re-scope the review before posting it:
 
 Before posting the review, confirm:
 
+- [ ] The post-review working-tree manifest matches the pre-launch capture; if it does not, findings citing the differing paths were re-verified against disk, unreproducible ones were dropped, and `## Coverage Status` names the mutated paths.
 - [ ] Every finding has a severity prefix (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`, or no prefix for Required).
 - [ ] Every active finding has a stable Finding ID (`CR-001`, `CR-002`, ...).
 - [ ] Every active finding includes Location, Confidence, Action class, Owner, and Evidence.

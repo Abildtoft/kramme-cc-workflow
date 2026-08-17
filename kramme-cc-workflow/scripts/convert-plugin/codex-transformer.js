@@ -210,6 +210,14 @@ function convertCodexHookPlugin(plugin) {
         targetPath: path.join("scripts", "collect-review-diff.sh"),
       },
       {
+        sourceFile: path.join(
+          plugin.root,
+          "scripts",
+          "review-tree-fingerprint.sh",
+        ),
+        targetPath: path.join("scripts", "review-tree-fingerprint.sh"),
+      },
+      {
         sourceFile: path.join(plugin.root, "scripts", "skill-usage.js"),
         targetPath: path.join("scripts", "skill-usage.js"),
       },

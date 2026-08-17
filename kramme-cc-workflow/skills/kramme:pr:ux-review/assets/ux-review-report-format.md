@@ -12,6 +12,8 @@
 
 Coverage degraded: {agent names} failed; findings below exclude {categories}.
 
+Working tree mutated during audit: {paths}; findings citing them were re-verified against disk and {count} were dropped.
+
 ## Critical UX Issues (X found)
 
 ### UX-NNN: {Brief title}
