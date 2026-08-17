@@ -14,10 +14,14 @@ RESOLVE_ARGS=(--strict)
 OUTPUT_FORMAT="shell"
 DECODE_JSON=false
 COLLECT_OPTION_SEEN=false
+EXCLUDE_REVIEW_ARTIFACTS=false
+LOCAL_ARTIFACT=""
+REVIEW_ARTIFACT_LIST_FILE="$SCRIPT_DIR/../hooks/confirm-review-artifacts.txt"
+REVIEW_ARTIFACT_PATTERNS=()
 
 usage() {
   cat >&2 << 'USAGE'
-Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json]
+Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json] [--exclude-review-artifacts] [--require-local-artifact <path>]
        collect-review-diff.sh --decode-json
 
 Default output is shell-quoted assignments:
@@ -25,6 +29,14 @@ Default output is shell-quoted assignments:
 
 JSON output fields:
   base_ref base_branch merge_base changed_files
+
+Review-preparation options are opt-in; without them the collected scope and
+both output formats are unchanged:
+  --exclude-review-artifacts     Drop repository-root paths matching
+                                 hooks/confirm-review-artifacts.txt from the
+                                 collected scope.
+  --require-local-artifact PATH  Fail unless PATH is absent or an untracked,
+                                 regular, non-symlink local file.
 
 Decoder mode validates JSON from stdin and emits these four fields once as
 NUL-delimited values, with changed_files joined by newlines.
@@ -84,6 +96,78 @@ parse_resolved_json() {
   MERGE_BASE=$(printf '%s\n' "$decoded" | sed -n '3p')
 }
 
+# A generated review report is workflow state, never implementation input.
+# Only an untracked local copy is eligible as previous-review state: a tracked,
+# staged, or otherwise changed copy is branch-controlled input, and a symlink or
+# non-regular file can redirect the reader outside the workspace. Fail closed on
+# every one of those, so an unreadable trust state can never be read as state.
+require_local_review_artifact() {
+  local artifact="$1"
+
+  if [ -L "$artifact" ] \
+    || { [ -e "$artifact" ] && [ ! -f "$artifact" ]; } \
+    || git ls-files --error-unmatch -- "$artifact" > /dev/null 2>&1 \
+    || ! git diff --quiet "$MERGE_BASE"...HEAD -- "$artifact" \
+    || ! git diff --quiet --cached -- "$artifact" \
+    || ! git diff --quiet -- "$artifact"; then
+    echo "$artifact must be an untracked local workflow artifact and a regular, non-symlink file; refusing branch-controlled review state." >&2
+    exit 1
+  fi
+}
+
+# The hooks list is the repository's canonical review-artifact inventory. A
+# missing or empty list means the caller cannot filter what it asked to filter,
+# so stop rather than return an unfiltered scope that silently reads review
+# reports as changed content.
+load_review_artifact_patterns() {
+  local line
+
+  if [ ! -f "$REVIEW_ARTIFACT_LIST_FILE" ]; then
+    echo "Review artifact list not found at $REVIEW_ARTIFACT_LIST_FILE; refusing to filter review scope without it." >&2
+    exit 1
+  fi
+
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%"${line##*[![:space:]]}"}"
+    [ -n "$line" ] || continue
+    REVIEW_ARTIFACT_PATTERNS+=("$line")
+  done < "$REVIEW_ARTIFACT_LIST_FILE"
+
+  if [ ${#REVIEW_ARTIFACT_PATTERNS[@]} -eq 0 ]; then
+    echo "Review artifact list $REVIEW_ARTIFACT_LIST_FILE has no patterns; refusing to filter review scope without them." >&2
+    exit 1
+  fi
+}
+
+# Entries are matched against the repository-root path only, so a same-named
+# file nested in a directory stays in review scope as ordinary changed content.
+# This is deliberately narrower than hooks/confirm-review-responses.sh, the list's
+# other consumer, which also matches basenames in any directory: review skills
+# write their reports to the project root, and matching nested paths here would
+# silently drop real implementation files from the reviewed scope.
+filter_review_artifacts() {
+  local changed_file pattern
+  local kept=""
+
+  while IFS= read -r changed_file; do
+    [ -n "$changed_file" ] || continue
+    for pattern in "${REVIEW_ARTIFACT_PATTERNS[@]}"; do
+      # shellcheck disable=SC2254
+      # Artifact entries intentionally support shell-style globs.
+      case "$changed_file" in
+        $pattern)
+          continue 2
+          ;;
+      esac
+    done
+    kept+="${changed_file}"$'\n'
+  done <<< "$CHANGED_FILES"
+
+  CHANGED_FILES=${kept%$'\n'}
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --decode-json)
@@ -111,6 +195,17 @@ while [ $# -gt 0 ]; do
       COLLECT_OPTION_SEEN=true
       RESOLVE_ARGS+=(--tolerate-fetch-failure)
       shift
+      ;;
+    --exclude-review-artifacts)
+      COLLECT_OPTION_SEEN=true
+      EXCLUDE_REVIEW_ARTIFACTS=true
+      shift
+      ;;
+    --require-local-artifact)
+      COLLECT_OPTION_SEEN=true
+      require_value "$1" "${2-}"
+      LOCAL_ARTIFACT="$2"
+      shift 2
       ;;
     --format)
       COLLECT_OPTION_SEEN=true
@@ -147,11 +242,19 @@ if [ "$DECODE_JSON" = true ]; then
   exit 0
 fi
 
+if [ "$EXCLUDE_REVIEW_ARTIFACTS" = true ]; then
+  load_review_artifact_patterns
+fi
+
 RESOLVED=$("$SCRIPT_DIR/resolve-base.sh" --format json "${RESOLVE_ARGS[@]}") || {
   echo "Base resolution failed; see the message above and stop." >&2
   exit 1
 }
 parse_resolved_json "$RESOLVED"
+
+if [ -n "$LOCAL_ARTIFACT" ]; then
+  require_local_review_artifact "$LOCAL_ARTIFACT"
+fi
 
 CHANGED_FILES=$({
   git diff --name-only "$MERGE_BASE"...HEAD
@@ -159,5 +262,9 @@ CHANGED_FILES=$({
   git diff --name-only
   git ls-files --others --exclude-standard
 } | sed '/^$/d' | sort -u)
+
+if [ "$EXCLUDE_REVIEW_ARTIFACTS" = true ]; then
+  filter_review_artifacts
+fi
 
 emit_output

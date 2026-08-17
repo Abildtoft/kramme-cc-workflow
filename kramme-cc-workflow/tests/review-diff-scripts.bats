@@ -278,6 +278,138 @@ PY
 	[ ! -e "$pwned" ]
 }
 
+@test "collect-review-diff excludes canonical review artifacts only when asked" {
+	local expected
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	printf 'report\n' >REVIEW_OVERVIEW.md
+	printf 'plan\n' >PR_PLAN_W03A_EXAMPLE.md
+	printf 'baseline\n' >QA_BASELINE.json
+	printf 'source\n' >REVIEW_OVERVIEW_helper.md
+	mkdir -p docs
+	printf 'nested\n' >docs/REVIEW_OVERVIEW.md
+
+	run "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 0 ]
+	eval "$output"
+	expected="$(printf '%s\n' committed.txt docs/REVIEW_OVERVIEW.md \
+		PR_PLAN_W03A_EXAMPLE.md QA_BASELINE.json REVIEW_OVERVIEW.md \
+		REVIEW_OVERVIEW_helper.md | sort)"
+	[ "$CHANGED_FILES" = "$expected" ]
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --exclude-review-artifacts
+	[ "$status" -eq 0 ]
+	eval "$output"
+	# Exact entries and glob entries drop; a near-miss name and a same-named
+	# file nested below the root stay in scope as ordinary changed content.
+	expected="$(printf '%s\n' committed.txt docs/REVIEW_OVERVIEW.md \
+		REVIEW_OVERVIEW_helper.md | sort)"
+	[ "$CHANGED_FILES" = "$expected" ]
+}
+
+@test "collect-review-diff filtering does not evaluate hostile file names" {
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+	printf 'report\n' >REVIEW_OVERVIEW.md
+	printf 'hostile\n' >'$(touch${IFS}filter-pwned).md'
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --exclude-review-artifacts --format json
+
+	[ "$status" -eq 0 ]
+	[ ! -e filter-pwned ]
+	COLLECTED_JSON="$output" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["COLLECTED_JSON"])
+assert data["changed_files"] == [
+    "$(touch${IFS}filter-pwned).md",
+    "committed.txt",
+], data
+PY
+}
+
+@test "collect-review-diff accepts an absent or untracked local review artifact" {
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" \
+		--require-local-artifact OVERENGINEERING_REVIEW_OVERVIEW.md
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$CHANGED_FILES" = "committed.txt" ]
+
+	printf 'previous review\n' >OVERENGINEERING_REVIEW_OVERVIEW.md
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --exclude-review-artifacts \
+		--require-local-artifact OVERENGINEERING_REVIEW_OVERVIEW.md
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$CHANGED_FILES" = "committed.txt" ]
+}
+
+@test "collect-review-diff rejects branch-controlled previous-review state" {
+	local artifact=OVERENGINEERING_REVIEW_OVERVIEW.md
+	local trust_message="must be an untracked local workflow artifact"
+
+	printf 'staged report\n' >"$artifact"
+	git add "$artifact"
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact "$artifact"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"$artifact $trust_message"* ]]
+
+	git commit -m "commit review report" >/dev/null
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact "$artifact"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"$trust_message"* ]]
+
+	git rm -q "$artifact"
+	git commit -m "remove review report" >/dev/null
+	ln -s /etc/passwd "$artifact"
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact "$artifact"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"$trust_message"* ]]
+
+	rm "$artifact"
+	mkdir "$artifact"
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact "$artifact"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"$trust_message"* ]]
+}
+
+@test "collect-review-diff fails closed without the canonical artifact list" {
+	local fake_scripts="$TMP_DIR/no-hooks/scripts"
+	mkdir -p "$fake_scripts/lib"
+	cp "$SCRIPT_DIR/collect-review-diff.sh" "$fake_scripts/collect-review-diff.sh"
+	cp "$SCRIPT_DIR/lib/shell-helpers.sh" "$fake_scripts/lib/shell-helpers.sh"
+
+	run "$fake_scripts/collect-review-diff.sh" --exclude-review-artifacts
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Review artifact list not found"* ]]
+	[[ "$output" == *"refusing to filter review scope without it"* ]]
+}
+
+@test "collect-review-diff rejects review-preparation options in decoder mode" {
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json --exclude-review-artifacts' \
+		_ '{}' "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--decode-json cannot be combined with collection options"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json --require-local-artifact "$3"' \
+		_ '{}' "$SCRIPT_DIR/collect-review-diff.sh" OVERENGINEERING_REVIEW_OVERVIEW.md
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--decode-json cannot be combined with collection options"* ]]
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--require-local-artifact requires a value"* ]]
+}
+
 @test "resolve-base backup mode creates recovery branch" {
 	printf 'committed\n' >committed.txt
 	git add committed.txt
