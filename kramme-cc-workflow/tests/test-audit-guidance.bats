@@ -84,6 +84,46 @@ RUBRIC="skills/kramme:test:audit/references/audit-rubric.md"
 	grep -qF "trap - EXIT HUP INT TERM" "$SKILL"
 }
 
+@test "test audit nominates provider-shaped assertions without condemning boundary doubles" {
+	grep -qF -- "- assertions on a third-party payload, schema, status code, or error shape the repository neither owns nor monitors" "$SKILL"
+	grep -qF "### Provider Shape Coupling" "$RUBRIC"
+	grep -qF "Mocking at an external boundary is correct and is not the defect." "$RUBRIC"
+	grep -qF "The defect is asserting the provider's shape rather than the adapter's contract" "$RUBRIC"
+	grep -qF "A provider-shaped fixture is justified when it is generated or verified against the provider's published schema, refreshed by a recorded or contract test, or pinned to a provider version the repository declares and monitors." "$RUBRIC"
+	grep -qF "Default verdict: REPAIR toward the adapter's own contract." "$RUBRIC"
+	grep -qF "provider-shape-coupled" "$SKILL"
+}
+
+@test "test audit nominates wiring and existence tests without condemning behavioral UI tests" {
+	grep -qF -- "- tests that only prove a symbol, route, command, handler, menu entry, or configuration key exists or is registered rather than exercising what it does" "$SKILL"
+	grep -qF -- "- assertions on rendered structure, styling, or copy that no stated contract covers" "$SKILL"
+	grep -qF "### Wiring or Existence Only" "$RUBRIC"
+	grep -qF "the test would pass against a registered stub that does nothing" "$RUBRIC"
+	grep -qF "Registration is worth its own test when registration is itself the contract and can break silently" "$RUBRIC"
+	grep -qF "Assertions on user-visible behavior, accessible names and roles, state transitions, and error and empty states are ordinary behavioral tests; this category does not apply to them." "$RUBRIC"
+	grep -qF "Default verdict: REMOVE when an existing behavioral test already depends on the registration" "$RUBRIC"
+	grep -qF -- "- assertions target private methods, internal call order, intermediate data, exact logs, or non-contractual markup, styling, or copy" "$RUBRIC"
+	grep -qF "Assertions on non-contractual markup, styling, or copy belong to Implementation Coupling, which defaults to REPAIR rather than REMOVE." "$RUBRIC"
+	grep -qF "unless not throwing is the complete public contract and the harness would fail when that contract breaks" "$RUBRIC"
+	grep -qF "For a rendering assertion, where there is no registration to weigh, default to REPAIR toward the user-visible behavior the mount stands in for." "$RUBRIC"
+}
+
+@test "test audit flags build-time-guaranteed assertions only where the guarantee is enforced" {
+	grep -qF -- "- assertions the repository's type checker, schema validator, or compiler already guarantees on every path the test covers" "$SKILL"
+	grep -qF "It is not valid when the repository's type checker, schema validator, or compiler already guarantees the asserted property on every path the test covers." "$RUBRIC"
+	grep -qF "Before flagging this, confirm the guarantee is actually enforced." "$RUBRIC"
+	grep -qF "data crossing a deserialization, network, storage, or configuration boundary all mean the type is a claim rather than a proof" "$RUBRIC"
+	grep -qF "At those boundaries the runtime assertion is doing real work and is not a finding." "$RUBRIC"
+	grep -qF "REMOVE only when the type-level guarantee is enforced and the test asserts nothing beyond it." "$RUBRIC"
+	grep -qF "Default verdict: REPAIR. When the flagged property is a build-time guarantee," "$RUBRIC"
+}
+
+@test "test audit prefers contract-shaped repair over deleting feature-shaped protection" {
+	grep -qF "When a test protects real behavior but asserts a feature's present shape rather than the contract that outlives it, prefer REPAIR toward that contract over REMOVE." "$SKILL"
+	grep -qF "The protection is worth keeping; only the coupling is the defect." "$SKILL"
+	grep -qF "Prefer a REPAIR that restates the same protection against the public contract over an equal-confidence REMOVE" "$RUBRIC"
+}
+
 @test "test audit routing preserves the report-only permission boundary" {
 	grep -qF "Use to find poor-quality tests across a repository or path." "$SKILL"
 	grep -qF "editing or pruning tests" "$SKILL"

@@ -45,7 +45,11 @@ Strong evidence:
 
 A broad matcher is valid when existence, truthiness, type, or non-throwing behavior is the complete public contract.
 
-Default verdict: REPAIR.
+It is not valid when the repository's type checker, schema validator, or compiler already guarantees the asserted property on every path the test covers. Such a test spends runtime and review attention restating a build-time guarantee, and it cannot fail for any reason the build would not already report.
+
+Before flagging this, confirm the guarantee is actually enforced. An unchecked annotation, an `any`, `interface{}`, `unknown` cast or equivalent escape hatch, a suppressed or disabled rule, an untyped dependency at the call site, or data crossing a deserialization, network, storage, or configuration boundary all mean the type is a claim rather than a proof. At those boundaries the runtime assertion is doing real work and is not a finding.
+
+Default verdict: REPAIR. When the flagged property is a build-time guarantee, strengthen the oracle to the behavior the type cannot express; REMOVE only when the type-level guarantee is enforced and the test asserts nothing beyond it.
 
 ### Obsolete Regression
 
@@ -84,13 +88,46 @@ The test fails under behavior-preserving refactors because it asserts incidental
 
 Strong evidence:
 
-- assertions target private methods, internal call order, intermediate data, exact logs, or non-contractual markup
+- assertions target private methods, internal call order, intermediate data, exact logs, or non-contractual markup, styling, or copy
 - mocks encode the current implementation graph instead of external boundaries
 - harmless refactors require rewriting expectations while observable behavior stays fixed
 
 Interaction assertions are valid when the interaction is itself a contract: durable events, writes, security boundaries, external calls, idempotency, or required non-calls.
 
 Default verdict: REPAIR.
+
+### Provider Shape Coupling
+
+The test asserts the shape of a third-party payload, schema, status code, or error format that the repository neither owns nor monitors. The double encodes the provider's wire format as it looked when the test was written, so the test keeps passing after the provider changes that format and keeps failing after a harmless local refactor. This inverts the test's purpose: it reports confidence about an integration it cannot observe.
+
+Strong evidence:
+
+- fixtures or stubs reproduce provider response bodies field by field, and the assertions read those fields instead of the adapter's own output
+- the expected value would have to be hand-edited if the provider changed its format, and nothing in the repository would detect that change first
+- no contract test, recorded interaction, published schema, or generated type backs the fixture
+- the test name claims integration behavior while every provider call is replaced
+
+Distinguish this from legitimate boundary isolation. Mocking at an external boundary is correct and is not the defect. The defect is asserting the provider's shape rather than the adapter's contract: what the repository sends, what it does with a well-formed response, and how it degrades on a malformed, partial, or failing one. Those three remain valuable and are usually the repair.
+
+A provider-shaped fixture is justified when it is generated or verified against the provider's published schema, refreshed by a recorded or contract test, or pinned to a provider version the repository declares and monitors. Record which mechanism applies; absence of any is what makes the coupling misleading rather than merely detailed.
+
+Default verdict: REPAIR toward the adapter's own contract. REMOVE when the test only restates provider data and no repository behavior appears in the trace. INVESTIGATE when a contract or recorded-interaction mechanism exists but its freshness cannot be established.
+
+### Wiring or Existence Only
+
+The test proves that a symbol, route, command, handler, menu entry, or configuration key exists or is registered, without exercising what it does. It fails only on outright deletion, which the build, the type checker, or the first behavioral test of that feature normally reports first.
+
+Strong evidence:
+
+- the assertion checks presence, count, name, or registration in a manifest or registry and never invokes the registered behavior
+- the test would pass against a registered stub that does nothing
+- the registration is already a precondition for an existing behavioral test of the same feature to run at all
+
+Registration is worth its own test when registration is itself the contract and can break silently: a manifest validated only at runtime, a handler or migration a partial deployment could omit, an ordering or uniqueness invariant across a registry, or an export surface carrying a compatibility promise. In those cases the assertion should name the invariant rather than the entry.
+
+Rendering assertions fall here when they only establish that a component mounts or renders without throwing, unless not throwing is the complete public contract and the harness would fail when that contract breaks. Assertions on non-contractual markup, styling, or copy belong to Implementation Coupling, which defaults to REPAIR rather than REMOVE. Assertions on user-visible behavior, accessible names and roles, state transitions, and error and empty states are ordinary behavioral tests; this category does not apply to them.
+
+Default verdict: REMOVE when an existing behavioral test already depends on the registration; REPAIR when the registration guards a real invariant that the test states too weakly. For a rendering assertion, where there is no registration to weigh, default to REPAIR toward the user-visible behavior the mount stands in for.
 
 ### Excessive Test Doubles
 
@@ -144,5 +181,6 @@ Rank by:
 2. False confidence or maintenance cost removed.
 3. Breadth of developers or workflows affected.
 4. Cleanup risk and implementation effort, preferring smaller safe actions.
+5. Whether the finding moves protection from a feature's present shape toward a contract that outlives it. Prefer a REPAIR that restates the same protection against the public contract over an equal-confidence REMOVE, because it keeps the protection while removing the brittleness.
 
 Do not use raw file size, test age, line coverage, or stylistic unfamiliarity as priority multipliers.

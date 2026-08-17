@@ -1,6 +1,6 @@
 ---
 name: kramme:test:audit
-description: "Audits an existing test suite for low-value, brittle, obsolete, duplicated, or weak tests. Produces a read-only, evidence-backed REMOVE / REPAIR / CONSOLIDATE / INVESTIGATE report. Use to find poor-quality tests across a repository or path. Not for generating or ordinarily running tests, PR coverage review, or editing or pruning tests."
+description: "Audits an existing test suite for low-value, brittle, obsolete, duplicated, provider-shape-coupled, or weak tests. Produces a read-only, evidence-backed REMOVE / REPAIR / CONSOLIDATE / INVESTIGATE report. Use to find poor-quality tests across a repository or path. Not for generating or ordinarily running tests, PR coverage review, or editing or pruning tests."
 argument-hint: "[full | path <file-or-folder> | changed [--base <ref>]] [--max-findings N]"
 disable-model-invocation: false
 user-invocable: true
@@ -95,8 +95,12 @@ Scan all in-scope tests for structural leads first, then inspect each lead seman
 - tests with no observable assertion, only unconditional assertions, or an actual and expected value derived from the same source
 - assertions on values configured directly in the test double, fixture, or setup without verifying a system-under-test effect
 - broad `truthy`, `defined`, `not null`, or `does not throw` checks where a concrete contract exists
+- assertions the repository's type checker, schema validator, or compiler already guarantees on every path the test covers
+- tests that only prove a symbol, route, command, handler, menu entry, or configuration key exists or is registered rather than exercising what it does
 - extensive mocking that may bypass the behavior named by the test
+- assertions on a third-party payload, schema, status code, or error shape the repository neither owns nor monitors
 - tests coupled to private calls, incidental ordering, internal data shapes, exact logs, timing, or oversized snapshots
+- assertions on rendered structure, styling, or copy that no stated contract covers
 - repeated test bodies, equivalent parameter cases, or overlapping unit and integration coverage
 - skipped, quarantined, focused-only, flaky, unusually slow, or non-isolated tests
 - regression tests whose referenced feature, failure path, API, or invariant may no longer exist
@@ -135,6 +139,8 @@ Before assigning REMOVE, prove all of the following:
 2. Removing it would not erase a documented requirement, supported compatibility case, incident regression, or useful diagnostic boundary.
 3. Any claimed replacement test exercises the same observable behavior and would fail for the same fault class.
 4. The recommendation includes a focused verification command for a later implementation pass.
+
+When a test protects real behavior but asserts a feature's present shape rather than the contract that outlives it, prefer REPAIR toward that contract over REMOVE. The protection is worth keeping; only the coupling is the defect.
 
 Rank findings by confidence first, then by expected confidence gained relative to cleanup risk and effort. Do not inflate priority from test length or age alone. Cap active findings at `MAX_FINDINGS`; summarize additional proven candidates as deferred counts by verdict.
 
