@@ -113,4 +113,4 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
 
 ## Source Tracking
 
-`references/sources.yaml` records the upstream `ce-compound` session-history scripts for the shared discovery/extraction substrate and routing model. Do not load it during normal use unless auditing or updating source attribution.
+`references/sources.yaml` records the upstream `ce-compound` session-history scripts for the shared discovery/extraction substrate and routing model, plus the PostHog agent-skills post for the run-evidence improvement framing. Do not load it during normal use unless auditing or updating source attribution.
