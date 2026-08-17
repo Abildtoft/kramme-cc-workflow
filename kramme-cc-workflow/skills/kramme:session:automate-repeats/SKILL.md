@@ -61,16 +61,18 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
    - Preserve the user's phrasing as labels in private notes, but report paraphrased evidence.
    - Ignore one-off tasks, vague preferences, personal style notes, and work an existing skill or agent already handles without recurring friction.
 
-6. Classify each candidate.
-   - Recommend a **skill** when the repeated work is a reusable workflow with ordered steps, decision gates, side effects, or orchestration across tools.
-   - Recommend a **custom subagent** when the repeated work is a bounded role or investigation lens with a stable mission, clear inputs, and a repeatable output format.
-   - Prefer extending an existing component when the repeated work is a small variation of it.
+6. Classify each candidate, asking whether an existing component already owns the work before considering a new one.
+   - Recommend **IMPROVE EXISTING** when one existing skill or subagent clearly owns the behavior and the recurring friction points at a defect in that component's contract, or at a small variation of it, rather than at a missing entry point. Name the single owning component; if two or more components could own the work, or none does, do not use this classification.
+   - Before recording `IMPROVE EXISTING`, read the owning component's file body, not just the frontmatter collected in Step 4, so the contract defect and proposed change name real steps, boundaries, or fields.
+   - Recommend a **skill** when the repeated work is a reusable workflow with ordered steps, decision gates, side effects, or orchestration across tools, and no existing component owns it.
+   - Recommend a **custom subagent** when the repeated work is a bounded role or investigation lens with a stable mission, clear inputs, and a repeatable output format, and no existing component owns it.
    - Reject candidates that need broad judgment across many domains, duplicate existing components, depend on unavailable tools, or cannot be explained in a short trigger description.
 
 7. Apply the usefulness gate.
    - A candidate is useful only if it has evidence from at least 2 independent sessions or at least 3 clearly separate asks, a clear trigger, a narrow scope, low overlap with existing automation, and a simple implementation.
-   - Keep the default output to 1-3 candidates. If more qualify, rank by time saved and frequency, then create only the top candidates.
-   - Mark weaker ideas as `NOT CREATED` with a one-line reason instead of scaffolding them.
+   - Hold `IMPROVE EXISTING` to the same evidence bar. Never propose an improvement from a single session or a single model failure, however severe that one run looked.
+   - Cap and rank the two classes separately: keep the default to 1-3 new skill or subagent candidates and 1-3 `IMPROVE EXISTING` proposals, ranking within each class by time saved and frequency. Never drop a qualified improvement to make room for a new component.
+   - Mark weaker ideas as `NOT CREATED` with a one-line reason instead of scaffolding or proposing them.
 
 8. Present a compact plan before writing files unless the user explicitly requested hands-off creation.
    - Include: candidate name, skill vs subagent, evidence count, destination path, and why it passes the usefulness gate.
