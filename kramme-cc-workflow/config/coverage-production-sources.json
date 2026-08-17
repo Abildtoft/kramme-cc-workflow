@@ -320,6 +320,13 @@
       ]
     },
     {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/session-automate-repeats-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:session:automate-repeats/SKILL.md"
+      ]
+    },
+    {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/session-search-scripts.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:session:search/SKILL.md"]
