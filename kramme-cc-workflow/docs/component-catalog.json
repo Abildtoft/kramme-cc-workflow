@@ -298,6 +298,11 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md"
     },
     {
+      "name": "kramme:pr:gut-check",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md"
+    },
+    {
       "name": "kramme:pr:overengineering-review",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md"
