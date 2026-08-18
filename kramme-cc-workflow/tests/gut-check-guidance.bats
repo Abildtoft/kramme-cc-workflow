@@ -27,9 +27,39 @@ setup() {
 @test "gut check never reports a partial read as a complete pass" {
   local skill="skills/kramme:pr:gut-check/SKILL.md"
 
-  grep -qF 'work file by file in `CHANGED_FILES` order and name the files you did not fully read in the closing sentence' "$skill"
+  grep -qF 'work file by file in ascending changed-line count so truncation costs the fewest files, and name the files you did not fully read in the closing sentence' "$skill"
   grep -qF "never let a partial read be reported as a complete pass" "$skill"
   grep -qF "The closing scope sentence matches what you actually read, and names every file left unread." "$skill"
+}
+
+@test "gut check covers every changed file at the manifest tier" {
+  local skill="skills/kramme:pr:gut-check/SKILL.md"
+
+  grep -qF 'git diff --name-status --find-renames "$MERGE_BASE"...HEAD' "$skill"
+  grep -qF 'git diff --numstat --find-renames "$MERGE_BASE"...HEAD' "$skill"
+  grep -qF 'git diff --summary --find-renames "$MERGE_BASE"...HEAD' "$skill"
+  grep -qF 'git ls-files --others --exclude-standard' "$skill"
+  grep -qF 'ignore every path absent from `CHANGED_FILES`' "$skill"
+  grep -qF '**Manifest — every file, always.**' "$skill"
+  grep -qF '**Full files — on suspicion only.**' "$skill"
+  grep -qF 'The manifest tier covered every file in `CHANGED_FILES`, with no file dropped for size.' "$skill"
+}
+
+@test "gut check treats branch history as material, not only as a yardstick" {
+  local skill="skills/kramme:pr:gut-check/SKILL.md"
+
+  grep -qF "git log --max-count=100 --format='%h parents:%p %s'" "$skill"
+  grep -qF "The commit list is also material in its own right, not only a yardstick for the diff" "$skill"
+  grep -qF "Something odd in the branch's own history rather than its tree" "$skill"
+  grep -qF "name the commit hash in place of the path and line" "$skill"
+}
+
+@test "gut check keeps its jumps-out list open-ended rather than a rubric" {
+  local skill="skills/kramme:pr:gut-check/SKILL.md"
+
+  grep -qF "This list is not exhaustive and is not a checklist" "$skill"
+  grep -qF "anything that made you pause counts, listed or not" "$skill"
+  grep -qF "nothing counts merely because it appears above" "$skill"
 }
 
 @test "gut check points at secrets without reproducing them" {
