@@ -16,6 +16,13 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 - **Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`. Existing prompts and automation must remove `--auto`; no-argument calls use the canonical branch review scope, while former base-branch arguments must become explicit file or directory scopes. The replacement verifies and checkpoints scoped uncommitted input, then commits each simplification separately. Ship this command removal only in the next major release.
 
+## [0.74.0] - 2026-08-18
+
+### Added
+
+- Give gut-check full file coverage and a history lens (#803)
+- Add gut-check review skill for branch oddities (#802)
+
 ## [0.73.0] - 2026-08-17
 
 ### Added
@@ -834,6 +841,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.74.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.73.0...v0.74.0
 [0.73.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.72.0...v0.73.0
 [0.72.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.71.0...v0.72.0
 [0.71.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.70.0...v0.71.0
