@@ -100,6 +100,8 @@ This boundary does not consume a review-remediation cycle because it closes the 
 
 Read the review convergence policy from `references/review-convergence.md` and follow it completely.
 
+Open the loop with the reference's one-shot Gate 0: invoke `kramme:pr:gut-check` with `--intent` carrying the Linear issue's stated purpose, once, before the first applicability evaluation. It is the only pass here that reads the branch's commit history and the only one that measures the diff against the issue, so an item showing work the issue did not ask for stops the workflow. Never rerun it in a later round.
+
 During normal remediation rounds, first evaluate which gates apply, then run the active gates in order:
 
 1. Invoke `kramme:pr:code-review` with `--parallel --inline` when regular code review applies.
@@ -148,6 +150,7 @@ For a review-ready result without `--ship`, report:
 ```text
 Linear issue: {issue-id}
 Implementation: complete
+Gut check: {count} items — removed {count}, routed {count}, rejected {count}, blocked {count}
 Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
 Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
@@ -163,6 +166,7 @@ For a shipped result, report:
 ```text
 Linear issue: {issue-id}
 Implementation: complete
+Gut check: {count} items — removed {count}, routed {count}, rejected {count}, blocked {count}
 Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
 Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
@@ -178,6 +182,7 @@ If coverage was degraded, a check was skipped, or the workflow stopped on a bloc
 ## Artifact Lifecycle
 
 - **Implementation commits and source changes** are produced by `kramme:linear:issue-implement` and review resolution, consumed by review and `kramme:pr:create`, refreshed by accepted fixes, and retired through the repository's normal merge or branch-archive process.
+- **Gut-check items** are produced once by Gate 0 and consumed by its own triage. A `removed`, `rejected`, or `blocked` item is retired at that point; a `routed` item stays live in run state until its owning gate's triage consumes it, or until the parent dispositions it directly because that gate was skipped or emitted nothing covering it. The gate writes no file, so nothing is archived, refreshed, or cleaned up for it.
 - **Quality-loop review reports** are produced by the active gates or their resolvers, consumed during triage, then moved under `.context/linear-issue-to-pr/` before another scope is collected. The archived report is refreshed whenever its gate reruns and retired before shipping by `kramme:workflow-artifacts:cleanup --auto`. Without `--ship`, retain the archive as the review-ready handoff artifact; it stays gitignored so it never enters the Pull Request, and it is retired by the later shipping run's cleanup or by an explicit `kramme:workflow-artifacts:cleanup` if the branch is abandoned.
 - **Inline convention and broad-review state** is produced and consumed inside Step 3 and refreshed on every quality rerun. It is retired when the run reaches a final disposition; any file-backed resolver output follows the same `.context/linear-issue-to-pr/` isolation rule.
 - **Pull Request** is produced only by `kramme:pr:create` after `--ship` authorization, then consumed and refreshed by `kramme:pr:fix-ci --no-consolidate` until CI and review feedback are clear. It is retired by merge or close.
@@ -189,6 +194,7 @@ If coverage was degraded, a check was skipped, or the workflow stopped on a bloc
 - **Linear issue has no `branchName`** — stop at the Step 2 preflight. This workflow must know the exact branch identity before delegation to prove its new-PR boundary, so it cannot use the delegated workflow's generated-name fallback. Set a branch name on the Linear issue, or run `kramme:linear:issue-implement` and `kramme:pr:create` as separate steps.
 - **Remote issue branch already exists without a Pull Request** — stop before delegated branch setup. `kramme:pr:create` never adopts or rewrites an existing remote ref, so neither `--ship` nor the non-shipping handoff can complete. Report the existing ref and require coordination or a fresh issue branch.
 - **Implementation incomplete** — stop on the implementation blocker; do not review or ship partial work.
+- **Gut check finds work outside the Linear issue** — stop before the first applicability evaluation and report the paths or commits. Do not narrow the report, and do not let a later gate absorb it; the workflow contract forbids broadening the issue's scope, and no other gate compares the diff against the issue. Ask whether to revert the extra work or split it to its own issue.
 - **Refactor, convention, or broad-review coverage degraded** — identify failed dimensions and do not call the result clean until required coverage succeeds.
 - **Genuine manual review blocker** — ask once for the exact missing decision, approval, ownership, or access; resume the same finding after the answer.
 - **Review loop makes no progress** — apply the convergence guard in `references/review-convergence.md`; do not loop on repeated rejected advice.

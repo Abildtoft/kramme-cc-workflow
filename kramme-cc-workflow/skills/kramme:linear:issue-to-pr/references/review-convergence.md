@@ -1,6 +1,6 @@
 # Quality-Loop Convergence Policy
 
-Use this policy after implementation and before final verification. A quality round selects applicable gates, then runs regular code review, convention review, and PR-scoped refactor discovery in that order. Preserve each delegated skill's scope, evidence, relevance, and reporting rules.
+Use this policy after implementation and before final verification. A one-shot gut check opens the loop, then every quality round selects applicable gates and runs regular code review, convention review, and PR-scoped refactor discovery in that order. Preserve each delegated skill's scope, evidence, relevance, and reporting rules.
 
 ## Finding Terms
 
@@ -9,6 +9,7 @@ Use this policy after implementation and before final verification. A quality ro
 - **Rejected finding** — an emitted finding disproved by the code path, pre-existing/out of scope, speculative without a concrete failure path, or harmful/inconsistent with repository practice.
 - **Blocked finding** — an accepted finding that needs a genuinely unavailable human decision, approval, owner, service, or external access.
 - **Active finding** — an accepted finding that is not yet fixed or blocked on a question already presented to the user.
+- **Gut-check item** — one observation returned by the one-shot Gate 0 pass. An item carries no severity, so it is not a severity-bearing finding: it never enters the review-debt score, never enters the active set, and never satisfies or blocks a severity-keyed completion rule. It is triaged under Gate 0's own disposition rules.
 - **Remediation cycle** — one parent-owned review-triggered code-edit batch followed by focused verification and a review rerun. Multiple findings fixed as one coherent batch count once. One gate's accepted work consumes exactly one cycle however many findings, files, commits, or verified refactor slices it produced; a multi-slice Gate 3 refactor pass is one cycle, not one per slice. Delegated quality gates are read-only and never maintain a separate counter.
 
 “Zero active findings” means zero accepted unresolved findings after evidence-based triage. It does not mean changing code until every subjective suggestion disappears from reviewer output.
@@ -17,7 +18,7 @@ Use this policy after implementation and before final verification. A quality ro
 
 Re-evaluate applicability at the start of every round because accepted fixes can introduce or remove a gate's trigger conditions. Then run active gates in the order below. Never skip a gate merely to save time or avoid findings.
 
-Initialize `MAX_AUTOMATIC_REMEDIATION_CYCLES=5` and one cycle ledger for the entire quality loop. Do not reset the counter between gates or delegated skills. The initial read-only gate pass does not consume a cycle; consume one whenever accepted review work changes code, then run focused verification before continuing.
+Initialize `MAX_AUTOMATIC_REMEDIATION_CYCLES=5` and one cycle ledger for the entire quality loop. Do not reset the counter between gates or delegated skills. The initial read-only gate pass does not consume a cycle; consume one whenever accepted review work changes code, then run focused verification before continuing. Gate 0 sits outside this rotation and outside the ledger under its own rules below.
 
 ### Quality-Loop Artifact Isolation
 
@@ -60,6 +61,35 @@ After any accepted review work changes source, tests, configuration, or document
 
 The parent owns this transition even when it invoked `kramme:pr:resolve-review` or made a direct fix. Accept a delegated commit only when that workflow explicitly returns its commit identity and verification evidence; otherwise do not assume a reviewer, resolver, convention pass, or verification skill committed its edits. The committed tree must equal the tree that passed focused verification; if the commit changes content through hooks, rerun focused verification before continuing.
 
+## Gate 0: Gut Check
+
+Run this gate exactly once per workflow, immediately after the implementation commit boundary and before the first applicability evaluation. It is not part of the per-round rotation: never rerun it in a later remediation round or in the bounded stop's validation-only round.
+
+Once, not per round, for three reasons. It is a first-reader reaction, and by the second round the diff has been read repeatedly, so the reaction is no longer a first read. Its items carry no severity, so they cannot be scored under the review-debt formula or measured by the diminishing-returns guard. Its items carry no stable fingerprint, so a rerun would re-emit the same unscoreable observations and could hold the loop open indefinitely.
+
+It runs first because its cheapest tier is a manifest read that covers every changed file, and the residue it finds — a stray scratch file, a drive-by rename, a whole-file reformat riding along, generated output moved without its source — is cheapest to remove before three heavyweight gates spend budget reviewing code that does not belong in the diff. It is also the only gate in this loop that reads the branch's commit history, where the delegated `--auto` implementation's leftover fixup, unexpected merge commit, or message that does not match its content becomes visible.
+
+Invoke `kramme:pr:gut-check` with `--intent "{issue-title}: {one-line statement of the behavior the Linear issue requests}"`. Do not pass `--base`; the shared collector already resolves the canonical base. No Pull Request exists at this point, so `--intent` is the only reliable statement of branch purpose the gate will have. Treat it as a read-only gate: it writes no report file, so it needs no archive step, and the parent owns every disposition below.
+
+Record one disposition for every returned item:
+
+- `removed` — the item is residue rather than design: a stray file, a debug statement, a commented-out block, a leftover TODO, a drive-by rename, or a reformat riding along with real work. Delete or revert it directly.
+- `routed` — the item is a regular-review, convention, or refactor concern that the first read happened to surface. Carry it into that gate's triage as intent context and do not fix it here. If the applicability evaluation that follows skips that gate, or the gate runs and emits no finding covering the item, the parent dispositions it directly as `rejected` with that evidence. Never let a skipped or silent gate retire a routed item by default.
+- `rejected` — the surrounding code, the repository's practice, or work the Linear issue already covers makes it ordinary. An issue that is merely silent about the item never makes it ordinary; that is the `blocked` case below.
+- `blocked` — the item shows the branch doing work the Linear issue did not ask for. Stop the workflow and ask; never revert it unilaterally under `removed`.
+
+A `blocked` item stops the workflow. Report it in both standard and strict mode, because the workflow contract forbids broadening the issue's scope, and no later gate measures the diff against the issue. Every other item is non-blocking; a gut-check item alone never keeps the standard-mode completion rule open, and strict mode requires only that each item has one of the four dispositions recorded.
+
+A `removed` batch does not consume a remediation cycle, for the same reason the implementation commit boundary does not: it retires residue left by the delegated implementation phase before any quality gate has emitted a finding. It still crosses the remediation commit boundary above, except that boundary's ledger step: record the removal commit in run state, not in the cycle ledger. Allow at most one such batch; anything a rerun would find belongs to the gates that follow.
+
+Report:
+
+```text
+Gut check: {count} items — removed {count}, routed {count}, rejected {count}, blocked {count}
+```
+
+With no `blocked` item, continue to applicability evaluation and Gate 1, whether or not the batch changed code.
+
 ## Applicability Evaluation
 
 Build `ACTIVE_QUALITY_GATES` and `SKIPPED_QUALITY_GATES` from the current unified branch scope: committed PR diff plus staged, unstaged, and untracked files. Record an evidence-based reason for every skipped gate.
@@ -89,6 +119,8 @@ Activate `refactor-opportunities` when the reviewed diff adds or materially chan
 Skip it for docs/copy/metadata/generated-only changes, test-fixture refreshes, dependency-lock churn, or a narrow mechanical fix whose changed code is already demonstrably simple and contains no structural choice. When uncertain, activate it.
 
 `--strict` changes finding disposition, not gate applicability. It does not force an irrelevant gate to run, and it does not permit a skipped gate without recorded evidence.
+
+Gate 0 is not evaluated here. It always runs, exactly once, before the first evaluation, so it never appears in `ACTIVE_QUALITY_GATES` or `SKIPPED_QUALITY_GATES` and never appears in the per-round report below.
 
 Before launching reviewers, report:
 
@@ -193,7 +225,7 @@ After every remediation cycle, record:
 - counts added, fixed, reopened, rejected, deferred, and blocked by severity;
 - focused verification result and the production files or ownership boundaries changed.
 
-Compute a review-debt score for comparison only: Critical `8`, Important `4`, Suggestion or refactor opportunity `1`, and FYI `0.25`. Treat a cycle as material progress when it lowers the score by at least `1`, lowers the highest outstanding severity, clears a verification failure, or removes a shared root cause without introducing an equal-or-higher-severity finding. Moving, renaming, or rewording the same finding is not progress.
+Compute a review-debt score for comparison only: Critical `8`, Important `4`, Suggestion or refactor opportunity `1`, and FYI `0.25`. Gut-check items carry no severity and score nothing; Gate 0 runs before the first cycle and is never part of a trend. Treat a cycle as material progress when it lowers the score by at least `1`, lowers the highest outstanding severity, clears a verification failure, or removes a shared root cause without introducing an equal-or-higher-severity finding. Moving, renaming, or rewording the same finding is not progress.
 
 Before taking an optional Suggestion, FYI, or refactor fix, compare its concrete benefit with its change amplification. Defer it as diminishing returns when its only payoff is subjective polish and it would add an abstraction, dependency, public contract, configuration layer, cross-module churn, or verification burden disproportionate to the evidenced problem.
 
@@ -207,7 +239,7 @@ The hard ceiling is a safety boundary, not a target. Stop earlier as soon as the
 
 ### Bounded Stop
 
-When a stop condition fires and code changed after the latest complete ordered gate pass, run exactly one validation-only round. Re-evaluate applicability and run the applicable gates in regular-review → convention-review → refactor order without editing code. Use the same read-only `kramme:pr:code-review --parallel --inline` regular gate. Do not run a second validation-only round.
+When a stop condition fires and code changed after the latest complete ordered gate pass, run exactly one validation-only round. Re-evaluate applicability and run the applicable gates in regular-review → convention-review → refactor order without editing code. Use the same read-only `kramme:pr:code-review --parallel --inline` regular gate. Do not rerun Gate 0 here; it is a one-shot pass and its budget-free removal batch is not available this late. Do not run a second validation-only round.
 
 Disposition the final validation-only findings as follows:
 
@@ -221,6 +253,8 @@ A repeated rejected finding never keeps the loop open. Explicit user approval to
 
 Before returning to the parent skill, confirm:
 
+- Gate 0 ran exactly once, before the first applicability evaluation, and every returned item is recorded as `removed`, `routed`, `rejected`, or `blocked`.
+- No gut-check item reported the branch doing work outside the Linear issue, and every `routed` item either entered its owning gate's triage or was dispositioned directly by the parent when that gate was skipped or emitted nothing covering it.
 - The selected mode's final-pass rule is met: standard mode has no accepted unresolved Critical or Important finding and preserves remaining manual or advisory observations for reporting; strict mode has a disposition for every emitted finding.
 - No accepted required finding remains unresolved; any optional finding excluded at diminishing returns is explicitly deferred with evidence.
 - No code changed after the latest focused verification.

@@ -126,6 +126,56 @@
 	[ "$status" -eq 0 ]
 }
 
+@test "gut check runs once before the rotating gates and stays outside the cycle ledger" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:linear:issue-to-pr/SKILL.md"
+    review="skills/kramme:linear:issue-to-pr/references/review-convergence.md"
+
+    grep -qF "kramme:pr:gut-check" "$skill"
+    grep -qF "Gut check: {count} items" "$skill"
+    grep -qF "Gut check finds work outside the Linear issue" "$skill"
+
+    isolation_line=$(grep -nF "### Quality-Loop Artifact Isolation" "$review" | cut -d: -f1)
+    gut_check_line=$(grep -nF "## Gate 0: Gut Check" "$review" | cut -d: -f1)
+    applicability_line=$(grep -nF "## Applicability Evaluation" "$review" | cut -d: -f1)
+    broad_line=$(grep -nF "### Gate 1: Regular Code Review" "$review" | cut -d: -f1)
+    [ "$isolation_line" -lt "$gut_check_line" ]
+    [ "$gut_check_line" -lt "$applicability_line" ]
+    [ "$applicability_line" -lt "$broad_line" ]
+
+    grep -qF "Run this gate exactly once per workflow" "$review"
+    grep -qF "never rerun it in a later remediation round or in the bounded stop" "$review"
+    grep -qF "Do not rerun Gate 0 here" "$review"
+    grep -qF -- "--intent \"{issue-title}" "$review"
+    grep -qF "Do not pass \`--base\`" "$review"
+    grep -qF "\`removed\` — the item is residue rather than design" "$review"
+    grep -qF "\`routed\` — the item is a regular-review, convention, or refactor concern" "$review"
+    grep -qF "\`rejected\` — the surrounding code, the repository" "$review"
+    grep -qF "\`blocked\` — the item shows the branch doing work the Linear issue did not ask for" "$review"
+    grep -qF "the parent dispositions it directly as \`rejected\` with that evidence" "$review"
+    grep -qF "A \`removed\` batch does not consume a remediation cycle" "$review"
+    grep -qF "ledger step: record the removal commit in run state, not in the cycle ledger" "$review"
+    grep -qF "Allow at most one such batch" "$review"
+    grep -qF "a gut-check item alone never keeps the standard-mode completion rule open" "$review"
+    grep -qF "Gut-check items carry no severity and score nothing" "$review"
+    grep -qF "Gate 0 is not evaluated here." "$review"
+    grep -qF "never appears in the per-round report below" "$review"
+    grep -qF "Gate 0 ran exactly once, before the first applicability evaluation" "$review"
+    grep -qF "recorded as \`removed\`, \`routed\`, \`rejected\`, or \`blocked\`" "$review"
+
+    gut_check_report_count=$(grep -cF "Gut check: {count} items" "$skill")
+    [ "$gut_check_report_count" -eq 2 ]
+
+    if grep -qF "Gut check: run|skip" "$review"; then echo "Gate 0 leaked into the per-round gate report" >&2; exit 1; fi
+    if grep -qF "GUT_CHECK_OVERVIEW.md" "$review"; then echo "Gate 0 gained a report file" >&2; exit 1; fi
+    if grep -qF "gut-check --inline" "$review"; then echo "Gate 0 gained an unsupported --inline flag" >&2; exit 1; fi
+  '
+
+	[ "$status" -eq 0 ]
+}
+
 @test "strict mode converges by disposition without guessing through manual blockers" {
 	run bash -c '
     set -e
