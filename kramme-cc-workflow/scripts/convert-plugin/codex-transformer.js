@@ -212,6 +212,14 @@ function convertCodexHookPlugin(plugin) {
       {
         sourceFile: path.join(
           plugin.root,
+          "hooks",
+          "confirm-review-artifacts.txt",
+        ),
+        targetPath: path.join("hooks", "confirm-review-artifacts.txt"),
+      },
+      {
+        sourceFile: path.join(
+          plugin.root,
           "scripts",
           "review-tree-fingerprint.sh",
         ),

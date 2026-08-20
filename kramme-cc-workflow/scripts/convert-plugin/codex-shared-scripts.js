@@ -66,6 +66,14 @@ function codexSkillLocalReplacements(codexRoot, skillName) {
       targetPrefix: `${shellQuotePath(targetDir)}/`,
       doubleQuotedTargetPrefix: `${escapeDoubleQuotedPath(targetDir)}/`,
     },
+    {
+      sourceText: `"\${CLAUDE_PLUGIN_ROOT}/skills/${skillName}"`,
+      targetText: shellQuotePath(targetDir),
+    },
+    {
+      sourceText: `\${CLAUDE_PLUGIN_ROOT}/skills/${skillName}`,
+      targetText: shellQuotePath(targetDir),
+    },
   ];
 }
 
