@@ -63,11 +63,13 @@ If more than one surface applies, use the stricter evidence set.
 
 ## 4. What is the migration cost for dependents?
 
-**Clear answer** — a per-dependent estimate:
+**Clear answer** — choose the migration boundary first, then estimate each dependent inside it:
 
-- **Low** — single-line change, codemod-able, takes a caller under an hour. Expect Adapter pattern with a codemod.
-- **Medium** — multi-line or multi-file refactor per caller. Expect Adapter or Feature Flag with batched migration PRs.
-- **High** — choose by boundary before estimating the window: persisted data or schema contract changes use Database Expand/Migrate/Contract; long-lived service-boundary or ownership changes use Strangler. Do not route database evolution through the framework/library-only `kramme:code:migrate` workflow.
+- **Persisted data or schema contract** — use Database Expand/Migrate/Contract regardless of whether dependent work is Low, Medium, or High. Do not route database evolution through the framework/library-only `kramme:code:migrate` workflow.
+- **Framework or library version migration** — use `kramme:code:migrate`, then return here to retire the old surface.
+- **Other boundaries, Low** — single-line change, codemod-able, takes a caller under an hour. Expect Adapter pattern with a codemod.
+- **Other boundaries, Medium** — multi-line or multi-file refactor per caller. Expect Adapter or Feature Flag with batched migration PRs.
+- **Other boundaries, High** — long-lived service-boundary or ownership changes use Strangler.
 
 **"Not yet — gather more data" signals:**
 

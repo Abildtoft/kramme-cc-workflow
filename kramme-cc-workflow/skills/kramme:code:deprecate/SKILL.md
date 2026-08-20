@@ -134,21 +134,21 @@ Owner: <team or person> Surface: <Compile-time / internal-only | Runtime / inter
 
 ## Completion Gates
 
-- [ ] No references remain in code, tests, docs, or config.
+- [ ] For non-database patterns, no references remain in code, tests, docs, or config. For Database Expand/Migrate/Contract, no active consumer or obsolete application reference remains; required migration-history and audit artifacts are retained even when they name the old shape.
 - [ ] Deprecation notices and migration guide removed or archived with a date.
 - [ ] Dependent audit confirms zero active consumers with surface-appropriate evidence.
 - [ ] Observation window elapsed without incident.
 
 ## Database Migration Phase Status (authoritative when Database Expand/Migrate/Contract is selected)
 
-- [ ] Expand — the additive schema supports every named old/new application combination.
-  - Evidence: <compatibility results and datastore operation outcome>
 - [ ] Operator readiness — the named datastore owner reviewed the production phase plan, and the commands and recovery actions were rehearsed in a representative environment.
   - Evidence: <reviewer, review outcome, rehearsal result, and date>
+- [ ] Expand — the additive schema supports every named old/new application combination.
+  - Evidence: <compatibility results and datastore operation outcome>
 - [ ] Transitional writes — consistency, partial-failure, retry, ordering, and repair behavior is tested and observable.
   - Evidence: <tests, dashboards, alerts, and repair procedure>
-- [ ] Backfill — declared coverage is complete, reconciliation passes, and batching/throttling stayed within named production-load limits.
-  - Evidence: <coverage result, reconciliation result, and load signals>
+- [ ] Backfill — every retained record and value required by the new contract is covered; every exclusion has an explicit safe disposition, reconciliation passes, and batching/throttling stayed within named production-load limits.
+  - Evidence: <coverage result, excluded-record disposition, reconciliation result, and load signals>
 - [ ] Read cutover — new reads are deployed independently, rollback remains schema-compatible, and old writes remain supported while mixed versions require them.
   - Evidence: <deployment, compatibility, and rollback verification>
 - [ ] Observation — the named window passed on the new read/write path without an unresolved regression.
@@ -168,7 +168,7 @@ Answer the five-question checklist. Extended signals and a decision tree live in
 1. **Does this code still provide unique value?** If a replacement in the codebase already covers the same surface, value is duplicated — deprecation candidate. If no replacement exists, building the replacement is Step 4.1 and must happen _before_ removal begins.
 2. **Who are the dependents (internal + external)?** Audit the evidence sources that match the chosen surface. Compile-time / internal-only => import/build graph, tests, config, and package/publish references. Runtime / internal => import/build graph plus telemetry/logs. External / public => telemetry/logs plus docs, SDKs, and partner inventory. "No dependents found" is `UNVERIFIED` only when a required evidence source for that surface has not been checked.
 3. **Does a replacement exist?** If yes, name it. If no, deprecation is blocked until a replacement ships — removing without a replacement is "delete the feature", a different decision.
-4. **What is the migration cost for dependents?** Low (mechanical, codemod-able) → short migration window OK. For high-cost changes, choose by boundary before estimating the window: persisted data/schema contract → Database Expand/Migrate/Contract; long-lived service/runtime replacement → Strangler. Use `kramme:code:migrate` only when this deprecation follows a framework or library version migration.
+4. **What is the migration cost for dependents?** Choose the migration boundary before using cost to select mechanics or a window: persisted data/schema contract → Database Expand/Migrate/Contract at every cost tier; framework/library version migration → `kramme:code:migrate`; other long-lived service/runtime replacement → Strangler. Then estimate each dependent as Low, Medium, or High and choose the shortest safe window and migration mechanics within that boundary.
 5. **What is the maintenance cost of NOT deprecating?** Frame against concrete cost items: security patches, framework upgrades that require touching it, test flakes, onboarding time for new contributors. If the list is short, deferring is fine. If long or growing, deprecation has a clock.
 
 Emit `SIMPLICITY CHECK: <smallest coherent removal>` once the answers are in.
@@ -221,9 +221,9 @@ For Database Expand/Migrate/Contract, use `references/migration-patterns.md` to 
 
 Ship the replacement first. The replacement must cover the documented contract _and_ the observable behaviors Hyrum's Law says callers may depend on: field ordering, error messages, timing characteristics, edge-case inputs, the exact shape of logs that ops depends on. Map each observable to either "replacement covers it" or "replacement intentionally changes it — communicated in Step 4.2".
 
-For Database Expand/Migrate/Contract, Step 4.1 is the additive expand phase: ship a schema that old and new application versions can both use, then ship compatible application code separately.
+For Database Expand/Migrate/Contract, complete the plan's `Operator readiness` gate before the first production schema operation. Then Step 4.1 is the additive expand phase: ship a schema that old and new application versions can both use, then ship compatible application code separately.
 
-Exit criterion: the replacement is merged and verified. For runtime or public surfaces it is also deployed and monitored; for compile-time / internal-only surfaces it is exercised by the CI/build/test flows that cover dependents. In both cases, a contract test or characterization test asserts feature parity for every observable on the map. For Database Expand/Migrate/Contract, the plan's `Expand` phase-status item must also contain its compatibility evidence.
+Exit criterion: the replacement is merged and verified. For runtime or public surfaces it is also deployed and monitored; for compile-time / internal-only surfaces it is exercised by the CI/build/test flows that cover dependents. In both cases, a contract test or characterization test asserts feature parity for every observable on the map. For Database Expand/Migrate/Contract, the plan's `Operator readiness` item must contain the datastore owner, review outcome, rehearsal result, and date before production Expand begins, and the `Expand` item must contain its compatibility evidence before Step 4.1 completes.
 
 ### 4.2 Announce / document
 
@@ -233,17 +233,17 @@ Publish: the deprecation notice, the timeline, the migration guide or upgrade no
 - **Runtime / internal code**: deprecation notice in the code when applicable, CHANGELOG entry, team-wide announcement channel, and operator/runbook note if runtime ownership is involved.
 - **External API**: changelog, developer mailing list, in-API deprecation header (`Deprecation: true`, `Sunset: <date>`), versioned documentation.
 
-For Database Expand/Migrate/Contract, also publish and rehearse the operator-reviewed phase plan described in the migration-pattern reference.
+For Database Expand/Migrate/Contract, publish the operator-reviewed phase plan completed before production Expand and keep it current as operational details change.
 
 When the Step 3 pattern is Feature Flag, the flag service itself acts as a per-cohort announcement channel in addition to the surface-appropriate notices above — see `references/migration-patterns.md`.
 
-Exit criterion: every dependent surface for the chosen surface type has received the announcement or upgrade note it actually uses, and the migration guide has been rehearsal-validated against at least one representative caller when caller migration is required before rollout begins. For Database Expand/Migrate/Contract, the plan's `Operator readiness` phase-status item must also name the datastore owner, review outcome, rehearsal result, and date before migration begins.
+Exit criterion: every dependent surface for the chosen surface type has received the announcement or upgrade note it actually uses, and the migration guide has been rehearsal-validated against at least one representative caller when caller migration is required before rollout begins. For Database Expand/Migrate/Contract, confirm the already-completed `Operator readiness` evidence still matches the published production phase plan before migration begins.
 
 ### 4.3 Migrate incrementally
 
 Apply the Step 3 pattern. Migrate callers in slices — by team, by cohort, by path — with verification between slices. The Churn Rule says you own this migration: if callers are not migrating, you do the migrations yourself (codemods, PRs against consuming services, batch-updates).
 
-For Database Expand/Migrate/Contract, advance only through the separately deployable phase-status gates. Use the migration-pattern reference to design transitional writes, backfill, read cutover, observation, and recovery for the chosen datastore.
+For Database Expand/Migrate/Contract, advance only through the separately deployable phase-status gates. Use the migration-pattern reference to design transitional writes, backfill, read cutover, observation, and recovery for the chosen datastore. The Backfill gate must account for every retained record and value required by the new contract; record an explicit safe disposition for every excluded population before advancing.
 
 The first migrated slice is the guide's real-world validation. If the guide is wrong or incomplete, fix it before moving to the next slice.
 
@@ -267,7 +267,7 @@ Exit criterion: the four overall-completion gates in the next section are all tr
 
 The deprecation is not done until **all four** are true:
 
-- No references remain in code, tests, docs, or config.
+- No references remain in code, tests, docs, or config for non-database patterns. For Database Expand/Migrate/Contract, no active consumer or obsolete application reference remains; retain required migration-history and audit artifacts even when they name the old shape.
 - Deprecation notices and migration guide are removed (or explicitly archived with a date).
 - Dependent audit confirms zero active consumers within the observation window, using evidence appropriate to the surface type.
 - The observation window has passed without incident (no rollbacks, no urgent revert requests, no newly-discovered dependents).

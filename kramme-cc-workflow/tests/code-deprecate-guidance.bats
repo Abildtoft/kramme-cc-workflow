@@ -20,27 +20,29 @@ readme = pathlib.Path(sys.argv[3]).read_text()
 skill_frontmatter = skill.split("---", 2)[1]
 step_one = skill.split("## Step 1 —", 1)[1].split("## Step 2 —", 1)[0]
 question_four = next(line for line in step_one.splitlines() if line.startswith("4. **"))
-high_cost = next(line for line in checklist.splitlines() if line.startswith("- **High**"))
+cost_section = checklist.split("## 4. What is the migration cost for dependents?", 1)[1].split("---", 1)[0]
 
 required = {
     "public skill description": "Database Expand-Migrate-Contract patterns",
-    "persistent-data routing": "persisted data/schema contract → Database Expand/Migrate/Contract",
-    "decision-checklist routing": "persisted data or schema contract changes use Database Expand/Migrate/Contract",
+    "persistent-data routing": "persisted data/schema contract → Database Expand/Migrate/Contract at every cost tier",
+    "decision-checklist routing": "use Database Expand/Migrate/Contract regardless of whether dependent work is Low, Medium, or High",
     "framework-only boundary": "framework/library-only `kramme:code:migrate` workflow",
+    "framework migration route": "Framework or library version migration",
     "canonical README": "Database Expand-Migrate-Contract patterns",
 }
 texts = {
     "public skill description": skill_frontmatter,
     "persistent-data routing": question_four,
-    "decision-checklist routing": high_cost,
-    "framework-only boundary": high_cost,
+    "decision-checklist routing": cost_section,
+    "framework-only boundary": cost_section,
+    "framework migration route": cost_section,
     "canonical README": readme,
 }
 missing = [name for name, phrase in required.items() if phrase not in texts[name]]
-if question_four.count("`kramme:code:migrate`") != 1 or "Use `kramme:code:migrate` only when" not in question_four:
-    missing.append("Step 1 excludes a broad generic migration route")
-if high_cost.count("`kramme:code:migrate`") != 1 or "Do not route database evolution" not in high_cost:
-    missing.append("decision checklist excludes a broad generic migration route")
+if question_four.find("persisted data/schema contract") > question_four.find("Then estimate"):
+    missing.append("Step 1 chooses the persistence boundary before cost")
+if cost_section.find("Persisted data or schema contract") > cost_section.find("Other boundaries, Low"):
+    missing.append("decision checklist chooses the persistence boundary before cost tiers")
 raise SystemExit("missing database routing contracts: " + ", ".join(missing) if missing else 0)
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -60,18 +62,20 @@ required_skill = {
     "resume traversal": "`## Database Migration Phase Status` to find the earliest incomplete exit criterion",
     "resume authority": "database phase-status checklist is the authoritative state",
     "operator gate": "Operator readiness — the named datastore owner reviewed the production phase plan",
-    "step 4.2 exit": "the plan's `Operator readiness` phase-status item must also name the datastore owner",
+    "pre-expand readiness": "complete the plan's `Operator readiness` gate before the first production schema operation",
+    "step 4.1 exit": "before production Expand begins",
     "pre-contraction recovery gate": "every phase-status item through `Recovery` must be checked with evidence before contraction begins",
     "step 4.4 exit": "every item in `## Database Migration Phase Status` must also be checked with evidence",
     "overall completion": "additional completion gates. The generic four gates never override or replace them",
+    "historical migration references retained": "retain required migration-history and audit artifacts",
     "application removal before contraction": "legacy application reads and writes were removed or disabled and verified while the expanded schema remained",
     "standalone contraction deployment": "destructive schema contraction ran in a separate later deployment",
 }
 missing = [name for name, phrase in required_skill.items() if phrase not in skill]
 phase_section = skill.split("## Database Migration Phase Status", 1)[1].split("```", 1)[0]
 expected_phases = [
-    "Expand",
     "Operator readiness",
+    "Expand",
     "Transitional writes",
     "Backfill",
     "Read cutover",
@@ -79,11 +83,37 @@ expected_phases = [
     "Recovery",
     "Contract",
 ]
-actual_phases = re.findall(r"^- \[ \] ([^—\n]+?) —.*\n  - Evidence: .+$", phase_section, re.MULTILINE)
+phase_entries = re.findall(
+    r"^- \[ \] ([^—\n]+?) —(.+)\n  - Evidence: (.+)$",
+    phase_section,
+    re.MULTILINE,
+)
+actual_phases = [name for name, _description, _evidence in phase_entries]
 if actual_phases != expected_phases:
     missing.append("ordered database phases with paired evidence fields")
+phase_descriptions = {name: description for name, description, _evidence in phase_entries}
+phase_requirements = {
+    "Operator readiness": ["datastore owner reviewed", "commands and recovery actions were rehearsed"],
+    "Expand": ["additive schema supports every named old/new application combination"],
+    "Transitional writes": ["partial-failure", "retry", "ordering", "repair", "observable"],
+    "Backfill": [
+        "every retained record and value required by the new contract is covered",
+        "every exclusion has an explicit safe disposition",
+        "reconciliation passes",
+        "batching/throttling",
+    ],
+    "Read cutover": ["deployed independently", "rollback remains schema-compatible", "old writes remain supported"],
+    "Observation": ["named window passed", "without an unresolved regression"],
+    "Recovery": ["recovery was tested for each phase", "verified backup or restoration source", "rather than a schema-only down migration"],
+    "Contract": ["no longer require the old shape before destructive removal"],
+}
+for phase, phrases in phase_requirements.items():
+    description = phase_descriptions.get(phase, "")
+    missing.extend(f"{phase} semantics: {phrase}" for phrase in phrases if phrase not in description)
 required_patterns = {
     "reference-to-plan authority": "authoritative resumable state",
+    "operator readiness before expand": "before the first production schema operation",
+    "complete retained-data coverage": "Every retained record and value required by the new contract is covered",
     "new-only writes before contraction": "Verify new-only writes, then remove `name` in a later contraction",
     "standalone destructive contraction": "perform destructive removal as its own deployment",
 }
@@ -99,13 +129,17 @@ import pathlib
 import sys
 
 text = pathlib.Path(sys.argv[1]).read_text()
+database_pattern = text.split("## Database Expand/Migrate/Contract", 1)[1].split("## Pattern comparison", 1)[0]
+expand_phase = database_pattern.split("**Step 4.1 —", 1)[1].split("**Step 4.2 —", 1)[0]
 required = {
+    "old application compatibility": "Prove the old application against the expanded schema",
     "pre-write compatibility state": "expanded schema before transitional writes or backfill",
     "partially migrated compatibility state": "partially migrated data while old and new shapes coexist",
+    "supported mixed-version matrix": "Name every supported mixed-version combination",
     "constraint compatibility": "compatibility-preserving for old writers",
     "deferred enforcement": "defer incompatible enforcement or validation until those writers are absent",
 }
-missing = [name for name, phrase in required.items() if phrase not in text]
+missing = [name for name, phrase in required.items() if phrase not in expand_phase]
 raise SystemExit("missing mixed-version compatibility contracts: " + ", ".join(missing) if missing else 0)
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
