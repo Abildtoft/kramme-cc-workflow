@@ -234,6 +234,13 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/harden-security-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:harden-security/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/issue-and-plan-to-pr-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
