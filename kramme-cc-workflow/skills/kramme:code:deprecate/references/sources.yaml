@@ -4,8 +4,8 @@ sources:
     title: "Addy Osmani agent-skills - deprecation and migration"
     rationale: "The deprecation decision workflow, migration framing, and removal guardrails are adapted from this source."
     usage: inspiration
-    last_reviewed_at: 2026-07-01
-    baseline_hash: "sha256:bf2d9b4e3bc635b32e8de70b0ab41e4395d7b585e6474347c53ce89d45fbdb75"
+    last_reviewed_at: 2026-08-20
+    baseline_hash: "sha256:92d9846321fab624eded7ac55d19a7738cfd2321c2be2e35eb153dcacf7359de"
   - id: hyrums-law
     url: https://www.hyrumslaw.com/
     title: "Hyrum's Law"

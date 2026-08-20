@@ -189,6 +189,11 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/code-deprecate-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:code:deprecate/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/test-audit-guidance.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:test:audit/SKILL.md"]
     },

@@ -1,6 +1,6 @@
 # Migration patterns for deprecation
 
-Extended guidance for the three named migration patterns referenced in Step 3. Pick exactly one per deprecation plan. Each pattern below includes: summary, pick signals, a minimal code example, and phasing guidance mapped to the skill's four-step workflow.
+Extended guidance for the four named migration patterns referenced in Step 3. Pick exactly one per deprecation plan. Each pattern below includes: summary, pick signals, a minimal example, and phasing guidance mapped to the skill's four-step workflow.
 
 ---
 
@@ -126,14 +126,63 @@ export async function processPayment(
 
 ---
 
+## Database Expand/Migrate/Contract
+
+### Summary
+
+Change persistent data shape through independently deployable compatibility phases. First expand the schema additively so old and new application versions can coexist. Then migrate writes, existing data, and reads through explicit gates. Contract the old shape only after every old reader and writer is gone, the new path has passed observation, and recovery conditions are satisfied.
+
+This is a compatibility pattern, not a promise that every schema operation is reversible. Once contraction discards information, a down migration can recreate a column or table but cannot recreate its data without a verified backup or another restoration source.
+
+### Pick signals
+
+- A deprecation renames, replaces, splits, merges, or removes a persisted field, table, index, relation, event shape, or other datastore contract.
+- Rolling deployments or independent service releases mean old and new application versions will run concurrently.
+- Existing data needs a backfill or reconciliation before reads can move to the new shape.
+- The migration includes load-bearing operations whose lock, transaction, replication, or runtime cost must be controlled in production.
+
+### Minimal example (nullable field replacement)
+
+Suppose `customers.display_name` replaces `customers.name`. Keep each transition independently deployable:
+
+1. Add nullable `display_name`; do not rename or remove `name` in place.
+2. Deploy application code that writes both fields, or use another compatibility mechanism with explicitly analyzed partial-failure and retry behavior. Continue reading `name`.
+3. Backfill `display_name` in bounded, restartable batches. Throttle against named latency, lock, replication-lag, and error signals; reconcile before advancing.
+4. Deploy reads from `display_name`, retaining compatible writes while old versions may still run. Observe the new read/write path for the declared window.
+5. Stop compatibility writes to `name` only after no legacy application version or job can write it. Verify new-only writes, then remove `name` in a later contraction after recovery and retention gates pass.
+
+The same sequence applies conceptually across relational and non-relational stores, but operational commands do not. Whether an index can be created online or without blocking, whether DDL is transactional, and which locks or replication effects occur depend on the datastore, engine version, topology, and operation. Confirm those capabilities with the datastore owner and rehearse the actual production procedure.
+
+### Phasing
+
+- **Step 4.1 — Prepare operations / Build replacement / Expand**: before the first production schema operation, record ownership, compatibility matrix, transition-write design, backfill batch and throttle controls, pause/resume and retry behavior, reconciliation query or equivalent check, cutover signals, observation duration, and recovery actions. Rehearse commands in a representative environment and have the datastore owner review the production steps. Then apply only additive schema changes and deploy compatible application code separately. Prove the old application against the expanded schema. Prove the new compatibility code against (a) the expanded schema before transitional writes or backfill and (b) partially migrated data while old and new shapes coexist. Name every supported mixed-version combination. For large indexes, select an engine-supported operational mode only after checking its locking, transaction, failure, and cleanup behavior. Add a constraint during Expand only when it remains non-enforcing or otherwise compatibility-preserving for old writers; defer incompatible enforcement or validation until those writers are absent.
+- **Step 4.2 — Announce / Publish operations**: publish the operator-reviewed production phase plan completed before Expand, including ownership, commands, thresholds, recovery actions, and current operational details. If the published procedure changes, repeat the affected review and rehearsal before executing it.
+- **Step 4.3 — Migrate**: enable dual-write or the chosen equivalent and monitor consistency failures. Backfill in restartable batches, pausing when declared production-load thresholds are crossed. Reconcile old and new representations before cutting reads over. Deploy the read cutover independently, keep a compatible application rollback path, and observe before disabling old writes. Do not assume writes across two shapes or stores are atomic; design idempotency, ordering, repair, and retry behavior for the actual failure modes.
+- **Step 4.4 — Remove old / Contract**: wait until old application versions, jobs, consumers, readers, and writers no longer need the old shape and the observation window has passed. Take or verify the recovery artifact required by the retention policy, then perform destructive removal as its own deployment. Test application rollback against the contracted schema where it is meant to remain available. If contraction discards data, restoration—not a schema-only down migration—is the recovery path.
+
+### Phase gates
+
+Record the evidence below in the deprecation plan's `## Database Migration Phase Status`; that checklist is the authoritative resumable state for phase progression and completion.
+
+| Gate | Evidence required before advancing |
+| --- | --- |
+| Operator readiness → Expand | Datastore owner reviewed the production phase plan; commands and recovery actions were rehearsed in a representative environment. |
+| Expand → transitional writes | Expanded schema works with old and new application versions; every supported mixed-version combination is named; datastore-specific operation completed without violating load or lock limits. |
+| Transitional writes → backfill | Consistency, partial-failure, retry, ordering, and repair behavior is tested and observable. |
+| Backfill → read cutover | Every retained record and value required by the new contract is covered; every exclusion has an explicit safe disposition, reconciliation passes, and production load stayed within thresholds. |
+| Read cutover → observation | New reads are deployed independently; rollback remains schema-compatible; old writes are still supported where mixed versions require them. |
+| Observation → contract | Observation window passed; no old readers or writers remain; recovery artifact and contraction procedure are verified. |
+
+---
+
 ## Pattern comparison
 
-| Dimension | Strangler | Adapter | Feature Flag |
-| --- | --- | --- | --- |
-| Coexistence | Yes, long | Yes, medium | Yes, short |
-| Rollback granularity | Per-slice | Per-caller | Per-cohort |
-| Primary risk | Façade complexity | Shape-translation bugs | Flag service dependency |
-| Removal work | Remove old + trim façade | Remove adapter + codemod cleanup | Remove old + flag check + flag definition |
-| Good default for | Long-lived legacy systems | Library/framework shape changes | Runtime-risky deprecations |
+| Dimension | Strangler | Adapter | Feature Flag | Database Expand/Migrate/Contract |
+| --- | --- | --- | --- | --- |
+| Coexistence | Yes, long | Yes, medium | Yes, short | Yes, across deployments |
+| Rollback granularity | Per-slice | Per-caller | Per-cohort | Per phase before destructive contraction |
+| Primary risk | Façade complexity | Shape-translation bugs | Flag service dependency | Mixed-version incompatibility and migration load |
+| Removal work | Remove old + trim façade | Remove adapter + codemod cleanup | Remove old + flag check + flag definition | Remove transitional writes + old schema shape |
+| Good default for | Long-lived legacy systems | Library/framework shape changes | Runtime-risky deprecations | Persistent data or schema evolution |
 
 If no pattern clearly fits, the deprecation is probably too large — split it via `SIMPLICITY CHECK` into deprecations that each fit one pattern.
