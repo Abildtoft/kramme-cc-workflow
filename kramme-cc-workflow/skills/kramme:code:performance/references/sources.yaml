@@ -2,11 +2,11 @@ sources:
   - id: addy-performance-optimization
     url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/performance-optimization/SKILL.md
     title: "Addy Osmani agent-skills - performance optimization"
-    rationale: "The Core Web Vitals targets, measure-identify-fix-verify-guard workflow, common performance anti-patterns, rationalizations, and red flags are adapted from this source. Reviewed against upstream commit 5e262b20e0cd88dba39e558f42f5c0b6d766d4b4."
+    rationale: "The Core Web Vitals targets, measure-identify-fix-verify-guard workflow, experiment verdict and record guidance, common performance anti-patterns, rationalizations, and red flags are adapted from this source. Reviewed against upstream commit 91d4d07522de9577caf5d213e5bf1acc38fa3df2."
     usage: copied
     license: "MIT"
     notice: references/addyosmani-agent-skills-LICENSE
     upstream_path: skills/performance-optimization/SKILL.md
-    upstream_commit: 5e262b20e0cd88dba39e558f42f5c0b6d766d4b4
-    last_reviewed_at: 2026-06-10
-    baseline_hash: "sha256:34a1b09e13daab18973d3356b80720d8de05036f2b7e6e6644b11595b942df47"
+    upstream_commit: 91d4d07522de9577caf5d213e5bf1acc38fa3df2
+    last_reviewed_at: 2026-08-20
+    baseline_hash: "sha256:c73f72fdfbabe9874d2852de3df3289917a936402d43557d966494a3d6cefcbd"
