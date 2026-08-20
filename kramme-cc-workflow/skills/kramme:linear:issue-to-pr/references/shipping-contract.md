@@ -1,6 +1,6 @@
 # Shipping Contract
 
-Apply this contract only after the caller supplied `--ship`, every applicable gate completed in regular-review/convention-review/refactor order, the selected review mode's completion rule passed, and final verification passed. Standard mode permits reported advisory and refactor observations but requires zero accepted unresolved Critical or Important findings and no genuine manual blocker. Strict mode requires every emitted finding to have a disposition and likewise permits only explicitly deferred optional findings to remain.
+Apply this contract only after the caller supplied `--ship`, every applicable gate completed in regular-review/convention-review/overengineering-review/refactor order, the selected review mode's completion rule passed, and final verification passed. Standard mode permits reported Judgment Call, advisory, and refactor observations but requires zero accepted unresolved Critical, Important, or `OVERDONE` findings and no genuine manual blocker. Strict mode requires every emitted finding to have a disposition and likewise permits only explicitly deferred optional findings to remain.
 
 ## Authorization Boundary
 
@@ -23,7 +23,7 @@ Query the current branch with `gh pr view --json number,url,state,headRefName,he
 
 ## Step 2: Retire Workflow Artifacts
 
-When the PR-refactor gate is active, it writes or refreshes `REFACTOR_OPPORTUNITIES_OVERVIEW.md`; a delegated resolver may also create a convention or broad-review overview. The quality loop moves these reports under `.context/linear-issue-to-pr/` before later scope collection. Invoke `kramme:workflow-artifacts:cleanup --auto` before Pull Request creation so the registered archive and any root-level disposable reports are retired.
+When the overengineering gate is active, it writes or refreshes `OVERENGINEERING_REVIEW_OVERVIEW.md`, and the PR-refactor gate writes or refreshes `REFACTOR_OPPORTUNITIES_OVERVIEW.md`; a delegated resolver may also create a convention or broad-review overview. The quality loop moves these reports under `.context/linear-issue-to-pr/` before later scope collection. Invoke `kramme:workflow-artifacts:cleanup --auto` before Pull Request creation so every registered archived or root-level disposable report is retired.
 
 `--ship` authorizes the cleanup skill's auto-selected current-project disposable set. Preserve permanent specifications and shared diagrams exactly as that skill requires. Never fall back to permanent deletion when safe automatic cleanup refuses to run.
 
@@ -91,12 +91,13 @@ After `kramme:pr:fix-ci` succeeds:
 3. Run `git status --porcelain` and require a clean worktree.
 4. Record local `HEAD` as `{final-head}` and require the Pull Request's `headRefOid` to equal it exactly.
 5. Record `git rev-parse 'HEAD^{tree}'` as `{final-tree}`.
-6. If `{final-tree}` differs from `{verified-tree}`, run exactly one validation-only final quality round before verification. Reuse the applicability evaluation and artifact-isolation rules in `review-convergence.md`, then run every applicable gate in regular-review -> convention-review -> refactor order:
+6. If `{final-tree}` differs from `{verified-tree}`, run exactly one validation-only final quality round before verification. Reuse the applicability evaluation and scope-isolation rules in `review-convergence.md`, then run every applicable gate in regular-review -> convention-review -> overengineering-review -> refactor order:
    - Regular review: the read-only `kramme:pr:code-review --parallel --inline` gate.
    - Convention review: `kramme:pr:convention-review --inline`.
+   - Overengineering review: `kramme:pr:overengineering-review --requirements "{issue-requirements}" --inline`, reusing the same complete requirement set the quality loop built so this pass cannot call required machinery overdone on a thinner summary. This is a one-shot validation pass after the normal report archive was retired, so inline output is required and no lifecycle file is recreated.
    - Refactor discovery: `kramme:code:refactor-opportunities pr`, with its report consumed and isolated under `.context/linear-issue-to-pr/` before continuing.
 
-   Do not edit code, re-enter `kramme:pr:fix-ci`, or start another quality round from this validation-only pass. Apply the selected review mode's existing completion rule to its findings. If an accepted required finding, genuine manual blocker, or unexpected source change remains, stop with the Pull Request URL, finding evidence, and the smallest follow-up needed; do not claim the final tree is reviewed.
+   Do not edit code, re-enter `kramme:pr:fix-ci`, or start another quality round from this validation-only pass. Apply the selected review mode's existing completion rule to its findings, including the requirement that no accepted `OVERDONE` finding remains. If an accepted required finding, genuine manual blocker, or unexpected source change remains, stop with the Pull Request URL, finding evidence, and the smallest follow-up needed; do not claim the final tree is reviewed.
 
 7. If `{final-tree}` differs, after the validation-only quality round passes, invoke `kramme:verify:run` for a fresh project-configured verification pass over the CI-remediated tree. Require every applicable check to pass and require no source change after verification.
 8. Refresh review feedback after all final quality and verification work:

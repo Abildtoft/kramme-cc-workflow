@@ -217,6 +217,7 @@ archive = ".context/linear-issue-to-pr/"
 expected = {
     archive + "REVIEW_OVERVIEW.md",
     archive + "CONVENTION_REVIEW_OVERVIEW.md",
+    archive + "OVERENGINEERING_REVIEW_OVERVIEW.md",
     archive + "REFACTOR_OPPORTUNITIES_OVERVIEW.md",
 }
 missing = sorted(expected - paths.keys())

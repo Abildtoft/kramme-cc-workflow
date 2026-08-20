@@ -949,6 +949,7 @@
         "run exactly one validation-only final quality round before verification",
         "kramme:pr:code-review --parallel --inline",
         "kramme:pr:convention-review --inline",
+        "kramme:pr:overengineering-review --requirements \"{issue-requirements}\" --inline",
         "kramme:code:refactor-opportunities pr",
         "`--auto` carries the invocation through the backup-protected local reset without prompting",
         "has no invocation-owned creation provenance",
@@ -973,9 +974,12 @@
         "parent-owned review-triggered code-edit batch",
         "Delegated quality gates are read-only",
         "kramme:pr:code-review --parallel --inline",
+        "kramme:pr:overengineering-review --requirements \"{issue-requirements}\"",
+        "Build `{issue-requirements}` once, before the first overengineering invocation",
+        "Start the gate without a report only while that flag is still `false`",
         "consume exactly one parent cycle",
         "No delegated gate owns an internal fix/rerun loop",
-        "standard mode has no accepted unresolved Critical or Important finding",
+        "standard mode has no accepted unresolved Critical, Important, or `OVERDONE` finding",
         "strict mode has a disposition for every emitted finding"
       ]
     },
@@ -1009,7 +1013,7 @@
       "path": "README.md",
       "contains": [
         "verifies that it has no existing Pull Request or remote branch on `origin`",
-        "During normal remediation rounds it runs applicable gates in this order: `/kramme:pr:code-review`, `/kramme:pr:convention-review`, then `/kramme:code:refactor-opportunities pr`.",
+        "During normal remediation rounds it runs applicable gates in this order: `/kramme:pr:code-review`, `/kramme:pr:convention-review`, `/kramme:pr:overengineering-review`, then `/kramme:code:refactor-opportunities pr`.",
         "when a bounded stop fires after code changed, one final validation-only round reruns every applicable gate in the same order"
       ]
     },
@@ -1419,6 +1423,7 @@
         ".context/session-search/",
         ".context/linear-issue-to-pr/REVIEW_OVERVIEW.md",
         ".context/linear-issue-to-pr/CONVENTION_REVIEW_OVERVIEW.md",
+        ".context/linear-issue-to-pr/OVERENGINEERING_REVIEW_OVERVIEW.md",
         ".context/linear-issue-to-pr/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
         "siw/OPEN_ISSUES_OVERVIEW.md",
         "siw/FEATURE_SPECIFICATION.md",
