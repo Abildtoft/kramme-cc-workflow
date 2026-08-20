@@ -106,6 +106,10 @@ These are policy verdicts, not a migration backlog.
 
 Implementation update (2026-08-03): `kramme:code:cleanup-ai` was folded into the default candidate-discovery pass of `kramme:code:refactor-pass`. AI-slop findings now use the same Fence, one-slice verification, commit, and recovery contract as general simplifications, so the former permission and recovery differences are no longer separate public routes.
 
+Removal decision update (2026-08-20): repository maintainers approved accelerated removal of `kramme:changelog:generate`. The maintainer's complete available local telemetry contains no recorded invocation: the current 30-day, 90-day, and all-history reports each return zero records for the skill. Tracking begins on 2026-05-28, so this establishes no recorded use throughout the instrumented history; it does not claim visibility into uninstrumented use before that date.
+
+This approval explicitly waives the normal deprecation and additional-zero-use-quarter interval. The decision does not rely on usage alone: the skill has no owner case, no recorded adoption, and no distinct replacement workflow. Daily and weekly summaries and plugin release-history questions become ordinary agent requests, while manual releases update `CHANGELOG.md` directly. Removing the command is a breaking migration because those requests no longer have a dedicated skill, so the removal must ship in the next major release.
+
 ### Overlapping skills
 
 | Case | 30-day use | 90-day use | Verdict under this policy | Reason |
@@ -119,7 +123,7 @@ Implementation update (2026-08-03): `kramme:code:cleanup-ai` was folded into the
 | Domain and skill | 30-day use | 90-day use | Owner | Review date | Verdict under this policy |
 | --- | --: | --: | --- | --- | --- |
 | `browse` — `kramme:browse` | 0 | 0 | — | — | Observe. Browser operation is a plausible capability boundary, but this older singleton needs an explicit showcase/owner case at the next quarterly review. |
-| `changelog` — `kramme:changelog:generate` | 0 | 0 | — | — | Observe. The artifact type gives the domain meaning, but the older zero-use skill needs an owner case at the next quarterly review. |
+| `changelog` — `kramme:changelog:generate` | 0 | 0 | repository maintainers | 2026-08-20 | Remove (approved 2026-08-20). No use was recorded during the full instrumented history, and the accelerated-removal exception is documented above. |
 | `ci` — `kramme:ci:design-pipeline` | 0 | 0 | — | — | Observe. CI is distinct from fixing a Pull Request's failed checks, but continued singleton status needs a current use or showcase case. |
 | `deps` — `kramme:deps:audit` | 0 | 0 | — | — | Observe. Dependency lifecycle is a durable boundary, but the older experimental skill needs a current owner case. |
 | `learn` — `kramme:learn:verify-understanding` | 0 | 2 | — | — | Keep. It has recorded adoption and a distinct learning-verification outcome. |
