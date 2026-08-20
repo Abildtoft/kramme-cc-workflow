@@ -10,6 +10,8 @@
 
 A single metric regressing from Good into Needs Improvement is a regression. All three must be in Good for the page to qualify as "passing CWV."
 
+For field data, evaluate each Core Web Vital at the 75th percentile of page loads, segmented by mobile and desktop. Synthetic percentiles may support project lab budgets, but they are not the official field-data aggregation rule.
+
 ## What each metric measures
 
 - **LCP** — time from navigation to when the largest visible content element finishes rendering. Typical bottleneck: hero image, above-the-fold media, render-blocking CSS/JS.
@@ -57,9 +59,11 @@ onCLS(report);
 
 Other RUM sources:
 
-- **Chrome User Experience Report (CrUX)** — 28-day field data aggregated by origin. Query via the CrUX API or the Public Dataset in BigQuery.
-- **PageSpeed Insights** — surfaces both Lighthouse (synthetic) and CrUX (RUM) side by side.
-- **Project APM** — Datadog, New Relic, Sentry Performance, or equivalent usually expose CWV as first-class metrics.
+- **Chrome User Experience Report (CrUX)** — 28-day field data aggregated by origin. Query via the CrUX API or the Public Dataset in BigQuery and keep the result as inline RUM evidence; its aggregate-only output does not satisfy the Version 1 durable-artifact contract.
+- **PageSpeed Insights** — surfaces both Lighthouse (synthetic) and CrUX (RUM) side by side. Treat its CrUX field output as inline evidence. Persist repeated Lighthouse results only as synthetic evidence when the collection supplies the complete Version 1 contract.
+- **Project APM** — Datadog, New Relic, Sentry Performance, or equivalent usually expose CWV as first-class metrics. Persist a RUM artifact only when the producer supplies the complete Version 1 sample, summary, noise, and comparable-cohort fields.
+
+Read `baseline-artifact.md` before persisting any RUM measurement. Never invent unavailable statistics or cohort dimensions to make aggregate field data fit the schema.
 
 ## Mobile vs desktop
 
