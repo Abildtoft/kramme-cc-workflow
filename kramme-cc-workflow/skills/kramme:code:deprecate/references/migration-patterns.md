@@ -149,7 +149,7 @@ Suppose `customers.display_name` replaces `customers.name`. Keep each transition
 2. Deploy application code that writes both fields, or use another compatibility mechanism with explicitly analyzed partial-failure and retry behavior. Continue reading `name`.
 3. Backfill `display_name` in bounded, restartable batches. Throttle against named latency, lock, replication-lag, and error signals; reconcile before advancing.
 4. Deploy reads from `display_name`, retaining compatible writes while old versions may still run. Observe the new read/write path for the declared window.
-5. Stop writes to `name` only after no old writer remains. Remove `name` in a later contraction after recovery and retention gates pass.
+5. Stop compatibility writes to `name` only after no legacy application version or job can write it. Verify new-only writes, then remove `name` in a later contraction after recovery and retention gates pass.
 
 The same sequence applies conceptually across relational and non-relational stores, but operational commands do not. Whether an index can be created online or without blocking, whether DDL is transactional, and which locks or replication effects occur depend on the datastore, engine version, topology, and operation. Confirm those capabilities with the datastore owner and rehearse the actual production procedure.
 

@@ -215,11 +215,13 @@ Default: **Database Expand/Migrate/Contract** when persistence shape changes; **
 
 Execute in order. Do not compress or overlap — each step has distinct exit criteria.
 
+For Database Expand/Migrate/Contract, use `references/migration-patterns.md` to design the datastore-specific operations. The deprecation plan's `## Database Migration Phase Status` remains the authoritative progression and completion state.
+
 ### 4.1 Build the replacement
 
 Ship the replacement first. The replacement must cover the documented contract _and_ the observable behaviors Hyrum's Law says callers may depend on: field ordering, error messages, timing characteristics, edge-case inputs, the exact shape of logs that ops depends on. Map each observable to either "replacement covers it" or "replacement intentionally changes it — communicated in Step 4.2".
 
-For Database Expand/Migrate/Contract, Step 4.1 is the additive expand phase: ship a schema that old and new application versions can both use, then ship compatible application code separately. Record the supported mixed-version combinations and the datastore-specific operational constraints before any backfill or cutover.
+For Database Expand/Migrate/Contract, Step 4.1 is the additive expand phase: ship a schema that old and new application versions can both use, then ship compatible application code separately.
 
 Exit criterion: the replacement is merged and verified. For runtime or public surfaces it is also deployed and monitored; for compile-time / internal-only surfaces it is exercised by the CI/build/test flows that cover dependents. In both cases, a contract test or characterization test asserts feature parity for every observable on the map. For Database Expand/Migrate/Contract, the plan's `Expand` phase-status item must also contain its compatibility evidence.
 
@@ -231,7 +233,7 @@ Publish: the deprecation notice, the timeline, the migration guide or upgrade no
 - **Runtime / internal code**: deprecation notice in the code when applicable, CHANGELOG entry, team-wide announcement channel, and operator/runbook note if runtime ownership is involved.
 - **External API**: changelog, developer mailing list, in-API deprecation header (`Deprecation: true`, `Sunset: <date>`), versioned documentation.
 
-For Database Expand/Migrate/Contract, also publish the operator-reviewed phase plan: transitional write/read behavior, consistency failure handling, backfill load limits and pause/resume procedure, cutover signals, observation window, and the recovery action available before and after contraction.
+For Database Expand/Migrate/Contract, also publish and rehearse the operator-reviewed phase plan described in the migration-pattern reference.
 
 When the Step 3 pattern is Feature Flag, the flag service itself acts as a per-cohort announcement channel in addition to the surface-appropriate notices above — see `references/migration-patterns.md`.
 
@@ -241,7 +243,7 @@ Exit criterion: every dependent surface for the chosen surface type has received
 
 Apply the Step 3 pattern. Migrate callers in slices — by team, by cohort, by path — with verification between slices. The Churn Rule says you own this migration: if callers are not migrating, you do the migrations yourself (codemods, PRs against consuming services, batch-updates).
 
-For Database Expand/Migrate/Contract, migrate in separately deployable gates: introduce dual-write or an equivalent compatibility mechanism, backfill in observable and restartable batches with throttling, cut reads over only after data reconciliation, and observe the new read/write path before contraction. Analyze partial-write and retry behavior for the chosen datastore; do not assume transition writes are atomic.
+For Database Expand/Migrate/Contract, advance only through the separately deployable phase-status gates. Use the migration-pattern reference to design transitional writes, backfill, read cutover, observation, and recovery for the chosen datastore.
 
 The first migrated slice is the guide's real-world validation. If the guide is wrong or incomplete, fix it before moving to the next slice.
 
@@ -251,11 +253,11 @@ Exit criterion: zero active callers of the old path. "Active" means references s
 
 ### 4.4 Remove old
 
-Remove together: the old code, its tests, its docs, and the deprecation notices. Leaving any one behind is a rollback trap — deprecation notices on code that no longer exists confuse future readers; tests of removed code waste CI.
+For non-database patterns, remove the old code, its tests, its docs, and the deprecation notices together. Leaving any one behind is a rollback trap — deprecation notices on code that no longer exists confuse future readers; tests of removed code waste CI.
 
 Before executing this step, resolve every open `UNVERIFIED` from any step. If any is still open, emit `ASK FIRST: removing with open UNVERIFIED markers` and do not proceed.
 
-For Database Expand/Migrate/Contract, contraction is a delayed destructive phase. Confirm old application versions, readers, writers, jobs, and rollback paths no longer require the old shape; confirm the read cutover observation window passed; and verify the datastore-specific recovery plan. A down migration can restore schema shape but cannot reconstruct discarded data without a real backup or restoration source.
+For Database Expand/Migrate/Contract, first deploy and verify removal or disablement of legacy application reads and writes while the expanded schema remains. Contract the old schema shape only in a separate later deployment, after the `Observation` and `Recovery` gates pass and no old application version, reader, writer, job, or rollback path requires it. Retire tests, docs, and notices with the application or schema surface they describe. A down migration can restore schema shape but cannot reconstruct discarded data without a real backup or restoration source.
 
 Exit criterion: the four overall-completion gates in the next section are all true. For Database Expand/Migrate/Contract, every item in `## Database Migration Phase Status` must also be checked with evidence.
 
@@ -330,7 +332,8 @@ Before declaring the deprecation complete, self-check:
 - [ ] Dependent audit confirms zero active consumers — based on surface-appropriate evidence (import/build/test/config graph for compile-time / internal-only code; telemetry plus published consumer inventory for runtime or public surfaces), not grep alone.
 - [ ] Every `UNVERIFIED` marker resolved; every `NOTICED BUT NOT TOUCHING` logged; every `ASK FIRST` confirmed.
 - [ ] Observation window has elapsed without incident (CI/release-candidate window for compile-time / internal-only; rollback window for runtime or public surfaces).
-- [ ] Old code, tests, docs, and deprecation notices removed _together_ in the final commit.
+- [ ] For non-database patterns, old code, tests, docs, and deprecation notices removed together in the final commit.
+- [ ] For Database Expand/Migrate/Contract, legacy application reads and writes were removed or disabled and verified while the expanded schema remained, then destructive schema contraction ran in a separate later deployment.
 - [ ] If Database Expand/Migrate/Contract is selected: every item in the plan's authoritative `## Database Migration Phase Status` is checked and includes the required evidence.
 
 If any box is unchecked, the deprecation is not done. Fix the gap or split it into a tracked follow-up before closing the workflow.
