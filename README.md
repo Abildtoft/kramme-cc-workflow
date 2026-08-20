@@ -28,7 +28,7 @@ Using the plugin:
 - [Skills](#skills)
 - [Agents](#agents)
 - [Hooks](#hooks)
-- [Suggested Permissions](#suggested-permissions)
+- [Recommended Auto Modes](#recommended-auto-modes)
 - [Recommended MCP Servers](#recommended-mcp-servers)
 - [Recommended CLIs](#recommended-clis)
 
@@ -578,16 +578,14 @@ Event handlers that run automatically at specific points in the Claude Code life
 
 Use `/kramme:hooks:toggle` to enable/disable hooks. State persists in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `kramme-cc-workflow/hooks/hook-state.json`.
 
-## Suggested Permissions
+## Recommended Auto Modes
 
-Add these to your Claude Code `settings.json` to reduce approval prompts. Two tiers are available:
+Instead of maintaining a static permission allowlist, use the host's built-in auto mode to reduce approval prompts while retaining its automatic safety checks:
 
-- **Core** — read-only git, GitHub, and Linear operations
-- **Extended** — adds git write operations, PR creation, and build/test commands
+- **Claude Code** — start a session with `claude --permission-mode auto`
+- **Codex** — start a session with `codex --approve-for-me`
 
-> **Warning:** Extended permissions include destructive git operations (`git push`, `git reset`, `git rebase`). Only use on projects where you have full control.
-
-See [docs/permissions.md](kramme-cc-workflow/docs/permissions.md) for the full JSON configuration.
+Enable auto mode only in repositories you trust, and review changes before publishing them.
 
 ## Recommended MCP Servers
 
