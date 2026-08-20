@@ -116,6 +116,14 @@
       "producer": "kramme:linear:issue-to-pr"
     },
     {
+      "id": "linear-issue-to-pr-overengineering-review",
+      "path": ".context/linear-issue-to-pr/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:linear:issue-to-pr"
+    },
+    {
       "id": "linear-issue-to-pr-refactor-review",
       "path": ".context/linear-issue-to-pr/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
       "type": "file",
