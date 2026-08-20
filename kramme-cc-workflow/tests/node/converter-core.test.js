@@ -104,16 +104,22 @@ test("skill-local rewrites preserve shell-safe quoting", () => {
     rewriteCodexSharedScriptReferences(source, replacements),
     "'/tmp/Codex Home/skills/kramme:git:recreate-commits'/scripts/resolve-push-target.sh",
   );
+  assert.equal(
+    rewriteCodexSharedScriptReferences(
+      "${CLAUDE_PLUGIN_ROOT}/skills/kramme:git:recreate-commits",
+      replacements,
+    ),
+    "'/tmp/Codex Home/skills/kramme:git:recreate-commits'",
+  );
 });
 
 test("skill-local rewrites execute quoted paths without shell expansion", async () => {
   await withTempDir(async (root) => {
     const codexRoot = path.join(root, "Codex Home $(touch pwned)");
     const skillName = "kramme:git:recreate-commits";
+    const expectedSkillDir = path.join(codexRoot, "skills", skillName);
     const helper = path.join(
-      codexRoot,
-      "skills",
-      skillName,
+      expectedSkillDir,
       "scripts",
       "resolve-push-target.sh",
     );
@@ -122,6 +128,20 @@ test("skill-local rewrites execute quoted paths without shell expansion", async 
     await fs.chmod(helper, 0o755);
 
     const replacements = codexSkillLocalReplacements(codexRoot, skillName);
+    const rootSource = `SKILL_DIR="\${CLAUDE_PLUGIN_ROOT}/skills/${skillName}"`;
+    const rootCommand = rewriteCodexSharedScriptReferences(
+      rootSource,
+      replacements,
+    );
+    assert.equal(
+      execFileSync(
+        "bash",
+        ["-c", `${rootCommand}\nprintf '%s\\n' "$SKILL_DIR"`],
+        { cwd: root, encoding: "utf8" },
+      ),
+      `${expectedSkillDir}\n`,
+    );
+
     const source = `"\${CLAUDE_PLUGIN_ROOT}/skills/${skillName}/scripts/resolve-push-target.sh"`;
     const command = rewriteCodexSharedScriptReferences(source, replacements);
 
@@ -1110,6 +1130,15 @@ test("hook plugin conversion requires controls and sanitizes manifest descriptio
       targetDir: path.join("scripts", "lib"),
     },
   ]);
+  assert.ok(
+    codexPlugin.sharedScriptFiles?.some(
+      (file) =>
+        file.sourceFile ===
+          path.join("/plugin", "hooks", "confirm-review-artifacts.txt") &&
+        file.targetPath === path.join("hooks", "confirm-review-artifacts.txt"),
+    ),
+    "converted shared collector must include its review-artifact inventory",
+  );
 });
 
 test("converter path checks treat only ENOENT as absence", async () => {

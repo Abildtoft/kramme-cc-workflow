@@ -18,6 +18,7 @@ const {
 const {
   parseFrontmatter,
 } = require("../../scripts/convert-plugin/frontmatter");
+const { loadClaudePlugin } = require("../../scripts/convert-plugin/loader");
 
 const {
   emptyPreviousEntries,
@@ -154,6 +155,53 @@ test("converted skill roots contain no executable Claude controls and honor inst
     assert.equal(
       await readText(path.join(sourceDir, "references", "team-mode.md")),
       canonicalResource,
+    );
+  });
+});
+
+test("canonical Codex staging preserves runtime path dependency closure", async () => {
+  await withTempDir(async (root) => {
+    const pluginRoot = path.resolve(__dirname, "../..");
+    const codexRoot = path.join(root, "codex-home");
+    const codexStagingRoot = path.join(root, "codex-staging");
+    const plugin = await loadClaudePlugin(pluginRoot);
+    const bundle = convertClaudeToCodex(plugin);
+    const pluginName = plugin.manifest.name;
+    if (typeof pluginName !== "string") {
+      throw new TypeError("canonical plugin manifest name must be a string");
+    }
+
+    const staged = await stageCodexBundleOutput(
+      codexRoot,
+      codexStagingRoot,
+      bundle,
+      emptyPreviousEntries(),
+      pluginName,
+      {
+        agentsHome: path.join(root, "agents-home"),
+        confirm: { yes: true },
+      },
+    );
+
+    assert.equal(
+      await pathExists(
+        path.join(codexStagingRoot, "hooks", "confirm-review-artifacts.txt"),
+      ),
+      true,
+      "shared review collector must retain its artifact inventory",
+    );
+
+    const unresolvedRuntimePaths = (
+      await readMarkdownTree(staged.stagedSkillsRoot)
+    )
+      .filter(({ text }) =>
+        /\$\{CLAUDE_PLUGIN_ROOT(?::-)?\}\/(?:scripts|skills)\//.test(text),
+      )
+      .map(({ file }) => path.relative(staged.stagedSkillsRoot, file));
+    assert.deepEqual(
+      unresolvedRuntimePaths,
+      [],
+      "converted skills must not retain Claude-only script or skill paths",
     );
   });
 });
