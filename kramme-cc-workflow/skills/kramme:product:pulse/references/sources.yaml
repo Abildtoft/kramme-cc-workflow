@@ -6,3 +6,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:bd61757fdbe1b5441af3d995b3fa50ce89eb8934fcfe38188de7f13b18e9f101"
+  - id: pstack-show-me-your-work-handoff
+    url: https://raw.githubusercontent.com/cursor/plugins/63d938c2e4a165a0fec1bd0f61a8e325f0cb751e/pstack/skills/show-me-your-work/SKILL.md
+    title: "pstack - Show me your work skill"
+    rationale: "The launch-handoff consumer is inspired by pstack's durable decision trail with stable evidence pointers and checkpoint outcomes. Product pulse adapts that concept to classify launch evidence by original provenance and avoid counting repeated handoffs as new observations."
+    usage: inspiration
+    last_reviewed_at: 2026-08-20
+    baseline_hash: "sha256:b99833c41a8781a6af191487f1af37711a3198b98f9373e3c02292b8a6e09aba"

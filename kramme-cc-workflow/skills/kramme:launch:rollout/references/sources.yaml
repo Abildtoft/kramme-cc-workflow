@@ -6,3 +6,17 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:51677cf03845dd29d08ea4d3125665057b720aea3dccc572f25d8b172409ece6"
+  - id: pstack-babysit-monitoring-loop
+    url: https://raw.githubusercontent.com/cursor/plugins/63d938c2e4a165a0fec1bd0f61a8e325f0cb751e/pstack/skills/poteto-mode/playbooks/babysit.md
+    title: "pstack - Babysit playbook"
+    rationale: "The bounded recurring-monitoring guidance is inspired by pstack's explicit watcher modes, event-driven re-arming, terminal verdicts, and prohibition on a second sleep loop. The rollout skill adapts those ideas to policy-derived production sampling without importing PR-specific behavior."
+    usage: inspiration
+    last_reviewed_at: 2026-08-20
+    baseline_hash: "sha256:84eddcd4d1560ca79a81465cf354f08d1267b114c0470e4a87e1266820c92f86"
+  - id: pstack-setup-capability-discovery
+    url: https://raw.githubusercontent.com/cursor/plugins/63d938c2e4a165a0fec1bd0f61a8e325f0cb751e/pstack/skills/setup-pstack/SKILL.md
+    title: "pstack - Setup pstack skill"
+    rationale: "The capability preflight is inspired by pstack's detect-first setup flow: inspect available capabilities, report gaps, and ask only for facts that cannot be discovered. The rollout adaptation remains read-only and never writes provider or project configuration."
+    usage: inspiration
+    last_reviewed_at: 2026-08-20
+    baseline_hash: "sha256:3b62d9fd4cce8f450b36b2bc6b1df2f00d887e0a3abd55e7fc1ccbde5db96cea"
