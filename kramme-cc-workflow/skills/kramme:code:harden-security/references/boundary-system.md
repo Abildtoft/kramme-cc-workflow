@@ -40,6 +40,8 @@ Changes where the default answer is unknown without context. Do not invent the p
 
 **Elevated-permission additions** — new admin actions, role escalations, and permission grants are where the IDOR class of bugs breeds. A permission that exists on paper but is not enforced at the data layer is a trivial exploit. Confirm where the check lives (handler vs data layer), who can grant/revoke, whether the action should be audit-logged, whether MFA is required.
 
+**New categories or materially new uses of personal or sensitive data** — adding a new data class or repurposing existing data changes the privacy boundary even when storage and providers stay the same. Confirm the purpose, responsible policy owner, minimized shape, retention and deletion behavior, user-operation impact, and every external processor before collection begins.
+
 **New third-party integrations** — a new piece of untrusted data flowing in, new credentials flowing out, new code running in your environment (if you use their SDK), and a new entity you depend on being non-compromised. Confirm what data crosses the boundary in each direction, how credentials are stored, what happens when their service misbehaves, whether their SDK is pinned.
 
 ---
