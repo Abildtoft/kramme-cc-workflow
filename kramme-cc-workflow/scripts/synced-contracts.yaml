@@ -1502,7 +1502,6 @@
     "inventory": "kramme-cc-workflow/config/coverage-production-sources.json",
     "mechanical_only": [
       "kramme-cc-workflow/skills/kramme:browse/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:changelog:generate/SKILL.md",
       "kramme-cc-workflow/skills/kramme:ci:design-pipeline/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:agent-readiness/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:api-design/SKILL.md",
