@@ -1,6 +1,6 @@
 ---
 name: kramme:code:performance
-description: "(experimental) Measure-first performance discipline tied to Core Web Vitals (LCP, INP, CLS). Use when users or monitoring report slowness, CWV scores miss thresholds, performance requirements exist in the spec, you suspect a recent change introduced a regression, or you're building features that handle large datasets or high traffic. Enforces baseline measurement, single-bottleneck fixes, verification, and regression guards. Complements the review-time `kramme:performance-oracle` agent."
+description: "(experimental) Measure-first performance discipline tied to Core Web Vitals (LCP, INP, CLS). Use when users or monitoring report slowness, CWV scores miss thresholds, performance requirements exist in the spec, you suspect a recent change introduced a regression, or you're building features that handle large datasets or high traffic. Enforces baseline measurement, single-bottleneck fixes, verification, and regression guards; when explicitly authorized, can persist immutable repository-scoped baseline artifacts for later comparisons. Complements the review-time `kramme:performance-oracle` agent."
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -108,6 +108,8 @@ console.timeEnd("db-query");
 
 Start the attempt record described in Step 4 with the baseline number _and units_. "Fast enough" is not a baseline.
 
+Write a durable baseline only when the user explicitly requests persistence or the task input identifies a concrete later consumer, such as a specific ticket, PR, regression guard, or remeasurement. A generic mention of those consumer categories in this workflow is not authorization to write. When persistence is authorized, read `references/baseline-artifact.md` and write one repository-scoped JSON artifact; otherwise keep the result inline. The artifact must disclose evidence class, direction, environment, samples, the metric's primary statistic, p50/p75/p95, variance/noise, budgets, and lineage; never overwrite an earlier measurement or store secrets and user-level data. Aggregate-only CrUX and PageSpeed Insights field data stay inline because they cannot supply the complete Version 1 contract; persist RUM only from a producer that supplies every required sample, summary, noise, and comparable-cohort field. If an explicitly requested artifact cannot meet that contract, state that no artifact was written, name only the missing field categories, retain the result inline, and identify the supported measurement needed next.
+
 ### Step 2 — Identify the bottleneck
 
 Read `references/triage.md` now. It contains the frontend/backend symptom tables (symptom → likely cause → investigation), the "Where to start measuring" decision tree, and the six anti-pattern summaries. Use the symptom to pick what to profile first, and follow one branch of the tree per measurement.
@@ -124,10 +126,12 @@ Map the identified bottleneck to one of the six named anti-patterns in `referenc
 
 Remeasure with the same tool, on the same device class, on the same network profile, with the same cache state, and against the same predetermined workload budget used for the baseline. Choose the budget appropriate to the measurement: a fixed wall-clock duration, sample count, or request count. Then check:
 
+- If a durable baseline exists, read `references/baseline-artifact.md`, validate both artifacts, and run its comparison gate before calculating a delta. On any material mismatch, report `INCOMPARABLE`, list the mismatched fields, and rerun under matched conditions instead of presenting a before/after claim.
 - The improvement exceeds measurement noise. A 5% change on Lighthouse is noise; a 30% change is a signal.
-- Compare p95 (tail) and p50 (typical), not just the average. An optimization that only improves p50 can leave the tail unchanged.
+- Compare the metric's declared primary statistic plus p50 and p95, not just the average. For RUM Core Web Vitals, the primary statistic is p75. An optimization that only improves p50 can leave the tail unchanged.
 - Core Web Vitals are now in Good (or at least moved out of Poor).
 - No adjacent metric regressed. A fix that halves LCP but doubles CLS is not a fix.
+- Synthetic and lab evidence prove only controlled-environment behavior. RUM-to-RUM evidence under comparable cohorts and windows is required to claim a real-user improvement; never calculate a direct delta between different evidence classes.
 
 Use a binary verdict after every successful comparable remeasurement:
 
@@ -160,7 +164,7 @@ Lock in the fix so it cannot silently regress:
 - **Bundle size budget** — `bundlesize` or the bundler's built-in budget, fails CI when a route exceeds the limit.
 - **Lighthouse CI** — `lhci autorun` with score thresholds and CWV assertions in the PR pipeline.
 - **Synthetic regression test** — a dedicated test that times the specific code path (a slow query, a render path) and fails when it exceeds the threshold.
-- **RUM alert** — dashboard alert on the p95 of the metric you just fixed.
+- **RUM alert** — dashboard alert on the metric's declared primary statistic; use p75 for RUM Core Web Vitals.
 
 A fix without a guard is a fix that will regress the next time someone changes the code.
 
@@ -230,13 +234,14 @@ If you notice any of these, stop and return to step 1:
 
 Before declaring a perf slice done, confirm every applicable item:
 
-- [ ] For measured attempts, before and after numbers exist with units under the same workload budget and cache state.
+- [ ] For measured attempts, before and after numbers exist with units under the same workload budget and cache state; when a durable comparison is required, both artifact IDs and their predecessor lineage are linked.
 - [ ] Every attempted optimization, including reverted code and measurement failures, is recorded using Step 4's destination fallback and complete field set.
 - [ ] The outcome is `KEEP` only for a reproducible, budget-clearing improvement with all regression and behavior checks passing; comparable worse, neutral, noise-bound, budget-missing, or test-failing results are `REVERT`.
 - [ ] `ERROR`, `TIMEOUT`, and `INCONCLUSIVE` outcomes include failure details, leave the implementation restored, and remain eligible for remeasurement.
 - [ ] The specific bottleneck is named — a concrete query, component, asset, or code path — not "general slowness".
 - [ ] Core Web Vitals are within Good thresholds (or at least moved out of Poor).
-- [ ] The improvement exceeds measurement noise on both p50 and p95.
+- [ ] The improvement exceeds measurement noise on the declared primary statistic, p50, and p95; RUM Core Web Vitals use p75 as the primary statistic.
+- [ ] The evidence classes and collection conditions are comparable; synthetic-only evidence is not described as a real-user outcome.
 - [ ] No adjacent metric (bundle size, another CWV, an API endpoint's latency) regressed as a side effect.
 - [ ] For a kept fix, a budget or regression test exists that fails if the fix is undone.
 - [ ] Bundle size has not increased without justification against the budget.
