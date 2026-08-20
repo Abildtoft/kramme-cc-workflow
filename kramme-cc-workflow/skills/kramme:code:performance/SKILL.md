@@ -5,6 +5,8 @@ disable-model-invocation: false
 user-invocable: true
 ---
 
+<!-- Adapted from addyosmani/agent-skills skills/performance-optimization/SKILL.md at commit 91d4d07522de9577caf5d213e5bf1acc38fa3df2 under the MIT License. Full notice: references/addyosmani-agent-skills-LICENSE. -->
+
 # Performance Optimization
 
 Measure before optimizing. Performance work without measurement is guessing — and guessing leads to premature optimization that adds complexity without improving what matters. Profile first, identify the actual bottleneck, fix it, measure again. Optimize only what measurements prove matters.
@@ -43,7 +45,7 @@ Each optimization is one pass through this loop:
 1. MEASURE  → Establish baseline with real data
 2. IDENTIFY → Find the actual bottleneck (not assumed)
 3. FIX      → Address the specific bottleneck
-4. VERIFY   → Measure again, confirm improvement
+4. VERIFY   → Measure again, decide disposition, record the outcome
 5. GUARD    → Add monitoring or tests to prevent regression
 ```
 
@@ -104,11 +106,13 @@ const result = await db.query(/* … */);
 console.timeEnd("db-query");
 ```
 
-Record the baseline number _with units_ in the ticket or commit message. "Fast enough" is not a baseline.
+Start the attempt record described in Step 4 with the baseline number _and units_. "Fast enough" is not a baseline.
 
 ### Step 2 — Identify the bottleneck
 
 Read `references/triage.md` now. It contains the frontend/backend symptom tables (symptom → likely cause → investigation), the "Where to start measuring" decision tree, and the six anti-pattern summaries. Use the symptom to pick what to profile first, and follow one branch of the tree per measurement.
+
+Before choosing an optimization, inspect the current conversation or task, linked ticket, PR description, and existing project-local performance notes for prior attempts against this bottleneck. Do not repeat the same change or idea after a `REVERT` verdict under comparable conditions unless new evidence or materially different measurement conditions justify it. A different implementation for the same bottleneck is a new attempt.
 
 ### Step 3 — Fix the bottleneck
 
@@ -118,14 +122,36 @@ Map the identified bottleneck to one of the six named anti-patterns in `referenc
 
 ### Step 4 — Verify
 
-Remeasure with the same tool, on the same device class, on the same network profile you used for the baseline. Then check:
+Remeasure with the same tool, on the same device class, on the same network profile, with the same cache state, and against the same predetermined workload budget used for the baseline. Choose the budget appropriate to the measurement: a fixed wall-clock duration, sample count, or request count. Then check:
 
 - The improvement exceeds measurement noise. A 5% change on Lighthouse is noise; a 30% change is a signal.
 - Compare p95 (tail) and p50 (typical), not just the average. An optimization that only improves p50 can leave the tail unchanged.
 - Core Web Vitals are now in Good (or at least moved out of Poor).
 - No adjacent metric regressed. A fix that halves LCP but doubles CLS is not a fix.
 
-If the change does not clear the budget, revert and re-identify — do not stack a second optimization on top of an unverified first one.
+Use a binary verdict after every successful comparable remeasurement:
+
+- **KEEP** only when comparable repeated measurements show a reproducible improvement beyond run-to-run variance, the result clears the stated performance budget, and all regression and behavior checks pass.
+- **REVERT** when a comparable result is worse, neutral, indistinguishable from measurement noise, still misses the stated budget, or fails an attributable regression or behavior check. Revert the implementation even though its attempt record remains.
+
+If remeasurement crashes, times out, or returns malformed or otherwise unusable output, restore the pre-attempt implementation, record `ERROR`, `TIMEOUT`, or `INCONCLUSIVE` with the failure details, and repair the measurement before retrying the same change. A measurement failure is not a `REVERT` verdict because it did not evaluate the optimization.
+
+Do not stack a second optimization on top of an unverified first one. Apply the verdict, or restore the implementation and record the measurement failure, before returning to Step 2.
+
+#### Record every attempt
+
+Record each attempted optimization in an authorized durable destination: the current task or ticket, the PR description, or an existing project-local performance note. If none is available and writable in this run, emit the complete record in your response as an explicit handoff for later transfer. Include attempts whose code is reverted or whose measurement fails, using this compact field set:
+
+- **Hypothesis** — the bottleneck and expected effect.
+- **Change/idea attempted** — the specific implementation evaluated.
+- **Conditions** — measurement command/tool, environment, device or dataset, network profile when relevant, cache state, and the chosen fixed wall-clock, sample-count, or request-count budget.
+- **Baseline** — the before measurements with units, including p50 and p95 when available.
+- **Result** — the after measurements under the same conditions, or `unavailable` with the measurement failure details.
+- **Variance/noise** — observed run-to-run spread and whether the result exceeds it, or `unavailable` when measurement failed.
+- **Outcome** — `KEEP` or `REVERT` for a comparable result; otherwise `ERROR`, `TIMEOUT`, or `INCONCLUSIVE`.
+- **Reason** — why the evidence satisfies that outcome.
+
+This is a review record for a bounded pass, not an experiment system. Do not create a benchmark harness, durable `.context` ledger, or other ongoing infrastructure here; use `kramme:code:optimize` when the work needs repeatable multi-variant experiments.
 
 ### Step 5 — Guard
 
@@ -197,17 +223,22 @@ If you notice any of these, stop and return to step 1:
 - No performance monitoring or regression test for a fix that claims a measurable win.
 - A change that improves one CWV metric while silently regressing another.
 - A `SIMPLICITY CHECK` that is missing at the top of the fix.
+- Repeating the same documented rejected change without new evidence or materially different measurement conditions.
+- Leaving an attempted implementation applied after its measurement failed.
 
 ## Verification
 
-Before declaring a perf slice done, confirm every item:
+Before declaring a perf slice done, confirm every applicable item:
 
-- [ ] Before and after numbers exist with units, recorded in the commit message or PR description.
+- [ ] For measured attempts, before and after numbers exist with units under the same workload budget and cache state.
+- [ ] Every attempted optimization, including reverted code and measurement failures, is recorded using Step 4's destination fallback and complete field set.
+- [ ] The outcome is `KEEP` only for a reproducible, budget-clearing improvement with all regression and behavior checks passing; comparable worse, neutral, noise-bound, budget-missing, or test-failing results are `REVERT`.
+- [ ] `ERROR`, `TIMEOUT`, and `INCONCLUSIVE` outcomes include failure details, leave the implementation restored, and remain eligible for remeasurement.
 - [ ] The specific bottleneck is named — a concrete query, component, asset, or code path — not "general slowness".
 - [ ] Core Web Vitals are within Good thresholds (or at least moved out of Poor).
 - [ ] The improvement exceeds measurement noise on both p50 and p95.
 - [ ] No adjacent metric (bundle size, another CWV, an API endpoint's latency) regressed as a side effect.
-- [ ] A budget or regression test exists that fails if this fix is undone.
+- [ ] For a kept fix, a budget or regression test exists that fails if the fix is undone.
 - [ ] Bundle size has not increased without justification against the budget.
 - [ ] No new N+1 queries in the data-fetching path.
 - [ ] Performance budget passes in CI (if configured).
