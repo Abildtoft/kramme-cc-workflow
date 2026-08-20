@@ -67,7 +67,7 @@ If more than one surface applies, use the stricter evidence set.
 
 - **Low** — single-line change, codemod-able, takes a caller under an hour. Expect Adapter pattern with a codemod.
 - **Medium** — multi-line or multi-file refactor per caller. Expect Adapter or Feature Flag with batched migration PRs.
-- **High** — architectural change (service boundary, data model, ownership shift). Expect Strangler with a months-long window.
+- **High** — choose by boundary before estimating the window: persisted data or schema contract changes use Database Expand/Migrate/Contract; long-lived service-boundary or ownership changes use Strangler. Do not route database evolution through the framework/library-only `kramme:code:migrate` workflow.
 
 **"Not yet — gather more data" signals:**
 
