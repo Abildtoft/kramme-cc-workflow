@@ -8,11 +8,6 @@
       "path": "kramme-cc-workflow/skills/kramme:browse/SKILL.md"
     },
     {
-      "name": "kramme:changelog:generate",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:changelog:generate/SKILL.md"
-    },
-    {
       "name": "kramme:ci:design-pipeline",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:ci:design-pipeline/SKILL.md"

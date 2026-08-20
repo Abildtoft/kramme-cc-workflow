@@ -79,13 +79,9 @@ git pull
 make test
 ```
 
-### 2. Generate Changelog (Optional)
+### 2. Update Changelog (Optional)
 
-Use the `/kramme:changelog:generate` skill:
-
-```bash
-/kramme:changelog:generate
-```
+Add the release's user-facing changes to `CHANGELOG.md` in Keep a Changelog format.
 
 ### 3. Create Release Branch
 

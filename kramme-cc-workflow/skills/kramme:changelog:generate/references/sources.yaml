@@ -1,8 +1,0 @@
-sources:
-  - id: compound-ce-release-notes
-    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/b6250490bec4c0488d68ad66d72bd99f6edb95fd/plugins/compound-engineering/skills/ce-release-notes/SKILL.md
-    title: "EveryInc compound-engineering-plugin - ce-release-notes"
-    rationale: "The plugin release-note mode, version-question handling, confidence-scoped release matching, release source citation, and untrusted release-body discipline are adapted into the changelog generator's release-notes mode."
-    usage: inspiration
-    last_reviewed_at: 2026-08-20
-    baseline_hash: "sha256:300eb73f4b8d9c8c9bde114c1f41f83f2713068b66e82cde7abf4917519aa429"
