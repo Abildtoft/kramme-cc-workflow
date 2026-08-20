@@ -19,7 +19,7 @@ Draft user-facing announcement copy for a shipped feature. This skill turns ship
 ## When not to use
 
 - Staged rollout, canary gates, rollback thresholds, or production monitoring. Use the rollout workflow for that.
-- Internal daily or weekly changelogs, plugin release-history lookup, or version-question answers. Use the changelog workflow for those.
+- Internal daily or weekly changelogs, plugin release-history lookup, or version-question answers. Handle these as ordinary requests; the plugin no longer provides a dedicated changelog workflow.
 - Posting, scheduling, publishing, or sending the copy. This skill drafts only.
 - Refactors, CI-only work, test-only work, or other changes with no user-facing announcement.
 
@@ -85,6 +85,7 @@ If no channel is named, draft a changelog blurb and one short social post. Add o
 
 ```markdown
 ## Source Notes
+
 - Sources used: <user context, PR #, commit range, changelog entry, etc.>
 - Assumptions: <none | concise list>
 - Omitted claims: <none | unsupported claims intentionally excluded>
@@ -92,12 +93,15 @@ If no channel is named, draft a changelog blurb and one short social post. Add o
 ## Drafts
 
 ### Changelog Blurb
+
 <copy>
 
 ### Short Social Post
+
 <copy>
 
 ### Email Snippet
+
 Subject: <subject>
 
 <body>
