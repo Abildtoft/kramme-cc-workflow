@@ -335,11 +335,12 @@ Live product inspection and structured testing.
 
 #### Product Strategy
 
-Repo-level product strategy and product health feedback loops.
+Product direction, demand validation, and product health feedback loops.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:product:strategy` | User | `[optional: section or notes to revisit, e.g. 'metrics', 'active tracks']` | Create or update repo-root STRATEGY.md as a concise product anchor covering target problem, approach, users, metrics, active tracks, milestones, and non-goals. Use when starting a product, revisiting direction, grounding discovery/spec/SIW work, or resolving product-context drift. Not for one-off feature specs, roadmaps, or implementation plans. |
+| `/kramme:product:validate-demand` | User, Auto | `[idea or evidence] [--output <repo-relative-path>]` | Evaluate whether one concrete product idea has enough demand evidence to justify more work. Use when testing willingness to pay, the urgent first user, the status quo to displace, or the smallest paid wedge. Produces an evidence-labeled GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE verdict and one falsifiable action. Inline by default; writes a repository-scoped report only on request. Not for strategic inquiry, strategy, spec audits, design, promotion, or implementation. |
 | `/kramme:product:pulse` | User | `[lookback window, e.g. 24h, 7d, 1h] [--inline]` | Generate a time-windowed product pulse report in docs/pulse-reports/ covering usage, quality, errors, performance, customer signals, and followups. Use for weekly recaps, launch checks, "how are we doing", or strategy feedback loops. Works with partial or manual sources. Not for QA test reports, PR review, or editing STRATEGY.md directly. |
 
 #### Product Design
