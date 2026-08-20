@@ -243,7 +243,10 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/launch-rollout-guidance.bats",
-      "skills": ["kramme-cc-workflow/skills/kramme:launch:rollout/SKILL.md"]
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:launch:rollout/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:product:pulse/SKILL.md"
+      ]
     },
     {
       "kind": "guidance",
