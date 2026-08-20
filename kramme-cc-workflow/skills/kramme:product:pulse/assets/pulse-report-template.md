@@ -12,7 +12,7 @@
 ## Coverage
 
 | Area | Status | Source | Caveat |
-| ---- | ------ | ------ | ------ |
+| --- | --- | --- | --- |
 | Usage | <Measured / Manual / Unavailable> | <source> | <coverage limitation> |
 | Quality | <Measured / Manual / Unavailable> | <source> | <coverage limitation> |
 | Errors | <Measured / Manual / Unavailable> | <source> | <coverage limitation> |
@@ -26,13 +26,13 @@
 ### Launch context
 
 | Launch ID | Stable launch identity | Release / gate | Source launch ticket | Durable evidence record | Record mode | Decision history and current outcome | Unresolved signals and requirements | Coverage gaps and owners |
-| --------- | ---------------------- | -------------- | -------------------- | ----------------------- | ----------- | ------------------------------------ | ----------------------------------- | ------------------------ |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | <launch ID> | <immutable release/artifact/deploy ID or canonical launch ID> | <release identity and current gate> | <URL/path; mark temporary or retired when applicable> | <approved retained URL/path> | <canonical full record / reference to canonical record> | <advance / hold / rollback / complete with timestamps> | <yellow/red, CONFUSION, UNVERIFIED, and MISSING REQUIREMENT entries with owners/stop boundaries, or none> | <gap, owner, stop boundary, and next step, or none> |
 
 ### Launch sources
 
 | Launch ID | Source ID | Coverage | Provenance | Dimensions | Evidence window | Source evidence pointer | Durable evidence pointer | Limitations |
-| --------- | --------- | -------- | ---------- | ---------- | --------------- | ----------------------- | ------------------------ | ----------- |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | <launch ID> | <stable source ID> | <Measured / Manual / Unavailable> | <provider telemetry/query / issue or support export / operator or user / unavailable> | <usage, quality, errors, performance, customer signals> | <UTC range> | <sanitized dashboard/query/export/ticket pointer> | <canonical record section or approved access-controlled pointer> | <coverage, access, redaction, or retention limits> |
 
 ### Sampling plan and observations — <Launch ID> / <Gate or plan ID>
@@ -47,7 +47,7 @@
 - **Watcher / recurrence:** <person watching and supported recurring-monitoring mechanism, or one-shot re-entry plan>
 
 | Timestamp (UTC) | Gate / plan ID | Exposure | Source ID / query | Metric | Value / denominator | Threshold and source | Sample sufficiency | Decision | Notes |
-| --------------- | -------------- | -------- | ----------------- | ------ | ------------------- | -------------------- | ------------------ | -------- | ----- |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | <timestamp> | <stable gate / plan ID> | <gate exposure> | <stable source ID and sanitized query template> | <metric> | <value and denominator> | <threshold and source> | <state and rule> | <green / hold / rollback> | <sanitized limitations or context> |
 
 ## Signals
@@ -75,13 +75,13 @@
 ## Strategy Alignment
 
 | Active Track or Metric | Signal | Interpretation |
-| ---------------------- | ------ | -------------- |
+| --- | --- | --- |
 | <track or metric> | <supporting/challenging/missing signal> | <what this means for product direction> |
 
 ## Followups
 
 | Priority | Followup | Owner | Source |
-| -------- | -------- | ----- | ------ |
+| --- | --- | --- | --- |
 | <High/Medium/Low> | <action or question> | <owner or MISSING PRODUCT CONTEXT: unknown> | <signal source> |
 
 ## Notes
