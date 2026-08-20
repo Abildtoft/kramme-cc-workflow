@@ -10,3 +10,17 @@ sources:
     upstream_commit: 91d4d07522de9577caf5d213e5bf1acc38fa3df2
     last_reviewed_at: 2026-08-20
     baseline_hash: "sha256:c73f72fdfbabe9874d2852de3df3289917a936402d43557d966494a3d6cefcbd"
+  - id: no-session-pstack-benchmark
+    url: https://raw.githubusercontent.com/no-session/pstack/9a24d1408a10a5d0df624ffc128230424e405b82/benchmark/SKILL.md
+    title: "no-session/pstack - benchmark skill"
+    rationale: "Repository-scoped named baselines, before/after comparison, budgets, and trend lineage informed the performance artifact; sampling, evidence classification, comparability, and lifecycle rules are original adaptations."
+    usage: inspiration
+    last_reviewed_at: 2026-08-20
+    baseline_hash: "sha256:33585891c4a6f651a99d34ee0cc55a4da675c28ff06ef4101f6d214a97ccc3ac"
+  - id: web-dev-core-web-vitals
+    url: https://web.dev/articles/vitals
+    title: "Web Vitals"
+    rationale: "The official 75th-percentile field-data aggregation rule for Core Web Vitals informs the durable artifact's p75 requirement and claim boundary."
+    usage: inspiration
+    last_reviewed_at: 2026-08-20
+    baseline_hash: "sha256:686a986a1342514627279d86cbd41c1c21c4711ef9c43b206f7633856ca813c2"
