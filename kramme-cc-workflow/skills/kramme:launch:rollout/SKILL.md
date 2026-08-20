@@ -136,7 +136,7 @@ Add a **release identity** block to the launch ticket before step 1 when the rol
 
 If the rollout has no versioned artifact or public contract change, write `Release identity: N/A — no versioned consumer contract` in the launch ticket so the omission is deliberate.
 
-**Re-entry:** if this skill is re-invoked mid-rollout, read the launch ticket first and resume at the gate it records as current — do not restart from staging or re-run monitoring windows for gates that already passed.
+**Re-entry:** if this skill is re-invoked mid-rollout, read the launch ticket first and resume at the gate it records as current. Load that gate's sampling plan, prior observations, decision state, and remaining bounds; preserve the original start and stop time unless the governing policy or operator explicitly changes the plan. Compare the current time and last observation with the recorded cadence, next-due time, and stop time. If a required observation was missed or the stop time passed before sufficient evidence was collected, first trigger or hand off the gate's recorded safe disposition, then hold the gate and emit `MISSING REQUIREMENT` for the coverage gap with its owner and current-gate stop boundary. Continued exposure is allowed only when a named staffed observer assumed coverage without a gap; otherwise reduce exposure to the policy-approved safe state or roll back through the rehearsed control. Do not count a late point-in-time reading toward the original window or silently extend that window. A later query may close the gap only when it demonstrably covers the missed interval inside the original bounds and still satisfies the recorded source and sample-sufficiency rules; otherwise record an explicitly approved replacement plan with new bounds. Do not restart from staging, re-run windows for gates that already passed, reset elapsed time, or count an earlier observation twice.
 
 Build the active sequence from the rollout profile. Unless an explicit user or organization policy permits immediate full exposure, include every stage the selected control supports:
 
@@ -148,6 +148,30 @@ Build the active sequence from the rollout profile. Unless an explicit user or o
 When policy permits immediate full exposure, or the selected rollback mechanism cannot constrain exposure, record that exception in the launch ticket before production deployment. Name the approving policy or user, explain why limited exposure is unavailable or intentionally skipped, deploy only during the confirmed staffed support window, begin the active verification window immediately, and keep the rehearsed rollback path ready throughout. A rollback-only mechanism does not make a full-exposure deployment staged.
 
 Do not compress confirmed gates merely to save time. A staged gate advances only after both its monitoring window and its sample-sufficiency rule pass. Write the active sequence or explicit full-exposure exception into the launch ticket so the on-call can see which gate is current.
+
+### Bounded repeated observation
+
+Before observing an active gate, write its sampling plan into the launch ticket. The plan must name:
+
+- A stable gate / plan ID that remains unchanged when the same gate is resumed or copied.
+- Cadence and its policy, evidence, or confirmed-fallback source.
+- Explicit start time, duration, and stop time in UTC.
+- Decision metrics, exact source or query, threshold source, expected denominator, and sample-sufficiency rule.
+- Early stop conditions and a pre-agreed safe disposition for red, rollback, unavailable evidence, user stop, or loss of staffed coverage.
+- The person watching and the supported recurring-monitoring mechanism, if recurrence was requested.
+
+Select cadence with the same precedence as the rollout profile: explicit user or organization policy, then observed system evidence about traffic and outcome timing, then a clearly labeled fallback confirmed by the operator. There is no universal sampling cadence. A fixed interval from an example, tool default, or prior launch is not the active cadence until its source and confirmation are recorded.
+
+Use the host's supported recurring-monitoring mechanism when the user asks you to keep watching. Bound it by the recorded stop time and early stop conditions, keep each check observable and interruptible, and re-arm only after acting on the prior result. Do not create a second polling loop, use unattended sleeps, or assume a fixed 60-second interval. If the host cannot recur safely, take one observation, record the next due time, and hand back for re-entry instead of pretending the full window was watched.
+
+Before entering the gate, make user stop and loss of staffed coverage safe without relying on the stopped watcher. Record one executable disposition: transfer immediately to a named staffed observer with no coverage gap, reduce exposure to the policy-approved safe state, or roll back through the rehearsed control. A passive hold is not a safe disposition because it leaves the current exposure running without the required watcher. If no disposition is confirmed and executable, emit `MISSING REQUIREMENT` and do not enter the gate.
+
+Append every sample to this launch-ticket table:
+
+| Timestamp (UTC) | Gate / plan ID | Exposure | Source ID / query | Metric | Value / denominator | Threshold and source | Sample sufficiency | Decision | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+Append observations; never rewrite an earlier row to make the rollout look healthier. Use `UNVERIFIED` for a missing baseline, denominator, or source. After each sampling pass, record one gate decision with its evidence: green can advance only after both elapsed-window and sample-sufficiency gates pass; yellow holds and names the investigation; red executes the pre-agreed rollback. An unavailable required source is a `MISSING REQUIREMENT`, not a green observation. On a user stop or loss of staffed coverage, trigger or hand off the recorded safe disposition; record a hold only when a named staffed observer has assumed coverage without a gap.
 
 When no approved policy supplies a sequence, the following is a **fallback example, not a universal requirement**:
 
