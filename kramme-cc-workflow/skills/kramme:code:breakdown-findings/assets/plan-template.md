@@ -15,7 +15,7 @@ git diff --stat {{short-sha}} -- {{space-separated in-scope paths}}
 git status --short -- {{space-separated in-scope paths}}
 ```
 
-Expected result: both commands produce no output, confirming no committed, staged, unstaged, or untracked in-scope drift since the plan was written. If any in-scope file changed, compare the excerpts in **Current State** against the live code. If the excerpt no longer matches the live code, treat that as a STOP condition.
+Expected result: both commands produce no output, confirming no committed, staged, unstaged, or untracked in-scope drift since the plan was written. If `git status` reports staged, unstaged, or untracked in-scope changes, stop before changing the plan or product code, explain the affected paths and local drift, and require the user to commit, stash, or remove those changes before rerunning the drift check. Do not update a plan from uncommitted evidence. When the worktree is clean but `git diff` reports committed drift, compare the excerpts in **Current State** against the live code. If an excerpt or plan assumption no longer matches, stop before editing product code. Explain the drift first: name the affected paths, the stale evidence or assumption, and the plan sections that may need revision. Then offer to update this plan in place from live repository evidence and wait for explicit approval before changing the planning artifact. Do not ask the user to provide a refreshed or updated copy of the plan. If the user approves the update, revise the affected current-state evidence, scope, steps, verification, `Planned at` commit, and drift check as needed; rerun scope closure and surface any boundary or dependency change before implementation.
 
 ## Problem Statement
 
@@ -174,7 +174,8 @@ Example shape:
 
 Stop and report back instead of improvising if:
 
-- The drift check shows in-scope changes and the live code no longer matches the **Current State** excerpts.
+- `git status` reports staged, unstaged, or untracked in-scope changes. Explain the local drift and require a clean worktree before reconsidering the plan; do not update it from uncommitted evidence.
+- With a clean worktree, `git diff` shows committed in-scope changes and the live code no longer matches the **Current State** excerpts or another plan assumption. Explain the exact drift, then offer to update this plan in place and wait for explicit approval; do not ask the user to supply a replacement plan.
 - A required verification command is missing, broken, or fails twice after a reasonable fix attempt.
 - The implementation appears to require touching a file or behavior listed in **Out of Scope**.
 - A stated prerequisite is not actually complete.

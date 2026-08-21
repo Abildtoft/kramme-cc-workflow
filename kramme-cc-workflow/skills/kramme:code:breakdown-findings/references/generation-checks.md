@@ -41,6 +41,7 @@ Stop and correct the generation pass if any of these appear:
 - Multiple compatible findings-mode reports are present but only one is processed.
 - Duplicate findings from multiple sources are emitted as duplicate plan work instead of one merged finding with multiple `SRC-##` references.
 - A generated plan lacks a `Planned at` commit, scoped drift check, or explicit expected drift result.
+- A generated plan lacks guidance that requires the executor to stop on staged, unstaged, or untracked evidence, explain the affected paths and local drift, require a clean worktree first, and state that it must not update itself from that uncommitted evidence; or, once the worktree is clean, it detects committed stale drift but asks the user to provide a refreshed or updated copy instead of explaining the mismatch and offering to update itself in place after explicit approval.
 - A generated plan lacks **Repo Context and Tradeoffs** with relevant recon notes.
 - A generated plan lacks Impact and Leverage metadata and rationale.
 - A generated plan has no **Current State** evidence with concrete paths and line markers.
@@ -77,6 +78,7 @@ Verify:
 - Every plan has all template sections populated with concrete content and no `N/A`.
 - Every plan includes a `Planned at` commit SHA or a clear `not-a-git-repo` caveat with a `MISSING REQUIREMENT:` concern in the final summary.
 - Every plan's drift-check paths match its **In Scope** file list.
+- Every plan requires the executor to stop on staged, unstaged, or untracked in-scope drift, explain the affected paths and local changes, and require a clean worktree without updating the plan from uncommitted evidence. Once the worktree is clean and committed stale drift remains, the executor must explain the affected paths and stale mismatch before it offers to update the plan in place, waits for explicit approval before changing the planning artifact, and never asks the user to supply a replacement plan.
 - Every plan's **Scope Closure Evidence** maps each acceptance criterion to an implementation path and proof path, accounts for applicable runtime boundaries or non-runtime artifact/reviewer/verification paths plus auxiliary artifacts, and classifies every repository reference to a changed contract as `modify`, `verify-only`, or `irrelevant`.
 - Any findings-mode boundary change discovered during scope closure returned to Phase 2 for dependency/label rebuilding and confirmation; any pre-clustered handoff boundary mismatch stopped for a corrected handoff without revising or splitting its fixed themes.
 - Every `modify` path appears in **In Scope**, every **In Scope** path is justified by an obligation, and no required edit appears in **Out of Scope**.
