@@ -118,9 +118,7 @@ def check_discovery_result_schema(path: pathlib.Path) -> None:
 
 
 def _action_is_negated(text: str, action_start: int) -> bool:
-    sentence_start = max(
-        text.rfind(delimiter, 0, action_start) for delimiter in (".", ";", "\n")
-    )
+    sentence_start = max(text.rfind(delimiter, 0, action_start) for delimiter in (".", ";", "\n"))
     prefix = text[max(sentence_start + 1, action_start - 96) : action_start]
     return (
         re.search(
@@ -130,8 +128,7 @@ def _action_is_negated(text: str, action_start: int) -> bool:
             re.IGNORECASE,
         )
         is not None
-        or re.search(r"\b(?:never|without)\b(?:\s+\w+){0,4}\s+$", prefix, re.IGNORECASE)
-        is not None
+        or re.search(r"\b(?:never|without)\b(?:\s+\w+){0,4}\s+$", prefix, re.IGNORECASE) is not None
     )
 
 
@@ -154,10 +151,7 @@ def _has_affirmative_action(text: str, action_pattern: str) -> bool:
 
 
 def _has_negated_action(text: str, action_pattern: str) -> bool:
-    return any(
-        _action_is_negated(text, match.start())
-        for match in re.finditer(action_pattern, text, re.IGNORECASE)
-    )
+    return any(_action_is_negated(text, match.start()) for match in re.finditer(action_pattern, text, re.IGNORECASE))
 
 
 def _explicitly_prohibits(text: str, action_pattern: str) -> bool:
@@ -303,20 +297,12 @@ def _require_standalone_refresh_contract(text: str) -> None:
         ("restart validation", r"\brestart\b[^.;]*\bStep 2\b"),
     )
     for action_label, action_pattern in required_actions:
-        if not _has_affirmative_action(section, action_pattern) or _has_negated_action(
-            section, action_pattern
-        ):
-            raise ContractFailure(
-                f"standalone attachment self-update must affirmatively {action_label}"
-            )
+        if not _has_affirmative_action(section, action_pattern) or _has_negated_action(section, action_pattern):
+            raise ContractFailure(f"standalone attachment self-update must affirmatively {action_label}")
 
     replacement_pattern = r"ask\w*\b[^.;]*(?:refreshed|updated|replacement)\b[^.;]*(?:copy|plan)\b"
-    if not _explicitly_prohibits(section, replacement_pattern) or _has_affirmative_action(
-        section, replacement_pattern
-    ):
-        raise ContractFailure(
-            "standalone attachment self-update must prohibit replacement-plan requests"
-        )
+    if not _explicitly_prohibits(section, replacement_pattern) or _has_affirmative_action(section, replacement_pattern):
+        raise ContractFailure("standalone attachment self-update must prohibit replacement-plan requests")
 
 
 def check_standalone_refresh_guidance(path: pathlib.Path) -> None:
