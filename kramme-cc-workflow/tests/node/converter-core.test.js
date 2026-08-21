@@ -618,6 +618,36 @@ test("transformer rewrites task calls, references, and AskUserQuestion guidance"
   assert.doesNotMatch(output, /AskUserQuestion|````yaml/);
 });
 
+test("transformer preserves exhaustive question tooling in the canonical resource", async () => {
+  const resource = path.join(
+    __dirname,
+    "..",
+    "..",
+    "skills",
+    "kramme:linear:issue-define",
+    "references",
+    "auto-create.md",
+  );
+  const input = await readText(resource);
+  const output = transformContentForCodex(input);
+
+  assert.match(
+    output,
+    /Use `request_user_input` for every exhaustive round and adaptive follow-up when that tool is available in the active Codex mode\./,
+  );
+  assert.match(
+    output,
+    /Do not switch to plain chat while `request_user_input` is available\./,
+  );
+  assert.match(output, /one to three short questions/);
+  assert.match(output, /automatically provided Other choice/);
+  assert.match(
+    output,
+    /If `request_user_input` is unavailable, ask directly in chat/,
+  );
+  assert.doesNotMatch(output, /AskUserQuestion/);
+});
+
 test("transformer rewrites Codex-supported team controls without changing code identifiers", () => {
   const input = [
     "Monitor task progress via TaskList.",
