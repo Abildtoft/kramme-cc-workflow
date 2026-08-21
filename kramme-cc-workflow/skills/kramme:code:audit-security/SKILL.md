@@ -186,15 +186,25 @@ Render these sections in order:
 # Security Posture Audit
 
 ## Executive Summary
+
 ## Scope and Limitations
+
 ## Coverage
+
 ## Attack Surface Inventory
+
 ## Trust Boundaries and Data Flows
+
 ## Ranked Findings
+
 ## Finding Details
+
 ## Coverage Gaps
+
 ## Filtered Candidates
+
 ## Remediation Routing
+
 ## Method and Disclaimer
 ```
 
