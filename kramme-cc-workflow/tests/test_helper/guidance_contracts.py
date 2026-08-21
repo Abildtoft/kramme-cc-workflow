@@ -476,19 +476,24 @@ def check_issue_stage_order(path: pathlib.Path) -> None:
 
 
 def check_review_gate_order(path: pathlib.Path) -> None:
-    section = _markdown_section(path.read_text(encoding="utf-8"), r"Ordered Gates")
+    section = _markdown_section(path.read_text(encoding="utf-8"), r"Applicability Evaluation")
     anchors = (
         (
             "regular code-review invocation",
-            r"^\s*(?:[-*]\s+)?(?:invoke|call)\s+`kramme:pr:code-review --parallel --inline`",
+            r"^\s*When active, invoke `kramme:pr:code-review --parallel --inline`",
         ),
         (
             "convention-review invocation",
-            r"^\s*(?:[-*]\s+)?(?:invoke|call)\s+`kramme:pr:convention-review --inline`",
+            r"^\s*When active, invoke `kramme:pr:convention-review --inline`",
+        ),
+        (
+            "overengineering-review invocation",
+            r"^\s*When active in normal mode, invoke `kramme:pr:overengineering-review` "
+            r"with the exact sentinel-last arguments `--requirements \{work-requirements\}`",
         ),
         (
             "refactor-opportunities invocation",
-            r"^\s*(?:[-*]\s+)?(?:invoke|call)\s+`kramme:code:refactor-opportunities pr`",
+            r"^\s*When active, invoke `kramme:code:refactor-opportunities` with `pr`",
         ),
     )
     _ordered_regex_anchors(section, anchors, "ordered gate invocations")
@@ -511,8 +516,8 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
     plan_to_pr = read("skills/kramme:code:plan-to-pr/SKILL.md")
     attachment_input = read("skills/kramme:code:plan-to-pr/references/attachment-input.md")
     standalone_index = read("skills/kramme:code:plan-to-pr/assets/standalone-index-template.md")
-    completion = read("skills/kramme:pr:complete-work/SKILL.md")
-    scope_handoff = read("skills/kramme:pr:complete-work/references/standalone-scope-handoff.md")
+    completion = read("skills/kramme:pr:review-convergence/SKILL.md")
+    scope_handoff = read("skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md")
     scoped_ci = read("skills/kramme:pr:fix-ci/references/scoped-plan.md")
     routing = read("skills/kramme:code:work-from-plan/references/routing.md")
 
@@ -894,7 +899,7 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
             archive_validation,
         ),
         (
-            "skills/kramme:pr:complete-work/references/standalone-scope-handoff.md",
+            "skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md",
             _markdown_section(scope_handoff, r"Validate Standalone Provenance"),
         ),
         (

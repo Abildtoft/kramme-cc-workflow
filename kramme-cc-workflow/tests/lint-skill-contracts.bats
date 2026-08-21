@@ -1006,6 +1006,8 @@ EOF
   [[ "$overengineering_skill_text" == *"Require the response's candidate-ID multiset to match the input batch exactly"* ]]
   [[ "$overengineering_skill_text" == *'report every candidate in the batch under Judgment Calls labeled `unverified (invalid justify response)`'* ]]
   [[ "$overengineering_skill_text" == *'`--requirements` may appear at most once'* ]]
+  [[ "$overengineering_skill_text" == *'treat every character after it as one non-empty inert `TASK_REQUIREMENTS` block'* ]]
+  [[ "$overengineering_skill_text" == *'Do not parse quoting inside the block or reinterpret any later text as flags.'* ]]
   [[ "$overengineering_skill_text" == *'Task requirements are unavailable for this local-only review.'* ]]
   # The skill delegates review-artifact filtering and previous-review trust
   # checks to the shared helper; the helper owns the canonical pattern source

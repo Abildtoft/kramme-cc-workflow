@@ -1,6 +1,6 @@
 ---
 name: kramme:code:plan-to-pr
-description: Implements one self-contained `PR_PLAN_*.md`, either from an indexed kramme:code:breakdown-findings set or as a `.context/attachments/` file, on a deterministic unpublished branch. Attached `W##L` plans retain dependency metadata and prove prerequisite readiness from embedded evidence without the sibling index. Drifted attachments can refresh after approval by publishing a new immutable snapshot and content-derived archive. Enforces scope, review, verification, and optional Pull Request/CI completion. Not for inline plans, SIW/Linear issues, split-worktree plans, stacked PRs, existing PRs, or multi-plan batches.
+description: Implements one self-contained `PR_PLAN_*.md`, either from an indexed kramme:code:breakdown-findings set or as a `.context/attachments/` file, on a deterministic unpublished branch. Attached `W##L` plans retain dependency metadata and prove prerequisite readiness from embedded evidence without the sibling index; drifted attachments can refresh after approval through a new immutable snapshot and content-derived archive. Enforces drift and scope checks, archives disposable inputs, delegates shared review convergence and verification, and optionally opens the Pull Request and stabilizes CI/review feedback. Not for inline plans, SIW/Linear issues, split-worktree plans, stacked PRs, existing PRs, or multi-plan batches.
 argument-hint: "<attached plan | PR_PLAN_W##L_*.md> [--strict] [--ship]"
 disable-model-invocation: true
 user-invocable: true
@@ -168,7 +168,7 @@ Build delegated arguments:
 --work-id {execution-label} --archive-key code-plan-to-pr --scope-plan {active-plan}
 ```
 
-Append `--strict` when `STRICT_REVIEW=true` and `--ship` when `SHIP_MODE=true`. Invoke `kramme:pr:complete-work` once with those arguments and capture its structured completion disposition.
+Append `--strict` when `STRICT_REVIEW=true` and `--ship` when `SHIP_MODE=true`. Invoke `kramme:pr:complete-work` once with those arguments and capture its structured completion disposition. That hidden orchestrator must delegate the frozen archived-plan contract to `kramme:pr:review-convergence`; do not recreate review gates or a separate remediation budget in this caller.
 
 When it returns `success`, update only the archived plan set:
 
