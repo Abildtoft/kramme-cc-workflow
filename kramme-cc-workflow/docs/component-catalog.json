@@ -158,6 +158,11 @@
       "path": "kramme-cc-workflow/skills/kramme:docs:solution-refresh/SKILL.md"
     },
     {
+      "name": "kramme:docs:sync-release",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:docs:sync-release/SKILL.md"
+    },
+    {
       "name": "kramme:docs:to-markdown",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:docs:to-markdown/SKILL.md"
