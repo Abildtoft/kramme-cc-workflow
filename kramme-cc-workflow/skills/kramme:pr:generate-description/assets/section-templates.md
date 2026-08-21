@@ -4,6 +4,8 @@ Templates and worked examples for each section of the PR description.
 
 ## Summary Section
 
+Open with the clearest possible answer to “What does this PR do?” Write it in simple, everyday language—almost ELI10—so an intelligent ten-year-old who does not know the codebase could understand the outcome. Lead with what changes for users or the business, and leave files, classes, APIs, and other implementation mechanics for later sections.
+
 **EXAMPLE Summary:**
 
 ```markdown
@@ -213,7 +215,6 @@ Do not include local setup or infrastructure failure notes such as missing `node
 
 - [ ] Log in as a new user with no platforms
 - [ ] Verify appropriate message/redirect to onboarding
-
 ```
 
 ## Breaking Changes Section
