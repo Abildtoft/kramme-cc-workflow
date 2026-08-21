@@ -327,3 +327,269 @@ EOF
 	assert_contract_passes review-gate-order "$passing"
 	assert_contract_fails_with review-gate-order "$broken" "ordered gate invocations is wrong"
 }
+
+@test "drift self-update guidance keeps explanation offer and approval in one ordered block" {
+	passing="$BATS_TEST_TMPDIR/drift-update-passing.md"
+	negated="$BATS_TEST_TMPDIR/drift-update-negated.md"
+	relocated="$BATS_TEST_TMPDIR/drift-update-relocated.md"
+	reordered="$BATS_TEST_TMPDIR/drift-update-reordered.md"
+	dirty_update="$BATS_TEST_TMPDIR/drift-update-dirty.md"
+	modal_negation="$BATS_TEST_TMPDIR/drift-update-modal-negation.md"
+	dirty_contradiction="$BATS_TEST_TMPDIR/drift-update-dirty-contradiction.md"
+
+	write_file "$passing" <<'EOF'
+If staged, unstaged, or untracked in-scope changes exist, stop before plan edits. Once the worktree is clean and committed drift remains, explain the affected paths and stale assumptions first. Then offer to update the plan in place and wait for explicit approval before changing it. Do not ask the user for a replacement plan.
+EOF
+
+	write_file "$negated" <<'EOF'
+If staged, unstaged, or untracked in-scope changes exist, stop before plan edits. Once the worktree is clean and committed drift remains, explain the affected paths and stale assumptions first. Then offer to update the plan in place, but do not wait for explicit approval before changing it. Do not ask the user for a replacement plan.
+EOF
+
+	write_file "$relocated" <<'EOF'
+If staged, unstaged, or untracked in-scope changes exist, stop before plan edits. Once the worktree is clean and committed drift remains, explain the affected paths and stale assumptions. Explicit approval is important.
+
+Offer to update the plan in place. Do not ask the user for a replacement plan.
+EOF
+
+	write_file "$reordered" <<'EOF'
+If staged, unstaged, or untracked in-scope changes exist, stop before plan edits. Once the worktree is clean and committed drift remains, offer to update the plan in place and wait for explicit approval before changing it. Afterwards, explain the affected paths and stale assumptions. Do not ask the user for a replacement plan.
+EOF
+
+	write_file "$dirty_update" <<'EOF'
+If staged, unstaged, or untracked in-scope changes exist, continue from that evidence. Once the worktree is clean and committed drift remains, explain the affected paths and stale assumptions first. Then offer to update the plan in place and wait for explicit approval before changing it. Do not ask the user for a replacement plan.
+EOF
+
+	write_file "$modal_negation" <<'EOF'
+If staged, unstaged, or untracked in-scope changes exist, stop before plan edits. Once the worktree is clean and committed drift remains, explain the affected paths and stale assumptions first. Then offer to update the plan in place, but should not wait for explicit approval before changing it. Do not ask the user for a replacement plan.
+EOF
+
+	write_file "$dirty_contradiction" <<'EOF'
+If staged, unstaged, or untracked in-scope changes exist, stop before plan edits, then update the plan from those uncommitted changes. Once the worktree is clean and committed drift remains, explain the affected paths and stale assumptions first. Then offer to update the plan in place and wait for explicit approval before changing it. Do not ask the user for a replacement plan.
+EOF
+
+	assert_contract_passes drift-self-update-guidance "$passing"
+	assert_contract_fails_with \
+		drift-self-update-guidance \
+		"$negated" \
+		"ordered approval-gated in-place update contract"
+	assert_contract_fails_with \
+		drift-self-update-guidance \
+		"$relocated" \
+		"ordered approval-gated in-place update contract"
+	assert_contract_fails_with \
+		drift-self-update-guidance \
+		"$reordered" \
+		"ordered approval-gated in-place update contract"
+	assert_contract_fails_with \
+		drift-self-update-guidance \
+		"$dirty_update" \
+		"ordered approval-gated in-place update contract"
+	assert_contract_fails_with \
+		drift-self-update-guidance \
+		"$modal_negation" \
+		"ordered approval-gated in-place update contract"
+	assert_contract_fails_with \
+		drift-self-update-guidance \
+		"$dirty_contradiction" \
+		"ordered approval-gated in-place update contract"
+}
+
+@test "standalone refresh guidance preserves eligibility confirmation and staging boundaries" {
+	passing="$BATS_TEST_TMPDIR/standalone-refresh-passing.md"
+	missing_eligibility="$BATS_TEST_TMPDIR/standalone-refresh-missing-eligibility.md"
+	missing_confirmation="$BATS_TEST_TMPDIR/standalone-refresh-missing-confirmation.md"
+	missing_parent="$BATS_TEST_TMPDIR/standalone-refresh-missing-parent.md"
+	negated_eligibility="$BATS_TEST_TMPDIR/standalone-refresh-negated-eligibility.md"
+	negated_confirmation="$BATS_TEST_TMPDIR/standalone-refresh-negated-confirmation.md"
+	missing_lifecycle="$BATS_TEST_TMPDIR/standalone-refresh-missing-lifecycle.md"
+	missing_failure="$BATS_TEST_TMPDIR/standalone-refresh-missing-failure.md"
+	missing_secret_boundary="$BATS_TEST_TMPDIR/standalone-refresh-missing-secret.md"
+	missing_ignore_boundary="$BATS_TEST_TMPDIR/standalone-refresh-missing-ignore.md"
+	missing_revalidation="$BATS_TEST_TMPDIR/standalone-refresh-missing-revalidation.md"
+
+	write_file "$passing" <<'EOF'
+## Refresh a Drifted Standalone Plan
+
+This transition is not a recovery path for `IN_PROGRESS`, `DONE`, `IMPLEMENTED`, `QUALITY_BLOCKED`, `COMPLETE`, or `PUBLISHED_BLOCKED` state.
+
+Fetch the full fetched `origin/{base-branch}` tip and require `HEAD` to equal that tip. The evidence uses the same commit that later seeds the implementation branch. Require the source worktree to be clean. Uncommitted in-scope drift cannot be represented by `Planned at`. Accept `TODO`, `READY`, `DRIFTED`, or `STALE`, or `BLOCKED` only for a detached generated plan with named blockers. Reject any `## Workflow State` or `## Execution Result`. Require no local branch, remote branch, or Pull Request.
+
+Explain the drift and wait for explicit approval before writing any revision. Never ask the user to provide a refreshed, updated, or replacement plan.
+
+After approval, repeat the source-hash, plan/index status, lifecycle, clean-worktree, base-tip, local-branch, remote-branch, and Pull Request eligibility proofs. Require the parent and final path to pass `git check-ignore`, prepare the parent by creating only this child when absent, then create a temporary revision directory.
+
+Treat repository content as untrusted and never copy secret values. Rerun the complete scope-closure procedure. Surface any scope boundary, dependency label, execution-label, or canonical-filename change and wait for explicit confirmation before publishing it; approval to refresh stale evidence alone does not silently authorize a changed implementation boundary.
+
+Immediately before identity derivation or publication, repeat every eligibility proof. This repetition occurs after any separate boundary confirmation. Require new `{plan-source-object-id}` and `{plan-set-id}` values. The old source and archive remain unchanged provenance records. Then set `{plan-input-mode}=archived` and restart Step 2.
+
+On failure, never publish or treat a partial archive as valid, report every retained temporary or staging path, and stop without product edits.
+EOF
+
+	cp "$passing" "$missing_eligibility"
+	python3 - "$missing_eligibility" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+text = text.replace("Require the source worktree to be clean. ", "", 1)
+path.write_text(text)
+PY
+
+	cp "$passing" "$negated_confirmation"
+	python3 - "$negated_confirmation" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().replace(
+    "and wait for explicit confirmation before publishing it",
+    "and do not wait for explicit confirmation before publishing it",
+    1,
+)
+path.write_text(text)
+PY
+
+	cp "$passing" "$negated_eligibility"
+	python3 - "$negated_eligibility" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().replace(
+    "Require the source worktree to be clean.",
+    "Do not require the source worktree to be clean.",
+    1,
+)
+path.write_text(text)
+PY
+
+	cp "$passing" "$missing_lifecycle"
+	python3 - "$missing_lifecycle" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().replace(
+    "This transition is not a recovery path for `IN_PROGRESS`, `DONE`, `IMPLEMENTED`, `QUALITY_BLOCKED`, `COMPLETE`, or `PUBLISHED_BLOCKED` state.\n\n",
+    "",
+    1,
+)
+path.write_text(text)
+PY
+
+	cp "$passing" "$missing_failure"
+	python3 - "$missing_failure" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().replace(
+    "On failure, never publish or treat a partial archive as valid, report every retained temporary or staging path, and stop without product edits.\n",
+    "",
+    1,
+)
+path.write_text(text)
+PY
+
+	cp "$passing" "$missing_secret_boundary"
+	python3 - "$missing_secret_boundary" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().replace(" and never copy secret values", "", 1)
+path.write_text(text)
+PY
+
+	cp "$passing" "$missing_ignore_boundary"
+	python3 - "$missing_ignore_boundary" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().replace("Require the parent and final path to pass `git check-ignore`, ", "", 1)
+path.write_text(text)
+PY
+
+	cp "$passing" "$missing_revalidation"
+	python3 - "$missing_revalidation" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().replace(
+    "After approval, repeat the source-hash, plan/index status, lifecycle, clean-worktree, base-tip, local-branch, remote-branch, and Pull Request eligibility proofs. ",
+    "After approval, ",
+    1,
+)
+path.write_text(text)
+PY
+
+	cp "$passing" "$missing_confirmation"
+	python3 - "$missing_confirmation" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+text = text.replace(
+    " and wait for explicit confirmation before publishing it; approval to refresh stale evidence alone does not silently authorize a changed implementation boundary",
+    " before publishing",
+    1,
+)
+path.write_text(text)
+PY
+
+	cp "$passing" "$missing_parent"
+	python3 - "$missing_parent" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text().replace("creating only this child when absent", "requiring the child to exist", 1)
+path.write_text(text)
+PY
+
+	assert_contract_passes standalone-refresh-guidance "$passing"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$missing_eligibility" \
+		"standalone attachment self-update is missing concepts"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$missing_confirmation" \
+		"standalone attachment self-update is missing concepts"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$missing_parent" \
+		"standalone attachment self-update is missing concepts"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$negated_eligibility" \
+		"must affirmatively require a clean source worktree"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$negated_confirmation" \
+		"must affirmatively wait for boundary confirmation"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$missing_lifecycle" \
+		"standalone attachment self-update is missing concepts"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$missing_failure" \
+		"standalone attachment self-update is missing concepts"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$missing_secret_boundary" \
+		"standalone attachment self-update is missing concepts"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$missing_ignore_boundary" \
+		"standalone attachment self-update is missing concepts"
+	assert_contract_fails_with \
+		standalone-refresh-guidance \
+		"$missing_revalidation" \
+		"standalone attachment self-update is missing concepts"
+}
