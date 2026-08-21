@@ -38,7 +38,26 @@
     grep -qF "stop before delegated branch setup" "$skill"
     grep -qF "Run \`git status --porcelain\` and continue only when it is empty" "$skill"
     grep -qF "an option this entry point never has" "$skill"
+    grep -qF "Capture the team identifier and a stable \`{issue-update-id}\`" "$skill"
+    grep -qF "use the issue UUID when the response supplies one; otherwise use the canonical issue identifier" "$skill"
+    grep -qF "Require the same \`{issue-update-id}\`, team identifier, and \`{issue-branch}\` captured by the preflight" "$skill"
+    grep -qF "if any changed, restart the read-only preflight" "$skill"
+    grep -qF "Do not treat \`unstarted\` as backlog" "$skill"
+    grep -qF "If \`{confirmed-state-type}\` is anything other than \`backlog\`" "$skill"
+    grep -qF "Proceed with implementation and move the issue to {target-status-name}?" "$skill"
+    grep -qF "Without an explicit confirmation, stop without changing Linear or the branch." "$skill"
+    grep -qF "prefer the case-insensitive exact name \`In Progress\`" "$skill"
+    grep -qF "exactly one status whose type is \`started\`" "$skill"
+    grep -qF "Immediately before the Linear write, close the confirmation race" "$skill"
+    grep -qF "never apply a confirmation to a newer issue state" "$skill"
+    grep -qF "update only its status" "$skill"
+    grep -qF "pass \`id: {issue-update-id}\` and \`state: {target-status-id}\` and no other mutable field" "$skill"
+    grep -qF "After a successful write, read the issue back" "$skill"
+    grep -qF "resolve its status with the same immutable-ID-first procedure from Step 7" "$skill"
+    grep -qF "Linear transition: {confirmed-state-name} -> {target-status-name} (verified before implementation)" "$skill"
     grep -qF "Uncommitted changes at the Step 2 preflight" "$skill"
+    grep -qF "Linear state confirmation declined" "$skill"
+    grep -qF "Linear started-state transition failed" "$skill"
     grep -qF "Linear issue has no \`branchName\`" "$skill"
     grep -qF "Remote issue branch already exists without a Pull Request" "$skill"
     grep -qF "Invoke every delegated skill through the platform'\''s skill mechanism" "$skill"
@@ -56,6 +75,12 @@
     branch_validation_line=$(grep -nF "Before interpolating" "$skill" | cut -d: -f1)
     github_preflight_line=$(grep -nF "gh pr list --head \"{issue-branch}\" --state all" "$skill" | cut -d: -f1)
     remote_absence_line=$(grep -nF "git ls-remote --heads origin \"refs/heads/{issue-branch}\"" "$skill" | cut -d: -f1)
+    state_refresh_line=$(grep -nF "Re-fetch \`{issue-id}\` before the state gate" "$skill" | cut -d: -f1)
+    state_target_line=$(grep -nF "Resolve the team'\''s target \`started\` status" "$skill" | cut -d: -f1)
+    state_confirmation_line=$(grep -nF "If \`{confirmed-state-type}\` is anything other than \`backlog\`" "$skill" | cut -d: -f1)
+    state_recheck_line=$(grep -nF "Immediately before the Linear write, close the confirmation race" "$skill" | cut -d: -f1)
+    state_update_line=$(grep -nF "Otherwise use the available Linear issue-update operation" "$skill" | cut -d: -f1)
+    state_readback_line=$(grep -nF "After a successful write, read the issue back" "$skill" | cut -d: -f1)
     worktree_preflight_line=$(grep -nF "Run \`git status --porcelain\` and continue only when it is empty" "$skill" | cut -d: -f1)
     implement_line=$(grep -nF "## Step 2: Invoke Linear Implementation" "$skill" | cut -d: -f1)
     delegate_line=$(grep -n "Invoke .*kramme:linear:issue-implement" "$skill" | cut -d: -f1)
@@ -69,6 +94,13 @@
     [ "$preflight_line" -lt "$branch_validation_line" ]
     [ "$branch_validation_line" -lt "$github_preflight_line" ]
     [ "$github_preflight_line" -lt "$remote_absence_line" ]
+    [ "$remote_absence_line" -lt "$state_refresh_line" ]
+    [ "$state_refresh_line" -lt "$state_target_line" ]
+    [ "$state_target_line" -lt "$state_confirmation_line" ]
+    [ "$state_confirmation_line" -lt "$state_recheck_line" ]
+    [ "$state_recheck_line" -lt "$state_update_line" ]
+    [ "$state_update_line" -lt "$state_readback_line" ]
+    [ "$state_readback_line" -lt "$delegate_line" ]
     [ "$remote_absence_line" -lt "$delegate_line" ]
     [ "$preflight_line" -lt "$delegate_line" ]
     [ "$delegate_line" -lt "$implementation_boundary_line" ]
