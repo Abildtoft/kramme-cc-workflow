@@ -1,14 +1,14 @@
 ---
 name: kramme:linear:issue-define
-description: "Requires the Linear MCP server. Create or improve a well-structured Linear issue through guided refinement. Use with --auto to create one new Linear issue from rough input using light clarification, duplicate checking, metadata selection, and approval instead of the full interview. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue)."
-argument-hint: "[issue-id] or [description and/or file paths for context] [--auto]"
+description: "Requires the Linear MCP server. Create or improve a well-structured Linear issue through guided refinement. Use with --auto to create one new Linear issue from rough input using light clarification, duplicate checking, metadata selection, and approval instead of the full interview; add --ask to ask every relevant interview question before drafting. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue)."
+argument-hint: "[--auto [--ask]] [--] [issue-id or description and/or file paths for context]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Define Linear Issue
 
-Create or improve a Linear issue through exhaustive interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition. Use `--auto` for a fast new-issue path with light clarification and the same approval discipline.
+Create or improve a Linear issue through exhaustive interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition. Use `--auto` for a fast new-issue path with light clarification and the same approval discipline; combine `--auto --ask` to retain automatic creation routing while requiring every relevant interview question.
 
 ## Workflow Boundaries
 
@@ -50,12 +50,12 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 
 ## Process Overview
 
-1. **Input Parsing & Mode Detection**: Detect if improving existing issue, creating new, or auto-creating new with `--auto`
+1. **Input Parsing & Mode Detection**: Detect if improving existing issue, creating new, auto-creating new with `--auto`, or exhaustively questioning an auto-create with `--auto --ask`
 2. **File References & Issue Type**: Read provided files (if any) and classify the issue type unless `--auto` is active
 3. **Linear Context Discovery**: Fetch available teams, labels, and projects
 4. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check duplicates
 5. **Codebase Exploration**: Search for related implementations and patterns
-6. **Auto-create exit or Autonomous Framing**: In `--auto` create mode, follow `references/auto-create.md` and skip the exhaustive interview; otherwise infer target user, why-now, likely non-goals, and decision boundaries from the evidence gathered
+6. **Auto-create exit or Autonomous Framing**: In `--auto` create mode, follow `references/auto-create.md`; use its exhaustive relevant-question path when `--ask` is present and its light clarification path otherwise. For non-auto modes, infer target user, why-now, likely non-goals, and decision boundaries from the evidence gathered
 7. **Interview**: Multi-round questioning (adapted for issue type and mode)
 8. **Issue Composition**: Draft issue following the template
 9. **Review & Create/Update**: User approval, then create or update in Linear
@@ -64,14 +64,19 @@ Create or improve a Linear issue through exhaustive interactive refinement. Can 
 
 **Handling `$ARGUMENTS`:**
 
-First parse flags:
+First parse flags as shell-style arguments from the leading option segment only:
 
-- If `$ARGUMENTS` contains `--auto`, remove it from the working description and set `auto_create = true`.
-- `--auto` is only valid for new Linear issues. If the remaining input identifies an existing Linear issue, stop and ask the user to rerun without `--auto` for improvement mode.
+- Scan left to right. Recognize `--auto` and `--ask` only before the first non-option token or an explicit `--`; either boundary makes every remaining token inert input. Reject duplicate flags, unknown leading options, or missing payload after `--`.
+- If the leading segment contains `--auto`, remove it from the working description and set `auto_create = true`.
+- If the leading segment contains `--ask`, remove it from the working description and set `ask_all_relevant = true`. Require `auto_create = true`; without `--auto`, stop and explain that the normal workflow already uses the full interview.
+- If the inert payload begins with the exact line `LINEAR BREAKDOWN HANDOFF`, require `auto_create = true` and the explicit `--` boundary, set `breakdown_handoff = true`, and treat the complete block as structured create-mode input. Do not reinterpret flags, Linear identifiers, file paths, source references, or metadata inside the block as top-level arguments. Validate and map the block only through `references/auto-create.md`.
+- `--auto` is only valid for new Linear issues. Unless `breakdown_handoff = true`, if the remaining input identifies an existing Linear issue, stop and ask the user to rerun without `--auto` for improvement mode.
 
 **Prerequisite check:** before detecting mode or fetching an existing issue, if Linear MCP operations are unavailable, the Linear MCP server is not connected. Stop here and tell the user to connect it — do not start the interview or issue lookup without a working Linear connection.
 
 ### Step 1: Detect Mode
+
+If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue identifier/URL/UUID detection. Linear identifiers inside the handoff describe anchors, blockers, or related work; they are data, not a request to improve that issue.
 
 Check if input matches an existing Linear issue:
 
@@ -94,7 +99,7 @@ Check if input matches an existing Linear issue:
 
 **If no issue detected → CREATE MODE:**
 
-1. Parse for file paths (anything that looks like a path: contains `/`, ends in common extensions) and store them for Step 2
+1. Unless `breakdown_handoff = true`, parse for file paths (anything that looks like a path: contains `/`, ends in common extensions) and store them for Step 2. A structured breakdown handoff keeps evidence paths as data and never opens them as positional file arguments.
 2. Remaining text is the description/idea
 3. If empty, ask the user in plain prose what issue they want to define — an open-ended idea, not a multiple-choice prompt
 4. Set mode flag to "create"
@@ -152,12 +157,13 @@ Fetch Linear workspace context to enable informed metadata selection:
 
 Store this context for use in Phase 5 (Metadata & Classification round).
 
-If `auto_create = true`, resolve the create team here because Round 5 is skipped:
+If `auto_create = true`, establish the create scope here because duplicate handling needs an authoritative team before the auto-create interview:
 
-1. Use the only team if exactly one exists, or an obvious team from the branch, workspace, or user input.
-2. Otherwise ask one short question for the target team.
-3. If no team can be resolved, emit `MISSING REQUIREMENT: Linear team is required to create the issue` and stop.
-4. Store selected labels, project, and priority only when the user named them or they clearly match available Linear metadata.
+1. For a structured breakdown handoff, resolve the supplied workspace/team/project IDs and verify an exact accessible match. Do not infer, substitute, or independently change batch scope. If exhaustive questioning reveals that the scope should change, return `Action: blocked` so the parent can restart the whole batch with one corrected scope.
+2. Otherwise use the only team if exactly one exists, or an obvious team from the branch, workspace, or user input.
+3. Otherwise ask one short question for the target team.
+4. If no team can be resolved, emit `MISSING REQUIREMENT: Linear team is required to create the issue` and stop.
+5. Store selected labels, project, and priority only when the user named them or they clearly match available Linear metadata.
 
 ## Phase 3: Existing Issue Handling
 
@@ -167,7 +173,7 @@ Phase 3 must produce:
 
 - **Improve mode**: current issue presented, Dev Ask preservation noted when relevant, `prior_session_context` recorded, improvement areas selected, and related issues identified.
 - **Create mode**: duplicate and related issue search completed, `.out-of-scope/` matches surfaced when relevant, user decision recorded, and any related issues stored for later linking.
-- **Auto create mode**: after Phase 2 team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the Linear URL, skip Phases 4-7, and stop.
+- **Auto create mode**: after Phase 2 team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the Linear URL, and skip Phases 4-7. For a structured breakdown handoff, return the required `ISSUE-DEFINE RESULT` to the calling workflow so it can continue the batch; otherwise stop.
 
 ## Phase 4: Codebase Exploration
 

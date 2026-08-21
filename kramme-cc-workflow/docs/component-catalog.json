@@ -228,6 +228,11 @@
       "path": "kramme-cc-workflow/skills/kramme:learn:verify-understanding/SKILL.md"
     },
     {
+      "name": "kramme:linear:breakdown-findings",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:linear:breakdown-findings/SKILL.md"
+    },
+    {
       "name": "kramme:linear:issue-define",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-define/SKILL.md"

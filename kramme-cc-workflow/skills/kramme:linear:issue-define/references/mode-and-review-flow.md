@@ -67,7 +67,7 @@ Before creating a new issue, check for existing Linear issues that may already c
    - Identify issues that could be affected by this work.
 
 3. **Present Findings to User**
-   - If `auto_create = true` and a strong duplicate is found, show the issue and ask whether to stop, create anyway, or rerun without `--auto` to improve the existing issue. If the user wants to improve, stop; do not switch into improve mode during the same invocation.
+   - If `auto_create = true` and a strong duplicate is found, show the issue and ask whether to stop, create anyway, or rerun without `--auto` to improve the existing issue. If the user wants to improve, stop; do not switch into improve mode during the same invocation. When `breakdown_handoff = true`, first verify the duplicate belongs to the handoff's exact workspace/team/project scope. If the user then chooses it, return `Action: covered-existing` with concrete identifiers, the recorded decision reason, and dependency-text verification using the structured result contract in `references/auto-create.md`.
    - If `auto_create = false` and potential duplicates are found, show them to the user via `AskUserQuestion`:
      - Option to proceed with new issue if it is not truly a duplicate.
      - Option to improve an existing issue instead -> switch to improve mode.
@@ -90,7 +90,7 @@ If `auto_create = true` and mode is create:
 1. Complete Phase 2 team resolution and Phase 3 duplicate handling first.
 2. If duplicate handling confirms a new issue is needed, return `auto_create_confirmed = true` to the main Phase 3 flow.
 3. If duplicate handling stops or defers, follow that recorded user decision instead.
-4. Do not continue into Phase 4 from this reference; the main `SKILL.md` Phase 3 handoff runs the auto-create workflow and stops.
+4. Do not continue into Phase 4 from this reference; the main `SKILL.md` Phase 3 handoff runs the auto-create workflow. It stops a direct invocation or returns the structured result to a breakdown caller.
 
 ## Phase 7: Review & Create/Update
 
