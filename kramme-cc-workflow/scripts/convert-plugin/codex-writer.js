@@ -407,7 +407,7 @@ Tool mapping:
 - Glob: use rg --files or find
 - LS: use ls via shell_command
 - WebFetch/WebSearch: use curl or Context7 for library docs
-- AskUserQuestion/Question: ask the user in chat
+- AskUserQuestion/Question: preserve explicit structured or exhaustive prompts with request_user_input when it is available in the active mode; otherwise ask the user in chat
 - Task/Subagent/Parallel: use multi-agent execution when available; otherwise run sequentially in main thread. Use multi_tool_use.parallel for parallel tool calls.
 - TodoWrite/TodoRead: use update_plan for short-lived task tracking; use a markdown file only when durable repo artifacts are explicitly needed
 - Skill: open the referenced SKILL.md and follow it

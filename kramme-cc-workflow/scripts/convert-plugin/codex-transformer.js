@@ -470,6 +470,18 @@ function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
 
 /** @type {Array<[RegExp, string]>} */
 const CODEX_TOOL_NAME_SUBSTITUTIONS = [
+  [
+    /Use the `AskUserQuestion` tool for every exhaustive round and adaptive follow-up\./g,
+    "Use `request_user_input` for every exhaustive round and adaptive follow-up when that tool is available in the active Codex mode. Use calls of one to three short questions with two or three concrete options per question; the automatically provided Other choice allows a free-form answer.",
+  ],
+  [
+    /Do not switch to plain chat while `AskUserQuestion` is available\./g,
+    "Do not switch to plain chat while `request_user_input` is available.",
+  ],
+  [
+    /If the host does not expose `AskUserQuestion`, ask directly in chat and preserve the same question-coverage ledger\./g,
+    "If `request_user_input` is unavailable, ask directly in chat and preserve the same question-coverage ledger.",
+  ],
   [/### Using AskUserQuestion Correctly\b/g, "### Asking Questions in Codex"],
   [
     /The AskUserQuestion tool requires \*\*2-4 predefined options\*\* per question\.\s*Users can always select "Other" to provide free-text input\./g,

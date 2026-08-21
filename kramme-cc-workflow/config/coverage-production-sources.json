@@ -262,6 +262,14 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/linear-breakdown-findings-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:linear:breakdown-findings/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:linear:issue-define/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-issue-implement-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md"
