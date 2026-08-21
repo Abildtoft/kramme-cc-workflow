@@ -108,6 +108,8 @@ policies = {
     "auto-mode isolation": (
         "Never include shared diagram files or permanent specs in the auto-selected artifact set."
     ),
+    "project-local symlink rejection": "walk every existing component from that root to the match without following symlinks",
+    "pre-delete containment recheck": "repeat the project-local non-symlink component walk and canonical containment proof",
 }
 missing = [name for name, phrase in policies.items() if phrase not in text]
 raise SystemExit("missing cleanup safety policies: " + ", ".join(missing) if missing else 0)
@@ -205,7 +207,7 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "linear issue to PR cleanup registers only known report files" {
+@test "shared review convergence cleanup registers only known report files" {
 	run python3 - "$REGISTRY" <<'PY'
 import json
 import pathlib
@@ -213,18 +215,25 @@ import sys
 
 artifacts = json.loads(pathlib.Path(sys.argv[1]).read_text())["artifacts"]
 paths = {entry["path"]: entry for entry in artifacts}
-archive = ".context/linear-issue-to-pr/"
+archive = ".context/linear-issue-to-pr/reviews/"
 expected = {
     archive + "REVIEW_OVERVIEW.md",
     archive + "CONVENTION_REVIEW_OVERVIEW.md",
     archive + "OVERENGINEERING_REVIEW_OVERVIEW.md",
     archive + "REFACTOR_OPPORTUNITIES_OVERVIEW.md",
 }
+legacy = {
+    ".context/linear-issue-to-pr/REVIEW_OVERVIEW.md",
+    ".context/linear-issue-to-pr/CONVENTION_REVIEW_OVERVIEW.md",
+    ".context/linear-issue-to-pr/OVERENGINEERING_REVIEW_OVERVIEW.md",
+    ".context/linear-issue-to-pr/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+}
 missing = sorted(expected - paths.keys())
 errors = [f"missing archive report: {path}" for path in missing]
+errors.extend(f"missing legacy report: {path}" for path in sorted(legacy - paths.keys()))
 if archive in paths:
     errors.append("whole workflow archive must not be registered as disposable")
-for path in expected & paths.keys():
+for path in (expected | legacy) & paths.keys():
     if paths[path]["type"] != "file":
         errors.append(f"archive report must be a file: {path}")
 raise SystemExit("\n".join(errors) if errors else 0)
