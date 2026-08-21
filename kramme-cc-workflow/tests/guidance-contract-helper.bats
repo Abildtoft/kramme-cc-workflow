@@ -291,41 +291,58 @@ EOF
 @test "review gate order follows invocations instead of numbered headings" {
 	passing="$BATS_TEST_TMPDIR/gates-passing.md"
 	broken="$BATS_TEST_TMPDIR/gates-broken.md"
+	prohibited="$BATS_TEST_TMPDIR/gates-prohibited.md"
 
 	write_file "$passing" <<'EOF'
-## Ordered Gates
+## Applicability Evaluation
 
 ### First Gate — Regular Review
-Invoke `kramme:pr:code-review --parallel --inline`.
+When active, invoke `kramme:pr:code-review --parallel --inline`.
 
 ### Second Gate — Convention Review
-Invoke `kramme:pr:convention-review --inline`.
+When active, invoke `kramme:pr:convention-review --inline`.
 
-### Third Gate — Refactor Discovery
-Invoke `kramme:code:refactor-opportunities pr`.
+### Third Gate — Overengineering Review
+When active in normal mode, invoke `kramme:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
+
+### Fourth Gate — Refactor Discovery
+When active, invoke `kramme:code:refactor-opportunities` with `pr`.
 
 ## Completion Rules
 EOF
 
 	write_file "$broken" <<'EOF'
-## Ordered Gates
+## Applicability Evaluation
 
-The commands used here are kramme:pr:code-review --parallel --inline, kramme:pr:convention-review --inline, and kramme:code:refactor-opportunities pr.
+The commands used here are kramme:pr:code-review, kramme:pr:convention-review, kramme:pr:overengineering-review, and kramme:code:refactor-opportunities.
 
 ### Gate 1: Regular Code Review
-Invoke `kramme:code:refactor-opportunities pr`.
+When active, invoke `kramme:code:refactor-opportunities` with `pr`.
 
 ### Gate 2: Convention Review
-Invoke `kramme:pr:convention-review --inline`.
+When active, invoke `kramme:pr:convention-review --inline`.
 
-### Gate 3: PR-Scoped Refactor Discovery
-Invoke `kramme:pr:code-review --parallel --inline`.
+### Gate 3: Overengineering Review
+When active in normal mode, invoke `kramme:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
+
+### Gate 4: PR-Scoped Refactor Discovery
+When active, invoke `kramme:pr:code-review --parallel --inline`.
 
 ## Completion Rules
 EOF
 
+	write_file "$prohibited" <<'EOF'
+## Applicability Evaluation
+
+Do not invoke `kramme:pr:code-review --parallel --inline`.
+Do not invoke `kramme:pr:convention-review --inline`.
+Do not invoke `kramme:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
+Do not invoke `kramme:code:refactor-opportunities` with `pr`.
+EOF
+
 	assert_contract_passes review-gate-order "$passing"
 	assert_contract_fails_with review-gate-order "$broken" "ordered gate invocations is wrong"
+	assert_contract_fails_with review-gate-order "$prohibited" "missing anchor 'regular code-review invocation'"
 }
 
 @test "drift self-update guidance keeps explanation offer and approval in one ordered block" {

@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:complete-work
-description: Internal post-implementation orchestrator for kramme:siw:issue-to-pr and kramme:code:plan-to-pr. Rechecks the new-PR boundary and caller scope, runs applicable code-review, convention, and PR-refactor gates to bounded convergence, verifies the prepared branch, and optionally opens the Pull Request and iterates on CI and review feedback until green. Not a standalone implementation workflow.
+description: Internal post-implementation orchestrator for kramme:siw:issue-to-pr and kramme:code:plan-to-pr. Rechecks the new-PR boundary, delegates caller-scoped review convergence and verification to kramme:pr:review-convergence, and optionally opens the Pull Request and iterates on CI and review feedback until green. Not a standalone implementation or review workflow.
 argument-hint: "--work-id <id> --archive-key <siw-issue-to-pr|code-plan-to-pr> [--scope-plan <archived-plan>] [--strict] [--ship]"
 disable-model-invocation: true
 user-invocable: false
@@ -8,11 +8,11 @@ user-invocable: false
 
 # Complete Prepared Work as a Pull Request
 
-Finish a caller-prepared implementation branch without changing the caller's source-of-truth workflow. The caller owns issue or plan intake, branch selection, implementation, and the initial implementation commit boundary. This skill owns quality convergence, final verification, and optional Pull Request shipping.
+Finish a caller-prepared implementation branch without changing the caller's source-of-truth workflow. The caller owns issue or plan intake, branch selection, implementation, and the initial implementation commit boundary. This skill owns new-PR preflight, the requirements handoff, optional Pull Request shipping, and structured recovery; `kramme:pr:review-convergence` owns review and verification.
 
 ## Workflow Contract
 
-- Invoke every delegated skill through the platform's skill mechanism. If direct invocation is unavailable, locate and read that skill's installed `SKILL.md` and follow it with the same arguments. This rule covers every delegation below and in both references.
+- Invoke every delegated skill through the platform's skill mechanism. If direct invocation is unavailable, locate and read that skill's installed `SKILL.md` and follow it with the same arguments. This rule covers every delegation below and in the shipping reference.
 - Continue between delegated skills without pausing for progress summaries.
 - Pause only for a hard blocker or a decision the work item, repository conventions, and code cannot determine safely.
 - Treat a delegated skill failure as a workflow failure. Preserve its recovery information and do not skip ahead.
@@ -54,14 +54,7 @@ The caller must have established a clean committed implementation boundary.
 3. Fetch `origin/{base-branch}` and require the fetch to succeed.
 4. Capture the current branch as `{work-branch}`. Require it to differ from `{base-branch}` and validate the agent-tracked value against `[A-Za-z0-9][A-Za-z0-9._/-]*`, a non-leading `-`, and `git check-ref-format --branch`.
 5. Require at least one commit in `origin/{base-branch}..HEAD`.
-6. When `{archive-key}` is `code-plan-to-pr`, validate the caller's scope handoff before any review or edit:
-   - Resolve `{scope-plan-input}` without following a final symlink. Require `.context`, `.context/code-plan-to-pr`, and every later parent to be real non-symlink directories whose canonical paths remain strictly below the canonical repository root. Require the canonical input to be a non-symlink regular file below that repository-bound archive root at `.context/code-plan-to-pr/{plan-set-id}/plans/PR_PLAN_[A-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md`. Require `{plan-set-id}` to match `ps-` plus one full lowercase hexadecimal object ID for the repository's object format. Store the canonical repository-relative input as `{validated-scope-plan}` and never use the raw `{scope-plan-input}` again. Archive provenance distinguishes complete generated sets from singleton attachments, including detached `W##L` plans.
-   - Read the plan fully. Parse and normalize literal backticked paths only from `### In Scope` using the plan caller's rules: reject absolute paths, a leading `-`, `..` segments, NUL/control characters, duplicate normalized paths, and any path whose canonical resolution escapes the repository. Store the exact normalized list as `VALIDATED_SCOPE_PATHS`, pass it only through quoted array expansion, and never render a plan value into shell command text.
-   - Read `references/standalone-scope-handoff.md` completely and follow its archive classification, immutable-source proof, and scope policy. It sets `PLAN_SCOPE_MODE=exact-files` for normalized standalone attachments and marked generated plan sets, while unmarked legacy generated sets retain `PLAN_SCOPE_MODE=containment`.
-   - Require a complete `## Workflow State` block with `Stage: IMPLEMENTED` or `Stage: QUALITY_BLOCKED`. Require its plan set, plan basename, branch, base branch, base commit, checkpoint head/tree, and normalized scope list to match the validated archive, `{work-branch}`, `{base-branch}`, the live plan, and `VALIDATED_SCOPE_PATHS`.
-   - Require the base/checkpoint values to be full lowercase hexadecimal object IDs for the repository's object format. Require the recorded base commit to resolve and be an ancestor of the checkpoint, the checkpoint to equal current `HEAD`, and its tree to equal the recorded checkpoint tree. Compute the single `git merge-base "{checkpoint-head}" "origin/{base-branch}"`, require one full lowercase object ID, store it as `{proven-scope-base}`, and require the recorded base commit to equal it. For every committed path in `{proven-scope-base}..HEAD`, require exact equality with one `VALIDATED_SCOPE_PATHS` entry when `PLAN_SCOPE_MODE=exact-files`; otherwise allow exact path or directory containment. Store `{proven-scope-base}` as `{scope-base-commit}` so mutable archive state never chooses the later audit boundary.
-   - Set `PLAN_SCOPE_ACTIVE=true`. For `siw-issue-to-pr`, set `PLAN_SCOPE_ACTIVE=false`; its caller retains the SIW-specific scope and tracker contract.
-7. Query all Pull Requests for the exact branch:
+6. Query all Pull Requests for the exact branch:
 
    ```bash
    gh pr list --head "{work-branch}" --state all --limit 100 --json number,url,state,headRefName,headRefOid
@@ -69,38 +62,28 @@ The caller must have established a clean committed implementation boundary.
 
    Require success and an empty list. An API, authentication, network, rate-limit, or repository error is a blocker, not evidence of absence.
 
-8. Query `git ls-remote --heads origin "refs/heads/{work-branch}"`. Require success and a well-formed zero-line absent result. An existing or malformed ref is a blocker.
-9. Create `.context/{archive-key}/reviews/` and require `git check-ignore -q -- .context/{archive-key}/reviews/` to succeed. Stop if the caller-selected fixed archive is not ignored.
+7. Query `git ls-remote --heads origin "refs/heads/{work-branch}"`. Require success and a well-formed zero-line absent result. An existing or malformed ref is a blocker.
 
 If the branch already has any Pull Request, route a later session to `kramme:pr:fix-ci --no-consolidate`. If only the remote branch exists, require coordination or a fresh branch; this new-PR workflow never adopts it.
 
-## Step 3: Run the Quality Loop
+## Step 3: Invoke Review Convergence
 
-Read `references/review-convergence.md` and follow it completely with `{work-id}` and `{archive-key}`.
+Build one frozen `{work-requirements}` handoff before delegation:
 
-During normal remediation rounds, evaluate applicability and run active gates in this order:
+- For `siw-issue-to-pr`, resolve exactly one non-symlink regular file matching `siw/issues/ISSUE-{work-id}-*.md`. Read it fully and tightly preserve its title, requested behavior, scope, acceptance criteria, constraints, non-goals, mode, and resolution evidence. Record absent requirement categories explicitly.
+- For `code-plan-to-pr`, state that the validated `--scope-plan` is the authoritative prepared-work contract. Preserve its work label and require `kramme:pr:review-convergence` to validate the archive, read the complete plan, and freeze its goal, context, in-scope paths, requirements, completion criteria, verification obligations, constraints, and non-goals without inventing or thinning them.
 
-1. `kramme:pr:code-review --parallel --inline`
-2. `kramme:pr:convention-review --inline`
-3. `kramme:code:refactor-opportunities pr`
+Build delegated arguments:
 
-The parent owns finding triage, edits, the shared remediation-cycle ledger, focused verification, remediation commits, and reruns. When `PLAN_SCOPE_ACTIVE=true`, every proposed edit, dirty path, staged path, and committed remediation path must satisfy `PLAN_SCOPE_MODE`: exact equality for `exact-files`, otherwise exact path or directory containment. An otherwise valid finding that requires a path outside that list is a scope blocker, not permission to widen the plan. Move file-backed review output into `.context/{archive-key}/reviews/` before collecting another unified scope.
+```text
+--work-id {work-id} --archive-key {archive-key} [--scope-plan {scope-plan-input}] [--strict] --requirements {work-requirements}
+```
 
-## Step 4: Run Final Verification
+Include `--scope-plan` only for `code-plan-to-pr` and append `--strict` only when `STRICT_REVIEW=true`. Invoke `kramme:pr:review-convergence` once and capture its structured handoff.
 
-Invoke `kramme:verify:run` for a fresh project-configured pass.
+Continue only when it returns `Review convergence: passed`, normal mode, the exact work ID and branch, a clean current tree matching its review tree, complete ordered-gate evidence, no required or blocked finding, and passed final verification. JSON-decode its `Requirements JSON` field and require the decoded value to equal `{work-requirements}` byte-for-byte. For plan scope, also capture and preserve its validated scope plan, mode, scope base, and normalized paths as the only state the shipping contract may use. Stop at any missing invariant; never reconstruct or restart its remediation loop inside this skill.
 
-- Require every applicable check to pass.
-- Report missing tools and skipped destructive integration/E2E checks instead of claiming they ran.
-- If an in-scope defect appears and remediation budget remains, consume one cycle, fix it, cross the remediation commit boundary, return through Step 3, and rerun verification.
-- If verification exposes a defect after the budget is exhausted or the loop stopped at diminishing returns, do not edit again or ship without explicit user authorization to resume. A clean final verification may still ship with explicitly deferred optional findings.
-- Stop on missing dependencies, external services, or required user decisions.
-
-Capture the successful verification evidence. No source change may occur between this point and Pull Request creation except through the shipping contract.
-
-Before returning success or entering the shipping contract, require the worktree clean and the current branch still equal to `{work-branch}`. When `PLAN_SCOPE_ACTIVE=true`, rerun `RECHECK_STANDALONE_SCOPE` if `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD` and enforce the mode's exact-or-containment membership rule. Capture the resulting full head/tree as the verified scoped completion checkpoint. Stop before publication on the first out-of-scope path. Treat the first newly ineligible exact-file path as the same blocker.
-
-## Step 5: Stop or Ship
+## Step 4: Stop or Ship
 
 If `SHIP_MODE=false`, stop without invoking `kramme:pr:create`. Report:
 
@@ -127,7 +110,7 @@ Then: $kramme:pr:fix-ci --no-consolidate
 
 If `SHIP_MODE=true`, read `references/shipping-contract.md` and follow it completely.
 
-## Step 6: Report a Shipped Result
+## Step 5: Report a Shipped Result
 
 Report:
 
@@ -177,7 +160,7 @@ Recovery: {exact next invocation | none}
 
 ## Artifact Lifecycle
 
-- Review reports are produced by active quality gates, consumed during triage, and moved to `.context/{archive-key}/reviews/`. They remain gitignored and never enter the Pull Request.
+- Review reports are produced and owned by `kramme:pr:review-convergence`, consumed during triage, and moved to `.context/{archive-key}/reviews/`. They remain gitignored and never enter the Pull Request.
 - Implementation and remediation commits are consumed by `kramme:pr:create`, then refreshed only by accepted CI/review fixes.
 - The Pull Request is created only after review and verification pass. It is retired by merge or close.
 
@@ -187,6 +170,5 @@ Recovery: {exact next invocation | none}
 - Existing Pull Request: stop; use `kramme:pr:fix-ci --no-consolidate` in a later session.
 - Existing remote branch without a Pull Request: stop; coordinate or choose a fresh source-workflow branch.
 - Quality coverage degraded: identify the failed dimensions and do not call the result clean.
-- Diminishing returns with a required finding: stop before final verification and shipping.
-- Verification failure: fix through the bounded quality loop or stop with evidence.
+- Review convergence or verification failure: preserve the delegated cycle ledger, scope state, and exact blocker; do not recreate the loop or reset its budget locally.
 - Shipping failure: return the structured `published_blocked` handoff when publication occurred; otherwise preserve the delegated rollback and return a proven `prepublication_blocked` checkpoint only when the remote remains absent.

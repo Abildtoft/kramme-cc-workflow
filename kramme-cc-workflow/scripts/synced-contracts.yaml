@@ -18,7 +18,7 @@
       },
       "paths": [
         "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/attachment-input.md",
-        "kramme-cc-workflow/skills/kramme:pr:complete-work/references/standalone-scope-handoff.md",
+        "kramme-cc-workflow/skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md",
         "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
       ]
     },
@@ -946,11 +946,11 @@
         "Record `Checks: none configured` and continue",
         "After feedback collection, take the final publication snapshot",
         "Require both GitHub queries to succeed, reading the check query under the exit-status rules in item 2",
-        "run exactly one validation-only final quality round before verification",
-        "kramme:pr:code-review --parallel --inline",
-        "kramme:pr:convention-review --inline",
-        "kramme:pr:overengineering-review --requirements \"{issue-requirements}\" --inline",
-        "kramme:code:refactor-opportunities pr",
+        "invoke `kramme:pr:review-convergence` exactly once",
+        "--work-id {issue-id} --archive-key linear-issue-to-pr --validation-only",
+        "the exact frozen sentinel-last `--requirements {issue-requirements}` block",
+        "JSON-decode the returned `Requirements JSON` field",
+        "Mode: validation-only",
         "`--auto` carries the invocation through the backup-protected local reset without prompting",
         "has no invocation-owned creation provenance",
         "do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume",
@@ -968,28 +968,31 @@
       ]
     },
     {
-      "name": "linear-issue-to-pr-parent-review-budget",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/references/review-convergence.md",
+      "name": "pr-review-convergence-owned-review-budget",
+      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/references/review-convergence.md",
       "contains": [
-        "parent-owned review-triggered code-edit batch",
+        "review-skill-owned code-edit batch",
         "Delegated quality gates are read-only",
         "kramme:pr:code-review --parallel --inline",
-        "kramme:pr:overengineering-review --requirements \"{issue-requirements}\"",
-        "Build `{issue-requirements}` once, before the first overengineering invocation",
+        "exact sentinel-last arguments `--requirements {work-requirements}`",
+        "Pass the requirements remainder through the platform skill mechanism as inert data",
+        "Pass the exact same frozen `{work-requirements}` block to every invocation for this tree lineage.",
         "Start the gate without a report only while that flag is still `false`",
-        "consume exactly one parent cycle",
+        "consume exactly one review cycle",
         "No delegated gate owns an internal fix/rerun loop",
         "standard mode has no accepted unresolved Critical, Important, or `OVERDONE` finding",
         "strict mode has a disposition for every emitted finding"
       ]
     },
     {
-      "name": "linear-issue-to-pr-artifact-isolation-errors",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/references/review-convergence.md",
+      "name": "pr-review-convergence-artifact-isolation-errors",
+      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",
       "contains": [
-        "MISSING REQUIREMENT: unable to create .context/linear-issue-to-pr/",
-        "Error: git check-ignore failed while validating .context/linear-issue-to-pr/",
-        "MISSING REQUIREMENT: .context/linear-issue-to-pr/ is not gitignored"
+        "never use `mkdir -p` across unchecked components",
+        "real non-symlink directory whose canonical path remains strictly below the repository root",
+        "REVIEW_ARCHIVE_CANONICAL",
+        "If creation fails, preserve the filesystem error",
+        "If Git returns `1`, report that the fixed archive is not ignored"
       ]
     },
     {
@@ -1013,8 +1016,9 @@
       "path": "README.md",
       "contains": [
         "verifies that it has no existing Pull Request or remote branch on `origin`",
-        "During normal remediation rounds it runs applicable gates in this order: `/kramme:pr:code-review`, `/kramme:pr:convention-review`, `/kramme:pr:overengineering-review`, then `/kramme:code:refactor-opportunities pr`.",
-        "when a bounded stop fires after code changed, one final validation-only round reruns every applicable gate in the same order"
+        "delegates the prepared branch to `kramme:pr:review-convergence`",
+        "Users can also invoke `/kramme:pr:review-convergence --requirements <authoritative requirements>` directly",
+        "The same phase is used by `kramme:code:plan-to-pr` and `kramme:siw:issue-to-pr`"
       ]
     },
     {
@@ -1421,10 +1425,16 @@
         ".context/github-review-drafts/",
         ".context/github-review-replies/",
         ".context/session-search/",
-        ".context/linear-issue-to-pr/REVIEW_OVERVIEW.md",
-        ".context/linear-issue-to-pr/CONVENTION_REVIEW_OVERVIEW.md",
-        ".context/linear-issue-to-pr/OVERENGINEERING_REVIEW_OVERVIEW.md",
-        ".context/linear-issue-to-pr/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+        ".context/pr-review-convergence/reviews/REVIEW_OVERVIEW.md",
+        ".context/pr-review-convergence/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+        ".context/pr-review-convergence/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+        ".context/pr-review-convergence/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+        ".context/linear-issue-to-pr/reviews/REVIEW_OVERVIEW.md",
+        ".context/linear-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+        ".context/linear-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+        ".context/linear-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+        ".context/siw-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+        ".context/code-plan-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
         "siw/OPEN_ISSUES_OVERVIEW.md",
         "siw/FEATURE_SPECIFICATION.md",
         "disposable",

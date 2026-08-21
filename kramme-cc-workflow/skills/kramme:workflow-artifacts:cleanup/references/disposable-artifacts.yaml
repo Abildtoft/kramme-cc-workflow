@@ -100,7 +100,71 @@
       "producer": "kramme:code:refactor-opportunities"
     },
     {
+      "id": "pr-review-convergence-code-review",
+      "path": ".context/pr-review-convergence/reviews/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "pr-review-convergence-convention-review",
+      "path": ".context/pr-review-convergence/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "pr-review-convergence-overengineering-review",
+      "path": ".context/pr-review-convergence/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "pr-review-convergence-refactor-review",
+      "path": ".context/pr-review-convergence/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
       "id": "linear-issue-to-pr-code-review",
+      "path": ".context/linear-issue-to-pr/reviews/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-convention-review",
+      "path": ".context/linear-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-overengineering-review",
+      "path": ".context/linear-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-refactor-review",
+      "path": ".context/linear-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-code-review-legacy",
       "path": ".context/linear-issue-to-pr/REVIEW_OVERVIEW.md",
       "type": "file",
       "category": "working-dir",
@@ -108,7 +172,7 @@
       "producer": "kramme:linear:issue-to-pr"
     },
     {
-      "id": "linear-issue-to-pr-convention-review",
+      "id": "linear-issue-to-pr-convention-review-legacy",
       "path": ".context/linear-issue-to-pr/CONVENTION_REVIEW_OVERVIEW.md",
       "type": "file",
       "category": "working-dir",
@@ -116,7 +180,7 @@
       "producer": "kramme:linear:issue-to-pr"
     },
     {
-      "id": "linear-issue-to-pr-overengineering-review",
+      "id": "linear-issue-to-pr-overengineering-review-legacy",
       "path": ".context/linear-issue-to-pr/OVERENGINEERING_REVIEW_OVERVIEW.md",
       "type": "file",
       "category": "working-dir",
@@ -124,7 +188,7 @@
       "producer": "kramme:linear:issue-to-pr"
     },
     {
-      "id": "linear-issue-to-pr-refactor-review",
+      "id": "linear-issue-to-pr-refactor-review-legacy",
       "path": ".context/linear-issue-to-pr/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
       "type": "file",
       "category": "working-dir",
@@ -137,7 +201,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:pr:complete-work"
+      "producer": "kramme:pr:review-convergence"
     },
     {
       "id": "siw-issue-to-pr-convention-review",
@@ -145,7 +209,15 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:pr:complete-work"
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "siw-issue-to-pr-overengineering-review",
+      "path": ".context/siw-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
     },
     {
       "id": "siw-issue-to-pr-refactor-review",
@@ -153,7 +225,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:pr:complete-work"
+      "producer": "kramme:pr:review-convergence"
     },
     {
       "id": "code-plan-to-pr-code-review",
@@ -161,7 +233,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:pr:complete-work"
+      "producer": "kramme:pr:review-convergence"
     },
     {
       "id": "code-plan-to-pr-convention-review",
@@ -169,7 +241,15 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:pr:complete-work"
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "code-plan-to-pr-overengineering-review",
+      "path": ".context/code-plan-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
     },
     {
       "id": "code-plan-to-pr-refactor-review",
@@ -177,7 +257,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:pr:complete-work"
+      "producer": "kramme:pr:review-convergence"
     },
     {
       "id": "agent-native-audit",

@@ -39,6 +39,8 @@ When a producer adds a new fixed default output, register it in `references/disp
 
 Read `references/disposable-artifacts.yaml` and record which registered targets exist, as three separate lists keyed by `category`: working-directory artifacts (`working-dir`, including the `.context/` evidence directories), shared diagram files (`shared-diagram`, under `~/.kramme-cc-workflow/diagrams/`), and permanent specs (`permanent-spec`). Expand `glob` entries so unmatched patterns contribute nothing. **Only items discovered here are deleted or reported in later steps**, and any entry's `condition` marker (such as `siw/OPEN_ISSUES_OVERVIEW.md`) is read here, before anything is deleted.
 
+Before accepting a project-local match, resolve the canonical repository root and walk every existing component from that root to the match without following symlinks. Require every parent to be a real non-symlink directory, require the final file or directory itself not to be a symlink, and require the canonical match to remain strictly below the repository root. Apply the same check to each expanded glob result. Drop an unsafe match from the candidate set and report its first symlink, non-directory parent, or containment failure as skipped; `--auto` must fail closed when any otherwise-matching project-local target is unsafe.
+
 For directory entries that declare a `condition` and `expected_contents`:
 
 - The directory is a candidate only if its `condition` marker exists. For example, `siw/issues/` and `siw/qa-intake/` are candidates only when `siw/OPEN_ISSUES_OVERVIEW.md` exists.
@@ -66,7 +68,7 @@ If `AUTO_MODE=true`, skip this prompt and choose "delete current-project artifac
 
 ### Step 4: Delete
 
-Delete only the confirmed set. Prefer `trash` for recoverability. Build the set from discovered paths only. Expand globs before deletion so unmatched patterns are never reported as deleted. If the confirmed set is empty after filtering to existing paths, skip the deletion command and report that nothing matched the selection.
+Delete only the confirmed set. Prefer `trash` for recoverability. Build the set from discovered paths only. Expand globs before deletion so unmatched patterns are never reported as deleted. Immediately before deletion, repeat the project-local non-symlink component walk and canonical containment proof from Step 1; skip a target whose identity changed, and fail closed in `--auto` mode. If the confirmed set is empty after filtering to existing safe paths, skip the deletion command and report that nothing matched the selection.
 
 Delete every discovered entry whose registry `type` is `dir` by passing it to `trash` as a normal path argument; do not pass recursive flags to `trash`. Do not suppress deletion errors. Capture stderr/stdout so failures can be reported.
 

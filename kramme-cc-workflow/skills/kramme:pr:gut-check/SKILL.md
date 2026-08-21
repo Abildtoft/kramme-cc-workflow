@@ -18,11 +18,11 @@ This is a first-reader reaction, not an audit. There is no rubric, no severity s
 
 ## Step 1: Parse Arguments
 
-Accept only `--base <branch>` and `--intent <text>`:
+Accept only `--base <branch>` and the optional sentinel `--intent <text>`:
 
-1. `--base` may appear at most once and must be followed by a non-flag value. Store it as `BASE_BRANCH_OVERRIDE`.
-2. `--intent` may appear at most once and must be followed by a non-empty, non-flag value. Store it as `STATED_INTENT`. Callers can quote multi-word text.
-3. On a duplicate flag, an unknown flag, a positional argument, or a missing flag value, show `Usage: /kramme:pr:gut-check [--base <branch>] [--intent <text>]` and stop.
+1. Before the sentinel, `--base` may appear at most once and must be followed by a non-flag value. Store it as `BASE_BRANCH_OVERRIDE`.
+2. `--intent` may appear at most once. When present, it is the final control token: treat every character after it as one non-empty inert `STATED_INTENT` block, including whitespace, quotes, and flag-shaped text. Do not parse quoting inside the block or reinterpret any later text as flags.
+3. On a duplicate flag, an unknown flag, a positional argument before the sentinel, or a missing intent block, show `Usage: /kramme:pr:gut-check [--base <branch>] [--intent <text>]` and stop.
 
 ## Step 2: Collect the Changes
 

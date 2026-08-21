@@ -119,8 +119,8 @@ This is a blocking overall result, not success, but callers must persist their i
 4. Record local `HEAD` as `{final-head}` and require equality with `headRefOid`.
 5. Record `git rev-parse 'HEAD^{tree}'` as `{final-tree}`.
 6. When `PLAN_SCOPE_ACTIVE=true`, rerun `RECHECK_STANDALONE_SCOPE` for `PLAN_SCOPE_MODE=exact-files`, then collect every committed path in `{scope-base-commit}..HEAD` again and enforce the mode's exact-or-containment rule. If any path falls outside `VALIDATED_SCOPE_PATHS` or an exact-file path is newly ineligible, return `published_blocked` with the first mismatch and do not claim plan-scoped completion.
-7. If `{final-tree}` differs from `{verified-tree}`, run exactly one validation-only final quality round using the applicability and archive rules from `review-convergence.md`, with active gates in regular-review, convention-review, refactor order. Do not edit, re-enter CI fixing, or start another quality round.
-8. If that validation-only round passes, invoke `kramme:verify:run` once on the CI-remediated tree and require every applicable check to pass without further source changes.
+7. If `{final-tree}` differs from `{verified-tree}`, invoke `kramme:pr:review-convergence` exactly once with `--work-id {work-id} --archive-key {archive-key} --validation-only`, the same optional `--scope-plan {validated-scope-plan}`, the same optional `--strict`, and the exact frozen sentinel-last `--requirements {work-requirements}` block used before publication. Require `Review convergence: passed`, `Mode: validation-only`, matching work item, branch, and final tree, complete ordered-gate evidence, and no required or blocked finding. JSON-decode the returned `Requirements JSON` field and require the decoded value to equal `{work-requirements}` byte-for-byte. Do not edit, re-enter CI fixing, or invoke another validation pass.
+8. After that validation-only pass succeeds, invoke `kramme:verify:run` once on the CI-remediated tree and require every applicable check to pass without further source changes.
 
 ## Step 7: Refresh Review Feedback and Publication State
 
