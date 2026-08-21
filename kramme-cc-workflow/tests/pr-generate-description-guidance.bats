@@ -23,6 +23,8 @@ load 'test_helper/common'
     grep -qF "The \"no Linear ID\" condition is the only non-blocking \`MISSING REQUIREMENT:\` marker." "$skill/SKILL.md"
     grep -qF "Treat every other \`MISSING REQUIREMENT:\` marker" "$skill/SKILL.md"
     grep -qF "including future marker types not yet listed here" "$skill/SKILL.md"
+    grep -qF "almost ELI10" "$skill/SKILL.md"
+    grep -qF "intelligent ten-year-old who does not know the codebase" "$skill/assets/section-templates.md"
     grep -qF "env GH_PROMPT_DISABLED=1 gh repo view" "$skill/references/context-gathering.md"
     grep -qF "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never" "$skill/references/context-gathering.md"
     grep -qF "NONINTERACTIVE_GIT_SSH_COMMAND=\"\${GIT_SSH_COMMAND:-\${GIT_SSH:-ssh}} -oBatchMode=yes\"" "$skill/references/context-gathering.md"

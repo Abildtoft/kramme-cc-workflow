@@ -189,7 +189,9 @@ If Phase 2 found a GitHub PR template, treat it as the body structure contract b
 **ALWAYS** include:
 
 1. **What changed** (1-2 sentences, high-level, user/business-focused)
-   - **PREFER** non-technical language when possible
+   - **ALWAYS** make this opening answer to “What does this PR do?” the simplest part of the description—almost ELI10: use everyday language that an intelligent ten-year-old unfamiliar with the codebase could follow
+   - **ALWAYS** lead with the user-visible or business outcome, not files, classes, APIs, or implementation mechanics
+   - **PREFER** short sentences and familiar words; save unavoidable technical terms and implementation detail for later sections
    - **EXAMPLE**: "Added ability for users to export their survey results to PDF format"
 
 2. **Why it changed** (1-2 sentences, business context)
