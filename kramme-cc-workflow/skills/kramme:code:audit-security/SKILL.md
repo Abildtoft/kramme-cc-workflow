@@ -28,7 +28,7 @@ Use this skill when the question is, “What security surfaces and evidenced ris
 
 - Use `kramme:code:harden-security` while writing or changing security-relevant code.
 - Use `kramme:deps:audit` for a dependency-only vulnerability, staleness, or upgrade-plan audit.
-- Use `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:injection-reviewer` for review-time analysis of a change.
+- Use `kramme:auth-reviewer`, `kramme:data-reviewer`, `kramme:injection-reviewer`, and `kramme:logic-reviewer` for review-time analysis of a change.
 - Use a repository issue workflow to track accepted remediation work.
 
 Do not apply a finding. A useful audit identifies ownership and the next route without turning observation into an unreviewed fix.
@@ -171,7 +171,7 @@ Select the narrowest existing route:
 
 - code or configuration hardening → `kramme:code:harden-security`;
 - dependency inventory or upgrade planning → `kramme:deps:audit`, followed by scoped hardening for approved changes;
-- authentication, data, or injection review of a proposed diff → the matching reviewer agent;
+- authentication, data, injection, or business-logic review of a proposed diff → the matching reviewer agent;
 - one accepted, well-bounded fix → the repository's issue-definition or implementation workflow;
 - multiple related findings or cross-system remediation → a structured planning workflow; and
 - suspected credential exposure → responsible security owner for safe validation and rotation, tracked through an issue workflow.
@@ -219,5 +219,5 @@ Before returning or writing the report, perform a final secret-safety pass. Remo
 ## Maintenance
 
 - Adoption owner: Mikkel Abildtoft.
-- First adoption-review date: 2026-08-21.
+- First adoption-review date: 2026-11-21.
 - At the adoption review, assess usage, false-positive rate, secret-safety incidents, coverage gaps, and whether behavioral fixtures justify a dedicated test suite. Do not add scanners without target-repository evidence for their trust and maintenance cost.
