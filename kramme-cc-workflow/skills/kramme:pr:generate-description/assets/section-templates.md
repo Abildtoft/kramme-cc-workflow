@@ -215,7 +215,6 @@ Do not include local setup or infrastructure failure notes such as missing `node
 
 - [ ] Log in as a new user with no platforms
 - [ ] Verify appropriate message/redirect to onboarding
-
 ```
 
 ## Breaking Changes Section
