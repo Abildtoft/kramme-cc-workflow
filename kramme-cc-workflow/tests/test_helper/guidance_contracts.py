@@ -117,13 +117,41 @@ def check_discovery_result_schema(path: pathlib.Path) -> None:
             )
 
 
-def _has_affirmative_action(text: str, action_pattern: str) -> bool:
+def _action_is_negated(text: str, action_start: int) -> bool:
+    sentence_start = max(text.rfind(delimiter, 0, action_start) for delimiter in (".", ";", "\n"))
+    prefix = text[max(sentence_start + 1, action_start - 96) : action_start]
+    return (
+        re.search(
+            r"\b(?:do|does|did|should|would|could|must|may|might|will|can)\s+"
+            r"(?:not|never)\b(?:\s+\w+){0,4}\s+$",
+            prefix,
+            re.IGNORECASE,
+        )
+        is not None
+        or re.search(r"\b(?:never|without)\b(?:\s+\w+){0,4}\s+$", prefix, re.IGNORECASE) is not None
+    )
+
+
+def _affirmative_action_positions(text: str, action_pattern: str) -> list[int]:
+    positions: list[int] = []
     for match in re.finditer(action_pattern, text, re.IGNORECASE):
-        prefix = text[max(0, match.start() - 24) : match.start()]
-        if re.search(r"\b(?:do not|don't|never|must not|without)\s+$", prefix, re.IGNORECASE):
+        if _action_is_negated(text, match.start()):
             continue
-        return True
-    return False
+        positions.append(match.start())
+    return positions
+
+
+def _affirmative_action_position(text: str, action_pattern: str) -> int | None:
+    positions = _affirmative_action_positions(text, action_pattern)
+    return positions[0] if positions else None
+
+
+def _has_affirmative_action(text: str, action_pattern: str) -> bool:
+    return _affirmative_action_position(text, action_pattern) is not None
+
+
+def _has_negated_action(text: str, action_pattern: str) -> bool:
+    return any(_action_is_negated(text, match.start()) for match in re.finditer(action_pattern, text, re.IGNORECASE))
 
 
 def _explicitly_prohibits(text: str, action_pattern: str) -> bool:
@@ -135,6 +163,150 @@ def _explicitly_prohibits(text: str, action_pattern: str) -> bool:
         )
         is not None
     )
+
+
+def _require_drift_self_update_contract(label: str, text: str) -> None:
+    blocks = [block.strip() for block in re.split(r"(?m)\n\s*\n|(?=^\s*-\s+)", text) if block.strip()]
+    dirty_stop_pattern = (
+        r"(?:\bstop\w*\b[^.;]*\bstaged\b[^.;]*\bunstaged\b[^.;]*\buntracked\b|"
+        r"\bstaged\b[^.;]*\bunstaged\b[^.;]*\buntracked\b[^.;]*\bstop\w*\b)"
+    )
+    clean_committed_pattern = r"\bworktree\b[^.;]*\bclean\b[^.;]*\bcommitted\b[^.;]*\bdrift\b"
+    explain_pattern = r"\bexplain(?:s|ed|ing)?\b[^.;]*\baffected paths?\b"
+    offer_pattern = r"\boffer(?:s|ed|ing)?\b[^.;]*\bupdate\b[^.;]*\bin place\b"
+    approval_pattern = (
+        r"\bwait(?:s|ed|ing)?\b[^.;]*\bexplicit approval\b[^.;]*\bbefore\b"
+        r"[^.;]*\b(?:chang\w*|updat\w*|revis\w*)\b[^.;]*\b(?:it|plan|planning artifact)\b"
+    )
+    replacement_pattern = r"ask\w*\b[^.;]*(?:refreshed|updated|replacement)\b[^.;]*(?:copy|plan)\b"
+    dirty_mutation_pattern = (
+        r"\b(?:continue|updat\w*|refresh\w*|revis\w*)\b[^.;]*"
+        r"\b(?:staged|unstaged|untracked|uncommitted)\b"
+    )
+
+    for block in blocks:
+        dirty_stop = _affirmative_action_position(block, dirty_stop_pattern)
+        clean_committed = _affirmative_action_position(block, clean_committed_pattern)
+        explain = next(
+            (
+                position
+                for position in _affirmative_action_positions(block, explain_pattern)
+                if clean_committed is not None and position > clean_committed
+            ),
+            None,
+        )
+        offer = _affirmative_action_position(block, offer_pattern)
+        approval = _affirmative_action_position(block, approval_pattern)
+        if (
+            dirty_stop is not None
+            and clean_committed is not None
+            and explain is not None
+            and offer is not None
+            and approval is not None
+            and dirty_stop < clean_committed < explain < offer < approval
+            and _explicitly_prohibits(block, replacement_pattern)
+            and not _has_affirmative_action(block, replacement_pattern)
+            and not _has_affirmative_action(block, dirty_mutation_pattern)
+            and not any(
+                _has_negated_action(block, pattern)
+                for pattern in (dirty_stop_pattern, explain_pattern, offer_pattern, approval_pattern)
+            )
+        ):
+            return
+
+    raise ContractFailure(
+        f"{label} must keep the ordered approval-gated in-place update contract in one guidance block"
+    )
+
+
+def check_drift_self_update_guidance(path: pathlib.Path) -> None:
+    _require_drift_self_update_contract("drift self-update guidance", path.read_text(encoding="utf-8"))
+
+
+def _require_standalone_refresh_contract(text: str) -> None:
+    section = _markdown_section(text, r"Refresh a Drifted Standalone Plan")
+    _require_terms(
+        "standalone attachment self-update",
+        section,
+        (
+            "source worktree to be clean",
+            "Uncommitted in-scope drift cannot be represented by `Planned at`",
+            "`TODO`, `READY`, `DRIFTED`, or `STALE`",
+            "`BLOCKED` only for a detached generated plan with named blockers",
+            "Reject any `## Workflow State` or `## Execution Result`",
+            "no local branch, remote branch, or Pull Request",
+            "Never ask the user to provide a refreshed, updated, or replacement plan",
+            "creating only this child when absent",
+            "temporary revision directory",
+            "scope boundary",
+            "dependency label",
+            "execution-label",
+            "canonical-filename",
+            "approval to refresh stale evidence alone does not silently authorize a changed implementation boundary",
+            "new `{plan-source-object-id}` and `{plan-set-id}`",
+            "old source and archive remain unchanged provenance records",
+            "set `{plan-input-mode}=archived`",
+            "fetched `origin/{base-branch}` tip",
+            "`HEAD` to equal that tip",
+            "same commit that later seeds the implementation branch",
+            "repeat the source-hash, plan/index status, lifecycle, clean-worktree, base-tip, "
+            "local-branch, remote-branch, and Pull Request eligibility proofs",
+            "Immediately before identity derivation or publication",
+            "This repetition occurs after any separate boundary confirmation",
+            "pass `git check-ignore`",
+            "never copy secret values",
+            "not a recovery path for `IN_PROGRESS`, `DONE`, `IMPLEMENTED`, `QUALITY_BLOCKED`, "
+            "`COMPLETE`, or `PUBLISHED_BLOCKED` state",
+            "never publish or treat a partial archive as valid",
+            "every retained temporary or staging path",
+            "stop without product edits",
+        ),
+    )
+
+    required_actions = (
+        ("require a clean source worktree", r"\brequire\b[^.;]*\bsource worktree\b[^.;]*\bclean\b"),
+        (
+            "require the fetched execution base",
+            r"\brequire\b[^.;]*\bHEAD\b[^.;]*\bequal\b[^.;]*\btip\b",
+        ),
+        (
+            "wait for refresh approval",
+            r"\bwait\b[^.;]*\bexplicit approval\b[^.;]*\bbefore\b[^.;]*\bwriting\b",
+        ),
+        (
+            "repeat eligibility proofs after approval",
+            r"\brepeat\b[^.;]*\bsource-hash\b[^.;]*\bPull Request\b[^.;]*\bproofs\b",
+        ),
+        (
+            "require ignored artifact paths",
+            r"\brequire\b[^;]*\bpass\b[^;]*\bgit check-ignore\b",
+        ),
+        (
+            "rerun scope closure",
+            r"\brerun\b[^.;]*\bcomplete scope-closure procedure\b",
+        ),
+        (
+            "wait for boundary confirmation",
+            r"\bwait\b[^.;]*\bexplicit confirmation\b[^.;]*\bbefore publishing\b",
+        ),
+        (
+            "report retained diagnostic paths",
+            r"\breport\b[^.;]*\bevery retained temporary or staging path\b",
+        ),
+        ("stop without product edits", r"\bstop\b[^.;]*\bwithout product edits\b"),
+        ("restart validation", r"\brestart\b[^.;]*\bStep 2\b"),
+    )
+    for action_label, action_pattern in required_actions:
+        if not _has_affirmative_action(section, action_pattern) or _has_negated_action(section, action_pattern):
+            raise ContractFailure(f"standalone attachment self-update must affirmatively {action_label}")
+
+    replacement_pattern = r"ask\w*\b[^.;]*(?:refreshed|updated|replacement)\b[^.;]*(?:copy|plan)\b"
+    if not _explicitly_prohibits(section, replacement_pattern) or _has_affirmative_action(section, replacement_pattern):
+        raise ContractFailure("standalone attachment self-update must prohibit replacement-plan requests")
+
+
+def check_standalone_refresh_guidance(path: pathlib.Path) -> None:
+    _require_standalone_refresh_contract(path.read_text(encoding="utf-8"))
 
 
 def check_discovery_failure_boundary(path: pathlib.Path) -> None:
@@ -333,6 +505,7 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
     plan_template = read("skills/kramme:code:breakdown-findings/assets/plan-template.md")
     generated_index = read("skills/kramme:code:breakdown-findings/assets/index-template.md")
     generation_checks = read("skills/kramme:code:breakdown-findings/references/generation-checks.md")
+    plan_requirements = read("skills/kramme:code:breakdown-findings/references/plan-content-requirements.md")
     scope_closure = read("skills/kramme:code:breakdown-findings/references/scope-closure.md")
     reconcile = read("skills/kramme:code:breakdown-findings/references/reconcile-workflow.md")
     plan_to_pr = read("skills/kramme:code:plan-to-pr/SKILL.md")
@@ -418,6 +591,51 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
             "Repository search / references",
             "Path disposition",
             "modify / verify-only / irrelevant",
+        ),
+    )
+    for label, text in (
+        ("generated plan drift self-update", plan_template),
+        ("generated index drift self-update", generated_index),
+        ("plan-content drift self-update", plan_requirements),
+        ("generation-check drift self-update", generation_checks),
+    ):
+        _require_drift_self_update_contract(label, text)
+    _require_standalone_refresh_contract(attachment_input)
+    _require_terms(
+        "standalone stale-status reachability",
+        attachment_input,
+        (
+            "Accept `DRIFTED` or `STALE` only as lifecycle-free pre-execution input",
+            "Require the current standalone plan/index status to be `TODO`, `READY`, `DRIFTED`, or `STALE`",
+            "accept matching plan/index status `DRIFTED` or `STALE` only as pre-execution input",
+            "replace a `DRIFTED` or `STALE` status with `TODO`, `READY`, or the validated "
+            "detached-plan `BLOCKED` state",
+        ),
+    )
+    plan_validation = _markdown_section(plan_to_pr, r"Step 2: Validate the Plan Set")
+    _require_terms(
+        "plan-to-PR standalone self-update routing",
+        plan_validation,
+        (
+            "Refresh a Drifted Standalone Plan",
+            "wait for explicit approval",
+            "new immutable source snapshot",
+            "content-derived archive",
+            "Never rewrite or delete the original attachment or established archive",
+            "never ask the user to provide a refreshed plan",
+        ),
+    )
+    prerequisite_validation = _markdown_section(plan_to_pr, r"Step 4: Establish the Plan Branch")
+    _require_terms(
+        "detached prerequisite refresh routing",
+        prerequisite_validation,
+        (
+            "absent because the prerequisite has not landed",
+            "retry after the prerequisite lands",
+            "fetched-base evidence",
+            "route an otherwise eligible lifecycle-free standalone plan through `Refresh a Drifted Standalone Plan`",
+            "never request replacement input",
+            "do not ask for `PR_PLAN_INDEX.md`",
         ),
     )
     _require_terms(
@@ -515,7 +733,6 @@ def check_detached_plan_compatibility(root: pathlib.Path) -> None:
         ),
     )
 
-    plan_validation = _markdown_section(plan_to_pr, r"Step 2: Validate the Plan Set")
     _require_terms(
         "attachment-first input routing",
         plan_to_pr,
@@ -738,6 +955,8 @@ CHECKS: dict[str, Check] = {
     "issue-intake-state": check_issue_intake_state,
     "issue-stage-order": check_issue_stage_order,
     "review-gate-order": check_review_gate_order,
+    "drift-self-update-guidance": check_drift_self_update_guidance,
+    "standalone-refresh-guidance": check_standalone_refresh_guidance,
     "detached-plan-compatibility": check_detached_plan_compatibility,
 }
 
