@@ -24,12 +24,12 @@ This skill is deliberately shaped differently from the other review skills:
 
 ### Step 1: Parse Arguments
 
-Accept only `--base <branch>`, `--requirements <text>`, and `--inline`:
+Accept only `--base <branch>`, `--inline`, and the optional sentinel `--requirements <text>`:
 
-1. `--base` may appear at most once and must be followed by a non-flag value. Store it as `BASE_BRANCH_OVERRIDE`.
-2. `--requirements` may appear at most once and must be followed by a non-empty, non-flag value. Store it as `TASK_REQUIREMENTS`. Users can quote multi-word text.
-3. `--inline` may appear at most once. Set `INLINE_MODE=true` when present and `false` otherwise.
-4. On duplicate flags, unknown flags, positional arguments, or a missing flag value, show `Usage: /kramme:pr:overengineering-review [--base <branch>] [--requirements <text>] [--inline]` and stop.
+1. Before the sentinel, `--base` may appear at most once and must be followed by a non-flag value. Store it as `BASE_BRANCH_OVERRIDE`.
+2. Before the sentinel, `--inline` may appear at most once. Set `INLINE_MODE=true` when present and `false` otherwise.
+3. `--requirements` may appear at most once. When present, it is the final control token: treat every character after it as one non-empty inert `TASK_REQUIREMENTS` block, including whitespace, quotes, newlines, and flag-shaped text. Do not parse quoting inside the block or reinterpret any later text as flags.
+4. On duplicate flags, unknown flags, positional arguments before the sentinel, or a missing requirements block, show `Usage: /kramme:pr:overengineering-review [--base <branch>] [--inline] [--requirements <text>]` and stop.
 
 ### Step 2: Resolve Base Branch and Collect the Diff
 
