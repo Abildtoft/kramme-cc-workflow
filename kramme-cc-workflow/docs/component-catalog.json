@@ -333,6 +333,11 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:resolve-review/SKILL.md"
     },
     {
+      "name": "kramme:pr:review-convergence",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md"
+    },
+    {
       "name": "kramme:pr:stack",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md"

@@ -246,6 +246,7 @@
         "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
         "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:complete-work/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:issue-to-pr/SKILL.md",
@@ -278,7 +279,10 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-issue-to-pr-guidance.bats",
-      "skills": ["kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md"]
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md"
+      ]
     },
     {
       "kind": "guidance",
