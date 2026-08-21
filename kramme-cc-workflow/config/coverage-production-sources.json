@@ -225,9 +225,7 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/docs-sync-release-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/kramme:docs:sync-release/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/kramme:docs:sync-release/SKILL.md"]
     },
     {
       "kind": "guidance",
