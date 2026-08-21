@@ -15,7 +15,7 @@ Produce one read-only, evidence-backed security posture report. Model the reposi
 Accept either no arguments or exactly `--output <repo-relative-path>`.
 
 - With no arguments, return the report inline and write nothing.
-- With `--output`, require a repository-relative Markdown path whose canonical destination stays inside the repository, every existing parent to be a real non-symlink directory, and the destination to be absent or a non-symlink regular file with exactly one hard link. Reject absolute paths, `..` segments, Git-administrative paths, multi-linked destinations, and replacement of unrelated source or documentation files.
+- With `--output`, require a repository-relative Markdown path whose canonical destination stays inside the repository, every parent directory to already exist as a real non-symlink directory, and the destination to be absent or a non-symlink regular file with exactly one hard link. Reject absolute paths, `..` segments, Git-administrative paths, multi-linked destinations, and replacement of unrelated source or documentation files.
 - Replace an existing file only when safe inspection identifies it as an earlier `# Security Posture Audit` output and the user explicitly requested or confirms replacement. Before writing to a tracked or non-ignored destination, warn that the report may be committed or published and require confirmation.
 - Immediately before writing, repeat the containment, parent-symlink, destination-type, link-count, report-identity, and overwrite checks. Use exclusive or no-follow creation when the native tool supports it; do not add custom filesystem machinery to emulate unavailable primitives. If path state changes, a safe write mode is unavailable for the observed destination risk, or the write fails, is incomplete, or cannot be verified, stop and report that no reliable artifact was created. Do not claim success or silently fall back to inline output. Create only that report after the audit.
 - Reject every other flag or positional argument.
@@ -111,7 +111,7 @@ List every observed crossing between actors, processes, stores, networks, build 
 - source and destination;
 - data or control crossing the boundary;
 - trust change and responsible identity;
-- validation, authentication, authorization, CSRF protection for cookie-authenticated state changes, integrity, confidentiality, availability, and logging controls;
+- validation, authentication, authorization, CSRF protection for state changes authenticated with browser-ambient credentials such as cookies or HTTP authentication, integrity, confidentiality, availability, and logging controls;
 - concrete evidence; and
 - confidence and coverage limits.
 
@@ -149,7 +149,7 @@ Assign every candidate exactly one state:
 - `COVERAGE GAP`: the surface matters but evidence is unavailable, unsafe to inspect, or outside repository state.
 - `NOT A FINDING`: the candidate is disproven, unreachable, protected by an observed control, or otherwise lacks the claimed security effect. Test-only material qualifies only when safe evidence proves it is synthetic or inert and does not cross a CI, release, runtime, credential, or sensitive-data boundary.
 
-Keep `NOT A FINDING` items out of the ranked findings list. Preserve a short filtered-candidates section so readers can understand material false positives.
+Route `COVERAGE GAP` items only to `## Coverage Gaps`; keep them out of the ranked findings list. Keep `NOT A FINDING` items out of the ranked findings list and preserve a short filtered-candidates section so readers can understand material false positives.
 
 For `VERIFIED` and `SUSPECTED`, assign:
 

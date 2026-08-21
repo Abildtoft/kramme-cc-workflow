@@ -27,3 +27,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-08-21
     baseline_hash: "sha256:ce4d5cfab02daa66c18e88522d7d97d3a3fd815fceb9bda766d43400fa430087"
+  - id: owasp-csrf-testing
+    url: https://raw.githubusercontent.com/OWASP/wstg/master/document/4-Web_Application_Security_Testing/06-Session_Management_Testing/05-Testing_for_Cross_Site_Request_Forgery.md
+    title: "OWASP Web Security Testing Guide - Testing for Cross Site Request Forgery"
+    rationale: "The browser-ambient credential model, including cookies and HTTP authentication, informs the trust-boundary requirement to assess CSRF beyond cookie-authenticated state changes."
+    usage: inspiration
+    last_reviewed_at: 2026-08-21
+    baseline_hash: "sha256:1ac48d5cee3da8fbc9dd014c40e2788ac619090024daea09364ab877e45a1d79"
