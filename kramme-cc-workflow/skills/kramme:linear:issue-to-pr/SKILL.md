@@ -79,7 +79,7 @@ Before allowing the implementation workflow to mutate a branch, perform a read-o
     - Re-fetch `{issue-id}`, resolve its current state with the same immutable-ID-first procedure from Step 7, and require the same `{issue-update-id}`, team identifier, `{issue-branch}`, state ID, and state type shown at the gate.
     - If any compared value changed, restart the read-only preflight and state gate; never apply a confirmation to a newer issue state.
     - If the freshly verified issue is already in `{target-status-id}`, treat the transition as satisfied and do not issue a redundant write.
-    - Otherwise use the available Linear issue-update operation (Claude Code `mcp__linear__update_issue`; Codex `save_issue`) to update only its status: pass `id: {issue-update-id}` and `state: {target-status-id}` and no other mutable field. Do not resend or rewrite title, description, labels, assignee, project, or other fields.
+    - Otherwise use the available Linear issue-update operation (`save_issue` with `id`; Claude Code `mcp__linear__save_issue`) to update only its status: pass `id: {issue-update-id}` and `state: {target-status-id}` and no other mutable field. Do not resend or rewrite title, description, labels, assignee, project, or other fields.
     - After a successful write, read the issue back, resolve its status with the same immutable-ID-first procedure from Step 7, and require the resolved status ID to equal `{target-status-id}` and its type to be `started`. If the write or verification fails, stop before delegated branch setup and report both `{confirmed-state-name}` and `{target-status-name}`.
 
 Invoke `kramme:linear:issue-implement` with `{issue-id} --auto`.

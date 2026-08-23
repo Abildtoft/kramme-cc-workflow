@@ -1,6 +1,6 @@
 # Interview Rounds
 
-Five-round interview structure for comprehensive issue definition.
+Five-round interview structure for comprehensive issue definition. Ask every question with the structured question tool as defined in `SKILL.md`; group each round into one to two calls.
 
 ## Round 1: Problem & Value (Most Important)
 
@@ -79,14 +79,17 @@ Five-round interview structure for comprehensive issue definition.
 
 **Questions to cover:**
 
-- Which team should own this issue? (present options from Phase 2)
-- What labels apply? (present options from Phase 2)
+- Which team should own this issue? (confirm the team resolved in Phase 2)
+- What labels apply? (present the team's labels from Phase 2)
 - Should this be associated with a project?
 - What priority level is appropriate?
-- Are there related issues (blockers, related work)?
+- Should this go into a cycle? (only when the team uses cycles; offer the current and next cycle)
+- Should it be assigned now? (offer "me", leave unassigned, or a named person; default unassigned)
+- Confirm the related, blocking, and blocked issues gathered in Phase 3 — these become Linear relations, not just prose
 
 **Use predefined options:**
 
 - Present actual team names from `list_teams`
-- Present actual labels from `list_issue_labels`
-- Present active projects from `list_projects`
+- Present actual labels from `list_issue_labels` for the team
+- Present active projects from `list_projects` and cycles from `list_cycles` for the team
+- Skip cycle and assignee questions silently when the team has no cycles or the user is defining on someone else's behalf
