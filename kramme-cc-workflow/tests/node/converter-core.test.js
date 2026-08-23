@@ -668,6 +668,34 @@ test("transformer preserves exhaustive question tooling in the canonical resourc
   assert.doesNotMatch(output, /AskUserQuestion/);
 });
 
+test("transformer preserves skill-wide structured question tooling in issue-define", async () => {
+  const resource = path.join(
+    __dirname,
+    "..",
+    "..",
+    "skills",
+    "kramme:linear:issue-define",
+    "SKILL.md",
+  );
+  const input = await readText(resource);
+  const output = transformContentForCodex(input);
+
+  assert.match(
+    output,
+    /Use `request_user_input` for every interview question, classification prompt, duplicate decision, and draft approval when that tool is available in the active Codex mode\./,
+  );
+  assert.match(
+    output,
+    /Do not switch to plain chat while `request_user_input` is available\./,
+  );
+  assert.match(
+    output,
+    /If `request_user_input` is unavailable, ask directly in chat/,
+  );
+  assert.match(output, /structured question tool/);
+  assert.doesNotMatch(output, /AskUserQuestion|direct chat question/);
+});
+
 test("transformer rewrites Codex-supported team controls without changing code identifiers", () => {
   const input = [
     "Monitor task progress via TaskList.",

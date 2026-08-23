@@ -39,6 +39,7 @@ Map the handoff through the normal auto-create flow:
 - In `light` question mode, ask no clarification when the handoff is complete; the ordinary two-question maximum still applies when a material ambiguity remains.
 - In `exhaustive` question mode, require `ask_all_relevant = true` from `--ask` and follow **Exhaustive Relevant Questions** below. A mismatched flag and handoff mode is `Action: blocked`; do not silently downgrade the interview.
 - Compose the normal tracker-native body shape below. Summarize sequencing, repository constraints, evidence leads, provenance, and anchor/exclusion context under `Context`; do not expose the handoff wrapper or instructions.
+- Map `dependencies.blockedBy` entries that are concrete Linear identifiers to the `blockedBy` field and `anchor.identifier` (when `anchor.role` is `existing`) to `relatedTo`. Entries that are prerequisite outcomes or future execution labels without an identifier stay prose-only under `Context`.
 - Do not add hidden workflow metadata to the Linear title, description, or comments.
 - Never put agent workflow names, skill identifiers, slash commands, or instructions to invoke automation into the Linear title, description, or comments.
 - Return the structured caller result below instead of terminating the parent batch silently.
@@ -49,10 +50,10 @@ Map the handoff through the normal auto-create flow:
 2. Use duplicate findings from Phase 3:
    - Phase 3 already handles the strong-duplicate decision. If execution reaches this reference, treat that decision as resolved and do not ask again.
    - Keep partial overlaps, related issues, and any user-approved duplicate context for the `Context` section.
-3. If `ask_all_relevant = false`, ask at most two clarifying questions, only when the answer materially changes the ticket. If `ask_all_relevant = true`, complete **Exhaustive Relevant Questions** instead; the two-question cap does not apply.
+3. If `ask_all_relevant = false`, ask at most two clarifying questions with the structured question tool, only when the answer materially changes the ticket. If `ask_all_relevant = true`, complete **Exhaustive Relevant Questions** instead; the two-question cap does not apply.
 4. Draft the title, body, and metadata.
-5. Show the draft and ask for approval. For a breakdown handoff, if approval is declined, return `Action: approval-declined` to the caller.
-6. Create the issue through the available Linear create tool, read it back, and record whether its body contains the planned dependency direction.
+5. Show the draft and ask for approval with the structured question tool (approve, refine, or cancel). For a breakdown handoff, if approval is declined, return `Action: approval-declined` to the caller.
+6. Create the issue with `save_issue` (see **Create Tool Mapping**), passing structured relations as well as prose. Read it back and record whether its body contains the planned dependency direction.
 7. Return the Linear issue ID, URL, title, and applied metadata.
 
 For a breakdown handoff, return this exact structure after any terminal outcome:
@@ -120,18 +121,18 @@ If the user input already covers these, ask no questions in light mode. Exhausti
 
 ## Body Shape
 
-Use only sections that have useful content. Do not include empty placeholder headings.
+Use only sections that have useful content. Do not include empty placeholder headings. Headings match the comprehensive template in `assets/comprehensive-template.md` so auto-created and interviewed issues read the same way.
 
 ```markdown
 ## Problem
 
 {1-3 sentences describing the user-visible problem, opportunity, or request.}
 
-## Requested outcome
+## Goal
 
 {What should be true after this issue is resolved.}
 
-## Acceptance criteria
+## Acceptance Criteria
 
 - [ ] {Behavioral criterion}
 - [ ] {Behavioral criterion}
@@ -141,7 +142,7 @@ Use only sections that have useful content. Do not include empty placeholder hea
 
 {Relevant notes from user input, supplied files, duplicate search, related issues, or constraints.}
 
-## Out of scope
+## Out of Scope
 
 {Boundaries that keep the ticket focused, if known.}
 ```
@@ -149,11 +150,11 @@ Use only sections that have useful content. Do not include empty placeholder hea
 For bugs, include reproduction details when known:
 
 ```markdown
-## Current behavior
+## Current Behavior
 
 {What happens now.}
 
-## Expected behavior
+## Expected Behavior
 
 {What should happen instead.}
 
@@ -175,12 +176,13 @@ For bugs, include reproduction details when known:
 
 ## Create Tool Mapping
 
-Use the available Linear create operation:
+Create with `save_issue` without `id` (Claude Code `mcp__linear__save_issue`; Codex `save_issue`):
 
-- Claude Code: `mcp__linear__create_issue` with `title`, `description`, `team`, and confirmed `labels`, `priority`, or `project`.
-- Codex: `save_issue` without `id`, with `title`, `description`, `team`, and confirmed `labels`, numeric `priority`, or `project`.
+- Required: `title`, `description`, `team`.
+- When confirmed: `labels` (full set), `project`, numeric `priority`, `cycle`, `assignee`.
+- Relations: `relatedTo`, `blockedBy`, `blocks` for identifiers gathered in Phase 3 or mapped from a handoff; `duplicateOf` when the user chose to file alongside a known duplicate.
 
-Codex priority mapping:
+Priority mapping:
 
 | User wording                     | Linear priority |
 | -------------------------------- | --------------- |

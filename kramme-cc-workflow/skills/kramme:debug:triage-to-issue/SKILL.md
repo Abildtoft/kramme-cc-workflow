@@ -47,7 +47,7 @@ Emit `PLAN: triage to issue — investigate, design TDD plan, draft, gate, file`
 
 Probe in order:
 
-1. Check for an available Linear issue creation operation: Claude Code `mcp__linear__create_issue`, or Codex `save_issue` without `id`.
+1. Check for an available Linear issue creation operation: `save_issue` without `id` (Claude Code `mcp__linear__save_issue`; Codex `save_issue`).
 2. Check for `siw/OPEN_ISSUES_OVERVIEW.md` in the repo root.
 
 Decision table:
@@ -202,7 +202,7 @@ If the user passed `--yes` or `--auto` and the grep finds prose matches, halt an
 
 Branch on the sink chosen in Phase 2.
 
-**Linear:** before creating, search the team for an open issue with the same title. If one exists, surface it and ask before filing a duplicate; under `--yes` / `--auto`, skip creation and report the existing issue instead of duplicating. Otherwise call the available Linear create operation: Claude Code `mcp__linear__create_issue`, or Codex `save_issue` without `id`. Pass title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
+**Linear:** before creating, search the team for an open issue with the same title. If one exists, surface it and ask before filing a duplicate; under `--yes` / `--auto`, skip creation and report the existing issue instead of duplicating. Otherwise call the available Linear create operation: `save_issue` without `id` (Claude Code `mcp__linear__save_issue`; Codex `save_issue`). Pass title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
 
 **SIW:** follow the SIW-owned issue creation/update protocol from `kramme:siw:issue-define`. Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
 

@@ -471,6 +471,10 @@ function rewriteCodexAgentFileReferences(text, knownAgentSkills) {
 /** @type {Array<[RegExp, string]>} */
 const CODEX_TOOL_NAME_SUBSTITUTIONS = [
   [
+    /Use the `AskUserQuestion` tool for every interview question, classification prompt, duplicate decision, and draft approval\./g,
+    "Use `request_user_input` for every interview question, classification prompt, duplicate decision, and draft approval when that tool is available in the active Codex mode. Use calls of one to three short questions with two or three concrete options per question; the automatically provided Other choice allows a free-form answer.",
+  ],
+  [
     /Use the `AskUserQuestion` tool for every exhaustive round and adaptive follow-up\./g,
     "Use `request_user_input` for every exhaustive round and adaptive follow-up when that tool is available in the active Codex mode. Use calls of one to three short questions with two or three concrete options per question; the automatically provided Other choice allows a free-form answer.",
   ],

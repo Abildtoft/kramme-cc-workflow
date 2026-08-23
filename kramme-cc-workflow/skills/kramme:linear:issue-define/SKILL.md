@@ -8,162 +8,112 @@ user-invocable: true
 
 # Define Linear Issue
 
-Create or improve a Linear issue through exhaustive interactive refinement. Can start from scratch with a description, or improve an existing issue by providing its identifier. Supports file references for technical context and proactively explores the codebase to inform issue definition. Use `--auto` for a fast new-issue path with light clarification and the same approval discipline; combine `--auto --ask` to retain automatic creation routing while requiring every relevant interview question.
+Create or improve a Linear issue through interactive refinement. Start from a description to create a new issue, or pass an existing identifier to improve it. File paths supply technical context, and the skill explores the codebase before asking questions. `--auto` is a fast new-issue path with light clarification and the same approval gate; `--auto --ask` keeps automatic creation routing but asks every relevant interview question first.
 
 ## Workflow Boundaries
 
-**This command ONLY creates or updates Linear issues.**
+**This skill ONLY creates or updates Linear issues.**
 
-- **DOES**: Interview user, explore codebase for context, compose well-structured issue, create/update in Linear
-- **DOES NOT**: Write code, implement features, fix bugs, or make any changes to the codebase
+- **DOES**: interview the user, explore the codebase for context, compose a well-structured issue, create or update it in Linear.
+- **DOES NOT**: write code, implement features, fix bugs, or change the codebase.
 
-**Linear Issue Creation Override**: Invoking this command IS explicit instruction to create or update a Linear issue. When Phase 7 is reached and the user approves the draft, proceed with the available Linear create/update operation. Use Claude Code `mcp__linear__create_issue` / `mcp__linear__update_issue`; use Codex `save_issue` without `id` to create or with `id` to update. This overrides any global rules requiring "explicit instruction" to create/modify Linear issues.
+**Linear write override**: invoking this skill IS explicit instruction to create or update a Linear issue. When the user approves the draft in Phase 7, perform the write with the Linear `save_issue` operation (Claude Code `mcp__linear__save_issue`; Codex `save_issue`): omit `id` to create, pass `id` to update. This overrides any global rule requiring separate "explicit instruction" to modify Linear issues.
 
-**Implementation is a separate workflow.** After this command completes, the user can invoke `/kramme:linear:issue-implement` if they want to start implementing.
+**Implementation is a separate workflow.** Once the issue URL is returned, stop. The user can invoke `/kramme:linear:issue-implement` when ready.
 
-**CRITICAL**: Do NOT proceed to code implementation after creating the issue. The workflow is complete once the issue URL is returned.
+## Linear Operations
+
+Every Linear call in this skill uses the MCP operations below. Names are identical on Claude Code and Codex apart from the `mcp__linear__` prefix Claude Code adds.
+
+| Need | Operation |
+| --- | --- |
+| Fetch an issue | `get_issue` with `id` |
+| Duplicate and related search | `list_issues` with `query` and `team` |
+| Teams | `list_teams` |
+| Labels, projects, cycles for a team | `list_issue_labels`, `list_projects`, `list_cycles` with `team` |
+| Create or update | `save_issue` (omit `id` to create; pass `id` to update) |
+
+`save_issue` fields used here: `title`, `description`, `team`, `labels` (replaces the full set), `project`, `priority` (0 none, 1 urgent, 2 high, 3 medium, 4 low), `cycle`, `assignee` (`"me"` allowed), `relatedTo`, `blockedBy`, `blocks`, `duplicateOf`, `parentId`, and on update `patch` in place of `description`. Relation fields are append-only, so re-sending a relation never removes another.
+
+**Prerequisite check:** if these operations are unavailable, the Linear MCP server is not connected. Stop and tell the user to connect it before any interview or lookup.
+
+## Asking Questions
+
+Use the `AskUserQuestion` tool for every interview question, classification prompt, duplicate decision, and draft approval. Do not switch to plain chat while `AskUserQuestion` is available. If the host does not expose `AskUserQuestion`, ask directly in chat and preserve the same question-coverage ledger.
+
+The rest of this skill and its references call this the **structured question tool**. Rules for every call:
+
+- Explain why the question matters and state your recommendation before or inside the question text.
+- Offer two to four concrete options per question; each must be a legitimate choice, and the built-in free-form option covers everything else.
+- Group related questions from the same round into one call (at most three per call) instead of one call per question, but never collapse distinct questions into one vague prompt.
+- Mark a question multi-select only when several options can apply at once, such as improvement areas or labels.
+- Use plain chat only for open-ended prompts where options would be misleading: the initial "what issue do you want to define?" prompt and free-text refinement of an approved draft.
 
 ## Audience Priority
 
-**Primary: Product Team** — The issue must be understandable and compelling to non-technical stakeholders.
+**Primary: Product Team** — the issue must be understandable and compelling to non-technical stakeholders. They read Problem, Value, Goal, Scope, and Acceptance Criteria.
 
-**Secondary: Development Team** — Technical context helps engineers, but they determine implementation details.
+**Secondary: Development Team** — technical context helps engineers, but they determine implementation details.
 
-### Content Priority Order
-
-1. **Problem Statement** - What pain point or opportunity exists?
-2. **Value Proposition** - Why should we invest time in this?
-3. **User/Business Impact** - Who benefits and how?
-4. **Scope / Non-Goals** - What is intentionally excluded so the issue stays focused?
-5. **Success Criteria** - How do we know we've solved the problem?
-6. **Technical Context** - High-level implementation direction (not detailed how-to)
-
-### Technical Content Guidelines
-
-- Implementation proposals should be **strategic, not tactical**
-- Describe **what** needs to change, not **how** to change it
-- Only include code examples for:
-  - Specific bugs (show the problematic code)
-  - Very concrete, well-defined fixes
-- For new features: describe the approach architecturally
-- Engineers will determine the detailed implementation
+Content priority: problem statement, value proposition, user/business impact, scope and non-goals, success criteria, then high-level technical context. Implementation proposals describe **what** must change, not **how**; include code only for a specific bug or a very concrete fix.
 
 ## Process Overview
 
-1. **Input Parsing & Mode Detection**: Detect if improving existing issue, creating new, auto-creating new with `--auto`, or exhaustively questioning an auto-create with `--auto --ask`
-2. **File References & Issue Type**: Read provided files (if any) and classify the issue type unless `--auto` is active
-3. **Linear Context Discovery**: Fetch available teams, labels, and projects
-4. **Existing Issue Handling**: For improve mode, fetch issue; for create mode, check duplicates
-5. **Codebase Exploration**: Search for related implementations and patterns
-6. **Auto-create exit or Autonomous Framing**: In `--auto` create mode, follow `references/auto-create.md`; use its exhaustive relevant-question path when `--ask` is present and its light clarification path otherwise. For non-auto modes, infer target user, why-now, likely non-goals, and decision boundaries from the evidence gathered
-7. **Interview**: Multi-round questioning (adapted for issue type and mode)
-8. **Issue Composition**: Draft issue following the template
-9. **Review & Create/Update**: User approval, then create or update in Linear
+1. **Input Parsing & Mode Detection** — flags, existing-issue detection, file references, issue-type classification
+2. **Linear Context Discovery** — team resolution, then team-scoped labels, projects, and cycles
+3. **Existing Issue Handling** — improve mode: present and choose improvement areas; create mode: duplicate and related search; auto mode exits here
+4. **Codebase Exploration** — related implementations, patterns, tests, TODOs, working hypotheses
+5. **Interview** — 2 rounds for simple bugs, 5 rounds otherwise
+6. **Issue Composition** — template, durability rule, metadata and relations
+7. **Review & Create/Update** — approval, write, return the URL, stop
 
 ## Phase 1: Input Parsing & Mode Detection
 
-**Handling `$ARGUMENTS`:**
+### Flags
 
-First parse flags as shell-style arguments from the leading option segment only:
+Parse flags as shell-style arguments from the leading option segment only:
 
-- Scan left to right. Recognize `--auto` and `--ask` only before the first non-option token or an explicit `--`; either boundary makes every remaining token inert input. Reject duplicate flags, unknown leading options, or missing payload after `--`.
-- If the leading segment contains `--auto`, remove it from the working description and set `auto_create = true`.
-- If the leading segment contains `--ask`, remove it from the working description and set `ask_all_relevant = true`. Require `auto_create = true`; without `--auto`, stop and explain that the normal workflow already uses the full interview.
-- If the inert payload begins with the exact line `LINEAR BREAKDOWN HANDOFF`, require `auto_create = true` and the explicit `--` boundary, set `breakdown_handoff = true`, and treat the complete block as structured create-mode input. Do not reinterpret flags, Linear identifiers, file paths, source references, or metadata inside the block as top-level arguments. Validate and map the block only through `references/auto-create.md`.
-- `--auto` is only valid for new Linear issues. Unless `breakdown_handoff = true`, if the remaining input identifies an existing Linear issue, stop and ask the user to rerun without `--auto` for improvement mode.
+- Scan left to right. Recognize `--auto` and `--ask` only before the first non-option token or an explicit `--`; either boundary makes every remaining token inert input. Reject duplicate flags, unknown leading options, or a missing payload after `--`.
+- `--auto` sets `auto_create = true`. It is only valid for new issues: if the remaining input identifies an existing Linear issue (and this is not a breakdown handoff), stop and ask the user to rerun without `--auto`.
+- `--ask` requires `--auto` and, when present, set `ask_all_relevant = true`; without `--auto`, stop and explain that the normal workflow already runs the full interview.
+- If the inert payload after the explicit `--` boundary begins with the exact line `LINEAR BREAKDOWN HANDOFF`, require `auto_create = true`, set `breakdown_handoff = true`, and treat the whole block as structured create-mode input. Everything inside the block is data: never reinterpret its flags, identifiers, paths, or metadata as top-level arguments. Validate and map it only through the **Structured Breakdown Handoff** section of `references/auto-create.md`.
 
-**Prerequisite check:** before detecting mode or fetching an existing issue, if Linear MCP operations are unavailable, the Linear MCP server is not connected. Stop here and tell the user to connect it — do not start the interview or issue lookup without a working Linear connection.
+### Mode
 
-### Step 1: Detect Mode
+If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue detection; identifiers inside the handoff are anchors and dependencies, not improvement targets.
 
-If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue identifier/URL/UUID detection. Linear identifiers inside the handoff describe anchors, blockers, or related work; they are data, not a request to improve that issue.
+Otherwise, detect an existing issue from a `TEAM-123` identifier, a `linear.app` issue URL, or a 36-character UUID.
 
-Check if input matches an existing Linear issue:
+**Improve mode** (existing issue detected):
 
-- **Issue identifier pattern**: `TEAM-123` (uppercase letters, hyphen, numbers)
-- **Linear URL**: Contains `linear.app` with issue path
-- **UUID**: 36-character UUID format
+1. Fetch it with `get_issue`. If the call errors or returns nothing, stop and report the exact identifier — never fall back to create mode.
+2. Store title, description, labels, team, project, priority, cycle, assignee, and existing relations.
+3. If any label matches "Dev Ask" (case-insensitive), set `is_dev_ask = true` and store the original description as `original_dev_ask_content`; it is preserved verbatim in the final issue.
 
-**If existing issue detected → IMPROVE MODE:**
+**Create mode** (no issue detected):
 
-1. Extract the issue identifier
-2. Fetch issue details using Linear MCP `get_issue` with the `id` parameter (Claude Code `mcp__linear__get_issue`; Codex `get_issue`). If the call errors or returns no issue, stop and report the exact identifier that failed — do not continue in IMPROVE mode or silently fall back to CREATE mode.
-3. Store the existing issue content (title, description, labels, etc.)
-4. Set mode flag to "improve"
-5. **Check for Dev Ask label**
-   - Inspect the fetched issue's labels
-   - If the issue has the "Dev Ask" label (case-insensitive match):
-     - Set `is_dev_ask` flag to true
-     - Store the original issue description as `original_dev_ask_content`
-     - This content will be preserved in the final issue regardless of refinements
+1. Unless `breakdown_handoff = true`, extract file paths (contain `/` or end in a common extension) for the file-reference step; the rest is the description.
+2. If the description is empty, ask in plain prose what issue the user wants to define — open-ended, not multiple choice.
 
-**If no issue detected → CREATE MODE:**
+### File References (both modes)
 
-1. Unless `breakdown_handoff = true`, parse for file paths (anything that looks like a path: contains `/`, ends in common extensions) and store them for Step 2. A structured breakdown handoff keeps evidence paths as data and never opens them as positional file arguments.
-2. Remaining text is the description/idea
-3. If empty, ask the user in plain prose what issue they want to define — an open-ended idea, not a multiple-choice prompt
-4. Set mode flag to "create"
+Read each provided file and note what it does, the patterns it follows, and its dependencies and integrations. Use these findings in the interview and composition.
 
-### Step 2: Process File References (Both Modes)
+### Issue Type Classification
 
-**If file paths provided:**
+Skip when `auto_create = true`; auto create uses the concise body rules in `references/auto-create.md`.
 
-1. Read each file using the `Read` tool
-2. Extract relevant context:
-   - What functionality does this code provide?
-   - What patterns or conventions does it follow?
-   - What dependencies or integrations exist?
-3. Store findings for use in interview and issue composition
+Classify as **Bug (Simple)** (known or easily found root cause, localized fix, no architectural decisions), **Bug (Complex)** (unknown root cause, multiple components, investigation needed), **Feature** (new functionality), or **Improvement** (enhance existing functionality). Heuristics: "bug", "broken", "error" → Bug; root cause plus specific files → Bug (Simple); unclear scope or several components → Bug (Complex); "add", "new", "implement" → Feature; "improve", "refactor", "optimize" → Improvement.
 
-### Step 3: Issue Type Classification
-
-If `auto_create = true`, skip this step and proceed directly to Phase 2. Auto create does not need issue-type classification because it uses the concise body rules in `references/auto-create.md`.
-
-After determining the mode (and any file context, if provided), classify the issue type. Auto-detect from context and suggest to the user (they can override):
-
-**Issue Types:**
-
-- **Bug (Simple)**: Root cause is known or easily identified, fix is localized, no architectural decisions needed
-- **Bug (Complex)**: Unknown root cause, affects multiple components, requires investigation
-- **Feature**: New functionality
-- **Improvement**: Enhance existing functionality
-
-**Detection Heuristics:**
-
-- Keywords like "bug", "fix", "broken", "doesn't work", "error", "issue" → suggest Bug
-- If user provides root cause and specific file(s) → suggest Bug (Simple)
-- If scope is unclear, multiple components mentioned, or investigation needed → suggest Bug (Complex)
-- Keywords like "add", "new", "implement", "create" → suggest Feature
-- Keywords like "improve", "refactor", "enhance", "optimize" → suggest Improvement
-
-**Present classification to user via `AskUserQuestion`:**
-
-- Show detected type with reasoning
-- Allow override to any type
-- Store `issue_type` for conditional behavior in later phases
-
-**For Bug (Simple), store these flags:**
-
-- `is_simple_bug = true`
-- This enables the streamlined interview and simple template
+Present the detected type and reasoning with the structured question tool, offering all four types with the detected one recommended, and let the user override. Store `issue_type`; for Bug (Simple) set `is_simple_bug = true`, which selects the streamlined interview and template.
 
 ## Phase 2: Linear Context Discovery
 
-Fetch Linear workspace context to enable informed metadata selection:
+Resolve the team first, then fetch only that team's metadata. Do not pull workspace-wide label or project lists.
 
-1. **Teams**: Linear MCP `list_teams` - Get available teams for assignment
-2. **Labels**: Linear MCP `list_issue_labels` - Get available labels for classification
-3. **Projects**: Linear MCP `list_projects` - Get active projects for association
-
-Store this context for use in Phase 5 (Metadata & Classification round).
-
-If `auto_create = true`, establish the create scope here because duplicate handling needs an authoritative team before the auto-create interview:
-
-1. For a structured breakdown handoff, resolve the supplied workspace/team/project IDs and verify an exact accessible match. Do not infer, substitute, or independently change batch scope. If exhaustive questioning reveals that the scope should change, return `Action: blocked` so the parent can restart the whole batch with one corrected scope.
-2. Otherwise use the only team if exactly one exists, or an obvious team from the branch, workspace, or user input.
-3. Otherwise ask one short question for the target team.
-4. If no team can be resolved, emit `MISSING REQUIREMENT: Linear team is required to create the issue` and stop.
-5. Store selected labels, project, and priority only when the user named them or they clearly match available Linear metadata.
+1. **Team**: in improve mode, use the issue's team. In create mode, use the only team if exactly one exists, an obvious team from the branch, workspace, or input, or else ask one short question. For a breakdown handoff, verify the supplied workspace/team/project IDs exactly; never infer, substitute, or create scope, and return `Action: blocked` if the scope must change so the parent can restart the batch. If no team can be resolved in auto mode, emit `MISSING REQUIREMENT: Linear team is required to create the issue` and stop.
+2. **Team metadata**: `list_issue_labels`, `list_projects`, and `list_cycles` scoped to the team. Treat an empty or failed cycle list as "team does not use cycles" and never ask about cycles afterwards.
+3. In auto mode, store labels, project, priority, cycle, or assignee only when the user named them or they clearly match the fetched metadata.
 
 ## Phase 3: Existing Issue Handling
 
@@ -171,170 +121,77 @@ Read `references/mode-and-review-flow.md` and follow its Phase 3 instructions fo
 
 Phase 3 must produce:
 
-- **Improve mode**: current issue presented, Dev Ask preservation noted when relevant, `prior_session_context` recorded, improvement areas selected, and related issues identified.
-- **Create mode**: duplicate and related issue search completed, `.out-of-scope/` matches surfaced when relevant, user decision recorded, and any related issues stored for later linking.
-- **Auto create mode**: after Phase 2 team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the Linear URL, and skip Phases 4-7. For a structured breakdown handoff, return the required `ISSUE-DEFINE RESULT` to the calling workflow so it can continue the batch; otherwise stop.
+- **Improve mode**: current issue presented, Dev Ask preservation noted when relevant, `prior_session_context` recorded, improvement areas selected, related issues identified.
+- **Create mode**: duplicate and related search completed, `.out-of-scope/` matches surfaced when relevant, user decision recorded, and related, blocking, and blocked issues stored as `relations` for Phase 7.
+- **Auto create mode**: after team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the URL, and skip Phases 4–7. For a breakdown handoff, return the `ISSUE-DEFINE RESULT` block to the caller; otherwise stop.
 
 ## Phase 4: Codebase Exploration
 
-**For Simple Bugs (`is_simple_bug = true`):** Skip this phase if the user has already provided the root cause and affected file(s). Only explore if root cause is uncertain.
+**Simple bugs:** skip when the user already gave the root cause and affected files; explore only if the root cause is uncertain.
 
-**For all other issue types:** Proactively search the repository to inform the issue definition:
+**Everything else:** search the repository to inform the definition:
 
-1. **Find Related Implementations**
-   - Use `Grep` to search for keywords from the description
-   - Use `Glob` to find files in related areas
-   - Identify existing code that does something similar
+1. Related implementations — grep keywords from the description, glob related areas, find code that does something similar.
+2. Patterns and conventions — architecture, naming, file organization, configuration.
+3. Related components — services, modules, integration points, dependencies.
+4. Existing tests — coverage of similar functionality and testing conventions.
+5. `TODO`, `FIXME`, and `HACK` comments related to the topic.
 
-2. **Identify Patterns & Conventions**
-   - Look for architectural patterns in related code
-   - Note naming conventions, file organization
-   - Find configuration or setup patterns
-
-3. **Discover Related Components**
-   - Find services, modules, or components that may be affected
-   - Identify integration points
-   - Map dependencies
-
-4. **Find Existing Tests**
-   - Search for test files covering similar functionality
-   - Note testing patterns and conventions
-
-5. **Collect TODOs & FIXMEs**
-   - Search for `TODO`, `FIXME`, `HACK` comments related to the topic
-   - These may inform scope or reveal known issues
-
-**Output**: Summarize findings to share with user and inform interview questions.
-
-Before starting the interview, synthesize a working hypothesis for:
-
-- target user or stakeholder
-- job-to-be-done / problem pressure
-- why this matters now
-- obvious non-goals or work that should be split out
-- which decisions belong in the issue versus which should stay implementation-level
-
-Present these as assumptions and refine them only where the evidence is weak.
+Summarize findings for the user, then synthesize working hypotheses for the target user, job-to-be-done, why-now, obvious non-goals, and which decisions belong in the issue versus implementation. Present them as assumptions and refine only where evidence is weak.
 
 ## Phase 5: Interview
 
-The interview process adapts based on the issue type detected in Step 3.
+### Simple Bug Interview (`is_simple_bug = true`)
 
-### Simple Bug Interview (if `is_simple_bug = true`)
+Two rounds instead of five:
 
-For simple bugs, use a streamlined 2-round interview instead of the full 5-round process. The goal is to quickly capture the essential information without unnecessary overhead.
+- **Round 1: Problem & Reproduction** — what the bug is, numbered reproduction steps ending with "Bug: [what happens]", expected behavior.
+- **Round 2: Root Cause & Fix** — cause in 1–2 sentences, what must change, affected files.
 
-**Round 1: Problem & Reproduction**
+If the root cause is still unclear after Round 2, reclassify as Bug (Complex), set `is_simple_bug = false`, and switch to the standard interview at Round 1. Otherwise skip to Round 5 (team and labels only, project/priority/cycle on request) and proceed to Phase 6 with the simple template.
 
-Questions to cover:
+### Standard Interview
 
-- What's the bug? (brief description)
-- Steps to reproduce (numbered list ending with "Bug: [what happens]")
-- What should happen instead?
+Conduct the five rounds in `references/interview-rounds.md` with the structured question tool: Problem & Value, Scope & Boundaries, Technical Context, Acceptance Criteria, Metadata & Classification. Before each question, explain why it matters and give a recommendation when you have one.
 
-**Round 2: Root Cause & Fix**
+**Improve mode:** focus on the improvement areas selected in Phase 3. Show the current content first and ask whether to keep, modify, or expand it. Skip unselected rounds unless the user asks for them, and track what changed against the original.
 
-Questions to cover:
+**Create mode:** start each section from blank, seeded with the Phase 4 hypotheses.
 
-- What's causing the bug? (if known - 1-2 sentences)
-- What needs to change to fix it? (1-2 sentences)
-- Which file(s) are affected?
+**Adaptive follow-up:** dig deeper when answers reveal complexity, pivot when the problem differs from the assumption, clarify when answers conflict. Continue until each dimension meets its exit bar:
 
-**If root cause is unknown or unclear after Round 2:**
-
-- Reclassify as **Bug (Complex)** and set `is_simple_bug = false`
-- Switch to the **Standard Interview** starting at Round 1
-- Use the **Comprehensive Template** in Phase 6
-
-After these 2 rounds, skip to **Round 5: Metadata & Classification** (streamlined - just team and labels, skip project/priority unless user wants them).
-
-Then proceed directly to Phase 6 with the simple bug template.
-
----
-
-### Standard Interview (for all other issue types)
-
-Conduct a thorough, multi-round interview using `AskUserQuestion`. Provide context before each question explaining why it matters and your recommendation if you have one.
-
-### Mode-Specific Behavior
-
-**IMPROVE MODE:**
-
-- Focus on the improvement areas selected in Phase 3
-- For each round, show the current content from the existing issue first
-- Ask if the user wants to: keep as-is, modify, or expand the current content
-- Skip rounds not selected for improvement (but allow user to request them)
-- Track what has changed vs. original
-
-**CREATE MODE:**
-
-- Follow the standard interview flow below
-- Start from blank for each section
-
-Read the 5-round interview structure from `references/interview-rounds.md`. It covers Problem & Value, Scope & Boundaries, Technical Context, Acceptance Criteria, and Metadata & Classification — each with questions to cover and guidance on when to dig deeper.
-
-### Adaptive Follow-up
-
-After each round:
-
-- **Dig deeper** when answers reveal unexpected complexity
-- **Pivot** when answers reveal the problem is different than assumed
-- **Clarify** when answers are ambiguous or contradictory
-
-**Track coverage.** Continue until each dimension meets its exit bar:
-
-- **Problem**: a named user/stakeholder, a frequency or severity signal, and a cost-of-inaction statement are captured
-- **Scope**: at least one explicit in-scope item and one explicit out-of-scope item
-- **Technical**: affected modules/areas are named, plus any blocking dependencies
-- **Acceptance**: every criterion is individually verifiable, covering the happy path and at least one failure/edge case
-- **Metadata**: team selected, and labels/priority/project resolved or explicitly skipped
+- **Problem**: a named user or stakeholder, a frequency or severity signal, and a cost-of-inaction statement.
+- **Scope**: at least one explicit in-scope and one explicit out-of-scope item.
+- **Technical**: affected modules or areas named, plus any blocking dependencies.
+- **Acceptance**: every criterion individually verifiable, covering the happy path and at least one failure or edge case.
+- **Metadata**: team selected; labels, priority, project, cycle, and assignee resolved or explicitly skipped.
 
 ## Phase 6: Issue Composition
 
 ### Durability rule
 
-Authored issue content must NOT include file paths, line numbers, or internal helper/class names. Describe modules, behaviors, and contracts. Reason: file paths and line numbers rot quickly; the issue should remain useful after major refactors.
+Authored issue content must NOT include file paths, line numbers, or internal helper or class names. Describe modules, behaviors, and contracts; paths rot after refactors, while module names stay discoverable. Translate Phase 4 findings into module and behavior language before writing them into any section.
 
-This rule applies to every section composed or refined in this phase — Problem, Value, Goal, Scope, Acceptance Criteria, Edge Cases, Technical Notes, and Dependencies.
+- ❌ "Fix bug in `src/services/orderService.ts:142` where `applyDiscount()` returns NaN"
+- ✅ "Order discount calculation returns NaN when applied to gift-card orders; affects checkout total and order summary email"
 
-Exception: if `is_dev_ask` is true, preserve the Original Dev Ask archival block exactly as submitted, even when it contains file paths or helper names. Do not repeat those brittle references in the refined issue body; translate them into durable module, behavior, or contract language in the authored sections.
-
-- ❌ Bad: "Fix bug in `src/services/orderService.ts:142` where `applyDiscount()` returns NaN"
-- ✅ Good: "Order discount calculation returns NaN when applied to gift-card orders; affects checkout total and order summary email"
-
-When the codebase exploration in Phase 4 surfaced specific files or functions, translate them into module names and behaviors before writing them into the issue. Engineers reading the issue can re-discover the file location from the module name; the inverse — recovering intent from a stale path — is much harder.
+Exception: when `is_dev_ask` is true, preserve the Original Dev Ask archival block exactly as submitted. Do not repeat its brittle references in the authored sections.
 
 ### Template Selection
 
-Choose the template based on `issue_type`:
+- **Simple Bug Template** (`assets/simple-bug-template.md`) when `is_simple_bug = true`: title format, Problem/Root Cause/Fix body, reclassification notes.
+- **Comprehensive Template** (`assets/comprehensive-template.md`) for features, improvements, and complex bugs: mode-specific behavior, title format, full section set including Dev Ask handling, and technical-notes guidelines.
 
-- **Simple Bug Template** — when the root cause is known or easily identified, the fix is localized, no architectural decisions are needed, and the bug fits in a few sentences (`is_simple_bug = true`)
-- **Comprehensive Template** — for features, improvements, and complex bugs: unknown root cause needing investigation, multiple affected components, scope boundaries to define, or stakeholder alignment that matters
+### Metadata and Relations
 
----
-
-Read the simple bug template from `assets/simple-bug-template.md`. Use for `is_simple_bug = true`. It provides a concise format with title format, description template (Problem, Root Cause, Fix), and notes on when to reclassify.
-
----
-
-### Comprehensive Template (for features, improvements, complex bugs)
-
-Read the comprehensive issue template from `assets/comprehensive-template.md`. It covers mode-specific behavior (IMPROVE vs CREATE), title format, description template (Problem, Value, Goal, Scope, Acceptance Criteria, Edge Cases, Technical Notes, Dependencies, Dev Ask), and technical notes guidelines.
-
-### Metadata to Set
-
-- **Team**: From Round 5 selection
-- **Labels**: From Round 5 selection
-- **Project**: From Round 5 selection (if applicable)
-- **Priority**: From Round 5 selection (if determined)
-- **Related Issues**: From Phase 3 findings (if any)
+From Round 5: team, labels, project, priority, cycle, assignee. From Phase 3: `relations` — issues to pass as `relatedTo`, `blockedBy`, or `blocks`, plus any `parentId`. Keep the Dependencies section in prose as well, since Linear relations are not visible in the description text.
 
 ## Phase 7: Review & Create/Update
 
 Read `references/mode-and-review-flow.md` and follow its Phase 7 instructions.
 
-Always present the draft, allow user refinements, create or update the issue only after approval, report Linear failures with the full drafted issue so work is not lost, return the issue URL, and stop without starting implementation.
+Always present the draft, ask for approval with the structured question tool (approve, refine, or cancel), collect refinements in plain chat, write only after approval, pass relations as structured fields, prefer `patch` for improve-mode edits that touch only some sections, report Linear failures together with the full draft so the work is not lost, return the issue URL, and stop.
 
-## Important Guidelines
+## Writing Guidelines
 
-Read the 15 issue-writing guidelines from `references/writing-guidelines.md` and apply them throughout the interview and composition phases. They cover leading with "why", explicit non-goals, inferring before asking, product-first writing, duplicate checking, and keeping simple bugs simple.
+Apply `references/writing-guidelines.md` throughout: lead with why, make non-goals explicit, infer before asking, separate product calls from engineering choices, challenge scope diplomatically, and keep simple bugs simple.

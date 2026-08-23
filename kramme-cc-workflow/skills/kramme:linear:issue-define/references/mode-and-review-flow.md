@@ -35,7 +35,7 @@ The target issue was already fetched in Phase 1. Now present it to the user:
    - Do not re-ask resolved questions. Treat ambiguity in prior content as a reason to surface that section for refinement, not as a reason to start the round from scratch.
 
 3. **Identify Improvement Areas**
-   - Use `AskUserQuestion` to ask what aspects to improve:
+   - Ask what aspects to improve with the structured question tool, multi-select:
      - Problem statement clarity
      - Value proposition
      - Scope definition
@@ -47,8 +47,8 @@ The target issue was already fetched in Phase 1. Now present it to the user:
    - Selected areas always take precedence over prior-session skips. If the user says "improve scope", run Round 2 even when prior content exists.
 
 4. **Search for Related Issues**
-   - Use Linear MCP `list_issues` with keywords from the existing issue.
-   - Identify issues to link as related or blockers.
+   - Use `list_issues` with `query` keywords from the existing issue, scoped to its team.
+   - Identify issues to link as related or blockers. Store new ones in `relations` for Phase 7; relations the issue already has are skipped, never re-sent or removed.
 
 **Output:** Improvement areas selected, related issues identified, prior-session context recorded.
 
@@ -57,26 +57,26 @@ The target issue was already fetched in Phase 1. Now present it to the user:
 Before creating a new issue, check for existing Linear issues that may already cover this topic:
 
 1. **Search for Duplicates**
-   - Use Linear MCP `list_issues` with `query` containing keywords from the description.
-   - Search across relevant teams identified in Phase 2.
-   - Also check `.out-of-scope/` in the project root: list filenames; read any whose slug plausibly matches the description; surface matches alongside Linear duplicate findings via the same `AskUserQuestion` prompt in step 3. Use option labels: "proceed with new issue" and "this matches a prior rejection - stop". Skip silently if the directory is absent. See `/kramme:docs:track-rejected-enhancements` for the storage skill.
+   - Use `list_issues` with `query` containing keywords from the description, scoped to the team resolved in Phase 2. Widen to other teams only when the user says the work may live elsewhere.
+   - Also check `.out-of-scope/` in the project root: list filenames; read any whose slug plausibly matches the description; surface matches alongside Linear duplicate findings in the same structured question in step 3. Use option labels: "proceed with new issue" and "this matches a prior rejection - stop". Skip silently if the directory is absent. See `/kramme:docs:track-rejected-enhancements` for the storage skill.
 
 2. **Identify Related Issues**
-   - Look for issues that partially overlap with the proposed scope.
-   - Find issues that might be blockers or dependencies.
-   - Identify issues that could be affected by this work.
+   - Look for issues that partially overlap with the proposed scope (`relatedTo`).
+   - Find issues that must land first (`blockedBy`) or that wait on this work (`blocks`).
+   - Record each as `relations` with its direction for Phase 7. The user confirms the list in Round 5 before anything is written.
 
 3. **Present Findings to User**
    - If `auto_create = true` and a strong duplicate is found, show the issue and ask whether to stop, create anyway, or rerun without `--auto` to improve the existing issue. If the user wants to improve, stop; do not switch into improve mode during the same invocation. When `breakdown_handoff = true`, first verify the duplicate belongs to the handoff's exact workspace/team/project scope. If the user then chooses it, return `Action: covered-existing` with concrete identifiers, the recorded decision reason, and dependency-text verification using the structured result contract in `references/auto-create.md`.
-   - If `auto_create = false` and potential duplicates are found, show them to the user via `AskUserQuestion`:
+   - If `auto_create = false` and potential duplicates are found, show them to the user with the structured question tool:
      - Option to proceed with new issue if it is not truly a duplicate.
      - Option to improve an existing issue instead -> switch to improve mode.
-     - Option to link as related issue.
-   - If related issues are found, note them for the Dependencies section.
+     - Option to link as related issue (added to `relations` as `relatedTo`).
+     - Option to file this as a duplicate anyway, for example to record a narrower reproduction — then store the existing issue as `duplicate_of` so Phase 7 sets `duplicateOf`.
+   - If related issues are found, note them for both `relations` and the Dependencies section.
 
 4. **Decision Point**
    - If user confirms this is a duplicate, stop and direct to the existing issue.
-   - If `auto_create = false` and user wants to improve an existing issue, fetch that issue with Linear MCP `get_issue` (Claude Code `mcp__linear__get_issue`; Codex `get_issue`), switch to improve mode, and restart from Phase 3.
+   - If `auto_create = false` and user wants to improve an existing issue, fetch that issue with `get_issue`, switch to improve mode, and restart from Phase 3.
    - If `auto_create = true` and user confirms a new issue is needed, continue to auto create mode below.
    - If `auto_create = false` and user confirms a new issue is needed, continue to Phase 4.
    - Store any related issues for later linking.
@@ -107,38 +107,32 @@ If `auto_create = true` and mode is create:
 - Show the complete issue: title, description, and metadata.
 - Format clearly for review.
 
-### 2. Allow Refinements
+### 2. Approve or Refine
 
-- Ask if any changes are needed.
-- Iterate on feedback until the user is satisfied.
+- Ask with the structured question tool: approve as drafted, refine first, or cancel without writing.
+- On refine, collect the changes in plain chat, apply them, re-present the draft, and ask again.
+- On cancel, print the full draft so nothing is lost, then stop.
 
 ### 3. Create or Update Issue
 
-**Improve mode:**
+Both modes use `save_issue` (Claude Code `mcp__linear__save_issue`; Codex `save_issue`). Relation fields (`relatedTo`, `blockedBy`, `blocks`) are append-only; `labels` replaces the full set, so always send the complete intended label list.
 
-Use the available Linear update operation: Claude Code `mcp__linear__update_issue`; Codex `save_issue` with `id`. Pass:
+**Create mode** — call `save_issue` without `id`:
 
-- `id`: The existing issue ID.
-- `title`: Updated title, if changed.
-- `description`: The updated markdown description. Include the "Original Dev Ask" section at the bottom if `is_dev_ask` is true.
-- `labels`: Updated labels, if changed.
-- `priority`: Updated priority, if changed.
-- Other metadata as applicable.
+- `title`, `description` (full markdown body), `team`.
+- `labels`, `project`, `priority`, `cycle`, `assignee` when selected in Round 5.
+- `relatedTo`, `blockedBy`, `blocks` from `relations`; `parentId` when the user named a parent; `duplicateOf` when `duplicate_of` is set.
 
-**Create mode:**
+**Improve mode** — call `save_issue` with `id`:
 
-Use the available Linear create operation: Claude Code `mcp__linear__create_issue`; Codex `save_issue` without `id`. Pass:
-
-- `title`: The composed title.
-- `description`: The full markdown description.
-- `team`: Selected team ID or name.
-- `labels`: Array of selected label names.
-- `project`: Selected project, if any.
-- `priority`: Selected priority, if any.
+- Prefer `patch` over `description` when the interview changed only some sections and the existing body still contains the canonical section headings. Build one `patch` array in document order: `replace` for a rewritten section (anchor on the existing section text), `insert_after` the preceding heading's content for a new section, `append` for the Original Dev Ask block when it must be added. Every anchor must match exactly once; if it cannot, fall back to sending the full `description`. Patching keeps comments-in-body, images, and edits the user made in Linear since the fetch.
+- Send the full `description` when the body has no recognisable section headings, the user chose "All of the above", or the structure is being replaced wholesale. Include the Original Dev Ask section at the bottom when `is_dev_ask` is true.
+- `title` only if changed. `labels` only if changed (the complete new set). `priority`, `project`, `cycle`, `assignee` only if changed.
+- `relatedTo`, `blockedBy`, `blocks` for new relations only.
 
 **If the create or update call fails:**
 
-- Output the full drafted issue markdown, including title, description, and intended metadata, to the user so the interview work is not lost.
+- Output the full drafted issue markdown, including title, description, relations, and intended metadata, so the interview work is not lost.
 - Report the error Linear returned.
 - Offer to retry. Do not silently abandon the draft or proceed to the next step.
 
