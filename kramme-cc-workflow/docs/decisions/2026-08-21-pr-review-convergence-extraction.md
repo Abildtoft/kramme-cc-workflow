@@ -2,6 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-21
+- Last amended: 2026-08-23
 - Deciders: repository maintainers
 - First adoption review: 2026-11-21
 
@@ -21,7 +22,7 @@ The nearest existing skills are:
 
 Create user-invocable `kramme:pr:review-convergence` and delegate to it from `kramme:linear:issue-to-pr` and `kramme:pr:complete-work` after each caller establishes its implementation commit boundary and freezes authoritative requirements. Direct invocation accepts a frozen authoritative requirements block and uses a fixed review archive; internal callers retain work identity, source archive, plan scope, and validation-only controls.
 
-The positive route is: converge and verify one caller-prepared local branch against an inert, authoritative requirement block before Pull Request creation. A validation-only mode reruns the same ordered gates once when an authorized CI or review-feedback workflow changes the published tree.
+The positive route is: converge and verify one caller-prepared local branch against an inert, authoritative requirement block before Pull Request creation. Normal invocations may select one through five automatic remediation cycles with `--rounds`, defaulting to five; the existing diminishing-returns guards can stop the loop earlier. A validation-only mode reruns the same ordered gates once when an authorized CI or review-feedback workflow changes the published tree and rejects an explicit rounds override.
 
 The boundary differs from its neighbors across the catalog policy's five dimensions:
 
@@ -42,6 +43,7 @@ The skill remains platform-neutral and has no Linear or SIW dependency. It is us
 - Linear, SIW, and plan-to-PR callers now share one quality policy while retaining separate intake, scope, and shipping contracts.
 - `kramme:linear:issue-to-pr` and `kramme:pr:complete-work` become thinner caller-specific compositions.
 - Review archives stay under each caller's existing `.context/{archive-key}/reviews/` namespace, name `kramme:pr:review-convergence` as producer, and remain registered for workflow-artifact cleanup.
+- Normal callers can lower the shared automatic remediation ceiling from its five-cycle default without weakening the existing safety boundary.
 - Review adoption on 2026-11-21 should inspect direct and caller usage, convergence failures, cycle exhaustion, and validation-only outcomes.
 - `kramme:linear:review-pr` remains separate because its existing-PR, immutable, read-only audit has a different intent, input, outcome, permission boundary, and recovery path.
 
