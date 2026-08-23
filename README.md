@@ -598,7 +598,7 @@ These MCP servers enhance the plugin's capabilities. See [docs/mcp-servers.md](k
 
 | Server | Purpose |
 | --- | --- |
-| **Linear** | Issue tracking for `/kramme:linear:backlog-refine`, `/kramme:linear:breakdown-findings`, `/kramme:linear:issue-to-pr`, `/kramme:linear:issue-implement`, `/kramme:linear:issue-define`, `/kramme:linear:review-pr`, and `/kramme:linear:select-next` |
+| **Linear** | Issue tracking for `/kramme:linear:backlog-refine`, `/kramme:linear:breakdown-findings`, `/kramme:linear:issue-to-pr`, `/kramme:linear:issue-implement`, `/kramme:linear:issue-define`, `/kramme:linear:review-pr`, `/kramme:linear:select-next`, and the optional Linear requirements source in `/kramme:pr:review-convergence` |
 | **Context7** | Up-to-date library documentation retrieval |
 | **Nx MCP** | Nx monorepo tools for `/kramme:verify:run` in Nx workspaces |
 | **Chrome DevTools** | Browser automation and debugging |
