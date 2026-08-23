@@ -269,6 +269,7 @@ async function stageCodexBundleOutput(
         await copyDir(
           sharedScriptDir.sourceDir,
           path.join(codexStagingRoot, sharedScriptDir.targetDir),
+          { executableFiles: sharedScriptDir.executableFiles },
         );
       }
     }
@@ -277,6 +278,7 @@ async function stageCodexBundleOutput(
         await copyFile(
           sharedScriptFile.sourceFile,
           path.join(codexStagingRoot, sharedScriptFile.targetPath),
+          { mode: sharedScriptFile.executable ? 0o755 : undefined },
         );
       }
     }

@@ -169,11 +169,12 @@ function filesystemErrorCode(error) {
 /**
  * @param {string} sourceDir
  * @param {string} targetDir
- * @param {{ filter?: CopyFilter }} [options]
+ * @param {{ executableFiles?: string[], filter?: CopyFilter }} [options]
  */
 async function copyDir(sourceDir, targetDir, options = {}) {
+  const executableFiles = new Set(options.executableFiles ?? []);
   const filter = options.filter ?? (() => true);
-  await copyDirEntries(sourceDir, targetDir, "", filter);
+  await copyDirEntries(sourceDir, targetDir, "", filter, executableFiles);
 }
 
 /**
@@ -181,8 +182,15 @@ async function copyDir(sourceDir, targetDir, options = {}) {
  * @param {string} targetDir
  * @param {string} prefix
  * @param {CopyFilter} filter
+ * @param {Set<string>} executableFiles
  */
-async function copyDirEntries(sourceDir, targetDir, prefix, filter) {
+async function copyDirEntries(
+  sourceDir,
+  targetDir,
+  prefix,
+  filter,
+  executableFiles,
+) {
   await ensureDir(targetDir);
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   for (const entry of entries) {
@@ -193,18 +201,34 @@ async function copyDirEntries(sourceDir, targetDir, prefix, filter) {
       continue;
     }
     if (entry.isDirectory()) {
-      await copyDirEntries(sourcePath, targetPath, relativePath, filter);
+      await copyDirEntries(
+        sourcePath,
+        targetPath,
+        relativePath,
+        filter,
+        executableFiles,
+      );
     } else if (entry.isFile()) {
       await ensureDir(path.dirname(targetPath));
       await fs.copyFile(sourcePath, targetPath);
+      if (executableFiles.has(relativePath)) {
+        await fs.chmod(targetPath, 0o755);
+      }
     }
   }
 }
 
-/** @param {string} sourcePath @param {string} targetPath */
-async function copyFile(sourcePath, targetPath) {
+/**
+ * @param {string} sourcePath
+ * @param {string} targetPath
+ * @param {{ mode?: number }} [options]
+ */
+async function copyFile(sourcePath, targetPath, options = {}) {
   await ensureDir(path.dirname(targetPath));
   await fs.copyFile(sourcePath, targetPath);
+  if (options.mode !== undefined) {
+    await fs.chmod(targetPath, options.mode);
+  }
 }
 
 /**

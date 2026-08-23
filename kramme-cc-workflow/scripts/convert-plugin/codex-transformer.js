@@ -176,6 +176,13 @@ function convertCodexHookPlugin(plugin) {
     hookSourceDir: path.join(plugin.root, "hooks"),
     sharedScriptDirs: [
       {
+        executableFiles: [
+          "detect-project-type.sh",
+          "detect-url.sh",
+          "read-launch-json.sh",
+          "resolve-package-manager.sh",
+          "resolve-port.sh",
+        ],
         sourceDir: path.join(plugin.root, "scripts", "dev-server"),
         targetDir: path.join("scripts", "dev-server"),
       },
@@ -186,10 +193,12 @@ function convertCodexHookPlugin(plugin) {
     ],
     sharedScriptFiles: [
       {
+        executable: true,
         sourceFile: path.join(plugin.root, "scripts", "resolve-base.sh"),
         targetPath: path.join("scripts", "resolve-base.sh"),
       },
       {
+        executable: true,
         sourceFile: path.join(
           plugin.root,
           "scripts",
@@ -198,6 +207,7 @@ function convertCodexHookPlugin(plugin) {
         targetPath: path.join("scripts", "resolve-stack-membership.sh"),
       },
       {
+        executable: true,
         sourceFile: path.join(
           plugin.root,
           "scripts",
@@ -206,6 +216,7 @@ function convertCodexHookPlugin(plugin) {
         targetPath: path.join("scripts", "verify-rewrite-state.sh"),
       },
       {
+        executable: true,
         sourceFile: path.join(plugin.root, "scripts", "collect-review-diff.sh"),
         targetPath: path.join("scripts", "collect-review-diff.sh"),
       },
@@ -218,6 +229,7 @@ function convertCodexHookPlugin(plugin) {
         targetPath: path.join("hooks", "confirm-review-artifacts.txt"),
       },
       {
+        executable: true,
         sourceFile: path.join(
           plugin.root,
           "scripts",
