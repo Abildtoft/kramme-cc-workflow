@@ -91,11 +91,13 @@ export interface CodexHookPlugin {
 }
 
 export interface SharedScriptDir {
+  executableFiles?: string[];
   sourceDir: string;
   targetDir: string;
 }
 
 export interface SharedScriptFile {
+  executable?: boolean;
   sourceFile: string;
   targetPath: string;
 }

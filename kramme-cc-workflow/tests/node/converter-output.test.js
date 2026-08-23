@@ -711,6 +711,102 @@ test("writer adopts byte-identical unowned prompt and shared-script files", asyn
   });
 });
 
+test("writer normalizes declared executable shared scripts from non-executable sources", async () => {
+  await withTempDir(async (root) => {
+    const sourceRoot = path.join(root, "fixture-sources");
+    const helperSource = path.join(sourceRoot, "helper.sh");
+    const dataSource = path.join(sourceRoot, "data.txt");
+    const directorySource = path.join(sourceRoot, "helper-directory");
+    const directoryHelperSource = path.join(directorySource, "helper.sh");
+    const directoryDataSource = path.join(directorySource, "data.txt");
+    await writeFile(helperSource, "#!/bin/sh\nprintf 'helper ran\\n'\n");
+    await writeFile(dataSource, "fixture data\n");
+    await writeFile(
+      directoryHelperSource,
+      "#!/bin/sh\nprintf 'directory helper ran\\n'\n",
+    );
+    await writeFile(directoryDataSource, "directory fixture data\n");
+    await fs.chmod(helperSource, 0o644);
+    await fs.chmod(dataSource, 0o644);
+    await fs.chmod(directoryHelperSource, 0o644);
+    await fs.chmod(directoryDataSource, 0o644);
+
+    const pluginName = "executable-helper-plugin";
+    const version = "1.2.3";
+    const bundle = emptyCodexBundle({
+      codexPlugin: {
+        name: pluginName,
+        marketplaceName: pluginName,
+        version,
+        manifest: {
+          name: pluginName,
+          version,
+          description: "Executable helper fixture",
+          hooks: "./hooks/hooks.json",
+        },
+        hooks: { PreToolUse: [] },
+        hookSourceDir: path.join(sourceRoot, "hooks"),
+        sharedScriptDirs: [
+          {
+            executableFiles: ["helper.sh"],
+            sourceDir: directorySource,
+            targetDir: "scripts/helper-directory",
+          },
+        ],
+        sharedScriptFiles: [
+          {
+            executable: true,
+            sourceFile: helperSource,
+            targetPath: "scripts/helper.sh",
+          },
+          { sourceFile: dataSource, targetPath: "scripts/data.txt" },
+        ],
+      },
+    });
+
+    await writeCodexBundle(root, bundle, {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName,
+    });
+
+    const codexRoot = path.join(root, ".codex");
+    const outputRoots = [
+      codexRoot,
+      path.join(
+        codexRoot,
+        ".kramme-plugin-marketplaces",
+        pluginName,
+        "plugins",
+        pluginName,
+      ),
+      path.join(codexRoot, "plugins", "cache", pluginName, pluginName, version),
+    ];
+    for (const outputRoot of outputRoots) {
+      for (const [relativePath, expectedOutput] of [
+        ["scripts/helper.sh", "helper ran\n"],
+        ["scripts/helper-directory/helper.sh", "directory helper ran\n"],
+      ]) {
+        const helperTarget = path.join(outputRoot, relativePath);
+        assert.equal((await fs.stat(helperTarget)).mode & 0o777, 0o755);
+        const result = spawnSync(helperTarget, [], { encoding: "utf8" });
+        assert.equal(result.error, undefined);
+        assert.equal(result.status, 0);
+        assert.equal(result.stdout, expectedOutput);
+      }
+      for (const relativePath of [
+        "scripts/data.txt",
+        "scripts/helper-directory/data.txt",
+      ]) {
+        assert.equal(
+          (await fs.stat(path.join(outputRoot, relativePath))).mode & 0o777,
+          0o644,
+        );
+      }
+    }
+  });
+});
+
 test("writer rejects edits to adopted prompts made after preflight", async () => {
   await withTempDir(async (root) => {
     const codexRoot = path.join(root, ".codex");

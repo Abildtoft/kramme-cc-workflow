@@ -260,6 +260,7 @@ async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
       await copyDir(
         sharedScriptDir.sourceDir,
         path.join(targetRoot, sharedScriptDir.targetDir),
+        { executableFiles: sharedScriptDir.executableFiles },
       );
     }
   }
@@ -268,6 +269,7 @@ async function writeCodexHookPluginTree(targetRoot, codexPlugin) {
       await copyFile(
         sharedScriptFile.sourceFile,
         path.join(targetRoot, sharedScriptFile.targetPath),
+        { mode: sharedScriptFile.executable ? 0o755 : undefined },
       );
     }
   }
