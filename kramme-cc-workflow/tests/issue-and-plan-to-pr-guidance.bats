@@ -365,7 +365,7 @@
     grep -qF "kramme:pr:review-convergence" "$skill"
     grep -qF "JSON-decode its \`Requirements JSON\` field" "$skill"
     grep -qF "equal \`{work-requirements}\` byte-for-byte" "$skill"
-    grep -qF "For \`code-plan-to-pr\`, treat the validated plan—not the preliminary caller summary—as authoritative" "$convergence"
+    grep -qF "**Internal \`code-plan-to-pr\`:** treat the validated plan—not \`{supplied-requirements}\`—as authoritative" "$convergence"
     grep -qF "validation-only mode permits later caller-authorized CI/review commits" "$convergence"
     grep -qF "kramme:pr:code-review --parallel --inline" "$review"
     grep -qF "kramme:pr:convention-review --inline" "$review"

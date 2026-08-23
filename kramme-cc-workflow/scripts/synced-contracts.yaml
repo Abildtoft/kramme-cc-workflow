@@ -1017,7 +1017,7 @@
       "contains": [
         "verifies that it has no existing Pull Request or remote branch on `origin`",
         "delegates the prepared branch to `kramme:pr:review-convergence`",
-        "Users can also invoke `/kramme:pr:review-convergence --requirements <authoritative requirements>` directly",
+        "with no requirement argument it derives the contract from the current conversation",
         "The same phase is used by `kramme:code:plan-to-pr` and `kramme:siw:issue-to-pr`"
       ]
     },
