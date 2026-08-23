@@ -1018,6 +1018,8 @@
         "verifies that it has no existing Pull Request or remote branch on `origin`",
         "delegates the prepared branch to `kramme:pr:review-convergence`",
         "with no requirement argument it derives the contract from the current conversation",
+        "with `--derive` it drafts a contract from conversation and committed branch evidence",
+        "set its maximum to one through five fix-and-rerun rounds with `--rounds <1-5>`",
         "The same phase is used by `kramme:code:plan-to-pr` and `kramme:siw:issue-to-pr`"
       ]
     },

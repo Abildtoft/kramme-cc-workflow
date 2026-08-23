@@ -18,7 +18,7 @@ Use this policy after the skill has frozen the caller's requirements and validat
 
 Re-evaluate applicability at the start of every round because accepted fixes can introduce or remove a gate's trigger conditions. Then run active gates in the order below. Never skip a gate merely to save time or avoid findings.
 
-When `VALIDATION_ONLY=false`, initialize `MAX_AUTOMATIC_REMEDIATION_CYCLES=5` and one cycle ledger for the entire quality loop. Do not reset the counter between gates or delegated skills. The initial read-only gate pass does not consume a cycle; consume one whenever accepted review work changes code, then run focused verification before continuing. Gate 0 sits outside this rotation and outside the ledger under its own rules below.
+When `VALIDATION_ONLY=false`, use parsed `MAX_AUTOMATIC_REMEDIATION_CYCLES` from the invocation and initialize one cycle ledger for the entire quality loop. Do not reset the counter between gates or delegated skills. The initial read-only gate pass does not consume a cycle; consume one whenever accepted review work changes code, then run focused verification before continuing. Gate 0 sits outside this rotation and outside the ledger under its own rules below.
 
 When `VALIDATION_ONLY=true`, create no remediation ledger and permit no source, test, configuration, or documentation edit, deletion, revert, staging operation, or commit. Generated review reports may be created and isolated under the ignored archive. Run one applicability evaluation and one complete ordered pass. A required finding or manual blocker fails validation; optional findings receive evidence-based reported dispositions without changing code.
 
@@ -250,7 +250,7 @@ Stop automatic remediation when any condition occurs:
 
 1. The same accepted finding persists after two attempted fixes without new evidence that changes the fix direction.
 2. Two consecutive remediation cycles make no material progress.
-3. The shared remediation counter reaches five, regardless of whether each cycle made progress.
+3. The shared remediation counter reaches `MAX_AUTOMATIC_REMEDIATION_CYCLES`, regardless of whether each cycle made progress.
 
 The hard ceiling is a safety boundary, not a target. Stop earlier as soon as the remaining expected benefit is lower than the churn and regression risk.
 
@@ -264,7 +264,7 @@ Disposition the final validation-only findings as follows:
 - If any accepted Critical, Important, or `OVERDONE` finding, verification failure, or genuine manual blocker remains, stop the workflow. Report the cycle ledger, remaining fingerprints, attempted fixes, and smallest decision needed to resume. Do not run final verification, rewrite history, push, or create the Pull Request.
 - If no required finding remains, proceed to final verification. Report that the loop stopped at diminishing returns and include the deferred optional count; do not claim that reviewers emitted zero findings.
 
-A repeated rejected finding never keeps the loop open. Explicit user approval to resume starts a new five-cycle budget only for the reported remaining fingerprints and any consequences of their fixes; it does not reopen deferred optional polish automatically.
+A repeated rejected finding never keeps the loop open. Explicit user approval to resume starts a new budget of `MAX_AUTOMATIC_REMEDIATION_CYCLES` only for the reported remaining fingerprints and any consequences of their fixes; it does not reopen deferred optional polish automatically.
 
 ## Completion Check
 
