@@ -283,6 +283,13 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/linear-backlog-refine-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:linear:backlog-refine/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-issue-to-pr-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",
