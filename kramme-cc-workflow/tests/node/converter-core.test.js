@@ -1152,6 +1152,13 @@ test("hook plugin conversion requires controls and sanitizes manifest descriptio
   assert.ok(codexPlugin.manifest.description.length <= 1024);
   assert.deepEqual(codexPlugin.sharedScriptDirs, [
     {
+      executableFiles: [
+        "detect-project-type.sh",
+        "detect-url.sh",
+        "read-launch-json.sh",
+        "resolve-package-manager.sh",
+        "resolve-port.sh",
+      ],
       sourceDir: path.join("/plugin", "scripts", "dev-server"),
       targetDir: path.join("scripts", "dev-server"),
     },
@@ -1160,6 +1167,18 @@ test("hook plugin conversion requires controls and sanitizes manifest descriptio
       targetDir: path.join("scripts", "lib"),
     },
   ]);
+  assert.deepEqual(
+    codexPlugin.sharedScriptFiles
+      ?.filter((file) => file.executable)
+      .map((file) => file.targetPath),
+    [
+      path.join("scripts", "resolve-base.sh"),
+      path.join("scripts", "resolve-stack-membership.sh"),
+      path.join("scripts", "verify-rewrite-state.sh"),
+      path.join("scripts", "collect-review-diff.sh"),
+      path.join("scripts", "review-tree-fingerprint.sh"),
+    ],
+  );
   assert.ok(
     codexPlugin.sharedScriptFiles?.some(
       (file) =>
