@@ -95,6 +95,17 @@ assert_json_query() {
 	printf '%s' "$output" | "$REAL_JQ" -e "$1" >/dev/null
 }
 
+assert_text_row() {
+	local expected
+	local line
+	printf -v expected '%-24s %s' "$1:" "$2"
+
+	while IFS= read -r line; do
+		[ "$line" = "$expected" ] && return 0
+	done <<<"$output"
+	return 1
+}
+
 @test "prints usage text for help" {
 	run "$BASH_PATH" "$SCRIPT" --help
 
@@ -124,9 +135,123 @@ assert_json_query() {
 	assert_json_query '.recommended[] | select(.name == "npm" and .status == "ok" and .version == "10.0.0")'
 	assert_json_query '.optional[] | select(.name == "bats" and .status == "ok" and .version == "Bats 1.11.0")'
 	assert_json_query '.integrations[] | select(.name == "Linear" and .status == "manual-check")'
+	assert_json_query '.integrations[] | select(.name == "Conductor MCP" and .status == "manual-check")'
 	assert_json_query '.context[] | select(.key == "branch" and .value == "test-branch")'
 	assert_json_query '.context[] | select(.key == "gitState" and .value == "clean")'
 	assert_json_query '.context[] | select(.key == "conductor" and .value == "yes ('"$BATS_TEST_TMPDIR"'/workspace)")'
+}
+
+@test "reports conductor local mode, root path, default branch, and port range in json" {
+	setup_all_tools_path
+
+	run env \
+		PATH="$FAKE_BIN" \
+		CONDUCTOR_IS_LOCAL=1 \
+		CONDUCTOR_WORKSPACE_NAME="local workspace" \
+		CONDUCTOR_WORKSPACE_PATH="$BATS_TEST_TMPDIR/workspace" \
+		CONDUCTOR_ROOT_PATH="$BATS_TEST_TMPDIR/root checkout" \
+		CONDUCTOR_DEFAULT_BRANCH=main \
+		CONDUCTOR_PORT=55060 \
+		"$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.context[] | select(.key == "conductorMode" and .value == "local")'
+	assert_json_query '.context[] | select(.key == "conductorWorkspaceName" and .value == "local workspace")'
+	assert_json_query '.context[] | select(.key == "conductorWorkspacePath" and .value == "'"$BATS_TEST_TMPDIR"'/workspace")'
+	assert_json_query '.context[] | select(.key == "conductorRootPath" and .value == "'"$BATS_TEST_TMPDIR"'/root checkout")'
+	assert_json_query '.context[] | select(.key == "conductorDefaultBranch" and .value == "main")'
+	assert_json_query '.context[] | select(.key == "conductorPortRange" and .value == "55060-55069")'
+}
+
+@test "reports conductor local context and integration in text mode" {
+	setup_all_tools_path
+	local workspace_dir="$BATS_TEST_TMPDIR/workspace"
+	mkdir -p "$workspace_dir/.conductor"
+	touch "$workspace_dir/.conductor/settings.toml"
+	cd "$workspace_dir"
+
+	run env \
+		PATH="$FAKE_BIN" \
+		CONDUCTOR_IS_LOCAL=1 \
+		CONDUCTOR_WORKSPACE_NAME="local workspace" \
+		CONDUCTOR_WORKSPACE_PATH="$workspace_dir" \
+		CONDUCTOR_ROOT_PATH="$BATS_TEST_TMPDIR/root checkout" \
+		CONDUCTOR_DEFAULT_BRANCH=main \
+		CONDUCTOR_PORT=55060 \
+		"$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"[manual-check] Conductor MCP"* ]]
+	assert_text_row "Conductor mode" "local"
+	assert_text_row "Workspace name" "local workspace"
+	assert_text_row "Workspace path" "$workspace_dir"
+	assert_text_row "Root path" "$BATS_TEST_TMPDIR/root checkout"
+	assert_text_row "Default branch" "main"
+	assert_text_row "Port range" "55060-55069"
+	assert_text_row ".conductor/settings.toml" "present"
+}
+
+@test "reports conductor cloud mode without ports or default branch" {
+	setup_all_tools_path
+
+	run env \
+		-u CONDUCTOR_DEFAULT_BRANCH \
+		-u CONDUCTOR_PORT \
+		PATH="$FAKE_BIN" \
+		CONDUCTOR_IS_LOCAL=0 \
+		CONDUCTOR_WORKSPACE_NAME="cloud workspace" \
+		CONDUCTOR_WORKSPACE_PATH="$BATS_TEST_TMPDIR/cloud-workspace" \
+		CONDUCTOR_ROOT_PATH="$BATS_TEST_TMPDIR/cloud-workspace" \
+		"$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.context[] | select(.key == "conductorMode" and .value == "cloud")'
+	assert_json_query '.context[] | select(.key == "conductorDefaultBranch" and .value == "not set")'
+	assert_json_query '.context[] | select(.key == "conductorPortRange" and .value == "not set")'
+}
+
+@test "reports unknown conductor mode when the local flag is unavailable" {
+	setup_all_tools_path
+
+	run env \
+		-u CONDUCTOR_IS_LOCAL \
+		-u CONDUCTOR_ROOT_PATH \
+		-u CONDUCTOR_DEFAULT_BRANCH \
+		-u CONDUCTOR_PORT \
+		PATH="$FAKE_BIN" \
+		CONDUCTOR_WORKSPACE_NAME=-n \
+		CONDUCTOR_WORKSPACE_PATH="$BATS_TEST_TMPDIR/workspace" \
+		"$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.context[] | select(.key == "conductorMode" and .value == "unknown (CONDUCTOR_IS_LOCAL unset)")'
+	assert_json_query '.context[] | select(.key == "conductorWorkspaceName" and .value == "-n")'
+}
+
+@test "reports conductor facts as not set outside conductor" {
+	setup_all_tools_path
+	local non_conductor_dir="$BATS_TEST_TMPDIR/non-conductor"
+	mkdir -p "$non_conductor_dir"
+	cd "$non_conductor_dir"
+
+	run env \
+		-u CONDUCTOR_IS_LOCAL \
+		-u CONDUCTOR_WORKSPACE_NAME \
+		-u CONDUCTOR_WORKSPACE_PATH \
+		-u CONDUCTOR_ROOT_PATH \
+		-u CONDUCTOR_DEFAULT_BRANCH \
+		-u CONDUCTOR_PORT \
+		PATH="$FAKE_BIN" \
+		"$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.context[] | select(.key == "conductorMode" and .value == "not detected")'
+	assert_json_query '.context[] | select(.key == "conductorWorkspaceName" and .value == "not set")'
+	assert_json_query '.context[] | select(.key == "conductorWorkspacePath" and .value == "not set")'
+	assert_json_query '.context[] | select(.key == "conductorRootPath" and .value == "not set")'
+	assert_json_query '.context[] | select(.key == "conductorDefaultBranch" and .value == "not set")'
+	assert_json_query '.context[] | select(.key == "conductorPortRange" and .value == "not set")'
+	assert_json_query '.context[] | select(.key == ".conductor/settings.toml" and .value == "missing")'
 }
 
 @test "reports missing required and recommended tools in text mode" {
