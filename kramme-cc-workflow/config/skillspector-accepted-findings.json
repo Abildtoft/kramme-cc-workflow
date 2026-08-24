@@ -25,6 +25,14 @@
       "review_after": "2026-08-29"
     },
     {
+      "path": "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
+      "rule_id": "TM1",
+      "reason": "Reviewed intentional TM1 finding for this user-triggered rebase skill: the force-push is limited to the validated current branch, uses --force-with-lease, and requires the workflow's confirmation or explicit --force-push/--auto authorization; non-auto conflict paths additionally require passing verification or a user confirmation, and every bypassed red flag or unavailable/failed verification is reported.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-24",
+      "review_after": "2026-09-24"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md",
       "rule_id": "TM1",
       "reason": "Reviewed false-positive TM1 findings: every flagged --no-verify occurrence explicitly forbids bypassing hooks or gates, requires root-cause fixes, and stops for user approval before any justified disablement.",
