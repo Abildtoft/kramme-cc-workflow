@@ -1,6 +1,6 @@
 # Branch and Base Selection
 
-Use this reference for `/kramme:pr:create` Steps 2–3. This phase selects and validates `{base-source-ref}`, pinned `{base-ref}`, `{base-branch}`, and `{feature-branch}` without creating, deleting, or switching branches. Step 5 owns the only branch-creation mutation after all pre-mutation checks pass.
+Use this reference for `/kramme:pr:create` Steps 2–3. This phase selects and validates `{base-source-ref}`, pinned `{base-ref}`, `{base-branch}`, and `{feature-branch}` without creating, deleting, or switching branches. It also captures `{observed-origin-oid}` as either `<absent>` or one authoritative remote tip. Step 5 owns the only branch-creation mutation after all pre-mutation checks pass.
 
 **AUTO MODE:** If `AUTO_MODE=true`, choose documented deterministic defaults instead of asking questions. Stop on ambiguity or a hard blocker.
 
@@ -61,7 +61,7 @@ Track `{linear-issue-id}` as nullable workflow state. If `LINEAR_ISSUE_OVERRIDE`
 
 If `{entry-branch}` is neither `<detached>` nor `{base-branch}`, select it as `{feature-branch}`. When `{linear-issue-id}` is empty, scan the validated branch name for `[A-Z]{2,5}-\d+` case-insensitively; normalize a match to uppercase.
 
-Do not push or change upstream configuration. Step 5 requires the corresponding `origin` ref to be absent.
+Do not push or change upstream configuration. A corresponding `origin` ref is classified below; only a clean current branch at the exact same tip may use the non-rewriting recovery path.
 
 ### Detached HEAD or currently on the base
 
@@ -118,7 +118,7 @@ Generate candidates from the paths:
 
 Sanitize every generated segment to lowercase ASCII alphanumerics and hyphens. Generate candidates in the category order above and sort candidates lexicographically within each category. If `AUTO_MODE=true`, select the first non-empty candidate; if none exists, report a hard blocker without prompting. If `AUTO_MODE=false`, ask the user to choose from the generated candidates or provide a branch name. Apply the ref trust boundary to the selected candidate before capturing `{feature-branch}`.
 
-## Reject existing local or remote targets without switching
+## Classify local and remote targets without switching
 
 After `{feature-branch}` is validated, check whether it exists. Run the remote query with the shell tool's bounded timeout:
 
@@ -129,11 +129,12 @@ env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE
   git ls-remote --heads origin "refs/heads/{feature-branch}"
 ```
 
-Require the remote query to succeed.
+Require the remote query to succeed. Accept only empty output or one line whose first field is a full 40-character lowercase commit OID and whose second field is exactly `refs/heads/{feature-branch}`. Reject malformed or multiple-line output. When one line is present, capture its exact full OID as `{observed-origin-oid}`; otherwise capture `<absent>`.
 
-- If the remote ref exists, stop immediately. Do not fetch it, check it out, rewrite it, or create a local tracking branch.
 - If a different local branch with that name exists, stop without switching. Tell the user to switch to it explicitly and rerun the workflow; auto mode must not adopt local work from another branch.
-- If `{feature-branch}` equals the already-current validated branch, continue.
+- If the remote ref exists and `{feature-branch}` differs from the already-current validated `{entry-branch}`, stop. Never adopt a remote branch selected from a different entry checkout, fetch it, check it out, or create a local tracking branch.
+- If the remote ref exists on the already-current branch, compare `{observed-origin-oid}` directly with `{entry-commit}`. If the remote OID differs from `{entry-commit}`, stop and report both immutable values; the workflow must not overwrite or merge a diverged remote branch. If they match exactly, record `{branch-action}=reuse-existing-exact-tip`. Do not fetch, push, or change upstream configuration.
+- If the remote ref is absent and `{feature-branch}` equals the already-current validated branch, record `{branch-action}=use-current`.
 - If neither local nor remote ref exists, record `{branch-action}=create-from-entry-head`. Do not create it yet.
 
-Step 3.5 now checks GitHub for an existing Pull Request using the validated selected name. Step 4 checks that the entry `HEAD` or worktree has changes. Step 5 repeats the authoritative remote-absence check and only then creates `{feature-branch}` directly from `{entry-commit}`.
+Step 3.5 now checks GitHub for an existing Pull Request using the validated selected name. Step 4 checks that the entry `HEAD` or worktree has changes and applies the additional clean-tree gate before enabling exact-tip recovery. Step 5 repeats the authoritative remote-absence check only for rewrite paths and creates `{feature-branch}` directly from `{entry-commit}` when required.

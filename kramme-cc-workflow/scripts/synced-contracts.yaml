@@ -840,6 +840,56 @@
       ]
     },
     {
+      "name": "pr-create-existing-remote-orchestration",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "contains": [
+        "## Step 4.4: Classify Exact-Tip Existing-Remote Recovery",
+        "REMOTE_RECOVERY_MODE=true",
+        "skip Steps 5 and 6",
+        "preserves the existing commit history",
+        "scripts/verify-clean-worktree.sh",
+        "detects modified assume-unchanged tracked content",
+        "never invokes `kramme:git:recreate-commits`"
+      ]
+    },
+    {
+      "name": "pr-create-clean-worktree-helper",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/scripts/verify-clean-worktree.sh",
+      "contains": [
+        "git status --porcelain --untracked-files=all",
+        "Could not inspect the working tree",
+        "git ls-files -v -z",
+        "git update-index --no-assume-unchanged -z --stdin",
+        "Assume-unchanged tracked content differs from the index"
+      ]
+    },
+    {
+      "name": "pr-create-existing-remote-classification",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
+      "contains": [
+        "capture its exact full OID as `{observed-origin-oid}`",
+        "Never adopt a remote branch selected from a different entry checkout",
+        "If the remote OID differs from `{entry-commit}`, stop",
+        "record `{branch-action}=reuse-existing-exact-tip`",
+        "Do not fetch, push, or change upstream configuration"
+      ]
+    },
+    {
+      "name": "pr-create-existing-remote-publication",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "contains": [
+        "#### Existing exact-tip recovery",
+        "Require `HEAD` to remain exactly `{entry-commit}`",
+        "Require the authoritative remote OID to remain exactly `{observed-origin-oid}`",
+        "Do not run `git push` in this mode",
+        "--head \"{feature-branch}\"",
+        "prevents `gh pr create` from offering to push or fork",
+        "headRefOid",
+        "equal `{publication-head}` exactly",
+        "do not run Step 9 or claim success"
+      ]
+    },
+    {
       "name": "pr-create-remote-absence-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
       "contains": [
