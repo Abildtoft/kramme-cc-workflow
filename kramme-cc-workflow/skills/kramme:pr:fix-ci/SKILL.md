@@ -33,6 +33,8 @@ Before Step 1, parse `$ARGUMENTS`. If `--fixup` is present, set `FIXUP_MODE=true
 
 When `--scope-plan` is present, reject `--fixup` and `--auto`, require `--no-consolidate`, read `references/scoped-plan.md` completely, and follow it before Step 1 and at every edit, staging, commit, push, wait, blocker, and success boundary below. It validates the archive and sets `PLAN_SCOPE_ACTIVE=true`, `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, `{validated-scope-plan}`, `{validated-plan-branch}`, and `SCOPED_PLAN_LIFECYCLE=initial|recovery`. Otherwise set `PLAN_SCOPE_ACTIVE=false`.
 
+Initialize a producer-owned `CI_REMEDIATION_LEDGER` in run state. For every CI failure or review-feedback item investigated in Steps 5–8, record `source` (`ci`, `human_review`, or `bot_review`), `summary`, `disposition` (`fixed`, `rejected`, `deferred`, or `blocked`), and the evidence-based `rationale`. Update the same entry when a later loop iteration changes its disposition. Do not reconstruct this ledger from commit subjects at handoff time.
+
 ---
 
 ## Flow
@@ -206,6 +208,16 @@ When `PLAN_SCOPE_ACTIVE=true`, apply the scoped-plan blocker or success finaliza
 
 Read and follow the consolidation flow from `references/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, choosing consolidation mode, mapping commits to targets, executing rebase, and force pushing. If `AUTO_MODE=true`, choose **Automated** without prompting; do not choose "Keep separate". On shared branches, consolidation still requires explicit coordination before any history rewrite.
 
+### Step 12: Return the remediation handoff
+
+This return contract applies before every success or blocker exit, including exits reached before Step 11. Serialize the current producer-owned ledger as exactly one RFC 8259 JSON array and return it on one line:
+
+```text
+CI remediation JSON: [{"source":"ci|human_review|bot_review","summary":"...","disposition":"fixed|rejected|deferred|blocked","rationale":"..."}]
+```
+
+Emit `CI remediation JSON: []` when no CI failure or review-feedback item required investigation. Escape control characters, quotes, and backslashes per RFC 8259. Before returning, require every object to contain only the four documented keys and every enum value to be allowlisted. The handoff is the caller contract for explaining post-publication changes and review decisions; generated prose and commit subjects are not substitutes.
+
 ---
 
 ## Quality gate discipline
@@ -317,3 +329,4 @@ Before handing off, confirm:
 - [ ] Consolidation (if run) preserved every non-`[FIX PIPELINE]` commit.
 - [ ] If a force-push happened, it was via `--force-with-lease` and the branch either is not shared, or shared collaborators were coordinated with.
 - [ ] Human review feedback is addressed or explicitly deferred with a `NOTICED BUT NOT TOUCHING` rationale.
+- [ ] `CI remediation JSON` contains every investigated CI or feedback item with its final disposition and evidence-based rationale, and validates against the Step 12 schema.
