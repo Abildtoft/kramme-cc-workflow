@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:resolve-review
-description: Resolve findings from code reviews by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Manual-class findings are deferred with a recommended resolution and any genuinely distinct alternatives, not a bare deferral. Use --team to resolve independent findings in parallel by file area.
-argument-hint: "[--team] [--implement-only] [--granular] [--severity ...] [--source local|online] [review|url|instructions]"
+description: Resolve findings from code reviews or Conductor diff comments by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Manual-class findings are deferred with a recommended resolution and any genuinely distinct alternatives, not a bare deferral. Use --team to resolve independent findings in parallel by file area.
+argument-hint: "[--team] [--implement-only] [--granular] [--severity ...] [--source local|online|conductor] [review|url|instructions]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -24,7 +24,7 @@ Parse `$ARGUMENTS` for flags. After extracting all flags, the remainder is the *
 
 **Flags:**
 
-- `--source local|online` (aliases `--local`, `--online`) → `REVIEW_SOURCE`. Default `auto`. If both are selected, or `--source` is given an unknown value, ask the user to pick one and stop.
+- `--source local|online|conductor` (aliases `--local`, `--online`, `--conductor`) → `REVIEW_SOURCE`. Default `auto`. If multiple sources are selected, or `--source` is given an unknown value, ask the user to pick one and stop.
 - `--post` → Not supported. Stop with: `--post is not supported by kramme:pr:resolve-review.`
 - `--auto` → Not a supported flag here. Stop with: `--auto is not supported by kramme:pr:resolve-review.`
 - `--implement-only` → `IMPLEMENT_ONLY=true`. Pure code-fix engine mode for callers that own the reply/resolution phase (e.g. `kramme:pr:github-review-reply`): implement and validate fixes but make no GitHub writes, write no review file, and draft no replies (see Step 4). Mutually exclusive with `--team`; if a conflicting flag is given, ask the user to pick one and stop.
@@ -34,8 +34,8 @@ Parse `$ARGUMENTS` for flags. After extracting all flags, the remainder is the *
 
 **Payload classification:**
 
-- URL → external review source. If `REVIEW_SOURCE=local`, ask the user to drop the URL or switch to `--source online`, then stop. Otherwise set `REVIEW_SOURCE=online` and fetch from the URL.
-- Review-like prose (file references, code excerpts, structured findings) → the **review to resolve**.
+- URL → external review source. If `REVIEW_SOURCE=local` or `REVIEW_SOURCE=conductor`, ask the user to drop the URL or switch to `--source online`, then stop. Otherwise set `REVIEW_SOURCE=online` and fetch from the URL.
+- Review-like prose (file references, code excerpts, structured findings) → the **review to resolve**. If `REVIEW_SOURCE=conductor`, ask the user to drop the pasted review or choose a different source, then stop; explicit Conductor mode accepts only host diff comments.
 - Plain direction (e.g. "focus on security issues", "only high priority") → **additional instructions**. Apply throughout when prioritizing findings, judging validity, and choosing how to implement fixes.
 
 If the payload contains both review content and direction, treat the bulk as the review and the prefatory text as instructions.
@@ -88,11 +88,14 @@ When parsing these files, accept the structured `- Location:` field, `**Location
 - Use the PR URL provided in arguments or chat if present; otherwise the current branch's PR.
 - Commands: `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments`.
 
+**Fetching from Conductor** (treated as **external reviews**): when `CONDUCTOR_WORKSPACE_ID` is set and `mcp__conductor__GetDiffComments` is present, detect the tool by presence without probing it, then read and follow `references/conductor-source.md`. Use the runtime-exposed schema instead of hard-coding tool parameters.
+
 **By source mode:**
 
 1. `REVIEW_SOURCE=local` — read local review files from the list above. If exactly one exists, use it. If multiple exist, ask which one to resolve. If none exist, ask the user to provide review content, switch to `--source online`, or run one of the PR review producers first.
 2. `REVIEW_SOURCE=online` — fetch from GitHub.
-3. `REVIEW_SOURCE=auto` — prefer a structured review in the immediately preceding assistant message when the current request refers to it. Otherwise try local files (if multiple exist, ask which to resolve), then broader chat context or a PR URL, then GitHub.
+3. `REVIEW_SOURCE=conductor` — use only Conductor diff comments. If the workspace variable or tool is absent, stop with `Error: Conductor diff comments are unavailable here (not a Conductor workspace or tool absent)`.
+4. `REVIEW_SOURCE=auto` — try local files first (if multiple exist, ask which to resolve), then usable unmarked Conductor comments, then chat context (including a structured review in the immediately preceding assistant message when the request refers to it) or a PR URL, then GitHub. Silently continue past Conductor when its workspace variable, tool, or safely usable unmarked comments are absent.
 
 If no review is found for the selected mode, ask the user to provide review content, provide a PR URL, or choose a different mode.
 
@@ -283,7 +286,7 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
   `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
 
-- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place. A chat or payload review carrying `Review producer: kramme:pr:overengineering-review` writes to `OVERENGINEERING_REVIEW_OVERVIEW.md`; other external/chat reviews write to `REVIEW_OVERVIEW.md`.
+- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place. A chat or payload review carrying `Review producer: kramme:pr:overengineering-review` writes to `OVERENGINEERING_REVIEW_OVERVIEW.md`; other external, chat, and Conductor-sourced reviews write to `REVIEW_OVERVIEW.md`.
   - Use `Resolution status: addressed` only when the finding was implemented, already satisfied by the current code, or otherwise fully resolved.
   - Use `Resolution status: open` when implementation or validation failed, is blocked, or needs another run before it can be considered resolved.
   - Use `deferred`, `acknowledged`, or `skipped` for the non-implementation outcomes defined in Step 2, but do not use `skipped` for severity-filtered findings that were never processed.
