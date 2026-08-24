@@ -316,3 +316,51 @@
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "Linear issue to PR closes its report with a reviewer handoff summary" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    convergence="skills/kramme:pr:review-convergence/SKILL.md"
+    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+    shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
+    readme="../README.md"
+
+    grep -qF "### Reviewer Handoff Summary" "$parent"
+    grep -qF "after either success template" "$parent"
+    grep -qF "**What was done**" "$parent"
+    grep -qF "**What review convergence uncovered**" "$parent"
+    grep -qF "**What to focus on in review**" "$parent"
+    grep -qF "decisions this workflow made autonomously" "$parent"
+    grep -qF "Treat that producer-owned JSON as the only source" "$parent"
+    grep -qF "Never re-read \`.context/linear-issue-to-pr/reviews/\` here" "$parent"
+    grep -qF "every decision or assumption the delegated workflow made" "$parent"
+    grep -qF "JSON-decode the returned \`Reviewer handoff JSON\` field" "$parent"
+    grep -qF "the validated \`CI remediation JSON\` plus any final-tree \`Reviewer handoff JSON\`" "$parent"
+    grep -qF "raw text to \`kramme:text:clarify\`" "$parent"
+    grep -qF "restore anything the rewrite dropped before posting" "$parent"
+    grep -qF "post the draft unchanged rather than blocking the report" "$parent"
+    grep -qF "Reviewer handoff JSON:" "$convergence"
+    grep -qF "REVIEWER_HANDOFF_FINDINGS" "$policy"
+    grep -qF "not the replaceable report archive" "$policy"
+    grep -qF "CI_REMEDIATION_LEDGER" "$fix_ci"
+    grep -qF "CI remediation JSON:" "$fix_ci"
+    grep -qF "Require its \`CI remediation JSON\` field" "$shipping"
+    grep -qF "merge it with the initial handoff by fingerprint and final disposition" "$shipping"
+    grep -qF "Return the validated \`CI remediation JSON\` and the merged initial/final \`Reviewer handoff JSON\`" "$shipping"
+    grep -qF "Shipped summaries merge CI remediation and final-tree validation evidence" "$readme"
+    grep -qF "reviewer handoff summary" "$readme"
+
+    capture_line=$(grep -nF "JSON-decode the returned \`Reviewer handoff JSON\` field" "$parent" | cut -d: -f1)
+    shipping_line=$(grep -nF "## Step 4: Stop or Ship" "$parent" | cut -d: -f1)
+    [ "$capture_line" -lt "$shipping_line" ]
+
+    validation_line=$(grep -nF "invoke \`kramme:pr:review-convergence\` exactly once" "$shipping" | cut -d: -f1)
+    merge_line=$(grep -nF "merge it with the initial handoff by fingerprint and final disposition" "$shipping" | cut -d: -f1)
+    [ "$validation_line" -le "$merge_line" ]
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
