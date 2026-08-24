@@ -266,6 +266,57 @@ delete_origin_head() {
 	[ "$BASE_BRANCH" = "develop" ]
 }
 
+@test "GitHub PR base metadata wins over CONDUCTOR_DEFAULT_BRANCH" {
+	create_remote_branch "develop"
+	write_gh_base "develop"
+
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "uses CONDUCTOR_DEFAULT_BRANCH when PR metadata is absent and origin HEAD is missing" {
+	create_remote_branch "develop"
+	delete_origin_head
+
+	run env CONDUCTOR_DEFAULT_BRANCH=develop "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "CONDUCTOR_DEFAULT_BRANCH wins over origin HEAD" {
+	create_remote_branch "develop"
+
+	run env CONDUCTOR_DEFAULT_BRANCH=develop "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "ignores invalid or missing CONDUCTOR_DEFAULT_BRANCH and falls through" {
+	run env CONDUCTOR_DEFAULT_BRANCH='bad name' "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+
+	run env CONDUCTOR_DEFAULT_BRANCH=nonexistent "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+}
+
 @test "fetch disables interactive credential prompts" {
 	export GIT_SSH_COMMAND="custom-ssh --identity test-key"
 	export EXPECTED_GIT_SSH_COMMAND_FRAGMENT="$GIT_SSH_COMMAND"
@@ -307,10 +358,10 @@ delete_origin_head() {
 	delete_origin_head
 	git update-ref -d refs/remotes/origin/main
 
-	run "$SCRIPT_DIR/resolve-base.sh"
+	run env -u CONDUCTOR_DEFAULT_BRANCH "$SCRIPT_DIR/resolve-base.sh"
 
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"Could not determine base branch; expected PR metadata, origin/HEAD, origin/main, or origin/master"* ]]
+	[[ "$output" == *"Could not determine base branch; expected PR metadata, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master"* ]]
 }
 
 @test "explicit base branch wins over GitHub metadata and origin HEAD" {
