@@ -40,6 +40,10 @@ Use these uppercase markers when reasoning about the rebase and reporting progre
 
 ## Workflow
 
+### Conductor workspaces
+
+Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills): when `CONDUCTOR_WORKSPACE_PATH` is set, this checkout belongs to a Conductor-managed workspace whose branch is what the Conductor diff viewer and checks follow. Stay on the current branch by default and never switch away from it silently. When the work needs branch isolation, tell the user to create a new Conductor workspace for it instead of creating a raw git worktree or throwaway branch here. Never remove, reset, or re-point a Conductor workspace path; use Conductor's archive flow. Presence of Conductor variables changes defaults and messaging only, never permissions or safety gates.
+
 ### Step 0: Parse Arguments
 
 If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--force-push`, set `FORCE_PUSH_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.

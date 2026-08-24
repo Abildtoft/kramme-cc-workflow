@@ -211,6 +211,8 @@ If the recommendation is **SPLIT**:
 ````markdown
 ## Implementation Setup
 
+When `CONDUCTOR_WORKSPACE_PATH` is set, each slice's "own dedicated git worktree" means a separate Conductor workspace. Do not run the raw `git worktree` example below, and say so when presenting this setup.
+
 Implement this plan in its **own dedicated git worktree**, separate from every other plan in this split.
 
 - **Reference branch (source of the changes):** `{{REFERENCE_BRANCH}}` — the branch this split was planned from. It holds the full set of work being split. Extract **only this slice's files** from it; do not pull changes from any other branch.
@@ -242,6 +244,12 @@ After slices are implemented, reviewed, or rebased, reconcile each slice against
 ```
 
 ## Notes
+
+### Conductor workspaces
+
+Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills): when `CONDUCTOR_WORKSPACE_PATH` is set, this checkout belongs to a Conductor-managed workspace whose branch is what the Conductor diff viewer and checks follow. Stay on the current branch by default and never switch away from it silently. When the work needs branch isolation, tell the user to create a new Conductor workspace for it instead of creating a raw git worktree or throwaway branch here. Never remove, reset, or re-point a Conductor workspace path; use Conductor's archive flow. Presence of Conductor variables changes defaults and messaging only, never permissions or safety gates.
+
+For a split run inside Conductor, each slice's "own dedicated git worktree" should be a separate Conductor workspace; say so when presenting the Implementation Setup.
 
 - Use after a code review surfaces _"this is doing too much"_, when a reviewer asks for a split, or before opening a PR you suspect bundles unrelated work.
 - **Author-driven, not reviewer-driven.** Splitting is the author's responsibility — reviewers shouldn't carry it. Self-review the diff first (a quick read-through, or run `kramme:pr:code-review`) so the seams reflect what the code actually does, not just what the file tree looks like.

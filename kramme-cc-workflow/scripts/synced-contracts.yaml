@@ -49,6 +49,23 @@
       ]
     },
     {
+      "name": "conductor-workspace-boundary-guidance",
+      "extract_regex": "Synced Conductor workspace boundary contract \\(keep aligned across git-mutating workflow skills\\):\\s*(when CONDUCTOR_WORKSPACE_PATH is set, this checkout belongs to a Conductor-managed workspace whose branch is what the Conductor diff viewer and checks follow\\. Stay on the current branch by default and never switch away from it silently\\. When the work needs branch isolation, tell the user to create a new Conductor workspace for it instead of creating a raw git worktree or throwaway branch here\\. Never remove, reset, or re-point a Conductor workspace path; use Conductor's archive flow\\. Presence of Conductor variables changes defaults and messaging only, never permissions or safety gates\\.)",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/**/*.md",
+        "marker": "Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills):"
+      },
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:issue-to-pr/SKILL.md"
+      ]
+    },
+    {
       "name": "siw-spec-exclusion-list",
       "extract_regex": "Synced SIW spec-exclusion contract \\(keep aligned across SIW spec detectors\\):\\s*(LOG\\.md,\\s*OPEN_ISSUES_OVERVIEW\\.md,\\s*DISCOVERY_BRIEF\\.md,\\s*SPEC_STRENGTHENING_PLAN\\.md,\\s*AUDIT_\\*\\.md,\\s*PRODUCT_AUDIT\\.md,\\s*SIW_\\*\\.md\\.)",
       "inventory": {
