@@ -35,8 +35,8 @@ Then stop.
 Same as `/kramme:pr:resolve-review` Steps 0-1:
 
 1. Check for arguments, including source flags, severity filters, granular commits, review content, instructions, or URL
-2. Honor explicit `REVIEW_SOURCE=local` or `REVIEW_SOURCE=online` selection before considering chat context
-3. In auto mode, prefer a structured review in the immediately preceding assistant message when the current request refers to it; otherwise check for `REVIEW_OVERVIEW.md`, `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, and `OVERENGINEERING_REVIEW_OVERVIEW.md`, then broader chat context
+2. Honor explicit `REVIEW_SOURCE=local` or `REVIEW_SOURCE=online` selection before considering chat context. Also honor explicit `REVIEW_SOURCE=conductor`; read and follow `conductor-source.md` before grouping candidates.
+3. In auto mode, first check for `REVIEW_OVERVIEW.md`, `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, and `OVERENGINEERING_REVIEW_OVERVIEW.md`, then usable unmarked Conductor comments, then chat context. In auto mode, prefer a structured review in the immediately preceding assistant message when the current request refers to it within that chat-context stage.
 4. Fetch from current branch's PR if nothing else found
 5. List all findings
 

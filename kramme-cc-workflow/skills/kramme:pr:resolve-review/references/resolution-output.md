@@ -9,6 +9,7 @@ Write resolutions to the appropriate file in the project root:
 - If the source review was `COPY_REVIEW_OVERVIEW.md` → update `COPY_REVIEW_OVERVIEW.md` in place
 - If the source review was `CONVENTION_REVIEW_OVERVIEW.md` → update `CONVENTION_REVIEW_OVERVIEW.md` in place
 - If the source review was `OVERENGINEERING_REVIEW_OVERVIEW.md` or carries `Review producer: kramme:pr:overengineering-review` → update or create `OVERENGINEERING_REVIEW_OVERVIEW.md`
+- If the source review came from Conductor diff comments → create or update `REVIEW_OVERVIEW.md` as an external review
 - Otherwise → create or update `REVIEW_OVERVIEW.md`
 
 Updates are **in place**: for each processed finding, replace or add its `Resolution status:` and `Action taken:` fields inside the existing entry. When a reopened manual finding is completed, apply the completed-decision replacement required by Step 2d. Findings present in the source but not addressed in this run (severity-filtered, out-of-scope, already processed, or unrelated) stay verbatim — never delete entries. If the source did not exist, create the producer-specific file named above when a recognized marker is present; otherwise create `REVIEW_OVERVIEW.md`.
