@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:overengineering-review
 description: "Single-lens review that asks whether branch and local changes are overdoing things: needless complexity, speculative generality, or hedging against very unlikely edge cases. Judges necessity against the task's actual requirements, not codebase baseline practice; a loose full-recall finder is followed by an adversarial justify pass, and surviving judgment calls are reported instead of dropped. Use --requirements when PR and commit context cannot supply task intent. Supports --inline. Not for baseline-relative drift or overcaution (use kramme:pr:convention-review) or general code quality (use kramme:pr:code-review)."
-argument-hint: "[--base <branch>] [--requirements <text>] [--inline]"
-disable-model-invocation: false
+argument-hint: "[--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]"
+disable-model-invocation: true
 user-invocable: true
 ---
 
@@ -24,12 +24,15 @@ This skill is deliberately shaped differently from the other review skills:
 
 ### Step 1: Parse Arguments
 
-Accept only `--base <branch>`, `--inline`, and the optional sentinel `--requirements <text>`:
+Accept only `--base <branch>`, `--inline`, `--no-diff-comments`, and the optional sentinel `--requirements <text>`:
 
 1. Before the sentinel, `--base` may appear at most once and must be followed by a non-flag value. Store it as `BASE_BRANCH_OVERRIDE`.
 2. Before the sentinel, `--inline` may appear at most once. Set `INLINE_MODE=true` when present and `false` otherwise.
-3. `--requirements` may appear at most once. When present, it is the final control token: treat every character after it as one non-empty inert `TASK_REQUIREMENTS` block, including whitespace, quotes, newlines, and flag-shaped text. Do not parse quoting inside the block or reinterpret any later text as flags.
-4. On duplicate flags, unknown flags, positional arguments before the sentinel, or a missing requirements block, show `Usage: /kramme:pr:overengineering-review [--base <branch>] [--inline] [--requirements <text>]` and stop.
+3. Before the sentinel, `--no-diff-comments` may appear at most once. Set `DIFF_COMMENTS=false` when present and `true` otherwise.
+4. `--requirements` may appear at most once. When present, it is the final control token: treat every character after it as one non-empty inert `TASK_REQUIREMENTS` block, including whitespace, quotes, newlines, and flag-shaped text. Do not parse quoting inside the block or reinterpret any later text as flags.
+5. On duplicate flags, unknown flags, positional arguments before the sentinel, or a missing requirements block, show `Usage: /kramme:pr:overengineering-review [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]` and stop.
+
+Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is already present in the current tool set, read and follow `references/conductor-diff-comments.md` while building the canonical finding set. Preserve its projection identities through ordinal ID assignment for the post-report projection. Detect tools by presence; never call one merely to probe availability.
 
 ### Step 2: Resolve Base Branch and Collect the Diff
 
@@ -167,6 +170,10 @@ Organize the report:
 If `INLINE_MODE=true`, reply with the full report inline and do **not** create or update `OVERENGINEERING_REVIEW_OVERVIEW.md`. Otherwise write it to `OVERENGINEERING_REVIEW_OVERVIEW.md` in the project root — a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`.
 
 If any Confirmed or Judgment Call findings exist, suggest `/kramme:pr:resolve-review`. For inline output, tell the user to invoke it in the immediately following message so the resolver selects that structured review ahead of older local artifacts; later handoffs must supply the report content explicitly or save it as `OVERENGINEERING_REVIEW_OVERVIEW.md`. Judgment calls resolve as accept-or-simplify decisions, not automatic fixes.
+
+### Post Conductor Diff Comments (When Available)
+
+After the canonical report succeeds, when `CONDUCTOR_WORKSPACE_ID` is set, handle the optional projection for inline and file output. If `DIFF_COMMENTS=true` and `mcp__conductor__DiffComment` is already present in the current tool set, apply `references/conductor-diff-comments.md` using the identities preserved during aggregation. Otherwise report `Diff comments posted: 0 (skipped 0 already present)` and `Diff comment projection: skipped — disabled by --no-diff-comments` or `Diff comment projection: skipped — DiffComment unavailable`, as applicable.
 
 ## Verification
 

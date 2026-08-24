@@ -49,6 +49,21 @@
       ]
     },
     {
+      "name": "review-producer-conductor-diff-comments",
+      "extract_regex": "(?s)Synced Conductor diff-comment contract \\(keep aligned across review producers\\):\\s*## Producer values.*?## Synced contract\\s*(Treat Conductor comments as an optional projection.*?without weakening or replacing the canonical review result\\.)",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/**/*.md",
+        "marker": "Synced Conductor diff-comment contract (keep aligned across review producers):"
+      },
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:pr:code-review/references/output-template.md",
+        "kramme-cc-workflow/skills/kramme:pr:convention-review/references/conductor-diff-comments.md",
+        "kramme-cc-workflow/skills/kramme:pr:overengineering-review/references/conductor-diff-comments.md",
+        "kramme-cc-workflow/skills/kramme:pr:product-review/references/conductor-diff-comments.md",
+        "kramme-cc-workflow/skills/kramme:pr:ux-review/references/conductor-diff-comments.md"
+      ]
+    },
+    {
       "name": "conductor-workspace-boundary-guidance",
       "extract_regex": "Synced Conductor workspace boundary contract \\(keep aligned across git-mutating workflow skills\\):\\s*(when CONDUCTOR_WORKSPACE_PATH is set, this checkout belongs to a Conductor-managed workspace whose branch is what the Conductor diff viewer and checks follow\\. Stay on the current branch by default and never switch away from it silently\\. When the work needs branch isolation, tell the user to create a new Conductor workspace for it instead of creating a raw git worktree or throwaway branch here\\. Never remove, reset, or re-point a Conductor workspace path; use Conductor's archive flow\\. Presence of Conductor variables changes defaults and messaging only, never permissions or safety gates\\.)",
       "inventory": {
@@ -671,8 +686,8 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md",
       "frontmatter": {
         "name": "kramme:pr:convention-review",
-        "argument-hint": "[--base <branch>] [--threshold 0-100] [--inline]",
-        "disable-model-invocation": "false",
+        "argument-hint": "[--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]",
+        "disable-model-invocation": "true",
         "user-invocable": "true"
       },
       "contains": [

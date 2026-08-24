@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:ux-review
 description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
-argument-hint: "[app-url|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline]"
-disable-model-invocation: false
+argument-hint: "[app-url|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline] [--no-diff-comments]"
+disable-model-invocation: true
 user-invocable: true
 ---
 
@@ -12,9 +12,13 @@ Audit the UI, UX, and product experience of a PR's changes, including local stag
 
 **Arguments:** "$ARGUMENTS"
 
+If `$ARGUMENTS` contains `--no-diff-comments`, set `DIFF_COMMENTS=false` and remove that flag. Otherwise set `DIFF_COMMENTS=true`. Preserve this value for Team Mode and standard review output.
+
+Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is already present in the current tool set, read and follow `references/conductor-diff-comments.md` while building the canonical finding set. Preserve its projection identities through ordinal ID assignment for the post-audit projection, including in Team Mode. Detect tools by presence; never call one merely to probe availability.
+
 ## Team Mode
 
-If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments. After its final aggregated audit succeeds, run `Post Conductor Diff Comments` below and then stop.
 
 ## Audit Workflow
 
@@ -287,6 +291,10 @@ If `INLINE_MODE=true`:
 Otherwise, write to `UX_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/ux-review-report-format.md`. Include all sections even if empty (with count of 0).
 
 When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact — it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow-artifacts:cleanup` when that skill is installed.
+
+### Post Conductor Diff Comments (When Available)
+
+After the canonical audit succeeds, when `CONDUCTOR_WORKSPACE_ID` is set, handle the optional projection for Team Mode, inline output, and file output. If `DIFF_COMMENTS=true` and `mcp__conductor__DiffComment` is already present in the current tool set, apply `references/conductor-diff-comments.md` using the identities preserved during aggregation. Otherwise report `Diff comments posted: 0 (skipped 0 already present)` and `Diff comment projection: skipped — disabled by --no-diff-comments` or `Diff comment projection: skipped — DiffComment unavailable`, as applicable.
 
 ### Step 12: Provide Action Plan
 

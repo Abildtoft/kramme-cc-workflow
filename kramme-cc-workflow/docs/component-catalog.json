@@ -284,7 +284,7 @@
     },
     {
       "name": "kramme:pr:convention-review",
-      "invocation": "User, Auto",
+      "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md"
     },
     {
@@ -319,7 +319,7 @@
     },
     {
       "name": "kramme:pr:overengineering-review",
-      "invocation": "User, Auto",
+      "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md"
     },
     {
@@ -329,7 +329,7 @@
     },
     {
       "name": "kramme:pr:product-review",
-      "invocation": "User, Auto",
+      "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md"
     },
     {
@@ -354,7 +354,7 @@
     },
     {
       "name": "kramme:pr:ux-review",
-      "invocation": "User, Auto",
+      "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md"
     },
     {
