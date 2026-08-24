@@ -29,6 +29,26 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "shared convergence accounts for normal Conductor projections and suppresses validation comments" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:pr:review-convergence/SKILL.md"
+    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+
+    grep -qF "Initialize \`DIFF_COMMENTS_POSTED_TOTAL=0\`" "$policy"
+    grep -qF "When active, invoke \`kramme:pr:code-review --parallel --inline\` in normal mode" "$policy"
+    grep -qF "kramme:pr:code-review --parallel --inline --no-diff-comments" "$policy"
+    grep -qF "Require exactly one producer summary line \`Diff comments posted: N (skipped M already present)\`" "$policy"
+    grep -qF "add \`N\` to \`DIFF_COMMENTS_POSTED_TOTAL\`" "$policy"
+    grep -qF "validation-only invocations contributed zero" "$policy"
+    grep -qF "Diff comments posted: {cumulative newly posted count from the convergence policy ledger}" "$skill"
+    grep -qF "never reconstruct it from Conductor state" "$skill"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "Linear issue to PR gates the started-state transition before delegation" {
 	run bash -c '
     set -e

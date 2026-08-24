@@ -18,6 +18,8 @@ Use this policy after the skill has frozen the caller's requirements and validat
 
 Initialize one producer-owned `REVIEWER_HANDOFF_FINDINGS` ledger and one `REVIEWER_HANDOFF_FOCUS` ledger in run state before Gate 0. These ledgers, not the replaceable report archive, are the durable caller handoff. Update an existing entry by the finding fingerprint (quality gate plus concrete location or review scope plus root cause) when a later round changes its disposition; never duplicate the same root cause because a report was regenerated or line numbers moved.
 
+Initialize `DIFF_COMMENTS_POSTED_TOTAL=0` beside those ledgers. It counts only newly posted Conductor comments reported by normal-mode Gate 1 producer invocations in this convergence run. Never read Conductor comments as findings input or reconstruct this count from host state.
+
 Record a finding entry for every accepted finding that changes code, every emitted Critical, Important, or `OVERDONE` finding that is fixed, rejected, deferred optional, or blocked, and every lower-severity finding intentionally deferred for later review. Each entry contains `fingerprint`, `gate`, `summary`, `disposition` (`fixed`, `rejected`, `deferred_optional`, or `blocked`), and the evidence-based `rationale`. Omit rejected Nit/FYI noise unless its rationale materially changes what a reviewer should inspect.
 
 Record a focus entry for every unresolved manual or advisory note and every Judgment Call or concrete risk area surfaced by a gate. Each entry contains `kind` (`judgment_call`, `risk`, or `advisory`), `summary`, and `rationale`. Remove or update a focus entry when remediation or a later gate resolves it. Keep the ledgers current through normal reruns and validation-only passes even when a gate reports inline or its archived report is replaced.
@@ -138,7 +140,9 @@ When `VALIDATION_ONLY=true`, every active gate below is read-only. Do not invoke
 
 ### Gate 1: Regular Code Review
 
-When active, invoke `kramme:pr:code-review --parallel --inline`. Treat this as a read-only gate: this skill owns relevance decisions, finding dispositions, all review-triggered edits, focused verification, commits, and reruns.
+When active, invoke `kramme:pr:code-review --parallel --inline` in normal mode; keep diff comments enabled on every round so the producer can project newly appearing root-cause fingerprints and deduplicate stable fingerprints without relying on ordinal Finding IDs. When `VALIDATION_ONLY=true`, invoke `kramme:pr:code-review --parallel --inline --no-diff-comments` so a validation pass creates no new host comments. Treat either invocation as a read-only gate: this skill owns relevance decisions, finding dispositions, all review-triggered edits, focused verification, commits, and reruns.
+
+Require exactly one producer summary line `Diff comments posted: N (skipped M already present)` with nonnegative integer counts. In normal mode, add `N` to `DIFF_COMMENTS_POSTED_TOTAL`; in validation-only mode require `N=0` and do not change the ledger. A projection-limitation line is reporting context, not degraded review coverage. The canonical inline report remains the only findings input.
 
 - In standard mode, fix every accepted actionable Critical or Important finding. Report remaining manual and advisory findings.
 - In strict mode, extend triage to every emitted manual, Suggestion, and FYI finding using the policy below.
@@ -264,7 +268,7 @@ The hard ceiling is a safety boundary, not a target. Stop earlier as soon as the
 
 ### Bounded Stop
 
-When a stop condition fires and code changed after the latest complete ordered gate pass, run exactly one validation-only round. Re-evaluate applicability and run the applicable gates in regular-review → convention-review → overengineering-review → refactor order without editing code. Use the same read-only `kramme:pr:code-review --parallel --inline` regular gate and the normal file-backed overengineering invocation so prior `OE-NNN` lifecycle state is reconciled. Do not rerun Gate 0 here; it is a one-shot pass and its budget-free removal batch is not available this late. Do not run a second validation-only round.
+When a stop condition fires and code changed after the latest complete ordered gate pass, run exactly one validation-only round. Re-evaluate applicability and run the applicable gates in regular-review → convention-review → overengineering-review → refactor order without editing code. Use the read-only `kramme:pr:code-review --parallel --inline --no-diff-comments` regular gate and the normal file-backed overengineering invocation so prior `OE-NNN` lifecycle state is reconciled without projecting new host comments. Do not rerun Gate 0 here; it is a one-shot pass and its budget-free removal batch is not available this late. Do not run a second validation-only round.
 
 Disposition the final validation-only findings as follows:
 
@@ -292,5 +296,6 @@ Before returning, confirm:
 - When active, the final refactor report matches code that subsequently passed regular, convention, and overengineering review after its last accepted refactor.
 - Any degraded refactor, overengineering, convention, or broad-review coverage is resolved or reported as a blocker.
 - Every qualifying finding and focus item is present exactly once with its final disposition in the reviewer handoff ledgers, and both ledgers validate against the Step 6 JSON schema.
+- `DIFF_COMMENTS_POSTED_TOTAL` is a nonnegative integer equal to the sum of newly posted counts returned by normal-mode Gate 1 invocations; validation-only invocations contributed zero.
 
 Return the stop reason (`converged`, `diminishing returns`, or `validation-only`), remediation cycles used, review-debt score trend, and counts of fixed, rejected, deferred optional, and blocked findings. A nonzero required or blocked count prevents clean completion until the caller supplies the missing input.
