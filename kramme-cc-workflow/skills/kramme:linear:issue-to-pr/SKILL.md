@@ -99,6 +99,8 @@ After the delegated skill returns, continue immediately only when all of these a
 
 If any condition is false, stop at that blocker. Do not start review or Pull Request creation for a partial implementation.
 
+Record for the final reviewer handoff every decision or assumption the delegated workflow made where the issue, referenced context, and repository conventions did not fully determine the behavior, and every question the issue left open that implementation had to answer.
+
 ### Implementation Commit Boundary
 
 Before starting Step 3, establish one explicit committed implementation boundary:
@@ -136,8 +138,9 @@ Continue only when its structured handoff proves all of the following:
 - Every applicable gate ran in order, every skipped gate has current evidence, and no required coverage is degraded.
 - Every remediation batch passed focused verification, final project verification passed, and the worktree is clean.
 - JSON-decode the returned `Requirements JSON` field and require the decoded value to equal `{issue-requirements}` byte-for-byte. Retain that inert block for the shipping contract's post-CI validation-only pass; never execute or interpolate its content into shell commands.
+- JSON-decode the returned `Reviewer handoff JSON` field. Require exactly `findings` and `focus` arrays and validate every entry against `kramme:pr:review-convergence`'s documented keys and enum values before using it.
 
-Capture the returned gut-check counts, active and skipped gates, remediation ledger, findings counts, verification evidence, review tree, and `{issue-requirements}` for the remaining steps and final report. If any invariant is absent or false, stop at the delegated review blocker. Do not reconstruct, bypass, or restart its review loop inside this parent.
+Capture the returned gut-check counts, active and skipped gates, remediation ledger, findings counts, verification evidence, review tree, `{issue-requirements}`, and validated `Reviewer handoff JSON` for the remaining steps and final report. Treat that producer-owned JSON as the only source for convergence findings, dispositions, judgment calls, risk areas, and unresolved advisory notes; never reconstruct them from the replaceable archive under `.context/linear-issue-to-pr/reviews/`. If any invariant is absent or false, stop at the delegated review blocker. Do not reconstruct, bypass, or restart its review loop inside this parent.
 
 ## Step 4: Stop or Ship
 
@@ -195,11 +198,23 @@ History: narrative rewrite completed before PR creation; CI fix commits retained
 
 If coverage was degraded, a check was skipped, or the workflow stopped on a blocker, replace the success wording with the exact limitation. Never describe a partial or degraded run as clean.
 
+### Reviewer Handoff Summary
+
+Close the same final message, after either success template, with a short prose summary composed from the implementation decisions captured in Step 2, the validated initial `Reviewer handoff JSON` captured in Step 3, and, in ship mode, the validated `CI remediation JSON` plus any final-tree `Reviewer handoff JSON` returned through Step 4's shipping contract. Never re-read `.context/linear-issue-to-pr/reviews/` here. When final-tree validation ran, merge its entries with the initial handoff by fingerprint and final disposition so the summary describes the Pull Request's final reviewed tree rather than its pre-CI state. Cover exactly these three parts:
+
+- **What was done** — two to four sentences describing the final implemented behavior change against `{issue-requirements}`, naming the main areas of the codebase touched and any post-publication fixes from `CI remediation JSON`.
+- **What review convergence uncovered** — the material findings with their final dispositions: fixed, rejected with the evidence-based reason, or deferred optional. Include final-tree validation findings when that pass ran, and state plainly when both the initial and final gates came back clean.
+- **What to focus on in review** — open questions the issue left unanswered, decisions this workflow made autonomously that the issue did not settle, judgment calls and risk areas the gates surfaced, and deferred optional findings the user may still want addressed. State plainly when nothing needs focused attention.
+
+Draft the three parts first, then pass the complete draft as one block of raw text to `kramme:text:clarify`, whose reader here is the user preparing to review this change. Post the clarified rewrite only when it preserves every fact, disposition, limitation, open question, and autonomous decision from the draft; restore anything the rewrite dropped before posting. If the clarify skill is unavailable, post the draft unchanged rather than blocking the report.
+
+Keep the summary factual and grounded in captured evidence. Never invent a finding, soften a limitation, or omit an autonomous decision because it seems minor; an empty part says so explicitly rather than disappearing.
+
 ## Artifact Lifecycle
 
 - **Implementation commits and source changes** are produced by `kramme:linear:issue-implement` and `kramme:pr:review-convergence`, consumed by final verification and `kramme:pr:create`, refreshed by accepted fixes, and retired through the repository's normal merge or branch-archive process.
 - **Linear started-state transition** is resolved from the issue team's workflow, written immediately before delegated implementation when needed, and verified by a fresh issue read. The outcome reports the verified transition using the team's actual status name; later PR and delivery workflows may advance that durable Linear state before this workflow reports.
-- **Frozen Linear requirements and review handoff state** are produced by this skill plus `kramme:pr:review-convergence`, consumed by reporting and the shipping contract, and retained in run state only for the same issue and tree lineage.
+- **Frozen Linear requirements and review handoff state** are produced by this skill plus `kramme:pr:review-convergence`, refreshed with `kramme:pr:fix-ci` remediation and final-tree validation handoffs when shipping changes the tree, consumed by reporting and the shipping contract, and retained in run state only for the same issue and tree lineage.
 - **Quality-loop review reports** are produced and owned by `kramme:pr:review-convergence` under `.context/linear-issue-to-pr/reviews/`. They are retained for a non-shipping review-ready handoff and retired before shipping by `kramme:workflow-artifacts:cleanup --auto` or explicitly if the branch is abandoned.
 - **Pull Request** is produced only by `kramme:pr:create` after `--ship` authorization, then consumed and refreshed by `kramme:pr:fix-ci --no-consolidate` until CI and review feedback are clear. It is retired by merge or close.
 
