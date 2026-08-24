@@ -15,9 +15,9 @@ This skill is the SIW entry point. When invoked, it:
 
 1. **Detects current state** — checks for `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, and the spec document.
 2. **Resumes if state exists** — follows the resume flow in `references/phase-0-resuming.md` (read LOG.md "Current Progress", check open issues, continue the next task).
-3. **Routes if not** — points to the right SIW subcommand based on what's needed (see *Working With Existing Files* below).
+3. **Routes if not** — points to the right SIW subcommand based on what's needed (see _Working With Existing Files_ below).
 
-It does not directly create, modify, or close SIW documents; that is delegated to the SIW subcommands listed in the *Commands Reference* table.
+It does not directly create, modify, or close SIW documents; that is delegated to the SIW subcommands listed in the _Commands Reference_ table.
 
 ## When to Use
 
