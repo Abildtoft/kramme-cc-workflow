@@ -47,6 +47,13 @@ Before mutation:
 6. Resolve `{base-branch}` from `refs/remotes/origin/HEAD`, falling back to a verified `main` and then `master`. Fetch `origin/{base-branch}`.
 7. Require `gh pr list --head "{issue-branch}" --state all --limit 100 --json number,url,state,headRefName,headRefOid` to succeed with an empty list.
 8. Require `git ls-remote --heads origin "refs/heads/{issue-branch}"` to succeed with a well-formed zero-line absent result.
+
+### Conductor workspaces
+
+Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills): when `CONDUCTOR_WORKSPACE_PATH` is set, this checkout belongs to a Conductor-managed workspace whose branch is what the Conductor diff viewer and checks follow. Stay on the current branch by default and never switch away from it silently. When the work needs branch isolation, tell the user to create a new Conductor workspace for it instead of creating a raw git worktree or throwaway branch here. Never remove, reset, or re-point a Conductor workspace path; use Conductor's archive flow. Presence of Conductor variables changes defaults and messaging only, never permissions or safety gates.
+
+When `CONDUCTOR_WORKSPACE_PATH` is set and `{issue-branch}` differs from `{intake-branch}`, stop before branch selection and ask whether to switch this workspace explicitly or open a new Conductor workspace for `{issue-branch}`. Do not continue until the choice is explicit.
+
 9. Preserve the SIW intake tree across branch selection:
    - If `{issue-branch}` does not exist locally, require the intake issue status to be `READY` or `IN PROGRESS` and require `git diff --quiet "{intake-head}" "origin/{base-branch}" -- siw/` before creating it from `origin/{base-branch}`. This workflow requires all committed SIW planning state to be landed on the fetched base before the first run; it never silently drops or cherry-picks local-only planning commits. Set `EXECUTION_MODE=implement`.
    - If `{issue-branch}` exists locally, switch to it and require a clean worktree. Resolve `{branch-base}` with `git merge-base "origin/{base-branch}" HEAD`, require it to be one full commit OID and an ancestor of both tips, and collect every committed path in `{branch-base}..HEAD`. Re-resolve the issue and classify every path against the issue's explicit scope plus the exact allowed workflow-owned additions: applicable tests, permanent SIW specifications, `{issue-path}`, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md`. Stop on any unrelated or ambiguous committed path; matching only the SIW subtree is insufficient because `complete-work` reviews and ships the full branch diff.
