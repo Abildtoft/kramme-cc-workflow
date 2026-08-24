@@ -196,6 +196,59 @@ detect_conductor() {
   esac
 }
 
+detect_conductor_mode() {
+  case "${CONDUCTOR_IS_LOCAL:-}" in
+    1)
+      echo "local"
+      ;;
+    0)
+      echo "cloud"
+      ;;
+    "")
+      if [ -n "${CONDUCTOR_WORKSPACE_PATH:-}" ]; then
+        echo "unknown (CONDUCTOR_IS_LOCAL unset)"
+        return
+      fi
+      case "$(pwd)" in
+        */conductor/workspaces/*)
+          echo "unknown (CONDUCTOR_IS_LOCAL unset)"
+          ;;
+        *)
+          echo "not detected"
+          ;;
+      esac
+      ;;
+    *)
+      echo "unknown (CONDUCTOR_IS_LOCAL must be 0 or 1)"
+      ;;
+  esac
+}
+
+detect_env_or_not_set() {
+  local variable_name="$1"
+  local value="${!variable_name:-}"
+
+  if [ -n "$value" ]; then
+    printf '%s\n' "$value"
+  else
+    echo "not set"
+  fi
+}
+
+detect_conductor_port_range() {
+  case "${CONDUCTOR_PORT:-}" in
+    "")
+      echo "not set"
+      ;;
+    *[!0-9]*)
+      echo "invalid (CONDUCTOR_PORT must be an integer)"
+      ;;
+    *)
+      echo "${CONDUCTOR_PORT}-$((10#${CONDUCTOR_PORT} + 9))"
+      ;;
+  esac
+}
+
 detect_connector_note() {
   local name="$1"
   local hint="$2"
@@ -243,6 +296,8 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   detect_connector_note "Linear" "Connector authentication is not reliably inspectable from shell."
   printf ','
   detect_connector_note "Figma" "Connector authentication is not reliably inspectable from shell."
+  printf ','
+  detect_connector_note "Conductor MCP" "MCP tool availability is not inspectable from shell; check for mcp__conductor__* tools in the host."
   printf '],'
   printf '"context":['
   repo_value "repoRoot" "$(detect_repo_root)"
@@ -253,7 +308,21 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   printf ','
   repo_value "conductor" "$(detect_conductor)"
   printf ','
+  repo_value "conductorMode" "$(detect_conductor_mode)"
+  printf ','
+  repo_value "conductorWorkspaceName" "$(detect_env_or_not_set CONDUCTOR_WORKSPACE_NAME)"
+  printf ','
+  repo_value "conductorWorkspacePath" "$(detect_env_or_not_set CONDUCTOR_WORKSPACE_PATH)"
+  printf ','
+  repo_value "conductorRootPath" "$(detect_env_or_not_set CONDUCTOR_ROOT_PATH)"
+  printf ','
+  repo_value "conductorDefaultBranch" "$(detect_env_or_not_set CONDUCTOR_DEFAULT_BRANCH)"
+  printf ','
+  repo_value "conductorPortRange" "$(detect_conductor_port_range)"
+  printf ','
   repo_value ".context" "$(detect_file ".context")"
+  printf ','
+  repo_value ".conductor/settings.toml" "$(detect_file ".conductor/settings.toml")"
   printf ','
   repo_value "conductor.json" "$(detect_file "conductor.json")"
   printf ','
@@ -290,13 +359,21 @@ echo
 echo "Integrations"
 detect_connector_note "Linear" "Connector authentication is not reliably inspectable from shell."
 detect_connector_note "Figma" "Connector authentication is not reliably inspectable from shell."
+detect_connector_note "Conductor MCP" "MCP tool availability is not inspectable from shell; check for mcp__conductor__* tools in the host."
 echo
 echo "Context"
 repo_value "Repo root" "$(detect_repo_root)"
 repo_value "Branch" "$(detect_branch)"
 repo_value "Git state" "$(detect_git_state)"
 repo_value "Conductor" "$(detect_conductor)"
+repo_value "Conductor mode" "$(detect_conductor_mode)"
+repo_value "Workspace name" "$(detect_env_or_not_set CONDUCTOR_WORKSPACE_NAME)"
+repo_value "Workspace path" "$(detect_env_or_not_set CONDUCTOR_WORKSPACE_PATH)"
+repo_value "Root path" "$(detect_env_or_not_set CONDUCTOR_ROOT_PATH)"
+repo_value "Default branch" "$(detect_env_or_not_set CONDUCTOR_DEFAULT_BRANCH)"
+repo_value "Port range" "$(detect_conductor_port_range)"
 repo_value ".context" "$(detect_file ".context")"
+repo_value ".conductor/settings.toml" "$(detect_file ".conductor/settings.toml")"
 repo_value "conductor.json" "$(detect_file "conductor.json")"
 repo_value ".worktreeinclude" "$(detect_file ".worktreeinclude")"
 repo_value "Hook config" "$(detect_file "${PLUGIN_ROOT}/hooks/hooks.json")"
