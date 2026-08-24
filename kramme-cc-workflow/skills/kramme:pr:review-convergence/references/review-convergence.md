@@ -14,6 +14,14 @@ Use this policy after the skill has frozen the caller's requirements and validat
 
 “Zero active findings” means zero accepted unresolved findings after evidence-based triage. It does not mean changing code until every subjective suggestion disappears from reviewer output.
 
+## Reviewer Handoff Ledger
+
+Initialize one producer-owned `REVIEWER_HANDOFF_FINDINGS` ledger and one `REVIEWER_HANDOFF_FOCUS` ledger in run state before Gate 0. These ledgers, not the replaceable report archive, are the durable caller handoff. Update an existing entry by the finding fingerprint (quality gate plus concrete location or review scope plus root cause) when a later round changes its disposition; never duplicate the same root cause because a report was regenerated or line numbers moved.
+
+Record a finding entry for every accepted finding that changes code, every emitted Critical, Important, or `OVERDONE` finding that is fixed, rejected, deferred optional, or blocked, and every lower-severity finding intentionally deferred for later review. Each entry contains `fingerprint`, `gate`, `summary`, `disposition` (`fixed`, `rejected`, `deferred_optional`, or `blocked`), and the evidence-based `rationale`. Omit rejected Nit/FYI noise unless its rationale materially changes what a reviewer should inspect.
+
+Record a focus entry for every unresolved manual or advisory note and every Judgment Call or concrete risk area surfaced by a gate. Each entry contains `kind` (`judgment_call`, `risk`, or `advisory`), `summary`, and `rationale`. Remove or update a focus entry when remediation or a later gate resolves it. Keep the ledgers current through normal reruns and validation-only passes even when a gate reports inline or its archived report is replaced.
+
 ## Quality Round
 
 Re-evaluate applicability at the start of every round because accepted fixes can introduce or remove a gate's trigger conditions. Then run active gates in the order below. Never skip a gate merely to save time or avoid findings.
@@ -26,7 +34,7 @@ When `VALIDATION_ONLY=true`, create no remediation ledger and permit no source, 
 
 Step 2 already created and validated `{review-archive}`, stored its canonical path as `REVIEW_ARCHIVE_CANONICAL`, and proved the fixed path is ignored. Before every move, replacement, restoration, or deletion below, repeat the non-symlink component walk and canonical containment proof; stop if the archive identity changed. Do not ask for or substitute another location during this policy.
 
-Use `{review-archive}/` as the workflow's gitignored report archive. After consuming a file-backed gate or resolver result, move `REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, `OVERENGINEERING_REVIEW_OVERVIEW.md`, and `REFACTOR_OPPORTUNITIES_OVERVIEW.md` there before focused verification or the next unified-scope collection. Replace the matching archived file when a gate reruns. Keep finding dispositions in current run state so moving a report does not lose triage state.
+Use `{review-archive}/` as the workflow's gitignored report archive. After consuming a file-backed gate or resolver result, move `REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, `OVERENGINEERING_REVIEW_OVERVIEW.md`, and `REFACTOR_OPPORTUNITIES_OVERVIEW.md` there before focused verification or the next unified-scope collection. Replace the matching archived file when a gate reruns. Keep finding dispositions and the reviewer handoff ledgers in current run state so moving or replacing a report does not lose caller-visible triage state.
 
 In normal mode, this run has invoked no quality gate yet, so any `OVERENGINEERING_REVIEW_OVERVIEW.md` already sitting in the archive belongs to an earlier invocation. Its `OE-NNN` identities and dispositions may describe another work item or branch and must never be inherited. Delete it before the first quality round and initialize `OVERENGINEERING_LIFECYCLE_ESTABLISHED=false`. Stop instead of deleting when that archived path is not a regular, non-symlink file. Validation-only mode does not read, restore, delete, or recreate this lifecycle file.
 
@@ -283,5 +291,6 @@ Before returning, confirm:
 - Every skipped gate has a current evidence-based reason.
 - When active, the final refactor report matches code that subsequently passed regular, convention, and overengineering review after its last accepted refactor.
 - Any degraded refactor, overengineering, convention, or broad-review coverage is resolved or reported as a blocker.
+- Every qualifying finding and focus item is present exactly once with its final disposition in the reviewer handoff ledgers, and both ledgers validate against the Step 6 JSON schema.
 
 Return the stop reason (`converged`, `diminishing returns`, or `validation-only`), remediation cycles used, review-debt score trend, and counts of fixed, rejected, deferred optional, and blocked findings. A nonzero required or blocked count prevents clean completion until the caller supplies the missing input.

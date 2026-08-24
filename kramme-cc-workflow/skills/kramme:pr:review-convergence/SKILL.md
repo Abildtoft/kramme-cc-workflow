@@ -120,17 +120,18 @@ Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
 Remediation: {cycles used}/{MAX_AUTOMATIC_REMEDIATION_CYCLES}; stop={converged|diminishing returns|validation-only}; debt={score trend}
 Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
+Reviewer handoff JSON: {one RFC 8259 JSON object with `findings` and `focus` arrays from the producer-owned handoff ledgers}
 Verification: {passed evidence | caller-owned after validation-only}
 Archive: .context/{archive-key}/reviews/
 Plan scope: {inactive | mode, validated scope plan, scope base, normalized paths}
 ```
 
-Serialize `Requirements JSON` as exactly one JSON string value: escape control characters, quotes, and backslashes per RFC 8259, and place no raw requirement lines outside that value. Callers must JSON-decode it and compare the decoded value byte-for-byte with their frozen block before trusting any later handoff field. Replace success wording with the exact limitation when coverage is degraded, a check is skipped, or a blocker remains. Never return `passed` with a nonzero required or blocked count, a dirty worktree, an out-of-scope plan path, or source changes after the latest focused check.
+Serialize `Requirements JSON` as exactly one JSON string value: escape control characters, quotes, and backslashes per RFC 8259, and place no raw requirement lines outside that value. Serialize `Reviewer handoff JSON` as exactly one JSON object with only the `findings` and `focus` arrays defined by the policy's reviewer handoff ledger; emit empty arrays when nothing qualifies. Callers must JSON-decode both fields, compare the decoded requirements byte-for-byte with their frozen block, and validate every handoff entry's required keys and allowlisted disposition or kind before trusting later fields. Replace success wording with the exact limitation when coverage is degraded, a check is skipped, or a blocker remains. Never return `passed` with a nonzero required or blocked count, a dirty worktree, an out-of-scope plan path, or source changes after the latest focused check.
 
 ## Artifact Lifecycle
 
 - **Remediation commits** are produced only in normal mode for accepted in-scope findings, consumed by final verification and the caller's shipping workflow, refreshed by later accepted fixes, and retired through normal merge or branch archival.
-- **Frozen requirements and the cycle ledger** exist in run state, are consumed by review and returned to the caller, and retire when the parent workflow ends.
+- **Frozen requirements, the cycle ledger, and reviewer handoff ledgers** exist in run state, are consumed by review and returned to the caller as validated JSON, and retire when the parent workflow ends.
 - **Review reports** are produced or refreshed by delegated gates, consumed during triage, and isolated under `.context/{archive-key}/reviews/`. A normal invocation retires stale overengineering lifecycle state before its first round. The caller retains the archive for a non-shipping handoff or retires registered files before Pull Request creation.
 - **Validated plan scope** is derived from the caller's archived plan, consumed by remediation and publication safety checks, refreshed only by a new caller-owned checkpoint, and retired with the plan archive.
 
