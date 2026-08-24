@@ -35,6 +35,10 @@ Store parsed values:
 - `CAPTURE_CONSOLE` — boolean (default: true)
 - `CAPTURE_NETWORK` — boolean (default: true)
 
+### Step 1b: Conductor Cloud Check
+
+If `CONDUCTOR_IS_LOCAL` is `0`, emit `Error: This is a Conductor cloud workspace; no browser is available. Run /kramme:browse from a local workspace (confirm with /kramme:setup).` and **hard stop** without detecting or probing browser tools.
+
 ### Step 2: Detect Browser MCP
 
 Detect the provider by checking which `mcp__<provider>__*` tools are present in your available tool set — **do not call a tool to probe**. Select the **first** provider whose tools are present, in priority order: claude-in-chrome, then chrome-devtools, then playwright. See `references/mcp-tool-reference.md` ("Detection Strategy") for the prefix mapping. Store the detected type as `BROWSER_MCP` (`claude-in-chrome`, `chrome-devtools`, or `playwright`).
