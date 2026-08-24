@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:convention-review
 description: Reviews PR and local changes for convention drift and overcaution against documented rules and mined peer-file practice. Use for new patterns, dependencies, abstractions, or defensive complexity that departs from established practice; every finding cites evidence. Supports --inline. Not for general code quality (use kramme:pr:code-review) or spec review (use kramme:siw:spec-audit --team).
-argument-hint: "[--base <branch>] [--threshold 0-100] [--inline]"
-disable-model-invocation: false
+argument-hint: "[--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]"
+disable-model-invocation: true
 user-invocable: true
 ---
 
@@ -23,12 +23,15 @@ Both are relative measurements: the baseline is mined from the repository itself
 
 ### Step 1: Parse Arguments
 
-Accept only `--base <branch>`, `--threshold N`, and `--inline`:
+Accept only `--base <branch>`, `--threshold N`, `--inline`, and `--no-diff-comments`:
 
 1. `--base` and `--threshold` may each appear at most once and must be followed by a non-flag value. Store the base as `BASE_BRANCH_OVERRIDE`.
 2. Require `--threshold` to be a decimal integer from 0 through 100. Store it as `custom_threshold`; default to `80`.
 3. `--inline` may appear at most once. Set `INLINE_MODE=true` when present and `false` otherwise.
-4. Reject duplicate flags, unknown flags, positional arguments, missing values, and invalid thresholds before reading project files, fetching, or launching reviewers. Show: `Usage: /kramme:pr:convention-review [--base <branch>] [--threshold 0-100] [--inline]` and stop.
+4. `--no-diff-comments` may appear at most once. Set `DIFF_COMMENTS=false` when present and `true` otherwise.
+5. Reject duplicate flags, unknown flags, positional arguments, missing values, and invalid thresholds before reading project files, fetching, or launching reviewers. Show: `Usage: /kramme:pr:convention-review [--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]` and stop.
+
+Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is already present in the current tool set, read and follow `references/conductor-diff-comments.md` while building the canonical finding set. Preserve its projection identities through ordinal ID assignment for the post-report projection. Detect tools by presence; never call one merely to probe availability.
 
 ### Step 2: Load the Baseline-Mining Protocol
 
@@ -242,6 +245,10 @@ Otherwise:
 - Write the report to `CONVENTION_REVIEW_OVERVIEW.md` in the project root
 - Include all sections even if empty (with count of 0)
 - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+
+### Post Conductor Diff Comments (When Available)
+
+After the canonical report succeeds, when `CONDUCTOR_WORKSPACE_ID` is set, handle the optional projection for inline and file output. If `DIFF_COMMENTS=true` and `mcp__conductor__DiffComment` is already present in the current tool set, apply `references/conductor-diff-comments.md` using the identities preserved during aggregation. Otherwise report `Diff comments posted: 0 (skipped 0 already present)` and `Diff comment projection: skipped — disabled by --no-diff-comments` or `Diff comment projection: skipped — DiffComment unavailable`, as applicable.
 
 ### Step 10: Provide Action Plan
 

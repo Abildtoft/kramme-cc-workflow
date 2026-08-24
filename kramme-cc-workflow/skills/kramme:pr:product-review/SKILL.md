@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:product-review
 description: Deep product review of branch and local changes. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, adjacent-flow regressions, and prioritization quality. Infers likely user goals and non-goals when rationale is missing. Not for UX heuristics, accessibility, or visual consistency -- use pr:ux-review for those. Supports inline report output with --inline.
-argument-hint: "[--base <branch>] [--threshold 0-100] [--inline]"
-disable-model-invocation: false
+argument-hint: "[--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]"
+disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
 ---
@@ -20,7 +20,10 @@ Deep product review of branch changes and local work. Evaluates user-value align
 1. If `--base <branch>` flag provided, store as `BASE_BRANCH_OVERRIDE`
 2. If `--threshold N` flag provided, store as `custom_threshold` (0-100). Only findings with confidence >= N will be reported. Default: 70
 3. If `--inline` flag provided, set `INLINE_MODE=true`
-4. If neither flag is present, use defaults
+4. If `--no-diff-comments` is present, set `DIFF_COMMENTS=false`; otherwise set `DIFF_COMMENTS=true`
+5. If none of the other flags are present, use defaults
+
+Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is already present in the current tool set, read and follow `references/conductor-diff-comments.md` while building the canonical finding set. Preserve its projection identities through ordinal ID assignment for the post-report projection. Detect tools by presence; never call one merely to probe availability.
 
 ### Step 2: Load Project Review Conventions
 
@@ -165,6 +168,10 @@ Otherwise:
 - Write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/product-review-report-format.md`
 - Include all sections even if empty (with count of 0)
 - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+
+### Post Conductor Diff Comments (When Available)
+
+After the canonical report succeeds, when `CONDUCTOR_WORKSPACE_ID` is set, handle the optional projection for inline and file output. If `DIFF_COMMENTS=true` and `mcp__conductor__DiffComment` is already present in the current tool set, apply `references/conductor-diff-comments.md` using the identities preserved during aggregation. Otherwise report `Diff comments posted: 0 (skipped 0 already present)` and `Diff comment projection: skipped — disabled by --no-diff-comments` or `Diff comment projection: skipped — DiffComment unavailable`, as applicable.
 
 ### Step 9: Provide Action Plan
 
