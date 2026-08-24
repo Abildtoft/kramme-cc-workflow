@@ -30,11 +30,11 @@ Run a non-mutating environment check and report what is ready, missing, or only 
    - `Required`: Bash, Git, `jq`, Python 3.10+, and Node.js 18+, which the plugin assumes for the full default experience.
    - `Recommended`: tools used by common PR, verification, and conversion workflows.
    - `Optional`: tools used only by specific skills or local maintenance paths.
-   - `Context`: repository, Conductor workspace, and local configuration signals.
+   - `Context`: repository and local configuration signals, plus Conductor mode, workspace name/path, root path, default branch, allocated port range, and `.conductor/settings.toml` presence. `Conductor mode: cloud` means browser MCP tooling and `CONDUCTOR_PORT` are unavailable. When `Root path` differs from `Workspace path`, `.context/` and other untracked scratch are visible only in the current workspace.
 
 4. If a tool is missing, provide the install command from the report as guidance only. Install hints assume macOS/Homebrew with Linux (apt) alternates where they exist; adapt to the user's platform and package manager. Do not run installs unless the user explicitly asks in a separate follow-up.
 
-5. For integrations that are not reliably inspectable from the shell, report them as `manual-check` instead of inventing a status. This includes authenticated app connectors such as Linear and Figma unless their local configuration is directly visible.
+5. For integrations that are not reliably inspectable from the shell, report them as `manual-check` instead of inventing a status. This includes authenticated app connectors such as Linear and Figma, plus Conductor MCP tool availability, unless their local configuration is directly visible.
 
 6. End with a short readiness summary:
    - `Ready`: required tools are present.
@@ -45,5 +45,5 @@ Run a non-mutating environment check and report what is ready, missing, or only 
 
 - Keep the default path read-only.
 - Do not auto-install missing tools.
-- Do not modify `conductor.json`, `.worktreeinclude`, hook config, shell profiles, or MCP settings.
+- Do not modify `.conductor/settings.toml`, `conductor.json`, `.worktreeinclude`, hook config, shell profiles, or MCP settings.
 - Treat missing optional integrations as guidance, not failure.
