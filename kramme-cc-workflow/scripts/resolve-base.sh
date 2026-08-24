@@ -286,6 +286,12 @@ else
   if command -v gh > /dev/null 2>&1; then
     BASE_BRANCH=$(run_with_timeout "$RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null || true)
   fi
+  if [ -z "$BASE_BRANCH" ] && [ -n "${CONDUCTOR_DEFAULT_BRANCH:-}" ]; then
+    if git check-ref-format --branch "$CONDUCTOR_DEFAULT_BRANCH" > /dev/null 2>&1 \
+      && git show-ref --verify --quiet "refs/remotes/origin/${CONDUCTOR_DEFAULT_BRANCH}"; then
+      BASE_BRANCH="$CONDUCTOR_DEFAULT_BRANCH"
+    fi
+  fi
   if [ -z "$BASE_BRANCH" ]; then
     BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@' || true)
   fi
@@ -293,7 +299,7 @@ else
     BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@' || true)
   fi
   if [ -z "$BASE_BRANCH" ]; then
-    echo "Could not determine base branch; expected PR metadata, origin/HEAD, origin/main, or origin/master" >&2
+    echo "Could not determine base branch; expected PR metadata, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master" >&2
     exit 1
   fi
 
