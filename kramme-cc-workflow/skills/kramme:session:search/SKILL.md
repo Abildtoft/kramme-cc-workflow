@@ -32,8 +32,9 @@ If no question or topic remains, ask one concise question: "What do you want to 
 
 1. Resolve repository and branch context.
    - Derive `REPO_ROOT` with `git rev-parse --show-toplevel` when available, otherwise use the current working directory.
-   - Derive `REPO_NAME` from the last path component of `REPO_ROOT`.
+   - Derive `TOPLEVEL_REPO_NAME` from the last path component of `REPO_ROOT`. When `CONDUCTOR_ROOT_PATH` is set and names an existing directory, derive `REPO_NAME` from its last path component and record that the Conductor root supplied it; otherwise use `TOPLEVEL_REPO_NAME`.
    - Derive `BRANCH` with `git rev-parse --abbrev-ref HEAD` when available. Use it only as a ranking/filtering signal.
+   - Record `CONDUCTOR_WORKSPACE_NAME` when set. Like `BRANCH`, use it only as a ranking signal; sessions from sibling Conductor workspaces of the same repository remain in scope.
 
 2. Choose the scan window.
    - `today`, `this morning`: 1 day.
@@ -51,14 +52,15 @@ If no question or topic remains, ask one concise question: "What do you want to 
        | xargs -0 python3 "$SKILL_DIR/scripts/extract-metadata.py" --cwd-filter "$REPO_NAME"
      ```
    - Each non-meta line is one session JSON object. The final `_meta` line reports `files_processed` and `parse_errors`. The error count reports failed attempts across header, tail, and keyword passes, so overlapping passes can count the same malformed record more than once.
-   - If `files_processed` is `0`, return `no relevant prior sessions`.
-   - If parse errors are present, carry a partial-coverage note forward.
+   - If a Conductor-root-derived attempt emits no non-meta session records after cwd filtering and `TOPLEVEL_REPO_NAME` differs, retry discovery and metadata extraction once with `TOPLEVEL_REPO_NAME`.
+   - If parse or read errors are present, carry an `UNVERIFIED` partial-coverage note forward, including when the active attempt emits no non-meta session records.
+   - If the active attempt emits no non-meta session records, return `no relevant prior sessions` with that note when applicable.
 
 4. Keyword fallback and ranking.
    - If metadata has no plausible branch/cwd matches, derive 2-4 concrete keywords from the question.
    - Re-run metadata extraction with `--keyword K1,K2,...`. This scans only user/assistant text, not JSON metadata, tool payloads, or reasoning blocks.
    - If keyword mode reports `files_matched: 0`, return `no relevant prior sessions`.
-   - Rank candidates by exact branch match, keyword `match_count`, size over 30KB, and recency. Prefer `last_ts` over `ts`.
+   - Rank candidates by exact workspace match when `CONDUCTOR_WORKSPACE_NAME` is set, exact branch match, keyword `match_count`, size over 30KB, and recency. Prefer `last_ts` over `ts`.
    - Exclude any known current-session file.
    - Deep-dive at most 5 sessions total.
 

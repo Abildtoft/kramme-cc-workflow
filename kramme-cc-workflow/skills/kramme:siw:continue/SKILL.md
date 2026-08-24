@@ -15,9 +15,9 @@ This skill is the SIW entry point. When invoked, it:
 
 1. **Detects current state** — checks for `siw/LOG.md`, `siw/OPEN_ISSUES_OVERVIEW.md`, and the spec document.
 2. **Resumes if state exists** — follows the resume flow in `references/phase-0-resuming.md` (read LOG.md "Current Progress", check open issues, continue the next task).
-3. **Routes if not** — points to the right SIW subcommand based on what's needed (see *Working With Existing Files* below).
+3. **Routes if not** — points to the right SIW subcommand based on what's needed (see _Working With Existing Files_ below).
 
-It does not directly create, modify, or close SIW documents; that is delegated to the SIW subcommands listed in the *Commands Reference* table.
+It does not directly create, modify, or close SIW documents; that is delegated to the SIW subcommands listed in the _Commands Reference_ table.
 
 ## When to Use
 
@@ -48,6 +48,10 @@ Issues use prefix-based numbering:
 | **siw/PRODUCT_AUDIT.md** | Product audit findings from `/kramme:siw:product-audit` | Temporary |
 | **siw/OPEN_ISSUES_OVERVIEW.md** + **siw/issues/\*.md** | Work items to implement | Temporary |
 | **siw/LOG.md** | Session progress + decision rationale | Temporary |
+
+### Branch-scoped vs workspace-scoped state
+
+Files under `siw/` travel with the branch. Untracked artifacts under `.context/`—such as review archives, session-search extracts, and optimize ledgers—are visible only in the current worktree or Conductor workspace. When resuming the branch in another workspace, expect `siw/` to remain while that workspace's `.context/` starts separately. Use `/kramme:setup` to confirm the root and workspace paths, and never read or write another workspace's `.context/` without explicit user direction.
 
 ### What Each Document Contains
 
