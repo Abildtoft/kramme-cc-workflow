@@ -56,6 +56,8 @@ MISSING REQUIREMENT: No spec found for the billing subsystem. Proceed from code 
 
 ### L3 — Relevant source
 
+First establish where you are: the worktree path, branch, and—when `CONDUCTOR_WORKSPACE_NAME` is set—the Conductor workspace and root checkout. `/kramme:setup` prints the root and workspace paths. Treat `.context/` as local to this workspace and `siw/` as branch-scoped state.
+
 Four-step pre-task load. Do this before writing code, not during:
 
 1. **Files to modify.** The files the task will actually change.

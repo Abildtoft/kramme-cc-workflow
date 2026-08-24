@@ -49,6 +49,10 @@ Issues use prefix-based numbering:
 | **siw/OPEN_ISSUES_OVERVIEW.md** + **siw/issues/\*.md** | Work items to implement | Temporary |
 | **siw/LOG.md** | Session progress + decision rationale | Temporary |
 
+### Branch-scoped vs workspace-scoped state
+
+Files under `siw/` travel with the branch. Untracked artifacts under `.context/`—such as review archives, session-search extracts, and optimize ledgers—are visible only in the current worktree or Conductor workspace. When resuming the branch in another workspace, expect `siw/` to remain while that workspace's `.context/` starts separately. Use `/kramme:setup` to confirm the root and workspace paths, and never read or write another workspace's `.context/` without explicit user direction.
+
 ### What Each Document Contains
 
 **Specification (PERMANENT):**
