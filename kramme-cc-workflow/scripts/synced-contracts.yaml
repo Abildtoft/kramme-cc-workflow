@@ -1007,7 +1007,8 @@
         "Continue only for the zero-line absent result.",
         "stop before delegated branch setup",
         "If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:create`.",
-        "Next: $kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description",
+        "Next: $kramme:workflow-artifacts:cleanup --auto",
+        "Then: $kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description",
         "Then: $kramme:pr:fix-ci --no-consolidate"
       ]
     },

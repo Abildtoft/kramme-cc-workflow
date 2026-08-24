@@ -1,7 +1,7 @@
 ---
 name: kramme:linear:issue-to-pr
-description: Requires Linear MCP. Implements one Linear issue end to end, freezes its requirements and delegates pre-PR quality convergence and verification to kramme:pr:review-convergence, then optionally opens the Pull Request and iterates on CI and review feedback until green. Use when the user wants a single Linear issue taken from implementation through a clean Pull Request. Not for implementation-only or review-only work, SIW-tracked issues, stacked PRs, existing PR updates, or post-merge rollout.
-argument-hint: "<ISSUE-ID> [--strict] [--ship]"
+description: Requires Linear MCP and the GitHub gh CLI. Implements one Linear issue end to end, freezes its requirements, delegates pre-PR quality convergence to kramme:pr:review-convergence, then optionally opens a new Pull Request and iterates on CI and review feedback until green. Use when a single non-SIW Linear issue should go from implementation to a clean new Pull Request. Not for implementation-only or review-only work, SIW-tracked issues, stacked PRs, existing PR updates, or post-merge rollout.
+argument-hint: "<ISSUE-ID> [--strict] [--rounds <1-5>] [--ship]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -25,26 +25,30 @@ Orchestrate the established Linear implementation, shared review-convergence, an
 
 Parse `$ARGUMENTS` before doing any repository or Linear work.
 
-1. Remove recognized flags in any order:
+1. Remove recognized flags in any order, each at most once:
    - `--strict` sets `STRICT_REVIEW=true`.
+   - `--rounds <count>` requires exactly one ASCII digit from `1` through `5` as its value; store it as `{rounds}` and set `ROUNDS_EXPLICIT=true`.
    - `--ship` sets `SHIP_MODE=true`.
-2. Reject every unknown `--flag` and list the supported flags.
+2. Reject every unknown `--flag`, every duplicate flag, and a `--rounds` value outside `1`–`5`, listing the supported flags.
 3. Require exactly one remaining positional argument matching `{TEAM}-{number}`, case-insensitively, where `TEAM` is alphanumeric.
 4. Normalize the issue identifier to uppercase and store it as `{issue-id}`.
 
 Defaults:
 
 - `STRICT_REVIEW=false`: require no accepted unresolved Critical or Important findings. Report remaining manual or advisory findings.
+- `ROUNDS_EXPLICIT=false`: let `kramme:pr:review-convergence` use its own default remediation-cycle budget.
 - `SHIP_MODE=false`: stop after clean review and final verification without rewriting history, pushing, or creating a Pull Request.
 
 `--strict` changes review disposition, not product authority. It does not permit inventing a missing requirement or bypassing a genuine manual blocker.
+
+`--rounds` only tightens the delegated remediation-cycle budget in Step 3. It is never forwarded to the shipping contract's post-CI validation-only pass, which always runs one read-only pass without a remediation budget.
 
 `--ship` is explicit authorization to retire current-project disposable workflow artifacts through `kramme:workflow-artifacts:cleanup --auto`, let `kramme:pr:create --auto` perform the backup-protected local narrative rewrite without a nested reset prompt, create the previously absent remote issue branch once with an exact absence lease, self-assign, and open the Pull Request, then let `kramme:pr:fix-ci --no-consolidate` push validated CI and review-feedback fixes until the checks are green. The cleanup skill keeps permanent specifications and shared diagrams in auto mode. Keeping CI fix commits unconsolidated avoids a post-creation history rewrite. `--ship` does not authorize rewriting an existing remote branch or Pull Request branch, bypassing a lease mismatch, force-pushing unrelated work, merging, or post-merge rollout.
 
 If validation fails, stop with:
 
 ```text
-Usage: $kramme:linear:issue-to-pr <ISSUE-ID> [--strict] [--ship]
+Usage: $kramme:linear:issue-to-pr <ISSUE-ID> [--strict] [--rounds <1-5>] [--ship]
 Example: $kramme:linear:issue-to-pr DISC-202 --strict --ship
 ```
 
@@ -120,10 +124,10 @@ Compose `{issue-requirements}` once from the issue title and requested behavior;
 Invoke `kramme:pr:review-convergence` with:
 
 ```text
---work-id {issue-id} --archive-key linear-issue-to-pr [--strict] --requirements {issue-requirements}
+--work-id {issue-id} --archive-key linear-issue-to-pr [--strict] [--rounds {rounds}] --requirements {issue-requirements}
 ```
 
-Append `--strict` only when `STRICT_REVIEW=true`. The delegated skill independently validates the prepared local branch, runs the gut check and applicable quality gates to one shared bounded convergence budget, owns every review-triggered edit and remediation commit, and runs fresh final verification.
+Append `--strict` only when `STRICT_REVIEW=true` and `--rounds {rounds}` only when `ROUNDS_EXPLICIT=true`, keeping the `--requirements` sentinel last. The delegated skill independently validates the prepared local branch, runs the gut check and applicable quality gates to one shared bounded convergence budget, owns every review-triggered edit and remediation commit, and runs fresh final verification.
 
 Continue only when its structured handoff proves all of the following:
 
@@ -167,7 +171,8 @@ Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
 Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
 Verification: passed
 Pull Request: not created (--ship was not supplied)
-Next: $kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description
+Next: $kramme:workflow-artifacts:cleanup --auto
+Then: $kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description
 Then: $kramme:pr:fix-ci --no-consolidate
 ```
 
