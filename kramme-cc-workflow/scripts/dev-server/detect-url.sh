@@ -271,6 +271,17 @@ if is_port "$RESOLVED_PORT"; then
   fi
 fi
 
+# Conductor reserves ten workspace-specific ports; prefer them over sibling common-port servers.
+if is_port "${CONDUCTOR_PORT:-}"; then
+  for offset in 0 1 2 3 4 5 6 7 8 9; do
+    resolved_url=$(try_port "$((CONDUCTOR_PORT + offset))" || true)
+    if [ -n "$resolved_url" ]; then
+      echo "$resolved_url"
+      exit 0
+    fi
+  done
+fi
+
 COMMON_PORTS="3000 3001 4200 4201 4321 5000 5173 5174 8000 8080 8888 9000"
 FOUND_URLS=""
 

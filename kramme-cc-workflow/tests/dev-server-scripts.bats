@@ -417,6 +417,78 @@ SH
   [ "$output" = "http://localhost:4200" ]
 }
 
+@test "detect-url prefers the Conductor workspace range to common ports" {
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/curl" <<'SH'
+#!/usr/bin/env bash
+url="${@: -1}"
+case "$url" in
+  http://localhost:55063 | http://localhost:3000) printf '200' ;;
+  *) printf '000' ;;
+esac
+SH
+  chmod +x "$MOCK_BIN/curl"
+
+  CONDUCTOR_PORT=55060 PATH="$MOCK_BIN:$PATH" run "$SCRIPT_DIR/detect-url.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "http://localhost:55063" ]
+}
+
+@test "detect-url falls through when the Conductor workspace range is unreachable" {
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/curl" <<'SH'
+#!/usr/bin/env bash
+url="${@: -1}"
+case "$url" in
+  http://localhost:5173) printf '200' ;;
+  *) printf '000' ;;
+esac
+SH
+  chmod +x "$MOCK_BIN/curl"
+
+  CONDUCTOR_PORT=55060 PATH="$MOCK_BIN:$PATH" run "$SCRIPT_DIR/detect-url.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "http://localhost:5173" ]
+}
+
+@test "detect-url ignores an invalid Conductor workspace port" {
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/curl" <<'SH'
+#!/usr/bin/env bash
+url="${@: -1}"
+case "$url" in
+  http://localhost:4200) printf '200' ;;
+  *) printf '000' ;;
+esac
+SH
+  chmod +x "$MOCK_BIN/curl"
+
+  CONDUCTOR_PORT=abc PATH="$MOCK_BIN:$PATH" run "$SCRIPT_DIR/detect-url.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "http://localhost:4200" ]
+}
+
+@test "detect-url keeps common-port behavior when Conductor is unset" {
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/curl" <<'SH'
+#!/usr/bin/env bash
+url="${@: -1}"
+case "$url" in
+  http://localhost:3001) printf '200' ;;
+  *) printf '000' ;;
+esac
+SH
+  chmod +x "$MOCK_BIN/curl"
+
+  run env -u CONDUCTOR_PORT PATH="$MOCK_BIN:$PATH" "$SCRIPT_DIR/detect-url.sh" "$WORK_DIR"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "http://localhost:3001" ]
+}
+
 @test "detect-url resolves detailed monorepo candidates before common-port fallback" {
   mkdir -p "$WORK_DIR/apps/web" "$WORK_DIR/apps/admin" "$MOCK_BIN"
   printf 'export default { server: { port: 4001 } }\n' >"$WORK_DIR/apps/web/vite.config.ts"
