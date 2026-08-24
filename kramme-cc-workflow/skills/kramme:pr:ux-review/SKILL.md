@@ -148,6 +148,8 @@ If `UX_REVIEW_OVERVIEW.md` exists in the project root:
 
 ### Step 6: Detect Browser Automation (If URL Provided)
 
+If `app_url` was provided and `CONDUCTOR_IS_LOCAL` is `0`, emit `Warning: Conductor cloud workspace detected (no browser MCP); continuing in code-only mode. Confirm with /kramme:setup.`, clear `app_url`, and continue directly to Step 7 without detecting browser automation.
+
 If `app_url` was provided:
 
 0. If `app_url` is `auto`, resolve it with the shared dev-server detector before checking browser automation:

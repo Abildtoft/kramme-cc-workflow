@@ -42,7 +42,8 @@ Port resolution uses this order:
 7. `package.json` `dev` or `start` script flags.
 8. `.env.local`, `.env.development`, then `.env` `PORT=`.
 9. Framework defaults.
-10. Common-port listener scan as a final running-server fallback.
+10. The Conductor workspace range, `CONDUCTOR_PORT` through `CONDUCTOR_PORT+9`, when the base port is valid.
+11. Common-port listener scan as a final running-server fallback.
 
 Do not scan prose files such as `AGENTS.md`, `CLAUDE.md`, READMEs, or issue text for ports. Those files often contain examples and stale troubleshooting notes.
 

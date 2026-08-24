@@ -55,6 +55,8 @@ Examples:
   /kramme:qa http://localhost:3000 targeted /settings/profile
 ```
 
+If `CONDUCTOR_IS_LOCAL` is `0`, emit `Warning: Conductor cloud workspace detected (no browser MCP); continuing in code-only mode. Confirm with /kramme:setup.`, set `CODE_ONLY_MODE=true`, and skip the remaining URL and browser prerequisite checks.
+
 **If URL is `auto`:** Resolve it with the shared dev-server detector:
 
 ```bash
@@ -194,6 +196,8 @@ For `diff-aware` mode, build the checklist from the journey matrix rows created 
 ### Step 5: Execute Tests via Browse
 
 Before performing interaction checks in any mode, identify actions that could mutate shared data, submit forms, send external notifications, change billing, delete records, or otherwise be destructive/non-idempotent. Ask the user before executing those actions; if the runtime cannot ask, mark the interaction `blocked` and continue with read-only evidence.
+
+If `CODE_ONLY_MODE` is true, use `references/code-only-fallback.md`'s source-selection and static-analysis rules, omit its generic browser-MCP warning and install guidance, and continue to Step 6 without invoking `/kramme:browse`.
 
 For each route in the test plan, invoke `/kramme:browse` via the Skill tool:
 
