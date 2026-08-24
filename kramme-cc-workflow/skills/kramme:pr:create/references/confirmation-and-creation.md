@@ -2,7 +2,7 @@
 
 Use this reference for `/kramme:pr:create` Steps 8–9 after the branch is prepared, commits are finalized, and the PR title/body have been generated.
 
-`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. `{rollback-origin-ref}` is the remote ref that Step 5 proved absent. `{title}` and `{description}` are validated Step 7 generator output or validated user-supplied replacements. `{linear-issue-id}` may be captured during branch handling. Substitute literal values when emitting commands and messages — these are agent-tracked, not shell variables.
+`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. In the fresh-remote path, `{rollback-origin-ref}` is the remote ref that Step 5 proved absent. In exact-tip recovery, `{entry-commit}` and `{observed-origin-oid}` are the identical immutable local and remote tips captured before description generation. `{title}` and `{description}` are validated Step 7 generator output or validated user-supplied replacements. `{linear-issue-id}` may be captured during branch handling. Substitute literal values when emitting commands and messages — these are agent-tracked, not shell variables.
 
 ## Step 8: Confirmation and Creation
 
@@ -42,6 +42,8 @@ Description Preview:
 
 The title follows conventional commit format (`<type>(<scope>): <description>`).
 
+When `REMOTE_RECOVERY_MODE=true`, add `Publication: Existing remote branch; no history rewrite or push` below the status line. Otherwise add `Publication: Fresh remote branch with an absence-leased push`.
+
 ### 8.2 Confirm Creation
 
 If `AUTO_MODE=true`, skip this confirmation and proceed directly to Step 8.3.
@@ -80,7 +82,7 @@ multiSelect: false
 
 If **"Abort"** selected:
 
-Execute Step 10 in `references/state-and-rollback.md` (rollback), then stop. Do not push.
+When `REMOTE_RECOVERY_MODE=false`, execute Step 10 in `references/state-and-rollback.md` (rollback), then stop. When `REMOTE_RECOVERY_MODE=true`, stop without rollback because no mutation occurred. Do not push.
 
 If **"Edit description first"** selected, run the edit loop below before re-prompting:
 
@@ -106,9 +108,9 @@ If **"Edit description first"** selected, run the edit loop below before re-prom
 
 After each description edit, if `{linear-issue-id}` is present, keep the default Linear closing line as `Closes {linear-issue-id}`. Replace `Fixes {linear-issue-id}` or `Resolves {linear-issue-id}` with `Closes {linear-issue-id}` unless the user explicitly asked for that alternative keyword in the edit request. If the edited description links the same issue with a non-closing keyword (`Related to`, `Refs`, or `References`), preserve that link and do not add a separate closing line.
 
-### 8.3 Push Branch
+### 8.3 Revalidate and Publish the Branch
 
-Before pushing, validate `{feature-branch}` before using it as a git ref. It must be the current branch captured from `git branch --show-current`, pass `git check-ref-format --branch`, contain no shell metacharacters or whitespace, and must not begin with `-`. Do not push if validation fails.
+Before any publication step, validate `{feature-branch}` before using it as a git ref. It must be the current branch captured from `git branch --show-current`, pass `git check-ref-format --branch`, contain no shell metacharacters or whitespace, and must not begin with `-`. Stop if validation fails.
 
 Immediately before any push, repeat the fail-closed open-Pull-Request check. Disable GitHub CLI prompting and run the query with the shell tool's bounded timeout:
 
@@ -116,7 +118,26 @@ Immediately before any push, repeat the fail-closed open-Pull-Request check. Dis
 env GH_PROMPT_DISABLED=1 gh pr list --head "{feature-branch}" --state open --limit 100 --json number,url,state,headRefName
 ```
 
-Require this command to succeed. Continue only when the successful response is an empty list. If an open Pull Request appeared after Step 3.5, execute Step 10 from `state-and-rollback.md` and stop without pushing. A matching remote head does not prove that this invocation owns the Pull Request, and neither `AUTO_MODE` nor `AUTHORIZE_HISTORY_REWRITE` may adopt or rewrite it.
+Require this command to succeed. Continue only when the successful response is an empty list. If an open Pull Request appeared after Step 3.5, execute Step 10 from `state-and-rollback.md` when `REMOTE_RECOVERY_MODE=false`, or stop without rollback when `REMOTE_RECOVERY_MODE=true`. In either case, report the Pull Request URL and stop without pushing. A matching remote head does not prove that this invocation owns the Pull Request, and neither `AUTO_MODE` nor `AUTHORIZE_HISTORY_REWRITE` may adopt or rewrite it.
+
+#### Existing exact-tip recovery
+
+When `REMOTE_RECOVERY_MODE=true`, revalidate every no-mutation invariant immediately before Step 8.4:
+
+```bash
+"{pr-create-skill-dir}/scripts/verify-clean-worktree.sh"
+git branch --show-current
+git rev-parse HEAD
+NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
+env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
+  git ls-remote --heads origin "refs/heads/{feature-branch}"
+```
+
+Require the clean-worktree helper to succeed before running the remaining commands, and require the current branch to remain `{feature-branch}`. Require `HEAD` to remain exactly `{entry-commit}`. Parse the remote query with the same strict one-line boundary as Step 3. Require the authoritative remote OID to remain exactly `{observed-origin-oid}`. Also require `{entry-commit}` and `{observed-origin-oid}` to remain equal as captured. A clean-tree inspection failure, malformed output, missing ref, dirty tree, checkout change, local-tip change, query failure, or remote-tip change is a hard blocker. Do not run `git push` in this mode; continue directly to Step 8.4 only after every invariant passes. Because this path does not mutate the branch, a concurrent Pull Request creation can only cause `gh pr create` to fail or return an existing-PR error—it cannot cause this invocation to rewrite that Pull Request's commits.
+
+#### Fresh remote publication
+
+The remainder of Step 8.3 applies only when `REMOTE_RECOVERY_MODE=false`.
 
 Step 5 proved that `{rollback-origin-ref}` was absent. Use the quoted, explicit absence-leased push below and set upstream tracking. Disable Git credential prompting for this network mutation; authentication failure is a hard blocker, never a reason to wait for terminal input. Run the push with the shell tool's bounded timeout. If any actor creates the remote branch after Step 5, the lease fails. If this push succeeds, no Pull Request could have existed for that branch at the moment this workflow created it, so a later Pull Request cannot have been rewritten by this invocation:
 
@@ -148,7 +169,9 @@ When the remote now exists, provide the manual Pull Request URL when it can be d
 
 Create the PR body through a temporary file. Do not pass generated Markdown through shell interpolation or a heredoc; body content can legally contain shell metacharacters or a literal `EOF` line.
 
-1. Create and capture temp file paths. Use the fixed `/tmp` templates so every captured path is shell-safe. If the second allocation fails, remove the first file before stopping:
+1. Capture `git rev-parse --verify HEAD` as `{publication-head}` immediately before allocating the temporary files. Require a full 40-character lowercase commit OID. In exact-tip recovery it must still equal `{entry-commit}`; in fresh publication it is the rewritten commit that the successful Step 8.3 push published.
+
+2. Create and capture temp file paths. Use the fixed `/tmp` templates so every captured path is shell-safe. If the second allocation fails, remove the first file before stopping:
 
    ```bash
    if ! PR_TITLE_FILE=$(mktemp "/tmp/kramme-pr-title.XXXXXX"); then
@@ -162,9 +185,9 @@ Create the PR body through a temporary file. Do not pass generated Markdown thro
    echo "$PR_BODY_FILE"
    ```
 
-2. Require each captured path to match `/tmp/kramme-pr-(title|body).[A-Za-z0-9]+`, then write `{title}` and `{description}` to the corresponding path using the runtime's file-write capability. Do not use `cat <<EOF`, `printf "{description}"`, or any other shell-parsed form for generated Markdown.
+3. Require each captured path to match `/tmp/kramme-pr-(title|body).[A-Za-z0-9]+`, then write `{title}` and `{description}` to the corresponding path using the runtime's file-write capability. Do not use `cat <<EOF`, `printf "{description}"`, or any other shell-parsed form for generated Markdown.
 
-3. Emit the command below with the shell tool's bounded timeout. `GH_PROMPT_DISABLED=1` makes authentication or other interaction requirements fail closed. Include `--draft` on the first line only when `DRAFT_MODE=true`; otherwise omit it entirely (do not emit an empty flag). Substitute the validated captured paths for `{pr-title-file}` and `{pr-body-file}`. The trap removes both files on success, failure, or interruption.
+4. Emit the command below with the shell tool's bounded timeout. `GH_PROMPT_DISABLED=1` makes authentication or other interaction requirements fail closed. Include `--draft` on the first line only when `DRAFT_MODE=true`; otherwise omit it entirely (do not emit an empty flag). Substitute the validated captured paths for `{pr-title-file}` and `{pr-body-file}`. The trap removes both files on success, failure, or interruption.
 
 ```bash
 PR_TITLE_FILE="{pr-title-file}"
@@ -178,6 +201,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 env GH_PROMPT_DISABLED=1 gh pr create \
   --base "{base-branch}" \
+  --head "{feature-branch}" \
   --assignee @me \
   --title "$(cat "$PR_TITLE_FILE")" \
   --body-file "$PR_BODY_FILE"
@@ -185,11 +209,26 @@ env GH_PROMPT_DISABLED=1 gh pr create \
 
 When `DRAFT_MODE=true`, add `--draft \` as the second line.
 
+Always pass the validated explicit `--head` value. This prevents `gh pr create` from offering to push or fork when exact-tip recovery is using a remote branch without local upstream configuration; the skill's own fresh-branch publication step remains the only allowed push.
+
+5. After `gh pr create` succeeds, query the created Pull Request through the same GitHub repository context with the shell tool's bounded timeout:
+
+   ```bash
+   env GH_PROMPT_DISABLED=1 gh pr list \
+     --head "{feature-branch}" \
+     --base "{base-branch}" \
+     --state open \
+     --limit 2 \
+     --json number,url,state,baseRefName,headRefName,headRefOid
+   ```
+
+   Require this query to succeed and return exactly one record. Require `state` to be `OPEN`, `baseRefName` to equal `{base-branch}`, `headRefName` to equal `{feature-branch}`, and `headRefOid` to equal `{publication-head}` exactly. Capture its `url` as `{pr-url}` for Step 9. A missing, malformed, duplicate, or mismatched result means GitHub did not prove that the created Pull Request contains the commit this invocation inspected. Report the creation result and observed metadata, but do not run Step 9 or claim success; do not roll back, close, or delete the Pull Request or branch automatically.
+
 ### 8.5 Handle PR Creation Failure
 
-If `gh pr create` fails (but the push in Step 8.3 succeeded):
+If `gh pr create` fails after the fresh-remote push or while reusing the verified exact-tip remote branch:
 
-Before showing manual creation instructions, execute Step 9.0 from `references/state-and-rollback.md` so any excluded uncommitted changes are restored locally or explicitly reported for manual conflict resolution. Do not run Step 10 here: the branch was already pushed, and the failure output should preserve that manual-creation path.
+Before showing manual creation instructions, execute Step 9.0 from `references/state-and-rollback.md` in the fresh-remote path so any excluded uncommitted changes are restored locally or explicitly reported for manual conflict resolution. Exact-tip recovery skips Step 9.0 because it required a clean tree. Do not run Step 10 here: the branch already exists remotely, and the failure output should preserve that manual-creation path.
 
 ```
 Warning: Failed to create [PR] automatically.
@@ -197,7 +236,7 @@ Warning: Failed to create [PR] automatically.
 Error: {error message}
 
 Manual creation:
-  1. Your branch is pushed: origin/{feature-branch}
+  1. Your branch is available unchanged at: origin/{feature-branch}
   2. Create manually at: https://github.com/{org}/{repo}/pull/new/{feature-branch}
      (base branch: {base-branch})
   3. Copy this description:

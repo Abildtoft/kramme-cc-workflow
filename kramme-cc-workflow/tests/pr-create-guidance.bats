@@ -174,25 +174,95 @@ file_mode() {
 	[ "$status" -eq 0 ]
 }
 
-@test "existing remote branch stops before history rewriting" {
+@test "existing remote branch only recovers when the clean current tip matches exactly" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     create="skills/kramme:pr:create/SKILL.md"
+    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
     state="skills/kramme:pr:create/references/state-and-rollback.md"
     confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
 
-    grep -qF "The feature branch already exists on \`origin\`" "$create"
+    grep -qF "REMOTE_RECOVERY_MODE=true" "$create"
+    grep -qF "skip Steps 5 and 6" "$create"
+    grep -qF "preserves the existing commit history" "$create"
+    grep -qF "capture its exact full OID as \`{observed-origin-oid}\`" "$branch"
+    grep -qF "If the remote OID differs from \`{entry-commit}\`, stop" "$branch"
+    grep -qF "If uncommitted changes exist, stop" "$create"
+    grep -qF "Never adopt a remote branch selected from a different entry checkout" "$branch"
     grep -qF "continue only when it returns no matching ref" "$state"
     grep -qF "stop before branch creation or \`kramme:git:recreate-commits\`" "$state"
-    grep -qF "Never check out or adopt that remote branch" "$state"
     grep -qF "cannot atomically prevent another actor from opening a Pull Request" "$state"
+    grep -qF "REMOTE_RECOVERY_MODE=true" "$confirmation"
+    grep -qF "Do not run \`git push\` in this mode" "$confirmation"
+    grep -qF "Require the authoritative remote OID to remain exactly \`{observed-origin-oid}\`" "$confirmation"
+    grep -qF "Require \`HEAD\` to remain exactly \`{entry-commit}\`" "$confirmation"
+    grep -qF -- "--head \"{feature-branch}\"" "$confirmation"
+    grep -qF "prevents \`gh pr create\` from offering to push or fork" "$confirmation"
     grep -qF "Do not use plain \`--force\`, an OID lease for a pre-existing remote ref" "$confirmation"
     ! grep -qF "git fetch --no-tags origin \"{rollback-origin-ref}\"" "$state"
     ! grep -qF "git merge-base --is-ancestor \"{rollback-origin-oid}\" \"{original-commit}\"" "$state"
   '
 
+	assert_required_contracts_registered \
+		pr-create-existing-remote-orchestration \
+		pr-create-clean-worktree-helper \
+		pr-create-existing-remote-classification \
+		pr-create-existing-remote-publication
+
 	[ "$status" -eq 0 ]
+}
+
+@test "pr-create clean-worktree verifier overrides hidden-untracked configuration" {
+	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+
+	git init "$repo"
+	git -C "$repo" config user.name "Test User"
+	git -C "$repo" config user.email "test@example.com"
+	printf 'tracked\n' > "$repo/tracked.txt"
+	git -C "$repo" add tracked.txt
+	git -C "$repo" commit -m "initial"
+	git -C "$repo" config status.showUntrackedFiles no
+	printf 'hidden\n' > "$repo/untracked.txt"
+
+	run bash -c 'cd "$1" && "$2"' _ "$repo" "$verifier"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Working tree has uncommitted or untracked changes"* ]]
+}
+
+@test "pr-create clean-worktree verifier rejects modified assume-unchanged content" {
+	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+
+	git init "$repo"
+	git -C "$repo" config user.name "Test User"
+	git -C "$repo" config user.email "test@example.com"
+	printf 'tracked\n' > "$repo/tracked.txt"
+	git -C "$repo" add tracked.txt
+	git -C "$repo" commit -m "initial"
+	git -C "$repo" update-index --assume-unchanged tracked.txt
+	printf 'modified\n' > "$repo/tracked.txt"
+
+	run bash -c 'cd "$1" && "$2"' _ "$repo" "$verifier"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Assume-unchanged tracked content differs from the index"* ]]
+}
+
+@test "pr-create clean-worktree verifier fails closed when status inspection fails" {
+	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+	fake_bin="$BATS_TEST_TMPDIR/fake-bin"
+	real_git=$(command -v git)
+
+	git init "$repo"
+	mkdir -p "$fake_bin"
+	printf '#!/bin/sh\nif [ "${1:-}" = status ]; then exit 73; fi\nexec "%s" "$@"\n' "$real_git" > "$fake_bin/git"
+	chmod +x "$fake_bin/git"
+
+	run bash -c 'cd "$1" && PATH="$2:$PATH" "$3"' _ "$repo" "$fake_bin" "$verifier"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Could not inspect the working tree"* ]]
 }
 
 @test "pr-create guidance contracts are registered and files are wired" {
@@ -209,6 +279,7 @@ file_mode() {
     test -f "$branch"
     test -f "$confirmation"
     test -x "skills/kramme:pr:create/scripts/validate-branch-name.sh"
+    test -x "skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
 
     grep -qF "references/pre-validation-checks.md" "$create"
     grep -qF "references/branch-and-platform-handling.md" "$create"
@@ -223,6 +294,11 @@ file_mode() {
     grep -qF "scripts/validate-branch-name.sh" "$branch"
     grep -qF "capture it as pinned \`{base-ref}\`" "$branch"
     grep -qF "pass \`{base-source-ref}\`, \`{base-ref}\`, and \`{base-branch}\` unchanged to both downstream skills" "$branch"
+    grep -qF "git status --porcelain --untracked-files=all" "$create"
+    grep -qF "scripts/verify-clean-worktree.sh" "$create"
+    grep -qF "scripts/verify-clean-worktree.sh" "$confirmation"
+    grep -qF "headRefOid" "$confirmation"
+    grep -qF "equal \`{publication-head}\` exactly" "$confirmation"
 
     branch_validation_line=$(grep -nF "Inspect the agent-tracked value directly" "$create" | cut -d: -f1)
     git_validation_line=$(grep -nF "git check-ref-format --branch \"{feature-branch}\"" "$create" | cut -d: -f1)

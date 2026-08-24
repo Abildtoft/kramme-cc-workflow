@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:create
-description: Use when creating a PR from the current branch with narrative-quality commits and a generated description. Orchestrates branch setup, commit restructuring via kramme:git:recreate-commits, and description generation via kramme:pr:generate-description before pushing and opening the PR via gh.
+description: Use when creating a PR from the current branch with a generated description. Rewrites unpublished work into narrative commits before publication, or safely reuses a clean existing remote branch whose tip exactly matches local HEAD without rewriting or pushing it.
 argument-hint: "[--auto] [--draft] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,12 +8,12 @@ user-invocable: true
 
 # Create Pull Request
 
-Orchestrate the creation of a clean, well-documented PR by validating git state, setting up the branch, recreating commits as a narrative, generating a description, and pushing + creating the PR via `gh`.
+Orchestrate the creation of a clean, well-documented PR by validating git state, preparing unpublished commits when applicable, generating a description, safely publishing or reusing the remote branch, and creating the PR via `gh`.
 
 ## When NOT to use this skill
 
 - Branch already has an open PR — update it directly (or use `kramme:pr:generate-description` to refresh the description) instead of running the full creation flow.
-- The feature branch already exists on `origin`, even without a Pull Request — this new-Pull-Request workflow cannot atomically lock GitHub PR creation while rewriting an existing remote ref. Coordinate and use a fresh branch.
+- The feature branch exists on `origin` but differs from local `HEAD`, has uncommitted local work, or is not the current branch — the exact-tip recovery path never rewrites, merges, switches to, or pushes an existing remote ref. Coordinate and use a fresh branch.
 - Hotfix / cherry-pick that must preserve exact commit boundaries — `recreate-commits` will reorganize history. Push and `gh pr create` manually.
 - Working in a stacked-PR setup where the base is another feature branch — this skill assumes the repo default branch (resolved via `origin/HEAD`) as the PR base. Use `kramme:pr:stack` instead: it creates and submits the whole chain with correct base branches via the gh-stack CLI.
 - The current branch hasn't diverged from the base branch — Step 4 will abort, but skip running the skill in the first place.
@@ -31,32 +31,34 @@ Step 3  Select and validate feature branch without switching
     |
 Step 3.5 Existing-PR check ................. abort before rewriting
     |
-Step 4  Changes detection ................. abort if nothing to ship
+Step 4  Changes detection + remote mode ... absent = rewrite; clean exact tip = recovery
     |
-Step 5  Require absent remote ref; create branch from entry HEAD; preserve local state
+Step 4.5 Reject stacked branches
     |
-Step 6  Invoke kramme:git:recreate-commits  --> on failure, Step 10 rollback
+    +-- Fresh remote: Steps 5–6 preserve state + recreate commits
+    |
+    +-- Existing exact tip: skip rewrite and preserve existing commits
     |
 Step 7  Invoke kramme:pr:generate-description (fail closed in auto mode)
     |
 Step 8  Preview + confirmation
-        - Abort        --> Step 10 rollback
+        - Abort        --> Step 10 rollback only when rewrite state exists
         - Edit         --> loop until user confirms
-        - Create       --> push + gh pr create
+        - Create       --> publish/reuse branch + gh pr create
     |
 Step 9  Success output
 ```
 
 ## Workflow rule — do not stop mid-flow
 
-Steps 6 and 7 each invoke a sub-skill via the Skill tool. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
+The fresh-remote path invokes Steps 6 and 7 via the Skill tool. The exact-tip recovery path intentionally skips Step 6 and invokes only Step 7 because rewriting an existing remote branch would violate its safety boundary. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
 
 ## References
 
 - `references/pre-validation-checks.md` — Step 1: repository safety checks.
-- `references/branch-and-platform-handling.md` — Steps 2–3: entry-state capture, immutable-base resolution, ref validation, and mutation-free feature-branch selection.
+- `references/branch-and-platform-handling.md` — Steps 2–3: entry-state capture, immutable-base resolution, ref validation, mutation-free feature-branch selection, and authoritative remote-tip classification.
 - `references/state-and-rollback.md` — Steps 5 and 10: state capture, stash handling, abort/rollback.
-- `references/confirmation-and-creation.md` — Steps 8–9: preview, confirmation, edit loop, push, `gh pr create`, draft mode, success output.
+- `references/confirmation-and-creation.md` — Steps 8–9: preview, confirmation, edit loop, fresh-branch push or exact-tip revalidation, `gh pr create`, draft mode, and success output.
 
 ## Step 0: Parse Arguments
 
@@ -66,7 +68,7 @@ Parse `$ARGUMENTS` for optional flags before starting:
 - `--draft` -> set `DRAFT_MODE=true` and remove the flag from the remaining arguments.
 - `--linear-issue <ISSUE-ID>` -> validate the value against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, store it as `LINEAR_ISSUE_OVERRIDE`, and remove the flag and value. Reject a missing or invalid value before pre-validation. This caller-supplied identifier is authoritative and takes precedence over branch-name extraction.
 - `--require-generated-description` -> set `REQUIRE_GENERATED_DESCRIPTION=true` and remove the flag. This orchestration-only safety mode forbids placeholder fallback when `kramme:pr:generate-description` returns no usable output.
-- `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a non-auto invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, backup, clean-tree, existing-PR, remote-absence, or force-with-lease checks.
+- `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a non-auto invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, clean-tree, existing-PR, or path-specific remote-state checks. Backup, remote-absence, and force-with-lease requirements apply to the fresh-remote rewrite path; exact-tip recovery instead requires the existing remote OID to remain equal to the captured local tip and never rewrites or pushes it.
 
 Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant.
 
@@ -76,12 +78,12 @@ Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REQUIRE_GENERATED_DESCRIPTION=
 - invoke downstream skills in non-interactive mode
 - include all uncommitted changes by selecting **Commit and include**
 - require a usable generated title and description; never publish placeholder fallback content
-- authorize the nested, backup-protected unstacked history rewrite after the existing-PR and remote-absence checks pass
+- authorize the nested, backup-protected unstacked history rewrite only on the fresh-remote path after the existing-PR and remote-absence checks pass; exact-tip recovery performs no rewrite
 - skip the final PR confirmation
 - choose the recommended branch-handling path from the shared reference instructions
 - stop only on hard blockers
 
-`--auto` is fully non-interactive: while `AUTO_MODE=true`, never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts. Choose a documented deterministic fallback when one exists; otherwise report the hard blocker, execute Step 10 when state preservation has already started, and stop. It still stops on failed validation, missing dependencies or required context, an existing Pull Request or remote branch, backup creation failure, lease mismatch, or any other hard blocker.
+`--auto` is fully non-interactive: while `AUTO_MODE=true`, never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts. Choose a documented deterministic fallback when one exists; otherwise report the hard blocker, execute Step 10 when state preservation has already started, and stop. It still stops on failed validation, missing dependencies or required context, an existing Pull Request, a dirty or diverged existing remote branch, backup creation failure, lease mismatch, or any other hard blocker.
 
 `--draft` means:
 
@@ -99,7 +101,7 @@ Read the pre-validation checks from `references/pre-validation-checks.md`. Run a
 
 ## Steps 2-3: Branch Handling
 
-Read the branch and base selection instructions from `references/branch-and-platform-handling.md`. Capture `{entry-branch}` / `{entry-commit}`, resolve one validated remote `{base-source-ref}`, pin its full commit OID as immutable `{base-ref}`, retain `{base-branch}` as metadata, and select a validated `{feature-branch}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
+Read the branch and base selection instructions from `references/branch-and-platform-handling.md`. Capture `{entry-branch}` / `{entry-commit}`, resolve one validated remote `{base-source-ref}`, pin its full commit OID as immutable `{base-ref}`, retain `{base-branch}` as metadata, select a validated `{feature-branch}`, capture `{observed-origin-oid}`, and record `{branch-action}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
 
 ### Conductor workspaces
 
@@ -130,8 +132,14 @@ Require this command to succeed. Authentication, network, repository, rate-limit
 ### 4.1 Check for Uncommitted Changes
 
 ```bash
-git status --porcelain
+if ! WORKTREE_STATUS=$(git status --porcelain --untracked-files=all); then
+  echo "Could not inspect the working tree; stop before preparing the Pull Request." >&2
+  exit 1
+fi
+printf '%s\n' "$WORKTREE_STATUS"
 ```
+
+Capture the exact output as `{worktree-status}`. The explicit `--untracked-files=all` overrides a local `status.showUntrackedFiles=no` setting, and a failed inspection is a blocker rather than empty output.
 
 ### 4.2 Check for Commits Ahead of Base
 
@@ -160,6 +168,25 @@ Nothing to create a PR for. Make some changes first, then run /kramme:pr:create 
 
 ---
 
+## Step 4.4: Classify Exact-Tip Existing-Remote Recovery
+
+Initialize `REMOTE_RECOVERY_MODE=false`.
+
+If `{branch-action}` is not `reuse-existing-exact-tip`, continue with `REMOTE_RECOVERY_MODE=false`.
+
+If `{branch-action}=reuse-existing-exact-tip`, require all of these conditions before setting `REMOTE_RECOVERY_MODE=true`:
+
+- `{entry-branch}` and `{feature-branch}` are the same validated current branch.
+- `{observed-origin-oid}` and `{entry-commit}` are the same full commit OID.
+- A fresh `git branch --show-current` still returns `{feature-branch}`.
+- A fresh `git rev-parse HEAD` still returns `{entry-commit}`.
+- `{worktree-status}` from Step 4.1 is empty.
+- Resolve `{pr-create-skill-dir}` as the directory containing this skill's `SKILL.md`, then run `"{pr-create-skill-dir}/scripts/verify-clean-worktree.sh"` and require success. This final clean-tree proof forces full untracked-file visibility, detects modified assume-unchanged tracked content, and fails closed when Git cannot inspect either state. If uncommitted changes exist, stop. Exact-tip recovery cannot publish that local work and must not rewrite or push the existing remote branch.
+
+This path exists for an already-published branch that has no open Pull Request, including recovery after an earlier run pushed successfully but `gh pr create` failed. It preserves the existing commit history, performs no state-preservation mutation, and never invokes `kramme:git:recreate-commits`. A matching OID is proof that the remote already contains the exact committed tree selected for the Pull Request; it is not authorization to rewrite that ref.
+
+---
+
 ## Step 4.5: Reject Stacked Branches
 
 Resolve stack membership before state preservation or history rewriting:
@@ -182,11 +209,15 @@ Both locally tracked and server-side stacks stop here. Do not pass stack authori
 
 ## Step 5: State Preservation
 
-Read `references/state-and-rollback.md` and execute Step 5. It repeats the authoritative remote-absence check before mutation, creates the validated feature branch directly from `{entry-commit}` only when `{branch-action}=create-from-entry-head`, captures `{original-branch}` / `{original-commit}` as the pre-rewrite feature state, handles uncommitted-work inclusion or exclusion, and derives retry-safe `{recreate-backup-ref}` from the resulting input tip. Keep all entry, feature, and rollback values as agent-tracked state.
+If `REMOTE_RECOVERY_MODE=true`, skip Steps 5 and 6 and continue directly to Step 7. No rollback state is needed because this mode has not mutated the checkout or remote.
+
+Otherwise, require `{observed-origin-oid}=<absent>`, then read `references/state-and-rollback.md` and execute Step 5. It repeats the authoritative remote-absence check before mutation, creates the validated feature branch directly from `{entry-commit}` only when `{branch-action}=create-from-entry-head`, captures `{original-branch}` / `{original-commit}` as the pre-rewrite feature state, handles uncommitted-work inclusion or exclusion, and derives retry-safe `{recreate-backup-ref}` from the resulting input tip. Keep all entry, feature, and rollback values as agent-tracked state.
 
 ---
 
 ## Step 6: Invoke recreate-commits Skill
+
+This entire step applies only when `REMOTE_RECOVERY_MODE=false`. Exact-tip recovery already skipped here from Step 5 and preserves the existing commit history.
 
 ### 6.1 Confirm Commit Restructuring Approach
 
@@ -279,7 +310,7 @@ Before preview or publication, require a usable title and body:
 - Title is one line, at most 72 characters, and matches `^(feat|fix|refactor|docs|test|build|ci|chore|perf|style|revert)(\([a-z0-9][a-z0-9-]*\))?!?: .+$`.
 - Body is non-empty and contains none of the literal fallback placeholders `[Brief description of changes]`, `[Implementation approach]`, or an unresolved `MISSING REQUIREMENT:`.
 
-If either check fails, treat the generator output as unusable. In auto mode, execute Step 10 and stop. In interactive mode, require corrected content before Step 8.
+If either check fails, treat the generator output as unusable. In auto mode, execute Step 10 when `REMOTE_RECOVERY_MODE=false`; when `REMOTE_RECOVERY_MODE=true`, stop without rollback because no mutation occurred. In interactive mode, require corrected content before Step 8.
 
 If `{linear-issue-id}` is captured from branch handling, normalize the generated description before preview:
 
@@ -291,14 +322,14 @@ If `{linear-issue-id}` is captured from branch handling, normalize the generated
 
 If the generator emits a `MISSING REQUIREMENT:` marker, do **not** proceed to Step 8 or create the PR from the incomplete description unless it is the exact documented non-blocking "no Linear ID" advisory. Every other `MISSING REQUIREMENT:` marker is blocking, including database-migration rationale/rollback-plan gaps, feature-flag rollout-context gaps, breaking-contract SemVer/migration gaps, ambiguous selectable-template gaps, and any future requirement the generator marks as missing. This classification is marker-based so the caller cannot drift behind the generator's blocking-condition list.
 
-- If `AUTO_MODE=true`, route to Step 10 rollback and surface the marker as the reason.
-- Otherwise, stop before Step 8 and ask the user for the missing context. After the user supplies it, revise `{description}` to include the context before previewing; if the user chooses not to supply it, route to Step 10 rollback.
+- If `AUTO_MODE=true`, route to Step 10 rollback when `REMOTE_RECOVERY_MODE=false`; in exact-tip recovery, stop without rollback. Surface the marker as the reason.
+- Otherwise, stop before Step 8 and ask the user for the missing context. After the user supplies it, revise `{description}` to include the context before previewing. If the user chooses not to supply it, route to Step 10 when `REMOTE_RECOVERY_MODE=false`, or stop without rollback in exact-tip recovery.
 
 The non-blocking "no Linear ID" marker may be surfaced in the run output without blocking PR creation.
 
 ### 7.3 Handle Skill Failure
 
-If the skill returns no usable output and either `AUTO_MODE=true` or `REQUIRE_GENERATED_DESCRIPTION=true`, emit `MISSING REQUIREMENT: generated PR title/body unavailable; placeholder publication is forbidden`, execute Step 10 rollback, and stop before Step 8.
+If the skill returns no usable output and either `AUTO_MODE=true` or `REQUIRE_GENERATED_DESCRIPTION=true`, emit `MISSING REQUIREMENT: generated PR title/body unavailable; placeholder publication is forbidden`. Execute Step 10 rollback when `REMOTE_RECOVERY_MODE=false`; in exact-tip recovery, stop without rollback. Stop before Step 8 in either mode.
 
 Otherwise, use `AskUserQuestion` to offer **Retry generation**, **Provide title and body**, or **Abort**. Validate manually supplied content with the same title/body checks above and apply the `{linear-issue-id}` normalization from Step 7.2. Never create a Pull Request containing placeholder fallback text.
 
@@ -306,19 +337,19 @@ Otherwise, use `AskUserQuestion` to offer **Retry generation**, **Provide title 
 
 ## Step 8: Confirmation and Creation
 
-Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, the "Edit description first" loop, draft-mode substitutions, absence-leased push command, `gh pr create` invocation, and failure handling. Substitute `{base-branch}`, `{base-source-ref}`, `{base-ref}`, `{original-branch}`, `{rollback-origin-ref}`, the validated title, and the generated description when emitting commands. Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
+Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, the "Edit description first" loop, draft-mode substitutions, the fresh-branch absence-leased push, the existing-branch exact-tip revalidation, `gh pr create`, and failure handling. Substitute `{base-branch}`, `{base-source-ref}`, `{base-ref}`, `{entry-commit}`, `{observed-origin-oid}`, `{original-branch}`, `{rollback-origin-ref}`, the validated title, and the generated description when emitting commands. Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
 
 ---
 
 ## Step 9: Success Output
 
-Before printing the final success message, execute Step 9.0 from `references/state-and-rollback.md` so any excluded uncommitted changes are restored or explicitly reported. Then use Step 9 in `references/confirmation-and-creation.md` for the final success message. Preserve the draft-specific wording when `DRAFT_MODE=true`.
+Before printing the final success message, execute Step 9.0 from `references/state-and-rollback.md` when `REMOTE_RECOVERY_MODE=false` so any excluded uncommitted changes are restored or explicitly reported. Exact-tip recovery skips Step 9.0 because it required a clean tree and created no stash. Then use Step 9 in `references/confirmation-and-creation.md` for the final success message. Preserve the draft-specific wording when `DRAFT_MODE=true`.
 
 ---
 
 ## Step 10: Abort and Rollback Handling
 
-Triggered by an "Abort" choice in Step 8 or a critical failure in Steps 6–8, including a failed push. Execute Step 10 from `references/state-and-rollback.md`, which restores the pre-rewrite feature state and uncommitted work, returns to the invocation entry branch when this run created the feature branch, and reports observed remote state without mutating it.
+Triggered by an "Abort" choice in Step 8 or a critical failure in Steps 6–8, including a failed push, only when `REMOTE_RECOVERY_MODE=false`. Execute Step 10 from `references/state-and-rollback.md`, which restores the pre-rewrite feature state and uncommitted work, returns to the invocation entry branch when this run created the feature branch, and reports observed remote state without mutating it. When `REMOTE_RECOVERY_MODE=true`, never execute Step 10: the mode made no local or remote mutation before `gh pr create`, so stop with the current clean exact-tip branch intact.
 
 ---
 
@@ -340,11 +371,13 @@ Draft PRs are opt-in via the `--draft` flag. Default behavior is to create PRs r
 
 This skill creates PRs with `gh pr create --assignee @me`. This is intentional — the author opening the PR is the assignee. If you need to assign someone else, edit the PR after creation.
 
-### Complete All Steps
+### Complete Every Applicable Step
 
-Even for simple changes, invoke both sub-skills:
+For a fresh remote branch, invoke both sub-skills:
 
 1. `kramme:git:recreate-commits` for clean commit history
 2. `kramme:pr:generate-description` for a comprehensive description
 
 This keeps PRs consistent across the workflow.
+
+For exact-tip existing-remote recovery, invoke only `kramme:pr:generate-description`. Skipping `kramme:git:recreate-commits` is the defining safety property of that path: the existing remote commit history remains untouched.
