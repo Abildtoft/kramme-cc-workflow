@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
 description: "Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, lean deletion, refactor fit, simplification). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Use --loop for a closeout convergence pass that verifies accepted findings, applies scoped fixes, and reruns with independent verification until no actionable Critical or Important findings remain. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those."
-argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop]"
+argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -14,9 +14,11 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 Before selecting a workflow, if `$ARGUMENTS` contains `--loop`, set `LOOP_MODE=true` and remove that flag. Otherwise set `LOOP_MODE=false`. Use the remaining arguments as the normalized review arguments throughout this run and for any review rerun.
 
+If the normalized arguments contain `--no-diff-comments`, set `DIFF_COMMENTS=false` and remove that flag. Otherwise set `DIFF_COMMENTS=true`. Preserve this value for Team Mode and every review rerun.
+
 ## Team Mode
 
-If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments. If Team Mode reaches its final aggregated summary, resume only at standard Step 12b below, then perform Team Mode cleanup; do not rerun another standard step.
 
 ## Review Workflow:
 
@@ -403,6 +405,14 @@ Otherwise:
 - Write the aggregated review summary from Step 11 to `REVIEW_OVERVIEW.md` in the project root, using the template in `references/output-template.md`
 - Include all sections even if empty (with count of 0)
 - Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+
+12b. **Post Conductor diff comments (when available)**
+
+Run this step after standard output and after Team Mode returns its final aggregated summary. When `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is present in the current tool set, read and follow `Conductor diff comments` in `references/output-template.md`. Detect tools by presence; never call one merely to probe availability. Use the runtime-exposed schema rather than hard-coding tool parameters.
+
+Project only from the canonical aggregated summary. Conductor comments are never a findings source of truth, and this step must never post to GitHub. Missing optional tools or an incompatible host schema leave the report/inline result valid and unchanged.
+
+Always end the run with `Diff comments posted: N (skipped M already present)`, using zeroes when projection is disabled or unavailable; add one concise projection-limitation line when eligible findings were not projected.
 
 13. **Provide Action Plan**
 

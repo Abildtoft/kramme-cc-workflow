@@ -11,6 +11,7 @@ Use this document when reviewing converter, hook, MCP, or host-adapter changes. 
 | `canonical` | Source behavior is authored and reviewed here. Other hosts must not become a second source of truth for this behavior. |
 | `generated` | Output is produced by repository tooling from canonical source. Edit the source or converter, not installed copies. |
 | `thin adapter` | Host-specific wrapper behavior that preserves canonical intent without adding independent product semantics. |
+| `optional` | A host capability may be used when present but cannot be required for canonical behavior or successful degradation. |
 | `instruction-only` | Compatibility guidance for an agent runtime. It maps behavior, but does not implement a runtime feature. |
 | `local-only` | Repository-maintenance tooling used in this checkout. It is not shipped as plugin runtime behavior. |
 | `unsupported` | No maintained adapter contract exists. A future adapter must name its source files and tests before this status changes. |
@@ -25,6 +26,7 @@ Use this document when reviewing converter, hook, MCP, or host-adapter changes. 
 | Codex hook plugin and shared scripts | `generated`, `thin adapter` | `hooks/`, `scripts/resolve-base.sh`, `scripts/collect-review-diff.sh`, `scripts/review-tree-fingerprint.sh`, `scripts/skill-usage.js`, `scripts/dev-server/`, `scripts/lib/`, `scripts/convert-plugin/codex-hook-plugin-writer.js`, `scripts/convert-plugin/codex-shared-scripts.js` | Managed Codex plugin marketplace/cache entries and hook config | Converts Claude hook behavior into Codex plugin packaging without expanding hook support promises. |
 | Codex `AGENTS.md` tool map | `instruction-only` | `scripts/convert-plugin/codex-writer.js` | Managed block in `~/.codex/AGENTS.md` | Maps Claude-oriented tool names to Codex behavior for agent instructions only, preserving explicit structured or exhaustive prompts with `request_user_input` when available and otherwise using direct chat. |
 | Local repository-maintenance skills | `local-only` | Repository-local `./.agents/skills/` and local exposure through `./.claude/skills/` | This repository checkout | Used to maintain this repo and not shipped as plugin runtime behavior. |
+| Conductor host tools (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose, detected by tool presence | Conductor app Checks panel and dialogs | Optional projection of canonical report artifacts; skills degrade silently when tools are absent and never treat host state as a findings source of truth. |
 | Other hosts | `unsupported` | None | None | Unsupported unless a future row names source files, generated outputs, and tests. |
 
 ## Converter Contract
