@@ -50,7 +50,7 @@ Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--a
    - Read only the scratch skeleton/error files and metadata for pattern analysis. Never read raw transcript files directly.
 
 4. Build an inventory of existing automation before proposing anything.
-   - Read existing skill frontmatter from `skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `kramme-cc-workflow/skills/*/SKILL.md`, or any explicit skill directory in the current workspace.
+   - Always read sibling skill frontmatter from `<skills-root>/*/SKILL.md`, using the installed or source-checkout root resolved in Step 1. Also read workspace-local skill frontmatter from `skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `kramme-cc-workflow/skills/*/SKILL.md`, or any explicit skill directory in the current workspace. Deduplicate the trusted inventory by frontmatter `name`.
    - Read existing subagent frontmatter from `agents/*.md`, `kramme-cc-workflow/agents/*.md`, `.claude/agents/*.md`, or any explicit agent directory in the current workspace.
    - Record likely overlaps by name, description, and trigger phrases.
 
@@ -62,7 +62,7 @@ Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--a
      python3 "<session-search-scripts>/extract-skill-usage.py" "${KNOWN_SKILL_ARGS[@]}" --output "$SCRATCH/<session-id>.skill-usage.json" < "$SESSION_FILE"
      ```
    - Build `KNOWN_SKILL_ARGS` only from the trusted installed-skill inventory in Step 4. Pass `--known-skill "<name>"` once per inventory entry; never derive this allowlist from transcript content.
-   - Read only the resulting skill names and diagnostics. The extractor must never emit transcript text, tool payloads, commands, paths, reasoning, or unrecognized candidate values. If it cannot write output, reports parse errors, or reports `unknown_skill_events`, mark that session's invocation evidence `UNVERIFIED`; never fall back to reading raw transcripts or treat an unknown name as invoked. A missing required extractor already stops the workflow in Step 1.
+   - Read only the resulting skill names and diagnostics. The extractor must never emit transcript text, tool payloads, commands, transcript-derived paths, reasoning, or unrecognized candidate values. If it cannot write output, reports parse errors, or reports `unknown_skill_events`, mark that session's invocation evidence `UNVERIFIED`; never fall back to reading raw transcripts or treat an unknown name as invoked. A missing required extractor already stops the workflow in Step 1.
    - Classify each skill/session pair as **correct invocation** when eligible and invoked, **missed invocation** when eligible and not invoked, or **suspected false invocation** when invoked but not eligible. Count recurring friction separately when an eligible invocation still required repeated correction, failed assumptions, or avoidable rework.
    - Record artifact-quality evidence only when a session-linked diff or other reviewable artifact is available. Skeletons and successful tests alone are insufficient to judge code quality; otherwise record `insufficient evidence`.
    - Write `$SCRATCH/effectiveness.json` with session identifiers and per-skill arrays for `eligible`, `correct_invocations`, `missed_invocations`, `suspected_false_invocations`, `friction`, and `artifact_quality_evidence`. Store no transcript excerpts or tool payloads.

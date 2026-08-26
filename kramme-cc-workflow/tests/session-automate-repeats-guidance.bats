@@ -91,9 +91,11 @@ SKILL="skills/kramme:session:automate-repeats/SKILL.md"
 
 @test "effectiveness mode uses bounded machine-readable evidence" {
   grep -qF 'also require `extract-skill-usage.py`' "$SKILL"
+  grep -qF 'Always read sibling skill frontmatter from `<skills-root>/*/SKILL.md`' "$SKILL"
+  grep -qF 'Deduplicate the trusted inventory by frontmatter `name`.' "$SKILL"
   grep -qF 'Write `$SCRATCH/effectiveness.json`' "$SKILL"
   grep -qF 'Build `KNOWN_SKILL_ARGS` only from the trusted installed-skill inventory in Step 4.' "$SKILL"
-  grep -qF "The extractor must never emit transcript text, tool payloads, commands, paths, reasoning, or unrecognized candidate values." "$SKILL"
+  grep -qF "The extractor must never emit transcript text, tool payloads, commands, transcript-derived paths, reasoning, or unrecognized candidate values." "$SKILL"
   grep -qF 'reports `unknown_skill_events`' "$SKILL"
   grep -qF "A missing required extractor already stops the workflow in Step 1." "$SKILL"
   grep -qF "mark that session's invocation evidence \`UNVERIFIED\`; never fall back to reading raw transcripts" "$SKILL"

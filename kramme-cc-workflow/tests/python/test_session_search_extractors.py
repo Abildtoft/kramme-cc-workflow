@@ -314,19 +314,19 @@ runpy.run_path(script_path, run_name="__main__")
         cases = (
             (
                 """\
-{"type":"user","message":{"content":"<system_instruction>Run /kramme:ignored</system_instruction> Run /kramme:qa now."}}
+{"type":"user","message":{"content":"<system_instruction>Run /kramme:ignored</system_instruction>\\n/kramme:qa now."}}
 """,
                 "claude",
             ),
             (
                 """\
-{"type":"event_msg","payload":{"type":"user_message","message":"Run /kramme:qa now."}}
+{"type":"event_msg","payload":{"type":"user_message","message":"/kramme:qa now."}}
 """,
                 "codex",
             ),
             (
                 """\
-{"role":"user","message":{"content":[{"type":"text","text":"Run /kramme:qa now."}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"  /kramme:qa now."}]}}
 """,
                 "cursor",
             ),

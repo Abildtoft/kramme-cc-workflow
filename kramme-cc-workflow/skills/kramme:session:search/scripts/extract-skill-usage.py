@@ -2,7 +2,8 @@
 """Extract explicit skill-use evidence from a local agent session.
 
 The extractor emits only validated skill names and aggregate diagnostics. It
-never emits transcript text, tool payloads, commands, paths, or reasoning.
+never emits transcript text, tool payloads, commands, transcript-derived paths,
+or reasoning.
 Claude Code, Codex, and Cursor JSONL shapes are auto-detected through the
 shared session-search parser.
 """
@@ -12,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shlex
 import sys
 from typing import Iterable, Iterator, Optional, Set, cast
 
@@ -47,14 +49,12 @@ output = AtomicOutput(args.output)
 
 SKILL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 SKILL_PATH = re.compile(r"(?:^|[/\\])skills[/\\]([A-Za-z0-9][A-Za-z0-9._:-]{0,127})[/\\]SKILL\.md\b")
-SLASH_SKILL = re.compile(r"(?:^|\s)/([A-Za-z0-9][A-Za-z0-9._:-]{0,127})(?=$|[\s,.;!?])")
+SLASH_SKILL = re.compile(r"^\s*/([A-Za-z0-9][A-Za-z0-9._:-]{0,127})(?=$|\s)")
 DIRECT_SKILL_TOOLS = {"skill", "read_skill"}
 PATH_READ_TOOLS = {"open", "read", "read_file", "read_skill", "skill", "view"}
 SHELL_READ_TOOLS = {"bash", "exec_command", "local_shell_call", "shell"}
-SHELL_READ_COMMAND = re.compile(
-    r"(?:^|[;&|]\s*)(?:rtk\s+)?(?:bat|cat|grep|head|less|rg|sed|tail)\b",
-    re.IGNORECASE,
-)
+SHELL_READ_COMMANDS = {"bat", "cat", "grep", "head", "less", "rg", "sed", "tail"}
+EVIDENCE_TOOLS = PATH_READ_TOOLS | SHELL_READ_TOOLS
 INJECTED_BLOCK = re.compile(
     r"<(?:local-command-caveat|local-command-stderr|local-command-stdout|"
     r"system-reminder|system_instruction|task-notification)[^>]*>.*?"
@@ -112,28 +112,78 @@ def checked_tool_input(tool_input: object) -> JsonObject:
     return cast(JsonObject, tool_input)
 
 
-def shell_reads_skill_path(tool_input: JsonObject) -> bool:
+def shell_command_values(tool_input: JsonObject) -> Iterator[str]:
     for key in ("cmd", "command"):
         command = tool_input.get(key)
-        if isinstance(command, str) and SHELL_READ_COMMAND.search(command):
-            return True
+        if isinstance(command, str):
+            yield command
         if isinstance(command, list):
-            for part in command:
-                if isinstance(part, str) and SHELL_READ_COMMAND.search(part):
-                    return True
-    return False
+            parts = [part for part in command if isinstance(part, str)]
+            if parts:
+                yield " ".join(parts)
+
+
+def shell_segments(command: str) -> Iterator[list[str]]:
+    """Yield shell command segments without executing or retaining them."""
+    lexer = shlex.shlex(command, posix=True, punctuation_chars="();&|<>`\n")
+    lexer.commenters = "#"
+    lexer.whitespace = " \t\r"
+    lexer.whitespace_split = True
+    try:
+        tokens = list(lexer)
+    except ValueError:
+        return
+
+    segment: list[str] = []
+    for token in tokens:
+        if token in {";", "&", "&&", "|", "||", "(", ")", "`", "\n"}:
+            if segment:
+                yield segment
+                segment = []
+        else:
+            segment.append(token)
+    if segment:
+        yield segment
+
+
+def names_from_shell_reads(tool_input: JsonObject) -> Set[str]:
+    """Extract paths that belong to an unambiguous read-only shell segment."""
+    names: Set[str] = set()
+    for command in shell_command_values(tool_input):
+        for segment in shell_segments(command):
+            command_index = 1 if segment and segment[0].lower() == "rtk" else 0
+            if command_index >= len(segment):
+                continue
+            command_name = segment[command_index].rsplit("/", 1)[-1].lower()
+            if command_name not in SHELL_READ_COMMANDS:
+                continue
+            if any(">" in token for token in segment):
+                continue
+            if command_name == "sed" and any(
+                token == "-i"
+                or token.startswith("-i")
+                or token == "--in-place"
+                or token.startswith("--in-place=")
+                for token in segment[command_index + 1 :]
+            ):
+                continue
+            names.update(names_from_paths(" ".join(segment[command_index + 1 :])))
+    return names
 
 
 def names_from_tool(tool_name: str, raw_tool_input: object) -> Set[str]:
     """Return candidate names without retaining the source tool input."""
-    tool_input = checked_tool_input(raw_tool_input)
     normalized_tool = tool_name.lower()
+    if normalized_tool not in EVIDENCE_TOOLS:
+        return set()
+
+    tool_input = checked_tool_input(raw_tool_input)
     names: Set[str] = set()
 
-    if normalized_tool in PATH_READ_TOOLS or (
-        normalized_tool in SHELL_READ_TOOLS and shell_reads_skill_path(tool_input)
-    ):
+    if normalized_tool in PATH_READ_TOOLS:
         names.update(names_from_paths(tool_input))
+    elif normalized_tool in SHELL_READ_TOOLS:
+        names.update(names_from_shell_reads(tool_input))
 
     if normalized_tool not in DIRECT_SKILL_TOOLS:
         return names
