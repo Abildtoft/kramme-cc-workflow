@@ -109,4 +109,4 @@ This skill writes safe extraction artifacts to `.context/session-search/<timesta
 
 ## Source Tracking
 
-`references/sources.yaml` records the upstream `ce-compound` session-history scripts. Do not load it during normal use unless auditing or updating source attribution.
+`references/sources.yaml` records the upstream `ce-compound` session-history scripts and the Warp skill-doctor collector that informs the bounded explicit-skill-use extractor consumed by `kramme:session:automate-repeats`. Do not load it during normal use unless auditing or updating source attribution.

@@ -55,7 +55,7 @@ SKILL="skills/kramme:session:automate-repeats/SKILL.md"
 }
 
 @test "no flag grants edit authority over an existing component" {
-  grep -qF "and it grants no authority to edit an existing skill or subagent" "$SKILL"
+  grep -qF "and neither grants authority to edit an existing skill or subagent" "$SKILL"
   grep -qF "This report is the whole output for these candidates under every flag, including \`--create\` and \`--auto\`." "$SKILL"
   grep -qF "Do not edit the affected component, and tell the user that applying the improvement is a separate follow-up they must request explicitly." "$SKILL"
   grep -qF "This skill never edits, rewrites, or scaffolds over an existing skill or subagent" "$SKILL"
@@ -63,7 +63,7 @@ SKILL="skills/kramme:session:automate-repeats/SKILL.md"
 }
 
 @test "summary keeps improvement, creation, rejection, and unverified outcomes separate" {
-  grep -qF "Close with an audit-style summary that keeps the four outcomes separate." "$SKILL"
+  grep -qF "Close with an audit-style summary that keeps each outcome separate." "$SKILL"
   grep -qF -e "- \`IMPROVE EXISTING\`: proposed improvements to existing components" "$SKILL"
   grep -qF -e "- \`CREATED\`: paths for any new skills or agents." "$SKILL"
   grep -qF -e "- \`NOT CREATED\`: rejected repeated ideas and improvement proposals, with one-line reasons." "$SKILL"
@@ -71,12 +71,59 @@ SKILL="skills/kramme:session:automate-repeats/SKILL.md"
 }
 
 @test "description routes run-derived improvement without dropping automation triggers" {
-  grep -qF "improve a skill from how recent runs went" "$SKILL"
+  grep -qF "improve a skill from its runs" "$SKILL"
   grep -qF "find automation opportunities" "$SKILL"
   grep -qF "Not for summarizing one session, general retrospectives, or codebase refactoring." "$SKILL"
 }
 
 @test "run-evidence improvement framing is attributed" {
   grep -qF "posthog-writing-agent-skills" "skills/kramme:session:automate-repeats/references/sources.yaml"
-  grep -qF "plus the PostHog agent-skills post for the run-evidence improvement framing" "$SKILL"
+  grep -qF "the PostHog agent-skills post for the run-evidence improvement framing" "$SKILL"
+}
+
+@test "effectiveness mode is eligibility aware and refuses false precision" {
+  grep -qF 'Use `--effectiveness` when the user wants evidence about which skills are working from real runs.' "$SKILL"
+  grep -qF "Decide eligibility from each safe skeleton's user ask and the verified historical contract before reading detected usage." "$SKILL"
+  grep -qF "**correct invocation** when eligible and invoked, **missed invocation** when eligible and not invoked, or **suspected false invocation** when invoked but not eligible" "$SKILL"
+  grep -qF "Do not calculate a coverage score, weighted overall score, or letter grade." "$SKILL"
+  grep -qF "zero use alone never justifies changing a skill" "$SKILL"
+}
+
+@test "effectiveness excludes sessions from before the applicable contract existed" {
+  grep -qF "Its presence does not prove that a skill or its current contract existed during a historical session." "$SKILL"
+  grep -qF 'Establish a trustworthy session start time from transcript-derived metadata `ts`.' "$SKILL"
+  grep -qF 'Do not use `last_ts` or filesystem mtime as proof that a skill was available when the session began.' "$SKILL"
+  grep -qF "select the latest committed revision no later than the session timestamp" "$SKILL"
+  grep -qF 'require that revision to contain the skill definition with the exact frontmatter `name`' "$SKILL"
+  grep -qF "never project a later name or contract backward" "$SKILL"
+  grep -qF "classify the pair as **not available** and exclude it from eligibility, correct-invocation, missed-invocation, and suspected-false-invocation counts" "$SKILL"
+  grep -qF "classify the pair as **UNVERIFIED** and exclude it from those counts" "$SKILL"
+  grep -qF '`not_available`, `unverified_availability`' "$SKILL"
+  grep -qF "verified sample size" "$SKILL"
+}
+
+@test "effectiveness mode uses bounded machine-readable evidence" {
+  grep -qF 'also require `extract-skill-usage.py`' "$SKILL"
+  grep -qF 'Always read sibling skill frontmatter from `<skills-root>/*/SKILL.md`' "$SKILL"
+  grep -qF 'Deduplicate the trusted inventory by frontmatter `name`.' "$SKILL"
+  grep -qF 'Write `$SCRATCH/effectiveness.json`' "$SKILL"
+  grep -qF 'Build `KNOWN_SKILL_ARGS` only from the trusted installed-skill inventory in Step 4.' "$SKILL"
+  grep -qF "The extractor must never emit transcript text, tool payloads, commands, transcript-derived paths, reasoning, or unrecognized candidate values." "$SKILL"
+  grep -qF 'reports `unknown_skill_events`' "$SKILL"
+  grep -qF "A missing required extractor already stops the workflow in Step 1." "$SKILL"
+  grep -qF "mark that session's invocation evidence \`UNVERIFIED\`; never fall back to reading raw transcripts" "$SKILL"
+}
+
+@test "improvement proposals pass a counterfactual gate" {
+  grep -qF "Test causality before changing a contract: identify the missing, incorrect, or underspecified instruction" "$SKILL"
+  grep -qF "classify the event as model variance or a failure outside instruction surfaces instead of duplicating guidance" "$SKILL"
+  grep -qF "Edit the narrowest existing rule in place; add new prose only when no current rule owns the behavior." "$SKILL"
+}
+
+@test "skill-doctor inspirations are attributed individually" {
+  SOURCES="skills/kramme:session:automate-repeats/references/sources.yaml"
+  grep -qF "warp-skill-doctor-workflow" "$SOURCES"
+  grep -qF "warp-skill-doctor-improvement-guidelines" "$SOURCES"
+  grep -qF "warp-skill-doctor-efficiency-scorer" "$SOURCES"
+  grep -qF "warp-skill-doctor-code-quality-scorer" "$SOURCES"
 }

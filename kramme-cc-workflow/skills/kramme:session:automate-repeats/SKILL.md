@@ -1,29 +1,30 @@
 ---
 name: kramme:session:automate-repeats
-description: "Reviews recent agent sessions to find repeated manual workflows, repeated asks, and recurring friction, then reports evidence-backed improvements to the existing skill or subagent that owns the work before proposing or scaffolding a new one. Use when the user asks to inspect recent sessions, find automation opportunities, improve a skill from how recent runs went, or turn repeated work into reusable workflows. Not for summarizing one session, general retrospectives, or codebase refactoring."
-argument-hint: "[session-paths or --recent N] [--create|--auto]"
+description: "Reviews recent agent sessions for repeated work, recurring friction, and evidence-backed skill effectiveness, then reports improvements to the existing owner before proposing or scaffolding new automation. Use when asked to inspect recent sessions, find automation opportunities, improve a skill from its runs, determine which skills are working, or turn repeated work into reusable workflows. Not for summarizing one session, general retrospectives, or codebase refactoring."
+argument-hint: "[session-paths or --recent N] [--effectiveness] [--create|--auto]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Automate Repeated Session Work
 
-Find repeated work and recurring friction in recent agent sessions, propose improvements to the existing component that owns the work, and turn only the genuinely uncovered patterns into simple new skills or custom subagents.
+Find repeated work and recurring friction in recent agent sessions, optionally evaluate whether eligible skills were invoked effectively, propose improvements to the existing component that owns the work, and turn only the genuinely uncovered patterns into simple new skills or custom subagents.
 
 ## Boundaries
 
 - Use this for session-history mining, repeated-ask detection, existing-component improvement proposals, and automation candidate creation.
+- Use `--effectiveness` when the user wants evidence about which skills are working from real runs. Treat its counts as diagnostic sample evidence, never as an objective grade.
 - Do not use this to summarize one session, write a personal retrospective, review code, or create broad "do everything" agents.
 - Improvements to existing components are report-only. This skill never edits, rewrites, or scaffolds over an existing skill or subagent; applying a proposed improvement is a separate follow-up the user must request explicitly.
 - Treat session logs as private. Use the shared `kramme:session:search` extraction substrate before reading content. Paraphrase evidence unless a short exact phrase is necessary to justify a candidate. Do not copy secrets, customer data, tokens, raw tool payloads, or long user messages into generated files.
 
 ## Workflow
 
-Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `--create`: remove it from the remaining source arguments and scaffold the selected candidates after the usefulness gate. It does not bypass missing session-source handling or existing-destination protection, and it grants no authority to edit an existing skill or subagent.
+Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--auto` as an alias for `--create`: remove it from the remaining source arguments and scaffold the selected candidates after the usefulness gate. Remove `--effectiveness` from source arguments and enable the effectiveness evidence pass in Steps 4-5. Neither flag bypasses missing session-source handling or existing-destination protection, and neither grants authority to edit an existing skill or subagent.
 
 1. Resolve the shared session-search substrate.
    - Resolve `<skills-root>` as the `skills/` directory containing this skill (this skill lives at `<skills-root>/kramme:session:automate-repeats/`), then use the scripts at `<skills-root>/kramme:session:search/scripts/`. The same pattern works in both the source checkout and an installed plugin.
-   - Required scripts: `discover-sessions.sh`, `extract-metadata.py`, `extract-skeleton.py`, and `extract-errors.py`.
+   - Required scripts: `discover-sessions.sh`, `extract-metadata.py`, `extract-skeleton.py`, and `extract-errors.py`. When `--effectiveness` is active, also require `extract-skill-usage.py`.
    - If the script set is unavailable, stop with `MISSING REQUIREMENT: kramme:session:search scripts are not installed`.
 
 2. Resolve the session source without reading raw transcripts into context.
@@ -49,11 +50,29 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
    - Read only the scratch skeleton/error files and metadata for pattern analysis. Never read raw transcript files directly.
 
 4. Build an inventory of existing automation before proposing anything.
-   - Read existing skill frontmatter from `skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `kramme-cc-workflow/skills/*/SKILL.md`, or any explicit skill directory in the current workspace.
+   - Always read sibling skill frontmatter from `<skills-root>/*/SKILL.md`, using the installed or source-checkout root resolved in Step 1. Also read workspace-local skill frontmatter from `skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.agents/skills/*/SKILL.md`, `kramme-cc-workflow/skills/*/SKILL.md`, or any explicit skill directory in the current workspace. Deduplicate the trusted inventory by frontmatter `name`.
+   - Treat this current inventory as the extractor allowlist and routing inventory only. Its presence does not prove that a skill or its current contract existed during a historical session.
    - Read existing subagent frontmatter from `agents/*.md`, `kramme-cc-workflow/agents/*.md`, `.claude/agents/*.md`, or any explicit agent directory in the current workspace.
    - Record likely overlaps by name, description, and trigger phrases.
 
-5. Extract repeated patterns and recurring friction from the safe skeletons.
+5. When `--effectiveness` is active, build an eligibility-aware evidence table.
+   - Establish a trustworthy session start time from transcript-derived metadata `ts`. Do not use `last_ts` or filesystem mtime as proof that a skill was available when the session began. If the start time is missing, malformed, or derived only from mtime, mark availability evidence for that session `UNVERIFIED`.
+   - Before deciding eligibility, resolve the exact historical contract for each candidate skill as of the session start. Prefer complete local Git history: select the latest committed revision no later than the session timestamp, require that revision to contain the skill definition with the exact frontmatter `name`, and read that historical `SKILL.md` body. Follow recorded path renames only to find history; never project a later name or contract backward. Immutable local release or installation provenance may substitute only when it identifies the exact bundled contract and proves it was available by the session start.
+   - If complete history proves that the exact skill name and contract were absent at the session start, classify the pair as **not available** and exclude it from eligibility, correct-invocation, missed-invocation, and suspected-false-invocation counts. If exact historical availability or contract contents cannot be established, classify the pair as **UNVERIFIED** and exclude it from those counts. Current contracts, current file timestamps, and observed invocation alone are not sufficient historical-contract evidence.
+   - Decide eligibility from each safe skeleton's user ask and the verified historical contract before reading detected usage. Eligibility means that contract's documented trigger and boundaries fit the task; do not infer eligibility merely because a skill was invoked.
+   - For every selected session, run:
+     ```bash
+     KNOWN_SKILL_ARGS=(--known-skill "<name>" ...) # one entry per Step 4 inventory name
+     python3 "<session-search-scripts>/extract-skill-usage.py" "${KNOWN_SKILL_ARGS[@]}" --output "$SCRATCH/<session-id>.skill-usage.json" < "$SESSION_FILE"
+     ```
+   - Build `KNOWN_SKILL_ARGS` only from the trusted installed-skill inventory in Step 4. Pass `--known-skill "<name>"` once per inventory entry; never derive this allowlist from transcript content.
+   - Read only the resulting skill names and diagnostics. The extractor must never emit transcript text, tool payloads, commands, transcript-derived paths, reasoning, or unrecognized candidate values. If it cannot write output, reports parse errors, or reports `unknown_skill_events`, mark that session's invocation evidence `UNVERIFIED`; never fall back to reading raw transcripts or treat an unknown name as invoked. A missing required extractor already stops the workflow in Step 1.
+   - Only after the historical-contract gate, classify each verified-available skill/session pair as **correct invocation** when eligible and invoked, **missed invocation** when eligible and not invoked, or **suspected false invocation** when invoked but not eligible. Count recurring friction separately when an eligible invocation still required repeated correction, failed assumptions, or avoidable rework.
+   - Record artifact-quality evidence only when a session-linked diff or other reviewable artifact is available. Skeletons and successful tests alone are insufficient to judge code quality; otherwise record `insufficient evidence`.
+   - Write `$SCRATCH/effectiveness.json` with session identifiers and per-skill arrays for `eligible`, `correct_invocations`, `missed_invocations`, `suspected_false_invocations`, `not_available`, `unverified_availability`, `friction`, and `artifact_quality_evidence`. Store no transcript excerpts or tool payloads.
+   - Report one row per eligible or invoked skill: skill, eligible sessions, correct invocations, missed invocations, suspected false invocations, not-available sessions, unverified-availability sessions, friction sessions, artifact-quality evidence, and verified sample size. Do not calculate a coverage score, weighted overall score, or letter grade. Invocation frequency is not effectiveness, and zero use alone never justifies changing a skill.
+
+6. Extract repeated patterns and recurring friction from the safe skeletons.
    - Group similar user asks, manual command sequences, review rituals, debugging loops, release steps, docs updates, CI-fix loops, test triage, changelog work, and PR-prep tasks.
    - Group friction signals that recur while an existing component is already in use: the user having to clarify or re-steer the same point, failed commands and wrong tool or path assumptions, steps the user repeatedly skips or undoes as unnecessary, stale paths, commands, or versions, and context the agent had to be handed every run.
    - Treat a prompt-footprint or contract warning from the destination repo's own skill linter, where one exists, as corroborating evidence for a friction signal, never as a candidate on its own.
@@ -61,51 +80,55 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
    - Preserve the user's phrasing as labels in private notes, but report paraphrased evidence.
    - Ignore one-off tasks, vague preferences, personal style notes, and work an existing skill or agent already handles without recurring friction.
 
-6. Classify each candidate, asking whether an existing component already owns the work before considering a new one.
+7. Classify each candidate, asking whether an existing component already owns the work before considering a new one.
    - Recommend **IMPROVE EXISTING** when one existing skill or subagent clearly owns the behavior and the recurring friction points at a defect in that component's contract, or at a small variation of it, rather than at a missing entry point. Name the single owning component; if two or more components could own the work, or none does, do not use this classification.
    - Before recording `IMPROVE EXISTING`, read the owning component's file body, not just the frontmatter collected in Step 4, so the contract defect and proposed change name real steps, boundaries, or fields.
    - Recommend a **skill** when the repeated work is a reusable workflow with ordered steps, decision gates, side effects, or orchestration across tools, and no existing component owns it.
    - Recommend a **custom subagent** when the repeated work is a bounded role or investigation lens with a stable mission, clear inputs, and a repeatable output format, and no existing component owns it.
    - Reject candidates that need broad judgment across many domains, duplicate existing components, depend on unavailable tools, or cannot be explained in a short trigger description.
 
-7. Apply the usefulness gate.
+8. Apply the usefulness and counterfactual gates.
    - A candidate is useful only if it has evidence from at least 2 independent sessions or at least 3 clearly separate asks, a clear trigger, a narrow scope, low overlap with existing automation, and a simple implementation.
    - Hold `IMPROVE EXISTING` to the same evidence bar. Never propose an improvement from a single session or a single model failure, however severe that one run looked.
+   - Test causality before changing a contract: identify the missing, incorrect, or underspecified instruction, then explain how the proposed rule closes that exact gap. If the current contract already specifies the correct behavior, classify the event as model variance or a failure outside instruction surfaces instead of duplicating guidance.
+   - Edit the narrowest existing rule in place; add new prose only when no current rule owns the behavior. Name the one owning surface and the smallest reusable behavioral rule that closes the verified gap.
    - Cap and rank the two classes separately: keep the default to 1-3 new skill or subagent candidates and 1-3 `IMPROVE EXISTING` proposals, ranking within each class by time saved and frequency. Never drop a qualified improvement to make room for a new component.
    - Mark weaker ideas as `NOT CREATED` with a one-line reason instead of scaffolding or proposing them.
 
-8. Report qualified existing-component improvements instead of applying them.
+9. Report qualified existing-component improvements instead of applying them.
    - Report each one under `IMPROVE EXISTING` with six fields: affected component name and path, independent evidence count, paraphrased symptom, likely contract defect, proposed change, and how to verify the change worked.
    - State the proposed change as a concrete contract edit to that component, not as a wish. Name the step, boundary, or field to change and what it should say instead.
    - Paraphrase every symptom and name only components, files, and paths. Never quote private session content, secrets, customer data, tokens, or raw tool payloads in a proposal.
    - This report is the whole output for these candidates under every flag, including `--create` and `--auto`. Do not edit the affected component, and tell the user that applying the improvement is a separate follow-up they must request explicitly.
 
-9. Present a compact plan before writing files unless the user explicitly requested hands-off creation.
-   - Include: candidate name, skill vs subagent, evidence count, destination path, and why it passes the usefulness gate.
-   - If the user asked only to "suggest", stop after the report.
-   - If the user said "create", passed `--create` or `--auto`, or confirms the plan, scaffold the selected new candidates. `IMPROVE EXISTING` candidates are never scaffolded or applied here.
+10. Present a compact plan before writing files unless the user explicitly requested hands-off creation.
 
-10. Scaffold skills simply.
+- Include: candidate name, skill vs subagent, evidence count, destination path, and why it passes the usefulness gate.
+- If the user asked only to "suggest", stop after the report.
+- If the user said "create", passed `--create` or `--auto`, or confirms the plan, scaffold the selected new candidates. `IMPROVE EXISTING` candidates are never scaffolded or applied here.
+
+11. Scaffold skills simply.
     - Use `skills/{skill-name}/SKILL.md` when the current workspace's skill root is `skills/`; use `kramme-cc-workflow/skills/{skill-name}/SKILL.md` when that plugin layout exists.
     - If the destination path already exists, do not overwrite it. Skip the candidate and report it under `NOT CREATED` with reason `already exists`.
     - Use names in the form `kramme:{domain}:{action}` when adding to this plugin-style tree.
     - Include frontmatter fields: `name`, `description`, `disable-model-invocation`, and `user-invocable`; add `argument-hint` only when useful. Set `disable-model-invocation: true` for any generated skill with side effects (file writes, git, network, deletion); otherwise `false`.
     - Keep each generated `SKILL.md` focused on the workflow. Avoid placeholder docs, READMEs, and large reference files unless the candidate truly needs them.
 
-11. Scaffold subagents simply.
+12. Scaffold subagents simply.
     - Use `agents/{agent-name}.md` when the current workspace's agent root is `agents/`; use `kramme-cc-workflow/agents/{agent-name}.md` when that plugin layout exists.
     - If the destination path already exists, do not overwrite it. Skip the candidate and report it under `NOT CREATED` with reason `already exists`.
     - Include frontmatter fields: `name`, `description`, `model`, and `color`.
     - Keep the body to mission, scope boundaries, analysis process, and output format.
     - Make the agent read-only by default unless the role explicitly requires edits and the user's request authorizes side effects.
 
-12. Update local indexes only when required by the destination repo's own instructions.
+13. Update local indexes only when required by the destination repo's own instructions.
     - If a README or published skill index already lists all skills or agents, add concise rows for new components.
     - Update any visible skill or agent count in the same file when it is clearly maintained by hand.
     - Do not add extra documentation files inside the new skill or agent directories.
 
-13. Close with an audit-style summary that keeps the four outcomes separate.
+14. Close with an audit-style summary that keeps each outcome separate.
     - `REVIEWED`: session source count and date range if known.
+    - `EFFECTIVENESS`: when requested, the eligibility-aware evidence table and the path to `effectiveness.json`.
     - `IMPROVE EXISTING`: proposed improvements to existing components, each with its owning component and evidence count, reported as proposals only.
     - `CREATED`: paths for any new skills or agents.
     - `NOT CREATED`: rejected repeated ideas and improvement proposals, with one-line reasons.
@@ -113,4 +136,8 @@ Before Step 1, parse `$ARGUMENTS` for `--auto`. Treat `--auto` as an alias for `
 
 ## Source Tracking
 
-`references/sources.yaml` records the upstream `ce-compound` session-history scripts for the shared discovery/extraction substrate and routing model, plus the PostHog agent-skills post for the run-evidence improvement framing. Do not load it during normal use unless auditing or updating source attribution.
+`references/sources.yaml` records the upstream `ce-compound` session-history scripts for the shared discovery/extraction substrate and routing model, the PostHog agent-skills post for the run-evidence improvement framing, and Warp's skill-doctor workflow, rubrics, and improvement gate for eligibility-aware effectiveness evidence. Do not load it during normal use unless auditing or updating source attribution.
+
+## Artifact Lifecycle
+
+This skill writes safe extraction artifacts under `.context/session-search/<timestamp>/automate-repeats/`. The current run consumes skeletons, error summaries, skill-use evidence, and optional `effectiveness.json`; sibling agents may reuse them inside the same Conductor workspace. Refresh them by rerunning this skill. Retire them with `kramme:workflow-artifacts:cleanup` or delete the matching run directory when the workspace no longer needs the evidence.

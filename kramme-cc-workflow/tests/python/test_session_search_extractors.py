@@ -58,6 +58,12 @@ class SessionExtractorTests(unittest.TestCase):
             timeout=timeout,
         )
 
+    def run_skill_usage(self, stdin, *known_skills):
+        args = tuple(argument for skill in known_skills for argument in ("--known-skill", skill))
+        result = self.run_script("extract-skill-usage.py", stdin, *args)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return result, json.loads(result.stdout)
+
     def run_script_with_faulting_stdin(self, name, stdin, output_path):
         runner = """\
 import os
@@ -164,7 +170,11 @@ runpy.run_path(script_path, run_name="__main__")
             self.assertEqual(status["errors_found"], 1)
 
     def test_atomic_output_failure_preserves_destination_and_removes_temporary_file(self):
-        for script_name in ("extract-skeleton.py", "extract-errors.py"):
+        for script_name in (
+            "extract-skeleton.py",
+            "extract-errors.py",
+            "extract-skill-usage.py",
+        ):
             with self.subTest(script=script_name), tempfile.TemporaryDirectory() as directory:
                 output_path = Path(directory) / "extract.txt"
                 output_path.mkdir()
@@ -178,10 +188,8 @@ runpy.run_path(script_path, run_name="__main__")
     def test_atomic_output_read_failure_preserves_destination_and_removes_temporary_file(self):
         fixtures = {
             "extract-skeleton.py": "\n".join(CODEX_SESSION.splitlines()[:3]) + "\n",
-            "extract-errors.py": "\n".join(
-                [CODEX_SESSION.splitlines()[0], CODEX_SESSION.splitlines()[-1]]
-            )
-            + "\n",
+            "extract-errors.py": "\n".join([CODEX_SESSION.splitlines()[0], CODEX_SESSION.splitlines()[-1]]) + "\n",
+            "extract-skill-usage.py": "\n".join(CODEX_SESSION.splitlines()[:3]) + "\n",
         }
         for script_name, session in fixtures.items():
             with self.subTest(script=script_name), tempfile.TemporaryDirectory() as directory:
@@ -206,7 +214,11 @@ runpy.run_path(script_path, run_name="__main__")
                 )
 
     def test_empty_output_path_uses_stdout(self):
-        for script_name in ("extract-skeleton.py", "extract-errors.py"):
+        for script_name in (
+            "extract-skeleton.py",
+            "extract-errors.py",
+            "extract-skill-usage.py",
+        ):
             with self.subTest(script=script_name):
                 inline = self.run_script(script_name, CODEX_SESSION)
                 empty_path = self.run_script(
@@ -259,6 +271,127 @@ runpy.run_path(script_path, run_name="__main__")
                     {"user": 1, "assistant": 1, "tool": 1},
                 )
 
+    def test_skill_usage_detects_each_platform_without_payloads(self):
+        secret = "sk-abcdefghijklmnopqrstuvwxyz123456"
+        cases = (
+            (
+                """\
+{"type":"user","timestamp":"2026-06-06T11:00:00Z","gitBranch":"main","sessionId":"claude-skill-session","message":{"content":"Use the QA skill."}}
+{"type":"assistant","timestamp":"2026-06-06T11:01:00Z","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"kramme:qa","secret":"sk-abcdefghijklmnopqrstuvwxyz123456"}}]}}
+""",
+                "claude",
+                ["kramme:qa"],
+            ),
+            (
+                r"""\
+{"timestamp":"2026-06-06T10:00:00Z","type":"session_meta","payload":{"cwd":"/tmp/demo-repo","id":"codex-skill-session","timestamp":"2026-06-06T10:00:00Z","source":"codex"}}
+{"timestamp":"2026-06-06T10:01:00Z","type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{\"name\":\"kramme:research\",\"secret\":\"sk-abcdefghijklmnopqrstuvwxyz123456\"}"}}
+""",
+                "codex",
+                ["kramme:research"],
+            ),
+            (
+                """\
+{"role":"user","message":{"content":[{"type":"text","text":"Inspect the session skill."}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/.agents/skills/kramme:session:search/SKILL.md","secret":"sk-abcdefghijklmnopqrstuvwxyz123456"}}]}}
+""",
+                "cursor",
+                ["kramme:session:search"],
+            ),
+        )
+
+        for session, platform, expected_skills in cases:
+            with self.subTest(platform=platform):
+                result, evidence = self.run_skill_usage(session, *expected_skills)
+                self.assertEqual(evidence["platforms"], [platform])
+                self.assertEqual(evidence["skills"], expected_skills)
+                self.assertEqual(evidence["skill_events"], 1)
+                self.assertEqual(evidence["unknown_skill_events"], 0)
+                self.assertNotIn(secret, result.stdout)
+                self.assertNotIn("/tmp/", result.stdout)
+
+    def test_skill_usage_detects_user_slash_invocations_without_injected_text(self):
+        cases = (
+            (
+                """\
+{"type":"user","message":{"content":"<system_instruction>Run /kramme:ignored</system_instruction>\\n/kramme:qa now."}}
+""",
+                "claude",
+            ),
+            (
+                """\
+{"type":"event_msg","payload":{"type":"user_message","message":"/kramme:qa now."}}
+""",
+                "codex",
+            ),
+            (
+                """\
+{"role":"user","message":{"content":[{"type":"text","text":"  /kramme:qa now."}]}}
+""",
+                "cursor",
+            ),
+        )
+
+        for session, platform in cases:
+            with self.subTest(platform=platform):
+                _, evidence = self.run_skill_usage(
+                    session,
+                    "kramme:qa",
+                    "kramme:ignored",
+                )
+                self.assertEqual(evidence["skills"], ["kramme:qa"])
+                self.assertEqual(evidence["skill_events"], 1)
+                self.assertEqual(evidence["unknown_skill_events"], 0)
+
+    def test_skill_usage_redacts_unknown_direct_skill_candidates(self):
+        secret = "sk-abcdefghijklmnopqrstuvwxyz123456"
+        session = f'''\
+{{"type":"assistant","message":{{"content":[{{"type":"tool_use","name":"Skill","input":{{"skill":"{secret}"}}}}]}}}}
+'''
+
+        result, evidence = self.run_skill_usage(session, "kramme:qa")
+        self.assertEqual(evidence["skills"], [])
+        self.assertEqual(evidence["skill_events"], 0)
+        self.assertEqual(evidence["unknown_skill_events"], 1)
+        self.assertNotIn(secret, result.stdout)
+
+    def test_skill_usage_ignores_skill_paths_in_non_read_tools(self):
+        session = """\
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"/tmp/.agents/skills/kramme:qa/SKILL.md","content":"example"}}]}}
+"""
+
+        _, evidence = self.run_skill_usage(session, "kramme:qa")
+        self.assertEqual(evidence["skills"], [])
+        self.assertEqual(evidence["skill_events"], 0)
+        self.assertEqual(evidence["unknown_skill_events"], 0)
+
+    def test_skill_usage_marks_malformed_tool_arguments_and_continues(self):
+        session = "\n".join(
+            (
+                '{"type":"session_meta","payload":{"source":"codex"}}',
+                '{"type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{not-json /tmp/.agents/skills/kramme:qa/SKILL.md"}}',
+                r'{"type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{\"name\":\"kramme:qa\"}"}}',
+            )
+        )
+        _, evidence = self.run_skill_usage(session, "kramme:qa")
+        self.assertEqual(evidence["skills"], ["kramme:qa"])
+        self.assertEqual(evidence["skill_events"], 1)
+        self.assertEqual(evidence["unknown_skill_events"], 0)
+        self.assertEqual(evidence["parse_errors"], 1)
+
+    def test_skill_usage_ignores_skill_names_outside_tool_activity(self):
+        session = CODEX_SESSION.replace(
+            "Please debug the authentication script carefully.",
+            "Please read /tmp/.codex/skills/kramme:qa/SKILL.md carefully.",
+        )
+
+        result = self.run_script("extract-skill-usage.py", session)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        evidence = json.loads(result.stdout)
+        self.assertEqual(evidence["skills"], [])
+        self.assertEqual(evidence["skill_events"], 0)
+
     def test_errors_accepts_plain_claude_user_content(self):
         result = self.run_script("extract-errors.py", CLAUDE_SESSION)
 
@@ -291,6 +424,16 @@ runpy.run_path(script_path, run_name="__main__")
                 {"lines": 0, "parse_errors": 0, "user": 0, "assistant": 0, "tool": 0},
             ),
             ("extract-errors.py", {"lines": 0, "parse_errors": 0, "errors_found": 0}),
+            (
+                "extract-skill-usage.py",
+                {
+                    "lines": 0,
+                    "parse_errors": 0,
+                    "skill_events": 0,
+                    "skills": [],
+                    "unknown_skill_events": 0,
+                },
+            ),
         ):
             with self.subTest(name=name, kind="empty"):
                 result = self.run_script(name)
@@ -315,10 +458,7 @@ runpy.run_path(script_path, run_name="__main__")
                         "[]",
                         CODEX_SESSION.splitlines()[0],
                         '{"type":"event_msg","payload":[]}',
-                        (
-                            '{"type":"response_item","payload":{"type":"message",'
-                            '"role":"assistant","content":[1]}}'
-                        ),
+                        ('{"type":"response_item","payload":{"type":"message","role":"assistant","content":[1]}}'),
                         *CODEX_SESSION.splitlines()[2:],
                     ]
                 )
@@ -415,9 +555,7 @@ runpy.run_path(script_path, run_name="__main__")
                 "scalar.jsonl": "42\n",
                 "array.jsonl": "[]\n",
                 "nested.jsonl": '{"type":"session_meta","payload":[]}\n',
-                "partial.jsonl": (
-                    '{"type":"turn_context","payload":{"cwd":"/tmp/demo-repo","model":"gpt-test"}}\n'
-                ),
+                "partial.jsonl": ('{"type":"turn_context","payload":{"cwd":"/tmp/demo-repo","model":"gpt-test"}}\n'),
                 "corrupt-then-valid.jsonl": "not-json\n" + CODEX_SESSION,
             }
             paths = []
@@ -514,10 +652,7 @@ runpy.run_path(script_path, run_name="__main__")
                         '{"thread_spawn":{"parent_thread_id":"parent"}}},'
                         '"cli_version":"1"}}'
                     ),
-                    (
-                        '{"type":"turn_context","payload":{"cwd":"/tmp/demo-repo",'
-                        '"model":"gpt-test"}}'
-                    ),
+                    ('{"type":"turn_context","payload":{"cwd":"/tmp/demo-repo","model":"gpt-test"}}'),
                 ]
             )
             + "\n"
@@ -552,13 +687,10 @@ runpy.run_path(script_path, run_name="__main__")
             root = Path(directory)
             aligned = root / "aligned.jsonl"
             boundary_event = (
-                '{"timestamp":"2026-07-25T23:59:59Z","type":"event_msg",'
-                '"payload":{"type":"task_complete"}}\n'
+                '{"timestamp":"2026-07-25T23:59:59Z","type":"event_msg","payload":{"type":"task_complete"}}\n'
             )
             aligned.write_text(
-                session_meta
-                + boundary_event
-                + trailing_event(16384 - len(boundary_event)),
+                session_meta + boundary_event + trailing_event(16384 - len(boundary_event)),
                 encoding="utf-8",
             )
 
@@ -569,9 +701,7 @@ runpy.run_path(script_path, run_name="__main__")
             )
 
             self.assertEqual(aligned_result.returncode, 0, aligned_result.stderr)
-            aligned_records = [
-                json.loads(line) for line in aligned_result.stdout.splitlines()
-            ]
+            aligned_records = [json.loads(line) for line in aligned_result.stdout.splitlines()]
             self.assertEqual(
                 aligned_records[0]["last_ts"],
                 "2026-07-25T23:59:59Z",
@@ -581,15 +711,11 @@ runpy.run_path(script_path, run_name="__main__")
             partial = root / "partial.jsonl"
             partial_event = (
                 '{"timestamp":"2026-07-25T22:00:00Z","type":"event_msg",'
-                '"payload":{"type":"note","text":"'
-                + ("x" * 500)
-                + '"}}\n'
+                '"payload":{"type":"note","text":"' + ("x" * 500) + '"}}\n'
             )
             offset = 100
             partial.write_text(
-                session_meta
-                + partial_event
-                + trailing_event(16384 - len(partial_event[offset:])),
+                session_meta + partial_event + trailing_event(16384 - len(partial_event[offset:])),
                 encoding="utf-8",
             )
 
@@ -600,9 +726,7 @@ runpy.run_path(script_path, run_name="__main__")
             )
 
             self.assertEqual(partial_result.returncode, 0, partial_result.stderr)
-            partial_records = [
-                json.loads(line) for line in partial_result.stdout.splitlines()
-            ]
+            partial_records = [json.loads(line) for line in partial_result.stdout.splitlines()]
             self.assertNotIn("last_ts", partial_records[0])
             self.assertEqual(partial_records[-1]["parse_errors"], 0)
 
@@ -613,10 +737,7 @@ runpy.run_path(script_path, run_name="__main__")
                 "\n".join(
                     [
                         CODEX_SESSION.splitlines()[0],
-                        (
-                            '{"type":"response_item","payload":{"type":"message",'
-                            '"role":"assistant","content":[1]}}'
-                        ),
+                        ('{"type":"response_item","payload":{"type":"message","role":"assistant","content":[1]}}'),
                         CODEX_SESSION.splitlines()[2],
                     ]
                 )
@@ -661,10 +782,7 @@ runpy.run_path(script_path, run_name="__main__")
                 ["codex", "claude", "cursor"],
             )
             self.assertEqual([record["match_count"] for record in records[:-1]], [2, 4, 4])
-            by_platform = {
-                record["platform"]: record
-                for record in records[:-1]
-            }
+            by_platform = {record["platform"]: record for record in records[:-1]}
             self.assertEqual(by_platform["codex"]["session"], "codex-test-session")
             self.assertEqual(
                 by_platform["codex"]["last_ts"],

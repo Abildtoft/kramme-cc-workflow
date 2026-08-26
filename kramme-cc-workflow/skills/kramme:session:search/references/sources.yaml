@@ -43,3 +43,10 @@ sources:
     upstream_commit: 6f9ab03a031c054a8046659926251fb6c149269f
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:61ad4a97e9382420434ffc650040f61485663b45d4934fb66cb920489aaf274b"
+  - id: warp-skill-doctor-session-collector
+    url: https://raw.githubusercontent.com/warpdotdev/common-skills/737129fae58e1feb4ec956c0f0bfa597b5c6ee89/.agents/skills/skill-doctor/scripts/collect_sessions.py
+    title: "Warp skill-doctor - cross-harness session collector"
+    rationale: "scripts/extract-skill-usage.py is conceptually informed by the collector's cross-harness detection of explicit skill reads while retaining only validated skill names."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:1df872bdb7d6e6a5408a34ad9049bfc19733764345f7ef93f3c38f45e5dea3ad"

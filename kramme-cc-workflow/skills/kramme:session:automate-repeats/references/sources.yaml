@@ -34,3 +34,31 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-08-16
     baseline_hash: "sha256:57eb4fdae45cfb85c244883fc6b4a08a7c41854bafb123cfbddf782904a4a328"
+  - id: warp-skill-doctor-workflow
+    url: https://raw.githubusercontent.com/warpdotdev/common-skills/737129fae58e1feb4ec956c0f0bfa597b5c6ee89/.agents/skills/skill-doctor/SKILL.md
+    title: "Warp common-skills - skill-doctor workflow"
+    rationale: "The optional eligibility-aware effectiveness pass, local scratch boundary, and separation of collection from judgment are informed by this workflow."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:88ff4f72aaa3342ed7a143394244a7a99c0fb7ac109b6020e9600305c01c9b46"
+  - id: warp-skill-doctor-improvement-guidelines
+    url: https://raw.githubusercontent.com/warpdotdev/common-skills/737129fae58e1feb4ec956c0f0bfa597b5c6ee89/.agents/skills/skill-doctor/references/skill-improvements.md
+    title: "Warp skill-doctor - skill improvement guidelines"
+    rationale: "The counterfactual improvement gate and preference for replacing guidance with the smallest reusable rule are informed by these guidelines."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:056fb8343439a6f5717df09c84efbdbabd1a60a6e47fb78d065a5ba97d44348a"
+  - id: warp-skill-doctor-efficiency-scorer
+    url: https://raw.githubusercontent.com/warpdotdev/common-skills/737129fae58e1feb4ec956c0f0bfa597b5c6ee89/.agents/skills/skill-doctor/scorers/efficiency.md
+    title: "Warp skill-doctor - efficiency scorer"
+    rationale: "The recurring-friction evidence categories retain the scorer's distinction between rework, human correction, redundant gathering, and failed batching without copying its grading scale."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:601d67be509e45f3d8fac2c3e55f69254d1aec07f61c09364c2022fce5abe5c9"
+  - id: warp-skill-doctor-code-quality-scorer
+    url: https://raw.githubusercontent.com/warpdotdev/common-skills/737129fae58e1feb4ec956c0f0bfa597b5c6ee89/.agents/skills/skill-doctor/scorers/code-quality.md
+    title: "Warp skill-doctor - code-quality scorer"
+    rationale: "The effectiveness table's artifact-evidence boundary is informed by the scorer's requirement to judge reviewable code artifacts and exclude insufficient evidence."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:8dfb0e266380e83c9ec7be19d23aed2b889b3379d4a56d6bc9ed0788e6876066"
