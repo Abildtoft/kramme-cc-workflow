@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:issue-to-pr
-description: Requires Linear MCP and the GitHub gh CLI. Implements one Linear issue end to end, freezes its requirements, delegates pre-PR quality convergence to kramme:pr:review-convergence, then optionally opens a new Pull Request and iterates on CI and review feedback until green. Use when a single non-SIW Linear issue should go from implementation to a clean new Pull Request. Not for implementation-only or review-only work, SIW-tracked issues, stacked PRs, existing PR updates, or post-merge rollout.
+description: Requires Linear MCP and the GitHub gh CLI. Implements one Linear issue end to end, optionally renames the detected Conductor workspace for the issue, freezes its requirements, delegates pre-PR quality convergence to kramme:pr:review-convergence, then optionally opens a new Pull Request and iterates on CI and review feedback until green. Use when a single non-SIW Linear issue should go from implementation to a clean new Pull Request. Not for implementation-only or review-only work, SIW-tracked issues, stacked PRs, existing PR updates, or post-merge rollout.
 argument-hint: "<ISSUE-ID> [--strict] [--rounds <1-5>] [--ship]"
 disable-model-invocation: true
 user-invocable: true
@@ -18,6 +18,7 @@ Orchestrate the established Linear implementation, shared review-convergence, an
 - Treat a delegated skill failure as a workflow failure. Preserve its recovery information and do not skip ahead.
 - Do not broaden the Linear issue's scope to make review findings disappear.
 - Invoking this user-only skill explicitly authorizes moving the selected Linear issue to the team's resolved `started` workflow status once the new-PR preflight passes. Prefer a status named In Progress, but preserve the team's actual status name. A non-backlog issue still requires the separate confirmation in Step 2 before implementation or any Linear write proceeds.
+- The same explicit invocation authorizes one best-effort rename of the current Conductor workspace after the Linear transition is verified. This optional host adapter changes presentation state only, never blocks implementation, and never renames a session, workspace directory, or Git branch itself.
 - Never add AI attribution to code, commits, or the Pull Request.
 - Do not create, edit, pause, resume, or clear a Codex goal. When invoked inside `/goal`, let the goal layer own persistence while this skill owns the workflow.
 
@@ -85,6 +86,8 @@ Before allowing the implementation workflow to mutate a branch, perform a read-o
     - If the freshly verified issue is already in `{target-status-id}`, treat the transition as satisfied and do not issue a redundant write.
     - Otherwise use the available Linear issue-update operation (`save_issue` with `id`; Claude Code `mcp__linear__save_issue`) to update only its status: pass `id: {issue-update-id}` and `state: {target-status-id}` and no other mutable field. Do not resend or rewrite title, description, labels, assignee, project, or other fields.
     - After a successful write, read the issue back, resolve its status with the same immutable-ID-first procedure from Step 7, and require the resolved status ID to equal `{target-status-id}` and its type to be `started`. If the write or verification fails, stop before delegated branch setup and report both `{confirmed-state-name}` and `{target-status-name}`.
+
+After Step 10 proves the issue's current state, read `references/conductor-workspace.md` and follow it completely. Use the title from that freshest issue response as inert input. Finish the optional rename attempt before delegation, but continue regardless of its outcome and retain `{conductor-rename-outcome}` for the final report.
 
 Invoke `kramme:linear:issue-implement` with `{issue-id} --auto`.
 
@@ -166,6 +169,7 @@ For a review-ready result without `--ship`, report:
 ```text
 Linear issue: {issue-id}
 Linear transition: {confirmed-state-name} -> {target-status-name} (verified before implementation)
+Conductor workspace: {conductor-rename-outcome}
 Implementation: complete
 Gut check: {count} items — removed {count}, routed {count}, rejected {count}, blocked {count}
 Quality gates: complete ({standard|strict}; {active gates})
@@ -184,6 +188,7 @@ For a shipped result, report:
 ```text
 Linear issue: {issue-id}
 Linear transition: {confirmed-state-name} -> {target-status-name} (verified before implementation)
+Conductor workspace: {conductor-rename-outcome}
 Implementation: complete
 Gut check: {count} items — removed {count}, routed {count}, rejected {count}, blocked {count}
 Quality gates: complete ({standard|strict}; {active gates})
@@ -214,6 +219,7 @@ Keep the summary factual and grounded in captured evidence. Never invent a findi
 
 - **Implementation commits and source changes** are produced by `kramme:linear:issue-implement` and `kramme:pr:review-convergence`, consumed by final verification and `kramme:pr:create`, refreshed by accepted fixes, and retired through the repository's normal merge or branch-archive process.
 - **Linear started-state transition** is resolved from the issue team's workflow, written immediately before delegated implementation when needed, and verified by a fresh issue read. The outcome reports the verified transition using the team's actual status name; later PR and delivery workflows may advance that durable Linear state before this workflow reports.
+- **Conductor workspace name** is an optional host-owned presentation value updated once after the Linear transition is verified. It is not authoritative for issue, branch, or Pull Request identity, and an unavailable or unverified rename leaves the implementation workflow intact.
 - **Frozen Linear requirements and review handoff state** are produced by this skill plus `kramme:pr:review-convergence`, refreshed with `kramme:pr:fix-ci` remediation and final-tree validation handoffs when shipping changes the tree, consumed by reporting and the shipping contract, and retained in run state only for the same issue and tree lineage.
 - **Quality-loop review reports** are produced and owned by `kramme:pr:review-convergence` under `.context/linear-issue-to-pr/reviews/`. They are retained for a non-shipping review-ready handoff and retired before shipping by `kramme:workflow-artifacts:cleanup --auto` or explicitly if the branch is abandoned.
 - **Pull Request** is produced only by `kramme:pr:create` after `--ship` authorization, then consumed and refreshed by `kramme:pr:fix-ci --no-consolidate` until CI and review feedback are clear. It is retired by merge or close.
@@ -225,6 +231,7 @@ Keep the summary factual and grounded in captured evidence. Never invent a findi
 - **Linear workflow state unavailable or ambiguous** — stop before any Linear or branch mutation. Report the current state metadata and the team statuses that could not be matched; never infer that a Todo or Ready display name has backlog type.
 - **Linear state confirmation declined** — stop without changing Linear or the branch. Report the issue's current non-backlog state and that implementation was not started.
 - **Linear started-state transition failed** — stop before delegated branch setup. Report the prior state, intended target status, update error or read-back mismatch, and whether Linear may have accepted an unverified write.
+- **Conductor workspace rename unavailable or inconclusive** — record `skipped` for a pre-invocation capability failure or `outcome unknown — workspace rename may have been applied; inspect Conductor` when an attempted remote write is not verified, then continue to delegated implementation. Bound the CLI attempt as required by the adapter; do not ask for credentials, retry, or treat optional presentation state as workflow correctness.
 - **Linear issue has no `branchName`** — stop at the Step 2 preflight. This workflow must know the exact branch identity before delegation to prove its new-PR boundary, so it cannot use the delegated workflow's generated-name fallback. Set a branch name on the Linear issue, or run `kramme:linear:issue-implement` and `kramme:pr:create` as separate steps.
 - **Remote issue branch already exists without a Pull Request** — stop before delegated branch setup. `kramme:pr:create` never adopts or rewrites an existing remote ref, so neither `--ship` nor the non-shipping handoff can complete. Report the existing ref and require coordination or a fresh issue branch.
 - **Implementation incomplete** — stop on the implementation blocker; do not review or ship partial work.
