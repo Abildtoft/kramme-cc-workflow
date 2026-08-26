@@ -287,6 +287,36 @@ make_body_lines() {
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+@test "Conductor workspace contract retains independent safety invariants" {
+  run python3 - "$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml" <<'PY'
+import json
+import pathlib
+import sys
+
+registry = json.loads(pathlib.Path(sys.argv[1]).read_text())
+contract = next(
+    entry
+    for entry in registry["text_contracts"]
+    if entry["name"] == "conductor-workspace-boundary-guidance"
+)
+contract_regex = contract["extract_regex"]
+required_invariants = {
+    "branch changes require explicit approval": "stay on the current branch absent explicit approval",
+    "isolation uses Conductor instead of raw Git": "use another Conductor workspace—not raw worktrees or throwaway branches—for isolation",
+    "workspace lifecycle stays host-neutral": "Never remove, reset, or re-point a Conductor workspace path",
+    "workspace archival stays in Conductor": "archive workspaces through Conductor",
+    "host detection never widens authority": "Conductor changes defaults, not permissions or safety gates",
+}
+missing = [
+    name for name, clause in required_invariants.items() if clause not in contract_regex
+]
+if missing:
+    raise SystemExit("missing Conductor workspace safety invariants: " + ", ".join(missing))
+PY
+
+  [ "$status" -eq 0 ]
+}
+
 @test "registry consumers reject every non-object JSON kind with path context" {
   local consumer
   local fixture
