@@ -538,6 +538,9 @@
       "kramme-cc-workflow/skills/kramme:pr:create/scripts/validate-branch-name.sh": [
         "kramme-cc-workflow/tests/pr-create-guidance.bats"
       ],
+      "kramme-cc-workflow/skills/kramme:pr:create/scripts/resolve-origin-push-url.sh": [
+        "kramme-cc-workflow/tests/pr-create-guidance.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:pr:create/scripts/verify-clean-worktree.sh": [
         "kramme-cc-workflow/tests/pr-create-guidance.bats"
       ],

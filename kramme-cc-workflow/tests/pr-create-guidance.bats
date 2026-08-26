@@ -22,7 +22,7 @@ file_mode() {
 	fi
 }
 
-@test "pr-create owns one absence-leased remote publication" {
+@test "pr-create owns lease-protected remote publication" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
@@ -47,11 +47,17 @@ file_mode() {
     grep -qF "If an open Pull Request appeared after Step 3.5" "$confirmation"
     grep -qF "does not prove that this invocation owns the Pull Request" "$confirmation"
     grep -qF -- "--force-with-lease=\"{rollback-origin-ref}:\"" "$confirmation"
+    grep -qF -- "--force-with-lease=\"refs/heads/{feature-branch}:{observed-origin-oid}\"" "$confirmation"
+    grep -qF -- "--no-follow-tags" "$confirmation"
+    grep -qF -- "\"{origin-push-url}\" \"{entry-commit}:refs/heads/{feature-branch}\"" "$confirmation"
+    ! grep -qF -- "-u origin \"HEAD:refs/heads/{feature-branch}\"" "$confirmation"
     grep -qF "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never" "$confirmation"
     grep -qF "authentication failure is a hard blocker, never a reason to wait for terminal input" "$confirmation"
     ! grep -qF -- "--force-with-lease=\"{rollback-origin-ref}:{rollback-origin-oid}\"" "$confirmation"
-    grep -qF "Do not use plain \`--force\`, an OID lease for a pre-existing remote ref" "$confirmation"
-    grep -qF "workflow'\''s sole remote update before Pull Request creation" "$confirmation"
+    grep -qF "The exact lease rejects every remote change after classification" "$confirmation"
+    grep -qF "The immediately preceding strict-ancestor proof ensures this invocation cannot use the force capability to replace remote-only work" "$confirmation"
+    grep -qF "Do not use plain \`--force\`, an absence lease for a pre-existing remote ref" "$confirmation"
+    grep -qF "fresh mode'\''s sole remote update before Pull Request creation" "$confirmation"
     grep -qF "[--no-push] [--authorize-history-rewrite]" "$recreate"
     grep -qF "If \`--no-push\` was passed, do not run any push command" "$recreate"
     grep -qF "Automatic stack-wide rewriting additionally requires \`--authorize-history-rewrite\`" ../README.md
@@ -70,6 +76,7 @@ file_mode() {
 		pr-create-history-rewrite-authorization \
 		pr-create-deferred-upstream-contract \
 		pr-create-absence-lease-contract \
+		pr-create-origin-push-url-helper \
 		pr-create-push-failure-rollback \
 		pr-create-remote-absence-contract \
 		recreate-commits-deferred-push-contract \
@@ -174,7 +181,113 @@ file_mode() {
 	[ "$status" -eq 0 ]
 }
 
-@test "existing remote branch only recovers when the clean current tip matches exactly" {
+@test "OID lease publishes the immutable strict fast-forward without widening or retargeting" {
+	remote="$BATS_TEST_TMPDIR/remote.git"
+	publisher="$BATS_TEST_TMPDIR/publisher"
+	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
+	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+
+	git -C "$publisher" checkout -b feature >/dev/null
+	printf "published\n" >>"$publisher/file.txt"
+	git -C "$publisher" commit -am "published work" >/dev/null
+	git -C "$publisher" push -u origin feature >/dev/null
+	observed=$(git -C "$publisher" rev-parse HEAD)
+
+	printf "local one\n" >>"$publisher/file.txt"
+	git -C "$publisher" commit -am "local work one" >/dev/null
+	printf "local two\n" >>"$publisher/file.txt"
+	git -C "$publisher" commit -am "local work two" >/dev/null
+	entry_commit=$(git -C "$publisher" rev-parse HEAD)
+	upstream_remote=$(git -C "$publisher" config --get branch.feature.remote)
+	upstream_merge=$(git -C "$publisher" config --get branch.feature.merge)
+
+	git -C "$publisher" merge-base --is-ancestor "$observed" "$entry_commit"
+	git -C "$publisher" tag -a release-candidate "$entry_commit" -m "release candidate"
+	git -C "$publisher" config push.followTags true
+	printf "late local change\n" >>"$publisher/file.txt"
+	git -C "$publisher" commit -am "late local work" >/dev/null
+	live_head=$(git -C "$publisher" rev-parse HEAD)
+	[ "$live_head" != "$entry_commit" ]
+
+	cd "$publisher"
+	run "$resolver"
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$ORIGIN_PUSH_URL" = "$remote" ]
+
+	run "${CONDUCTOR_REAL_GIT_PATH:-git}" push \
+		--no-follow-tags \
+		--force-with-lease=refs/heads/feature:"$observed" \
+		-- "$ORIGIN_PUSH_URL" "$entry_commit:refs/heads/feature"
+	[ "$status" -eq 0 ]
+
+	remote_head=$(git ls-remote --heads -- "$ORIGIN_PUSH_URL" refs/heads/feature | awk '{print $1}')
+	[ "$remote_head" = "$entry_commit" ]
+	[ "$(git rev-parse HEAD)" = "$live_head" ]
+	[ "$(git config --get branch.feature.remote)" = "$upstream_remote" ]
+	[ "$(git config --get branch.feature.merge)" = "$upstream_merge" ]
+	! git --git-dir="$remote" show-ref --verify --quiet refs/tags/release-candidate
+}
+
+@test "OID lease rejects a remote change after fast-forward classification" {
+	remote="$BATS_TEST_TMPDIR/remote.git"
+	publisher="$BATS_TEST_TMPDIR/publisher"
+	contender="$BATS_TEST_TMPDIR/contender"
+	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
+	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+
+	git -C "$publisher" checkout -b feature >/dev/null
+	printf "published\n" >>"$publisher/file.txt"
+	git -C "$publisher" commit -am "published work" >/dev/null
+	git -C "$publisher" push -u origin feature >/dev/null
+	observed=$(git -C "$publisher" rev-parse HEAD)
+
+	git clone "$remote" "$contender" >/dev/null
+	git -C "$contender" config user.name "Other User"
+	git -C "$contender" config user.email "other@example.com"
+	git -C "$contender" config commit.gpgsign false
+	git -C "$contender" checkout feature >/dev/null
+
+	printf "local\n" >>"$publisher/file.txt"
+	git -C "$publisher" commit -am "local work" >/dev/null
+	entry_commit=$(git -C "$publisher" rev-parse HEAD)
+	git -C "$publisher" merge-base --is-ancestor "$observed" "$entry_commit"
+
+	printf "remote\n" >>"$contender/file.txt"
+	git -C "$contender" commit -am "remote work" >/dev/null
+	git -C "$contender" push origin HEAD:refs/heads/feature >/dev/null
+	contender_head=$(git -C "$contender" rev-parse HEAD)
+
+	run "${CONDUCTOR_REAL_GIT_PATH:-git}" -C "$publisher" push \
+		--no-follow-tags \
+		--force-with-lease=refs/heads/feature:"$observed" \
+		-- "$remote" "$entry_commit:refs/heads/feature"
+	[ "$status" -ne 0 ]
+
+	remote_head=$(git -C "$publisher" ls-remote --heads -- "$remote" refs/heads/feature | awk '{print $1}')
+	[ "$remote_head" = "$contender_head" ]
+	[ "$remote_head" != "$entry_commit" ]
+}
+
+@test "origin push URL resolver rejects multiple publication endpoints" {
+	remote="$BATS_TEST_TMPDIR/remote.git"
+	mirror="$BATS_TEST_TMPDIR/mirror.git"
+	publisher="$BATS_TEST_TMPDIR/publisher"
+	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
+	git clone --bare "$remote" "$mirror" >/dev/null
+	git -C "$publisher" remote set-url --push origin "$remote"
+	git -C "$publisher" remote set-url --add --push origin "$mirror"
+
+	cd "$publisher"
+	run "$resolver"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"must resolve to exactly one push URL"* ]]
+}
+
+@test "existing remote branch recovers at exact tip or safely fast-forwards from an ancestor" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
@@ -184,24 +297,34 @@ file_mode() {
     confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
 
     grep -qF "REMOTE_RECOVERY_MODE=true" "$create"
+    grep -qF "REMOTE_FAST_FORWARD_MODE=true" "$create"
     grep -qF "skip Steps 5 and 6" "$create"
-    grep -qF "preserves the existing commit history" "$create"
+    grep -qF "preserve the existing local commit history" "$create"
     grep -qF "capture its exact full OID as \`{observed-origin-oid}\`" "$branch"
-    grep -qF "If the remote OID differs from \`{entry-commit}\`, stop" "$branch"
+    grep -qF "scripts/resolve-origin-push-url.sh" "$branch"
+    grep -qF "git ls-remote --heads -- \"{origin-push-url}\"" "$branch"
+    grep -qF "git fetch --no-tags --no-write-fetch-head -- \"{origin-push-url}\"" "$branch"
+    grep -qF "git merge-base --is-ancestor \"{observed-origin-oid}\" \"{entry-commit}\"" "$branch"
+    grep -qF "record \`{branch-action}=fast-forward-existing-remote\`" "$branch"
+    grep -qF "report that the remote contains commits absent locally" "$branch"
+    grep -qF "report genuine divergence" "$branch"
+    grep -qF "Never merge, reset, rebase, or invoke history rewriting" "$branch"
     grep -qF "If uncommitted changes exist, stop" "$create"
     grep -qF "Never adopt a remote branch selected from a different entry checkout" "$branch"
     grep -qF "continue only when it returns no matching ref" "$state"
     grep -qF "stop before branch creation or \`kramme:git:recreate-commits\`" "$state"
     grep -qF "cannot atomically prevent another actor from opening a Pull Request" "$state"
     grep -qF "REMOTE_RECOVERY_MODE=true" "$confirmation"
+    grep -qF "REMOTE_FAST_FORWARD_MODE=true" "$confirmation"
     grep -qF "Do not run \`git push\` in this mode" "$confirmation"
     grep -qF "Require the authoritative remote OID to remain exactly \`{observed-origin-oid}\`" "$confirmation"
     grep -qF "Require \`HEAD\` to remain exactly \`{entry-commit}\`" "$confirmation"
+    grep -qF "require its OID to remain exactly \`{observed-origin-oid}\`" "$confirmation"
+    grep -qF "The exact lease rejects every remote change after classification" "$confirmation"
     grep -qF -- "--head \"{feature-branch}\"" "$confirmation"
     grep -qF "prevents \`gh pr create\` from offering to push or fork" "$confirmation"
-    grep -qF "Do not use plain \`--force\`, an OID lease for a pre-existing remote ref" "$confirmation"
+    grep -qF "Do not use plain \`--force\`, an absence lease for a pre-existing remote ref" "$confirmation"
     ! grep -qF "git fetch --no-tags origin \"{rollback-origin-ref}\"" "$state"
-    ! grep -qF "git merge-base --is-ancestor \"{rollback-origin-oid}\" \"{original-commit}\"" "$state"
   '
 
 	assert_required_contracts_registered \
@@ -419,7 +542,7 @@ file_mode() {
     grep -qF "{rollback-origin-oid}" "$state"
     grep -qF "git ls-remote --heads origin \"{rollback-origin-ref}\"" "$state"
     grep -qF "continue only when it returns no matching ref" "$state"
-    grep -qF "Neither \`--auto\` nor \`--authorize-history-rewrite\` may bypass the remote-absence requirement" "$state"
+    grep -qF "Neither \`--auto\` nor \`--authorize-history-rewrite\` may bypass this fresh-mode remote-absence requirement" "$state"
     grep -qF "never force-push, delete, or recreate the remote ref during automatic rollback" "$state"
     grep -qF "Remote state: {unchanged at captured OID/absence | diverged" "$state"
     grep -qF "Remote restoration is claimed only when the read-only comparison reports \`unchanged\`" "$state"
