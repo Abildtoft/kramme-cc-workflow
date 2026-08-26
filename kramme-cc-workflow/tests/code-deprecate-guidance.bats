@@ -147,8 +147,10 @@ PY
 
 @test "deprecation stop rules have authoritative workflow owners" {
 	local remove_old
+	local verification
 
 	remove_old="$(sed -n '/^### 4.4 Remove old$/,/^---$/p' "$SKILL")"
+	verification="$(sed -n '/^## Verification$/,$p' "$SKILL")"
 
 	grep -qF "Execute in order. Do not compress or overlap" "$SKILL"
 	grep -qF "Do not remove zombie code. Do not proceed past this step." "$SKILL"
@@ -157,4 +159,5 @@ PY
 	grep -qF "and do not proceed" <<<"$remove_old"
 	grep -qF "no active consumer or obsolete application reference remains" "$SKILL"
 	grep -qF 'Completion state is owned by `DEPRECATION_PLAN_<slug>.md`.' "$SKILL"
+	grep -qF "Do not close the deprecation or replace a missing gate with a follow-up." <<<"$verification"
 }

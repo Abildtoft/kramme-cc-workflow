@@ -34,7 +34,7 @@ Changes where the default answer is unknown without context. Do not invent the p
 
 **CORS configuration changes** — CORS is the gate between a browser's same-origin assumption and your API. A wrong `Access-Control-Allow-Origin` or `Access-Control-Allow-Credentials` setting is an exfiltration channel. Confirm the exact origins needed, whether credentials are required, whether wildcards are on the table (they should not be).
 
-**CSP policy changes** — setting a CSP is reflexive, but changing its policy can trade away XSS protection or break required content. Confirm the exact directives being added, removed, or widened and the application behavior that requires the change. Do not weaken the policy merely to silence a violation report.
+**Changes to an existing CSP policy** — setting an initial strict CSP is reflexive, but changing an existing policy can trade away XSS protection or break required content. Confirm the exact directives being added, removed, or widened and the application behavior that requires the change. Do not weaken the policy merely to silence a violation report.
 
 **Session-cookie attribute changes** — `Secure`, `HttpOnly`, and `SameSite` encode transport, script-access, and cross-site request boundaries. Confirm the affected clients and authentication flows before changing any attribute so compatibility work does not silently weaken session protection.
 

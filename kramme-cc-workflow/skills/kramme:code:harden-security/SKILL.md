@@ -59,7 +59,7 @@ ASK FIRST: <which Tier-2 situation you're about to enter>
 Plan: <what you intend to do>
 ```
 
-**Emit when** a change touches one of the Three-Tier "Ask First" situations (new auth flows, CORS changes, CSP policy changes, session-cookie attribute changes, file upload endpoints, rate-limit adjustments, elevated-permission additions, new categories or materially new uses of sensitive data, new third-party integrations). Pause and surface the plan. These are the changes where a quiet mistake cascades.
+**Emit when** a change touches one of the Three-Tier "Ask First" situations (new auth flows, CORS changes, changes to an existing CSP policy, session-cookie attribute changes, file upload endpoints, rate-limit adjustments, elevated-permission additions, new categories or materially new uses of sensitive data, new third-party integrations). Pause and surface the plan. These are the changes where a quiet mistake cascades.
 
 ## The Three-Tier Boundary System
 
@@ -82,7 +82,7 @@ The load-bearing artifact of this skill. Classify every security decision into o
 
 - New authentication flows.
 - CORS configuration changes.
-- CSP policy changes.
+- Changes to an existing CSP policy.
 - Session-cookie attribute changes.
 - File upload endpoints.
 - Rate-limit adjustments.

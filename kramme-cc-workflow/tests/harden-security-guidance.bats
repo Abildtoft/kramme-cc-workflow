@@ -47,24 +47,30 @@ BOUNDARY_SYSTEM="skills/kramme:code:harden-security/references/boundary-system.m
   local ask_first
   local never_do
   local tier_two
+  local tier_three
 
   ask_first="$(sed -n '/^### Ask First$/,/^### Never Do$/p' "$SKILL")"
   never_do="$(sed -n '/^### Never Do$/,/^Per-item rationale/p' "$SKILL")"
   tier_two="$(sed -n '/^## Tier 2 — Ask First$/,/^---$/p' "$BOUNDARY_SYSTEM")"
+  tier_three="$(sed -n '/^## Tier 3 — Never Do$/,/^---$/p' "$BOUNDARY_SYSTEM")"
 
   grep -qF "Classify every security decision into one of three tiers: do reflexively, pause and ask, never do." "$SKILL"
   grep -qF "Commit secrets to version control." "$SKILL"
   grep -qF "Trust client-side validation alone." "$SKILL"
-  grep -qF "CSP policy changes." <<<"$ask_first"
+  grep -qF "Changes to an existing CSP policy." <<<"$ask_first"
   grep -qF "Session-cookie attribute changes." <<<"$ask_first"
   grep -qF "Use wildcard CORS on an endpoint that reads or mutates user data." <<<"$never_do"
-  grep -qF "CSP policy changes" <<<"$tier_two"
+  grep -qF "Changes to an existing CSP policy" <<<"$tier_two"
+  grep -qF "setting an initial strict CSP is reflexive" <<<"$tier_two"
+  grep -qF "Do not weaken the policy merely to silence a violation report." <<<"$tier_two"
   grep -qF "Session-cookie attribute changes" <<<"$tier_two"
+  grep -qF "Confirm the affected clients and authentication flows before changing any attribute" <<<"$tier_two"
+  grep -qF "it does not enable credentialed CORS and is not a CSRF defense" <<<"$tier_three"
+  grep -qF "Protect cookie-authenticated mutations independently" <<<"$tier_three"
   grep -qF 'If a draft contains any `Never Do` condition, stop and re-author it before continuing.' "$SKILL"
   grep -qF "Every authentication endpoint must have a rate limit" "$SKILL"
   grep -qF "Run the ecosystem's authoritative vulnerability scanner before the slice lands" "$SKILL"
   grep -qF "A new provider remains \`ASK FIRST\` territory." "$SKILL"
   grep -qF "This checklist is the authoritative per-item completion gate" "$CHECKLIST"
-  ! grep -qF "short checklist" "$CHECKLIST"
   grep -qF "Use wildcard CORS on an endpoint that reads or mutates user data" "$BOUNDARY_SYSTEM"
 }

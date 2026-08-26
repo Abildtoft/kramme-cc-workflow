@@ -12,6 +12,16 @@ setup() {
   grep -qF "wait for the user's go-ahead before creating any ticket" "$SKILL"
 }
 
+@test "qa intake requires complete two-way breakdown links" {
+  local breakdown
+
+  breakdown="$(sed -n '/^### 3c\. Assess scope/,/^## Durability Rule$/p' "$SKILL")"
+
+  grep -qF 'without a parent issue/container, without final child links on the parent, or without `Parent issue/report` lines on every child' <<<"$breakdown"
+  grep -qF "update the parent created for this breakdown so its final body lists the child ticket IDs or URLs" <<<"$breakdown"
+  grep -qF '**Parent issue/report:** <parent-ticket-id-or-QA-INTAKE-NNN>' <<<"$breakdown"
+}
+
 @test "qa intake requires a writable sink and intentional continuation" {
   grep -qF 'MISSING REQUIREMENT: no writable ticket sink' "$SKILL"
   grep -qF "After filing 10 tickets in one session, pause before continuing" "$SKILL"

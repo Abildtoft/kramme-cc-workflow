@@ -272,7 +272,7 @@ For each child issue (file these **after** the parent so the parent ID is known)
 - **Scope:** one slice of the parent — does not cover [the other failure modes]
 ```
 
-A breakdown without a parent issue/container and without `Parent issue/report` lines on the children is invalid (see Step 3c and Step 3d).
+A breakdown without a parent issue/container, without final child links on the parent, or without `Parent issue/report` lines on every child is invalid (see Step 3c and Step 3d).
 
 ## Durability Rule
 
