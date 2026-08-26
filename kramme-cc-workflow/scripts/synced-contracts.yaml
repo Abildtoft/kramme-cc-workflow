@@ -1397,6 +1397,37 @@
       "contains": ["compound-ce-demo-reel"]
     },
     {
+      "name": "visual-check-slop-guidance",
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/SKILL.md",
+      "contains": [
+        "${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:check-slop",
+        "Without `--fix`, do not modify",
+        "Do not fetch or execute the upstream npm package",
+        "Do not add subjective judgment to this report",
+        "hand off to `kramme:pr:ux-review`",
+        "only when the user explicitly requested broader critique",
+        "node \"$CHECK_SLOP_RUNTIME\" check \"$TARGET\" --json",
+        "node \"$CHECK_SLOP_RUNTIME\" fix \"$TARGET\" --write --json"
+      ]
+    },
+    {
+      "name": "visual-check-slop-source-manifest",
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/sources.yaml",
+      "contains": [
+        "gesso-anti-slop",
+        "node-html-parser-runtime",
+        "ab68f1878dd5f19ac8dee9d55d2f4313060cac83"
+      ]
+    },
+    {
+      "name": "visual-check-slop-third-party-notices",
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/THIRD_PARTY_NOTICES.md",
+      "contains": [
+        "Copyright (c) 2026 Gesso Build, Inc.",
+        "Copyright 2019 Tao Qiufeng"
+      ]
+    },
+    {
       "name": "code-optimize-shell-permission",
       "path": "kramme-cc-workflow/skills/kramme:code:optimize/SKILL.md",
       "contains": ["permissions:", "  - shell"]

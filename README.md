@@ -445,10 +445,11 @@ Linear issue tracking integration.
 
 #### Visual
 
-Generate styled, self-contained HTML pages with diagrams, data tables, and interactive visualizations. Output opens in the browser.
+Generate, inspect, and capture visual output, including self-contained HTML pages, UI checks, diagrams, and demo evidence.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
+| `/kramme:visual:check-slop` | User | `<file-or-directory> [--fix]` | Runs a bundled deterministic 73-guard check over HTML screens, reports exact AI-style UI findings, and optionally applies safe idempotent fixes with --fix. Use before generated or hand-written HTML is shown, exported, shipped, or committed, or when asked to check a screen for visual slop. Not for broad UX, accessibility, product-value, or screenshot critique; use kramme:pr:ux-review or kramme:product:design-critic. |
 | `/kramme:visual:diagram` | User, Auto | `[topic or description]` | Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, flowchart, schema, or any visual explanation of technical concepts. Also use proactively when about to render a large ASCII table (4+ rows and 3+ columns) — present it as a styled HTML page instead. |
 | `/kramme:visual:demo-reel` | User | `[what to capture] [--url <url>\|auto] [--tier static\|before-after\|browser-reel\|terminal-recording]` | Capture local demo evidence for observable product behavior: screenshots, before/after image sets, browser reels, terminal recordings, and short GIF/video proof. Use when shipping UI changes, CLI features, or any change where PR reviewers would benefit from visual or behavioral evidence. |
 | `/kramme:visual:plan-review` | User | `[plan-file-path] [codebase-path]` | Generate a visual HTML plan review comparing current codebase state vs. a proposed implementation plan, with architecture diagrams, blast radius analysis, and risk assessment |
@@ -816,7 +817,8 @@ material and its skill-local notices.
 - `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
 - `kramme:text:clarify`: Inspired by [fofr's GOV.UK style skill](https://gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2) and official GOV.UK guidance on [identifying user needs](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/plan-manage-content/identify-user-needs/) and [using clear language](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/), adapted into a locale-neutral reader-task workflow.
 - `kramme:text:humanize`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
-- `kramme:visual:*` skills: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
+- `kramme:visual:diagram`, `kramme:visual:generate-image`, `kramme:visual:onboarding`, `kramme:visual:plan-review`, and `kramme:visual:project-recap`: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
+- `kramme:visual:check-slop`: Vendors and adapts Gesso Build's MIT-licensed anti-slop detector and 73-rule registry at commit [`ab68f1878dd5f19ac8dee9d55d2f4313060cac83`](https://github.com/Gesso-Build/skills/tree/ab68f1878dd5f19ac8dee9d55d2f4313060cac83). Complete notices for Gesso and bundled parser dependencies ship with the skill.
 - Skills authoring patterns: Inspired by [mgechev/skills-best-practices](https://github.com/mgechev/skills-best-practices).
 - `kramme:session:automate-repeats` effectiveness evidence, counterfactual improvement gate, and `kramme:session:search` explicit skill-use extraction: Inspired by Warp's [skill-doctor workflow, rubrics, guidance, and collector at commit `737129f`](https://github.com/warpdotdev/common-skills/tree/737129fae58e1feb4ec956c0f0bfa597b5c6ee89/.agents/skills/skill-doctor).
 - `kramme:pr:github-review-reply`: GitHub review comment listing, review-summary reads, top-level PR comment reads/posts, reply posting, review thread mapping, and thread resolution operations are grounded in official GitHub REST and GraphQL API documentation.

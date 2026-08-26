@@ -28,6 +28,10 @@ The wizard template in `kramme:workflow:wizard` is adapted from [`mattpocock/ski
 
 `kramme:pr:walkthrough` vendors D3.js 7.9.0, Copyright 2010–2023 Mike Bostock, under the ISC License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3-LICENSE`.
 
+## Gesso Build — `anti-slop`
+
+`kramme:visual:check-slop` vendors and adapts Gesso Build's MIT-licensed anti-slop detector, 73-rule registry, rule catalog, and tests at commit [`ab68f1878dd5f19ac8dee9d55d2f4313060cac83`](https://github.com/Gesso-Build/skills/tree/ab68f1878dd5f19ac8dee9d55d2f4313060cac83). Its offline runtime also bundles attributed parser dependencies. The complete Gesso and dependency notices are retained in `kramme-cc-workflow/skills/kramme:visual:check-slop/references/THIRD_PARTY_NOTICES.md`.
+
 ## Wikipedia contributors
 
 `kramme:text:humanize/references/ai-writing-patterns.md` is an adapted work based on Wikipedia's “Signs of AI writing” page. That file is separately offered under CC BY-SA 4.0 and carries attribution, modification, and license information in its skill-local `references/WIKIPEDIA-CONTENT-LICENSE.md`.
