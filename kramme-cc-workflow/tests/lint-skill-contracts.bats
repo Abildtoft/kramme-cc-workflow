@@ -1108,6 +1108,19 @@ EOF
   assert_required_contracts_registered pr-code-review-closeout-loop-independent-verification
 }
 
+@test "pr ux review keeps routing contracts without embedded usage or agent summaries" {
+  local skill_text
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:ux-review/SKILL.md")"
+
+  [[ "$skill_text" == *'argument-hint: "[app-url|auto] [--categories a11y,ux,product,visual]'* ]]
+  [[ "$skill_text" == *'If `--categories` flag → parse comma-separated list.'* ]]
+  [[ "$skill_text" == *'If `--categories product,visual` → launch kramme:product-reviewer and kramme:visual-reviewer'* ]]
+  [[ "$skill_text" == *'If `--categories all` → launch all 4 agents'* ]]
+  [[ "$skill_text" != *'## Usage Examples'* ]]
+  [[ "$skill_text" != *'## Agent Descriptions'* ]]
+  [[ "$skill_text" != *'/kramme:pr:ux-review http://localhost:4200'* ]]
+}
+
 @test "verify-understanding supports answer option prompts" {
   local skill_text
   skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:learn:verify-understanding/SKILL.md")"
