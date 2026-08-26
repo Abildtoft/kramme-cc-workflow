@@ -232,6 +232,13 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/find-sibling-bugs-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/github-review-guidance.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"]
     },
