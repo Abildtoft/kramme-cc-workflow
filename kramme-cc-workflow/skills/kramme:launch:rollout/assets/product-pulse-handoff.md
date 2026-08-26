@@ -14,7 +14,7 @@ Use this asset only when preparing or refreshing a handoff at a hold, rollback, 
 - Sampling plans and observation record: <ticket section containing every gate/plan ID and all append-only sample rows>
 
 | Source ID | Provenance | Dimensions | Evidence window | Source evidence pointer | Durable evidence pointer | Limitations |
-| --- | --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | <stable ID> | <provider telemetry/query | issue/support export | operator/manual | unavailable> | <usage, quality, errors, performance, customer signals> | <UTC range> | <dashboard/query/export/ticket row> | <retained record section or approved access-controlled record> | <coverage or access limits> |
 
 - Unresolved signals and requirements: <every yellow/red observation, CONFUSION, UNVERIFIED, and MISSING REQUIREMENT entry, including owners and stop boundaries, or none>
