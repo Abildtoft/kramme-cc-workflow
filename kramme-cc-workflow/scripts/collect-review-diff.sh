@@ -21,7 +21,7 @@ REVIEW_ARTIFACT_PATTERNS=()
 
 usage() {
   cat >&2 << 'USAGE'
-Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json] [--exclude-review-artifacts] [--require-local-artifact <path>]
+Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json|nul] [--exclude-review-artifacts] [--require-local-artifact <path>]
        collect-review-diff.sh --decode-json
 
 Default output is shell-quoted assignments:
@@ -30,8 +30,13 @@ Default output is shell-quoted assignments:
 JSON output fields:
   base_ref base_branch merge_base changed_files
 
+NUL output emits the collected fields directly in this order:
+  BASE_REF BASE_BRANCH MERGE_BASE CHANGED_FILES
+Each field has a trailing NUL byte; changed_files remains newline-delimited.
+This supports one-invocation, non-evaluating reads with shell read -d ''.
+
 Review-preparation options are opt-in; without them the collected scope and
-both output formats are unchanged:
+legacy output formats are unchanged:
   --exclude-review-artifacts     Drop repository-root paths matching
                                  hooks/confirm-review-artifacts.txt from the
                                  collected scope.
@@ -52,6 +57,10 @@ emit_json() {
     "lines:changed_files" "$CHANGED_FILES"
 }
 
+emit_nul() {
+  printf '%s\0' "$BASE_REF" "$BASE_BRANCH" "$MERGE_BASE" "$CHANGED_FILES"
+}
+
 emit_output() {
   case "$OUTPUT_FORMAT" in
     shell)
@@ -62,6 +71,9 @@ emit_output() {
       ;;
     json)
       emit_json
+      ;;
+    nul)
+      emit_nul
       ;;
   esac
 }
@@ -211,11 +223,11 @@ while [ $# -gt 0 ]; do
       COLLECT_OPTION_SEEN=true
       require_value "$1" "${2-}"
       case "$2" in
-        shell | json)
+        shell | json | nul)
           OUTPUT_FORMAT="$2"
           ;;
         *)
-          echo "--format must be 'shell' or 'json'" >&2
+          echo "--format must be 'shell', 'json', or 'nul'" >&2
           exit 1
           ;;
       esac
