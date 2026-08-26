@@ -1,8 +1,8 @@
 # Security authoring checklist
 
-This checklist is the authoritative per-area completion gate for every security-sensitive slice. `SKILL.md` owns the cross-cutting state; this file owns the detailed checks grouped by concern area.
+This checklist is the authoritative per-item completion gate for every security-sensitive slice. `SKILL.md` owns the cross-cutting state; this file owns the detailed checks grouped by concern area.
 
-Complete every applicable area before marking the slice done, and record why any area is not applicable. When a reviewer flags one item, check its sibling items in the same area before closing the finding.
+Review every relevant concern area before marking the slice done. Complete each item introduced, modified, or required by the slice. When a reviewer flags one item, inspect its siblings for the same failure pattern, but record unrelated pre-existing gaps as `NOTICED BUT NOT TOUCHING`; they do not block the slice unless it worsens or depends on them.
 
 ---
 
@@ -156,4 +156,4 @@ If any of these are missing, the slice is not finished.
 
 ## Scope reminder
 
-Items on this checklist that aren't in scope for the current slice are **not** silently fixed. If a pre-existing violation surfaces (e.g. an adjacent endpoint is missing a rate limit), emit `NOTICED BUT NOT TOUCHING` and move on. Security drive-by fixes during unrelated work are a reliable way to break production.
+Items on this checklist that aren't introduced, modified, or required by the current slice are **not** completion gates and are not silently fixed. If a pre-existing violation surfaces (e.g. an adjacent endpoint is missing a rate limit), emit `NOTICED BUT NOT TOUCHING` and move on unless the slice worsens or depends on it. Security drive-by fixes during unrelated work are a reliable way to break production.

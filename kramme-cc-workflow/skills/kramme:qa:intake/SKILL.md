@@ -315,4 +315,4 @@ Before ending each session, cross-check the tickets actually created against the
 - Every filed body satisfies the durability and domain-language rules, and every priority, parent/child link, blocker, and breakdown-confirmation requirement is reflected in the created artifact.
 - No pre-existing ticket was modified or closed, and the Step 4 `CHANGES MADE`, `THINGS I DIDN'T TOUCH`, and `POTENTIAL CONCERNS` markers report the actual outcome.
 
-Correct any mismatch that is safe within the filing transaction; otherwise surface the partial state and recovery guidance.
+Correct local or SIW mismatches only while their create transaction remains open. After a Linear issue is created, the only permitted correction is the already-authorized child-link finalization on the just-created breakdown parent; surface every other mismatch as partial state with recovery guidance.

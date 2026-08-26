@@ -66,7 +66,7 @@ No legitimate version. If the temptation arises, emit a `NOTICED BUT NOT TOUCHIN
 
 **Expose stack traces to end users** — stack traces leak framework versions, paths, line numbers, library names — all of which accelerate targeted exploitation. Return a generic message + a correlation ID. Log the full trace server-side and surface the correlation ID in the response so support can still debug.
 
-**Use wildcard CORS on an endpoint that reads or mutates user data** — a wildcard origin lets any website invoke the endpoint from a visitor's browser and discards the origin boundary the API relies on. Enumerate the required origins instead. A genuinely public, credential-free read endpoint is outside this rule, but changing its CORS policy still remains Tier 2 and requires confirmation.
+**Use wildcard CORS on an endpoint that reads or mutates user data** — wildcard CORS lets any origin's script read an intentionally non-credentialed response; it does not enable credentialed CORS and is not a CSRF defense for state-changing requests. Keep user-specific responses on an explicit origin allow-list. Protect cookie-authenticated mutations independently with the project's CSRF control, such as a token, Origin or Fetch Metadata validation, and appropriate `SameSite` cookies. A genuinely public, credential-free read endpoint is outside this rule, but changing its CORS policy still remains Tier 2 and requires confirmation.
 
 ---
 

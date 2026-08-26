@@ -34,7 +34,6 @@ setup() {
   grep -qF "AI-slop findings enter the same one-slice loop, Fence, verification, commit, and recovery contract as every other candidate." "$skill"
   grep -qF "again after each verified slice" "$skill"
   grep -qF "Revalidate every remaining finding against current lines" "$skill"
-  grep -qF "Treat every reported slop finding as a candidate, not an instruction." "$skill"
   grep -qF "Each simplification is one pass through this loop." "$skill"
   grep -qF "pick exactly one target" "$skill"
   grep -qF "If a test fails, you changed behavior" "$skill"
@@ -42,11 +41,17 @@ setup() {
 
 @test "refactor safety epilogue keeps only residual completion checks" {
   local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local candidates
+  local rewrite_verification
 
-  ! grep -qE '^## (Common Rationalizations|Red Flags)' "$skill"
+  candidates="$(sed -n '/^### 1. Pick one simplification$/,/^### 2. Emit a SIMPLICITY CHECK$/p' "$skill")"
+  rewrite_verification="$(sed -n '/^For rewrite mode, confirm the end state/,/^If any applicable verification box/p' "$skill")"
+
   grep -qF "If the unchanged baseline fails, stop" "$skill"
   grep -qF 'reuse its successful `kramme:verify:run` result after the post-checkpoint worktree equality check passes' "$skill"
   grep -qF "Prefer clarity over line count." "$skill"
+  grep -qF "Defensive checks that caller, type, test, and history evidence prove redundant." <<<"$candidates"
+  grep -qF "No bug found during the rewrite was silently folded in — any bug fix is a separate slice." <<<"$rewrite_verification"
   grep -qF "The default-mode loop owns baseline health, the Fence, scope, one-slice changes, unmodified tests, and recovery." "$skill"
 }
 

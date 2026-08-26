@@ -13,3 +13,17 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-08-20
     baseline_hash: "sha256:2f9979b84678ca6f07e684bb862a086f5b27bfa6e9a0ad3d57c499dba47c2e50"
+  - id: fetch-cors-protocol
+    url: https://fetch.spec.whatwg.org/
+    title: "WHATWG Fetch Standard"
+    rationale: "The wildcard-CORS boundary distinguishes cross-origin response sharing from request execution and credential behavior using the Fetch CORS protocol."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:a98f4826d9d3187b78226149b8e4aa74f9fddd3a98dd9db8f7899e2d32b58109"
+  - id: owasp-csrf-prevention
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+    title: "OWASP Cross-Site Request Forgery Prevention Cheat Sheet"
+    rationale: "The wildcard-CORS boundary names independent protections for cookie-authenticated state-changing requests."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:36881dab80d03995821269b1528279fe3889bcffb69e25b5e261ecedef74b440"

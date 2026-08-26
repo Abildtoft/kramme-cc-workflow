@@ -39,22 +39,32 @@ BOUNDARY_SYSTEM="skills/kramme:code:harden-security/references/boundary-system.m
   grep -qF "residual copies that become inaccessible immediately and are excluded from further processing, training, and onward sharing" "$SKILL"
   grep -qF "otherwise the provider is incompatible" "$SKILL"
   grep -qF "otherwise the provider is incompatible" "$CHECKLIST"
-  grep -qF 'complete every applicable area in `references/security-checklist.md`' "$SKILL"
+  grep -qF 'review every relevant area in `references/security-checklist.md`' "$SKILL"
+  grep -qF "Complete each item introduced, modified, or required by the slice" "$SKILL"
 }
 
 @test "security stop rules have authoritative workflow owners" {
-  ! grep -qE '^## (Common Rationalizations|Red Flags)' "$SKILL"
+  local ask_first
+  local never_do
+  local tier_two
+
+  ask_first="$(sed -n '/^### Ask First$/,/^### Never Do$/p' "$SKILL")"
+  never_do="$(sed -n '/^### Never Do$/,/^Per-item rationale/p' "$SKILL")"
+  tier_two="$(sed -n '/^## Tier 2 — Ask First$/,/^---$/p' "$BOUNDARY_SYSTEM")"
+
   grep -qF "Classify every security decision into one of three tiers: do reflexively, pause and ask, never do." "$SKILL"
   grep -qF "Commit secrets to version control." "$SKILL"
   grep -qF "Trust client-side validation alone." "$SKILL"
-  grep -qF "CSP policy changes." "$SKILL"
-  grep -qF "Session-cookie attribute changes." "$SKILL"
-  grep -qF "Use wildcard CORS on an endpoint that reads or mutates user data." "$SKILL"
+  grep -qF "CSP policy changes." <<<"$ask_first"
+  grep -qF "Session-cookie attribute changes." <<<"$ask_first"
+  grep -qF "Use wildcard CORS on an endpoint that reads or mutates user data." <<<"$never_do"
+  grep -qF "CSP policy changes" <<<"$tier_two"
+  grep -qF "Session-cookie attribute changes" <<<"$tier_two"
   grep -qF 'If a draft contains any `Never Do` condition, stop and re-author it before continuing.' "$SKILL"
   grep -qF "Every authentication endpoint must have a rate limit" "$SKILL"
   grep -qF "Run the ecosystem's authoritative vulnerability scanner before the slice lands" "$SKILL"
   grep -qF "A new provider remains \`ASK FIRST\` territory." "$SKILL"
-  grep -qF "This checklist is the authoritative per-area completion gate" "$CHECKLIST"
+  grep -qF "This checklist is the authoritative per-item completion gate" "$CHECKLIST"
   ! grep -qF "short checklist" "$CHECKLIST"
   grep -qF "Use wildcard CORS on an endpoint that reads or mutates user data" "$BOUNDARY_SYSTEM"
 }

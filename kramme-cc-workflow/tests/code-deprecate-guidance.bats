@@ -146,11 +146,15 @@ PY
 }
 
 @test "deprecation stop rules have authoritative workflow owners" {
-	! grep -qE '^## (Common Rationalizations|Red Flags)' "$SKILL"
+	local remove_old
+
+	remove_old="$(sed -n '/^### 4.4 Remove old$/,/^---$/p' "$SKILL")"
+
 	grep -qF "Execute in order. Do not compress or overlap" "$SKILL"
 	grep -qF "Do not remove zombie code. Do not proceed past this step." "$SKILL"
-	grep -qF 'Before executing this step, resolve every open `UNVERIFIED` from any step.' "$SKILL"
+	grep -qF 'Before executing this step, resolve every open `UNVERIFIED` from any step.' <<<"$remove_old"
+	grep -qF 'ASK FIRST: removing with open UNVERIFIED markers' <<<"$remove_old"
+	grep -qF "and do not proceed" <<<"$remove_old"
 	grep -qF "no active consumer or obsolete application reference remains" "$SKILL"
-	grep -qF "The generic four gates never override or replace them" "$SKILL"
 	grep -qF 'Completion state is owned by `DEPRECATION_PLAN_<slug>.md`.' "$SKILL"
 }

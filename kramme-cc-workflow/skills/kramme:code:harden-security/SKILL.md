@@ -228,10 +228,10 @@ A finding from any of the three agents that traces back to code authored with th
 
 ## Verification
 
-Before declaring a security-sensitive slice done, complete every applicable area in `references/security-checklist.md`; record why any area is not applicable. Then confirm the cross-cutting state:
+Before declaring a security-sensitive slice done, review every relevant area in `references/security-checklist.md`. Complete each item introduced, modified, or required by the slice; record unrelated pre-existing gaps as `NOTICED BUT NOT TOUCHING` instead of expanding the slice. Then confirm the cross-cutting state:
 
 - `SIMPLICITY CHECK` was emitted, every `ASK FIRST` boundary was confirmed before implementation, and every `NOTICED BUT NOT TOUCHING` observation was logged.
 - Every `UNVERIFIED` assumption was either verified or explicitly left open with an owner.
 - The relevant `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:injection-reviewer` agents ran against the diff before the PR.
 
-An unsatisfied applicable checklist item blocks completion; fix the gap or split the slice.
+An unsatisfied item introduced, modified, or required by the slice blocks completion; fix the gap or split the slice.
