@@ -18,7 +18,7 @@ If the normalized arguments contain `--no-diff-comments`, set `DIFF_COMMENTS=fal
 
 ## Team Mode
 
-If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments. If Team Mode reaches its final aggregated summary, resume only at standard Step 12b below, then perform Team Mode cleanup; do not rerun another standard step.
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-discipline.md` and then `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments. The discipline reference remains authoritative for Team Mode reviewer prompts and aggregation. If Team Mode reaches its final aggregated summary, resume only at standard Step 12b below, then perform Team Mode cleanup; do not rerun another standard step.
 
 ## Review Workflow:
 
@@ -171,30 +171,13 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - Untracked files: `git ls-files --others --exclude-standard`
    - PR description context: parsed title/body/url from `PR_CONTEXT_JSON`, if present
 
-   Instruct every reviewer that it is **read-only**, using the `Shared working tree` section of `references/review-discipline.md`. Every reviewer in this run reads the same working tree, which usually holds uncommitted work, so a file one reviewer edits becomes false evidence for the others and produces fabricated findings that cite real files and real lines. No reviewer may create, edit, delete, move, or rename files, mutate git state, or run a command that rewrites files as a side effect, including formatters, `--fix` linters, codemods, dependency installs, and test runners that update snapshots or golden files. Recommended code changes belong in the finding text; applying them is `/kramme:pr:resolve-review`'s job.
+   Immediately before launching any standard reviewer, read `references/review-discipline.md` and pass its `Shared working tree`, `Reviewer calibration`, `Output markers`, and `Finding schema` sections to every reviewer. Treat that reference as authoritative; do not reconstruct or abbreviate those contracts in individual prompts.
 
    Instruct agents to use the PR description in two ways:
    - As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
    - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction.
 
-   Instruct every reviewer to apply this **Codebase Calibration Rule** before making a finding or recommending a fix:
-   - Match the existing practices in the touched files and nearby code. A defensive check, validation layer, retry, log, catch block, or runtime type guard is appropriate only when it fits the local style, an explicit project rule, or a concrete failure path introduced by the review scope.
-   - If the codebase relies on framework guarantees, schema validation, type narrowing, generated types, trusted internal callers, or centralized error boundaries, do not require redundant local guards unless this diff crosses a trust boundary or weakens that guarantee.
-   - If the local practice looks risky but the PR does not introduce or worsen it, label it `NOTICED BUT NOT TOUCHING` instead of making it a required finding.
-   - If the reviewer cannot prove the failure path from the diff, call it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
-   - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
-
-   Instruct every reviewer to apply this **Overengineering Check** alongside the calibration rule:
-   - The right solution is the simplest one that fully and reliably meets the specific requirements and fits the existing architecture and established patterns of the codebase. Judge the diff against that bar, and hold every recommended fix to the same bar.
-   - Flag complexity the current task does not require: premature abstractions, unnecessary layers or indirection, speculative generality (configuration, parameters, or extension points with a single real caller or value), handling for purely hypothetical edge cases, and functionality beyond the change's scope. Name the concrete simpler alternative in the finding.
-   - Do not flag handling of real and likely edge cases as overengineering; robustness for failure paths the review scope actually introduces is required work, not speculation. The line is hypothetical future scenarios, not present requirements.
-   - Overengineering findings default to Suggestion with action class `advisory`. Classify one as Important only when the unnecessary complexity has concrete present cost: it conceals or invites a bug, materially obscures the change under review, or creates a public surface other code must adopt.
-   - Never recommend a fix that adds abstractions, layers, or hypothetical edge-case handling beyond what the finding's evidence requires; recommend the smallest direct change that resolves the finding.
-   - Label every finding produced by this check with `OVERENGINEERING` on its own line so aggregation can apply cleanup precedence independently of the source reviewer.
-
-   Instruct each spawned reviewer to label findings with the output markers documented in `references/review-discipline.md` (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`, `OVERENGINEERING`) so the aggregated report is parseable.
-
-   If any of `code`, `refactor`, or `simplify` is active, read `references/fowler-smell-baseline.md` once and pass it only to the corresponding `kramme:code-reviewer` and/or `kramme:code-simplifier` reviewers as advisory vocabulary after documented repo standards, the Codebase Calibration Rule, and concrete diff evidence. Each smell finding must name the smell, cite the changed location, explain why it matters in this diff, and recommend the smallest local fix; do not report smells as hard violations, duplicate tooling-enforced issues, or promote optional cleanup unless it creates concrete blocking impact under the action-class rules.
+   If any of `code`, `refactor`, or `simplify` is active, read `references/fowler-smell-baseline.md` once and pass it only to the corresponding `kramme:code-reviewer` and/or `kramme:code-simplifier` reviewers as advisory vocabulary after documented repo standards, the discipline reference's reviewer calibration, and concrete diff evidence. Each smell finding must name the smell, cite the changed location, explain why it matters in this diff, and recommend the smallest local fix; do not report smells as hard violations, duplicate tooling-enforced issues, or promote optional cleanup unless it creates concrete blocking impact under the action-class rules.
 
    If `lean` activated `kramme:lean-reviewer`, instruct it to operate as a deletion-focused reviewer:
    - Do not edit files.
@@ -212,16 +195,6 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    - For each finding, include the existing pattern or code that should be reused when found, why the current change does not fit, and the minimal recommended fix.
    - If a refactor/simplify finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
 
-   Instruct every reviewer to return these fields for each finding:
-   - **Finding ID:** leave blank for raw reviewer output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe
-   - **Severity:** Critical, Important, Suggestion, or FYI using the severity prefix grammar in `references/review-discipline.md`
-   - **Location:** concrete `path/to/file:line`, `review-scope`, or `PR description`
-   - **Confidence:** `{0-100}`. During the transition, if a reviewer returns `high`, `medium`, or `low`, map it before aggregation as `high=80`, `medium=60`, `low=30`. Remove this mapping shim once all bundled review agents emit numeric 0-100 confidence natively.
-   - **Action class:** `gated_auto`, `manual`, or `advisory` from `references/review-discipline.md`; Critical/Important findings may use only `gated_auto` or `manual`, while Suggestions/FYI use `advisory`. Treat the raw reviewer action class as provisional: the aggregator performs the final action-class normalization in Step 11.
-   - **Owner:** resolver, author, maintainer, reviewer, or unknown
-   - **Evidence:** concrete location, trace, reproduction, failing expectation, or reason the finding is marked `UNVERIFIED`
-   - **Relevance status:** PR-caused, pre-existing/out-of-scope, previously addressed, or unresolved pending validation
-
    Capture the pre-launch working-tree manifest before any reviewer starts:
 
    ```bash
@@ -238,7 +211,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
    Launch the agents resolved in Step 6 using `LAUNCH_MODE` from Step 1:
    - `LAUNCH_MODE=sequential` (default): launch one agent, wait for its report, then launch the next. Use this for interactive review where each report should be readable before the next runs.
-   - `LAUNCH_MODE=parallel`: launch all applicable agents simultaneously and collect results together. Use this when the user passed `--parallel` or the deprecated bare `parallel` alias. Parallel reviewers share one working tree; the read-only mandate above is what keeps their evidence independent.
+   - `LAUNCH_MODE=parallel`: launch all applicable agents simultaneously and collect results together. Use this when the user passed `--parallel` or the deprecated bare `parallel` alias. The discipline reference remains in force for every parallel reviewer.
 
    **Working-tree integrity check.** After every reviewer has returned, before relevance validation, re-capture the manifest and compare:
 
@@ -255,7 +228,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
    diff "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"
    ```
 
-   An empty `diff` means the tree is intact; continue. Any difference means a reviewer mutated the shared tree: collect the differing paths as `MUTATED_PATHS` and apply the mutation handling in the `Shared working tree` section of `references/review-discipline.md` — re-verify every finding citing a mutated path against the text now on disk, drop the ones that no longer reproduce, report the paths in `## Coverage Status`, and never revert or clean them. If `MUTATED_PATHS` covers most of the review scope, stop without writing `REVIEW_OVERVIEW.md` and report the mutation instead; a review of a tree that changed underneath it is not a review.
+   An empty `diff` means the tree is intact; continue. Any difference means a reviewer mutated the shared tree: collect the differing paths as `MUTATED_PATHS` and apply the mutation handling in the `Shared working tree` section of `references/review-discipline.md` exactly. If `MUTATED_PATHS` covers most of the review scope, stop without writing `REVIEW_OVERVIEW.md` and report the mutation instead; a review of a tree that changed underneath it is not a review.
 
    **Agent failure handling.** If a selected reviewer agent is unavailable, times out, or returns output that cannot be parsed as findings, record the failed agent name, review dimension, and what was attempted. Continue only if at least one selected reviewer succeeded, and include a degraded-coverage banner in the final report: `Coverage degraded: <agent names> failed; findings below exclude <dimensions>.` If all selected reviewers fail, or if the relevance validator fails, stop without writing `REVIEW_OVERVIEW.md`. Do not fabricate findings or present a partial review as complete. If the slop meta-review fails after primary reviewers succeeded, continue with a degraded-coverage banner that names the failed meta-review and notes that slop warnings may be incomplete.
 
@@ -306,27 +279,7 @@ If a previous-review source was found in Step 5:
 
 11. **Aggregate Results**
 
-After validation, slop meta-review, and previous-review processing, dedupe and merge findings before applying emphasis:
-
-- Merge only findings that name the same concrete location or review scope and the same root cause.
-- Keep the highest severity across merged duplicates, combine evidence, and preserve all source agents.
-- Promote confidence only when independent reviewers identify the same issue with the same location/root cause. Two weak findings about similar symptoms are not enough.
-- Do not merge contradictory findings. Record contradictions as open questions with action class `manual`; if the contradiction blocks approval, place it in Critical or Important based on impact.
-- Findings labeled `UNVERIFIED` can be retained, but they must keep confidence below 60 and use `manual` or `advisory` unless the concrete risk is separately proven.
-- Drop or separate findings that only share a broad theme but require different fixes.
-
-Then apply the **correctness/security precedence pass** before emphasis:
-
-- Treat findings from `kramme:lean-reviewer` and cleanup-mode `kramme:code-simplifier` as cleanup-dimension findings (`lean`, `refactor`, `simplify`). Treat findings labeled `OVERENGINEERING` by any reviewer the same way.
-- Treat unresolved Critical or Important findings from `kramme:code-reviewer`, `kramme:silent-failure-hunter`, `kramme:pr-test-analyzer`, `kramme:type-design-analyzer`, `kramme:injection-reviewer`, `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:logic-reviewer` as higher-priority correctness/security findings when they are still active after previous-review processing.
-- A cleanup finding collides when its recommended deletion, replacement, abstraction removal, simplification, or reuse would remove or weaken validation, auth, authorization, injection protection, data protection, error propagation, test coverage, type invariants, or the concrete fix path of an unresolved correctness/security finding.
-- If a cleanup finding collides with an unresolved correctness/security finding:
-  - Do not promote it through `--emphasize`.
-  - Do not classify it as Critical or Important.
-  - Do not assign `gated_auto`.
-  - Either drop it as redundant/no longer safe, or keep it only as an advisory Suggestion with evidence: `Blocked by the matching correctness/security finding; revisit after that finding is resolved.` After final IDs are assigned, reference the blocking `CR-XXX` in the cleanup finding's evidence.
-  - Preserve the correctness/security finding unchanged, and append the cleanup collision as supporting context only when it helps the resolver avoid the unsafe cleanup path.
-- If the cleanup recommendation remains valid after the higher-priority fix is applied, keep it as an advisory Suggestion with the dependency named. If it would only be valid by choosing a different correctness/security fix, record a `CONFUSION` manual finding instead of silently choosing the cleanup path.
+After validation, slop meta-review, and previous-review processing, apply the `Confidence and merge rules` and `Correctness and security precedence` sections of `references/review-discipline.md` before emphasis.
 
 After validation, slop meta-review, and previous-review processing, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
@@ -340,23 +293,7 @@ After validation, slop meta-review, and previous-review processing, apply emphas
 
 Track the count of promoted findings for the report.
 
-After emphasis adjustments, run an **action-class normalization pass**. The goal is to make `/kramme:pr:resolve-review` receive every finding it can safely fix, while keeping genuinely human-dependent work explicit.
-
-- Treat raw reviewer action classes as provisional. The aggregator owns the final `Action class`, `Owner`, and any manual-follow-up fields in the report.
-- For every PR-caused Critical or Important finding, default to `gated_auto` with owner `resolver` when all of these are true:
-  - `Location` is a concrete `path/to/file:line`
-  - `Confidence` is at least 70
-  - The evidence names a concrete failing expectation, trace, or local code path
-  - The fix direction is unambiguous and local to changed or nearby code
-  - The finding does not match a manual blocker
-- Keep a Critical or Important finding as `manual` only when a blocker applies under the **manual blocker tests** in `references/review-discipline.md` (maintainer judgment with named competing options, uninferable missing/contradictory requirement, non-code state, cross-team/external ownership, unresolved contradiction, resource-blocked incomplete trace/`UNVERIFIED`, or dead-code approval). `manual` is the exception, not the safe default.
-- Apply that section's tiebreaker: a finding that plausibly fits both classes becomes `gated_auto`, but a finding matching a named blocker never fits both — a low-confidence dead-code finding stays `manual` until the ask is answered, while a high-confidence, fully traced dead-code finding (confidence at least 70, no remaining references, no `UNVERIFIED`) is `gated_auto`.
-- Every manual Critical or Important finding must include:
-  - `Manual blocker: <one of the blocker categories above>`
-  - `Next human decision: <the specific decision, approval, access, or clarification needed>`
-- If a manual Critical or Important finding has a concrete file location, confidence at least 70, and no named manual blocker, reclassify it to `gated_auto`.
-- If a finding is optional, stylistic, low-confidence, or a cleanup idea without blocking impact, put it in Suggestions with action class `advisory` instead of Critical/Important with `manual`.
-- Before finalizing, if more than half of the Critical/Important findings are `manual`, re-test each one against the blocker list above. A manual-heavy report usually means blockers were named loosely, not that the PR needs that much human intervention.
+After emphasis adjustments, run an **action-class normalization pass**. Apply the `Action classes`, `Severity and action-class compatibility`, and `Manual blocker tests` sections of `references/review-discipline.md`; the reference owns the final field requirements, tiebreaker, and manual-heavy re-test.
 
 Assign stable `Finding ID` values to every active finding after dedupe, filtering, and emphasis are complete:
 
@@ -377,12 +314,6 @@ Then summarize:
 - **Filtered Issues** (pre-existing or out-of-scope) - shown separately
 - **Previously Addressed** (findings matching the previous-review source) - shown separately
 - **Previous Review Context** - source path and parse/carry-forward/filter counts, shown even when no previous-review source was found
-
-Every active finding must include its finding ID, location, confidence, action class, owner, resolution status, and evidence in the final report:
-
-- `gated_auto` — code-backed Critical/Important finding with a concrete file/line, a clear fix, and enough confidence for `/kramme:pr:resolve-review` to attempt it.
-- `manual` — requires a named human decision, product/process judgment, PR-description update, cross-team ownership, external access, unresolved trace, or explicit approval before a fix is safe. Every manual Critical/Important finding must include `Manual blocker` and `Next human decision`. When a finding plausibly fits both `gated_auto` and `manual`, use `gated_auto`.
-- `advisory` — optional suggestion, FYI, low-confidence observation, or quality improvement that should not block merge. Do not use this class for Critical or Important findings.
 
 PR description findings should use the same severity rules as code findings. A materially false claim that would mislead merge approval, release notes, rollback planning, or QA is Important or Critical depending on impact. Minor missing detail is at most a Suggestion and should usually be omitted.
 
@@ -430,7 +361,8 @@ For command examples covering default, aspect-filtered, parallel, emphasized, cu
 
 ## Review discipline
 
-`references/review-discipline.md` holds the reviewer-craft conventions used by every spawned reviewer and by the orchestrator's final-check pass: the output markers (`UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CONFUSION`, `MISSING REQUIREMENT`, `OVERENGINEERING`), the common rationalizations to watch for, the red-flag stop list, and the pre-posting verification checklist.
+`references/review-discipline.md` is the authoritative finding and safety contract used by every spawned reviewer and by the orchestrator's aggregation and final-check passes.
 
-- **Step 7** must pass the output-marker convention to each spawned reviewer so findings come back labeled consistently.
+- **Step 7** must pass the reviewer-facing discipline sections to each spawned reviewer before launch.
+- **Step 11** must apply the discipline reference's merge, precedence, action-class, and schema rules.
 - **Step 13** must run the verification checklist before posting the aggregated report.
