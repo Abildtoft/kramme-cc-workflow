@@ -83,10 +83,23 @@ SKILL="skills/kramme:session:automate-repeats/SKILL.md"
 
 @test "effectiveness mode is eligibility aware and refuses false precision" {
   grep -qF 'Use `--effectiveness` when the user wants evidence about which skills are working from real runs.' "$SKILL"
-  grep -qF "Decide which installed skills were eligible from each safe skeleton's user ask and the current skill contracts before reading detected usage." "$SKILL"
+  grep -qF "Decide eligibility from each safe skeleton's user ask and the verified historical contract before reading detected usage." "$SKILL"
   grep -qF "**correct invocation** when eligible and invoked, **missed invocation** when eligible and not invoked, or **suspected false invocation** when invoked but not eligible" "$SKILL"
   grep -qF "Do not calculate a coverage score, weighted overall score, or letter grade." "$SKILL"
   grep -qF "zero use alone never justifies changing a skill" "$SKILL"
+}
+
+@test "effectiveness excludes sessions from before the applicable contract existed" {
+  grep -qF "Its presence does not prove that a skill or its current contract existed during a historical session." "$SKILL"
+  grep -qF 'Establish a trustworthy session start time from transcript-derived metadata `ts`.' "$SKILL"
+  grep -qF 'Do not use `last_ts` or filesystem mtime as proof that a skill was available when the session began.' "$SKILL"
+  grep -qF "select the latest committed revision no later than the session timestamp" "$SKILL"
+  grep -qF 'require that revision to contain the skill definition with the exact frontmatter `name`' "$SKILL"
+  grep -qF "never project a later name or contract backward" "$SKILL"
+  grep -qF "classify the pair as **not available** and exclude it from eligibility, correct-invocation, missed-invocation, and suspected-false-invocation counts" "$SKILL"
+  grep -qF "classify the pair as **UNVERIFIED** and exclude it from those counts" "$SKILL"
+  grep -qF '`not_available`, `unverified_availability`' "$SKILL"
+  grep -qF "verified sample size" "$SKILL"
 }
 
 @test "effectiveness mode uses bounded machine-readable evidence" {
