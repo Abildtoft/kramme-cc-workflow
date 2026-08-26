@@ -49,7 +49,7 @@ If an operand fails validation, stop and name it. Do not “repair” or normali
 
 ### Conductor workspaces
 
-Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills): when `CONDUCTOR_WORKSPACE_PATH` is set, this checkout belongs to a Conductor-managed workspace whose branch is what the Conductor diff viewer and checks follow. Stay on the current branch by default and never switch away from it silently. When the work needs branch isolation, tell the user to create a new Conductor workspace for it instead of creating a raw git worktree or throwaway branch here. Never remove, reset, or re-point a Conductor workspace path; use Conductor's archive flow. Presence of Conductor variables changes defaults and messaging only, never permissions or safety gates.
+Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills): when `CONDUCTOR_WORKSPACE_PATH` is set: stay on the current branch absent explicit approval; use another Conductor workspace—not raw worktrees or throwaway branches—for isolation. Never remove, reset, or re-point a Conductor workspace path; archive workspaces through Conductor. Conductor changes defaults, not permissions or safety gates.
 
 When `CONDUCTOR_WORKSPACE_PATH` is set, capture and validate the entry branch as `{workspace-branch}` before any stack checkout. Stack operations may check out sibling stack branches as gh stack requires; finish by returning to `{workspace-branch}` and say so in the report.
 
