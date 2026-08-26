@@ -268,6 +268,13 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/product-describe-behavior-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:product:describe-behavior/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-breakdown-findings-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:linear:breakdown-findings/SKILL.md",
