@@ -34,6 +34,10 @@ Changes where the default answer is unknown without context. Do not invent the p
 
 **CORS configuration changes** — CORS is the gate between a browser's same-origin assumption and your API. A wrong `Access-Control-Allow-Origin` or `Access-Control-Allow-Credentials` setting is an exfiltration channel. Confirm the exact origins needed, whether credentials are required, whether wildcards are on the table (they should not be).
 
+**CSP policy changes** — setting a CSP is reflexive, but changing its policy can trade away XSS protection or break required content. Confirm the exact directives being added, removed, or widened and the application behavior that requires the change. Do not weaken the policy merely to silence a violation report.
+
+**Session-cookie attribute changes** — `Secure`, `HttpOnly`, and `SameSite` encode transport, script-access, and cross-site request boundaries. Confirm the affected clients and authentication flows before changing any attribute so compatibility work does not silently weaken session protection.
+
 **File upload endpoints** — uploads open a surface for arbitrary bytes from the internet to reach your storage, processing pipeline, antivirus scanner, or thumbnailer — each of which is a historical exploit target. Confirm size cap, MIME verification strategy (magic bytes, not extension), storage location (not under web root), filename policy (server-generated), processing pipeline.
 
 **Rate-limit adjustments** — rate limits are load-bearing against credential stuffing, enumeration, and brute force. "Loosen this one a bit" is exactly the shape of the change that lets an attacker through. Confirm the traffic profile justifying the change, what the new limit means for attack economics, whether per-user vs per-IP scoping is still right.
@@ -61,6 +65,8 @@ No legitimate version. If the temptation arises, emit a `NOTICED BUT NOT TOUCHIN
 **Store session tokens in client-accessible storage** — any XSS (even future, even dependency-induced) becomes full account takeover. `localStorage`, `sessionStorage`, and non-`HttpOnly` cookies are all client-accessible. Use `HttpOnly` + `Secure` + `SameSite` cookies, or the equivalent for the platform. If you need to read an auth state in JS, expose a whoami endpoint, not the token.
 
 **Expose stack traces to end users** — stack traces leak framework versions, paths, line numbers, library names — all of which accelerate targeted exploitation. Return a generic message + a correlation ID. Log the full trace server-side and surface the correlation ID in the response so support can still debug.
+
+**Use wildcard CORS on an endpoint that reads or mutates user data** — a wildcard origin lets any website invoke the endpoint from a visitor's browser and discards the origin boundary the API relies on. Enumerate the required origins instead. A genuinely public, credential-free read endpoint is outside this rule, but changing its CORS policy still remains Tier 2 and requires confirmation.
 
 ---
 

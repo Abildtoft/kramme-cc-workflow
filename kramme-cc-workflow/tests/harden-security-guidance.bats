@@ -7,6 +7,7 @@ setup() {
 SKILL="skills/kramme:code:harden-security/SKILL.md"
 OWASP="skills/kramme:code:harden-security/references/owasp-top-10.md"
 CHECKLIST="skills/kramme:code:harden-security/references/security-checklist.md"
+BOUNDARY_SYSTEM="skills/kramme:code:harden-security/references/boundary-system.md"
 
 @test "routing separates dependency hardening from dependency audits" {
   grep -qF "adding, upgrading, or remediating packages" "$SKILL"
@@ -38,5 +39,22 @@ CHECKLIST="skills/kramme:code:harden-security/references/security-checklist.md"
   grep -qF "residual copies that become inaccessible immediately and are excluded from further processing, training, and onward sharing" "$SKILL"
   grep -qF "otherwise the provider is incompatible" "$SKILL"
   grep -qF "otherwise the provider is incompatible" "$CHECKLIST"
-  grep -qF "immediately inaccessible residual copies excluded from further processing, training, and onward sharing" "$SKILL"
+  grep -qF 'complete every applicable area in `references/security-checklist.md`' "$SKILL"
+}
+
+@test "security stop rules have authoritative workflow owners" {
+  ! grep -qE '^## (Common Rationalizations|Red Flags)' "$SKILL"
+  grep -qF "Classify every security decision into one of three tiers: do reflexively, pause and ask, never do." "$SKILL"
+  grep -qF "Commit secrets to version control." "$SKILL"
+  grep -qF "Trust client-side validation alone." "$SKILL"
+  grep -qF "CSP policy changes." "$SKILL"
+  grep -qF "Session-cookie attribute changes." "$SKILL"
+  grep -qF "Use wildcard CORS on an endpoint that reads or mutates user data." "$SKILL"
+  grep -qF 'If a draft contains any `Never Do` condition, stop and re-author it before continuing.' "$SKILL"
+  grep -qF "Every authentication endpoint must have a rate limit" "$SKILL"
+  grep -qF "Run the ecosystem's authoritative vulnerability scanner before the slice lands" "$SKILL"
+  grep -qF "A new provider remains \`ASK FIRST\` territory." "$SKILL"
+  grep -qF "This checklist is the authoritative per-area completion gate" "$CHECKLIST"
+  ! grep -qF "short checklist" "$CHECKLIST"
+  grep -qF "Use wildcard CORS on an endpoint that reads or mutates user data" "$BOUNDARY_SYSTEM"
 }

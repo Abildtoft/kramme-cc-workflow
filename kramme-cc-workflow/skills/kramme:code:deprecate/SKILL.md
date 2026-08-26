@@ -285,55 +285,13 @@ When Database Expand/Migrate/Contract is selected, the checked, evidenced items 
 
 ---
 
-## Common Rationalizations
-
-Each of these is a version of "skip the checklist". Correct response follows.
-
-| Rationalization | Reality |
-| --- | --- |
-| "Nobody uses it anymore." | `UNVERIFIED` until the dependent audit runs against the evidence required for the chosen surface. For compile-time / internal-only code that usually means import/build/test/config references; for runtime or public surfaces it includes telemetry. "I grepped and didn't see callers" still misses dynamic imports, reflection, and external API callers. |
-| "It's tiny, leaving it is fine." | Code is a liability — tests, docs, patches, and mental overhead scale with surface, not lines. The "tiny" framing is usually wrong once the maintenance cost question (Step 1, question 5) is answered. |
-| "We'll delete it after the next release." | This is the deprecate-and-abandon failure mode. The Churn Rule says migration is your work; "after the next release" without a migration plan means the deprecation never completes. |
-| "The announcement was six months ago." | Announcement is not migration. If callers still exist, either migrate them now or reclassify the deprecation as Advisory and extend the window. |
-| "We can skip the replacement — it's just a delete." | Then the decision is "delete the feature", not "deprecate". Different workflow, different announcement, different stakeholder set. |
-| "It's internal-only, we don't need a migration guide." | Internal callers rely on documented migration paths too. Internal scope changes the surface, not the obligation. |
-| "The old tests still pass, so the replacement is fine." | Old tests assert old behavior. The replacement needs characterization tests that capture the observables Hyrum's Law says callers depend on. |
-
-## Red Flags
-
-If you see any of these, stop and re-author:
-
-- Removing code with no deprecation notice having been published first.
-- Deprecating a public API with no migration guide.
-- Zombie code being removed without the ownership gate having cleared.
-- Dependent audit based on grep alone — no import/build graph, no telemetry where required, and no package/docs/consumer inventory for the chosen surface.
-- Announcement window under 30 days on a Compulsory deprecation without `ASK FIRST`.
-- "Replacement parity" claimed without a contract or characterization test.
-- Deprecation plan with no named migration pattern (Strangler / Adapter / Feature Flag / Database Expand/Migrate/Contract).
-- Old tests deleted in Step 4.4 but documentation still references the removed surface.
-- A refactor-opportunities scan being acted on directly without running each candidate through Step 1.
-- Database expansion that breaks mixed-version compatibility between old and new application releases.
-- Destructive schema contraction before old readers and writers are absent and the cutover observation window has passed.
-- A large backfill with no batching, throttling, production-load signals, or tested pause/resume path.
-- An index operation described as online or nonblocking without confirming the datastore, version, transaction, and lock behavior.
-- A rollback plan that claims a down migration can recover data already discarded by contraction.
-
 ## Verification
 
-Before declaring the deprecation complete, self-check:
+Completion state is owned by `DEPRECATION_PLAN_<slug>.md`. Before closing the workflow:
 
-- [ ] Five-question checklist answered; answers recorded in `DEPRECATION_PLAN_<slug>.md`.
-- [ ] Classification (Advisory / Compulsory) recorded.
-- [ ] Zombie-code gate explicitly cleared (owner identified) — not silently bypassed.
-- [ ] Named migration pattern recorded in `DEPRECATION_PLAN_<slug>.md`.
-- [ ] Replacement covers every observable on the contract-plus-Hyrum map, verified by a contract or characterization test and by the CI/build/test or deployed monitoring surface that applies.
-- [ ] Announcement published on every surface the audience uses (code notice, CHANGELOG, internal migration note, external comms, API headers as applicable).
-- [ ] Migration guide or upgrade note validated against at least one real migration when caller migration is required.
-- [ ] Dependent audit confirms zero active consumers — based on surface-appropriate evidence (import/build/test/config graph for compile-time / internal-only code; telemetry plus published consumer inventory for runtime or public surfaces), not grep alone.
-- [ ] Every `UNVERIFIED` marker resolved; every `NOTICED BUT NOT TOUCHING` logged; every `ASK FIRST` confirmed.
-- [ ] Observation window has elapsed without incident (CI/release-candidate window for compile-time / internal-only; rollback window for runtime or public surfaces).
-- [ ] For non-database patterns, old code, tests, docs, and deprecation notices removed together in the final commit.
-- [ ] For Database Expand/Migrate/Contract, legacy application reads and writes were removed or disabled and verified while the expanded schema remained, then destructive schema contraction ran in a separate later deployment.
-- [ ] If Database Expand/Migrate/Contract is selected: every item in the plan's authoritative `## Database Migration Phase Status` is checked and includes the required evidence.
+- Re-read `## Step Status` and `## Completion Gates`; every box must be checked with the evidence required by its owning step.
+- For Database Expand/Migrate/Contract, every authoritative `## Database Migration Phase Status` item must also be checked with evidence.
+- Resolve every `UNVERIFIED`, log every `NOTICED BUT NOT TOUCHING`, and confirm every `ASK FIRST` outcome.
+- Run `kramme:verify:run` for the final migrated slice and removal.
 
-If any box is unchecked, the deprecation is not done. Fix the gap or split it into a tracked follow-up before closing the workflow.
+If any gate is incomplete, resume at the earliest incomplete criterion. Do not close the deprecation or replace a missing gate with a follow-up.

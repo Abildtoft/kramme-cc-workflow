@@ -179,6 +179,8 @@ If you can't answer all five, you haven't earned the right to remove it. Either 
 
 Each simplification is one pass through this loop. **One simplification at a time** — verify after each. Do not batch.
 
+Before the first slice, require a green unchanged baseline. When `## Establish a commit baseline` ran, reuse its successful `kramme:verify:run` result after the post-checkpoint worktree equality check passes; do not run the same battery twice. Otherwise run `kramme:verify:run` now. If the unchanged baseline fails, stop and handle or record that failure separately; do not mix a pre-existing failure with simplification work.
+
 ### 1. Pick one simplification
 
 From the refreshed combined candidate queue, pick exactly one target. Candidates include:
@@ -191,6 +193,8 @@ From the refreshed combined candidate queue, pick exactly one target. Candidates
 - Obvious comments or docstrings that restate self-explanatory code.
 - Defensive checks that caller, type, test, and history evidence prove redundant.
 - Weak type workarounds, excessive logging, copy-paste residue, or style drift relative to the surrounding file.
+
+Prefer clarity over line count. Keep a single-use helper when its name carries intent, and rename only to restore a demonstrated surrounding convention rather than personal taste.
 
 ### 2. Emit a SIMPLICITY CHECK
 
@@ -273,6 +277,8 @@ If the design expands beyond the `SIMPLICITY CHECK`, write a second line naming 
 
 "Existing tests" includes any tests written or modified during the current session. The rewrite must satisfy them unchanged. **Reject any rewrite that requires modifying tests to pass.**
 
+Do not combine a rewrite with consistency renames. They are two changes: handle the rename as a separate slice, often in a separate PR.
+
 If you notice adjacent work outside the saved rewrite scope, emit the exact `NOTICED BUT NOT TOUCHING` marker and leave it alone.
 
 ## Integration with other skills
@@ -283,62 +289,19 @@ If you notice adjacent work outside the saved rewrite scope, emit the exact `NOT
 - **Alternative — scrap and rewrite**: if the recent code is inelegant enough that simplification would touch more than ~50% of it, stop the default loop and use this skill's `--rewrite` mode. A mediocre implementation is sometimes best scrapped rather than patched.
 - **Broader scan**: if the simplification opportunities extend beyond the recent diff, stop and suggest `kramme:code:refactor-opportunities` for a codebase-wide scan.
 
-## Common Rationalizations
-
-These are the lies you will tell yourself to justify going past the scope of the pass. Each has a correct response:
-
-In default mode:
-
-- _"I'll simplify and fix the broken test together."_ → Run tests **before** simplifying. If tests already fail, that is a separate problem — fix it (or log it) first, then simplify from a green baseline.
-- _"This abstraction is obviously useless, I don't need to read the blame."_ → Chesterton's Fence. Read the blame. One of these deletes will eventually remove load-bearing behavior.
-- _"The diff is smaller if I inline this helper."_ → Line count is not the goal. Keep the helper if its name carries intent.
-- _"I'll combine two simplifications into one commit for cleanliness."_ → No. Each simplification stands alone so the failure surface is obvious if verification breaks.
-- _"The AI reviewer scored it highly, so I can skip the Fence."_ → Confidence makes it a candidate, not a command. Prove callers, edge cases, tests, and history before changing it.
-- _"These five slop findings are tiny, so I'll batch them."_ → Tiny independent changes still have independent failure surfaces. Verify and commit one at a time.
-- _"The test is flaky; I'll just tweak it so it passes."_ → If a simplification requires modifying a test, it is a behavior change, not a simplification. Revert or re-scope.
-- _"While I'm here, let me also rename this for consistency."_ → Emit `NOTICED BUT NOT TOUCHING`. Rename is its own slice — often its own PR.
-
-In rewrite mode:
-
-- _"The elegant version should be shorter."_ → Line count is not a goal. Clarity is. An elegant version can be longer if it reads top-to-bottom.
-- _"I remember writing this; I don't need to re-read it."_ → You remember the happy path. Chesterton's Fence is for the parts you don't remember writing for a reason.
-- _"The test is flaky; I'll just tweak it when the rewrite lands."_ → If the rewrite requires modifying a test, it changed behavior. Restore the baseline or reclassify.
-- _"The rewrite surfaced a bug in the original — I'll fix it in the rewrite."_ → No. A bug fix is its own slice. Restore the baseline, land the bug fix separately, then attempt the rewrite from the fixed baseline.
-- _"This abstraction is elegant in the abstract; the project just doesn't use it yet."_ → Not elegant — speculative. Wait for the third use case before introducing an abstraction the codebase does not yet need.
-- _"I'll rewrite and rename at the same time for consistency."_ → Two changes. Rename is its own slice, often its own PR. Pick one.
-
-## Red Flags
-
-Ways a simplification pass turns into damage. In default mode, reject the slice and revert if any of these happen:
-
-- **Inlining too aggressively.** Inlining a helper that is used once but has a meaningful name destroys a comment. Keep the name if it carries intent.
-- **Removing "unnecessary" abstractions without applying the Fence.** An abstraction with only one caller today may be there for a planned second caller, or to isolate volatility.
-- **Optimizing for line count.** Shorter is not the goal. A 10-line function that reads top-to-bottom beats a 4-line function that requires a dictionary. If the "simplified" version is longer than the original, discard it.
-- **Removing defensive checks without proving they are unreachable.** A `try/catch` wrapping a library call may be absorbing a known failure mode; a `null` check that "can't happen" must be proven unreachable (via types, invariants, or caller analysis) before removal.
-- **Renaming for personal taste.** Rename only to restore consistency with the surrounding codebase.
-
-In rewrite mode, restore the recovery point if any of these are true:
-
-- **Modifying tests for a rewrite.** Tests encode behavior. If the rewrite changes test expectations, it is a behavior change, not an elegant refactor. Restore the baseline or reclassify.
-- **The rewrite is longer without a stated clarity gain.** Longer code is acceptable only when it reads more clearly top-to-bottom. If you cannot articulate that gain, the original was probably fine.
-- **Rewriting for personal preference.** If the old shape matched the codebase and the new shape matches your taste, the old shape wins.
-- **Removing defensive checks without proving they are unreachable.** If you cannot prove a check is dead through types, invariants, or caller analysis, keep it. The mediocre version may have encoded a lesson.
-
 ## Verification
 
-The default-mode loop enforces most invariants per iteration; this is its residual check:
+The default-mode loop owns baseline health, the Fence, scope, one-slice changes, unmodified tests, and recovery. Before declaring the pass complete, confirm:
 
-- The final diff is smaller and clearer than the input. If it is larger or less clear, revert.
+- The final diff is simpler and clearer than the input. Length alone is not decisive; any longer result needs a stated clarity gain.
 - Every observation outside the original scope has a `NOTICED BUT NOT TOUCHING` marker; none were silently fixed.
 
-For rewrite mode, do not declare the rewrite done until:
+For rewrite mode, confirm the end state rather than repeating each process gate:
 
-- [ ] All five Chesterton's Fence criteria were answered for every non-trivial piece of the original before scrapping.
-- [ ] A `SIMPLICITY CHECK` marker was emitted at design time; any expansion beyond it has a documented forcing requirement.
-- [ ] All existing tests pass **without any test modifications**.
-- [ ] Build, typecheck, and lint all pass.
+- [ ] The recovery point remains available until the rewrite is accepted.
 - [ ] The rewrite's behavior matches the saved-state notes, including edge cases.
+- [ ] `kramme:verify:run` passed every applicable gate without modifying existing tests.
 - [ ] No bug found during the rewrite was silently folded in — any bug fix is a separate slice.
-- [ ] The rewrite is shorter or equally clear. If it is longer and less clear, restore the baseline.
+- [ ] The rewrite is clearer than the original; otherwise restore the baseline.
 
 If any applicable verification box remains unchecked, finish the gap. If the gap cannot be closed within a behavior-preserving rewrite, or `kramme:verify:run` cannot execute a required gate, restore the recovery point and surface the failure. Do not leave a failed rewrite as the current result.

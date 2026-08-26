@@ -1,12 +1,8 @@
-# Security authoring checklist — extended
+# Security authoring checklist
 
-Purpose: the checkbox list in `SKILL.md` is the short version meant to be scanned fast before marking a slice done. This file is the long version, grouped by concern area, with per-item rationale.
+This checklist is the authoritative per-area completion gate for every security-sensitive slice. `SKILL.md` owns the cross-cutting state; this file owns the detailed checks grouped by concern area.
 
-Use this when:
-
-- The slice is non-trivial and the short checklist alone feels thin.
-- A reviewer flagged something and you want to confirm no sibling issue exists in the same area.
-- Onboarding the skill to a new surface (first auth flow, first upload, first third-party integration in the project).
+Complete every applicable area before marking the slice done, and record why any area is not applicable. When a reviewer flags one item, check its sibling items in the same area before closing the finding.
 
 ---
 

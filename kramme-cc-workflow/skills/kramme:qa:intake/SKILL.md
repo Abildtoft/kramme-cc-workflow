@@ -184,6 +184,8 @@ Print the new ticket URL(s) (or file paths for SIW/local). Then ask:
 
 > Next issue, or are we done?
 
+After filing 10 tickets in one session, pause before continuing and confirm the user still intends to keep filing rather than accumulating issues unintentionally.
+
 If the user says they are done — even informally ("that's it", "no more", "yeah that's the lot") — go to Step 4.
 
 ## Step 4: Close Out
@@ -270,7 +272,7 @@ For each child issue (file these **after** the parent so the parent ID is known)
 - **Scope:** one slice of the parent — does not cover [the other failure modes]
 ```
 
-A breakdown without a parent issue/container and without `Parent issue/report` lines on the children is invalid (see Red Flags).
+A breakdown without a parent issue/container and without `Parent issue/report` lines on the children is invalid (see Step 3c and Step 3d).
 
 ## Durability Rule
 
@@ -305,49 +307,12 @@ Use these markers verbatim. One per line, uppercase, no decoration.
 - **NOTICED BUT NOT TOUCHING** — the user mentioned an issue that is out of scope for this skill (an existing ticket, a code-level concern, a request to fix something now). `NOTICED BUT NOT TOUCHING: user asked me to fix the toast color directly — qa-intake only files tickets, deferring`.
 - **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — end-of-run epilogue (see Step 4).
 
-## Common Rationalizations
-
-Watch for these excuses — they signal the intake rubric is about to be softened.
-
-| Excuse | Reality |
-| --- | --- |
-| "The user gave me everything I need; let me ask three more for completeness." | The skill's value is rapid intake. Three "for completeness" questions per issue is the heavy interview the user explicitly opted out of by choosing this skill over `kramme:linear:issue-define`. |
-| "I'll just paste the helper name into the ticket — it's faster than translating." | The ticket lives for months; the helper name lives until the next refactor. Translate now. |
-| "It's all one report from the user, so it's one ticket." | The user's report shape is not the ticket shape. Three independent failure modes means three tickets even if the user described them in one breath. |
-| "The user said it's minor, so I'll skip the priority." | Unprioritized minor issues become noise in the queue. Either set low priority or tag low-priority explicitly. |
-| "Linear is unreachable, but I can describe the bug clearly enough — I'll skip filing." | Skipping defeats the skill's purpose. Fall back to SIW or `intake-issues/`; do not silently drop the report. |
-| "The user mentioned a file path, so I should keep it — it's helpful." | It is helpful for ten minutes and misleading for the next six months. Keep it out of the body. |
-
-## Red Flags — STOP
-
-Pause and resolve before filing if any of these are true:
-
-- More than 3 clarifying questions have been asked on a single issue.
-- A draft ticket body contains `:\d+`, a `src/` path, a file extension (`.ts`, `.tsx`, `.py`, `.go`, `.js`, `.jsx`), an import path, or a private helper name.
-- A breakdown is about to be filed without first emitting `PLAN` and getting the user's go-ahead — breakdown scope is the agent's decision, not implicitly approved.
-- A breakdown has been drafted without a parent issue/container, with child ID placeholders in the final parent body, without final child links on the parent, **or** without `Parent issue/report` lines on the children.
-- The user described an issue as "minor" or "not urgent" but the draft ticket has no low priority, low-priority label, or low-priority marker.
-- The Linear sink is selected but no `LINEAR_TEAM` has been resolved.
-- The SIW sink is selected but the issue file will not have a matching row in `siw/OPEN_ISSUES_OVERVIEW.md`, the General section's existing `**Parallelization:**` summary will be left stale, or the create will not be recorded in `siw/LOG.md`.
-- The SIW sink is selected and a breakdown parent is about to be created as a `G-*` issue or added to `siw/OPEN_ISSUES_OVERVIEW.md`.
-- A dependent child issue has a `Blocked by` line but its SIW status line still says `**Parallelization:** Safe to parallelize`.
-- The session has produced more than 10 tickets in one sitting and the user has not paused — confirm the user is still doing intentional intake, not piling on.
-- The skill is about to call a Linear issue update tool for anything except adding child links to the just-created breakdown parent, close a ticket, or write code — this skill files new tickets only.
-- No writable ticket sink has been resolved and the loop is about to start anyway.
-
 ## Verification
 
-Before ending each session, self-check:
+Before ending each session, cross-check the tickets actually created against their owning workflow rules:
 
-- [ ] `STACK DETECTED` was emitted at session start with the resolved sink.
-- [ ] If the sink is Linear, `LINEAR_TEAM` was resolved before the first issue was filed.
-- [ ] If the sink is SIW, every new actionable issue file has a matching `G-{NNN}` row in `siw/OPEN_ISSUES_OVERVIEW.md`, every breakdown parent summary lives outside `siw/issues/` and is absent from the overview, every created actionable issue is recorded in `siw/LOG.md`, and any existing General `**Parallelization:**` summary was updated or intentionally preserved as absent.
-- [ ] Each issue triggered at most 3 clarifying questions.
-- [ ] Each filed body passes the durability grep: no `:\d+`, no `src/`, no file extensions, no internal helper names.
-- [ ] Each filed body uses domain language from `UBIQUITOUS_LANGUAGE.md` (if present) or the user's own phrasing (if not).
-- [ ] Every breakdown was announced with `PLAN` and confirmed by the user before any of its tickets were filed.
-- [ ] Every breakdown has a parent issue/container with final child links and no child ID placeholders, plus `Parent issue/report` lines on the children.
-- [ ] Every dependent child issue with a `Blocked by` line has non-`Safe to parallelize` SIW parallelization metadata.
-- [ ] Every "minor"/"not urgent" issue has low priority, a low-priority label, or a low-priority marker.
-- [ ] No pre-existing ticket was modified or closed; any parent update only touched a ticket created during this same intake run.
-- [ ] The end-of-run epilogue lists `CHANGES MADE`, `THINGS I DIDN'T TOUCH`, and `POTENTIAL CONCERNS`.
+- Sink state is complete: Linear used the resolved team; SIW issue files, overview rows, log entries, and breakdown summaries agree; local files exist at the reported paths. Surface any partial write instead of reporting success.
+- Every filed body satisfies the durability and domain-language rules, and every priority, parent/child link, blocker, and breakdown-confirmation requirement is reflected in the created artifact.
+- No pre-existing ticket was modified or closed, and the Step 4 `CHANGES MADE`, `THINGS I DIDN'T TOUCH`, and `POTENTIAL CONCERNS` markers report the actual outcome.
+
+Correct any mismatch that is safe within the filing transaction; otherwise surface the partial state and recovery guidance.
