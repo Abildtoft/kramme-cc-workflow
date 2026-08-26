@@ -344,6 +344,14 @@ Product direction, demand validation, and product health feedback loops.
 | `/kramme:product:validate-demand` | User, Auto | `[idea or evidence] [--output <repo-relative-path>]` | Evaluate whether one concrete product idea has enough demand evidence to justify more work. Use when testing willingness to pay, the urgent first user, the status quo to displace, or the smallest paid wedge. Produces an evidence-labeled GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE verdict and one falsifiable action. Inline by default; writes a repository-scoped report only on request. Not for strategic inquiry, strategy, spec audits, design, promotion, or implementation. |
 | `/kramme:product:pulse` | User | `[lookback window, e.g. 24h, 7d, 1h] [--inline]` | Generate a time-windowed product pulse report in docs/pulse-reports/ covering usage, quality, errors, performance, customer signals, and followups. Use for weekly recaps, launch checks, "how are we doing", or strategy feedback loops. Works with partial or manual sources. Not for QA test reports, PR review, or editing STRATEGY.md directly. |
 
+#### Product Documentation
+
+Outside-in behavioral documentation grounded in implementation evidence and runtime observation.
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:product:describe-behavior` | User | `[product or surface] [--source <path>] [--output <path>] [--resume]` | Creates or resumes a repository-scoped product behavior corpus that describes an existing software surface from the user's perspective, grounds claims in source code and tests, verifies observable behavior against the running product, and triages discrepancies. Use when asked to document how a product, app, CLI, or workflow behaves feature by feature or to continue an existing behavior corpus. Not for preimplementation feature specs, one-off live-product reviews, API reference docs, or implementation. |
+
 #### Product Design
 
 Product critique and design-direction skills.

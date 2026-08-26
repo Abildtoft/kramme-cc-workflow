@@ -83,10 +83,10 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "rule_id": "TM1",
-      "reason": "Reviewed intentional TM1 finding for the Pull Request creation rollback path: the explicit empty-expectation force-with-lease creates only a branch proven absent, after branch-name validation and repeated open-Pull-Request checks, and fails closed if another actor creates the remote ref.",
+      "reason": "Re-reviewed intentional TM1 finding for Pull Request publication: the explicit empty-expectation force-with-lease creates only a branch proven absent, after branch-name validation and repeated open-Pull-Request checks, and fails closed if another actor creates the remote ref.",
       "owner": "kramme",
-      "accepted_at": "2026-07-25",
-      "review_after": "2026-08-25"
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",

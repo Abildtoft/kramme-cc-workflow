@@ -368,6 +368,11 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/SKILL.md"
     },
     {
+      "name": "kramme:product:describe-behavior",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:product:describe-behavior/SKILL.md"
+    },
+    {
       "name": "kramme:product:design-critic",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:product:design-critic/SKILL.md"
