@@ -1,6 +1,6 @@
 # State Preservation and Rollback
 
-Use this reference for `/kramme:pr:create` Step 5 (before invoking destructive sub-skills) and Step 10 (abort path).
+Use this reference for `/kramme:pr:create` Step 5 (before invoking destructive sub-skills) and Step 10 (abort path). These steps apply only when `FRESH_REMOTE_MODE=true`; existing exact-tip and fast-forward modes never rewrite local history and do not create rollback state.
 
 ## Agent-tracked state
 
@@ -25,9 +25,9 @@ Track these throughout the workflow:
 
 ## Step 5: State Preservation
 
-### 5.1 Prove Remote Absence and Prepare the Feature Branch
+### 5.1 Prove Fresh-Mode Remote Absence and Prepare the Feature Branch
 
-`{feature-branch}`, `{entry-branch}`, and `{entry-commit}` already passed the trust boundary in the branch-selection reference. Revalidate them directly before mutation. Set `{rollback-origin-ref}` to `refs/heads/{feature-branch}`, then query the authoritative remote state before creating or switching any branch:
+Require `FRESH_REMOTE_MODE=true`. `{feature-branch}`, `{entry-branch}`, and `{entry-commit}` already passed the trust boundary in the branch-selection reference. Revalidate them directly before mutation. Set `{rollback-origin-ref}` to `refs/heads/{feature-branch}`, then query the authoritative remote state before creating or switching any branch:
 
 ```bash
 NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
@@ -35,7 +35,7 @@ env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE
   git ls-remote --heads origin "{rollback-origin-ref}"
 ```
 
-Require the query to succeed and continue only when it returns no matching ref. Capture `<absent>` as `{rollback-origin-oid}`. A network, authentication, repository, or malformed-output failure is a blocker and must leave the invocation on its entry checkout.
+Require the query to succeed and continue only when it returns no matching ref. Capture `<absent>` as `{rollback-origin-oid}`. A network, authentication, repository, or malformed-output failure is a blocker and must leave the invocation on its entry checkout. This absence requirement protects only the fresh-remote rewrite path; Step 4 routes safe existing remotes around Step 5 without invoking a rewrite.
 
 If the successful query returns a full OID, stop before branch creation or `kramme:git:recreate-commits`. Never check out or adopt that remote branch.
 
@@ -56,7 +56,7 @@ git branch --show-current # -> {original-branch}
 git rev-parse HEAD        # -> {original-commit}
 ```
 
-Require `{original-branch}` to equal `{feature-branch}` and `{original-commit}` to be a full 40-character lowercase commit ID. A Git ref lease can protect a branch OID, but it cannot atomically prevent another actor from opening a Pull Request between a GitHub PR check and a force-push. Neither `--auto` nor `--authorize-history-rewrite` may bypass the remote-absence requirement.
+Require `{original-branch}` to equal `{feature-branch}` and `{original-commit}` to be a full 40-character lowercase commit ID. A Git ref lease can protect a branch OID, but it cannot atomically prevent another actor from opening a Pull Request between a GitHub PR check and a force-push. Neither `--auto` nor `--authorize-history-rewrite` may bypass this fresh-mode remote-absence requirement.
 
 Initialize state after recording the branch and commit:
 

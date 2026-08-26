@@ -811,6 +811,15 @@
       ]
     },
     {
+      "name": "pr-create-origin-push-url-helper",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/scripts/resolve-origin-push-url.sh",
+      "contains": [
+        "git remote get-url --push --all -- origin",
+        "must resolve to exactly one push URL",
+        "printf 'ORIGIN_PUSH_URL=%q\\n'"
+      ]
+    },
+    {
       "name": "pr-create-deferred-upstream-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
       "contains": [
@@ -838,8 +847,8 @@
         "NONINTERACTIVE_GIT_SSH_COMMAND=\"${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes\"",
         "GIT_SSH_COMMAND=\"$NONINTERACTIVE_GIT_SSH_COMMAND\"",
         "env GH_PROMPT_DISABLED=1 gh pr create",
-        "Do not use plain `--force`, an OID lease for a pre-existing remote ref",
-        "workflow's sole remote update before Pull Request creation"
+        "Do not use plain `--force`, an absence lease for a pre-existing remote ref",
+        "fresh mode's sole remote update before Pull Request creation"
       ]
     },
     {
@@ -858,10 +867,13 @@
       "name": "pr-create-existing-remote-orchestration",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
       "contains": [
-        "## Step 4.4: Classify Exact-Tip Existing-Remote Recovery",
+        "## Step 4.4: Finalize the Remote Mode",
+        "FRESH_REMOTE_MODE=true",
         "REMOTE_RECOVERY_MODE=true",
+        "REMOTE_FAST_FORWARD_MODE=true",
         "skip Steps 5 and 6",
-        "preserves the existing commit history",
+        "preserve the existing local commit history",
+        "git merge-base --is-ancestor \"{observed-origin-oid}\" \"{entry-commit}\"",
         "scripts/verify-clean-worktree.sh",
         "detects modified assume-unchanged tracked content",
         "never invokes `kramme:git:recreate-commits`"
@@ -884,9 +896,14 @@
       "contains": [
         "capture its exact full OID as `{observed-origin-oid}`",
         "Never adopt a remote branch selected from a different entry checkout",
-        "If the remote OID differs from `{entry-commit}`, stop",
         "record `{branch-action}=reuse-existing-exact-tip`",
-        "Do not fetch, push, or change upstream configuration"
+        "scripts/resolve-origin-push-url.sh",
+        "git ls-remote --heads -- \"{origin-push-url}\"",
+        "git fetch --no-tags --no-write-fetch-head -- \"{origin-push-url}\"",
+        "git merge-base --is-ancestor \"{observed-origin-oid}\" \"{entry-commit}\"",
+        "record `{branch-action}=fast-forward-existing-remote`",
+        "report that the remote contains commits absent locally",
+        "report genuine divergence"
       ]
     },
     {
@@ -897,6 +914,12 @@
         "Require `HEAD` to remain exactly `{entry-commit}`",
         "Require the authoritative remote OID to remain exactly `{observed-origin-oid}`",
         "Do not run `git push` in this mode",
+        "#### Existing remote fast-forward",
+        "git push --no-follow-tags",
+        "--force-with-lease=\"refs/heads/{feature-branch}:{observed-origin-oid}\"",
+        "\"{origin-push-url}\" \"{entry-commit}:refs/heads/{feature-branch}\"",
+        "Do not set or change upstream configuration in this existing-remote mode",
+        "The exact lease rejects every remote change after classification",
         "--head \"{feature-branch}\"",
         "prevents `gh pr create` from offering to push or fork",
         "headRefOid",
@@ -912,7 +935,7 @@
         "A Git ref lease can protect a branch OID",
         "cannot atomically prevent another actor from opening a Pull Request",
         "Never check out or adopt that remote branch",
-        "Neither `--auto` nor `--authorize-history-rewrite` may bypass the remote-absence requirement"
+        "Neither `--auto` nor `--authorize-history-rewrite` may bypass this fresh-mode remote-absence requirement"
       ]
     },
     {
