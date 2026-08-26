@@ -83,7 +83,7 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "rule_id": "TM1",
-      "reason": "Re-reviewed intentional TM1 finding for Pull Request publication: the explicit empty-expectation force-with-lease creates only a branch proven absent, after branch-name validation and repeated open-Pull-Request checks, and fails closed if another actor creates the remote ref.",
+      "reason": "Re-reviewed intentional TM1 finding for Pull Request publication: the fresh path uses an empty-expectation lease only for a branch proven absent, while the existing-remote path freezes one push endpoint, revalidates branch, clean-tree, immutable source OID, strict-ancestor, and remote-tip state, then uses an exact observed-OID lease with one refspec and tag following disabled. Both modes fail closed on concurrent Git-ref updates and never replace remote-only work; Pull Request ownership sequencing remains a separate workflow policy decision.",
       "owner": "kramme",
       "accepted_at": "2026-08-26",
       "review_after": "2026-09-26"
