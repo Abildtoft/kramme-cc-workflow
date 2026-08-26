@@ -1,0 +1,13 @@
+// Gesso Build skills@ab68f1878dd5f19ac8dee9d55d2f4313060cac83 | MIT | https://github.com/Gesso-Build/skills | src/cli.ts; src/engine.ts; src/rules.ts; src/types.ts
+// node-html-parser@7.0.1 | MIT | https://github.com/taoqf/node-fast-html-parser | dist/back.js; dist/index.js; dist/matcher.js; dist/nodes/comment.js; dist/nodes/html.js; dist/nodes/node.js; dist/nodes/text.js; dist/nodes/type.js; dist/parse.js; dist/valid.js; dist/void-tag.js
+// css-select@5.2.2 | BSD-2-Clause | https://github.com/fb55/css-select | lib/attributes.js; lib/compile.js; lib/general.js; lib/index.js; lib/pseudo-selectors/aliases.js; lib/pseudo-selectors/filters.js; lib/pseudo-selectors/index.js; lib/pseudo-selectors/pseudos.js; lib/pseudo-selectors/subselects.js; lib/sort.js
+// boolbase@1.0.0 | ISC | https://github.com/fb55/boolbase | index.js
+// css-what@6.2.2 | BSD-2-Clause | https://github.com/fb55/css-what | lib/commonjs/index.js; lib/commonjs/parse.js; lib/commonjs/stringify.js; lib/commonjs/types.js
+// domhandler@5.0.3 | BSD-2-Clause | https://github.com/fb55/domhandler | lib/index.js; lib/node.js
+// domutils@3.2.2 | BSD-2-Clause | https://github.com/fb55/domutils | lib/feeds.js; lib/helpers.js; lib/index.js; lib/legacy.js; lib/manipulation.js; lib/querying.js; lib/stringify.js; lib/traversal.js
+// domelementtype@2.3.0 | BSD-2-Clause | https://github.com/fb55/domelementtype | lib/index.js
+// dom-serializer@2.0.0 | MIT | https://github.com/cheeriojs/dom-serializer | lib/foreignNames.js; lib/index.js
+// entities@4.5.0 | BSD-2-Clause | https://github.com/fb55/entities | lib/decode.js; lib/decode_codepoint.js; lib/encode.js; lib/escape.js; lib/generated/decode-data-html.js; lib/generated/decode-data-xml.js; lib/generated/encode-html.js; lib/index.js
+// nth-check@2.1.1 | BSD-2-Clause | https://github.com/fb55/nth-check | lib/compile.js; lib/index.js; lib/parse.js
+// he@1.2.0 | MIT | https://github.com/mathiasbynens/he | he.js
+// Full license texts: ../references/THIRD_PARTY_NOTICES.md. Exact immutable package metadata: ../references/sources.yaml.
