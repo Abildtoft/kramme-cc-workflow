@@ -80,6 +80,35 @@ jobs:
       - name: Run session-search compatibility smoke tests
         run: python3 kramme-cc-workflow/tests/python/test_session_search_python38.py
 
+  node18-visual-check-slop:
+    name: Run visual check-slop on Node.js 18
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 18
+
+      - name: Check and fix HTML with the bundled runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs"
+          fixture="$(mktemp -d)"
+          trap 'rm -rf -- "$fixture"' EXIT
+          printf '%s\n' '<html><style>p{text-align:justify}</style><p>Copy</p></html>' >"$fixture/page.html"
+          if CHECK_SLOP_REPOSITORY_ROOT="$fixture" node "$runtime" check "$fixture/page.html" --json; then
+            echo "Expected a gating finding" >&2
+            exit 1
+          else
+            test "$?" -eq 1
+          fi
+          CHECK_SLOP_REPOSITORY_ROOT="$fixture" node "$runtime" fix "$fixture/page.html" --write --json
+          grep -q 'text-align:left' "$fixture/page.html"
+
   lint:
     name: Run static checks
     runs-on: ubuntu-latest

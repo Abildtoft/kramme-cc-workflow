@@ -21,3 +21,6 @@ kramme-cc-workflow/evals/**/fixtures/
 
 # Vendored browser asset
 kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js
+
+# Generated offline skill runtime (reproducibility checked by its Bats suite)
+kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs

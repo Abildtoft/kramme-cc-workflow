@@ -218,6 +218,11 @@
       "skills": ["kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md"]
     },
     {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/visual-check-slop.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:visual:check-slop/SKILL.md"]
+    },
+    {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/discovery-delegation-guidance.bats",
       "skills": [

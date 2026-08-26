@@ -127,6 +127,86 @@
       "owner": "kramme",
       "accepted_at": "2026-08-02",
       "review_after": "2026-09-02"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/rules.md",
+      "rule_id": "P2",
+      "reason": "Reviewed false-positive P2 findings in the copied rule catalog: the flagged HTML comments label inert before/after markup examples or carry visible source attribution; they contain no agent directives and are loaded only as explanatory reference material.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/THIRD_PARTY_NOTICES.md",
+      "rule_id": "EA3",
+      "reason": "Reviewed false-positive EA3 findings in the required third-party notices: `NOT LIMITED TO` is standard MIT warranty-disclaimer text reproduced verbatim for Gesso Build and node-html-parser, not an instruction granting the skill broader agency.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs",
+      "rule_id": "P2",
+      "reason": "Reviewed false-positive P2 findings in the bundled offline runtime: the flagged strings are node-html-parser's literal HTML-comment parser and matcher implementation, not hidden agent instructions; the bundle is reproducibly generated from pinned maintained source.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs",
+      "rule_id": "SC3",
+      "reason": "Reviewed intentional SC3 finding in the bundled node-html-parser distribution: the opaque static data is the parser dependency's entity lookup table, pinned to node-html-parser 7.0.1, covered by the shipped MIT notice, and reproduced by the repository build check.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs",
+      "rule_id": "P6",
+      "reason": "Reviewed false-positive P6 findings in the generated detector bundle: each match is ordinary TypeScript control flow compiled from functions that return a local rule or rules value, with no prompt or hidden-system-context access.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs",
+      "rule_id": "TM1",
+      "reason": "Reviewed false-positive TM1 findings in the generated detector bundle: `rm` is a local regular-expression match iterator used by CSS analysis, not the shell removal command, and the runtime does not spawn a shell or process.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/engine-sanitize.test.ts",
+      "rule_id": "P1",
+      "reason": "Reviewed false-positive P1 finding in the copied sanitizer test: the flagged prompt-injection phrase is inert fixture data that verifies detector evidence is escaped and never interpreted or executed.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/engine.ts",
+      "rule_id": "P6",
+      "reason": "Reviewed false-positive P6 findings in the maintained detector engine: the matches are ordinary functions returning local rule collections and have no prompt or hidden-system-context access.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/rules.ts",
+      "rule_id": "P6",
+      "reason": "Reviewed false-positive P6 findings in the maintained rule registry: the matches are ordinary helpers returning local rule definitions and have no prompt or hidden-system-context access.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/rules.ts",
+      "rule_id": "TM1",
+      "reason": "Reviewed false-positive TM1 findings in the maintained rule registry: `rm` is a local regular-expression match iterator used to inspect CSS declarations, not the shell removal command, and this module does not spawn a shell or process.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-26",
+      "review_after": "2026-09-26"
     }
   ]
 }
