@@ -160,10 +160,7 @@ def names_from_shell_reads(tool_input: JsonObject) -> Set[str]:
             if any(">" in token for token in segment):
                 continue
             if command_name == "sed" and any(
-                token == "-i"
-                or token.startswith("-i")
-                or token == "--in-place"
-                or token.startswith("--in-place=")
+                token == "-i" or token.startswith("-i") or token == "--in-place" or token.startswith("--in-place=")
                 for token in segment[command_index + 1 :]
             ):
                 continue
