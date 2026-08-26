@@ -282,7 +282,7 @@ HTML
   run bash -c '
     cd "$1"
     banner="$(cat "$4")"
-    node "$2" cli.ts \
+    "$2" cli.ts \
       --bundle \
       --platform=node \
       --format=esm \
