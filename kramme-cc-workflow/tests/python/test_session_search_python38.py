@@ -14,6 +14,7 @@ class SessionSearchPython38Tests(unittest.TestCase):
         for name in (
             "extract-errors.py",
             "extract-metadata.py",
+            "extract-skill-usage.py",
             "extract-skeleton.py",
         ):
             with self.subTest(name=name):

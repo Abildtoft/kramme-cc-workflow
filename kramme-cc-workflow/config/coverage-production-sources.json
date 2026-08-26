@@ -103,6 +103,9 @@
       "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-metadata.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
+      "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-skill-usage.py": [
+        "kramme-cc-workflow/tests/session-search-scripts.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-skeleton.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
