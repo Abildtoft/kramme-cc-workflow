@@ -133,6 +133,64 @@ assert data["changed_files"] == expected_changed_files, data
 PY
 }
 
+@test "collect-review-diff emits collected fields directly as NUL-delimited values" {
+	local fields="$TMP_DIR/collected-fields"
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	printf 'staged\n' >staged.txt
+	git add staged.txt
+
+	printf 'base\nunstaged\n' >tracked.txt
+	printf 'untracked\n' >untracked.txt
+
+	run bash -c '"$1" --format nul >"$2"' \
+		_ "$SCRIPT_DIR/collect-review-diff.sh" "$fields"
+
+	[ "$status" -eq 0 ]
+	run bash -c '
+    if ! {
+      IFS= read -r -d "" base_ref &&
+        IFS= read -r -d "" base_branch &&
+        IFS= read -r -d "" merge_base &&
+        IFS= read -r -d "" changed_files
+    } <"$1"; then
+      exit 1
+    fi
+    [ "$base_ref" = "refs/remotes/origin/main" ]
+    [ "$base_branch" = "main" ]
+    [ -n "$merge_base" ]
+    [ "$changed_files" = "$2" ]
+  ' _ "$fields" $'committed.txt\nstaged.txt\ntracked.txt\nuntracked.txt'
+	[ "$status" -eq 0 ]
+}
+
+@test "collect-review-diff NUL output preserves hostile values without evaluating them" {
+	local fields="$TMP_DIR/hostile-collected-fields"
+	local pwned="$WORK/nul-output-pwned"
+	local hostile='$(touch${IFS}nul-output-pwned)'
+	printf 'hostile\n' >"$hostile"
+
+	run bash -c '"$1" --format nul >"$2"' \
+		_ "$SCRIPT_DIR/collect-review-diff.sh" "$fields"
+
+	[ "$status" -eq 0 ]
+	[ ! -e "$pwned" ]
+	FIELDS_FILE="$fields" HOSTILE_FILE="$hostile" python3 - <<'PY'
+import os
+from pathlib import Path
+
+fields = Path(os.environ["FIELDS_FILE"]).read_bytes().split(b"\0")
+assert fields[0] == b"refs/remotes/origin/main", fields
+assert fields[1] == b"main", fields
+assert fields[2], fields
+assert fields[3] == os.environ["HOSTILE_FILE"].encode(), fields
+assert fields[4:] == [b""], fields
+PY
+	[ ! -e "$pwned" ]
+}
+
 @test "collect-review-diff decodes validated JSON fields once without evaluating content" {
 	local decoded="$TMP_DIR/decoded-fields"
 	local pwned="$TMP_DIR/decoder-pwned"
@@ -229,6 +287,18 @@ PY
 
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"Base resolution failed; see the message above and stop."* ]]
+}
+
+@test "collect-review-diff NUL output propagates resolver failure without partial fields" {
+	local fields="$TMP_DIR/failed-collected-fields"
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run bash -c '"$1" --strict --format nul >"$2"' \
+		_ "$SCRIPT_DIR/collect-review-diff.sh" "$fields"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Base resolution failed; see the message above and stop."* ]]
+	[ ! -s "$fields" ]
 }
 
 @test "collect-review-diff parses JSON resolver output without eval" {
@@ -396,6 +466,11 @@ PY
 
 @test "collect-review-diff rejects review-preparation options in decoder mode" {
 	run bash -c 'printf "%s" "$1" | "$2" --decode-json --exclude-review-artifacts' \
+		_ '{}' "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--decode-json cannot be combined with collection options"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json --format nul' \
 		_ '{}' "$SCRIPT_DIR/collect-review-diff.sh"
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"--decode-json cannot be combined with collection options"* ]]
