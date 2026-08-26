@@ -108,22 +108,26 @@ teardown() {
   grep -qF "The post-review working-tree manifest matches the pre-launch capture" "$DISCIPLINE"
 }
 
-@test "code review skill mandates read-only reviewers and checks tree integrity" {
-  grep -qF 'Instruct every reviewer that it is **read-only**' "$SKILL"
+@test "code review skill loads authoritative safety guidance and checks tree integrity" {
+  grep -qF 'Immediately before launching any standard reviewer, read `references/review-discipline.md`' "$SKILL"
+  grep -qF 'read `references/review-discipline.md` and then `references/team-mode.md`' "$SKILL"
+  grep -qF 'Treat that reference as authoritative; do not reconstruct or abbreviate those contracts' "$SKILL"
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$SKILL"
   grep -qF '**Working-tree integrity check.**' "$SKILL"
   grep -qF 'diff "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"' "$SKILL"
   grep -qF 'apply the mutation handling in the `Shared working tree` section of `references/review-discipline.md`' "$SKILL"
-  grep -qF "never revert or clean them" "$SKILL"
   grep -qF "stop without writing \`REVIEW_OVERVIEW.md\` and report the mutation instead" "$SKILL"
-  grep -qF "Parallel reviewers share one working tree" "$SKILL"
+  ! grep -qF 'No reviewer may create, edit, delete, move, or rename files' "$SKILL"
+  ! grep -qF 'never revert or clean them' "$SKILL"
 }
 
 @test "team mode carries the same read-only mandate and integrity check" {
   grep -qF 'Every teammate is **read-only**' "$TEAM_MODE"
+  grep -qF 'Pass the `Shared working tree`, `Reviewer calibration`, `Output markers`, and `Finding schema` sections' "$TEAM_MODE"
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$TEAM_MODE"
   grep -qF "**working-tree integrity check**" "$TEAM_MODE"
   grep -qF "TREE_MANIFEST_AFTER" "$TEAM_MODE"
+  ! grep -qF 'no creating, editing, deleting, moving, or renaming files' "$TEAM_MODE"
 }
 
 @test "output template can report a mutated working tree" {

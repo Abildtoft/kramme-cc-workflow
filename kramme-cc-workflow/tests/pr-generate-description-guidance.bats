@@ -36,6 +36,10 @@ load 'test_helper/common'
     ! grep -qF "DEFAULT_TEMPLATE_REF=\"\$BASE_REF\"" "$skill/references/context-gathering.md"
     ! grep -qF "### Automated verification" "$skill/assets/section-templates.md"
     ! grep -qF "add PR-specific signal beyond CI" "$skill/assets/section-templates.md"
+    [ "$(grep -cF "\`references/red-flags.md\`" "$skill/SKILL.md")" -eq 1 ]
+    grep -qF "Apply the \`Red Flags — STOP\` section from the already-loaded reference" "$skill/SKILL.md"
+    ! grep -qF "use proper heading hierarchy" "$skill/SKILL.md"
+    ! grep -qF "using tables for structured data" "$skill/SKILL.md"
   '
 
 	assert_required_contracts_registered \

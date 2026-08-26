@@ -50,7 +50,7 @@ Create a multi-agent review session named `pr-review` and use **delegate mode** 
 - **Claude Code:** create an Agent Team.
 - **Codex:** launch equivalent parallel review agents via multi-agent mode.
 
-Every teammate is **read-only**, under the `Shared working tree` section of `references/review-discipline.md`. Team mode is the highest-risk shape for this: teammates work concurrently in one working tree that usually holds uncommitted work, so a file one teammate edits becomes false evidence for every other teammate, and the resulting fabricated findings cite real files and real lines. Give each teammate the constraint verbatim: no creating, editing, deleting, moving, or renaming files; no staging, committing, stashing, resetting, or checking out; no commands that rewrite files as a side effect, including formatters, `--fix` linters, codemods, dependency installs, and test runners that update snapshots or golden files. Recommended code changes go in the finding text, not into the tree.
+Every teammate is **read-only** under `references/review-discipline.md`. Pass the `Shared working tree`, `Reviewer calibration`, `Output markers`, and `Finding schema` sections from that reference to every teammate verbatim; do not reconstruct or abbreviate them here.
 
 Capture the pre-spawn working-tree manifest before creating the session, using the same command as `/kramme:pr:code-review` Step 7:
 
@@ -70,32 +70,6 @@ Each teammate must use the PR description in two ways:
 
 - As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
 - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction. Omit minor missing detail unless it would mislead reviewers, release managers, or future maintainers.
-
-Each teammate must also apply this **Codebase Calibration Rule** before making a finding or recommending a fix:
-
-- Match the existing practices in the touched files and nearby code. A defensive check, validation layer, retry, log, catch block, or runtime type guard is appropriate only when it fits the local style, an explicit project rule, or a concrete failure path introduced by the review scope.
-- If the codebase relies on framework guarantees, schema validation, type narrowing, generated types, trusted internal callers, or centralized error boundaries, do not require redundant local guards unless this diff crosses a trust boundary or weakens that guarantee.
-- If the local practice looks risky but the PR does not introduce or worsen it, label it `NOTICED BUT NOT TOUCHING` instead of making it a required finding.
-- If the reviewer cannot prove the failure path from the diff, call it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
-- Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
-
-Each teammate must also apply this **Overengineering Check** alongside the calibration rule:
-
-- The right solution is the simplest one that fully and reliably meets the specific requirements and fits the existing architecture and established patterns of the codebase. Judge the diff against that bar, and hold every recommended fix to the same bar.
-- Flag complexity the current task does not require: premature abstractions, unnecessary layers or indirection, speculative generality (configuration, parameters, or extension points with a single real caller or value), handling for purely hypothetical edge cases, and functionality beyond the change's scope. Name the concrete simpler alternative in the finding.
-- Do not flag handling of real and likely edge cases as overengineering; robustness for failure paths the review scope actually introduces is required work, not speculation. The line is hypothetical future scenarios, not present requirements.
-- Overengineering findings default to Suggestion with action class `advisory`. Classify one as Important only when the unnecessary complexity has concrete present cost: it conceals or invites a bug, materially obscures the change under review, or creates a public surface other code must adopt.
-- Never recommend a fix that adds abstractions, layers, or hypothetical edge-case handling beyond what the finding's evidence requires; recommend the smallest direct change that resolves the finding.
-- Label every finding produced by this check with `OVERENGINEERING` on its own line so aggregation can apply cleanup precedence independently of the source reviewer.
-
-Each teammate must return the shared finding schema from `references/review-discipline.md`: severity, location, confidence, action class, owner, evidence, and relevance status. Leave Finding ID blank in raw teammate output; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe so team output stays compatible with standard `/kramme:pr:code-review`.
-
-Treat teammate action classes as provisional. The final team aggregator must apply the same action-class normalization pass as standard `/kramme:pr:code-review` Step 11:
-
-- Critical/Important PR-caused findings default to `gated_auto` when they have a concrete `path/to/file:line` location, confidence at least 70, concrete evidence, and a clear local fix path.
-- Keep Critical/Important findings as `manual` only under the **manual blocker tests** in `references/review-discipline.md`, and apply that section's tiebreaker and manual-heavy re-test exactly as written: a finding matching a named blocker never "plausibly fits both", and a low-confidence dead-code finding stays `manual` until the ask is answered, while a high-confidence, fully traced dead-code finding is `gated_auto`.
-- Every manual Critical/Important finding must include `Manual blocker` and `Next human decision`.
-- If no manual blocker exists, reclassify the finding to `gated_auto` or downgrade it to an advisory suggestion.
 
 Use the same reviewer taxonomy as the standard workflow:
 
@@ -184,16 +158,11 @@ Then aggregate:
 1. Apply the deslop-reviewer's meta-review annotations
 2. Apply the relevance-validator's filtering
 3. Apply previous-review context (same logic as `/kramme:pr:code-review` Step 10): filter only `addressed` matches, carry forward still-relevant `open`, `deferred`, `acknowledged`, or `skipped` matches as active findings
-4. Dedupe only findings with the same concrete location or review scope and the same root cause
-5. Promote confidence only when independent teammates confirm the same issue; keep similar-but-different findings separate
-6. Record contradictions as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`
-7. Apply the same correctness/security precedence pass as standard `/kramme:pr:code-review` Step 11 before emphasis or action-class normalization:
-   - Treat lean-reviewer and cleanup-mode code-simplifier findings as cleanup-dimension findings, and treat findings labeled `OVERENGINEERING` by any teammate the same way.
-   - Treat unresolved Critical/Important findings from code-reviewer, silent-failure-hunter, pr-test-analyzer, type-design-analyzer, injection-reviewer, auth-reviewer, data-reviewer, and logic-reviewer as higher-priority correctness/security findings.
-   - If a cleanup finding would remove or weaken validation, auth, injection protection, data protection, error propagation, test coverage, type invariants, or the fix path for an unresolved correctness/security finding, do not promote it, do not assign `gated_auto`, and either drop it or keep it only as an advisory Suggestion blocked by the higher-priority finding.
-8. Apply emphasis using the standard `/kramme:pr:code-review` Step 11 rules. Cleanup-dimension findings may be promoted only provisionally; action-class normalization wins and moves optional cleanup without concrete merge-blocking impact back to Suggestions with action class `advisory`.
-9. Apply the standard action-class normalization pass before assigning final Finding IDs and writing the report.
-10. After final IDs are assigned, revisit any kept cleanup-collision Suggestions and replace their provisional blocker text with the final blocking `CR-XXX` ID. Do not promote or reclassify cleanup findings during this ID reconciliation.
+4. Apply the `Confidence and merge rules` section of `references/review-discipline.md` exactly.
+5. Apply the `Correctness and security precedence` section of `references/review-discipline.md` exactly before emphasis or action-class normalization.
+6. Apply emphasis using the standard `/kramme:pr:code-review` Step 11 rules.
+7. Apply the `Action classes`, `Severity and action-class compatibility`, and `Manual blocker tests` sections of `references/review-discipline.md` exactly before assigning final Finding IDs.
+8. After final IDs are assigned, reconcile cleanup-collision blocker references as required by the authoritative discipline reference.
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 
@@ -201,15 +170,7 @@ If `INLINE_MODE=true`, reply with the aggregated review inline using the same te
 
 Otherwise, write the aggregated review to `REVIEW_OVERVIEW.md` using the same template and conventions as `/kramme:pr:code-review` Steps 11-13.
 
-Keep the output schema-compatible with the standard PR review:
-
-- Keep the same severity prefix grammar (`Critical:`, `Nit:`, `Optional:`, `Consider:`, `FYI`)
-- Include Finding ID, location, confidence, action class, owner, resolution status, and evidence for every active finding
-- Include `Manual blocker` and `Next human decision` for every manual Critical/Important finding
-- Include the `## Auto-resolution Readiness` section from the standard template
-- Include the `## Previous Review Context` section verbatim so explicit `--previous-review` sources and carry-forward counts are visible
-- Use `NOTICED BUT NOT TOUCHING` for pre-existing or out-of-scope notes
-- Include the `## Approval Standard` section verbatim
+Use `references/output-template.md` and the `Finding schema` and `Severity prefix grammar` sections of `references/review-discipline.md` exactly; do not reconstruct the standard output contract here.
 
 Fold team-specific context into the existing schema instead of inventing a separate report shape:
 

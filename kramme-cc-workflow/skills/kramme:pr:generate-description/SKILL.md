@@ -293,18 +293,7 @@ Read `references/visual-capture.md` and follow **Phase 3.5** to delegate evidenc
 
 ### Phase 4: Output Formatting
 
-**ALWAYS** format the output as clean Markdown:
-
-1. **ALWAYS** use proper heading hierarchy (##, ###)
-2. **ALWAYS** use code blocks with language hints for code snippets
-3. **ALWAYS** use bullet points and numbered lists for readability
-4. **PREFER** using tables for structured data (if applicable)
-5. **NEVER** include meta-commentary or placeholders like `[TODO]` or `[Fill this in]`
-6. **NEVER** include AI attribution or badges such as:
-   - `🤖 Generated with [Claude Code](https://claude.ai/code)`
-   - `Generated with Claude Code`
-   - `Co-Authored-By: Claude` or similar
-   - Any mention of AI assistance in the description
+Use the selected GitHub template or `assets/section-templates.md` as the Markdown structure. Never include meta-commentary, placeholders such as `[TODO]` or `[Fill this in]`, AI attribution, AI badges, or AI co-author lines.
 
 #### If `DIRECT_UPDATE=true`: Update PR directly
 
@@ -380,11 +369,11 @@ Use these uppercase markers when reasoning about the description generation. The
 
 ## Common Rationalizations
 
-Read `references/red-flags.md` before finalizing. It covers common rationalizations that under-serve the reviewer.
+Before finalizing, read `references/red-flags.md` once. It owns both common rationalizations and red-flag stop conditions.
 
 ## Red Flags
 
-Read `references/red-flags.md` before finalizing. Stop and regenerate when the draft uses vague summary nouns, mirrors a file list, hides migration risk, includes automated testing instructions in the Test Plan, references spec files, or includes AI-attribution badges.
+Apply the `Red Flags — STOP` section from the already-loaded reference and regenerate when any condition matches.
 
 ## Verification
 

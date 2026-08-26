@@ -1,6 +1,6 @@
 # Review discipline
 
-Guidance for the spawned review agents and for the orchestrator's final-check pass. SKILL.md references this file from Step 7 (when instructing each reviewer) and Step 13 (before posting the aggregated report).
+Authoritative finding and safety guidance for spawned review agents and the orchestrator's aggregation and final-check passes. Both the standard and Team Mode workflows read this file before launching reviewers, pass its reviewer-facing rules to every reviewer, and use its aggregation rules before posting the report.
 
 ## Shared working tree
 
@@ -21,6 +21,25 @@ The orchestrator captures a working-tree manifest before launching reviewers and
 - Report the mutated paths in `## Coverage Status` so the human can inspect them. Never revert or clean them automatically; uncommitted work in that tree may be the user's, not a reviewer's.
 
 The manifest covers tracked paths differing from `HEAD` plus untracked, non-ignored paths. It does not cover ignored files, so build output and caches written by a stray command stay invisible to it.
+
+## Reviewer calibration
+
+Apply these rules before making a finding or recommending a fix:
+
+- Match the existing practices in the touched files and nearby code. A defensive check, validation layer, retry, log, catch block, or runtime type guard is appropriate only when it fits the local style, an explicit project rule, or a concrete failure path introduced by the review scope.
+- If the codebase relies on framework guarantees, schema validation, type narrowing, generated types, trusted internal callers, or centralized error boundaries, do not require redundant local guards unless this diff crosses a trust boundary or weakens that guarantee.
+- If the local practice looks risky but the PR does not introduce or worsen it, label it `NOTICED BUT NOT TOUCHING` instead of making it a required finding.
+- If the reviewer cannot prove the failure path from the diff, label it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
+- Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
+
+### Overengineering check
+
+- Judge the diff and every recommended fix against the simplest solution that fully and reliably meets the specific requirements and fits the existing architecture and established patterns.
+- Flag complexity the current task does not require: premature abstractions, unnecessary layers or indirection, speculative configuration or extension points, hypothetical edge-case handling, and functionality beyond the change's scope. Name the concrete simpler alternative.
+- Do not flag handling of real and likely edge cases as overengineering. Robustness for failure paths introduced by the review scope is required work.
+- Overengineering findings default to Suggestion with action class `advisory`. Classify one as Important only when the unnecessary complexity has concrete present cost: it conceals or invites a bug, materially obscures the change, or creates a public surface other code must adopt.
+- Recommend the smallest direct fix supported by the evidence; never add abstractions, layers, or hypothetical edge-case handling beyond it.
+- Label every finding produced by this check with `OVERENGINEERING` on its own line so aggregation applies cleanup precedence independently of the source reviewer.
 
 ## Review speed norm
 
@@ -49,8 +68,12 @@ Every active finding must include these fields before it is posted:
 | Action class | `gated_auto`, `manual`, `advisory` | Separates urgency from safe ownership. |
 | Owner | resolver, author, maintainer, reviewer, unknown | Names who can act next. |
 | Evidence | concrete trace, location, reproduction, failed expectation, or `UNVERIFIED` reason | Prevents unsupported findings from becoming gatekeeping. |
+| Relevance status | PR-caused, pre-existing/out-of-scope, previously addressed, unresolved pending validation | Preserves the validator's classification without replacing the raw finding. |
+| Resolution status | open, addressed, deferred, acknowledged, skipped | Records finding lifecycle; new active findings start as `open`. |
 | Manual blocker | product/UX/architecture/maintainer decision, missing/contradictory requirement, PR-description/process update, cross-team/external ownership, unresolved contradiction, incomplete trace/UNVERIFIED, or dead-code approval | Required only for manual Critical/Important findings. Names why `/kramme:pr:resolve-review` must not act automatically. |
 | Next human decision | one concrete decision, approval, clarification, access grant, or verification step | Required only for manual Critical/Important findings. Makes the manual follow-up actionable instead of a silent skip. |
+
+Raw reviewers leave `Finding ID` blank; the aggregator assigns stable `CR-001`, `CR-002`, ... IDs after dedupe. Treat raw reviewer action classes as provisional because the aggregator owns the final action class, owner, and manual-follow-up fields.
 
 ## Severity prefix grammar
 
@@ -97,7 +120,7 @@ Because `high` maps to 80, an auto-removable dead-code finding usually sits in t
 - Critical and Important findings may use only `gated_auto` or `manual`; they must not use `advisory` because those buckets represent blocking or recommended work.
 - Suggestions and FYI observations use `advisory`; do not mark optional work as `manual` just because a human would perform it.
 - If a finding feels optional, put it in Suggestions instead of keeping it in Critical/Important with `advisory`.
-- Critical or Important PR-caused findings default to `gated_auto` when they have a concrete `path/to/file:line` location, confidence at least 70, concrete evidence, and a clear local fix path.
+- Critical or Important PR-caused findings default to `gated_auto` with owner `resolver` when they have a concrete `path/to/file:line` location, confidence at least 70, concrete evidence, and a clear local fix path.
 - If a Critical or Important finding cannot be auto-resolved, keep it `manual` only with a named manual blocker and a specific next human decision.
 - If a manual Critical/Important finding has a concrete file location, confidence at least 70, and no named manual blocker, reclassify it to `gated_auto`.
 
@@ -123,8 +146,22 @@ Keep a Critical or Important finding as `manual` only when at least one blocker 
 - **60-89 confidence** means the issue is strongly indicated by the diff but still depends on a nearby assumption, framework behavior, or untested runtime state.
 - **0-59 confidence** means the issue is plausible but not traced. Keep the `UNVERIFIED` marker visible and avoid merge-blocking language unless another reviewer proves the same risk.
 - Merge duplicate findings only when they identify the same concrete location or review scope and the same root cause.
+- Keep the highest severity across merged duplicates, combine their evidence, and preserve every source reviewer.
 - Promote confidence only when independent reviewers agree on the same issue, not merely the same broad concern.
-- Keep contradictory findings separate and record the conflict as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`.
+- Do not merge findings that only share a broad theme but require different fixes.
+- Keep contradictory findings separate and record the conflict as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`; use Critical or Important only when its impact blocks approval.
+- A retained `UNVERIFIED` finding stays below 60 confidence and uses `manual` or `advisory` unless concrete evidence separately proves the risk.
+
+## Correctness and security precedence
+
+Apply this pass before emphasis and action-class normalization:
+
+- Treat findings from `kramme:lean-reviewer` and cleanup-mode `kramme:code-simplifier` as cleanup-dimension findings (`lean`, `refactor`, `simplify`). Treat findings labeled `OVERENGINEERING` by any reviewer the same way.
+- Treat unresolved Critical or Important findings from `kramme:code-reviewer`, `kramme:silent-failure-hunter`, `kramme:pr-test-analyzer`, `kramme:type-design-analyzer`, `kramme:injection-reviewer`, `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:logic-reviewer` as higher-priority correctness/security findings while active.
+- A cleanup finding collides when its recommendation would remove or weaken validation, auth, authorization, injection protection, data protection, error propagation, test coverage, type invariants, or the concrete fix path of an unresolved correctness/security finding.
+- Do not promote a colliding cleanup finding, classify it as Critical or Important, or assign it `gated_auto`. Either drop it as redundant or unsafe, or keep it as an advisory Suggestion with evidence: `Blocked by the matching correctness/security finding; revisit after that finding is resolved.` After final IDs are assigned, replace the provisional blocker with the blocking `CR-XXX` ID.
+- Preserve the correctness/security finding unchanged. Append cleanup-collision context only when it helps the resolver avoid an unsafe cleanup path.
+- If the cleanup remains valid after the higher-priority fix, keep it as an advisory Suggestion and name the dependency. If it requires choosing a different correctness/security fix, record a `CONFUSION` manual finding instead of silently choosing the cleanup path.
 
 ## Common rationalizations
 
