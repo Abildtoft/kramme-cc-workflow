@@ -108,6 +108,11 @@
       "path": "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md"
     },
     {
+      "name": "kramme:debug:find-sibling-bugs",
+      "invocation": "User, Auto",
+      "path": "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md"
+    },
+    {
       "name": "kramme:debug:investigate",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:debug:investigate/SKILL.md"
