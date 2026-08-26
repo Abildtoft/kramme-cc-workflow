@@ -123,7 +123,8 @@ Before step 1, add a **rollout profile** to the launch ticket:
 - Trustworthy baselines, SLOs, and evidence links or queries.
 - Confirmed stages, exposure sizes or cohorts, and monitoring windows.
 - Named rollback/control mechanism, authority, rehearsal environment and plan, and expected recovery time. Record the drill result before production exposure.
-- Feature-flag capability, if any, plus the chosen control strategy.
+- Feature-flag capability, if any, plus the chosen control strategy. Prefer a feature flag when the platform supports it and the risk warrants cohort control; otherwise name and rehearse an equivalent reversible deploy, configuration, cohort, or traffic control.
+- When the chosen control is a change-specific feature flag, schedule its cleanup ticket with an owner and expiration date before step 1.
 - Staffed support window and on-call owner.
 - Any fallback value, labeled `FALLBACK — confirmed by <name> on <date>`.
 
@@ -231,32 +232,7 @@ Complete all six. Do not skip any "because it always works" — the one time it 
 
 ## Product pulse handoff
 
-At every hold, rollback, gate advance, and final completion, refresh one compact block in the launch ticket. Keep raw observation rows append-only; the handoff summarizes and points to them rather than copying every sample.
-
-```markdown
-## PRODUCT PULSE HANDOFF
-
-- Stable launch identity: <immutable release/artifact/deploy ID or canonical launch ID>
-- Evidence window: <start UTC> to <stop UTC>
-- Release / launch: <release identity and current gate>
-- Source launch ticket: <URL or path; mark temporary when it will be retired>
-- Durable evidence record: <approved retained URL/path, or pending until the record is created>
-- Decision history and current outcome: <advance | hold | rollback | complete, with timestamps>
-- Sampling plans and observation record: <ticket section containing every gate/plan ID and all append-only sample rows>
-
-| Source ID | Provenance | Dimensions | Evidence window | Source evidence pointer | Durable evidence pointer | Limitations |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| <stable ID> | <provider telemetry/query | issue/support export | operator/manual | unavailable> | <usage, quality, errors, performance, customer signals> | <UTC range> | <dashboard/query/export/ticket row> | <retained record section or approved access-controlled record> | <coverage or access limits> |
-
-- Unresolved signals and requirements: <every yellow/red observation, CONFUSION, UNVERIFIED, and MISSING REQUIREMENT entry, including owners and stop boundaries, or none>
-- Coverage gaps and owners: <missing or partial source, owner, stop boundary, and next step, or none>
-```
-
-Keep the stable launch identity, gate / plan IDs, and Source IDs unchanged when the same launch evidence is refreshed or copied. Do not label the whole handoff measured: provenance stays attached to each source so a later pulse can distinguish telemetry, manual observations, and unavailable evidence. Before retiring a temporary launch ticket, create exactly one canonical durable evidence record: run `kramme:product:pulse` in file mode while the ticket remains available and verify its report contains this handoff, every gate's complete sampling plan, and every append-only observation row, or copy the same material to an approved durable launch tracker and point the pulse input at it. Later pulse reports reference that canonical record instead of duplicating its complete history.
-
-Before copying evidence, verify the durable destination's audience is no broader than the source and that its retention is appropriate. Never persist secrets, credentials, credential-bearing URLs, or unredacted personal/customer data in repository reports. Minimize internal identifiers and raw payloads; when an unsanitized audit copy is required, keep it in a source-equivalent access-controlled system and retain only a sanitized summary plus opaque pointer in the pulse report. If no safe durable destination exists, emit `MISSING REQUIREMENT` and retain the temporary ticket.
-
-Preserve cadence and its source, original start and stop bounds, decision queries, threshold sources, denominators, sample-sufficiency rules and states, early stop conditions, watcher or recurrence details, decision history, unresolved markers, and limitations. Running `kramme:product:pulse` is not by itself proof that the evidence is durable. Before cleanup, replace every temporary ticket-row pointer with a durable record pointer, verify every retained evidence pointer will remain resolvable after retirement, and confirm the canonical record will remain accessible. Do not retire a temporary `LAUNCH.md` while it contains the only copy of unconsumed handoff evidence.
+At every hold, rollback, gate advance, and final completion, read `assets/product-pulse-handoff.md` completely before preparing or refreshing the handoff. Follow its template, provenance, privacy, retention, and durability rules; do not produce handoff fields before loading it.
 
 ## Temporary-control cleanup
 
@@ -271,40 +247,7 @@ Removing a flag means removing the check, the off-state code path, the flag-serv
 
 ## Rollback plan template
 
-Every rollout needs a documented rollback plan _before_ step 1. Fill this in for the launch ticket:
-
-```markdown
-## Rollback Plan for [Feature/Release]
-
-### Trigger Conditions
-
-- Error rate > [confirmed red threshold and baseline source].
-- P95 latency > [confirmed red threshold or SLO].
-- User reports of [specific expected failure mode].
-- [Any feature-specific trigger and its evidence source].
-
-### Rollback Steps
-
-1. Execute the pre-agreed control:
-   - **Flag flip** — disable the feature flag in the flag UI (expected time: [drill result]), or
-   - **Reversible deploy / traffic or configuration change** — follow [runbook step] (expected time: [drill result]).
-2. Verify the rollback: health check returns 200, error rate returns to baseline.
-3. Communicate: notify the team channel and on-call that a rollback occurred.
-4. Open a postmortem ticket within the organization-policy incident window.
-
-### Database Considerations
-
-- Migration [X] rollback: [specific command / procedure, or "N/A — schema is backward-compatible"].
-- Data inserted by the new feature: [preserved / cleaned up / quarantined].
-
-### Time-to-Rollback
-
-- Selected control: [measured or rehearsed duration].
-- Deploy rollback: [measured or rehearsed duration].
-- Database rollback (if needed): [measured or rehearsed duration].
-```
-
-A rollback plan that does not fit in the launch ticket is too vague to execute under pressure.
+Every rollout needs a documented rollback plan _before_ step 1. Read `assets/rollback-plan.md` completely before preparing the plan, then fill its template into the launch ticket before step 1.
 
 ## Output summary template
 
@@ -332,22 +275,6 @@ This template replaces handwavy "launch looks good" posts. It documents what hap
 - **Pre-merge** — review, verification, QA, and PR description checks happen before merge. This skill picks up at the merge commit.
 - **Verification sub-skills** — the pre-launch checklist touches security / performance / accessibility territory owned by sibling skills. The content here is inlined deliberately (self-contained rule). If a sibling skill has deeper content, read it during pre-flight and bring the conclusions back; do not reach into sibling skill files at runtime.
 - **Future siblings** — `kramme:launch:monitor` (post-launch canary surveillance via browser MCP) and `kramme:launch:rollback` (execute a rollback when thresholds are breached) are deferred until demand appears. Both would extend this skill, not replace it.
-
-## Common Rationalizations
-
-The lies engineers tell themselves to skip rollout discipline. Each one has a correct response.
-
-| Rationalization | Reality |
-| --- | --- |
-| "It works in staging, it'll work in production." | Production has different data, traffic, and edge cases. Staging validates that the code runs; production validates that the code works. |
-| "It's a small change, skip the canary." | Size alone does not determine risk. Use the confirmed risk, blast radius, and rollback profile to choose the smallest evidence-producing stage. |
-| "We don't need a feature flag for this." | A flag is preferred when the platform supports it and the risk warrants it. Otherwise name and rehearse an equivalent reversible deploy, configuration, cohort, or traffic control; stop if none is credible. |
-| "Monitoring is overhead." | Not having monitoring means discovering problems from user complaints. That's a worse kind of overhead — and you cannot debug what you cannot see, so add it before launch, not later. |
-| "The metric moved, but it's probably fine." | Apply the confirmed threshold and sample rule. "Probably fine" is not a decision rule. |
-| "Rolling back is admitting failure." | Rolling back is responsible engineering. Shipping a broken feature is the failure. |
-| "We'll clean up the flag later." | Later is never. Schedule the cleanup ticket before starting the rollout. |
-| "The on-call will watch it." | The on-call may not know this feature. The launch owner must cover the confirmed staffed support window. |
-| "It's Friday afternoon, let's ship it." | Check organization policy, rollback readiness, outcome timing, and staffed coverage. Ship only when the approved support window can be honored; the weekday alone is not the decision rule. |
 
 ## Red Flags
 

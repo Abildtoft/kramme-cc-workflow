@@ -5,9 +5,92 @@ setup() {
 	SKILL="$PLUGIN_ROOT/skills/kramme:launch:rollout/SKILL.md"
 	PULSE_SKILL="$PLUGIN_ROOT/skills/kramme:product:pulse/SKILL.md"
 	PULSE_TEMPLATE="$PLUGIN_ROOT/skills/kramme:product:pulse/assets/pulse-report-template.md"
+	PULSE_HANDOFF="$PLUGIN_ROOT/skills/kramme:launch:rollout/assets/product-pulse-handoff.md"
+	ROLLBACK_PLAN="$PLUGIN_ROOT/skills/kramme:launch:rollout/assets/rollback-plan.md"
 	FLAG_RULES="$PLUGIN_ROOT/skills/kramme:launch:rollout/references/feature-flag-rules.md"
 	CHECKLIST="$PLUGIN_ROOT/skills/kramme:launch:rollout/references/pre-launch-checklist.md"
 	THRESHOLDS="$PLUGIN_ROOT/skills/kramme:launch:rollout/references/rollout-thresholds.md"
+}
+
+@test "launch rollout loads templates only at their producing phases" {
+	run python3 - "$SKILL" "$PULSE_HANDOFF" "$ROLLBACK_PLAN" <<'PY'
+import pathlib
+import sys
+
+skill = pathlib.Path(sys.argv[1]).read_text()
+pulse = pathlib.Path(sys.argv[2]).read_text()
+rollback = pathlib.Path(sys.argv[3]).read_text()
+
+pulse_path = "assets/product-pulse-handoff.md"
+rollback_path = "assets/rollback-plan.md"
+missing = []
+
+if skill.count(pulse_path) != 1:
+    missing.append("one product-pulse asset load")
+if skill.count(rollback_path) != 1:
+    missing.append("one rollback asset load")
+if not (skill.index("## Product pulse handoff") < skill.index(pulse_path) < skill.index("## Temporary-control cleanup")):
+    missing.append("product-pulse phase load timing")
+if not (skill.index("## Rollback plan template") < skill.index(rollback_path) < skill.index("## Output summary template")):
+    missing.append("rollback phase load timing")
+if "## PRODUCT PULSE HANDOFF" in skill or "## Rollback Plan for [Feature/Release]" in skill:
+    missing.append("templates removed from root skill")
+if "## PRODUCT PULSE HANDOFF" not in pulse:
+    missing.append("product-pulse template asset")
+if "## Rollback Plan for [Feature/Release]" not in rollback:
+    missing.append("rollback template asset")
+
+required_rollback = {
+    "confirmed trigger thresholds": "confirmed red threshold and baseline source",
+    "latency trigger": "P95 latency > [confirmed red threshold or SLO]",
+    "user-report trigger": "User reports of [specific expected failure mode]",
+    "feature-specific trigger": "[Any feature-specific trigger and its evidence source]",
+    "flag rollback path": "**Flag flip**",
+    "non-flag rollback path": "**Reversible deploy / traffic or configuration change**",
+    "rollback verification": "Verify the rollback: health check returns 200, error rate returns to baseline.",
+    "rollback communication": "Communicate: notify the team channel and on-call that a rollback occurred.",
+    "postmortem follow-up": "Open a postmortem ticket within the organization-policy incident window.",
+    "migration rollback": "Migration [X] rollback: [specific command / procedure, or \"N/A — schema is backward-compatible\"]",
+    "inserted-data disposition": "Data inserted by the new feature: [preserved / cleaned up / quarantined]",
+    "selected-control timing": "Selected control: [measured or rehearsed duration]",
+    "deploy-rollback timing": "Deploy rollback: [measured or rehearsed duration]",
+    "database-rollback timing": "Database rollback (if needed): [measured or rehearsed duration]",
+}
+missing.extend(name for name, phrase in required_rollback.items() if phrase not in rollback)
+if "Read `assets/rollback-plan.md` completely before preparing the plan" not in skill:
+    missing.append("rollback phase-specific asset load")
+if "fill its template into the launch ticket before step 1" not in skill:
+    missing.append("rollback template before-step-1 deadline")
+
+raise SystemExit("missing just-in-time template contracts: " + ", ".join(missing) if missing else 0)
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "launch rollout retains every safety answer after removing rationalizations" {
+	run python3 - "$SKILL" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text()
+required = {
+    "staging does not replace production evidence": "Production deployment at no or minimal exposure, when supported",
+    "small changes still use risk and blast radius": "Change risk and blast radius.",
+    "feature flags preferred when risk warrants": "Prefer a feature flag when the platform supports it and the risk warrants cohort control",
+    "feature flags have reversible alternatives": "otherwise name and rehearse an equivalent reversible deploy, configuration, cohort, or traffic control.",
+    "monitoring is mandatory": "No monitoring or error reporting in production for the changed code path.",
+    "metric movement follows the decision rule": "Any yellow** — hold, investigate, advance only when cleared.",
+    "red signals roll back": "Any red** — roll back immediately.",
+    "feature flags schedule cleanup before rollout": "When the chosen control is a change-specific feature flag, schedule its cleanup ticket with an owner and expiration date before step 1.",
+    "staffed support is required": "staffed support window are not deferrable before production exposure",
+    "release timing follows staffed coverage": "deploy only during the confirmed staffed support window",
+}
+missing = [name for name, phrase in required.items() if phrase not in text]
+if "## Common Rationalizations" in text:
+    missing.append("rationalizations section removed")
+raise SystemExit("missing deduplicated rollout safety contracts: " + ", ".join(missing) if missing else 0)
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "launch rollout keeps capability discovery read-only and gate-preserving" {
@@ -66,18 +149,26 @@ PY
 }
 
 @test "launch rollout hands evidence to product pulse without changing route boundaries" {
-	run python3 - "$SKILL" "$PULSE_SKILL" "$PULSE_TEMPLATE" <<'PY'
+	run python3 - "$SKILL" "$PULSE_HANDOFF" "$PULSE_SKILL" "$PULSE_TEMPLATE" <<'PY'
 import pathlib
 import sys
 
 rollout = pathlib.Path(sys.argv[1]).read_text()
-pulse = pathlib.Path(sys.argv[2]).read_text()
-template = pathlib.Path(sys.argv[3]).read_text()
+pulse_handoff = pathlib.Path(sys.argv[2]).read_text()
+pulse = pathlib.Path(sys.argv[3]).read_text()
+template = pathlib.Path(sys.argv[4]).read_text()
 
 required_rollout = {
+    "phase-specific asset load": "read `assets/product-pulse-handoff.md` completely before preparing or refreshing the handoff",
+    "deferred monitor sibling": "`kramme:launch:monitor`",
+}
+required_handoff = {
     "handoff marker": "## PRODUCT PULSE HANDOFF",
     "stable launch identity": "- Stable launch identity: <immutable release/artifact/deploy ID or canonical launch ID>",
+    "evidence window": "- Evidence window: <start UTC> to <stop UTC>",
+    "release context": "- Release / launch: <release identity and current gate>",
     "stable source id": "| Source ID | Provenance | Dimensions | Evidence window | Source evidence pointer | Durable evidence pointer | Limitations |",
+    "per-source evidence row": "| <stable ID> | <provider telemetry/query | issue/support export | operator/manual | unavailable> | <usage, quality, errors, performance, customer signals> | <UTC range> | <dashboard/query/export/ticket row> | <retained record section or approved access-controlled record> | <coverage or access limits> |",
     "source launch ticket": "- Source launch ticket: <URL or path; mark temporary when it will be retired>",
     "durable evidence record": "- Durable evidence record: <approved retained URL/path, or pending until the record is created>",
     "decision history": "Decision history and current outcome",
@@ -93,7 +184,6 @@ required_rollout = {
     "durable evidence pointers": "replace every temporary ticket-row pointer with a durable record pointer",
     "retain evidence": "Do not retire a temporary `LAUNCH.md` while it contains the only copy of unconsumed handoff evidence.",
     "final durability gate": "every gate / plan ID and referenced observation row is present in exactly one approved canonical durable record",
-    "deferred monitor sibling": "`kramme:launch:monitor`",
 }
 required_pulse = {
     "handoff discovery": "exact `PRODUCT PULSE HANDOFF` blocks",
@@ -132,6 +222,7 @@ required_template = {
     "observation row shape": "| Timestamp (UTC) | Gate / plan ID | Exposure | Source ID / query | Metric | Value / denominator | Threshold and source | Sample sufficiency | Decision | Notes |",
 }
 missing = [name for name, phrase in required_rollout.items() if phrase not in rollout]
+missing.extend(name for name, phrase in required_handoff.items() if phrase not in pulse_handoff)
 missing.extend(name for name, phrase in required_pulse.items() if phrase not in pulse)
 missing.extend(name for name, phrase in required_template.items() if phrase not in template)
 raise SystemExit("missing product pulse handoff contracts: " + ", ".join(missing) if missing else 0)
