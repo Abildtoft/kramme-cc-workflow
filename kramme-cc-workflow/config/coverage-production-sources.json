@@ -356,6 +356,11 @@
       "skills": ["kramme-cc-workflow/skills/kramme:pr:walkthrough/SKILL.md"]
     },
     {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/qa-intake-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md"]
+    },
+    {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/recreate-commits-push-target.bats",
       "skills": [

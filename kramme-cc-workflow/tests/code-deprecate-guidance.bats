@@ -68,8 +68,8 @@ required_skill = {
     "step 4.4 exit": "every item in `## Database Migration Phase Status` must also be checked with evidence",
     "overall completion": "additional completion gates. The generic four gates never override or replace them",
     "historical migration references retained": "retain required migration-history and audit artifacts",
-    "application removal before contraction": "legacy application reads and writes were removed or disabled and verified while the expanded schema remained",
-    "standalone contraction deployment": "destructive schema contraction ran in a separate later deployment",
+    "application removal before contraction": "first deploy and verify removal or disablement of legacy application reads and writes while the expanded schema remains",
+    "standalone contraction deployment": "Contract the old schema shape only in a separate later deployment",
 }
 missing = [name for name, phrase in required_skill.items() if phrase not in skill]
 phase_section = skill.split("## Database Migration Phase Status", 1)[1].split("```", 1)[0]
@@ -143,4 +143,21 @@ missing = [name for name, phrase in required.items() if phrase not in expand_pha
 raise SystemExit("missing mixed-version compatibility contracts: " + ", ".join(missing) if missing else 0)
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "deprecation stop rules have authoritative workflow owners" {
+	local remove_old
+	local verification
+
+	remove_old="$(sed -n '/^### 4.4 Remove old$/,/^---$/p' "$SKILL")"
+	verification="$(sed -n '/^## Verification$/,$p' "$SKILL")"
+
+	grep -qF "Execute in order. Do not compress or overlap" "$SKILL"
+	grep -qF "Do not remove zombie code. Do not proceed past this step." "$SKILL"
+	grep -qF 'Before executing this step, resolve every open `UNVERIFIED` from any step.' <<<"$remove_old"
+	grep -qF 'ASK FIRST: removing with open UNVERIFIED markers' <<<"$remove_old"
+	grep -qF "and do not proceed" <<<"$remove_old"
+	grep -qF "no active consumer or obsolete application reference remains" "$SKILL"
+	grep -qF 'Completion state is owned by `DEPRECATION_PLAN_<slug>.md`.' "$SKILL"
+	grep -qF "Do not close the deprecation or replace a missing gate with a follow-up." <<<"$verification"
 }
