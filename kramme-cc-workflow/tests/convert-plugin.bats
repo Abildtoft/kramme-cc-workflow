@@ -264,17 +264,17 @@ SH
 	[ "$status" -eq 0 ]
 	run grep -RFn '${CLAUDE_PLUGIN_ROOT}/scripts/dev-server' "$TMP_DIR/.codex/skills"
 	[ "$status" -eq 1 ]
-	run grep -nF "RESOLVED=$('$TMP_DIR/.codex/scripts/collect-review-diff.sh' \"\${COLLECT_ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:pr:code-review/SKILL.md"
+	run grep -nF "'$TMP_DIR/.codex/scripts/collect-review-diff.sh' \"\${COLLECT_ARGS[@]}\" \\" "$TMP_DIR/.codex/skills/kramme:pr:code-review/SKILL.md"
 	[ "$status" -eq 0 ]
-	run grep -nF "RESOLVED=$('$TMP_DIR/.codex/scripts/resolve-base.sh' \"\${ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
+	run grep -nF "RESOLVED=\$('$TMP_DIR/.codex/scripts/resolve-base.sh' \"\${ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
 	[ "$status" -eq 0 ]
-	run grep -nF "STACK_RESOLVED=$('$TMP_DIR/.codex/scripts/resolve-stack-membership.sh')" "$TMP_DIR/.codex/skills/kramme:pr:rebase/SKILL.md"
+	run grep -nF "STACK_RESOLVED=\$('$TMP_DIR/.codex/scripts/resolve-stack-membership.sh')" "$TMP_DIR/.codex/skills/kramme:pr:rebase/SKILL.md"
 	[ "$status" -eq 0 ]
 	run grep -nF "'$TMP_DIR/.codex/scripts/verify-rewrite-state.sh'" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
 	[ "$status" -eq 0 ]
 	run grep -nF "PUSH_RESOLVED=\$(\"$TMP_DIR/.codex/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh\" \\" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
 	[ "$status" -eq 0 ]
-	run grep -nF "DETECTED_PROJECT_TYPE=$('$TMP_DIR/.codex/scripts/dev-server'/detect-project-type.sh 2> /dev/null)" "$TMP_DIR/.codex/skills/kramme:qa/SKILL.md"
+	run grep -nF "DETECTED_PROJECT_TYPE=\$('$TMP_DIR/.codex/scripts/dev-server'/detect-project-type.sh 2> /dev/null)" "$TMP_DIR/.codex/skills/kramme:qa/SKILL.md"
 	[ "$status" -eq 0 ]
 	run grep -REn '(\$CLAUDE_PLUGIN_ROOT|\$\{CLAUDE_PLUGIN_ROOT[^}]*\})/scripts/' "$TMP_DIR/.codex/skills" "$TMP_DIR/.agents/skills"
 	[ "$status" -eq 1 ]

@@ -50,22 +50,17 @@ Before selecting files or launching agents:
 Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It uses the same 3-tier strategy: explicit `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
 ```bash
-COLLECT_ARGS=(--strict --format json)
+COLLECT_ARGS=(--strict --format nul)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
-
-RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" "${COLLECT_ARGS[@]}") || {
-  echo "Base/diff collection failed; see the message above and stop." >&2
-  exit 1
-}
 
 REVIEW_DIFF_FIELDS=$(mktemp "${TMPDIR:-/tmp}/review-diff.XXXXXX") || {
   echo "Could not create temporary review-diff file; stop." >&2
   exit 1
 }
-"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --decode-json \
-  <<< "$RESOLVED" > "$REVIEW_DIFF_FIELDS" || {
+"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" "${COLLECT_ARGS[@]}" \
+  > "$REVIEW_DIFF_FIELDS" || {
   rm -f "$REVIEW_DIFF_FIELDS"
-  echo "Base/diff decoding failed; see the message above and stop." >&2
+  echo "Base/diff collection failed; see the message above and stop." >&2
   exit 1
 }
 if ! {
@@ -81,7 +76,7 @@ fi
 rm -f "$REVIEW_DIFF_FIELDS"
 ```
 
-The shared JSON decoder sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. Use `CHANGED_FILES` for the file filtering below.
+The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES` without evaluating collected values. Use `CHANGED_FILES` for the file filtering below.
 
 Read `references/ui-relevance-heuristics.md`, then filter for UI-relevant files using this contract marker: UI relevance path contract: `ui-relevance-path-contract-v1`.
 
