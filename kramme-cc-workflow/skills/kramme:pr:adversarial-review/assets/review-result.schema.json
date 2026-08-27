@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "findings", "positive_observations", "coverage"],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "severity",
+          "action_class",
+          "location",
+          "summary",
+          "evidence",
+          "recommendation"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "severity": {
+                  "enum": ["critical", "important"]
+                }
+              },
+              "required": ["severity"]
+            },
+            "then": {
+              "properties": {
+                "action_class": {
+                  "enum": ["gated_auto", "manual"]
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "severity": {
+                  "enum": ["suggestion", "fyi"]
+                }
+              },
+              "required": ["severity"]
+            },
+            "then": {
+              "properties": {
+                "action_class": {
+                  "enum": ["advisory"]
+                }
+              }
+            }
+          }
+        ],
+        "properties": {
+          "severity": {
+            "enum": ["critical", "important", "suggestion", "fyi"]
+          },
+          "action_class": {
+            "enum": ["gated_auto", "manual", "advisory"]
+          },
+          "location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "recommendation": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "positive_observations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files_examined", "limitations"],
+      "properties": {
+        "files_examined": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
