@@ -99,18 +99,18 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js",
       "rule_id": "SC3",
-      "reason": "Reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file is pinned to the upstream source and SHA-256 recorded in references/sources.yaml, its complete ISC notice ships as assets/d3-LICENSE, and it is embedded locally so private Pull Request context never depends on third-party CDN execution.",
+      "reason": "Re-reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file exactly matches the SHA-256 recorded in references/sources.yaml, its complete ISC notice ships as assets/d3-LICENSE, and it is embedded locally so private Pull Request context never depends on third-party CDN execution.",
       "owner": "kramme",
-      "accepted_at": "2026-07-26",
-      "review_after": "2026-08-26"
+      "accepted_at": "2026-08-27",
+      "review_after": "2026-09-27"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py",
       "rule_id": "OH1",
-      "reason": "Reviewed false-positive OH1 finding for runtime syntax validation: subprocess.run receives a fixed argument vector with shell execution disabled, passes walkthrough runtime text only through stdin to node --check, never executes that text, and bounds returned diagnostics before reporting them.",
+      "reason": "Re-reviewed false-positive OH1 finding for runtime syntax validation: subprocess.run receives a fixed argument vector with shell execution disabled, passes walkthrough runtime text only through stdin to node --check, never executes that text, and enforces a timeout and bounded diagnostics.",
       "owner": "kramme",
-      "accepted_at": "2026-07-26",
-      "review_after": "2026-08-26"
+      "accepted_at": "2026-08-27",
+      "review_after": "2026-09-27"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
