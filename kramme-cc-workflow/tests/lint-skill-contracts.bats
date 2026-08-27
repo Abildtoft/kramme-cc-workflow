@@ -287,6 +287,128 @@ make_body_lines() {
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+@test "review diff collection migration keeps explicit NUL and JSON cohorts" {
+  run python3 - \
+    "$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml" \
+    "$BATS_TEST_DIRNAME/../.." <<'PY'
+import json
+import pathlib
+import re
+import sys
+
+registry_path, repo_root = map(pathlib.Path, sys.argv[1:])
+registry = json.loads(registry_path.read_text())
+contracts = {
+    entry["name"]: entry
+    for entry in registry["text_contracts"]
+}
+expected_paths = {
+    "pr-review-collect-review-diff-nul-block": [
+        "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md",
+    ],
+    "pr-review-collect-review-diff-json-block": [
+        "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md",
+    ],
+}
+
+def extract(name, relative):
+    text = (repo_root / relative).read_text().replace("`", "")
+    match = re.search(contracts[name]["extract_regex"], text, flags=re.MULTILINE)
+    if match is None:
+        raise SystemExit(f"{name} does not match {relative}")
+    value = match.group(1) if match.lastindex else match.group(0)
+    return "\n".join(line.strip() for line in value.strip().splitlines())
+
+
+for name, paths in expected_paths.items():
+    contract = contracts.get(name)
+    if contract is None:
+        raise SystemExit(f"missing review-diff migration contract: {name}")
+    if contract["paths"] != paths:
+        raise SystemExit(f"{name} paths do not match the migration cohort")
+    if len({extract(name, relative) for relative in paths}) != 1:
+        raise SystemExit(f"{name} contains internally divergent blocks")
+
+nul_name = "pr-review-collect-review-diff-nul-block"
+nul_block = extract(nul_name, expected_paths[nul_name][0])
+if "--format nul" not in nul_block or "--decode-json" in nul_block:
+    raise SystemExit("NUL cohort does not use the direct NUL interface")
+if nul_block.count("collect-review-diff.sh") != 1:
+    raise SystemExit("NUL cohort must invoke collect-review-diff.sh exactly once")
+expected_fields = ["BASE_REF", "BASE_BRANCH", "MERGE_BASE", "CHANGED_FILES"]
+read_fields = re.findall(r"IFS= read -r -d '' (\w+)", nul_block)
+if read_fields != expected_fields:
+    raise SystemExit("NUL cohort does not read fields in collector output order")
+cleanup_sites = [
+    (
+        "collector failure",
+        r'> "\$REVIEW_DIFF_FIELDS" \|\| \{\nrm -f "\$REVIEW_DIFF_FIELDS"',
+    ),
+    (
+        "incomplete fields",
+        r'\} < "\$REVIEW_DIFF_FIELDS"; then\nrm -f "\$REVIEW_DIFF_FIELDS"',
+    ),
+    ("success", r'fi\nrm -f "\$REVIEW_DIFF_FIELDS"$'),
+]
+for cleanup_label, cleanup_site in cleanup_sites:
+    if re.search(cleanup_site, nul_block) is None:
+        raise SystemExit(f"NUL cohort does not clean up after {cleanup_label}")
+failure_sites = [
+    (
+        "temporary-file creation failure",
+        r'Could not create temporary review-diff file; stop\." >&2\nexit 1\n\}',
+    ),
+    (
+        "collector failure",
+        r'Base/diff collection failed; see the message above and stop\." >&2\n'
+        r'exit 1\n\}',
+    ),
+    (
+        "incomplete fields",
+        r'Decoded review-diff fields were incomplete; stop\." >&2\nexit 1\nfi',
+    ),
+]
+for failure_label, failure_site in failure_sites:
+    if re.search(failure_site, nul_block) is None:
+        raise SystemExit(f"NUL cohort does not stop after {failure_label}")
+
+code_review_contract = next(
+    item
+    for item in registry["required_file_contracts"]
+    if item["name"] == "pr-code-review-invocation-shape"
+)
+if "COLLECT_ARGS=(--strict --format nul)" not in code_review_contract["contains"]:
+    raise SystemExit("code-review required-text contract still expects legacy JSON")
+
+legacy_name = "pr-review-collect-review-diff-json-block"
+for legacy_path in expected_paths[legacy_name]:
+    legacy_text = (repo_root / legacy_path).read_text().replace("`", "")
+    collect_args = re.search(
+        r"^COLLECT_ARGS=\((.*?)\)\n"
+        r'(?=\[ -n "\$\{BASE_BRANCH_OVERRIDE:-\}" \] '
+        r'&& COLLECT_ARGS\+=\(--base "\$BASE_BRANCH_OVERRIDE"\)$)',
+        legacy_text,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    uses_json_format = collect_args is not None and re.search(
+        r"(?:^|\s)--format\s+json(?:\s|$)", collect_args.group(1)
+    )
+    legacy_block = extract(legacy_name, legacy_path)
+    if not uses_json_format or "--decode-json" not in legacy_block:
+        raise SystemExit(
+            f"JSON cohort does not retain the legacy decoder interface: {legacy_path}"
+        )
+PY
+
+  [ "$status" -eq 0 ]
+}
+
 @test "Conductor workspace contract retains independent safety invariants" {
   run python3 - "$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml" <<'PY'
 import json
@@ -969,6 +1091,8 @@ EOF
 
   [[ "$team_text" == *'Pass the `Shared working tree`, `Reviewer calibration`, `Output markers`, and `Finding schema` sections'* ]]
   [[ "$team_text" == *'do not reconstruct or abbreviate them here'* ]]
+  [[ "$team_text" == *'exact shared `collect-review-diff.sh` collection flow'* ]]
+  [[ "$team_text" != *'`collect-review-diff.sh` JSON flow'* ]]
   [[ "$team_text" == *'Apply the `Confidence and merge rules` section'* ]]
   [[ "$team_text" == *'Apply the `Correctness and security precedence` section'* ]]
   [[ "$team_text" == *'Apply the `Action classes`, `Severity and action-class compatibility`, and `Manual blocker tests` sections'* ]]
