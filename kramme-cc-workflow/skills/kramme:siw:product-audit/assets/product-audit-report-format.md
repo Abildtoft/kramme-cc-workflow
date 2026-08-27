@@ -75,4 +75,4 @@
 1. Address critical findings in the spec
 2. Discuss open questions with stakeholders
 3. Re-run after spec revisions: `/kramme:siw:product-audit`
-4. If ready, proceed to implementation: `/kramme:siw:generate-phases`
+4. If ready, define the phased issue set with `/kramme:siw:generate-phases`, then review and transfer it before implementation

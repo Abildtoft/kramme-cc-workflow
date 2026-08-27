@@ -38,7 +38,7 @@ Before creating any issues:
 For each selected finding:
 
 1. Apply the standard handled-finding skip rule. Skip the finding and report the matched artifact if it carries an `Existing issue:` annotation that resolves to an existing `siw/issues/ISSUE-G-*.md` file, is marked `**Status:** [Auto-fixed]` or `**Status:** [Applied directly]`, or a file matching `siw/issues/ISSUE-G-*-{finding-id}-*.md` exists. Treat unresolved `Existing issue:` annotations as stale metadata: warn in the final summary, but do not skip the finding.
-2. Determine the next available `G-` issue number: parse `siw/OPEN_ISSUES_OVERVIEW.md` for the highest `G-` number, compute candidate = highest + 1 (padded to 3 digits), then verify no on-disk collision by globbing `siw/issues/ISSUE-G-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`; increment the candidate and re-check until no file matches, then warn that the tracker may need `/kramme:siw:issue-reindex`.
+2. Determine the next available `G-` issue number: parse `siw/OPEN_ISSUES_OVERVIEW.md` for the highest `G-` number, compute candidate = highest + 1 (padded to 3 digits), then verify no on-disk collision by globbing `siw/issues/ISSUE-G-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`; increment the candidate and re-check until no file matches, then warn that the numbering gap will be preserved through transfer.
 3. Create issue file `siw/issues/ISSUE-G-{NNN}-product-{finding-id}-{slugified-title}.md`. Give it a status line carrying explicit `Size` (`XS|S|M|L`), `Parallelization` (`Safe to parallelize | Must be sequential | Needs coordination`), and `Mode` metadata so it matches the current tracker schema:
 
    ```markdown
@@ -46,6 +46,7 @@ For each selected finding:
    ```
 
    **Mode default is `AUTO`.** Set `HITL — <one-line reason>` only when resolving the finding requires a concrete human-input step: an unsettled product/architectural decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`. A finding's severity does not by itself make it HITL.
+
 4. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
    - For a brand-new modern section, use the 7-column modern schema including the `Mode` column (`# | Title | Status | Size | Priority | Mode | Related`); the `Mode` cell is `AUTO` or `HITL` (the reason lives in the issue body, not the table).
    - When a section already exists, match its column count exactly (legacy 5-col / pre-Mode 6-col / modern 7-col) and preserve it in place - do not migrate layouts or add a `Mode` column to a section that lacks one.

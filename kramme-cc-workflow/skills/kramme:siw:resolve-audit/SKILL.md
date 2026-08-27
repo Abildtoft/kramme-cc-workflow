@@ -19,7 +19,7 @@ Turn an audit report into decision-ready SIW issues by walking findings one at a
 - **DOES**: Read audit report, summarize each finding, propose alternatives, recommend an option, capture user preference or auto-select a resolution, create SIW issue(s)
 - **DOES NOT**: Implement code changes
 
-Implementation stays separate and should happen later via `/kramme:siw:issue-implement`.
+Implementation stays separate. After the local findings and issue set are approved, migrate them with `/kramme:siw:transfer-to-linear`.
 
 ## Hard Constraints
 
@@ -56,7 +56,7 @@ For every finding, follow this structure:
     ↓
 [Repeat until all selected findings are handled]
     ↓
-[Report summary + next implement issue]
+[Report summary + transfer handoff]
 ```
 
 ## Step 1: Locate Report
@@ -67,10 +67,8 @@ For every finding, follow this structure:
    - Remaining `DIV-*`, `EXT-*`, `DISC-*`, `MISS-*`, `SPEC-*`, and `PROD-*` tokens are finding filters
 2. If the parsed arguments include a markdown path, use that path and skip auto-detection.
 3. Otherwise, discover available report files in this order:
-   - `siw/AUDIT_IMPLEMENTATION_REPORT.md`
    - `siw/AUDIT_SPEC_REPORT.md`
    - `siw/PRODUCT_AUDIT.md`
-   - `AUDIT_IMPLEMENTATION_REPORT.md` (project root)
    - `AUDIT_SPEC_REPORT.md` (project root)
    - `PRODUCT_AUDIT.md` (project root)
 4. If **more than one report type exists** (any location):
@@ -80,9 +78,7 @@ For every finding, follow this structure:
 header: "Choose Audit Type"
 question: "Multiple audit reports were found. Which findings should I resolve?"
 options:
-  - label: "Implementation audit (Recommended when available)"
-    description: "Resolve DIV-*/EXT-* findings from AUDIT_IMPLEMENTATION_REPORT.md (also supports legacy DISC-*/MISS-*)"
-  - label: "Spec quality audit"
+  - label: "Spec quality audit (Recommended when available)"
     description: "Resolve SPEC-* findings from AUDIT_SPEC_REPORT.md"
   - label: "Product audit"
     description: "Resolve PROD-* findings from PRODUCT_AUDIT.md"
@@ -90,10 +86,10 @@ options:
     description: "Resolve findings from every available report in one run"
 ```
 
-       - With `--auto`, resolve every available report in one run, in this order: implementation findings, spec findings, product findings.
+       - With `--auto`, resolve every available report in one run, in this order: spec findings, product findings.
 
 5. If only one report exists, use it automatically.
-6. If no report exists, stop and instruct the user to run `/kramme:siw:implementation-audit`, `/kramme:siw:spec-audit`, or `/kramme:siw:product-audit` first.
+6. If no current report exists, stop and instruct the user to run `/kramme:siw:spec-audit` or `/kramme:siw:product-audit` first. Explicitly supplied legacy implementation-audit reports remain supported, but they are never auto-detected and no new SIW implementation-audit report is produced.
 7. If a selected report contains multiple appended top-level report blocks, isolate the last block only and treat it as the active audit run. Ignore earlier appended runs.
 
 ## Step 2: Parse Findings
@@ -298,7 +294,7 @@ Synced SIW issue-state contract (keep aligned across SIW issue creators): every 
 Issue creation:
 
 1. Re-check the standard handled-finding skip rule for this finding. If it now matches, do not create an issue; report the matched artifact in the completion message and Step 7 summary.
-2. Determine the next `G-` issue number: parse `siw/OPEN_ISSUES_OVERVIEW.md` for the highest `G-` number, compute candidate = highest + 1 (padded to 3 digits), then verify no on-disk collision by globbing `siw/issues/ISSUE-G-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`; increment the candidate and re-check until no file matches, then warn that the tracker may need `/kramme:siw:issue-reindex`.
+2. Determine the next `G-` issue number: parse `siw/OPEN_ISSUES_OVERVIEW.md` for the highest `G-` number, compute candidate = highest + 1 (padded to 3 digits), then verify no on-disk collision by globbing `siw/issues/ISSUE-G-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`; increment the candidate and re-check until no file matches, then warn that the numbering gap will be preserved through transfer.
 3. Create file:
    - `siw/issues/ISSUE-G-{NNN}-resolve-{finding-id}-{slug}.md`
 4. Use the matching template based on finding type (read the template file and substitute placeholders):
@@ -362,7 +358,7 @@ At the end, report:
 - Findings intentionally deferred
 - Skipped - already handled (finding ids + matched `Existing issue`, status marker, or issue file)
 - Skipped - not in report (finding ids passed in arguments that did not match the active report)
-- Recommended first implementation issue to start with
+- Recommended transfer command and any findings that still block migration
 
 This final summary is allowed only after all selected findings complete the full Steps 4-5 cycle.
 

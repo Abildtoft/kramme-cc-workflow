@@ -140,7 +140,7 @@ header: "Existing Workflow Files Found"
 question: "Workflow files already exist in this directory. How would you like to proceed?"
 options:
   - label: "Resume existing workflow"
-    description: "Continue with current files (invokes kramme:siw:continue skill)"
+    description: "Keep the current files and choose the next preparation step"
   - label: "Start fresh"
     description: "Delete existing workflow files and create new ones"
   - label: "Abort"
@@ -150,8 +150,8 @@ options:
 If "Resume existing workflow":
 
 - Stop this command.
-- Inform the user that the `kramme:siw:continue` skill will auto-trigger when they start working.
-- Suggest reading `siw/LOG.md` for current progress.
+- Suggest reading `siw/LOG.md` and `siw/OPEN_ISSUES_OVERVIEW.md` for current preparation state.
+- Route to the smallest retained next step: discovery or an audit for unresolved specification work, issue definition or phase generation for planning-ready work, or transfer to Linear for an approved issue set.
 
 If "Start fresh":
 

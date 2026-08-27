@@ -13,7 +13,7 @@ Before creating documents, classify the initialized artifact using the Artifact 
 
 When `linked_spec_files` exists, base the classification on `linked_spec_readiness_context`. If the available linked-source context does not prove scope, success criteria, technical context/dependencies, and absence of blocking open questions, do not infer `planning-ready`; classify the artifact as `product-only` or `requirements-only` and route to discovery/spec hardening.
 
-For `product-only` or `requirements-only`, generated tracking files must point to `/kramme:siw:discovery` and must not imply issue definition or implementation is ready. For `planning-ready`, choose either the phased path (`/kramme:siw:generate-phases`, then implementation after issues exist) or the single-issue path (`/kramme:siw:issue-define`, then implementation after the issue exists).
+For `product-only` or `requirements-only`, generated tracking files must point to `/kramme:siw:discovery` and must not imply issue definition or transfer is ready. For `planning-ready`, choose either the phased path (`/kramme:siw:generate-phases`, then transfer after issues exist) or the single-issue path (`/kramme:siw:issue-define`, then transfer after the issue exists).
 
 ## Phase 4: Create Documents
 
@@ -72,12 +72,12 @@ Set `{readiness_next_steps}` from readiness:
 - `planning-ready` and phased work:
   ```markdown
   1. Generate phase issues with `/kramme:siw:generate-phases`
-  2. Begin implementation with `/kramme:siw:issue-implement` after issues exist
+  2. Transfer the approved issue set with `/kramme:siw:transfer-to-linear`
   ```
 - `planning-ready` and one coherent issue:
   ```markdown
   1. Define the first issue with `/kramme:siw:issue-define`
-  2. Begin implementation with `/kramme:siw:issue-implement` after the issue exists
+  2. Transfer the approved issue with `/kramme:siw:transfer-to-linear`
   ```
 
 ### 4.3 Create siw/OPEN_ISSUES_OVERVIEW.md

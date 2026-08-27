@@ -8,7 +8,7 @@
 4. **Clear dependencies** - Explicit about what blocks what
 5. **Appropriate sizing** - All tasks XS/S/M/L (XL decomposed). See `references/task-sizing.md`.
 6. **Review before create** - Always use subagent review and user approval
-7. **Stable identifiers** - Preserve existing issue IDs after files are written; use `/kramme:siw:issue-reindex` for intentional renumbering
+7. **Stable identifiers** - Preserve existing issue IDs and gaps after files are written and through transfer
 8. **Risk-triggered deepening** - Run the Phase 4.5 confidence deepening gate only when risk signals are present
 
 ## Output Markers
