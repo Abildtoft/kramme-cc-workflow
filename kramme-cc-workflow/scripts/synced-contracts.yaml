@@ -76,8 +76,7 @@
         "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-to-pr/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md"
       ]
     },
     {
@@ -88,21 +87,13 @@
         "marker": "Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:continue/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:implementation-audit/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:implementation-audit/references/spec-resolution.md",
         "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:issue-define/references/classification-and-prefix.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/spec-sync.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-reindex/references/spec-capture-check.md",
         "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:remove/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md",
         "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md"
@@ -113,9 +104,7 @@
       "extract_regex": "(READY\\s*(?:\\||,)\\s*IN PROGRESS\\s*(?:\\||,)\\s*IN REVIEW\\s*(?:\\||,)\\s*DONE)",
       "normalizer": "status_vocabulary",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:generate-phases/references/tracker-schema.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-reindex/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:siw:generate-phases/references/tracker-schema.md"
       ]
     },
     {
@@ -123,10 +112,7 @@
       "extract_regex": "Synced SIW main-spec ambiguity contract \\(keep aligned across SIW spec detectors\\):\\s*(when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec\\.)",
       "paths": [
         "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/spec-sync.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md",
-        "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md",
-        "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md"
       ]
     },
     {
@@ -135,17 +121,11 @@
       "paths": [
         "kramme-cc-workflow/skills/kramme:debug:triage-to-issue/SKILL.md",
         "kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:continue/assets/issues-template.md",
-        "kramme-cc-workflow/skills/kramme:siw:continue/references/phase-1-planning.md",
-        "kramme-cc-workflow/skills/kramme:siw:continue/references/phase-2-investigation.md",
-        "kramme-cc-workflow/skills/kramme:siw:continue/references/phase-3-execution.md",
         "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/issue-creation.md",
-        "kramme-cc-workflow/skills/kramme:siw:implementation-audit/references/report-and-issue-output.md"
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/issue-creation.md"
       ]
     },
     {
@@ -457,9 +437,7 @@
         "### Next Steps"
       ],
       "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:continue/assets/log-template.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:siw:init/assets/log-template.md"
       ]
     }
   ],
@@ -561,24 +539,9 @@
         "`PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist",
         "PLAN ROUTE:",
         "MISSING REQUIREMENT",
+        "kramme:siw:transfer-to-linear",
+        "kramme:linear:issue-implement",
         "Read `references/direct-execution.md`"
-      ]
-    },
-    {
-      "name": "siw-issue-implement-invocation-shape",
-      "path": "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md",
-      "frontmatter": {
-        "name": "kramme:siw:issue-implement",
-        "argument-hint": "<issue-id> [--auto] | --team [issue-ids | 'phase N'] [--auto]",
-        "disable-model-invocation": "true",
-        "user-invocable": "true"
-      },
-      "contains": [
-        "read `references/team-mode.md`",
-        "siw/issues/ISSUE-{prefix}-{number}-*.md",
-        "siw/OPEN_ISSUES_OVERVIEW.md",
-        "siw/LOG.md",
-        "Run the Status Update Procedure"
       ]
     },
     {
@@ -1127,7 +1090,7 @@
         "with no requirement argument it derives the contract from the current conversation",
         "with `--derive` it drafts a contract from conversation and committed branch evidence",
         "set its maximum to one through five fix-and-rerun rounds with `--rounds <1-5>`",
-        "The same phase is used by `kramme:code:plan-to-pr` and `kramme:siw:issue-to-pr`"
+        "The same phase is also used by `kramme:code:plan-to-pr`"
       ]
     },
     {
@@ -1573,8 +1536,12 @@
         ".context/linear-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
         ".context/linear-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
         ".context/linear-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+        ".context/siw-issue-to-pr/reviews/REVIEW_OVERVIEW.md",
+        ".context/siw-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
         ".context/siw-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+        ".context/siw-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
         ".context/code-plan-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+        "siw/AUDIT_IMPLEMENTATION_REPORT.md",
         "siw/OPEN_ISSUES_OVERVIEW.md",
         "siw/FEATURE_SPECIFICATION.md",
         "disposable",
@@ -1693,8 +1660,7 @@
       "kramme-cc-workflow/skills/kramme:prototype/SKILL.md",
       "kramme-cc-workflow/skills/kramme:research/SKILL.md",
       "kramme-cc-workflow/skills/kramme:session:context-setup/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:siw:breakdown-findings/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:siw:wayfinder/SKILL.md",
+      "kramme-cc-workflow/skills/kramme:discovery:wayfinder/SKILL.md",
       "kramme-cc-workflow/skills/kramme:test:generate/SKILL.md",
       "kramme-cc-workflow/skills/kramme:test:tdd/SKILL.md",
       "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md",
