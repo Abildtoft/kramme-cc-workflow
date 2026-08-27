@@ -18,4 +18,4 @@ Results: Fixed: {N} (avg confidence: {avg_score}) Failed verification: {N} (recl
 {If no requires-decision findings remain:} Next steps:
 
 - All findings resolved. Re-audit to verify: /kramme:siw:spec-audit
-- When spec is ready, begin implementation: /kramme:siw:generate-phases or /kramme:siw:issue-implement
+- When spec is ready, define the issue set with /kramme:siw:generate-phases or /kramme:siw:issue-define, then run /kramme:siw:transfer-to-linear

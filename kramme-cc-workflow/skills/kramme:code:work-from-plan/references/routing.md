@@ -28,7 +28,7 @@ Use `siw` only when the source identifies an executable SIW issue:
 - The plan path is an issue file under `siw/issues/ISSUE-*.md`.
 - The plan says the source of truth is a specific SIW issue.
 
-Delegate to `kramme:siw:issue-implement` so status updates, spec sync, and issue closeout stay consistent.
+Do not implement the local issue directly. Route the SIW project through `kramme:siw:transfer-to-linear`, then use `kramme:linear:issue-implement` with the resulting Linear issue identifier.
 
 If the plan mentions SIW but no issue can be found or identified, route to `recommend-siw` instead of `siw` so the user gets the next planning step rather than an implementation handoff that cannot run.
 

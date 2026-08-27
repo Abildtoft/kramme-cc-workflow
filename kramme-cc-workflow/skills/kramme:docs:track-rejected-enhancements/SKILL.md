@@ -24,7 +24,7 @@ Route elsewhere if:
 - **Bug rejection** → close the issue as `wontfix` with a comment. This skill is for enhancement scope, not bug triage.
 - **Deferral** ("not now, but maybe later") → use issue priority/status. A deferral is not a settled rejection, and `record` will gate on this distinction.
 - **Architectural decision with rejected alternatives** → use `/kramme:docs:adr`, which preserves rejected alternatives inside the ADR itself.
-- **In-project decisions during a tracked SIW initiative** → use `/kramme:siw:close`'s decision log.
+- **Initiative-local decisions during SIW preparation** → record them in the specification or `siw/LOG.md` for transfer to Linear.
 
 ## Argument parsing
 

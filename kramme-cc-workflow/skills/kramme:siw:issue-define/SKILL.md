@@ -19,7 +19,7 @@ Create or improve a local issue through guided interactive refinement. Can start
 - **DOES**: Interview user, explore codebase for context, compose well-structured issue, create/update issue file
 - **DOES NOT**: Write code, implement features, fix bugs, or make any changes to the codebase
 
-**Implementation is a separate workflow.** This skill ends when the issue file is written and the tracker/log are updated. After it completes, the user can invoke `/kramme:siw:issue-implement` if they want to start implementing.
+**Implementation is a separate Linear workflow.** This skill ends when the issue file is written and the tracker/log are updated. After the local issue set is approved, transfer it with `/kramme:siw:transfer-to-linear` before implementation.
 
 ## Prerequisites
 
@@ -157,7 +157,7 @@ Before creating a new issue, check for existing similar issues:
    - Determine `issue_prefix` (from Step 4; fallback to `requested_prefix` if present; otherwise default `G`)
    - Parse `siw/OPEN_ISSUES_OVERVIEW.md` table to find highest issue number **within that prefix group**
    - Compute candidate = highest + 1 (or 001 if no issues with that prefix exist), padded to 3 digits
-   - **Verify no on-disk collision:** glob `siw/issues/ISSUE-{issue_prefix}-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`. Increment the candidate and re-check until no file matches, then warn the user that the tracker may need a reindex via `/kramme:siw:issue-reindex`.
+   - **Verify no on-disk collision:** glob `siw/issues/ISSUE-{issue_prefix}-{candidate}-*.md`. If any file matches, the tracker is out of sync with `siw/issues/`. Increment the candidate and re-check until no file matches, then warn the user that a numbering gap will be preserved through transfer.
    - Store as provisional `issue_number` for the draft. Do not create a reservation yet; interviews and review must not hold publication ownership.
    - Provisional full ID: `{issue_prefix}-{issue_number}` (e.g., `G-001`, `P1-002`). Phase 6 may advance it if another creator publishes first.
 
@@ -262,7 +262,7 @@ An owner-only publication lock written by an older helper has no trustworthy bas
 
 ### 5. Workflow Complete
 
-The skill ends here. Surface the file path and tell the user that if they want to implement next, they can run `/kramme:siw:issue-implement {prefix}-{number}`, or re-run `/kramme:siw:issue-define {prefix}-{number}` to refine. Do not start implementation.
+The skill ends here. Surface the file path and tell the user to re-run `/kramme:siw:issue-define {prefix}-{number}` for further refinement or use `/kramme:siw:transfer-to-linear` after the local issue set is approved. Do not start implementation.
 
 ## Guidelines
 

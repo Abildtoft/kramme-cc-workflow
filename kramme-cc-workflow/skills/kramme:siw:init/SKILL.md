@@ -8,7 +8,7 @@ user-invocable: true
 
 # Initialize Structured Implementation Workflow
 
-Set up the three-document system for tracking complex implementations locally, without requiring Linear or other external issue trackers.
+Set up the three-document system for preparing complex specifications and initial issue sets locally before one-way transfer to Linear.
 
 ## Workflow Boundaries
 
@@ -73,7 +73,7 @@ find siw -maxdepth 1 \( \
   -name "SPEC_STRENGTHENING_PLAN.md" -o \
   -name "DISCOVERY_BRIEF.md" -o \
   -name "issues" \
-\) -print 2> /dev/null
+  \) -print 2> /dev/null
 # Permanent SIW spec detection (referenced as `permanent-spec find` elsewhere in this skill).
 # Case-insensitive so lowercase/mixed-case filenames like `feature_spec.md` are not missed.
 # Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.

@@ -24,5 +24,5 @@ Suggested next steps:
   - If file output was used: `/kramme:siw:resolve-audit siw/PRODUCT_AUDIT.md`  (address findings)
   - If inline output was used: provide the inline report content to the follow-up workflow
   - /kramme:siw:spec-audit  (technical spec quality audit)
-  - /kramme:siw:generate-phases  (when ready for implementation)
+  - /kramme:siw:generate-phases  (when ready to define phased issues before transfer)
 ```

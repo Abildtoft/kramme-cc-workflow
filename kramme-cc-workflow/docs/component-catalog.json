@@ -138,6 +138,11 @@
       "path": "kramme-cc-workflow/skills/kramme:discovery:strategic-inquiry/SKILL.md"
     },
     {
+      "name": "kramme:discovery:wayfinder",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:discovery:wayfinder/SKILL.md"
+    },
+    {
       "name": "kramme:docs:adr",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:docs:adr/SKILL.md"
@@ -453,21 +458,6 @@
       "path": "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/SKILL.md"
     },
     {
-      "name": "kramme:siw:breakdown-findings",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:siw:breakdown-findings/SKILL.md"
-    },
-    {
-      "name": "kramme:siw:close",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md"
-    },
-    {
-      "name": "kramme:siw:continue",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:siw:continue/SKILL.md"
-    },
-    {
       "name": "kramme:siw:discovery",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md"
@@ -476,11 +466,6 @@
       "name": "kramme:siw:generate-phases",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md"
-    },
-    {
-      "name": "kramme:siw:implementation-audit",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:implementation-audit/SKILL.md"
     },
     {
       "name": "kramme:siw:init",
@@ -493,21 +478,6 @@
       "path": "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md"
     },
     {
-      "name": "kramme:siw:issue-implement",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:issue-implement/SKILL.md"
-    },
-    {
-      "name": "kramme:siw:issue-reindex",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:issue-reindex/SKILL.md"
-    },
-    {
-      "name": "kramme:siw:issue-to-pr",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:issue-to-pr/SKILL.md"
-    },
-    {
       "name": "kramme:siw:product-audit",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md"
@@ -516,11 +486,6 @@
       "name": "kramme:siw:remove",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:siw:remove/SKILL.md"
-    },
-    {
-      "name": "kramme:siw:reset",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md"
     },
     {
       "name": "kramme:siw:resolve-audit",
@@ -536,11 +501,6 @@
       "name": "kramme:siw:transfer-to-linear",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/SKILL.md"
-    },
-    {
-      "name": "kramme:siw:wayfinder",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:wayfinder/SKILL.md"
     },
     {
       "name": "kramme:skill:create",

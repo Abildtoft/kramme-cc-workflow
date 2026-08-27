@@ -172,7 +172,7 @@ Then invoke `kramme:code:work-from-plan` with `{active-plan}`. A detached plan w
 Build delegated arguments:
 
 ```text
---work-id {execution-label} --archive-key code-plan-to-pr --scope-plan {active-plan}
+--work-id {execution-label} --scope-plan {active-plan}
 ```
 
 Append `--strict` when `STRICT_REVIEW=true` and `--ship` when `SHIP_MODE=true`. Invoke `kramme:pr:complete-work` once with those arguments and capture its structured completion disposition. That hidden orchestrator must delegate the frozen archived-plan contract to `kramme:pr:review-convergence`; do not recreate review gates or a separate remediation budget in this caller.
@@ -181,7 +181,7 @@ When it returns `success`, update only the archived plan set:
 
 - Require the current branch to remain `{plan-branch}` and the worktree to be clean. Require the delegated work branch and local head/tree to equal the observed branch and full local `HEAD`/`HEAD^{tree}`. Collect every committed path in `{branch-base-commit}..HEAD`; require exact equality with one normalized scope path when `PLAN_SCOPE_MODE=exact-files`, and otherwise allow exact path or directory containment; stop without advancing plan state on the first mismatch.
 - Set the selected plan header and matching index row to `DONE`.
-- Add or refresh `## Execution Result` in the selected plan with completion date, verification evidence, full completion commit OID, final branch, and, when a Pull Request exists, its exact number, URL, repository, state, base ref, head branch, and head OID. Do not record a `Landed commit` merely because implementation or Pull Request creation completed.
+- Add or refresh `## Execution Result` in the selected plan with completion date, verification evidence, full completion commit OID, final branch, and the exact delegated `Publication state`. When publication is absent, require the delegate to have reported both the remote branch and Pull Request absent, record `Publication state: absent`, and omit Pull Request identity, blocker, and recovery fields. When a Pull Request exists, record its exact number, URL, repository, state, base ref, head branch, and head OID. Do not record a `Landed commit` merely because implementation or Pull Request creation completed.
 - Replace `## Workflow State` with `Stage: COMPLETE` and the final local head/tree while preserving the plan-set, plan, branch, base, and scope provenance fields.
 - Preserve every other plan's status and every rejection ID.
 - Re-read the archive and require index/plan status agreement.

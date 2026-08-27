@@ -18,7 +18,7 @@ Break down a specification into atomic, committable issues organized into phases
 - **DOES**: Read spec, decompose into phases/tasks, create issue files, update overview table, update log progress
 - **DOES NOT**: Implement features, write code, or make changes to the codebase
 
-**Implementation is a separate workflow.** After this command completes, use `/kramme:siw:issue-implement` to start implementing.
+**Implementation is a separate Linear workflow.** After this command completes and the issue set is approved, use `/kramme:siw:transfer-to-linear` before implementation.
 
 ### Artifact Readiness Contract
 
@@ -37,7 +37,7 @@ Use **phase-prefixed numbering** for clear organization: `ISSUE-G-001` for gener
 
 ## Issue Identifier Stability
 
-Issue IDs are stable once issue files are written. Preserve existing append-mode IDs, leave numbering gaps in place, and use `/kramme:siw:issue-reindex` for intentional cleanup instead of renumbering here. `references/issue-numbering.md` is the local authority for details.
+Issue IDs are stable once issue files are written. Preserve existing append-mode IDs and leave numbering gaps in place until transfer. `references/issue-numbering.md` is the local authority for details.
 
 ## SIW Issue-State Protocol
 
@@ -68,7 +68,7 @@ All final issue creation and tracker publication use this skill's `scripts/siw-i
     ↓
 [Create issue files and update overview/log]
     ↓
-[Report summary] -> Suggest /kramme:siw:issue-implement
+[Report summary] -> Suggest /kramme:siw:transfer-to-linear
 ```
 
 Before Phase 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is present, set `AUTO_MODE=true` and remove it before resolving the spec path. `--auto` accepts the final reviewed phase plan and creates issue files without the Phase 5 approval prompt. It does not bypass required input, in-progress implementation stops, dirty-file protection, subagent review failure handling, or destructive replacement of existing issue files.
@@ -169,7 +169,7 @@ options:
 
 **If "Abort":** Stop the workflow.
 
-**If "Append":** preserve all existing issue IDs exactly as written. New issues use the next unused number within their prefix group based on both `siw/OPEN_ISSUES_OVERVIEW.md` and on-disk `siw/issues/ISSUE-{prefix}-*.md` files. Do not backfill gaps unless the user explicitly runs `/kramme:siw:issue-reindex`.
+**If "Append":** preserve all existing issue IDs exactly as written. New issues use the next unused number within their prefix group based on both `siw/OPEN_ISSUES_OVERVIEW.md` and on-disk `siw/issues/ISSUE-{prefix}-*.md` files. Do not backfill gaps.
 
 **If "Replace":** Verify nothing is at risk, but defer deletion to Phase 6 so no mutation happens before the final serialized publication boundary.
 
@@ -348,7 +348,7 @@ For each issue, create `siw/issues/ISSUE-{prefix}-{number}-{title}.md`:
 - Number: 3-digit padded (001, 002, 003)
 - Title: lowercase, hyphens, max ~40 characters
 
-**Number assignment in append mode:** use only the final IDs returned by Phase 6.0. Existing gaps remain gaps unless `/kramme:siw:issue-reindex` is explicitly run.
+**Number assignment in append mode:** use only the final IDs returned by Phase 6.0. Existing gaps remain gaps.
 
 **Path references:** generated issue files must use repo-relative paths for affected files, tests, and pattern references. Do not embed absolute local paths; they break portability across workspaces and teammates.
 

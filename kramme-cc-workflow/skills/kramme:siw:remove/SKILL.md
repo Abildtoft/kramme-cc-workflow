@@ -1,15 +1,15 @@
 ---
 name: kramme:siw:remove
-description: Delete SIW workflow files from the current directory. Destructive; use kramme:siw:close first if you want to preserve documentation.
+description: Delete SIW workflow files from the current directory. Destructive; transfer durable specifications and issues to Linear first when they must be preserved.
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Remove Structured Implementation Workflow Files
 
-Delete SIW-related files from the `siw/` folder in the current working directory. This is the destructive cleanup path for SIW workflow documents after implementation is complete.
+Delete SIW-related files from the `siw/` folder in the current working directory. This is the destructive cleanup path after a verified Linear transfer or an explicitly abandoned preparation run.
 
-If you want to preserve accumulated knowledge as permanent documentation, use `/kramme:siw:close` instead. If you want to start a fresh iteration on the same project, use `/kramme:siw:reset`.
+If specifications, decisions, or issues must be preserved, run `/kramme:siw:transfer-to-linear` and verify the migration before using this command.
 
 ## Target Files
 
@@ -21,7 +21,7 @@ If you want to preserve accumulated knowledge as permanent documentation, use `/
 - `siw/AUDIT_SPEC_REPORT.md` — Spec quality audit report
 - `siw/PRODUCT_AUDIT.md` — Product audit report
 - `siw/SIW_*.md` — Other temporary SIW artifacts
-- `siw/SPEC_STRENGTHENING_PLAN.md` — Refinement discovery output (this command deletes it, unlike `/kramme:siw:close`)
+- `siw/SPEC_STRENGTHENING_PLAN.md` — Refinement discovery output
 - `siw/DISCOVERY_BRIEF.md` — Greenfield discovery output
 - `siw/issues/` — Individual issue files
 - `siw/qa-intake/` — QA intake parent summaries

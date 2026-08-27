@@ -196,7 +196,7 @@
       "producer": "kramme:linear:issue-to-pr"
     },
     {
-      "id": "siw-issue-to-pr-code-review",
+      "id": "siw-issue-to-pr-code-review-legacy",
       "path": ".context/siw-issue-to-pr/reviews/REVIEW_OVERVIEW.md",
       "type": "file",
       "category": "working-dir",
@@ -204,7 +204,7 @@
       "producer": "kramme:pr:review-convergence"
     },
     {
-      "id": "siw-issue-to-pr-convention-review",
+      "id": "siw-issue-to-pr-convention-review-legacy",
       "path": ".context/siw-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
       "type": "file",
       "category": "working-dir",
@@ -212,7 +212,7 @@
       "producer": "kramme:pr:review-convergence"
     },
     {
-      "id": "siw-issue-to-pr-overengineering-review",
+      "id": "siw-issue-to-pr-overengineering-review-legacy",
       "path": ".context/siw-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
       "type": "file",
       "category": "working-dir",
@@ -220,7 +220,7 @@
       "producer": "kramme:pr:review-convergence"
     },
     {
-      "id": "siw-issue-to-pr-refactor-review",
+      "id": "siw-issue-to-pr-refactor-review-legacy",
       "path": ".context/siw-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
       "type": "file",
       "category": "working-dir",
@@ -316,7 +316,7 @@
       "producer": "kramme:qa"
     },
     {
-      "id": "audit-implementation-report",
+      "id": "audit-implementation-report-legacy",
       "path": "AUDIT_IMPLEMENTATION_REPORT.md",
       "type": "file",
       "category": "working-dir",
@@ -340,7 +340,7 @@
       "producer": "kramme:siw:product-audit"
     },
     {
-      "id": "siw-audit-implementation-report",
+      "id": "siw-audit-implementation-report-legacy",
       "path": "siw/AUDIT_IMPLEMENTATION_REPORT.md",
       "type": "file",
       "category": "working-dir",

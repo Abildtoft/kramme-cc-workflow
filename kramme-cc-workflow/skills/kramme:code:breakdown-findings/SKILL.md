@@ -8,7 +8,7 @@ user-invocable: true
 
 # Plan Findings into PRs
 
-Cluster validated review, audit, scan, or QA findings into PR-sized themes. Generate one self-contained `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` in the project root per theme plus `PR_PLAN_INDEX.md` and the durable `PR_PLAN_REJECTIONS.md`. For decision-ready analysis without files, route to `kramme:siw:breakdown-findings`.
+Cluster validated review, audit, scan, or QA findings into PR-sized themes. Generate one self-contained `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` in the project root per theme plus `PR_PLAN_INDEX.md` and the durable `PR_PLAN_REJECTIONS.md`. For decision-ready SIW audit analysis that should become local issues, route to `kramme:siw:resolve-audit`.
 
 Accepted sources are auto-detected reports, one or more file paths of any filename, inline findings, suitable current-dialogue findings, or one marked/inferred pre-clustered handoff.
 

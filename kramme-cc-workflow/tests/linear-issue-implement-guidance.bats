@@ -12,6 +12,10 @@ load 'test_helper/common'
     test -f "$skill/references/display-templates.md"
     test -f "$skill/assets/technical-plan.md"
 
+	    grep -qF "Local SIW work must be transferred to Linear before using this skill." "$skill/SKILL.md"
+	    grep -qF "run \`kramme:siw:transfer-to-linear\` first" "$skill/SKILL.md"
+	    ! grep -qF "kramme:siw:issue-implement" "$skill/SKILL.md"
+
     branch_line=$(grep -nF "[Branch Setup] -> IMMEDIATELY create/switch to Linear'\''s branchName" "$skill/SKILL.md" | head -n1 | cut -d: -f1)
     reference_line=$(grep -nF "[Reference Mapping] -> Fetch linked Linear issues/docs and record inaccessible assets" "$skill/SKILL.md" | head -n1 | cut -d: -f1)
     [ "$branch_line" -lt "$reference_line" ]

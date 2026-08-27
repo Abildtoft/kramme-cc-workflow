@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:issue-to-pr
-description: Requires Linear MCP and the GitHub gh CLI. Implements one Linear issue end to end, optionally renames the detected Conductor workspace for the issue, freezes its requirements, delegates pre-PR quality convergence to kramme:pr:review-convergence, then optionally opens a new Pull Request and iterates on CI and review feedback until green. Use when a single non-SIW Linear issue should go from implementation to a clean new Pull Request. Not for implementation-only or review-only work, SIW-tracked issues, stacked PRs, existing PR updates, or post-merge rollout.
+description: Requires Linear MCP and the GitHub gh CLI. Implements one Linear issue end to end, optionally renames the detected Conductor workspace for the issue, freezes its requirements, delegates pre-PR quality convergence to kramme:pr:review-convergence, then optionally opens a new Pull Request and iterates on CI and review feedback until green. Use when a single Linear issue, including one transferred from SIW, should go from implementation to a clean new Pull Request. Not for implementation-only or review-only work, untransferred local SIW issues, stacked PRs, existing PR updates, or post-merge rollout.
 argument-hint: "<ISSUE-ID> [--strict] [--rounds <1-5>] [--ship]"
 disable-model-invocation: true
 user-invocable: true

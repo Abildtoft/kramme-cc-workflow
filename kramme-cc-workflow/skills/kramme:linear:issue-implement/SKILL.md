@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:issue-implement
-description: Requires Linear MCP. Start implementing a Linear issue with branch setup, planning, and guided or --auto workflows. For SIW-tracked work, use kramme:siw:issue-implement instead.
+description: Requires Linear MCP. Start implementing a Linear issue with branch setup, planning, and guided or --auto workflows. Local SIW work must be transferred to Linear before using this skill.
 argument-hint: "<ISSUE-ID> [--auto]"
 disable-model-invocation: true
 user-invocable: true
@@ -12,7 +12,7 @@ Start implementing a Linear issue through an extensive planning phase before any
 
 **IMPORTANT:** Linear issues are typically written for product teams and may be light on technical implementation details. This command emphasizes thorough planning and codebase exploration to translate product requirements into a concrete technical approach before starting implementation.
 
-**Prerequisite:** Requires the Linear MCP server. For work tracked through the Structured Implementation Workflow, use `kramme:siw:issue-implement` instead — this skill implements a single Linear issue directly.
+**Prerequisite:** Requires the Linear MCP server. For work prepared through SIW, run `kramme:siw:transfer-to-linear` first and invoke this skill with the resulting Linear issue identifier.
 
 Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before extracting the Linear issue id. `--auto` skips plan and approach confirmation when the technical path is clear, then chooses Autonomous Implementation. It does not bypass dirty-worktree handling, branch verification, missing Linear metadata, or genuinely blocking product/technical ambiguities.
 

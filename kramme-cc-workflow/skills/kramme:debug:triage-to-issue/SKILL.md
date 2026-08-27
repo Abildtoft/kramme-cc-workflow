@@ -1,6 +1,6 @@
 ---
 name: kramme:debug:triage-to-issue
-description: "(experimental) Turn a bug into an implementation-ready Linear or local SIW issue with root-cause evidence and a RED-GREEN TDD fix plan. Not for full interactive investigation with multiple confidence gates (kramme:debug:investigate), multi-bug QA intake (kramme:qa:intake), or fix implementation (kramme:linear:issue-implement or kramme:siw:issue-implement)."
+description: "(experimental) Turn a bug into an implementation-ready Linear or local SIW issue with root-cause evidence and a RED-GREEN TDD fix plan. Not for full interactive investigation with multiple confidence gates (kramme:debug:investigate), multi-bug QA intake (kramme:qa:intake), or fix implementation (use kramme:linear:issue-implement after transferring local SIW tickets)."
 argument-hint: "[bug description, error message, or Linear/SIW issue ref] [--yes | --auto]"
 disable-model-invocation: true
 user-invocable: true
@@ -230,7 +230,7 @@ CHANGES MADE
 - Body length: {chars}; durability grep: {clean | <count> matches in code blocks only}
 
 THINGS I DIDN'T TOUCH
-- The fix itself — implementation belongs to kramme:linear:issue-implement / kramme:siw:issue-implement.
+- The fix itself — implementation belongs to kramme:linear:issue-implement; local SIW tickets must be transferred first.
 - Any related issues or follow-ups noticed during investigation (logged below).
 
 POTENTIAL CONCERNS
@@ -289,7 +289,7 @@ Watch for these — they signal the durability rule is about to break.
 - **`kramme:debug:investigate`** — source of the investigation phase (Steps 1–6 + Step 8 reporting). The orchestrator stops it at the propose-fix gate via the "Report only" option.
 - **`kramme:test:tdd`** — source of the Prove-It cycle conventions and RED-GREEN structure used in Phase 4. v1 captures the patterns; the sub-skill itself may not be invocable as a pure planner (see Phase 4 caveat).
 - **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly through the available Linear create operation (Claude Code `mcp__linear__create_issue`; Codex `save_issue` without `id`) for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
-- **`kramme:linear:issue-implement` / `kramme:siw:issue-implement`** — downstream consumers. The ticket body produced here is designed to be picked up by these flows without re-investigation.
+- **`kramme:linear:issue-implement`** — downstream implementation consumer. A local SIW ticket reaches it through `kramme:siw:transfer-to-linear` without re-investigation.
 
 ---
 

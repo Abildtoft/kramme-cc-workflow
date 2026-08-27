@@ -2,13 +2,13 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-21
-- Last amended: 2026-08-23
+- Last amended: 2026-08-27
 - Deciders: repository maintainers
 - Review date: 2026-11-21
 
 ## Context
 
-The initial extraction of `kramme:pr:review-convergence` required every direct invocation to repeat an authoritative `--requirements` block. That boundary kept the convergence phase independent from issue intake, but it made an already-established conversation or a referenced Linear issue unusable as the direct invocation's requirement source. Some prepared branches also arrive without enough authoritative conversation context even though their implementation evidence can seed a useful draft, provided the user remains the authority. Internal Linear, SIW, and plan callers already freeze their own contracts before delegation and must retain that stronger handoff.
+The initial extraction of `kramme:pr:review-convergence` required every direct invocation to repeat an authoritative `--requirements` block. That boundary kept the convergence phase independent from issue intake, but it made an already-established conversation or a referenced Linear issue unusable as the direct invocation's requirement source. Some prepared branches also arrive without enough authoritative conversation context even though their implementation evidence can seed a useful draft, provided the user remains the authority. Internal Linear and plan callers freeze their own contracts before delegation and must retain that stronger handoff.
 
 ## Decision
 
@@ -48,3 +48,7 @@ Rejected because implementation evidence describes what was built, not necessari
 ### Infer a Linear issue from the branch name
 
 Rejected because branch naming is supporting evidence, not explicit user selection, and could bind review to stale or unrelated issue context.
+
+## Amendment
+
+The 2026-08-26 SIW boundary decision removed the SIW internal caller. The frozen internal handoff now applies to Linear and archived-plan callers.

@@ -62,21 +62,13 @@ EOF
 
 siw_spec_exclusion_expected_paths() {
   printf '%s\n' \
-    "kramme-cc-workflow/skills/kramme:siw:close/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:continue/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:implementation-audit/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:implementation-audit/references/spec-resolution.md" \
     "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:issue-define/references/classification-and-prefix.md" \
-    "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/spec-sync.md" \
-    "kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md" \
-    "kramme-cc-workflow/skills/kramme:siw:issue-reindex/references/spec-capture-check.md" \
     "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:remove/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:reset/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md" \
     "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md"
@@ -1370,22 +1362,24 @@ EOF
   local scoped_plan_text
   local classification_line
   local initial_removal_line
-  local recovery_removal_line
+  local terminal_removal_line
   skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
   scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
 
   classification_line="$(grep -nF 'After this classification, reject unknown, duplicate, or misplaced lifecycle sections.' <<<"$scoped_plan_text" | cut -d: -f1)"
   initial_removal_line="$(grep -nF 'In initial lifecycle, remove exactly the one workflow-state section' <<<"$scoped_plan_text" | cut -d: -f1)"
-  recovery_removal_line="$(grep -nF 'In recovery lifecycle, remove exactly one workflow-state and one execution-result section.' <<<"$scoped_plan_text" | cut -d: -f1)"
+  terminal_removal_line="$(grep -nF 'In post-create or recovery lifecycle, remove exactly one workflow-state and one execution-result section.' <<<"$scoped_plan_text" | cut -d: -f1)"
 
   [ -n "$classification_line" ]
   [ "$classification_line" -eq "$initial_removal_line" ]
-  [ "$classification_line" -eq "$recovery_removal_line" ]
+  [ "$classification_line" -eq "$terminal_removal_line" ]
   [[ "$scoped_plan_text" == *'In initial lifecycle, require its repository, base ref, and head branch to match'* ]]
   [[ "$scoped_plan_text" == *'retain its head OID only for the live-head agreement and adoption proof in item 7'* ]]
+  [[ "$scoped_plan_text" == *'SCOPED_PLAN_LIFECYCLE=post-create'* ]]
+  [[ "$scoped_plan_text" == *'In post-create lifecycle, require the execution result to prove publication was absent at non-ship completion'* ]]
   [[ "$scoped_plan_text" == *'In recovery lifecycle, require the execution result to record the exact Pull Request number and URL, repository, base ref, head branch, and head OID'* ]]
   [[ "$scoped_plan_text" == *'require the execution-result completion commit to equal the recorded workflow checkpoint before any recovery action'* ]]
-  [[ "$scoped_plan_text" == *'initial lifecycle may adopt the live head only through one of these proofs:'* ]]
+  [[ "$scoped_plan_text" == *'initial or post-create lifecycle may adopt the live head only through one of these proofs:'* ]]
   [[ "$scoped_plan_text" == *'**Ancestor-only scoped push:**'* ]]
   [[ "$scoped_plan_text" == *'the first commit'\''s sole parent is `{checkpoint-head}`'* ]]
   [[ "$scoped_plan_text" == *'Reject merge commits, missing or reordered commits'* ]]
@@ -1395,6 +1389,8 @@ EOF
   [[ "$scoped_plan_text" == *'Reject merge commits, missing or reordered commits'* ]]
   [[ "$scoped_plan_text" == *'atomically refresh only the workflow-state checkpoint head/tree'* ]]
   [[ "$scoped_plan_text" == *'repeat every archive identity, base, same-repository Pull Request identity, head agreement, tree, exact-file eligibility, and committed-path proof'* ]]
+  [[ "$scoped_plan_text" == *'Before any CI or review-feedback edit, use the atomic archive update contract to bind the newly proven Pull Request'* ]]
+  [[ "$scoped_plan_text" == *'Set `SCOPED_PLAN_LIFECYCLE=recovery` only after that revalidation succeeds.'* ]]
   [[ "$scoped_plan_text" == *'atomically refresh both the workflow checkpoint head/tree and execution-result completion commit and Pull Request head OID'* ]]
   [[ "$scoped_plan_text" == *'In initial lifecycle mode, immediately after every proven push use the atomic archive update contract above to replace only the archived workflow-state checkpoint head/tree'* ]]
   [[ "$scoped_plan_text" == *'never adding an execution result'* ]]
@@ -1591,174 +1587,6 @@ EOF
   [[ "$output" == *"differs"* ]]
 }
 
-@test "siw main spec ambiguity contract covers issue implement team mode" {
-  local registry_text
-  registry_text="$(cat "$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml")"
-
-  [[ "$registry_text" == *'"name": "siw-main-spec-ambiguity-rule"'* ]]
-  [[ "$registry_text" == *'"kramme-cc-workflow/skills/kramme:siw:issue-implement/references/team-mode.md"'* ]]
-}
-
-@test "siw issue implement spec sync retains its handoff and topic routes" {
-  local skill_text spec_sync_text
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/SKILL.md")"
-  spec_sync_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/references/spec-sync.md")"
-
-  [[ "$skill_text" == *'Read `references/spec-sync.md` and follow it for the classification categories, the spec routing rules'* ]]
-  [[ "$spec_sync_text" == *'- Data model decisions → `*-data-model*.md`'* ]]
-  [[ "$spec_sync_text" == *'- API decisions → `*-api*.md`'* ]]
-  [[ "$spec_sync_text" == *'- Contract/interface decisions → `siw/contracts/*.md`'* ]]
-  [[ "$spec_sync_text" == *'- UI/frontend decisions → `*-ui*.md` or `*-frontend*.md`'* ]]
-  [[ "$spec_sync_text" == *'- Architecture decisions → `*-architecture*.md`'* ]]
-  [[ "$spec_sync_text" == *'- User story updates → `*-user-stories*.md`'* ]]
-  [[ "$spec_sync_text" == *'- Default → main spec if no matching supporting or contract spec'* ]]
-}
-
-@test "siw issue implement team mode makes the lead the sole shared-state writer" {
-  local team_text
-  team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/references/team-mode.md")"
-
-  [[ "$team_text" == *'The issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md` are tracking state owned exclusively by the lead; treat all three as read-only.'* ]]
-  [[ "$team_text" == *'`Issue ID`: canonical SIW ID'* ]]
-  [[ "$team_text" == *'`Final status`: recommended IN REVIEW or DONE'* ]]
-  [[ "$team_text" == *'`Resolution`: complete Markdown content for the issue file'* ]]
-  [[ "$team_text" == *'`Log event`: one-line meaningful completion event for `Last Completed`'* ]]
-  [[ "$team_text" == *'`Decisions`: decisions requiring spec or log synchronization, or `None`'* ]]
-  [[ "$team_text" == *'Immediately before assigning any issue to a teammate — whether spawning a new teammate or reusing an idle one — the lead must claim that issue by publishing its `IN PROGRESS` transition **serially, one issue at a time**'* ]]
-  [[ "$team_text" == *'maintain an `**Issue States:**` field that lists every issue assigned in this team session and its tracker-visible status'* ]]
-  [[ "$team_text" == *'Do not assign the issue to its teammate until the status agrees across all three files.'* ]]
-  [[ "$team_text" == *"For each Batch 2 issue, run the Step 5 claim procedure, then assign it to an idle teammate or spawn a new one."* ]]
-  [[ "$team_text" == *'Never reuse an idle teammate before that issue is `IN PROGRESS` across all three tracking files.'* ]]
-  [[ "$team_text" == *"do not rerun the standard workflow's IN PROGRESS Status Update Procedure"* ]]
-  [[ "$team_text" == *"Do not run the standard workflow's Sync Decisions to Spec step"* ]]
-  [[ "$team_text" == *'If a field is absent, is invalid for the assigned issue, or contradicts the verification results, reject the handoff'* ]]
-  [[ "$team_text" == *'Review the `Decisions` in every accepted handoff before publishing any final status.'* ]]
-  [[ "$team_text" == *'Do not publish an affected issue as `DONE` until its required spec synchronization completes or the user explicitly chooses to skip that update.'* ]]
-  [[ "$team_text" == *'publish accepted handoffs **serially, one at a time**'* ]]
-  [[ "$team_text" == *'Immediately before writing, re-read the issue file, `siw/OPEN_ISSUES_OVERVIEW.md`, and `siw/LOG.md`'* ]]
-  [[ "$team_text" == *'verify the issue status agrees across them and that the log retains every completion and decision published so far'* ]]
-  [[ "$team_text" == *'Preserve the exact `Log event` and non-`None` `Decisions` entries from every accepted handoff'* ]]
-  [[ "$team_text" != *'Update ALL THREE tracking files atomically'* ]]
-}
-
-@test "siw issue implement team mode preserves interleaved worker completions" {
-  run python3 - "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-implement/references/team-mode.md" <<'PY'
-import pathlib
-import sys
-
-team_text = pathlib.Path(sys.argv[1]).read_text()
-required_protocol = (
-    "tracking state owned exclusively by the lead",
-    "whether spawning a new teammate or reusing an idle one",
-    "publishing its `IN PROGRESS` transition **serially, one issue at a time**",
-    "Do not assign the issue to its teammate until the status agrees across all three files",
-    "For each Batch 2 issue, run the Step 5 claim procedure",
-    "Never reuse an idle teammate before that issue is `IN PROGRESS`",
-    "Do not run the standard workflow's Sync Decisions to Spec step",
-    "Review the `Decisions` in every accepted handoff before publishing any final status",
-    "Do not publish an affected issue as `DONE` until its required spec synchronization completes",
-    "publish accepted handoffs **serially, one at a time**",
-    "Immediately before writing, re-read",
-    "maintain an `**Issue States:**` field",
-    "update only that issue's `Issue States` entry",
-    "without discarding entries published for earlier handoffs",
-    "retains every completion and decision published so far",
-    "Preserve the exact `Log event` and non-`None` `Decisions` entries",
-)
-missing = [marker for marker in required_protocol if marker not in team_text]
-if missing:
-    raise SystemExit("missing serialized-publication guidance: " + ", ".join(missing))
-
-# The lead claims each issue serially before spawning it. Both workers then
-# finish from revision 2 and return handoffs rather than writing tracking state;
-# the lead re-reads and publishes all three tracking files serially.
-shared = {
-    "revision": 0,
-    "issue_status": {},
-    "overview": {},
-    "log_status": {},
-    "log_events": [],
-    "decisions": [],
-}
-for issue_id in ("P1-001", "P1-002"):
-    current = shared.copy()
-    current["issue_status"] = shared["issue_status"].copy()
-    current["overview"] = shared["overview"].copy()
-    current["log_status"] = shared["log_status"].copy()
-    current["log_events"] = shared["log_events"].copy()
-    current["decisions"] = shared["decisions"].copy()
-    current["issue_status"][issue_id] = "IN PROGRESS"
-    current["overview"][issue_id] = "IN PROGRESS"
-    current["log_status"][issue_id] = "IN PROGRESS"
-    current["revision"] += 1
-    shared = current
-
-assert shared["overview"] == {
-    "P1-001": "IN PROGRESS",
-    "P1-002": "IN PROGRESS",
-}
-assert shared["issue_status"] == shared["overview"]
-assert shared["issue_status"] == shared["log_status"]
-assert shared["revision"] == 2
-
-handoffs = [
-    {
-        "Issue ID": "P1-002",
-        "Final status": "IN REVIEW",
-        "Resolution": "Implemented beta",
-        "Log event": "P1-002 implementation completed",
-        "Decisions": "Use beta compatibility mode",
-        "worker_revision": 2,
-    },
-    {
-        "Issue ID": "P1-001",
-        "Final status": "DONE",
-        "Resolution": "Implemented alpha",
-        "Log event": "P1-001 implementation completed",
-        "Decisions": "None",
-        "worker_revision": 2,
-    },
-]
-
-for handoff in handoffs:
-    current = shared.copy()
-    current["issue_status"] = shared["issue_status"].copy()
-    current["overview"] = shared["overview"].copy()
-    current["log_status"] = shared["log_status"].copy()
-    current["log_events"] = shared["log_events"].copy()
-    current["decisions"] = shared["decisions"].copy()
-    current["issue_status"][handoff["Issue ID"]] = handoff["Final status"]
-    current["overview"][handoff["Issue ID"]] = handoff["Final status"]
-    current["log_status"][handoff["Issue ID"]] = handoff["Final status"]
-    current["log_events"].append(handoff["Log event"])
-    if handoff["Decisions"] != "None":
-        current["decisions"].append(handoff["Decisions"])
-    current["revision"] += 1
-    shared = current
-
-assert shared["overview"] == {"P1-002": "IN REVIEW", "P1-001": "DONE"}
-assert shared["issue_status"] == shared["overview"]
-assert shared["issue_status"] == shared["log_status"]
-assert shared["log_events"] == [
-    "P1-002 implementation completed",
-    "P1-001 implementation completed",
-]
-assert shared["decisions"] == ["Use beta compatibility mode"]
-assert shared["revision"] == 4
-
-# Final session summarization preserves the accepted handoff records instead
-# of rebuilding them from generic issue titles or cross-cutting decisions only.
-summary = shared.copy()
-summary["log_events"] = shared["log_events"].copy()
-summary["decisions"] = shared["decisions"].copy()
-summary["quick_summary"] = "Parallel implementation of 2 issues"
-summary["completed_this_session"] = ["P1-002", "P1-001"]
-assert summary["log_events"] == shared["log_events"]
-assert summary["decisions"] == shared["decisions"]
-PY
-
-  [ "$status" -eq 0 ]
-}
 
 @test "siw issue creators share the same final-boundary reservation protocol" {
   local issue_define_text generate_phases_text publication_recovery_text generate_phases_contract_text tracker_schema_text

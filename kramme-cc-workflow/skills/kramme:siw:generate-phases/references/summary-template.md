@@ -25,11 +25,11 @@ POTENTIAL CONCERNS:
   • {Any CONFUSION or MISSING REQUIREMENT markers from Phase 2 that were resolved by assumption — worth re-checking before implementation}
   • {If empty, state: "None"}
 
-Suggested starting point:
-  /kramme:siw:issue-implement ISSUE-{first-ready-issue}
+Suggested next step:
+  /kramme:siw:transfer-to-linear
 
 Tips:
-  • Work through phases sequentially (Phase 1 → Phase 2 → ...)
-  • General tasks follow their recorded parallelization guidance; only `Safe to parallelize` work can truly be done anytime
-  • Mark issues DONE in the overview as you complete them
+  • Review phase order, dependencies, and issue boundaries before transfer
+  • General tasks retain their recorded parallelization guidance in Linear
+  • After a verified transfer, Linear becomes the source of truth
 ```

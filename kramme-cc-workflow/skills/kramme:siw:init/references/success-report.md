@@ -22,16 +22,16 @@ Next Steps:
 
   {If planning-ready and the work should be phased:}
   1. Run /kramme:siw:generate-phases to decompose spec into phase-based issues
-  2. Run /kramme:siw:issue-implement <G-XXX or P1-XXX> after issues exist
+  2. Run /kramme:siw:transfer-to-linear after reviewing the issue set
 
   {If planning-ready and the work is one coherent issue:}
   1. Run /kramme:siw:issue-define to create the first issue
-  2. Run /kramme:siw:issue-implement <G-XXX or P1-XXX> after the issue exists
+  2. Run /kramme:siw:transfer-to-linear after reviewing the issue
 
 Tips:
-  - The spec file is permanent; keep it updated as your source of truth
-  - siw/LOG.md and siw/issues are temporary; delete them when work is complete
-  - Use /kramme:workflow-artifacts:cleanup to remove temporary files when done
+  - Until transfer, the spec file is permanent; keep it updated as the local source of truth
+  - siw/LOG.md and siw/issues are temporary preparation artifacts
+  - After a verified transfer, update requirements in Linear and use /kramme:siw:remove to retire the local SIW files
 ```
 
 **If external files were linked, also show:**
@@ -41,7 +41,12 @@ Linked Specifications:
   {If kept in place:}
   - {file1} (external)
   - {file2} (external)
-  These files remain the source of truth. The SIW spec references them.
+  Until captured for transfer, these files remain the local source of truth. The SIW spec references them.
+  Before transfer, capture every authoritative linked source:
+    - Copy Markdown specs into siw/supporting-specs/ and update the SIW links.
+    - Copy non-Markdown sources under siw/ so transfer can require relocation or upload before cleanup.
+  If any linked source cannot be captured, stop and keep the local SIW source of truth.
+  Treat Linear as authoritative only after transfer verifies every linked source's disposition.
 
   {If moved to siw/:}
   - siw/{file1} (moved)

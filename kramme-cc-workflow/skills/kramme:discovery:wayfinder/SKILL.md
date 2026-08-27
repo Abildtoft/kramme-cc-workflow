@@ -1,5 +1,5 @@
 ---
-name: kramme:siw:wayfinder
+name: kramme:discovery:wayfinder
 description: "Charts huge or foggy initiatives into a local `.context` decision map and resolves one typed frontier ticket per session until the work is ready for SIW or another execution workflow. Use when the route to a destination cannot fit in one agent session or parallel workspaces need coordinated planning state. Not for clear specs, ordinary issue decomposition, implementation, or Linear-native tracking."
 argument-hint: "[initiative description | map-path [ticket-id]]"
 disable-model-invocation: true

@@ -1,401 +1,214 @@
-# Structured Implementation Workflow (SIW) Reference
+# Structured Implementation Workflow (SIW)
 
-Detailed documentation for the Structured Implementation Workflow. See the root [README](../../README.md#structured-implementation-workflow-siw) for a summary.
+SIW is the local preparation workflow for complex initiatives. It turns uncertain intent into reviewed specifications and an approved first issue set, then migrates those artifacts one way into Linear. Linear owns implementation, Pull Requests, and ongoing issue management after transfer.
 
-## Table of Contents
+## Workflow Boundary
 
-- [What SIW Is](#what-siw-is)
-- [When to Use SIW](#when-to-use-siw)
-- [Quick Start](#quick-start)
-- [Overall Workflow](#overall-workflow)
-- [Document System](#document-system)
-- [Issue Conventions](#issue-conventions)
-- [Status Lifecycle](#status-lifecycle)
-- [Skill Reference](#skill-reference)
-- [Common Workflows](#common-workflows)
-- [Design Philosophy](#design-philosophy)
-- [Tips & Troubleshooting](#tips--troubleshooting)
+```text
+optional discovery
+       │
+       ▼
+initialize SIW ──► audit and refine specs ──► define the first issue set
+                                                       │
+                                                       ▼
+                                              transfer to Linear
+                                                       │
+                                                       ▼
+                                            remove local SIW files
+```
 
-## What SIW Is
+SIW does:
 
-SIW is a local, file-based workflow for planning, tracking, and implementing complex features. Everything lives in a `siw/` directory as markdown files — no external services required. It tracks issues, decisions, and progress alongside your code, all versioned in git.
+- discover and clarify requirements;
+- create or link specifications;
+- audit product and specification quality;
+- apply mechanical audit fixes and turn decision findings into local issues;
+- define individual issues or generate phased issue sets;
+- migrate specifications, decisions, milestones, dependencies, and issues into Linear;
+- explicitly remove local SIW artifacts after migration is verified.
 
-The core idea: a **specification** is the permanent source of truth. Issues, logs, and audit reports are temporary artifacts that exist only while work is in progress. When the project closes, decisions flow back into the spec and temporary files are removed.
+SIW does not implement issues, prepare Pull Requests, maintain a long-running local backlog, or audit completed implementations. Use the Linear workflows after transfer.
 
-## When to Use SIW
-
-**Good for:**
-
-- Multi-issue features requiring planning and decision tracking
-- Projects spanning multiple sessions where continuity matters
-- Work without Linear or when you want local-only tracking
-- Technical designs, API documentation, or system architecture
-
-**Not for:**
-
-- Small bug fixes (< 1 day of work)
-- Trivial updates or simple refactoring
-- Single-file changes with obvious scope
-
-For huge or foggy initiatives whose route can't fit in one session, start with `/kramme:siw:wayfinder` to chart the work into a decision map, then hand the resolved plan to SIW for tracked implementation.
+For an initiative too foggy to fit in one planning session, start with `/kramme:discovery:wayfinder`. Wayfinder stores a temporary decision map under `.context/` and hands a planning-ready result into SIW or another workflow.
 
 ## Quick Start
 
-```
-/kramme:siw:init my-feature-spec.md     # Set up workflow from existing spec
-/kramme:siw:generate-phases             # Break spec into phase-based issues
-/kramme:siw:issue-implement P1-001      # Implement first issue
-/kramme:siw:issue-to-pr P1-001 --ship   # Or take one issue through a clean PR
-/kramme:siw:close                       # Generate docs and clean up
-```
-
-Or start from scratch with an interactive interview:
-
-```
-/kramme:siw:init discover               # Interview-driven spec creation
+```bash
+/kramme:siw:discovery "build a notification system" # optional deep discovery
+/kramme:siw:init siw/DISCOVERY_BRIEF.md             # create the SIW container and spec
+/kramme:siw:product-audit                           # optional product-pressure test
+/kramme:siw:spec-audit --apply                      # validate and safely fix the spec
+/kramme:siw:generate-phases                         # create the initial phased issue set
+/kramme:siw:transfer-to-linear --dry-run            # review the migration plan
+/kramme:siw:transfer-to-linear                      # make Linear the source of truth
+/kramme:siw:remove                                  # retire local files after verification
 ```
 
-## Overall Workflow
+Use `/kramme:siw:issue-define` instead of `generate-phases` when one coherent issue is enough. Use `/kramme:siw:resolve-audit` when audit findings require decisions rather than mechanical edits.
 
-```
-/kramme:siw:init
-    │
-    ├─── Optional spec refinement ──────────────────────┐
-    │                                                    │
-    │    /kramme:siw:discovery      Greenfield discovery │
-    │                               or spec refinement   │
-    │    /kramme:siw:spec-audit     8-dimension quality  │
-    │                               check                │
-    │    /kramme:siw:apply-spec-audit-fixes              │
-    │                               deterministic fixes  │
-    │    /kramme:siw:breakdown-findings                  │
-    │                               decision-ready       │
-    │                               spec triage          │
-    │◄───────────────────────────────────────────────────┘
-    │
-    ▼
-/kramme:siw:generate-phases
-    │   (or /kramme:siw:issue-define for ad-hoc issues)
-    │
-    ▼
-┌─► /kramme:siw:issue-implement ◄──────────────────────┐
-│       │                                               │
-│       │   Repeat for each issue:                      │
-│       │   READY → IN PROGRESS → DONE                  │
-│       │                                               │
-│       ▼                                               │
-│   /kramme:siw:implementation-audit                    │
-│       │   (verify spec conformance)                   │
-│       │                                               │
-│       ▼                                               │
-│   /kramme:siw:resolve-audit ──────────────────────────┘
-│       (triage findings → create new issues)
-│
-│   /kramme:siw:issue-reindex  (clean up DONE issues mid-workflow)
-│
-└── Iterate until complete
-        │
-        ▼
-    ┌───────────────────────────────────────────┐
-    │ /kramme:siw:close   Generate permanent    │
-    │                     docs, remove temp      │
-    │                     files                  │
-    │                                           │
-    │ /kramme:siw:reset   Preserve spec, clear  │
-    │                     issues/log for new     │
-    │                     iteration              │
-    │                                           │
-    │ /kramme:siw:remove  Delete all SIW files  │
-    │                     without generating     │
-    │                     docs                   │
-    └───────────────────────────────────────────┘
-```
+## Files and Lifecycle
 
-## Document System
+SIW keeps its tracked preparation state under `siw/`. During preparation, `siw:init` may leave authoritative linked source files elsewhere; those files remain the local source of truth until they are copied under `siw/` and their links are updated before transfer. The transfer gate must verify every linked source's disposition before Linear becomes authoritative.
 
-### File Overview
-
-| Document | Purpose | Persistence |
-| --- | --- | --- |
-| `siw/[YOUR_SPEC].md` | Main specification — single source of truth | **Permanent** |
-| `siw/supporting-specs/*.md` | Detailed specs by domain (data model, API, UI) | **Permanent** |
-| `siw/contracts/*.md` | Contract specs referenced by issues or migrated planning docs | **Permanent** |
-| `siw/DISCOVERY_BRIEF.md` | Greenfield discovery output before `siw:init` creates the full workflow | Temporary |
-| `siw/SPEC_STRENGTHENING_PLAN.md` | Refinement discovery output waiting for review or `--apply` | Temporary |
-| `siw/LOG.md` | Session progress, decision log, guiding principles | Temporary |
-| `siw/OPEN_ISSUES_OVERVIEW.md` | Issue tracking table | Temporary |
-| `siw/issues/ISSUE-*.md` | Individual issue files | Temporary |
-| `siw/AUDIT_IMPLEMENTATION_REPORT.md` | Implementation audit output | Temporary |
-| `siw/AUDIT_SPEC_REPORT.md` | Spec quality audit output | Temporary |
-
-### Typical Directory Layout
-
-```
+```text
 siw/
-├── FEATURE_SPECIFICATION.md          ← Permanent (name chosen at init)
-├── supporting-specs/                 ← Permanent (optional, for large projects)
-│   ├── 01-data-model.md
-│   ├── 02-api-specification.md
-│   └── 03-ui-specification.md
-├── contracts/                        ← Permanent (optional, linked contract specs)
-│   └── 01-api-contract.md
-├── DISCOVERY_BRIEF.md                ← Temporary (greenfield discovery output)
-├── SPEC_STRENGTHENING_PLAN.md        ← Temporary (refinement handoff artifact)
-├── LOG.md                            ← Temporary
-├── OPEN_ISSUES_OVERVIEW.md           ← Temporary
-├── AUDIT_IMPLEMENTATION_REPORT.md    ← Temporary (created by audit)
-├── AUDIT_SPEC_REPORT.md              ← Temporary (created by audit)
-└── issues/                           ← Temporary
-    ├── ISSUE-G-001-setup.md
-    ├── ISSUE-P1-001-core-feature.md
-    ├── ISSUE-P1-002-api-endpoint.md
-    └── ISSUE-P2-001-ui-integration.md
+├── <SPEC>.md
+├── supporting-specs/
+├── contracts/
+├── DISCOVERY_BRIEF.md
+├── SPEC_STRENGTHENING_PLAN.md
+├── AUDIT_SPEC_REPORT.md
+├── PRODUCT_AUDIT.md
+├── LOG.md
+├── OPEN_ISSUES_OVERVIEW.md
+└── issues/
+    ├── ISSUE-G-001-*.md
+    ├── ISSUE-P1-001-*.md
+    └── ...
 ```
 
-### Decision Flow
-
-Decisions flow **one way**: from implementation through the log into the spec.
-
-```
-Issues → LOG.md → Spec
-```
-
-- Decisions made during implementation are recorded in `siw/LOG.md`
-- Before marking an issue complete, decisions are synced to the spec (or relevant supporting spec)
-- The spec never references temporary documents — it remains self-contained and permanent
-
-### Supporting Specs
-
-Use `siw/supporting-specs/` when:
-
-- The main spec exceeds ~500 lines
-- Multiple distinct domains exist (data model, API, UI, user stories)
-- You want targeted reading during implementation
-
-**Naming convention:** `NN-descriptor.md` (e.g., `01-data-model.md`, `02-api-specification.md`)
-
-The main spec references supporting specs via a table of contents. During decision sync (step 10 of `issue-implement`), decisions are routed to the appropriate supporting spec by topic.
-
-### Contract Specs
-
-Use `siw/contracts/` for durable interface, data-shape, or integration contracts that issues or supporting specs need to reference directly.
-
-**Naming convention:** `NN-descriptor.md` (e.g., `01-api-contract.md`, `02-event-payload.md`)
-
-Contract specs are permanent source material. Audit, close, transfer, and implementation workflows should treat referenced contract specs like supporting specs rather than temporary issue context.
-
-### Generated Documentation
-
-When closing a project with `/kramme:siw:close`, permanent documentation is generated in `docs/<feature>/`:
-
-```
-docs/<feature>/
-├── README.md          Project summary
-├── decisions.md       Architecture decision records
-└── architecture.md    Technical design (if applicable)
-```
-
-## Issue Conventions
-
-### Naming
-
-Issues use prefix-based numbering:
-
-| Prefix     | Usage                                      | Example            |
-| ---------- | ------------------------------------------ | ------------------ |
-| `G-XXX`    | General issues — standalone, cross-cutting | `G-001`, `G-002`   |
-| `P1-XXX`   | Phase 1 issues                             | `P1-001`, `P1-002` |
-| `P2-XXX`   | Phase 2 issues                             | `P2-001`, `P2-002` |
-| `P{N}-XXX` | Phase N issues                             | `P3-001`           |
-
-**File naming:** `ISSUE-{prefix}-{number}-{short-description}.md`
-
-Examples: `ISSUE-G-001-setup.md`, `ISSUE-P1-001-core-data-model.md`
-
-### Issue Structure
-
-Each issue file contains:
-
-- **Problem** — What needs to be done
-- **Context** — Background and motivation
-- **Scope** — What's in and out of scope
-- **Acceptance Criteria** — Measurable conditions for completion
-- **Technical Notes** — Implementation guidance (optional)
-- **Resolution** — Added when complete, documenting what was done
-
-### Creating Issues
-
-- `/kramme:siw:generate-phases` decomposes a spec into phase-based issues automatically, with subagent review for atomicity and testability
-- `/kramme:siw:issue-define` creates individual issues through a guided interview process
-
-## Status Lifecycle
-
-```
-Created              In Progress           Review              Completed
-   │                      │                   │                    │
-   ▼                      ▼                   ▼                    ▼
-┌─────────┐          ┌─────────┐        ┌─────────┐          ┌─────────┐
-│  READY  │ ───────► │IN PROG  │ ─────► │IN REVIEW│ ───────► │  DONE   │
-└─────────┘          └─────────┘        └─────────┘          └─────────┘
-```
-
-- **READY** — Defined, waiting to be picked up
-- **IN PROGRESS** — Currently being implemented
-- **IN REVIEW** — Work complete, awaiting review/approval
-- **DONE** — Resolved and documented
-
-### Atomic Status Updates
-
-Every status change must update **all three files** simultaneously:
-
-1. **Issue file** (`siw/issues/ISSUE-*.md`) — the `**Status:**` line
-2. **Overview** (`siw/OPEN_ISSUES_OVERVIEW.md`) — the issue's table row
-3. **Log** (`siw/LOG.md`) — the "Current Progress" section
-
-This is treated as a single atomic operation. Skipping any file leaves tracking inconsistent.
-
-### Phase Completion
-
-When all issues in a phase reach DONE, the phase header in `OPEN_ISSUES_OVERVIEW.md` is marked with `(DONE)` — e.g., `## Phase 2: Core Features (DONE)`.
-
-## Skill Reference
-
-### Initialization & Setup
-
-| Skill | Arguments | Description |
+| Artifact | Purpose | Terminal handling |
 | --- | --- | --- |
-| `/kramme:siw:init` | `[spec-file(s) \| folder \| discover]` | Initialize workflow. Accepts existing spec files, a folder of specs, `siw/DISCOVERY_BRIEF.md`, or `discover` to run the discovery-brief flow before spec creation. Creates `siw/` directory with spec, LOG.md, overview, and issues folder. |
-| `/kramme:siw:continue` | — | Entry point for resuming. Auto-triggers when SIW files are detected. Reads LOG.md for current state and suggests next action. |
+| Main and supporting specifications | Durable requirements and design context | Migrated as Linear Documents, then removed locally only after verification |
+| Contract specifications | Referenced contracts selected for migration | Migrated as Linear Documents when selected |
+| `LOG.md` | Preparation progress and decisions | Migrated as a Linear Document |
+| `OPEN_ISSUES_OVERVIEW.md` and `issues/` | Initial issue set and dependency graph | Migrated to Linear milestones, issues, metadata, and relations |
+| Discovery, strengthening, and audit reports | Temporary preparation evidence | Resolve or apply relevant findings before transfer; remove after migration |
 
-### Specification Refinement
+Specifications must not depend on temporary SIW files. Put durable requirements and decisions in the specification itself; use the log as migration context, not as the only source of a requirement.
 
-| Skill | Arguments | Description |
+## Artifact Readiness
+
+Retained SIW skills use four readiness states:
+
+- `product-only`: clarifies the problem, users, or desired outcome but lacks testable requirements;
+- `requirements-only`: defines scope and success criteria but still lacks planning detail;
+- `planning-ready`: supports issue definition or phase decomposition;
+- `implementation-ready`: an issue has bounded scope, dependencies, acceptance criteria, mode, and verification.
+
+Discovery and audits move specifications toward `planning-ready`. `issue-define` and `generate-phases` produce `implementation-ready` local issues. Transfer preserves that issue context in Linear; it does not implement the work.
+
+## Specification Refinement
+
+### Discovery
+
+`/kramme:siw:discovery` works before or after a specification exists:
+
+- Greenfield mode writes `siw/DISCOVERY_BRIEF.md`.
+- Refinement mode writes `siw/SPEC_STRENGTHENING_PLAN.md` and can apply approved changes with `--apply`.
+- `--decision-tree` resolves tightly coupled decisions depth-first.
+
+### Product audit
+
+`/kramme:siw:product-audit` reviews target users, problem/solution fit, user states, critical moments, scope, success criteria, and prioritization. Use it before transfer when product correctness matters independently of specification mechanics.
+
+### Specification audit
+
+`/kramme:siw:spec-audit` reviews coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design.
+
+- `--inline` returns a read-only report.
+- `--apply` delegates mechanical fixes to the canonical safe-fix procedure.
+- `--team` performs cross-validated multi-agent analysis when the runtime supports it.
+- `--auto` selects the documented non-interactive behavior but does not bypass safety gates.
+
+Use `/kramme:siw:apply-spec-audit-fixes` for deterministic report findings such as broken cross-references, terminology inconsistencies, numbering mistakes, formatting problems, and wording whose specific replacement already exists in the spec.
+
+Use `/kramme:siw:resolve-audit` for findings requiring a choice. It presents an executive summary, alternatives, and a recommendation before creating the selected local SIW issue. Explicitly supplied legacy implementation-audit reports remain readable for migration recovery, but SIW no longer produces new implementation-audit reports.
+
+## Initial Issue Definition
+
+### One issue
+
+`/kramme:siw:issue-define` creates or refines one `G-*` or `P*-*` issue through a guided interview and codebase exploration. It keeps the issue file, overview, and log synchronized.
+
+### Phased issue set
+
+`/kramme:siw:generate-phases` decomposes a planning-ready specification into atomic XS/S/M/L issues with acceptance criteria, verification, dependencies, parallelization guidance, and `AUTO` or justified `HITL` mode.
+
+Issue IDs are stable after publication. Preserve gaps rather than renumbering; Linear identifiers become authoritative after transfer.
+
+The new workflow normally transfers issues while they are `READY`. Legacy `IN PROGRESS`, `IN REVIEW`, and `DONE` states remain readable so existing SIW projects can still migrate safely.
+
+## Transfer to Linear
+
+`/kramme:siw:transfer-to-linear` is a one-way migration, not synchronization.
+
+It can:
+
+- create or reuse one Linear project;
+- migrate the main spec, supporting specs, selected contracts, and log as Linear Documents;
+- create or reuse milestones from phases;
+- create Linear issues from SIW issue files;
+- preserve dependencies as text and native relations when supported;
+- rewrite SIW-local document and issue references;
+- detect duplicate content before writes;
+- write retry markers back to source issue files;
+- verify created records and rewritten content before recommending cleanup.
+
+The transfer checks for duplicate issue content before creating Linear issues, so retries cannot silently create parallel tickets for the same work.
+
+Always review the generated migration plan. Use `--dry-run` for a no-write preview. If migration is partial, fix the reported unresolved items and resume with `--retry`; do not delete local files while required context remains local-only.
+
+After a clean transfer:
+
+```bash
+/kramme:linear:issue-implement TEAM-123
+# or
+/kramme:linear:issue-to-pr TEAM-123 --ship
+```
+
+## Cleanup
+
+`/kramme:siw:remove` is deliberately separate from transfer because deletion has a different permission boundary. It uses recoverable deletion when available, inventories the exact target set, and requires confirmation for permanent specification files.
+
+When retiring a successfully transferred run, use it only after:
+
+- transfer verification reports no failed writes;
+- required specifications and selected contracts exist in Linear;
+- required local references were rewritten or explicitly resolved;
+- non-Markdown artifacts were relocated or uploaded;
+- every created Linear issue has a retry marker in its source SIW issue file.
+
+An explicitly abandoned preparation run may skip transfer and use `/kramme:siw:remove` directly under the same inventory, recoverable-deletion, and confirmation safeguards.
+
+## Commands
+
+| Skill | Arguments | Purpose |
 | --- | --- | --- |
-| `/kramme:siw:discovery` | `[topic \| spec-path(s) \| 'siw'] [--apply] [--decision-tree]` | Deep discovery interview that works both before a spec exists and after one has gone stale. Greenfield runs write `siw/DISCOVERY_BRIEF.md`; refinement runs identify concrete improvements and can apply them with `--apply`. Pass `--decision-tree` for depth-first resolution of tightly coupled decisions. |
-| `/kramme:siw:spec-audit` | `[spec-path(s) \| 'siw'] [--auto] [--apply] [--model opus\|sonnet\|haiku] [--inline] [--team]` | Audit spec quality across 8 dimensions: coherence, completeness, clarity, scope, actionability, testability, value proposition, technical design. Produces a structured report and optionally creates SIW issues. Add `--apply` to update spec files directly for findings that clear direct-apply safety gates and create no `G-*` issues. Add `--inline` for read-only report output. Add `--team` for parallel dimension analysis with cross-validation. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
-| `/kramme:siw:breakdown-findings` | `[audit-report-path] [finding-id(s)]` | Break down unresolved spec-audit or implementation-audit findings into one inline report with executive summaries, concrete options, and a recommendation for each finding. Supports `SPEC-*`, `DIV-*`, `EXT-*`, and legacy `DISC-*`/`MISS-*` findings. Skips auto-fixed and already-tracked findings by default, then asks which follow-up path to take without creating SIW issues directly. |
+| `/kramme:siw:discovery` | `[topic \| spec paths \| siw] [--apply] [--decision-tree]` | Discover or strengthen requirements |
+| `/kramme:siw:init` | `[spec paths \| folder \| discover] [--auto]` | Create the local preparation container |
+| `/kramme:siw:product-audit` | `[spec paths \| siw] [--auto] [--inline]` | Pressure-test product quality |
+| `/kramme:siw:spec-audit` | `[spec paths \| siw] [--auto] [--apply] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality |
+| `/kramme:siw:apply-spec-audit-fixes` | `[report] [--auto] [--dry-run] [--threshold 60-100] [--allow-dirty]` | Apply deterministic audit fixes |
+| `/kramme:siw:resolve-audit` | `[report] [finding IDs] [--auto]` | Resolve decision findings into local issues |
+| `/kramme:siw:issue-define` | `[issue ID \| description and context]` | Define or refine one local issue |
+| `/kramme:siw:generate-phases` | `[spec path] [--auto]` | Generate the initial phased issue set |
+| `/kramme:siw:transfer-to-linear` | `[siw-dir] [--project ...] [--team ...] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | Migrate planning artifacts into Linear |
+| `/kramme:siw:remove` | — | Retire local SIW files after transfer or abandonment |
 
-### Issue Management
+## Migration from the Former Local Implementation Workflow
 
-| Skill | Arguments | Description |
-| --- | --- | --- |
-| `/kramme:siw:issue-define` | `[issue-id] or [description and/or file paths]` | Create or improve issues with a guided interview. Supports both new issue creation and refinement of existing issues. Explores the codebase to identify relevant patterns. |
-| `/kramme:siw:generate-phases` | `[spec-file-path]` | Decompose a spec into atomic, phase-based issues (`P1-001`, `P2-001`, `G-001`). Each issue is self-contained with tests/validation. Reviews breakdown with a subagent before creating files. |
-| `/kramme:siw:issue-reindex` | — | Remove DONE issues and renumber remaining issues from 001 within each prefix group. Verifies DONE issues are captured in the spec before deletion. |
-| `/kramme:siw:transfer-to-linear` | `[siw-dir] [--project <name-or-id>] [--team <team>] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | One-way migration of an SIW project into Linear. Creates one Linear project, migrates the main spec, supporting specs, selected contract specs, and decision log as Linear Documents, rewrites SIW-local markdown references to Linear Document URLs where possible, creates milestones from SIW phases and issues from SIW issues, checks for duplicate issue content before creating Linear issues, records dependencies as text and as native Linear relations when the tooling supports them, writes `Linear Transfer` markers back to migrated source issues for retry safety, then prompts `/kramme:siw:remove` to retire the local `siw/` files. Marked issues and title-matched documents/milestones are skipped on re-runs. Add `--skip-done` to omit completed issues; `--dry-run` previews without writing; `--skip-existing`/`--retry` also matches unmarked issues by exact title when resuming a partial run. |
+The local implementation lifecycle was removed on 2026-08-26. Update old commands as follows:
 
-### Implementation
+| Former command | Current route |
+| --- | --- |
+| `/kramme:siw:wayfinder` | `/kramme:discovery:wayfinder` |
+| `/kramme:siw:continue` | Inspect `siw/LOG.md` and invoke the next retained preparation command directly |
+| `/kramme:siw:issue-implement` | Transfer, then `/kramme:linear:issue-implement` |
+| `/kramme:siw:issue-to-pr` | Transfer, then `/kramme:linear:issue-to-pr` |
+| `/kramme:siw:implementation-audit` | No direct whole-initiative equivalent; use `/kramme:linear:issue-to-pr` for per-issue review convergence and final verification, or `/kramme:linear:review-pr` to audit an existing Pull Request against its issue |
+| `/kramme:siw:issue-reindex` | Preserve stable local IDs and manage issues in Linear after transfer |
+| `/kramme:siw:reset` | Start a separate SIW preparation run when a new initial issue set is required |
+| `/kramme:siw:close` | Transfer durable context, then `/kramme:siw:remove` |
+| `/kramme:siw:breakdown-findings` | `/kramme:siw:resolve-audit` |
 
-| Skill | Arguments | Description |
-| --- | --- | --- |
-| `/kramme:siw:issue-implement` | `<G-001 \| P1-001 \| ISSUE-G-XXX> [--auto] \| --team [issue-ids \| 'phase N'] [--auto]` | Implement an issue with extensive planning before coding. Explores the codebase, asks clarifying questions, creates a technical plan, then offers three execution modes: **Guided** (step-by-step with verification), **Context-only** (you drive, agent prepares), **Autonomous** (agent implements end-to-end). For a single issue, `--auto` selects the autonomous path when no blocker remains. Add `--team` to implement multiple independent issues in parallel; with no team-mode target, it selects ready AUTO issues. Includes spec sync to align decisions back to the spec. |
-| `/kramme:siw:issue-to-pr` | `<G-001 \| P1-001 \| ISSUE-G-XXX> [--strict] [--ship]` | Take one implementation-ready SIW issue through autonomous implementation, synchronized tracker/spec updates, bounded code/convention/refactor review, and final verification on a deterministic unpublished branch. Before the first run, committed `siw/` planning state must match the fetched base so the new branch cannot lose local-only issue or spec changes. Add `--ship` to create the Pull Request and stabilize CI/review feedback; add `--strict` to disposition every emitted finding. |
+See [the decision record](decisions/2026-08-26-siw-ends-at-linear-transfer.md) for the rationale and rejected alternatives.
 
-### Auditing & Quality
+## Troubleshooting
 
-| Skill | Arguments | Description |
-| --- | --- | --- |
-| `/kramme:siw:implementation-audit` | `[spec-path(s) \| 'siw'] [--auto] [--model opus\|sonnet\|haiku] [--team]` | Adversarial, exhaustive audit of code against spec. Pass A checks requirement-by-requirement conformance. Pass B scans for undocumented extensions. Includes conflict reconciliation and coverage gates. Add `--team` for simultaneous conformance + extension passes with a dedicated reconciler. Add `--auto` to replace any previous report and create critical/major issues without pausing. |
-| `/kramme:siw:resolve-audit` | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one at a time. By default each finding gets an executive summary, alternatives, a recommended option, then user choice. Add `--auto` to let the model select the resolution and create issues without pausing. If both audit reports exist, pass the report path to keep the run scoped. Use `/kramme:siw:breakdown-findings` first when you want a batch breakdown before choosing a resolution path. |
-
-### Lifecycle Management
-
-| Skill | Arguments | Description |
-| --- | --- | --- |
-| `/kramme:siw:close` | — | Generate permanent documentation in `docs/<feature>/` (README, decisions, architecture), then remove temporary workflow files. Terminal command for completed projects. |
-| `/kramme:siw:reset` | — | Preserve the spec, migrate log decisions into it, then clear issues and LOG.md for a fresh iteration. Use when starting a new round of work on the same project. |
-| `/kramme:siw:remove` | — | Delete all SIW files. Uses `trash` for recoverability. No documentation generated. |
-
-### Team Mode
-
-Pass `--team` to `/kramme:siw:spec-audit`, `/kramme:siw:implementation-audit`, or `/kramme:siw:issue-implement` to run the multi-agent workflow. Team mode requires Agent Teams in Claude Code (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`) or a Codex runtime with `multi_agent` enabled.
-
-**Breaking change:** The separate `:team` SIW skills were removed. Use `/kramme:siw:spec-audit --team`, `/kramme:siw:implementation-audit --team`, and `/kramme:siw:issue-implement --team` instead.
-
-## Common Workflows
-
-### Greenfield Feature
-
-Full lifecycle from spec to completion:
-
-```
-/kramme:siw:discovery build a notification system   # Capture the real problem first
-/kramme:siw:init siw/DISCOVERY_BRIEF.md             # Turn the brief into a full SIW workflow
-/kramme:siw:spec-audit                              # Validate spec quality
-/kramme:siw:generate-phases                   # Create phase-based issues
-/kramme:siw:issue-implement P1-001            # Implement first issue
-/kramme:siw:issue-implement P1-002            # Continue through phase
-/kramme:siw:implementation-audit              # Verify spec conformance
-/kramme:siw:close                             # Generate docs, clean up
-```
-
-### Existing Spec Refinement
-
-Strengthen an existing spec before planning or implementation:
-
-```
-/kramme:siw:init my-feature-spec.md          # Link existing spec
-/kramme:siw:spec-audit --apply               # Validate spec quality and apply safe spec updates directly
-/kramme:siw:discovery --apply                # Fill remaining quality gaps through interview
-/kramme:siw:generate-phases                  # Create phase-based issues
-/kramme:siw:issue-implement P1-001           # Implement first issue
-/kramme:siw:implementation-audit             # Verify spec conformance
-/kramme:siw:close                            # Generate docs, clean up
-```
-
-### Iterative Refinement
-
-Multiple rounds of implementation with spec evolution:
-
-```
-# Round 1
-/kramme:siw:init discover                     # Interview-driven spec
-/kramme:siw:generate-phases                   # Initial issue breakdown
-/kramme:siw:issue-implement P1-001            # Implement
-/kramme:siw:issue-implement P1-002
-/kramme:siw:reset                             # Preserve spec, clear issues
-
-# Round 2
-/kramme:siw:generate-phases                   # New issues from updated spec
-/kramme:siw:issue-implement P1-001            # Next round of work
-/kramme:siw:close                             # Done
-```
-
-### Ad-hoc Issue Tracking
-
-Use SIW as a lightweight local issue tracker without phases:
-
-```
-/kramme:siw:init                              # Quick setup
-/kramme:siw:issue-define "Fix auth timeout"   # Create G-001
-/kramme:siw:issue-define "Add rate limiting"  # Create G-002
-/kramme:siw:issue-implement G-001             # Work on issues
-```
-
-## Design Philosophy
-
-- **Local-first** — Everything versioned in git, no external services required
-- **Spec as source of truth** — The permanent document that outlives all workflow artifacts
-- **Progressive refinement** — Specs get hardened through discovery, audits, and implementation feedback
-- **Atomic operations** — Status updates touch all three tracking files together; each skill does one thing
-- **Decision preservation** — Decisions flow from LOG.md to spec before temporary files are removed
-- **Exhaustive auditing** — Implementation audits are adversarial, not perfunctory — they look for both missing implementations and undocumented extensions
-- **Self-contained output** — `siw:close` generates documentation that stands alone without SIW context
-
-## Tips & Troubleshooting
-
-**Resuming after context loss:** Read `siw/LOG.md` first (the "Current Progress" section), then check `siw/OPEN_ISSUES_OVERVIEW.md` to see issue statuses. The `siw:continue` skill does this automatically.
-
-**Choosing between close, reset, and remove:**
-
-- `siw:close` — Project is done, you want permanent docs. Generates `docs/<feature>/`, then removes temp files.
-- `siw:reset` — Project needs another iteration. Migrates decisions to spec, clears issues and log, keeps spec.
-- `siw:remove` — Just delete everything. No docs generated.
-
-**Spec getting large:** Move domain-specific content to `siw/supporting-specs/` with naming like `01-data-model.md`. The main spec should reference them via a table of contents.
-
-**Team skills not working:** Team variants require `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` enabled in Claude Code, or `multi_agent` enabled in a Codex runtime.
-
-**Audit seems too clean:** The implementation audit automatically triggers a second pass (Pass B2) for large specs with suspiciously few extension findings — this is a built-in guardrail.
-
-**Spec references temporary files:** This violates a core SIW rule. The spec must be self-contained and never reference `siw/LOG.md`, `siw/issues/`, or other temporary documents. Code comments and error messages should also avoid referencing SIW artifacts.
+- **Existing SIW files:** read `siw/LOG.md` and `siw/OPEN_ISSUES_OVERVIEW.md`, then choose discovery/audit, issue definition, phase generation, or transfer directly.
+- **Spec is not planning-ready:** run discovery or the relevant audit before issue creation.
+- **Multiple spec candidates:** pass the intended main spec explicitly; auto mode stops rather than guessing.
+- **Transfer interrupted:** keep the local SIW directory, re-authorize Linear if needed, and resume with `--retry` using the emitted ledger.
+- **Migration cannot capture a document or artifact:** relocate or upload it and rerun verification before cleanup.
+- **Need ongoing implementation tracking:** transfer to Linear; SIW intentionally has no local implementation path.

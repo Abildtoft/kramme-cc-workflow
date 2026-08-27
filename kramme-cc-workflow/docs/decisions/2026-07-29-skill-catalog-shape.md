@@ -116,7 +116,7 @@ This approval explicitly waives the normal deprecation and additional-zero-use-q
 | --- | --: | --: | --- | --- |
 | `kramme:code:cleanup-ai` / `kramme:code:refactor-pass` | 0 / 0 | 0 / 0 | Merged (2026-08-03) | Both target post-feature branch simplification with overlapping cleanup outcomes. The AI-slop reviewer and confidence bands are implementation technique and mode, not a distinct user outcome. |
 | `kramme:qa` / `kramme:qa:intake` / `kramme:debug:investigate` | 0 / 0 / 0 | 0 / 0 / 0 | Keep separate | Their positive routes differ: probe a live app and produce evidence; convert multiple user-reported bugs into tickets; or reproduce one bug and trace its root cause. Their outputs and side effects differ. |
-| `kramme:code:breakdown-findings` / `kramme:siw:breakdown-findings` | 14 / 0 | 27 / 0 | Keep separate | The code skill turns general validated findings into persistent Pull Request plan files. The SIW skill turns supported audit findings into an inline decision analysis and must not write files. |
+| `kramme:code:breakdown-findings` / former SIW counterpart | 14 / 0 | 27 / 0 | SIW counterpart removed (2026-08-26) | The code skill remains for persistent Pull Request plan files. SIW audit decisions now route through `kramme:siw:resolve-audit`, avoiding a redundant findings entry point. |
 
 ### Singleton domains
 

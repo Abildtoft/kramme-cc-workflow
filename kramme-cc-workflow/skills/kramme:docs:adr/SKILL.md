@@ -1,6 +1,6 @@
 ---
 name: kramme:docs:adr
-description: "Author Architecture Decision Records for significant, long-lived decisions. Creates ADRs in docs/decisions/ with sequential numbering and lifecycle states (PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED). Detects and preserves existing ADR format when one is in use; falls back to a Nygard-style template otherwise. Use when adopting a new pattern, committing to a dependency, changing a public interface, changing the data model, or rejecting an alternative a future maintainer might reasonably re-propose. For in-project decisions during a tracked SIW initiative use /kramme:siw:close's decision log instead."
+description: "Author Architecture Decision Records for significant, long-lived decisions. Creates ADRs in docs/decisions/ with sequential numbering and lifecycle states (PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED). Detects and preserves existing ADR format when one is in use; falls back to a Nygard-style template otherwise. Use when adopting a new pattern, committing to a dependency, changing a public interface, changing the data model, or rejecting an alternative a future maintainer might reasonably re-propose. Initiative-local SIW decisions stay in the spec and LOG for transfer to Linear."
 argument-hint: "[decision title]"
 disable-model-invocation: true
 user-invocable: true
@@ -24,7 +24,7 @@ A decision warrants an ADR if **any** of these are true:
 
 Route elsewhere if:
 
-- **In-project decisions during a tracked SIW initiative** → use `/kramme:siw:close`, which emits a project-scoped `decisions.md`. This skill handles repo-level ADRs that outlive any single initiative.
+- **Initiative-local decisions during SIW preparation** → record them in the specification and `siw/LOG.md` so `/kramme:siw:transfer-to-linear` carries them into the Linear project. This skill handles repo-level ADRs that outlive any single initiative.
 - **Feature spec / scope decisions before implementation** → use `/kramme:docs:feature-spec`.
 - **Agent-facing rules** (commit style, package manager, conventions) → use `/kramme:docs:update-agents-md`.
 
@@ -201,7 +201,7 @@ If the predecessor was authored by someone else, emit `ASK FIRST` before proceed
 
 - **Sibling — API surface decisions**: `kramme:code:api-design` often surfaces choices that warrant an ADR (public surface shape, backwards-compatibility policy, versioning).
 - **Sibling — migration strategy**: `kramme:code:migrate` frequently produces an ADR recording the chosen migration path and what alternatives were rejected.
-- **Sibling — in-project decisions**: `kramme:siw:init` / `kramme:siw:close` handle decisions that live within a single tracked initiative via a project-scoped `decisions.md`. Do not double-log those here.
+- **Sibling — initiative-local decisions**: `kramme:siw:init` establishes the spec and decision log; `kramme:siw:transfer-to-linear` carries them into the Linear project. Do not double-log those here.
 - **Upstream discipline**: `kramme:code:incremental` — when an ADR accompanies code changes, each slice stays scoped to its own decision. Do not bundle multiple ADR-worthy decisions into one slice.
 
 ## Inline-offer pattern (for other skills)
