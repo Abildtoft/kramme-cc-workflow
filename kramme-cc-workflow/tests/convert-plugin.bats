@@ -227,6 +227,8 @@ SH
 	local cache_root="$TMP_DIR/.codex/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version"
 
 	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
+	[ -f "$TMP_DIR/.codex/skills/kramme:pr:adversarial-review/SKILL.md" ]
+	[ -x "$TMP_DIR/.codex/skills/kramme:pr:adversarial-review/scripts/run-adversarial-review.sh" ]
 	[ -x "$TMP_DIR/.codex/skills/kramme:pr:create/scripts/validate-branch-name.sh" ]
 	[ -x "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh" ]
 	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]

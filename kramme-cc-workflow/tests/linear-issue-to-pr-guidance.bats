@@ -174,7 +174,7 @@
     registry="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
     readme="../README.md"
 
-    grep -qF "argument-hint: \"[--strict] [--rounds <1-5>] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]\"" "$skill"
+    grep -qF "argument-hint: \"[--strict] [--rounds <1-5>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]\"" "$skill"
     grep -qF "user-invocable: true" "$skill"
     grep -qF "**Direct user mode:**" "$skill"
     grep -qF "Set \`{archive-key}=pr-review-convergence\`" "$skill"
@@ -199,7 +199,7 @@
     grep -qF "When direct mode has \`DIRECT_REQUIREMENTS_SOURCE=conversation\` and no explicit selector" "$skill"
     grep -qF "set \`DIRECT_REQUIREMENTS_SOURCE=linear\` and \`{work-id}={linear-issue-id}\`" "$skill"
     grep -qF "Do not use the branch diff, implementation, commit messages, Pull Request metadata, or repository conventions to fill missing product intent." "$skill"
-    grep -qF "Usage: \$kramme:pr:review-convergence [--strict] [--rounds <1-5>] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]" "$skill"
+    grep -qF "Usage: \$kramme:pr:review-convergence [--strict] [--rounds <1-5>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]" "$skill"
     grep -qF "with no requirement argument it derives the contract from the current conversation" "$readme"
     grep -qF "with \`--derive\` it drafts a contract from conversation and committed branch evidence" "$readme"
     grep -qF "set its maximum to one through five fix-and-rerun rounds with \`--rounds <1-5>\`" "$readme"
