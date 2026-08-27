@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:complete-work
-description: Internal post-implementation orchestrator for kramme:siw:issue-to-pr and kramme:code:plan-to-pr. Rechecks the new-PR boundary, delegates caller-scoped review convergence and verification to kramme:pr:review-convergence, and optionally opens the Pull Request and iterates on CI and review feedback until green. Not a standalone implementation or review workflow.
-argument-hint: "--work-id <id> --archive-key <siw-issue-to-pr|code-plan-to-pr> [--scope-plan <archived-plan>] [--strict] [--ship]"
+description: Internal post-implementation orchestrator for kramme:code:plan-to-pr. Rechecks the new-PR boundary, delegates caller-scoped review convergence and verification to kramme:pr:review-convergence, and optionally opens the Pull Request and iterates on CI and review feedback until green. Not a standalone implementation or review workflow.
+argument-hint: "--work-id <id> --scope-plan <archived-plan> [--strict] [--ship]"
 disable-model-invocation: true
 user-invocable: false
 ---
@@ -27,9 +27,9 @@ Parse `$ARGUMENTS` before repository work.
 1. `--strict` sets `STRICT_REVIEW=true`.
 2. `--ship` sets `SHIP_MODE=true`.
 3. Require `--work-id <id>` exactly once. Validate the value against `[A-Za-z0-9][A-Za-z0-9._:-]*`; reject whitespace, a leading `-`, shell metacharacters, and every other character outside that allowlist. Store it as `{work-id}`.
-4. Require `--archive-key <key>` exactly once. Accept only `siw-issue-to-pr` or `code-plan-to-pr`; store it as `{archive-key}`. This allowlist prevents caller-controlled path construction.
-5. Parse `--scope-plan <path>` at most once. Require it exactly once when `{archive-key}` is `code-plan-to-pr`, and reject it for `siw-issue-to-pr`. Store the value as `{scope-plan-input}` without using it in a command until Step 2 validates the complete path.
-6. Reject unknown flags, duplicate valued flags, missing values, and positional arguments.
+4. Set `{archive-key}=code-plan-to-pr` internally so the sole caller cannot influence archive path construction.
+5. Require `--scope-plan <path>` exactly once. Store the value as `{scope-plan-input}` without using it in a command until Step 2 validates the complete path.
+6. Reject unknown flags, duplicate valued flags, missing values, and positional arguments, including the obsolete caller-supplied `--archive-key` option.
 
 Defaults:
 
@@ -41,8 +41,8 @@ Defaults:
 If validation fails, report:
 
 ```text
-Internal usage: $kramme:pr:complete-work --work-id <id> --archive-key <siw-issue-to-pr|code-plan-to-pr> [--scope-plan <archived-plan>] [--strict] [--ship]
-Invoke kramme:siw:issue-to-pr or kramme:code:plan-to-pr instead.
+Internal usage: $kramme:pr:complete-work --work-id <id> --scope-plan <archived-plan> [--strict] [--ship]
+Invoke kramme:code:plan-to-pr instead.
 ```
 
 ## Step 2: Recheck the Prepared Branch
@@ -54,7 +54,8 @@ The caller must have established a clean committed implementation boundary.
 3. Fetch `origin/{base-branch}` and require the fetch to succeed.
 4. Capture the current branch as `{work-branch}`. Require it to differ from `{base-branch}` and validate the agent-tracked value against `[A-Za-z0-9][A-Za-z0-9._/-]*`, a non-leading `-`, and `git check-ref-format --branch`.
 5. Require at least one commit in `origin/{base-branch}..HEAD`.
-6. Query all Pull Requests for the exact branch:
+6. Resolve the raw `{scope-plan-input}` without following a final symlink. Require `.context`, `.context/code-plan-to-pr`, and every later parent to be real non-symlink directories whose canonical paths remain strictly below the canonical repository root. Require the canonical input to be a non-symlink regular file below `.context/code-plan-to-pr/{plan-set-id}/plans/PR_PLAN_[A-Z][0-9][0-9][A-Z]_[A-Z0-9_]+.md`, where `{plan-set-id}` is `ps-` plus one full lowercase hexadecimal object ID for the repository's object format. Store only the canonical repository-relative path as `{validated-scope-plan}`. Do not interpret its workflow state here; delegated review convergence and scoped recovery own the complete lifecycle proof.
+7. Query all Pull Requests for the exact branch:
 
    ```bash
    gh pr list --head "{work-branch}" --state all --limit 100 --json number,url,state,headRefName,headRefOid
@@ -62,24 +63,23 @@ The caller must have established a clean committed implementation boundary.
 
    Require success and an empty list. An API, authentication, network, rate-limit, or repository error is a blocker, not evidence of absence.
 
-7. Query `git ls-remote --heads origin "refs/heads/{work-branch}"`. Require success and a well-formed zero-line absent result. An existing or malformed ref is a blocker.
+8. Query `git ls-remote --heads origin "refs/heads/{work-branch}"`. Require success and a well-formed zero-line absent result. An existing or malformed ref is a blocker.
 
-If the branch already has any Pull Request, route a later session to `kramme:pr:fix-ci --no-consolidate`. If only the remote branch exists, require coordination or a fresh branch; this new-PR workflow never adopts it.
+If the branch already has any Pull Request, route a later session to `kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}`. If only the remote branch exists, require coordination or a fresh branch; this new-PR workflow never adopts it.
 
 ## Step 3: Invoke Review Convergence
 
 Build one frozen `{work-requirements}` handoff before delegation:
 
-- For `siw-issue-to-pr`, resolve exactly one non-symlink regular file matching `siw/issues/ISSUE-{work-id}-*.md`. Read it fully and tightly preserve its title, requested behavior, scope, acceptance criteria, constraints, non-goals, mode, and resolution evidence. Record absent requirement categories explicitly.
-- For `code-plan-to-pr`, state that the validated `--scope-plan` is the authoritative prepared-work contract. Preserve its work label and require `kramme:pr:review-convergence` to validate the archive, read the complete plan, and freeze its goal, context, in-scope paths, requirements, completion criteria, verification obligations, constraints, and non-goals without inventing or thinning them.
+State that the validated `--scope-plan` is the authoritative prepared-work contract. Preserve its work label and require `kramme:pr:review-convergence` to validate the archive, read the complete plan, and freeze its goal, context, in-scope paths, requirements, completion criteria, verification obligations, constraints, and non-goals without inventing or thinning them.
 
 Build delegated arguments:
 
 ```text
---work-id {work-id} --archive-key {archive-key} [--scope-plan {scope-plan-input}] [--strict] --requirements {work-requirements}
+--work-id {work-id} --archive-key {archive-key} --scope-plan {validated-scope-plan} [--strict] --requirements {work-requirements}
 ```
 
-Include `--scope-plan` only for `code-plan-to-pr` and append `--strict` only when `STRICT_REVIEW=true`. Invoke `kramme:pr:review-convergence` once and capture its structured handoff.
+Append `--strict` only when `STRICT_REVIEW=true`. Invoke `kramme:pr:review-convergence` once and capture its structured handoff.
 
 Continue only when it returns `Review convergence: passed`, normal mode, the exact work ID and branch, a clean current tree matching its review tree, complete ordered-gate evidence, no required or blocked finding, and passed final verification. JSON-decode its `Requirements JSON` field and require the decoded value to equal `{work-requirements}` byte-for-byte. For plan scope, also capture and preserve its validated scope plan, mode, scope base, and normalized paths as the only state the shipping contract may use. Stop at any missing invariant; never reconstruct or restart its remediation loop inside this skill.
 
@@ -105,7 +105,7 @@ Pull Request: not created (--ship was not supplied)
 Blocker: none
 Recovery: none
 Next: $kramme:pr:create --auto --require-generated-description
-Then: $kramme:pr:fix-ci --no-consolidate
+Then: $kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}
 ```
 
 If `SHIP_MODE=true`, read `references/shipping-contract.md` and follow it completely.
@@ -167,7 +167,7 @@ Recovery: {exact next invocation | none}
 ## Error Handling
 
 - Dirty or base branch: return to the caller's implementation commit boundary.
-- Existing Pull Request: stop; use `kramme:pr:fix-ci --no-consolidate` in a later session.
+- Existing Pull Request: stop; use `kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}` in a later session.
 - Existing remote branch without a Pull Request: stop; coordinate or choose a fresh source-workflow branch.
 - Quality coverage degraded: identify the failed dimensions and do not call the result clean.
 - Review convergence or verification failure: preserve the delegated cycle ledger, scope state, and exact blocker; do not recreate the loop or reset its budget locally.

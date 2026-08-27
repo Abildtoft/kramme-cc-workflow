@@ -1,6 +1,6 @@
 ---
 name: kramme:code:work-from-plan
-description: "Routes and executes a standalone markdown implementation plan. Use when the user provides a `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist that is not already a Linear or SIW issue. Detects when to delegate to kramme:linear:issue-implement or kramme:siw:issue-implement, gathers codebase context, surfaces MISSING REQUIREMENT blockers, and proceeds directly only for bounded current-branch work. Not for planning from scratch, PR creation, CI watching, or large multi-phase initiatives that should become SIW."
+description: "Routes and executes a standalone markdown implementation plan. Use when the user provides a `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist that is not already a Linear issue or local SIW preparation artifact. Delegates Linear work, stops local SIW issues with a transfer recommendation, gathers codebase context, surfaces MISSING REQUIREMENT blockers, and proceeds directly only for bounded current-branch work. Not for planning from scratch, PR creation, CI watching, or large multi-phase initiatives that should become SIW."
 argument-hint: "[plan path | inline plan]"
 disable-model-invocation: true
 user-invocable: true
@@ -17,7 +17,7 @@ This skill is an adapter, not a full autonomous pipeline. It does not create bra
 1. Parse the plan input.
 2. Read `references/routing.md`, classify artifact readiness, and classify the plan route.
 3. Gather enough codebase context to validate the route.
-4. Delegate to Linear or SIW when the plan is already tracked there.
+4. Delegate to Linear when already tracked there, or stop local SIW issues with a transfer-to-Linear recommendation.
 5. Recommend SIW or spec hardening when the artifact is not implementation-ready.
 6. Read `references/direct-execution.md` and proceed directly only for bounded current-branch work.
 7. Verify and close out with changes, verification, and remaining risks.
@@ -66,19 +66,19 @@ Classify the source artifact before choosing a route:
 - `planning-ready`: has stable requirements and enough technical/contextual detail to generate SIW phases or define issues, but is not itself an implementation issue.
 - `implementation-ready`: names a bounded unit of work with clear scope, dependencies, affected modules or files, acceptance criteria, and local verification.
 
-Only `implementation-ready` artifacts can route to `direct` or `siw` implementation. `product-only` and `requirements-only` artifacts must be rejected for direct execution and routed to `/kramme:docs:feature-spec`, `/kramme:siw:discovery`, or another spec-hardening step depending on the missing layer. `planning-ready` artifacts route to `recommend-siw` unless they are already an executable SIW issue; for tracked SIW specs, recommend the next planning step (`/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for one coherent issue).
+Only `implementation-ready` artifacts can route to `direct` implementation. `product-only` and `requirements-only` artifacts must be rejected for direct execution and routed to `/kramme:docs:feature-spec`, `/kramme:siw:discovery`, or another spec-hardening step depending on the missing layer. `planning-ready` artifacts route to `recommend-siw`; an implementation-ready local SIW issue routes to transfer rather than local execution. For tracked SIW specs, recommend the next planning step (`/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for one coherent issue).
 
 ## Step 3: Route The Plan
 
 Read `references/routing.md`, classify artifact readiness, then classify the plan as exactly one of:
 
 - `linear`: the plan references a Linear issue and should be delegated.
-- `siw`: the plan is already part of SIW or references an SIW issue.
+- `siw`: the plan is a local SIW issue that must be transferred before implementation.
 - `recommend-siw`: the plan is large, multi-phase, ambiguous, or durable enough to need local tracking before implementation.
 - `direct`: the plan is bounded enough to implement on the current branch.
 - `blocked`: required context is missing or contradictory.
 
-If the source is `product-only` or `requirements-only`, do not choose `direct`, even if the requested change sounds small. Explain the missing readiness layer and recommend the smallest hardening step instead. If the source is `planning-ready` but lacks issue-level scope or verification, choose `recommend-siw` even when the artifact already lives under `siw/`; a tracked spec still needs `/kramme:siw:generate-phases` or `/kramme:siw:issue-define` before `/kramme:siw:issue-implement`.
+If the source is `product-only` or `requirements-only`, do not choose `direct`, even if the requested change sounds small. Explain the missing readiness layer and recommend the smallest hardening step instead. If the source is `planning-ready` but lacks issue-level scope or verification, choose `recommend-siw` even when the artifact already lives under `siw/`; a tracked spec still needs `/kramme:siw:generate-phases` or `/kramme:siw:issue-define` before transfer.
 
 Show the route decision before editing files:
 
@@ -89,7 +89,7 @@ Reason: single bounded docs skill addition, clear affected files, local verifica
 
 If the route is `linear`, invoke `kramme:linear:issue-implement` with the detected issue identifier when that skill is available. If the Linear MCP server or issue identifier is missing, stop with `MISSING REQUIREMENT`.
 
-If the route is `siw`, invoke `kramme:siw:issue-implement` with the detected issue identifier when that skill is available. If the SIW issue cannot be found, stop with `MISSING REQUIREMENT`.
+If the route is `siw`, do not implement locally. Verify the SIW issue exists, then recommend `/kramme:siw:transfer-to-linear`; after migration, implementation belongs to `kramme:linear:issue-implement`. If the SIW issue cannot be found, stop with `MISSING REQUIREMENT`.
 
 If the route is `recommend-siw`, explain what makes the work too large for direct execution and recommend the smallest next SIW step. Do not create SIW files unless the user explicitly asks.
 

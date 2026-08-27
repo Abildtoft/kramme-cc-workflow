@@ -13,11 +13,9 @@ Do not combine a pre-clustered handoff with any other source. If a matching path
 7. `CODEBASE_WEAKNESS_REPORT.md`
 8. `PRODUCT_AUDIT_OVERVIEW.md`
 9. `QA_REPORT.md`
-10. `AUDIT_IMPLEMENTATION_REPORT.md`
-11. `AUDIT_SPEC_REPORT.md`
-12. `PRODUCT_AUDIT.md`
-13. `siw/AUDIT_IMPLEMENTATION_REPORT.md`
-14. `siw/AUDIT_SPEC_REPORT.md`
-15. `siw/PRODUCT_AUDIT.md`
+10. `AUDIT_SPEC_REPORT.md`
+11. `PRODUCT_AUDIT.md`
+12. `siw/AUDIT_SPEC_REPORT.md`
+13. `siw/PRODUCT_AUDIT.md`
 
 User-supplied paths are accepted regardless of filename — this list only controls auto-detection.
