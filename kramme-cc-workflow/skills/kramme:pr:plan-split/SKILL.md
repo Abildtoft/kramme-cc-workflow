@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:plan-split
-description: Analyze the current branch's diff and break it into smaller, independently mergeable PRs. Categorizes changes by feature, layer, and module; detects coupling; and proposes a concrete seam (vertical, stack, by file group, or horizontal — preferring vertical) for each slice with file lists, line counts, dependency order, test plan, and rationale. Hands the slices to kramme:code:breakdown-findings to write the `PR_PLAN_*.md` artifacts, supplying a worktree-based implementation setup that extracts each slice's changes from the branch the skill is run in. Use before opening a PR that bundles unrelated work, when a reviewer asks for a split, or when a branch has grown too large to review. Plans only; does not edit source code, create branches, or rewrite git history.
+description: "Analyze the current branch diff and plan mergeable PR slices with seams, file scope, dependency order, rationale, and tests. Uses kramme:code:breakdown-findings to write PR_PLAN_*.md artifacts. Use for oversized or unrelated PRs, or when a reviewer asks for a split. Plans only; never edits source, creates branches, or rewrites history."
 argument-hint: "[--base <branch>] [--auto]"
 disable-model-invocation: true
 user-invocable: true

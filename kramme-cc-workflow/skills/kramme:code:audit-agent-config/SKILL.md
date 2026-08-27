@@ -1,6 +1,6 @@
 ---
 name: kramme:code:audit-agent-config
-description: "Audits every persistent agent configuration stored in the repository — project instruction files, skills, subagents, hooks, MCP server definitions, permission settings, and repo-persisted memory or rules files — for redundant, outdated, conflicting, or irrelevant entries. Produces a read-only KEEP / IMPROVE / REMOVE list with a one-sentence verdict and evidence per item; never edits files and never inspects global user-scoped configuration. Accepts an optional scope path to re-audit a single surface. Use when asked to audit, clean up, or review agent config, CLAUDE.md/AGENTS.md rules, skills, MCPs, or instruction cruft. Not for scoring how agent-friendly the codebase itself is (use kramme:code:agent-readiness) and not for general code-quality or tech-debt audits (use kramme:code:refactor-opportunities)."
+description: "Audit repository-persisted agent instructions, skills, subagents, hooks, MCP servers, permissions, and memory for redundant, outdated, conflicting, or irrelevant entries; return read-only KEEP / IMPROVE / REMOVE verdicts. Never edits files or inspects global config. Not for codebase agent-readiness (kramme:code:agent-readiness) or general code-quality audits (kramme:code:refactor-opportunities)."
 argument-hint: "[scope-path]"
 disable-model-invocation: false
 user-invocable: true

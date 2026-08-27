@@ -1,6 +1,6 @@
 ---
 name: kramme:discovery:strategic-inquiry
-description: "Generate ranked strategic questions and investigation briefs that surface unknown unknowns and coherence gaps in a product or codebase — implicit assumptions, contradictions between artifacts, conspicuous absences, load-bearing decisions, and unresolved history. Each question ships with why it matters, the evidence that prompted it, a concrete investigation method, and where the answer lives (repo, production, users, or a team decision). Writes STRATEGIC_INQUIRY.md. Use when the user asks what they should be worried about, which questions to ask, where the blind spots are, or wants the coherence of what exists challenged. Not for finding defects in what is already built — use kramme:code:weakness-audit, kramme:pr:code-review, or kramme:product:review for reviews and audits."
+description: "Generate ranked strategic questions and evidence-backed briefs on hidden assumptions, contradictions, absences, and load-bearing decisions. Writes STRATEGIC_INQUIRY.md or returns inline. Use to surface blind spots. Not for defect or quality audits; use kramme:code:weakness-audit, kramme:pr:code-review, or kramme:product:review."
 argument-hint: "[focus, e.g. 'onboarding', src/auth, or omit for whole repo] [--max-questions N] [--output <path>] [--inline]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Strategic Inquiry
 
-Propose the strategic questions and investigations a review or audit cannot produce. Reviews and audits evaluate what exists against known criteria; this skill interrogates what the codebase and product *presuppose* — the assumptions nobody wrote down, the contradictions between artifacts, the things conspicuously not built, and the decisions everything else silently depends on.
+Propose the strategic questions and investigations a review or audit cannot produce. Reviews and audits evaluate what exists against known criteria; this skill interrogates what the codebase and product _presuppose_ — the assumptions nobody wrote down, the contradictions between artifacts, the things conspicuously not built, and the decisions everything else silently depends on.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -19,7 +19,7 @@ Propose the strategic questions and investigations a review or audit cannot prod
 This boundary is the skill's identity. Enforce it during filtering (step 5):
 
 - A finding ("this function has a race condition") belongs to a review skill. A strategic question ("the sync engine assumes single-writer — what happens to the product if multi-device editing becomes table stakes?") belongs here.
-- If a question can be fully answered by reading more of the repo, it is usually an audit item in disguise. The most valuable output points *outside* the repo: production behavior, users, the market, or a decision the team has not consciously made.
+- If a question can be fully answered by reading more of the repo, it is usually an audit item in disguise. The most valuable output points _outside_ the repo: production behavior, users, the market, or a decision the team has not consciously made.
 - Success is not a list of problems. Success is the user saying "we never thought to ask that" or "we assumed that was settled."
 
 ## Inputs
@@ -35,10 +35,10 @@ If a path-shaped focus does not resolve, ask whether it was meant as a theme ins
 
 ### 1. Collect stated beliefs
 
-Read what the project *claims* about itself, so later steps can test claims against reality:
+Read what the project _claims_ about itself, so later steps can test claims against reality:
 
 1. Strategy and product anchors: `STRATEGY.md`, `README.md`, `docs/` overviews, landing/marketing copy in the repo, pricing pages if present.
-2. Decision records: `docs/decisions/`, `docs/adr/`, `doc/adr/`, `architecture/decisions/`. Accepted ADRs count as *conscious* decisions — the interesting questions live where no ADR exists.
+2. Decision records: `docs/decisions/`, `docs/adr/`, `doc/adr/`, `architecture/decisions/`. Accepted ADRs count as _conscious_ decisions — the interesting questions live where no ADR exists.
 3. Project instructions and conventions: `AGENTS.md`, `CLAUDE.md`, contribution docs.
 4. Issue/spec artifacts when present: `siw/`, open TODO/FIXME markers, roadmap files.
 
@@ -46,7 +46,7 @@ Record a short list of **stated beliefs**: target user, problem being solved, no
 
 ### 2. Gather reality signals
 
-Collect cheap, factual signals about what the project *actually is*:
+Collect cheap, factual signals about what the project _actually is_:
 
 1. Shape: directory structure, dependency manifest, service/deployment topology from configs and CI workflows.
 2. History: churn hotspots (`git log --stat` aggregates), reverted or abandoned work, files untouched for a long time that everything imports, long-lived TODOs with dates.
@@ -70,7 +70,7 @@ Read `references/inquiry-lenses.md`. Apply each lens against the stated beliefs 
 
 The lenses find questions from evidence that exists. Unknown unknowns hide where no evidence exists, so run one explicit pass on absences:
 
-1. List capabilities, artifacts, and safeguards a project *of this stated kind* would typically have, and note which are missing. Anchor each absence to the stated beliefs — an absent thing is only interesting relative to what the project claims to be.
+1. List capabilities, artifacts, and safeguards a project _of this stated kind_ would typically have, and note which are missing. Anchor each absence to the stated beliefs — an absent thing is only interesting relative to what the project claims to be.
 2. For 2–3 outsider personas that never appear in the repo's vocabulary (for example: an accountant, a data-protection regulator, a competitor's PM, a support agent at 2 a.m., an acquirer's due-diligence engineer), ask what each would demand to see first, and whether the repo could answer.
 
 Convert notable absences into candidate questions with the same fields as step 3.
