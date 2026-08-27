@@ -1,6 +1,6 @@
 ---
 name: kramme:discovery:strategic-inquiry
-description: "Generate ranked strategic questions and investigation briefs that surface unknown unknowns and coherence gaps in a product or codebase — implicit assumptions, contradictions between artifacts, conspicuous absences, load-bearing decisions, and unresolved history. Each question ships with why it matters, the evidence that prompted it, a concrete investigation method, and where the answer lives (repo, production, users, or a team decision). Writes STRATEGIC_INQUIRY.md. Use when the user asks what they should be worried about, which questions to ask, where the blind spots are, or wants the coherence of what exists challenged. Not for finding defects in what is already built — use kramme:code:weakness-audit, kramme:pr:code-review, or kramme:product:review for reviews and audits."
+description: "Generate ranked strategic questions and evidence-backed briefs on hidden assumptions, contradictions, absences, and load-bearing decisions. Writes STRATEGIC_INQUIRY.md or returns inline. Use to surface blind spots. Not for defect or quality audits; use kramme:code:weakness-audit, kramme:pr:code-review, or kramme:product:review."
 argument-hint: "[focus, e.g. 'onboarding', src/auth, or omit for whole repo] [--max-questions N] [--output <path>] [--inline]"
 disable-model-invocation: true
 user-invocable: true

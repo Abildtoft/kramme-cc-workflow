@@ -1,6 +1,6 @@
 ---
 name: kramme:debug:triage-to-issue
-description: "(experimental) Triage a bug end-to-end: orchestrate root-cause investigation, design a TDD fix plan with RED-GREEN cycles, and file a refactor-durable Linear or local SIW issue in one mostly-hands-off pass. Use when a bug needs to become an implementation-ready ticket without manually chaining kramme:debug:investigate, kramme:test:tdd, and kramme:linear:issue-define. Composes kramme:debug:investigate and kramme:linear:issue-define via skill invocation (or by reading the sub-skill's SKILL.md when blocked); captures kramme:test:tdd conventions inline in v1. Not for the full interactive investigation with confidence gates (use kramme:debug:investigate alone), not for conversational multi-bug QA-intake sessions (use kramme:qa:intake), not for implementing the fix (use kramme:linear:issue-implement or kramme:siw:issue-implement after this skill files the ticket)."
+description: "(experimental) Turn a bug into an implementation-ready Linear or local SIW issue with root-cause evidence and a RED-GREEN TDD fix plan. Not for full interactive investigation with multiple confidence gates (kramme:debug:investigate), multi-bug QA intake (kramme:qa:intake), or fix implementation (kramme:linear:issue-implement or kramme:siw:issue-implement)."
 argument-hint: "[bug description, error message, or Linear/SIW issue ref] [--yes | --auto]"
 disable-model-invocation: true
 user-invocable: true

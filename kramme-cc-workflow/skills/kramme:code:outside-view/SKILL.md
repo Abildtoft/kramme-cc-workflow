@@ -1,6 +1,6 @@
 ---
 name: kramme:code:outside-view
-description: "Rate the codebase from the outside view. Fans out unprimed raters that deliberately skip project instructions, rubrics, and prior reports before forming an impression, collects free-form scores and complaints, clusters them, diffs the clusters against the latest CODEBASE_WEAKNESS_REPORT.md to expose rubric blind spots, and tracks the gestalt score across runs in OUTSIDE_VIEW_REPORT.md. Cross-model rating is an explicit opt-in and runs only through a verified isolated profile. Use to surface unknown-unknown quality issues that structured audits filter out — especially in primarily AI-engineered codebases where author and reviewer share the same taste. Not for ranked evidence-backed findings (use kramme:code:weakness-audit), PR review, or implementation."
+description: "Rate a codebase with unprimed raters; cluster complaints, compare with CODEBASE_WEAKNESS_REPORT.md, and track gestalt in OUTSIDE_VIEW_REPORT.md. Cross-model is opt-in and isolated. Use for unknown-unknown quality issues, especially in AI-engineered code. Not for evidence-ranked findings (kramme:code:weakness-audit), PR review, or implementation."
 argument-hint: "[--raters N] [--output <path>] [--compare <report-path>] [--cross-model]"
 disable-model-invocation: true
 user-invocable: true

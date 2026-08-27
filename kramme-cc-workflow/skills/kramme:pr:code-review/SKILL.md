@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:code-review
-description: "Analyze code quality of branch changes using specialized review agents (tests, errors, types, security, performance, slop, lean deletion, refactor fit, simplification). Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. Use --team for multi-agent cross-validation. Use --loop for a closeout convergence pass that verifies accepted findings, applies scoped fixes, and reruns with independent verification until no actionable Critical or Important findings remain. Not for UX, visual, or accessibility review -- use kramme:pr:ux-review for those."
+description: "Review branch changes for tests, errors, types, security, performance, slop, lean deletion, refactor fit, and simplification. Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. --team cross-validates; --loop applies fixes and verifies convergence. Not for UX, visual, or accessibility; use kramme:pr:ux-review."
 argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true
