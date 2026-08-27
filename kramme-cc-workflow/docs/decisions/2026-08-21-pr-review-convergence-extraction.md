@@ -2,7 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-21
-- Last amended: 2026-08-23
+- Last amended: 2026-08-27
 - Deciders: repository maintainers
 - First adoption review: 2026-11-21
 
@@ -16,7 +16,7 @@ The nearest existing skills are:
 
 - `kramme:linear:review-pr`, which performs a read-only requirements audit of an existing GitHub Pull Request from immutable objects;
 - `kramme:pr:code-review`, which supplies one read-only quality gate; and
-- hidden `kramme:pr:complete-work`, which owns new-PR preflight and optional shipping for SIW and archived-plan callers.
+- hidden `kramme:pr:complete-work`, which owns new-PR preflight and optional shipping for archived-plan callers.
 
 ## Decision
 
@@ -40,7 +40,7 @@ The skill remains platform-neutral and has no Linear or SIW dependency. It is us
 
 ## Consequences
 
-- Linear, SIW, and plan-to-PR callers now share one quality policy while retaining separate intake, scope, and shipping contracts.
+- Linear and plan-to-PR callers share one quality policy while retaining separate intake, scope, and shipping contracts. The SIW caller was removed when SIW's boundary moved to one-way Linear transfer.
 - `kramme:linear:issue-to-pr` and `kramme:pr:complete-work` become thinner caller-specific compositions.
 - Review archives stay under each caller's existing `.context/{archive-key}/reviews/` namespace, name `kramme:pr:review-convergence` as producer, and remain registered for workflow-artifact cleanup.
 - Normal callers can lower the shared automatic remediation ceiling from its five-cycle default without weakening the existing safety boundary.
@@ -59,4 +59,8 @@ Rejected because the individual gates are intentionally read-only and do not own
 
 ### Keep the richer loop under the Linear namespace
 
-Rejected because the convergence primitive does not perform Linear lookup and must also serve SIW and archived-plan callers. A Linear namespace would misroute the shared capability and make future reuse look like a cross-domain exception.
+Rejected because the convergence primitive does not perform Linear lookup and also serves archived-plan callers. A Linear namespace would misroute the shared capability and make future reuse look like a cross-domain exception.
+
+## Amendment
+
+The 2026-08-26 SIW boundary decision removed the SIW issue-to-PR caller and its review archive. Linear and archived-plan callers continue to use the shared convergence primitive.
