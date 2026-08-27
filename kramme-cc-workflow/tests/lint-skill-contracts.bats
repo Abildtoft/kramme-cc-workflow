@@ -287,13 +287,14 @@ make_body_lines() {
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
-@test "review diff collection migration keeps explicit NUL and JSON cohorts" {
+@test "review diff collection uses one synchronized NUL consumer contract" {
   run python3 - \
     "$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml" \
     "$BATS_TEST_DIRNAME/../.." <<'PY'
 import json
 import pathlib
 import re
+import shlex
 import sys
 
 registry_path, repo_root = map(pathlib.Path, sys.argv[1:])
@@ -302,20 +303,30 @@ contracts = {
     entry["name"]: entry
     for entry in registry["text_contracts"]
 }
-expected_paths = {
-    "pr-review-collect-review-diff-nul-block": [
-        "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md",
+contract_name = "pr-review-collect-review-diff-nul-block"
+shared_args = ["--strict", "--format", "nul"]
+expected_args = {
+    "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md": [
+        *shared_args,
+        "--exclude-review-artifacts",
+        "--require-local-artifact",
+        "OVERENGINEERING_REVIEW_OVERVIEW.md",
     ],
-    "pr-review-collect-review-diff-json-block": [
-        "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md",
+    "kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md": [
+        *shared_args,
+        "--exclude-review-artifacts",
+    ],
+    "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md": [
+        *shared_args,
+        "--exclude-review-artifacts",
     ],
 }
+expected_paths = list(expected_args)
 
 def extract(name, relative):
     text = (repo_root / relative).read_text().replace("`", "")
@@ -326,21 +337,23 @@ def extract(name, relative):
     return "\n".join(line.strip() for line in value.strip().splitlines())
 
 
-for name, paths in expected_paths.items():
-    contract = contracts.get(name)
-    if contract is None:
-        raise SystemExit(f"missing review-diff migration contract: {name}")
-    if contract["paths"] != paths:
-        raise SystemExit(f"{name} paths do not match the migration cohort")
-    if len({extract(name, relative) for relative in paths}) != 1:
-        raise SystemExit(f"{name} contains internally divergent blocks")
+contract = contracts.get(contract_name)
+if contract is None:
+    raise SystemExit(f"missing review-diff consumer contract: {contract_name}")
+if "pr-review-collect-review-diff-json-block" in contracts:
+    raise SystemExit("legacy review-diff JSON contract still exists")
+if contract["paths"] != expected_paths:
+    raise SystemExit(f"{contract_name} paths do not match the final consumer inventory")
+if len({extract(contract_name, relative) for relative in expected_paths}) != 1:
+    raise SystemExit(f"{contract_name} contains divergent consumer blocks")
 
-nul_name = "pr-review-collect-review-diff-nul-block"
-nul_block = extract(nul_name, expected_paths[nul_name][0])
-if "--format nul" not in nul_block or "--decode-json" in nul_block:
-    raise SystemExit("NUL cohort does not use the direct NUL interface")
+nul_block = extract(contract_name, expected_paths[0])
+if "--decode-json" in nul_block:
+    raise SystemExit("synchronized block does not use the direct NUL interface")
+if 'collect-review-diff.sh" "${COLLECT_ARGS[@]}"' not in nul_block:
+    raise SystemExit("synchronized block does not pass collector arguments directly")
 if nul_block.count("collect-review-diff.sh") != 1:
-    raise SystemExit("NUL cohort must invoke collect-review-diff.sh exactly once")
+    raise SystemExit("synchronized block must invoke collect-review-diff.sh exactly once")
 expected_fields = ["BASE_REF", "BASE_BRANCH", "MERGE_BASE", "CHANGED_FILES"]
 read_fields = re.findall(r"IFS= read -r -d '' (\w+)", nul_block)
 if read_fields != expected_fields:
@@ -386,23 +399,24 @@ code_review_contract = next(
 if "COLLECT_ARGS=(--strict --format nul)" not in code_review_contract["contains"]:
     raise SystemExit("code-review required-text contract still expects legacy JSON")
 
-legacy_name = "pr-review-collect-review-diff-json-block"
-for legacy_path in expected_paths[legacy_name]:
-    legacy_text = (repo_root / legacy_path).read_text().replace("`", "")
+for consumer_path in expected_paths:
+    consumer_text = (repo_root / consumer_path).read_text().replace("`", "")
     collect_args = re.search(
-        r"^COLLECT_ARGS=\((.*?)\)\n"
-        r'(?=\[ -n "\$\{BASE_BRANCH_OVERRIDE:-\}" \] '
+        r"^[ \t]*COLLECT_ARGS=\((.*?)\)\n"
+        r'(?=[ \t]*\[ -n "\$\{BASE_BRANCH_OVERRIDE:-\}" \] '
         r'&& COLLECT_ARGS\+=\(--base "\$BASE_BRANCH_OVERRIDE"\)$)',
-        legacy_text,
+        consumer_text,
         flags=re.MULTILINE | re.DOTALL,
     )
-    uses_json_format = collect_args is not None and re.search(
-        r"(?:^|\s)--format\s+json(?:\s|$)", collect_args.group(1)
+    actual_args = (
+        shlex.split(collect_args.group(1), comments=True, posix=True)
+        if collect_args is not None
+        else None
     )
-    legacy_block = extract(legacy_name, legacy_path)
-    if not uses_json_format or "--decode-json" not in legacy_block:
+    if actual_args != expected_args[consumer_path]:
         raise SystemExit(
-            f"JSON cohort does not retain the legacy decoder interface: {legacy_path}"
+            f"consumer collector arguments do not match the safety contract: "
+            f"{consumer_path}: {actual_args!r}"
         )
 PY
 

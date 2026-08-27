@@ -29,8 +29,9 @@ setup() {
 @test "gut check collects scope with the shared review diff collector" {
   local skill="skills/kramme:pr:gut-check/SKILL.md"
 
-  grep -qF 'COLLECT_ARGS=(--strict --format json --exclude-review-artifacts)' "$skill"
-  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --decode-json' "$skill"
+  grep -qF 'COLLECT_ARGS=(--strict --format nul --exclude-review-artifacts)' "$skill"
+  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" "${COLLECT_ARGS[@]}" \' "$skill"
+  ! grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --decode-json' "$skill"
   grep -qF "IFS= read -r -d '' BASE_REF" "$skill"
   grep -qF "IFS= read -r -d '' CHANGED_FILES" "$skill"
   grep -qF 'No changes detected against $BASE_REF. If this is wrong, re-run with --base <branch>.' "$skill"
