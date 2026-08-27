@@ -362,80 +362,6 @@ def check_discovery_failure_boundary(path: pathlib.Path) -> None:
         raise ContractFailure("delegation failure boundary is missing: " + ", ".join(missing))
 
 
-def _affirmative_entry_state_capture_position(text: str) -> int | None:
-    for clause_match in re.finditer(r"[^.!?\n]+(?:[.!?]+|\n|$)", text):
-        clause = clause_match.group()
-        capture = re.search(r"\b(?:capture|record|store)\b", clause, re.IGNORECASE)
-        if capture is None:
-            continue
-        if re.search(
-            r"\b(?:do not|don't|never|must not)\s+(?:ever\s+)?(?:capture|record|store)\b",
-            clause,
-            re.IGNORECASE,
-        ):
-            continue
-        if not all(_contains_term(clause, term) for term in ("{intake-head}", "{intake-branch}")):
-            continue
-        if not re.search(r"\b(?:current|entry)\b", clause, re.IGNORECASE):
-            continue
-        if not re.search(r"\b(?:commit|HEAD)\b", clause, re.IGNORECASE):
-            continue
-        if not re.search(r"\bbranch\b", clause, re.IGNORECASE):
-            continue
-        return clause_match.start() + capture.start()
-    return None
-
-
-def _first_branch_mutation_position(text: str) -> int | None:
-    mutation = re.search(
-        r"(?im)(?:^|[.!?;]\s+)"
-        r"(?:(?:then|next),?\s+)?"
-        r"(?:"
-        r"(?:switch|check\s+out|checkout|create)\b[^.!?;\n]*\bbranch\b|"
-        r"(?:run|execute)\s+`?git\s+(?:switch|checkout)\b"
-        r")",
-        text,
-    )
-    return mutation.start() if mutation else None
-
-
-def check_issue_intake_state(path: pathlib.Path) -> None:
-    section = _markdown_section(path.read_text(encoding="utf-8"), r"Step 2: Resolve the Issue and Branch")
-    first_item = re.search(r"(?ms)^1\.\s+(?P<body>.*?)(?=^2\.\s+)", section)
-    if first_item is None:
-        raise ContractFailure("issue intake contract is missing numbered item 1")
-    item = first_item.group("body")
-    capture_position = _affirmative_entry_state_capture_position(item)
-    mutation_position = _first_branch_mutation_position(item)
-    if capture_position is None or (mutation_position is not None and mutation_position < capture_position):
-        raise ContractFailure("issue intake item 1 does not affirmatively record its entry state")
-    _require_terms(
-        "issue intake item 1",
-        item,
-        ("git status --porcelain", "{intake-head}", "{intake-branch}"),
-    )
-
-
-def _without_nonoperational_sections(text: str) -> str:
-    kept: list[str] = []
-    skipped_heading_level: int | None = None
-    for line in text.splitlines(keepends=True):
-        heading = re.match(r"^(?P<marks>#{2,6})\s+(?P<title>.+?)\s*$", line)
-        if skipped_heading_level is not None:
-            if heading is None or len(heading.group("marks")) > skipped_heading_level:
-                continue
-            skipped_heading_level = None
-        if heading and re.search(
-            r"\b(?:historical|examples?|legacy|deprecated|obsolete)\b",
-            heading.group("title"),
-            re.IGNORECASE,
-        ):
-            skipped_heading_level = len(heading.group("marks"))
-            continue
-        kept.append(line)
-    return "".join(kept)
-
-
 def _ordered_regex_anchors(text: str, anchors: tuple[tuple[str, str], ...], label: str) -> None:
     positions: list[tuple[str, int]] = []
     for anchor_name, pattern in anchors:
@@ -448,31 +374,6 @@ def _ordered_regex_anchors(text: str, anchors: tuple[tuple[str, str], ...], labe
         following = positions[index + 1]
         if current[1] >= following[1]:
             raise ContractFailure(f"{label} is wrong: '{current[0]}' must precede '{following[0]}'")
-
-
-def check_issue_stage_order(path: pathlib.Path) -> None:
-    text = _without_nonoperational_sections(path.read_text(encoding="utf-8"))
-    _ordered_regex_anchors(
-        text,
-        (
-            (
-                "branch boundary resolution",
-                r"^\s*(?:\d+\.\s+)?(?:run|execute|require)\s+"
-                r'`git ls-remote --heads origin "refs/heads/\{issue-branch\}"`',
-            ),
-            (
-                "implementation delegation",
-                r"^\s*Otherwise\s+(?:invoke|call)\s+`kramme:siw:issue-implement`.*\{issue-id\}\s+--auto",
-            ),
-            ("commit boundary", r"^\s*4\.\s+Stage only classified paths\b"),
-            (
-                "completion delegation",
-                r"^(?![^\n]*\b(?:do not|don't|never|must not)\s+(?:invoke|call)\b)"
-                r"[^\n]*\b(?:invoke|call)\s+`kramme:pr:complete-work`\s+once\b.*$",
-            ),
-        ),
-        "issue stage order",
-    )
 
 
 def check_review_gate_order(path: pathlib.Path) -> None:
@@ -957,8 +858,6 @@ Check = Callable[[pathlib.Path], None]
 CHECKS: dict[str, Check] = {
     "discovery-result-schema": check_discovery_result_schema,
     "discovery-failure-boundary": check_discovery_failure_boundary,
-    "issue-intake-state": check_issue_intake_state,
-    "issue-stage-order": check_issue_stage_order,
     "review-gate-order": check_review_gate_order,
     "drift-self-update-guidance": check_drift_self_update_guidance,
     "standalone-refresh-guidance": check_standalone_refresh_guidance,

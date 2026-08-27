@@ -1,49 +1,5 @@
 #!/usr/bin/env bats
 
-@test "SIW issue-to-PR prepares one safe branch before autonomous implementation" {
-	run bash -c '
-	    set -e
-    cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:siw:issue-to-pr/SKILL.md"
-
-    test -f "$skill"
-    grep -qF "argument-hint: \"<issue-id> [--strict] [--ship]\"" "$skill"
-    grep -qF "disable-model-invocation: true" "$skill"
-    grep -qF "kramme:siw:issue-implement" "$skill"
-    grep -qF "{issue-id} --auto" "$skill"
-    grep -qF "kramme:pr:complete-work" "$skill"
-    grep -qF -- "--archive-key siw-issue-to-pr" "$skill"
-    grep -qF "git status --porcelain" "$skill"
-    grep -qF "git check-ref-format --branch \"{issue-branch}\"" "$skill"
-    grep -qF "gh pr list --head \"{issue-branch}\" --state all" "$skill"
-    grep -qF "git ls-remote --heads origin \"refs/heads/{issue-branch}\"" "$skill"
-	    grep -qF "git diff --quiet \"{intake-head}\" \"origin/{base-branch}\" -- siw/" "$skill"
-	    grep -qF "requires all committed SIW planning state to be landed on the fetched base" "$skill"
-	    grep -qF "git merge-base \"origin/{base-branch}\" HEAD" "$skill"
-	    grep -qF "matching only the SIW subtree is insufficient" "$skill"
-	    grep -qF "set \`EXECUTION_MODE=complete-resume\`" "$skill"
-	    grep -qF "do not invoke \`kramme:siw:issue-implement\` again" "$skill"
-	    grep -qF "continue directly to Step 4" "$skill"
-	    grep -qF "## Resolution" "$skill"
-	    grep -qF "status \`DONE\` or \`IN REVIEW\`" "$skill"
-    grep -qF "issue file, \`siw/OPEN_ISSUES_OVERVIEW.md\`, and \`siw/LOG.md\`" "$skill"
-    grep -qF "Do not invoke \`kramme:workflow-artifacts:cleanup --auto\`" "$skill"
-  '
-
-	[ "$status" -eq 0 ] || { echo "$output"; false; }
-
-	run python3 \
-		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
-		issue-intake-state \
-		"$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-to-pr/SKILL.md"
-	[ "$status" -eq 0 ] || { echo "$output"; false; }
-
-	run python3 \
-		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
-		issue-stage-order \
-		"$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-to-pr/SKILL.md"
-	[ "$status" -eq 0 ] || { echo "$output"; false; }
-}
 
 @test "generated plan-to-PR enforces dependency drift scope and artifact isolation" {
 	run bash -c '
@@ -235,12 +191,15 @@
 	    grep -qF "out-of-scope post-publication path" "$skill"
     grep -qF "kramme:code:work-from-plan" "$skill"
     grep -qF "route \`direct\`" "$skill"
-    grep -qF -- "--archive-key code-plan-to-pr" "$skill"
+    ! grep -qF -- "--archive-key code-plan-to-pr" "$skill"
     grep -qF -- "--scope-plan {active-plan}" "$skill"
     grep -qF "Require the delegated work branch and local head/tree to equal the observed branch" "$skill"
     grep -qF "stop without advancing plan state on the first mismatch" "$skill"
     grep -qF "Set the selected plan header and matching index row to \`DONE\`." "$skill"
     grep -qF "full completion commit OID" "$skill"
+    grep -qF "the exact delegated \`Publication state\`" "$skill"
+    grep -qF "require the delegate to have reported both the remote branch and Pull Request absent" "$skill"
+    grep -qF "record \`Publication state: absent\`" "$skill"
     grep -qF "Do not record a \`Landed commit\` merely because implementation or Pull Request creation completed." "$skill"
     grep -qF "Later plan input: pass the selected archived \`PR_PLAN_<label>_*.md\` path" "$skill"
     grep -qF "never invoke broad workflow-artifact cleanup" "$skill"
@@ -287,7 +246,21 @@
     grep -qF "A later session resumes with that exact invocation" "$shipping"
     grep -qF "Recovery: {fix-ci-invocation}" "$shipping"
     ! grep -qF "Recovery: \${fix-ci-invocation}" "$shipping"
+    ! grep -qF "PLAN_SCOPE_ACTIVE" "$shipping"
+    grep -qF "Set \`{fix-ci-invocation}\` to the exact scoped value" "$shipping"
+    grep -qF "the same \`--scope-plan {validated-scope-plan}\`" "$shipping"
     grep -qF "argument-hint: \"[--fixup] [--auto] [--no-consolidate] [--scope-plan <archived-plan>]\"" "$fix_ci"
+    grep -qF "SCOPED_PLAN_LIFECYCLE=initial|post-create|recovery" "$fix_ci"
+    grep -qF "SCOPED_PLAN_LIFECYCLE=post-create" "$fix_ci_scope"
+    grep -qF "records \`Publication state: absent\` from non-ship completion" "$fix_ci_scope"
+    grep -qF "In post-create lifecycle, require the execution result to prove publication was absent at non-ship completion" "$fix_ci_scope"
+    grep -qF "require exactly one same-repository match" "$fix_ci_scope"
+    grep -qF "except that post-create lifecycle must still complete the atomic Pull Request binding below before any edit" "$fix_ci_scope"
+    grep -qF "after direct head agreement or one of the two adoption proofs passes" "$fix_ci_scope"
+    grep -qF "Before any CI or review-feedback edit, use the atomic archive update contract to bind the newly proven Pull Request" "$fix_ci_scope"
+    grep -qF "replace \`Publication state: absent\` with \`Publication state: open Pull Request\`" "$fix_ci_scope"
+    grep -qF "Blocker: Pull Request created; CI/review stabilization pending" "$fix_ci_scope"
+    grep -qF "Set \`SCOPED_PLAN_LIFECYCLE=recovery\` only after that revalidation succeeds." "$fix_ci_scope"
     grep -qF "SCOPED_PLAN_LIFECYCLE=recovery" "$fix_ci_scope"
 	    grep -qF "set \`STANDALONE_ARCHIVE=false\`" "$fix_ci_scope"
 	    grep -qF "when every artifact contains the field" "$fix_ci_scope"
@@ -320,6 +293,12 @@
     grep -qF "Before returning a blocked handoff" "$shipping"
     grep -qF "Stop before history rewriting or publication on the first mismatch or newly ineligible exact-file path." "$shipping"
     grep -qF "If any path falls outside \`VALIDATED_SCOPE_PATHS\` or an exact-file path is newly ineligible" "$shipping"
+
+    post_create_line=$(grep -nF "SCOPED_PLAN_LIFECYCLE=post-create" "$fix_ci_scope" | head -1 | cut -d: -f1)
+    binding_line=$(grep -nF "Before any CI or review-feedback edit" "$fix_ci_scope" | cut -d: -f1)
+    edit_line=$(grep -nF "Before each edit, validate every intended path." "$fix_ci_scope" | cut -d: -f1)
+    [ "$post_create_line" -lt "$binding_line" ]
+    [ "$binding_line" -lt "$edit_line" ]
 
     validate_line=$(grep -nF "## Step 2: Validate the Plan Set" "$skill" | cut -d: -f1)
     archive_line=$(grep -nF "## Step 3: Archive Planning Artifacts" "$skill" | cut -d: -f1)
@@ -437,7 +416,10 @@
     test -f "$review"
     test -f "$shipping"
     grep -qF "user-invocable: false" "$skill"
-    grep -qF "Accept only \`siw-issue-to-pr\` or \`code-plan-to-pr\`" "$skill"
+    grep -qF "Set \`{archive-key}=code-plan-to-pr\` internally" "$skill"
+    grep -qF "obsolete caller-supplied \`--archive-key\` option" "$skill"
+    grep -qF "Store only the canonical repository-relative path as \`{validated-scope-plan}\`" "$skill"
+    grep -qF "Do not interpret its workflow state here" "$skill"
     grep -qF "require it exactly once for \`code-plan-to-pr\`" "$convergence"
     grep -qF "Store the exact normalized list as \`VALIDATED_SCOPE_PATHS\`" "$convergence"
     grep -qF "every proposed and dirty path" "$review"
@@ -463,9 +445,11 @@
     grep -qF "Do not consume a cycle or restart applicability." "$review"
     grep -qF ".context/{archive-key}/reviews/" "$review"
 
-    grep -qF "kramme:pr:create --auto --require-generated-description --authorize-history-rewrite" "$shipping"
-    grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
-	    grep -qF "Do not combine it with \`--auto\`." "$shipping"
+	    grep -qF "kramme:pr:create --auto --require-generated-description --authorize-history-rewrite" "$shipping"
+	    grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
+	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$skill")" -eq 3 ]
+	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$shipping")" -eq 2 ]
+		    grep -qF "Do not combine it with \`--auto\`." "$shipping"
 	    grep -qF "Completion disposition: published_blocked" "$shipping"
 	    grep -qF "Work branch: {work-branch}" "$shipping"
 	    grep -qF "Blocker: {exact delegated blocker}" "$shipping"
@@ -479,6 +463,12 @@
     grep -qF "kramme:verify:run" "$shipping"
     grep -qF "exact frozen sentinel-last \`--requirements {work-requirements}\` block" "$shipping"
     grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shipping"
+
+    scope_validation_line=$(grep -nF "Resolve the raw \`{scope-plan-input}\`" "$skill" | cut -d: -f1)
+    pr_preflight_line=$(grep -nF "gh pr list --head \"{work-branch}\"" "$skill" | cut -d: -f1)
+    early_recovery_line=$(grep -nF "If the branch already has any Pull Request" "$skill" | cut -d: -f1)
+    [ "$scope_validation_line" -lt "$pr_preflight_line" ]
+    [ "$scope_validation_line" -lt "$early_recovery_line" ]
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -490,52 +480,87 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "single SIW issue auto mode remains evidence gated" {
-	run bash -c '
-    set -e
-    cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:siw:issue-implement/SKILL.md"
-    closeout="skills/kramme:siw:issue-implement/references/issue-closeout.md"
 
-    grep -qF "argument-hint: \"<issue-id> [--auto] | --team [issue-ids | '\''phase N'\''] [--auto]\"" "$skill"
-    grep -qF "set \`AUTO_MODE=true\`" "$skill"
-    grep -qF "auto mode never assumes ownership of pre-existing work" "$skill"
-    grep -qF "Gate Existing Status Before Implementation" "$skill"
-    grep -qF "standard auto mode must not reset it to \`IN PROGRESS\`" "$skill"
-    grep -qF "The closeout idempotency check remains as a final race-safe guard" "$skill"
-    grep -qF "AUTO: proceeding with autonomous implementation" "$skill"
-    grep -qF "skip the approach question and choose **Autonomous Implementation**" "$skill"
-    grep -qF "never bypasses dirty-worktree handling, HITL confirmation" "$skill"
-    grep -qF "If \`AUTO_MODE=true\`, do not ask the confidence question." "$closeout"
-    grep -qF "\`DONE\` only when every acceptance criterion is satisfied" "$closeout"
-    grep -qF "\`IN REVIEW\` when implementation and automated verification are complete" "$closeout"
-
-    status_gate=$(grep -nF "### 1.3 Gate Existing Status Before Implementation" "$skill" | cut -d: -f1)
-    git_state=$(grep -nF "## Step 2: Verify Git State" "$skill" | cut -d: -f1)
-    auto_approach=$(grep -nF "If \`AUTO_MODE=true\`, skip the approach question" "$skill" | cut -d: -f1)
-    [ "$status_gate" -lt "$git_state" ]
-    [ "$git_state" -lt "$auto_approach" ]
-  '
-
-	[ "$status" -eq 0 ]
-}
-
-@test "new review archives are registered without deleting plan handoff state" {
+@test "current and legacy review archives are registered without deleting plan handoff state" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     registry="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
 
-    grep -qF "\"path\": \".context/siw-issue-to-pr/reviews/REVIEW_OVERVIEW.md\"" "$registry"
-    grep -qF "\"path\": \".context/siw-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md\"" "$registry"
-    grep -qF "\"path\": \".context/siw-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md\"" "$registry"
     grep -qF "\"path\": \".context/code-plan-to-pr/reviews/REVIEW_OVERVIEW.md\"" "$registry"
     grep -qF "\"path\": \".context/code-plan-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md\"" "$registry"
     grep -qF "\"path\": \".context/code-plan-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md\"" "$registry"
     grep -qF "\"path\": \".context/pr-review-convergence/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md\"" "$registry"
+    grep -qF "\"path\": \".context/siw-issue-to-pr/reviews/REVIEW_OVERVIEW.md\"" "$registry"
+    grep -qF "\"path\": \".context/siw-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md\"" "$registry"
+    grep -qF "\"path\": \".context/siw-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md\"" "$registry"
+    grep -qF "\"path\": \".context/siw-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md\"" "$registry"
+    grep -qF "\"path\": \"AUDIT_IMPLEMENTATION_REPORT.md\"" "$registry"
+    grep -qF "\"path\": \"siw/AUDIT_IMPLEMENTATION_REPORT.md\"" "$registry"
     ! grep -qF "\"path\": \".context/code-plan-to-pr/\"" "$registry"
-    ! grep -qF "\"path\": \".context/siw-issue-to-pr/\"" "$registry"
   '
 
 	[ "$status" -eq 0 ]
+}
+
+@test "active routing retires local SIW implementation in favor of Linear transfer" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:code:work-from-plan/SKILL.md"
+    routing="skills/kramme:code:work-from-plan/references/routing.md"
+    triage="skills/kramme:debug:triage-to-issue/SKILL.md"
+
+	    skill_route=$(sed -n "/If the route is \`siw\`/,/If the route is \`recommend-siw\`/p" "$skill")
+	    routing_route=$(sed -n "/^### SIW$/,/^### Recommend SIW$/p" "$routing")
+	    skill_contract="then recommend \`/kramme:siw:transfer-to-linear\`; after migration, implementation belongs to \`kramme:linear:issue-implement\`"
+	    routing_contract="Route the SIW project through \`kramme:siw:transfer-to-linear\`, then use \`kramme:linear:issue-implement\`"
+
+	    grep -qF "stops local SIW issues with a transfer recommendation" "$skill"
+	    printf "%s\n" "$skill_route" | grep -qF "$skill_contract"
+	    printf "%s\n" "$routing_route" | grep -qF "$routing_contract"
+	    grep -qF "A local SIW ticket reaches it through \`kramme:siw:transfer-to-linear\`" "$triage"
+
+	    ! grep -qF "kramme:siw:issue-implement" "$skill"
+	    ! grep -qF "kramme:siw:issue-implement" "$routing"
+	    ! grep -qF "kramme:siw:issue-implement" "$triage"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "siw init keeps every authoritative linked source in the transfer gate" {
+	run bash -c '
+	    set -e
+	    cd "'"$BATS_TEST_DIRNAME"'/.."
+	    skill="skills/kramme:siw:init/SKILL.md"
+	    report="skills/kramme:siw:init/references/success-report.md"
+
+	    grep -qF "Read the Phase 5 success-report templates from \`references/success-report.md\`, display the applicable summary sections" "$skill"
+	    grep -qF "capture every authoritative linked source" "$report"
+	    grep -qF "Copy Markdown specs into siw/supporting-specs/" "$report"
+	    grep -qF "Copy non-Markdown sources under siw/" "$report"
+	    grep -qF "If any linked source cannot be captured, stop" "$report"
+	    grep -qF "only after transfer verifies every linked source'"'"'s disposition" "$report"
+	  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "resolve-audit auto-detects current reports but accepts legacy implementation reports explicitly" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:siw:resolve-audit/SKILL.md"
+
+    discovery=$(sed -n "/Otherwise, discover available report files in this order:/,/If \*\*more than one report type exists\*\*/p" "$skill")
+    printf "%s\n" "$discovery" | grep -qF "siw/AUDIT_SPEC_REPORT.md"
+    printf "%s\n" "$discovery" | grep -qF "siw/PRODUCT_AUDIT.md"
+    ! printf "%s\n" "$discovery" | grep -qF "AUDIT_IMPLEMENTATION_REPORT.md"
+    grep -qF "Explicitly supplied legacy implementation-audit reports remain supported" "$skill"
+    grep -qF "they are never auto-detected" "$skill"
+    ! grep -qF "Implementation audit (Recommended when available)" "$skill"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }

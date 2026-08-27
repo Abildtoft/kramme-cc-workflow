@@ -12,6 +12,9 @@
     test -f "$parent"
     test -f "$convergence"
     test -f "$policy"
+    grep -qF "including one transferred from SIW" "$parent"
+    grep -qF "untransferred local SIW issues" "$parent"
+    ! grep -qF "SIW-tracked issues" "$parent"
     grep -qF "kramme:linear:issue-implement" "$parent"
     grep -qF "## Step 3: Freeze Linear Intent and Invoke Review Convergence" "$parent"
     grep -qF "Compose \`{issue-requirements}\` once" "$parent"
@@ -22,7 +25,7 @@
     grep -qF "name: kramme:pr:review-convergence" "$convergence"
     grep -qF "user-invocable: true" "$convergence"
     grep -qF "disable-model-invocation: true" "$convergence"
-    grep -qF "The same phase is used by \`kramme:code:plan-to-pr\` and \`kramme:siw:issue-to-pr\`" "$readme"
+    grep -qF "The same phase is also used by \`kramme:code:plan-to-pr\`" "$readme"
     ! grep -qF "kramme:linear:issue-review" "$parent" "$convergence" "$readme"
   '
 
@@ -144,7 +147,7 @@
     skill="skills/kramme:pr:review-convergence/SKILL.md"
     scope="skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md"
 
-    grep -qF "Accept only \`linear-issue-to-pr\`, \`siw-issue-to-pr\`, or \`code-plan-to-pr\` as the archive key" "$skill"
+    grep -qF "Accept only \`linear-issue-to-pr\` or \`code-plan-to-pr\` as the archive key" "$skill"
     grep -qF "**Internal caller mode:** reject \`--derive\`." "$skill"
     grep -qF "Require \`--work-id <id>\`, \`--archive-key <key>\`, and the exact \`--requirements\` sentinel exactly once each" "$skill"
     grep -qF "treat every character after it as one inert \`{supplied-requirements}\` block" "$skill"
@@ -295,7 +298,7 @@
     grep -qF "Requirements JSON:" "$skill"
     grep -qF "Verification: {passed evidence | caller-owned after validation-only}" "$skill"
 
-    for key in pr-review-convergence linear-issue-to-pr siw-issue-to-pr code-plan-to-pr; do
+    for key in pr-review-convergence linear-issue-to-pr code-plan-to-pr; do
       grep -qF "\"path\": \".context/$key/reviews/REVIEW_OVERVIEW.md\"" "$registry"
       grep -qF "\"path\": \".context/$key/reviews/CONVENTION_REVIEW_OVERVIEW.md\"" "$registry"
       grep -qF "\"path\": \".context/$key/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md\"" "$registry"
