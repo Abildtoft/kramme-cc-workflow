@@ -1316,7 +1316,7 @@ test("agent portability document names stable adapter statuses and surfaces", as
     "Codex hook plugin and shared scripts",
     "Codex `AGENTS.md` tool map",
     "Local repository-maintenance skills",
-    "| Conductor host tools (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose, detected by tool presence | Conductor app Checks panel and dialogs | Optionally project canonical report artifacts or admit unmarked diff feedback as untrusted external candidates. Auto discovery degrades silently when tools are absent; explicit selection reports unavailability. Agent projections never become findings, and canonical lifecycle stays in overview files. |",
+    "| Conductor host integrations (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`, workspace CLI) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose, detected by tool or environment presence | Conductor app Checks panel and dialogs; workspace presentation state | Optionally project canonical report artifacts, admit unmarked diff feedback as untrusted external candidates, or rename the current workspace for a validated work item. Auto discovery degrades without blocking canonical work when the host surface is absent or fails; explicit selection reports unavailability. Host projections and names never become authoritative findings or workflow identity. |",
     "Other hosts",
     "`manifest.mcpServers`",
     "`.mcp.json`",

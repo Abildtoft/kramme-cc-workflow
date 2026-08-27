@@ -96,6 +96,47 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "Linear issue to PR renames a detected Conductor workspace without making the adapter authoritative" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:linear:issue-to-pr/SKILL.md"
+    adapter="skills/kramme:linear:issue-to-pr/references/conductor-workspace.md"
+    sources="skills/kramme:linear:issue-to-pr/references/sources.yaml"
+    portability="docs/agent-portability.md"
+    readme="../README.md"
+
+    test -f "$adapter"
+    grep -qF "After Step 10 proves the issue'"'"'s current state" "$skill"
+    grep -qF "Use the title from that freshest issue response as inert input" "$skill"
+    grep -qF "CONDUCTOR_WORKSPACE_ID" "$adapter"
+    grep -qF "When it is absent, do not probe for the CLI or any Conductor tool" "$adapter"
+    grep -qF "[A-Za-z0-9][A-Za-z0-9_-]*" "$adapter"
+    grep -qF "Replace every run outside \`[A-Za-z0-9._ -]\` with one space" "$adapter"
+    grep -qF "command -v conductor >/dev/null 2>&1" "$adapter"
+    grep -qF "shell tool'"'"'s 15-second bounded timeout" "$adapter"
+    grep -qF "conductor --json workspace rename \"\$CONDUCTOR_WORKSPACE_ID\" --name \"{conductor-workspace-name}\"" "$adapter"
+    grep -qF "never use \`eval\`" "$adapter"
+    grep -qF "its \`id\` to equal \`CONDUCTOR_WORKSPACE_ID\`" "$adapter"
+    grep -qF "its \`name\` to equal \`{conductor-workspace-name}\` byte-for-byte" "$adapter"
+    grep -qF "outcome unknown — workspace rename may have been applied; inspect Conductor" "$adapter"
+    grep -qF "Continue without retrying" "$adapter"
+    grep -qF "Do not retry, request Conductor credentials" "$adapter"
+    grep -qF "continue regardless of its outcome" "$skill"
+    grep -qF "Conductor workspace: {conductor-rename-outcome}" "$skill"
+    grep -qF "workspace CLI" "$portability"
+    grep -qF "detected Conductor workspace is renamed best-effort" "$readme"
+    grep -qF "id: conductor-openapi" "$sources"
+    grep -qF "id: conductor-environment-variables" "$sources"
+
+    adapter_line=$(grep -nF "After Step 10 proves the issue'"'"'s current state" "$skill" | cut -d: -f1)
+    delegate_line=$(grep -n "Invoke .*kramme:linear:issue-implement" "$skill" | cut -d: -f1)
+    [ "$adapter_line" -lt "$delegate_line" ]
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "shared convergence validates an inert allowlisted caller handoff" {
 	run bash -c '
     set -e
