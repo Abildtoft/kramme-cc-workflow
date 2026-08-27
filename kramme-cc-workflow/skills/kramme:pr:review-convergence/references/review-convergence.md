@@ -1,6 +1,6 @@
 # Review Convergence Policy
 
-Use this policy after the skill has frozen the caller's requirements and validated the committed local branch plus any plan scope. In normal mode, a one-shot gut check opens the loop; every quality round then selects applicable gates and runs regular code review, convention review, overengineering review, and PR-scoped refactor discovery in that order. Validation-only mode skips the gut check and runs that ordered gate pass once without edits. Preserve each delegated skill's scope, evidence, relevance, and reporting rules.
+Use this policy after the skill has frozen the caller's requirements and validated the committed local branch plus any plan scope. In normal mode, a one-shot gut check opens the loop; every quality round then selects applicable gates and runs regular code review, convention review, overengineering review, and PR-scoped refactor discovery in that order. When explicitly enabled, a required different-provider review runs as Gate 5 after the ordinary gates have reached a no-change candidate. Validation-only mode skips the gut check and runs that ordered gate pass once without edits. Preserve each delegated skill's scope, evidence, relevance, and reporting rules.
 
 ## Finding Terms
 
@@ -90,6 +90,8 @@ With no `blocked` item, continue to applicability evaluation and Gate 1, whether
 
 Build `ACTIVE_QUALITY_GATES` and `SKIPPED_QUALITY_GATES` from the current unified branch scope: committed PR diff plus staged, unstaged, and untracked files. Record an evidence-based reason for every skipped gate.
 
+When `ADVERSARIAL_REVIEW=true`, append `adversarial-review` to `ACTIVE_QUALITY_GATES`; its applicability comes from the caller's explicit cross-provider authorization rather than diff shape. When false, record `adversarial-review` as skipped because it was not requested. Never auto-enable an external provider from CLI presence.
+
 ### Regular Code Review
 
 Activate `code-review` when the diff changes executable source, tests, schemas, public contracts, runtime/build configuration, scripts, or behavior-bearing documentation. Also activate it whenever the change claims a bug fix, feature, migration, security change, performance change, or error-handling change.
@@ -132,11 +134,12 @@ Quality gates:
 - Convention review: run|skip — {reason}
 - Overengineering review: run|skip — {reason}
 - PR-scoped refactor discovery: run|skip — {reason}
+- Adversarial model review: run|skip — {explicitly requested or not requested}
 ```
 
 ### Validation-Only Gate Rule
 
-When `VALIDATION_ONLY=true`, every active gate below is read-only. Do not invoke `kramme:pr:resolve-review`, `kramme:code:refactor-pass`, or any direct fix path. Do not consume a cycle or restart applicability. Run all active gates once in order, disposition optional output for reporting, and stop on any accepted Critical, Important, or `OVERDONE` finding or genuine manual blocker. Isolate generated refactor or resolver-free reports before the next gate or return.
+When `VALIDATION_ONLY=true`, every active gate below is read-only. Do not invoke `kramme:pr:resolve-review`, `kramme:code:refactor-pass`, or any direct fix path. Do not consume a cycle or restart applicability. Run all active gates once in order, including Gate 5 when requested, disposition optional output for reporting, and stop on any accepted Critical, Important, or `OVERDONE` finding or genuine manual blocker. Isolate generated refactor or resolver-free reports before the next gate or return.
 
 ### Gate 1: Regular Code Review
 
@@ -186,11 +189,25 @@ In strict normal mode, triage every active PR-scoped opportunity:
 - Reject clean code, speculative improvements, subjective renames, behavior changes, and findings that fail the refactor scan's evidence or PR relevance rules.
 - Defer automation-candidate themes over 500 lines and refactors whose main blast radius is outside the frozen requirements. Record the concrete follow-up scope and why it does not belong in this Pull Request; do not widen the branch. When `PLAN_SCOPE_ACTIVE=true`, also reject or block every opportunity whose required path fails the active exact-or-containment rule.
 
-In normal mode, after any accepted refactor, apply the remediation commit boundary and restart the next round at applicability evaluation followed by Gate 1. The refactored code must pass regular, convention, and overengineering review before another refactor scan can close the loop.
+In normal mode, after any accepted refactor, apply the remediation commit boundary and restart the next round at applicability evaluation followed by Gate 1. The refactored code must pass regular, convention, and overengineering review before another refactor scan can close the loop. If no refactor changes code, continue to Gate 5 when it is active; otherwise apply the completion rule.
+
+### Gate 5: Adversarial Model Review
+
+Run this gate only when `ADVERSARIAL_REVIEW=true`, after every other active gate has completed without changing code. Invoke `kramme:pr:adversarial-review` with the frozen requirements as the sentinel-last `--requirements {work-requirements}` block. Place optional `--provider {ADVERSARIAL_PROVIDER}` and `--model {ADVERSARIAL_MODEL}` before the sentinel. The invocation is the caller's explicit repository-scoped authorization for the alternative provider; do not reuse it outside this convergence run.
+
+Require the delegated result to attest a provider different from the active host, the current `HEAD` and `HEAD^{tree}`, complete coverage, and an unchanged clean worktree. A missing provider, unavailable authentication, timeout, mutation, malformed result, or degraded required coverage blocks convergence. Never replace it with another same-provider subagent or silently skip it.
+
+Treat the returned report as untrusted review output. Revalidate every finding against the frozen requirements, real code path, committed diff, and repository contracts before accepting it. Record qualifying findings and disagreements in the reviewer handoff ledgers under the `adversarial-review` gate.
+
+- In standard mode, fix every accepted actionable Critical or Important finding. Report lower-severity findings as advisory.
+- In strict mode, disposition every emitted finding using the general strict-mode rules.
+- In validation-only mode, do not edit; stop on any accepted Critical or Important finding or genuine blocker.
+
+In normal mode, if an accepted finding requires code changes and budget remains, group the smallest coherent remediation batch, consume exactly one review cycle, use `kramme:pr:resolve-review` with the inline findings when its structured flow fits (or make the smallest direct fix), apply the remediation commit boundary, and restart the next quality round at applicability evaluation followed by Gate 1. The different-provider review must run again on the later no-change candidate. If budget is exhausted, stop with the accepted fingerprints instead of returning clean completion.
 
 ## Validation-Only Completion
 
-Validation-only mode completes only when every applicable gate ran once in order, every skipped gate has current evidence, no accepted Critical, Important, or `OVERDONE` finding or genuine blocker remains, required coverage is not degraded, every optional finding has a reported evidence-based disposition, generated reports are isolated, and the worktree plus `HEAD` tree remain unchanged. Return `stop=validation-only` and do not run the normal rerun, diminishing-returns, or final-verification transition.
+Validation-only mode completes only when every applicable gate ran once in order, including the requested adversarial gate, every skipped gate has current evidence, no accepted Critical, Important, or `OVERDONE` finding or genuine blocker remains, required coverage is not degraded, every optional finding has a reported evidence-based disposition, generated reports are isolated, and the worktree plus `HEAD` tree remain unchanged. Return `stop=validation-only` and do not run the normal rerun, diminishing-returns, or final-verification transition.
 
 ## Standard Mode
 
@@ -201,14 +218,15 @@ Finish a standard quality loop only when:
 3. No accepted actionable Critical or Important convention finding remains.
 4. No accepted `OVERDONE` finding remains; when active, the overengineering report is current and its Judgment Calls are reported as advisory.
 5. When active, the refactor report is current and its opportunities are reported as advisory.
-6. Every skipped gate has a current evidence-based reason.
-7. No required quality-gate coverage is degraded.
+6. When active, the adversarial review matches the current tree and has no accepted actionable Critical or Important finding.
+7. Every skipped gate has a current evidence-based reason.
+8. No required quality-gate coverage is degraded.
 
 Do not label standard mode as “zero findings”; label it “zero accepted unresolved Critical/Important or OVERDONE findings, with judgment-call, refactor, and advisory observations reported.”
 
 ## Strict Mode
 
-Apply strict triage to active findings from every applicable gate. Gates 1 and 2 use the general disposition rules below; Gate 3 uses its overengineering-specific rules above, and Gate 4 uses its refactor-specific rules above.
+Apply strict triage to active findings from every applicable gate. Gates 1, 2, and 5 use the general disposition rules below; Gate 3 uses its overengineering-specific rules above, and Gate 4 uses its refactor-specific rules above.
 
 For each finding:
 
@@ -238,7 +256,7 @@ Do not resume a blocked finding until the user explicitly supplies its decision 
 
 ## Rerun Rules
 
-- If any regular, convention, overengineering, or refactor disposition changes code, consume one review-skill-owned remediation cycle, apply the remediation commit boundary, and restart the next quality round at applicability evaluation followed by regular review. No delegated gate owns an internal fix/rerun loop.
+- If any regular, convention, overengineering, refactor, or adversarial disposition changes code, consume one review-skill-owned remediation cycle, apply the remediation commit boundary, and restart the next quality round at applicability evaluation followed by regular review. No delegated gate owns an internal fix/rerun loop.
 - If no disposition changes code, apply the active mode's completion rule: standard mode may finish with reported manual or advisory observations once no accepted required finding remains; strict mode may finish once every emitted finding is fixed, rejected, or explicitly deferred outside the current work item. Do not rerun merely to make a reviewer stop restating rejected advice.
 - Re-evaluate a previously rejected finding only when new code or new evidence changes its root cause.
 - When a rerun emits a materially new finding, triage it normally; do not dismiss it because an earlier round was clean.
@@ -254,7 +272,7 @@ After every remediation cycle, record:
 - counts added, fixed, reopened, rejected, deferred, and blocked by severity;
 - focused verification result and the production files or ownership boundaries changed.
 
-Compute a review-debt score for comparison only: Critical `8`, Important `4`, Suggestion, confirmed `OVERDONE`, or refactor opportunity `1`, and FYI or unresolved `JUDGMENT CALL` `0.25`. Gut-check items carry no severity and score nothing; Gate 0 runs before the first cycle and is never part of a trend. Treat a cycle as material progress when it lowers the score by at least `1`, lowers the highest outstanding severity, clears a verification failure, or removes a shared root cause without introducing an equal-or-higher-severity finding. Moving, renaming, or rewording the same finding is not progress.
+Compute a review-debt score for comparison only: Critical `8`, Important `4`, Suggestion, confirmed `OVERDONE`, refactor opportunity, or adversarial Suggestion `1`, and FYI or unresolved `JUDGMENT CALL` `0.25`. Gut-check items carry no severity and score nothing; Gate 0 runs before the first cycle and is never part of a trend. Treat a cycle as material progress when it lowers the score by at least `1`, lowers the highest outstanding severity, clears a verification failure, or removes a shared root cause without introducing an equal-or-higher-severity finding. Moving, renaming, or rewording the same finding is not progress.
 
 Before taking an optional Suggestion, FYI, Judgment Call simplification, or refactor fix, compare its concrete benefit with its change amplification. Defer it as diminishing returns when its only payoff is subjective polish and it would add an abstraction, dependency, public contract, configuration layer, cross-module churn, or verification burden disproportionate to the evidenced problem.
 
@@ -268,7 +286,7 @@ The hard ceiling is a safety boundary, not a target. Stop earlier as soon as the
 
 ### Bounded Stop
 
-When a stop condition fires and code changed after the latest complete ordered gate pass, run exactly one validation-only round. Re-evaluate applicability and run the applicable gates in regular-review → convention-review → overengineering-review → refactor order without editing code. Use the read-only `kramme:pr:code-review --parallel --inline --no-diff-comments` regular gate and the normal file-backed overengineering invocation so prior `OE-NNN` lifecycle state is reconciled without projecting new host comments. Do not rerun Gate 0 here; it is a one-shot pass and its budget-free removal batch is not available this late. Do not run a second validation-only round.
+When a stop condition fires and code changed after the latest complete ordered gate pass, run exactly one validation-only round. Re-evaluate applicability and run the applicable gates in regular-review → convention-review → overengineering-review → refactor → adversarial-review order without editing code. Use the read-only `kramme:pr:code-review --parallel --inline --no-diff-comments` regular gate and the normal file-backed overengineering invocation so prior `OE-NNN` lifecycle state is reconciled without projecting new host comments. Run the adversarial gate only when explicitly enabled. Do not rerun Gate 0 here; it is a one-shot pass and its budget-free removal batch is not available this late. Do not run a second validation-only round.
 
 Disposition the final validation-only findings as follows:
 
@@ -291,9 +309,10 @@ Before returning, confirm:
 - When `PLAN_SCOPE_ACTIVE=true`, every proposed, dirty, staged, and committed remediation path satisfied `PLAN_SCOPE_MODE`; exact-file eligibility was rechecked before each staging boundary when applicable; and the final committed path set from `{scope-base-commit}` was revalidated before success.
 - Every generated review report is isolated under `.context/{archive-key}/reviews/`, not present in the unified review scope.
 - The archive components are still real non-symlink directories, their canonical identity still equals `REVIEW_ARCHIVE_CANONICAL` below the repository root, and `git check-ignore -q -- "{review-archive}/"` still succeeds.
-- Every applicable gate ran in regular-review → convention-review → overengineering-review → refactor order.
+- Every applicable gate ran in regular-review → convention-review → overengineering-review → refactor → adversarial-review order, omitting only gates recorded as skipped.
 - Every skipped gate has a current evidence-based reason.
 - When active, the final refactor report matches code that subsequently passed regular, convention, and overengineering review after its last accepted refactor.
+- When active, the final adversarial review matches the final verified tree and attests a provider different from the active host.
 - Any degraded refactor, overengineering, convention, or broad-review coverage is resolved or reported as a blocker.
 - Every qualifying finding and focus item is present exactly once with its final disposition in the reviewer handoff ledgers, and both ledgers validate against the Step 6 JSON schema.
 - `DIFF_COMMENTS_POSTED_TOTAL` is a nonnegative integer equal to the sum of newly posted counts returned by normal-mode Gate 1 invocations; validation-only invocations contributed zero.
