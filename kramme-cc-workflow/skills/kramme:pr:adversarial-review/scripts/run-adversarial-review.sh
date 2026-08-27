@@ -316,9 +316,9 @@ if [ "$RUN_MODE" = "local" ]; then
     git cat-file blob "$tracked_object" > "$snapshot_path" \
       || die "could not materialize tracked blob: $tracked_path"
     if [ "$tracked_mode" = "100755" ]; then
-      chmod 755 "$snapshot_path"
+      chmod u=rwx,go=rx "$snapshot_path"
     else
-      chmod 644 "$snapshot_path"
+      chmod u=rw,go=r "$snapshot_path"
     fi
   done < "$TREE_ENTRIES_FILE"
 fi

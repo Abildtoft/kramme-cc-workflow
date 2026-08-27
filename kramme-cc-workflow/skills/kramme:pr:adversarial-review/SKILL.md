@@ -5,6 +5,8 @@ argument-hint: "[--provider claude|codex] [--model <id>] [--base <branch>] [--re
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
+permissions:
+  - shell
 ---
 
 # Adversarial Pull Request Review
@@ -71,15 +73,13 @@ if ADVERSARIAL_RESULT=$($RUNNER "${RUNNER_ARGS[@]}"); then
 else
   RUNNER_STATUS=$?
 fi
-if [ -n "${REQUIREMENTS_FILE:-}" ]; then
-  rm -f -- "$REQUIREMENTS_FILE"
-  rmdir -- "$REQUIREMENTS_TEMP_DIR" 2> /dev/null || true
-fi
 [ "$RUNNER_STATUS" -eq 0 ] || {
   echo "Required adversarial review failed; preserve the runner error and stop." >&2
   exit 1
 }
 ```
+
+Once invoked with `--consume-requirements-file`, the runner owns requirements-file cleanup on success and failure. If the process cannot start, use the host runtime's file-deletion operation to remove only the recorded regular requirements file, then remove only its recorded workflow-owned directory after confirming that directory is empty. Never recursively delete either path.
 
 The runner selects its execution boundary from the environment:
 
