@@ -3,6 +3,7 @@
 // Owns the atomic install transaction lifecycle and recovery state.
 const { AsyncLocalStorage } = require("async_hooks");
 const crypto = require("crypto");
+const { constants: fsConstants } = require("fs");
 const fs = require("fs/promises");
 const path = require("path");
 const {
@@ -11,6 +12,7 @@ const {
   expectedContentBuffer,
   fileContentEquals,
   filesystemErrorCode,
+  isJsonObject,
   lstatIfExists,
   pathExists,
 } = require("./filesystem");
@@ -23,6 +25,10 @@ const INSTALL_BACKUPS_DIR = ".kramme-install-backups";
 const LOCK_POLL_INTERVAL_MS = 20;
 const MAX_LOCK_POLL_INTERVAL_MS = 250;
 const DEFAULT_LOCK_TIMEOUT_MS = 30_000;
+const TRANSACTION_INSPECTION_ENTRY_LIMIT = 50;
+const TRANSACTION_METADATA_BYTE_LIMIT = 64 * 1024;
+const TRANSACTION_TOKEN_PATTERN = /^[A-Za-z0-9-]+$/;
+const MAX_OWNER_CLOCK_SKEW_MS = 60_000;
 /** @type {AsyncLocalStorage<InstallTransaction>} */
 const transactionStorage = new AsyncLocalStorage();
 
@@ -75,7 +81,676 @@ const transactionStorage = new AsyncLocalStorage();
  * @typedef {TargetExpectations & { record: InstallMutationRecord, recordIndex: number, target: string, targetExists: boolean }} PreparedTransactionMutation
  * @typedef {{ error: unknown, lock: InstallLock }} InstallLockReleaseError
  * @typedef {{ error: unknown, record: InstallMutationRecord }} InstallRollbackError
+ * @typedef {"active" | "committed" | "disappeared" | "malformed" | "present" | "stale" | "suspicious" | "unreadable" | "unsupported"} ArtifactEntryStatus
+ * @typedef {"absent" | "active" | "malformed" | "present" | "stale" | "suspicious" | "unreadable" | "unsupported"} DiagnosticStatus
+ * @typedef {{ status: "present", value: unknown } | { status: "disappeared" | "malformed" | "unreadable" | "unsupported" }} BoundedJsonResult
+ * @typedef {{ entry_count: number, inspected_count: number, status: DiagnosticStatus, status_counts: Partial<Record<ArtifactEntryStatus, number>>, truncated: boolean }} ArtifactCollectionSummary
+ * @typedef {{ root: string, status: DiagnosticStatus, owner?: InstallLockOwner }} DiagnosticLockInspection
+ * @typedef {{ publicationTemps: Set<string>, records: InstallMutationRecord[], rollbackTargetContents: Map<string, RollbackTargetExpectation>, status: "active" | "committed" }} ParsedInstallJournal
+ * @typedef {{ advisory: true, backups: ArtifactCollectionSummary, entry_limit: number, journals: ArtifactCollectionSummary, lock: { status: DiagnosticStatus }, metadata_byte_limit: number, recovery_claims: ArtifactCollectionSummary, recovery_conflicts: ArtifactCollectionSummary }} TransactionHealthSummary
  */
+
+/**
+ * Inspect private transaction artifacts without acquiring locks or changing the
+ * filesystem. Counts and accepted metadata payloads are bounded, and the result
+ * intentionally omits owners, tokens, paths, records, and artifact contents.
+ *
+ * @param {string} root
+ * @param {{ lockRoots?: string[] }} [options]
+ * @returns {Promise<TransactionHealthSummary>}
+ */
+async function inspectInstallTransactions(root, options = {}) {
+  const resolvedRoot = await canonicalizeDiagnosticRoot(root);
+  const lockInspections = await inspectAllInstallLocks(
+    resolvedRoot,
+    options.lockRoots ?? [],
+  );
+  /** @type {Map<string, ArtifactEntryStatus>} */
+  const journalStatuses = new Map();
+  /** @type {Set<string>} */
+  const artifactRoots = new Set();
+  let artifactRootsTruncated = false;
+  /** @param {string} artifactRoot */
+  const addArtifactRoot = (artifactRoot) => {
+    if (artifactRoots.has(artifactRoot)) return;
+    if (artifactRoots.size >= TRANSACTION_INSPECTION_ENTRY_LIMIT) {
+      artifactRootsTruncated = true;
+      return;
+    }
+    artifactRoots.add(artifactRoot);
+  };
+  for (const { root: lockRoot } of lockInspections) addArtifactRoot(lockRoot);
+  const journals = await inspectArtifactCollection(
+    [path.join(resolvedRoot, INSTALL_TRANSACTIONS_DIR)],
+    async (entryPath, entryName) => {
+      const inspected = await inspectJournalEntry(
+        entryPath,
+        entryName,
+        diagnosticJournalLockRoots(
+          lockInspections,
+          resolvedRoot,
+          entryName,
+          path.join(entryPath, "journal.json"),
+        ),
+      );
+      journalStatuses.set(entryName, inspected.status);
+      for (const artifactRoot of inspected.artifactRoots) {
+        addArtifactRoot(artifactRoot);
+      }
+      return inspected.status;
+    },
+    "journals",
+  );
+  const lock = summarizeInstallLocks(
+    lockInspections,
+    journalStatuses,
+    resolvedRoot,
+  );
+  const recoveryClaims = await inspectArtifactCollection(
+    [...artifactRoots].map((artifactRoot) =>
+      path.join(artifactRoot, INSTALL_RECOVERY_CLAIMS_DIR),
+    ),
+    inspectRecoveryClaimEntry,
+    "claims",
+    artifactRootsTruncated,
+  );
+  const recoveryConflicts = await inspectArtifactCollection(
+    [...artifactRoots].map((artifactRoot) =>
+      path.join(artifactRoot, INSTALL_RECOVERY_CONFLICTS_DIR),
+    ),
+    inspectOpaqueArtifactEntry,
+    "opaque",
+    artifactRootsTruncated,
+  );
+  const backups = await inspectArtifactCollection(
+    [...artifactRoots].map((artifactRoot) =>
+      path.join(artifactRoot, INSTALL_BACKUPS_DIR),
+    ),
+    inspectOpaqueArtifactEntry,
+    "opaque",
+    artifactRootsTruncated,
+  );
+
+  return {
+    advisory: true,
+    backups,
+    entry_limit: TRANSACTION_INSPECTION_ENTRY_LIMIT,
+    journals,
+    lock,
+    metadata_byte_limit: TRANSACTION_METADATA_BYTE_LIMIT,
+    recovery_claims: recoveryClaims,
+    recovery_conflicts: recoveryConflicts,
+  };
+}
+
+/** @param {string} root */
+async function canonicalizeDiagnosticRoot(root) {
+  try {
+    return await canonicalizeDirectoryPath(root);
+  } catch {
+    return path.resolve(root);
+  }
+}
+
+/** @param {string} transactionRoot @param {string[]} candidateRoots */
+async function inspectAllInstallLocks(transactionRoot, candidateRoots) {
+  const roots = [];
+  const queued = new Set();
+  let truncated = false;
+  for (const candidate of [transactionRoot, ...candidateRoots]) {
+    if (roots.length >= TRANSACTION_INSPECTION_ENTRY_LIMIT) {
+      truncated = true;
+      break;
+    }
+    const resolved = await canonicalizeDiagnosticRoot(candidate);
+    if (!queued.has(resolved)) {
+      queued.add(resolved);
+      roots.push(resolved);
+    }
+  }
+
+  /** @type {DiagnosticLockInspection[]} */
+  const inspections = [];
+  for (let index = 0; index < roots.length; index += 1) {
+    if (index >= TRANSACTION_INSPECTION_ENTRY_LIMIT) break;
+    const inspection = await inspectInstallLock(roots[index]);
+    inspections.push(inspection);
+    for (const ownerRoot of inspection.owner?.lockRoots ?? []) {
+      if (roots.length >= TRANSACTION_INSPECTION_ENTRY_LIMIT) {
+        truncated = true;
+        break;
+      }
+      const resolved = await canonicalizeDiagnosticRoot(ownerRoot);
+      if (!queued.has(resolved)) {
+        queued.add(resolved);
+        roots.push(resolved);
+      }
+    }
+  }
+  if (truncated || roots.length > inspections.length) {
+    inspections.push({ root: transactionRoot, status: "suspicious" });
+  }
+  return inspections;
+}
+
+/** @param {string} lockRoot @returns {Promise<DiagnosticLockInspection>} */
+async function inspectInstallLock(lockRoot) {
+  const lockDir = path.join(lockRoot, INSTALL_LOCK_DIR);
+  const directoryStatus = await inspectDirectoryType(lockDir);
+  if (directoryStatus !== "present") {
+    return { root: lockRoot, status: directoryStatus };
+  }
+
+  const metadata = await readBoundedJson(path.join(lockDir, "owner.json"));
+  if (metadata.status === "disappeared") {
+    return { root: lockRoot, status: "suspicious" };
+  }
+  if (metadata.status !== "present") {
+    return { root: lockRoot, status: metadata.status };
+  }
+  if (!isDiagnosticLockOwner(metadata.value)) {
+    return { root: lockRoot, status: "malformed" };
+  }
+  const owner = metadata.value;
+  if (owner.createdAtMs > Date.now() + MAX_OWNER_CLOCK_SKEW_MS) {
+    return { owner, root: lockRoot, status: "suspicious" };
+  }
+  try {
+    return {
+      owner,
+      root: lockRoot,
+      status: (await isProcessAlive(owner.pid)) ? "active" : "stale",
+    };
+  } catch {
+    return { owner, root: lockRoot, status: "unreadable" };
+  }
+}
+
+/** @param {unknown} value @returns {value is InstallLockOwner} */
+function isDiagnosticLockOwner(value) {
+  const owner = /** @type {Partial<InstallLockOwner>} */ (value);
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    owner.version === 1 &&
+    isSafeToken(owner.token) &&
+    Number.isSafeInteger(owner.pid) &&
+    Number(owner.pid) > 0 &&
+    typeof owner.pluginName === "string" &&
+    Number.isSafeInteger(owner.createdAtMs) &&
+    Number(owner.createdAtMs) >= 0 &&
+    typeof owner.journalPath === "string" &&
+    path.isAbsolute(owner.journalPath) &&
+    (owner.transactionRoot === undefined ||
+      (typeof owner.transactionRoot === "string" &&
+        path.isAbsolute(owner.transactionRoot))) &&
+    (owner.expectedToken === undefined || isSafeToken(owner.expectedToken)) &&
+    (owner.lockRoots === undefined ||
+      (Array.isArray(owner.lockRoots) &&
+        owner.lockRoots.every(
+          (lockRoot) =>
+            typeof lockRoot === "string" && path.isAbsolute(lockRoot),
+        )))
+  );
+}
+
+/**
+ * @param {DiagnosticLockInspection[]} inspections
+ * @param {Map<string, ArtifactEntryStatus>} journalStatuses
+ * @param {string} transactionRoot
+ * @returns {{ status: DiagnosticStatus }}
+ */
+function summarizeInstallLocks(inspections, journalStatuses, transactionRoot) {
+  const statuses = inspections.map(({ status }) => status);
+  if (statuses.includes("unreadable")) return { status: "unreadable" };
+  if (statuses.includes("malformed")) return { status: "malformed" };
+  if (statuses.includes("unsupported")) return { status: "unsupported" };
+  if (statuses.includes("suspicious")) return { status: "suspicious" };
+
+  const owned = inspections.filter(
+    (inspection) => inspection.owner && inspection.status !== "absent",
+  );
+  if (
+    owned.some(
+      (inspection) =>
+        !diagnosticLockOwnerIsCorrelated(
+          /** @type {InstallLockOwner} */ (inspection.owner),
+          inspection.root,
+          inspections,
+          journalStatuses,
+          transactionRoot,
+        ),
+    )
+  ) {
+    return { status: "suspicious" };
+  }
+  if (statuses.includes("active") && statuses.includes("stale")) {
+    return { status: "suspicious" };
+  }
+  if (statuses.includes("active")) return { status: "active" };
+  if (statuses.includes("stale")) return { status: "stale" };
+  return { status: "absent" };
+}
+
+/**
+ * @param {InstallLockOwner} owner
+ * @param {string} inspectedRoot
+ * @param {DiagnosticLockInspection[]} inspections
+ * @param {Map<string, ArtifactEntryStatus>} journalStatuses
+ * @param {string} transactionRoot
+ */
+function diagnosticLockOwnerIsCorrelated(
+  owner,
+  inspectedRoot,
+  inspections,
+  journalStatuses,
+  transactionRoot,
+) {
+  const expectedJournalPath = path.join(
+    transactionRoot,
+    INSTALL_TRANSACTIONS_DIR,
+    owner.token,
+    "journal.json",
+  );
+  if (
+    !diagnosticOwnerLockSetMatches(
+      owner,
+      inspectedRoot,
+      inspections,
+      transactionRoot,
+      expectedJournalPath,
+    ) ||
+    !["active", "committed"].includes(journalStatuses.get(owner.token) ?? "")
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @param {DiagnosticLockInspection[]} inspections
+ * @param {string} transactionRoot
+ * @param {string} token
+ * @param {string} journalPath
+ * @returns {string[] | undefined}
+ */
+function diagnosticJournalLockRoots(
+  inspections,
+  transactionRoot,
+  token,
+  journalPath,
+) {
+  const candidates = inspections.filter(
+    (inspection) => inspection.owner?.token === token,
+  );
+  if (candidates.length === 0) return undefined;
+  for (const candidate of candidates) {
+    if (
+      !diagnosticOwnerLockSetMatches(
+        /** @type {InstallLockOwner} */ (candidate.owner),
+        candidate.root,
+        inspections,
+        transactionRoot,
+        journalPath,
+      )
+    ) {
+      return undefined;
+    }
+  }
+  const owner = /** @type {InstallLockOwner} */ (candidates[0].owner);
+  return owner.lockRoots ?? [transactionRoot];
+}
+
+/**
+ * @param {InstallLockOwner} owner
+ * @param {string} inspectedRoot
+ * @param {DiagnosticLockInspection[]} inspections
+ * @param {string} transactionRoot
+ * @param {string} journalPath
+ */
+function diagnosticOwnerLockSetMatches(
+  owner,
+  inspectedRoot,
+  inspections,
+  transactionRoot,
+  journalPath,
+) {
+  const ownerTransactionRoot = path.resolve(
+    owner.transactionRoot ?? inspectedRoot,
+  );
+  const expectedLockRoots = new Set(
+    (owner.lockRoots ?? [ownerTransactionRoot]).map((root) =>
+      path.resolve(root),
+    ),
+  );
+  if (
+    ownerTransactionRoot !== transactionRoot ||
+    path.resolve(owner.journalPath) !== journalPath ||
+    !expectedLockRoots.has(transactionRoot) ||
+    !expectedLockRoots.has(inspectedRoot)
+  ) {
+    return false;
+  }
+  return [...expectedLockRoots].every((lockRoot) =>
+    inspections.some(
+      (inspection) =>
+        inspection.root === lockRoot &&
+        inspection.owner !== undefined &&
+        installLockOwnersMatch(owner, inspection.owner),
+    ),
+  );
+}
+
+/** @param {InstallLockOwner} left @param {InstallLockOwner} right */
+function installLockOwnersMatch(left, right) {
+  return (
+    left.token === right.token &&
+    path.resolve(left.transactionRoot ?? "") ===
+      path.resolve(right.transactionRoot ?? "") &&
+    path.resolve(left.journalPath) === path.resolve(right.journalPath) &&
+    JSON.stringify(
+      [...(left.lockRoots ?? [])].map((root) => path.resolve(root)).sort(),
+    ) ===
+      JSON.stringify(
+        [...(right.lockRoots ?? [])].map((root) => path.resolve(root)).sort(),
+      )
+  );
+}
+
+/**
+ * @param {string[]} collectionRoots
+ * @param {(entryPath: string, entryName: string) => Promise<ArtifactEntryStatus>} inspectEntry
+ * @param {"claims" | "journals" | "opaque"} kind
+ * @param {boolean} [rootTruncated]
+ * @returns {Promise<ArtifactCollectionSummary>}
+ */
+async function inspectArtifactCollection(
+  collectionRoots,
+  inspectEntry,
+  kind,
+  rootTruncated = false,
+) {
+  /** @type {ArtifactEntryStatus[]} */
+  const entryStatuses = [];
+  let entryCount = 0;
+  let inspectedCount = 0;
+  let entryTruncated = false;
+  for (const collectionRoot of new Set(collectionRoots)) {
+    if (entryTruncated) break;
+    const directoryStatus = await inspectDirectoryType(collectionRoot);
+    if (directoryStatus === "absent") continue;
+    if (directoryStatus !== "present") {
+      entryStatuses.push(directoryStatus);
+      continue;
+    }
+
+    /** @type {import("fs").Dir | null} */
+    let directory = null;
+    try {
+      directory = await fs.opendir(collectionRoot);
+      while (entryCount <= TRANSACTION_INSPECTION_ENTRY_LIMIT) {
+        const entry = await directory.read();
+        if (!entry) break;
+        entryCount += 1;
+        if (entryCount > TRANSACTION_INSPECTION_ENTRY_LIMIT) {
+          entryTruncated = true;
+          break;
+        }
+        inspectedCount += 1;
+        entryStatuses.push(
+          await inspectEntry(path.join(collectionRoot, entry.name), entry.name),
+        );
+      }
+    } catch (error) {
+      entryStatuses.push(
+        filesystemErrorCode(error) === "ENOENT" ? "disappeared" : "unreadable",
+      );
+    } finally {
+      if (directory) {
+        try {
+          await directory.close();
+        } catch (error) {
+          if (filesystemErrorCode(error) !== "ERR_DIR_CLOSED") {
+            entryStatuses.push("unreadable");
+          }
+        }
+      }
+    }
+  }
+
+  return summarizeArtifactCollection(
+    entryStatuses,
+    entryCount,
+    inspectedCount,
+    rootTruncated || entryTruncated,
+    kind,
+  );
+}
+
+/**
+ * @param {string} entryPath
+ * @param {string} entryName
+ * @param {string[] | undefined} lockRoots
+ * @returns {Promise<{ artifactRoots: string[], status: ArtifactEntryStatus }>}
+ */
+async function inspectJournalEntry(entryPath, entryName, lockRoots) {
+  if (!isSafeToken(entryName)) {
+    return { artifactRoots: [], status: "malformed" };
+  }
+  const directoryStatus = await inspectCollectionEntryDirectory(entryPath);
+  if (directoryStatus !== "present") {
+    return { artifactRoots: [], status: directoryStatus };
+  }
+  const journal = await readBoundedJson(path.join(entryPath, "journal.json"));
+  if (journal.status !== "present") {
+    return { artifactRoots: [], status: journal.status };
+  }
+  try {
+    const parsed = await parseInstallJournal(
+      journal.value,
+      entryName,
+      lockRoots,
+    );
+    if (!parsed) return { artifactRoots: [], status: "malformed" };
+    return {
+      artifactRoots: lockRoots
+        ? [
+            ...new Set(
+              parsed.records.map((record) => path.dirname(record.target)),
+            ),
+          ]
+        : [],
+      status: parsed.status,
+    };
+  } catch {
+    return { artifactRoots: [], status: "unreadable" };
+  }
+}
+
+/** @param {string} entryPath @param {string} entryName */
+async function inspectRecoveryClaimEntry(entryPath, entryName) {
+  if (!isSafeToken(entryName)) return "malformed";
+  const directoryStatus = await inspectCollectionEntryDirectory(entryPath);
+  if (directoryStatus !== "present") return directoryStatus;
+  const metadata = await readBoundedJson(path.join(entryPath, "owner.json"));
+  if (metadata.status !== "present") return metadata.status;
+  if (
+    !isDiagnosticLockOwner(metadata.value) ||
+    metadata.value.expectedToken !== entryName
+  ) {
+    return "malformed";
+  }
+  const owner = metadata.value;
+  if (owner.createdAtMs > Date.now() + MAX_OWNER_CLOCK_SKEW_MS) {
+    return "suspicious";
+  }
+  try {
+    return (await isProcessAlive(owner.pid)) ? "active" : "stale";
+  } catch {
+    return "unreadable";
+  }
+}
+
+/** @param {string} entryPath @param {string} entryName */
+async function inspectOpaqueArtifactEntry(entryPath, entryName) {
+  if (!isSafeToken(entryName)) return "malformed";
+  return inspectCollectionEntryDirectory(entryPath);
+}
+
+/** @param {string} directory */
+async function inspectCollectionEntryDirectory(directory) {
+  const status = await inspectDirectoryType(directory);
+  return status === "absent" ? "disappeared" : status;
+}
+
+/** @param {string} directory */
+async function inspectDirectoryType(directory) {
+  try {
+    const stats = await fs.lstat(directory);
+    return stats.isDirectory() ? "present" : "unsupported";
+  } catch (error) {
+    if (filesystemErrorCode(error) === "ENOENT") return "absent";
+    return "unreadable";
+  }
+}
+
+/** @param {string} file @returns {Promise<BoundedJsonResult>} */
+async function readBoundedJson(file) {
+  /** @type {import("fs/promises").FileHandle | null} */
+  let handle = null;
+  /** @type {BoundedJsonResult} */
+  let result = { status: "unreadable" };
+  try {
+    const noFollow = fsConstants.O_NOFOLLOW ?? 0;
+    const nonBlock = fsConstants.O_NONBLOCK ?? 0;
+    handle = await fs.open(file, fsConstants.O_RDONLY | noFollow | nonBlock);
+    const stats = await handle.stat();
+    if (!stats.isFile() || stats.size > TRANSACTION_METADATA_BYTE_LIMIT) {
+      result = { status: "unsupported" };
+    } else {
+      const content = Buffer.alloc(TRANSACTION_METADATA_BYTE_LIMIT + 1);
+      let offset = 0;
+      while (offset < content.length) {
+        const { bytesRead } = await handle.read(
+          content,
+          offset,
+          content.length - offset,
+          offset,
+        );
+        if (bytesRead === 0) break;
+        offset += bytesRead;
+      }
+      if (offset > TRANSACTION_METADATA_BYTE_LIMIT) {
+        result = { status: "unsupported" };
+      } else {
+        try {
+          result = {
+            status: "present",
+            value: JSON.parse(content.subarray(0, offset).toString("utf8")),
+          };
+        } catch {
+          result = { status: "malformed" };
+        }
+      }
+    }
+  } catch (error) {
+    const code = filesystemErrorCode(error);
+    if (code === "ENOENT") result = { status: "disappeared" };
+    else if (code === "ELOOP" || code === "EISDIR" || code === "ENOTDIR") {
+      result = { status: "unsupported" };
+    } else result = { status: "unreadable" };
+  } finally {
+    if (handle) {
+      try {
+        await handle.close();
+      } catch {
+        result = { status: "unreadable" };
+      }
+    }
+  }
+  return result;
+}
+
+/** @param {unknown} value */
+function isSafeToken(value) {
+  return typeof value === "string" && TRANSACTION_TOKEN_PATTERN.test(value);
+}
+
+/** @returns {ArtifactCollectionSummary} */
+function emptyArtifactCollectionSummary() {
+  return {
+    entry_count: 0,
+    inspected_count: 0,
+    status: "absent",
+    status_counts: {},
+    truncated: false,
+  };
+}
+
+/**
+ * @param {ArtifactEntryStatus[]} entryStatuses
+ * @param {number} entryCount
+ * @param {number} inspectedCount
+ * @param {boolean} truncated
+ * @param {"claims" | "journals" | "opaque"} kind
+ * @returns {ArtifactCollectionSummary}
+ */
+function summarizeArtifactCollection(
+  entryStatuses,
+  entryCount,
+  inspectedCount,
+  truncated,
+  kind,
+) {
+  /** @type {ArtifactEntryStatus[]} */
+  const orderedStatuses = [
+    "active",
+    "stale",
+    "present",
+    "committed",
+    "suspicious",
+    "malformed",
+    "unreadable",
+    "unsupported",
+    "disappeared",
+  ];
+  /** @type {Partial<Record<ArtifactEntryStatus, number>>} */
+  const statusCounts = {};
+  for (const status of orderedStatuses) {
+    const count = entryStatuses.filter(
+      (entryStatus) => entryStatus === status,
+    ).length;
+    if (count > 0) statusCounts[status] = count;
+  }
+
+  /** @type {DiagnosticStatus} */
+  let status = "absent";
+  if (statusCounts.unreadable) status = "unreadable";
+  else if (statusCounts.malformed) status = "malformed";
+  else if (statusCounts.unsupported) status = "unsupported";
+  else if (
+    truncated ||
+    statusCounts.disappeared ||
+    statusCounts.committed ||
+    statusCounts.suspicious ||
+    (kind === "journals" && Number(statusCounts.active) > 1) ||
+    Object.keys(statusCounts).length > 1
+  ) {
+    status = "suspicious";
+  } else if (statusCounts.active) {
+    status = kind === "claims" ? "active" : "present";
+  } else if (statusCounts.stale) status = "stale";
+  else if (statusCounts.present) status = "present";
+
+  return {
+    entry_count: entryCount,
+    inspected_count: inspectedCount,
+    status,
+    status_counts: statusCounts,
+    truncated,
+  };
+}
 
 /**
  * Serialize and journal one installation rooted at `root`.
@@ -293,8 +968,7 @@ async function readLockOwner(lockDir) {
     );
     if (
       owner?.version !== 1 ||
-      typeof owner.token !== "string" ||
-      !/^[A-Za-z0-9-]+$/.test(owner.token) ||
+      !isSafeToken(owner.token) ||
       !Number.isSafeInteger(owner.pid) ||
       owner.pid <= 0 ||
       (owner.lockRoots !== undefined &&
@@ -352,42 +1026,12 @@ async function recoverStaleInstall(root, owner) {
       `Refusing to recover install transaction ${owner.token} without its transaction-root lock.`,
     );
   }
-  const recordsValid =
-    Array.isArray(journal?.records) &&
-    (
-      await Promise.all(
-        journal.records.map(
-          /** @param {unknown} record @param {number} index */ (
-            record,
-            index,
-          ) => isOwnedMutationRecord(record, owner.token, index, lockRoots),
-        ),
-      )
-    ).every(Boolean);
-  const rollbackTargetContents = recordsValid
-    ? await parseRollbackTargetExpectations(
-        journal?.rollbackTargetExpectations,
-        lockRoots,
-        /** @type {InstallMutationRecord[]} */ (journal.records),
-      )
-    : null;
-  const publicationTemps = recordsValid
-    ? await parsePublicationTemps(
-        journal?.publicationTemps,
-        owner.token,
-        /** @type {InstallMutationRecord[]} */ (journal.records),
-      )
-    : null;
-  if (
-    journal?.version !== 1 ||
-    journal?.token !== owner.token ||
-    (journal.status !== undefined &&
-      journal.status !== "active" &&
-      journal.status !== "committed") ||
-    !recordsValid ||
-    rollbackTargetContents === null ||
-    publicationTemps === null
-  ) {
+  const parsedJournal = await parseInstallJournal(
+    journal,
+    owner.token,
+    lockRoots,
+  );
+  if (!parsedJournal) {
     throw new Error(
       `Refusing to recover invalid install journal ${journalPath}.`,
     );
@@ -398,13 +1042,13 @@ async function recoverStaleInstall(root, owner) {
     transactionDir: path.dirname(journalPath),
     journalPath,
     lockRoots,
-    records: /** @type {InstallMutationRecord[]} */ (journal.records),
+    records: parsedJournal.records,
     recoveryConflicts:
       /** @type {{target: string, preservedAt: string}[]} */ ([]),
-    publicationTemps,
+    publicationTemps: parsedJournal.publicationTemps,
     rollbackDeletedTargets: new Set(),
-    rollbackTargetContents,
-    status: journal.status === "committed" ? "committed" : "active",
+    rollbackTargetContents: parsedJournal.rollbackTargetContents,
+    status: parsedJournal.status,
   };
   if (transaction.status === "committed") {
     await removeTransactionArtifacts(transaction);
@@ -784,7 +1428,7 @@ async function createInstallTransaction(owner) {
  * @param {unknown} record
  * @param {string} token
  * @param {number} recordIndex
- * @param {string[]} lockRoots
+ * @param {string[]} [lockRoots]
  * @returns {Promise<boolean>}
  */
 async function isOwnedMutationRecord(record, token, recordIndex, lockRoots) {
@@ -800,7 +1444,12 @@ async function isOwnedMutationRecord(record, token, recordIndex, lockRoots) {
     return false;
   }
   const canonicalTarget = await canonicalizeTransactionTarget(target);
-  if (!isTargetCoveredByLock(canonicalTarget, lockRoots)) return false;
+  if (
+    canonicalTarget !== target ||
+    (lockRoots && !isTargetCoveredByLock(canonicalTarget, lockRoots))
+  ) {
+    return false;
+  }
   if (candidate.operation === "create") return candidate.backup === null;
   if (
     candidate.operation !== "backup-rename" ||
@@ -817,6 +1466,57 @@ async function isOwnedMutationRecord(record, token, recordIndex, lockRoots) {
   );
   const canonicalBackup = await canonicalizeTransactionTarget(candidate.backup);
   return canonicalBackup === expectedBackup;
+}
+
+/**
+ * Parse the journal shape shared by diagnostics and stale recovery. Diagnostics
+ * validates intrinsic ownership paths; recovery additionally supplies lock roots
+ * so every target must be covered by the acquired lock set.
+ *
+ * @param {unknown} journal
+ * @param {string} token
+ * @param {string[]} [lockRoots]
+ * @returns {Promise<ParsedInstallJournal | null>}
+ */
+async function parseInstallJournal(journal, token, lockRoots) {
+  if (
+    !isJsonObject(journal) ||
+    journal.version !== 1 ||
+    journal.token !== token ||
+    !Array.isArray(journal.records) ||
+    (journal.status !== undefined &&
+      journal.status !== "active" &&
+      journal.status !== "committed")
+  ) {
+    return null;
+  }
+  const recordsValid = (
+    await Promise.all(
+      journal.records.map(
+        /** @param {unknown} record @param {number} index */ (record, index) =>
+          isOwnedMutationRecord(record, token, index, lockRoots),
+      ),
+    )
+  ).every(Boolean);
+  if (!recordsValid) return null;
+  const records = /** @type {InstallMutationRecord[]} */ (journal.records);
+  const rollbackTargetContents = await parseRollbackTargetExpectations(
+    journal.rollbackTargetExpectations,
+    lockRoots,
+    records,
+  );
+  const publicationTemps = await parsePublicationTemps(
+    journal.publicationTemps,
+    token,
+    records,
+  );
+  if (rollbackTargetContents === null || publicationTemps === null) return null;
+  return {
+    publicationTemps,
+    records,
+    rollbackTargetContents,
+    status: journal.status === "committed" ? "committed" : "active",
+  };
 }
 
 /** @param {InstallTransaction} transaction */
@@ -873,7 +1573,7 @@ async function parsePublicationTemps(value, token, records) {
 
 /**
  * @param {unknown} value
- * @param {string[]} lockRoots
+ * @param {string[] | undefined} lockRoots
  * @param {InstallMutationRecord[]} records
  * @returns {Promise<Map<string, RollbackTargetExpectation> | null>}
  */
@@ -901,7 +1601,7 @@ async function parseRollbackTargetExpectations(value, lockRoots, records) {
     );
     if (
       canonicalTarget !== candidate.target ||
-      !isTargetCoveredByLock(canonicalTarget, lockRoots) ||
+      (lockRoots && !isTargetCoveredByLock(canonicalTarget, lockRoots)) ||
       !records.some(
         (record) =>
           canonicalTarget === record.target ||
@@ -1952,6 +2652,7 @@ async function recordInstalledTargetForRollback(
 }
 
 module.exports = {
+  inspectInstallTransactions,
   prepareTransactionMutation,
   publishStagedFile,
   recordInstalledTargetForRollback,
