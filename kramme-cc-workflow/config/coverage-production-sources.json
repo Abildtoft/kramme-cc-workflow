@@ -11,6 +11,7 @@
       "kramme-cc-workflow/scripts/convert-plugin/codex-transformer.js",
       "kramme-cc-workflow/scripts/convert-plugin/codex-writer.js",
       "kramme-cc-workflow/scripts/convert-plugin/confirm.js",
+      "kramme-cc-workflow/scripts/convert-plugin/diagnostics.js",
       "kramme-cc-workflow/scripts/convert-plugin/filesystem.js",
       "kramme-cc-workflow/scripts/convert-plugin/frontmatter.js",
       "kramme-cc-workflow/scripts/convert-plugin/install-staging.js",
