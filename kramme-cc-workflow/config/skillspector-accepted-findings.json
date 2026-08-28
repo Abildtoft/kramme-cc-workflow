@@ -1,6 +1,30 @@
 {
   "accepted_findings": [
     {
+      "path": "kramme-cc-workflow/skills/kramme:code:plan-to-pr/scripts/validate-plan-state.py",
+      "rule_id": "AST4",
+      "reason": "Reviewed false-positive AST4 finding: subprocess.run executes the fixed git binary with an explicit argument vector and shell=False; callers supply internal Git subcommands plus validator-normalized repository paths, stdout and stderr are captured, and diagnostics are bounded before emission.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-28",
+      "review_after": "2026-09-28"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
+      "rule_id": "EA2",
+      "reason": "Reviewed intentional EA2 finding for the user-triggered plan execution workflow: disable-model-invocation prevents automatic entry, the validator and repeated repository-state proofs gate every mutation, refresh and changed-boundary paths require explicit approval, and external publication remains unavailable unless the user supplied --ship.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-28",
+      "review_after": "2026-09-28"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/attachment-input.md",
+      "rule_id": "EA2",
+      "reason": "Reviewed intentional EA2 finding for standalone-plan normalization and refresh: the reference is loaded only after validator classification, refresh waits for explicit approval and repeats identity and absence proofs, writes remain inside validated ignored staging/archive paths, and the immutable source and established archives are never overwritten or deleted.",
+      "owner": "kramme",
+      "accepted_at": "2026-08-28",
+      "review_after": "2026-09-28"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:linear:review-pr/references/pr-inspection.md",
       "rule_id": "TM1",
       "reason": "Reviewed false-positive TM1 findings in the static-only PR inspection procedure: --no-checkout prevents Git from materializing attacker-controlled content or invoking checkout-time hooks and filters, while rmdir is limited to workflow-owned temporary directories after exact worktree registration and empty-directory checks; neither construct bypasses a safety gate.",
@@ -99,18 +123,18 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js",
       "rule_id": "SC3",
-      "reason": "Re-reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file exactly matches the SHA-256 recorded in references/sources.yaml, its complete ISC notice ships as assets/d3-LICENSE, and it is embedded locally so private Pull Request context never depends on third-party CDN execution.",
+      "reason": "Re-reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file still matches the pinned SHA-256 in references/sources.yaml, its complete ISC notice ships as assets/d3-LICENSE, and it is embedded locally so private Pull Request context never depends on third-party CDN execution.",
       "owner": "kramme",
-      "accepted_at": "2026-08-27",
-      "review_after": "2026-09-27"
+      "accepted_at": "2026-08-28",
+      "review_after": "2026-09-28"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py",
       "rule_id": "OH1",
-      "reason": "Re-reviewed false-positive OH1 finding for runtime syntax validation: subprocess.run receives a fixed argument vector with shell execution disabled, passes walkthrough runtime text only through stdin to node --check, never executes that text, and enforces a timeout and bounded diagnostics.",
+      "reason": "Re-reviewed false-positive OH1 finding for runtime syntax validation: subprocess.run still receives a fixed argument vector with shell execution disabled, passes walkthrough runtime text only through stdin to node --check, never executes that text, enforces a timeout, and bounds returned diagnostics before reporting them.",
       "owner": "kramme",
-      "accepted_at": "2026-08-27",
-      "review_after": "2026-09-27"
+      "accepted_at": "2026-08-28",
+      "review_after": "2026-09-28"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
