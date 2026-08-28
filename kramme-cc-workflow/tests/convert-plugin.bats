@@ -606,6 +606,7 @@ MD
 	[[ "$output" == *"Doctor fields:"* ]]
 	[[ "$output" == *"plugin_source"* ]]
 	[[ "$output" == *"install_state_recovery_reason"* ]]
+	[[ "$output" == *"transaction_health"* ]]
 }
 
 @test "help and unknown commands work without converter modules" {
@@ -784,6 +785,10 @@ JSON
 
 	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$agents_root"
 	[ "$status" -eq 0 ]
+	local empty_collection
+	empty_collection='{"entry_count":0,"inspected_count":0,"status":"absent","status_counts":{},"truncated":false}'
+	local transaction_health
+	transaction_health="{\"advisory\":true,\"backups\":$empty_collection,\"entry_limit\":50,\"journals\":$empty_collection,\"lock\":{\"status\":\"absent\"},\"metadata_byte_limit\":65536,\"recovery_claims\":$empty_collection,\"recovery_conflicts\":$empty_collection}"
 	local expected_text
 	expected_text="$(printf '%s\n' \
 		'schema_version=1' \
@@ -795,7 +800,8 @@ JSON
 		"install_state_path=$codex_root/.kramme-install-state.json" \
 		'install_state_status=loaded' \
 		'install_state_from_disk=true' \
-		'install_state_recovery_reason=none')"
+		'install_state_recovery_reason=none' \
+		"transaction_health=$transaction_health")"
 	[ "$output" = "$expected_text" ]
 
 	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$agents_root" --json
@@ -805,7 +811,8 @@ JSON
 		--arg plugin_source "$PLUGIN_DIR" \
 		--arg codex_root "$codex_root" \
 		--arg agents_root "$agents_root" \
-		'{schema_version:1,plugin_name:"doctor-plugin",plugin_version:"1.0.0",plugin_source:$plugin_source,codex_root:$codex_root,agents_root:$agents_root,install_state_path:($codex_root+"/.kramme-install-state.json"),install_state_status:"loaded",install_state_from_disk:true,install_state_recovery_reason:null}')"
+		--argjson transaction_health "$transaction_health" \
+		'{schema_version:1,plugin_name:"doctor-plugin",plugin_version:"1.0.0",plugin_source:$plugin_source,codex_root:$codex_root,agents_root:$agents_root,install_state_path:($codex_root+"/.kramme-install-state.json"),install_state_status:"loaded",install_state_from_disk:true,install_state_recovery_reason:null,transaction_health:$transaction_health}')"
 	[ "$output" = "$expected_json" ]
 }
 
@@ -887,7 +894,7 @@ JSON
 
 	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$plugin_dir"
 	[ "$status" -eq 0 ]
-	[ "${#lines[@]}" -eq 10 ]
+	[ "${#lines[@]}" -eq 11 ]
 	[[ "$output" == *'plugin_name=doctor\u001b[31m'* ]]
 	[[ "$output" == *"plugin_source=$TMP_DIR/doctor\\u000aplugin"* ]]
 	[[ "$output" != *$'\033'* ]]

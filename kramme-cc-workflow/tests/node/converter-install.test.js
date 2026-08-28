@@ -1,13 +1,17 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const { constants: fsConstants } = require("fs");
 const fs = require("fs/promises");
 const path = require("path");
 const test = require("node:test");
 
 const installTransaction = require("../../scripts/convert-plugin/install-transaction");
-const { prepareTransactionMutation, withInstallTransaction } =
-  installTransaction;
+const {
+  inspectInstallTransactions,
+  prepareTransactionMutation,
+  withInstallTransaction,
+} = installTransaction;
 
 const {
   cleanupInstalledEntries,
@@ -38,6 +42,7 @@ const {
 
 test("install transaction exposes the narrow staging boundary", () => {
   assert.deepEqual(Object.keys(installTransaction).sort(), [
+    "inspectInstallTransactions",
     "prepareTransactionMutation",
     "publishStagedFile",
     "recordInstalledTargetForRollback",
@@ -46,22 +51,386 @@ test("install transaction exposes the narrow staging boundary", () => {
   assert.equal(withStagingInstallTransaction, withInstallTransaction);
 });
 
+test("transaction inspector reports an absent bounded snapshot without writes", async () => {
+  await withTempDir(async (root) => {
+    const before = await readFilesystemSnapshot(root);
+
+    assert.deepEqual(await inspectInstallTransactions(root), {
+      advisory: true,
+      backups: emptyArtifactCollection(),
+      entry_limit: 50,
+      journals: emptyArtifactCollection(),
+      lock: { status: "absent" },
+      metadata_byte_limit: 65_536,
+      recovery_claims: emptyArtifactCollection(),
+      recovery_conflicts: emptyArtifactCollection(),
+    });
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+  });
+});
+
+test("transaction inspector classifies active, stale, and present artifacts without sensitive fields", async () => {
+  await withTempDir(async (root) => {
+    const activeToken = "active-fixture-token";
+    const managedRoot = path.join(root, "skills");
+    const managedTarget = path.join(managedRoot, "managed-skill");
+    const activeBackup = path.join(
+      managedRoot,
+      ".kramme-install-backups",
+      activeToken,
+      "0",
+    );
+    const activeJournal = path.join(
+      root,
+      ".kramme-install-transactions",
+      activeToken,
+      "journal.json",
+    );
+    await writeJson(activeJournal, {
+      version: 1,
+      token: activeToken,
+      status: "active",
+      records: [
+        {
+          backup: activeBackup,
+          operation: "backup-rename",
+          target: managedTarget,
+        },
+      ],
+      secret: "must-not-be-reported",
+    });
+    await writeJson(path.join(root, ".kramme-install-lock", "owner.json"), {
+      version: 1,
+      token: activeToken,
+      pid: process.pid,
+      pluginName: "private-plugin-name",
+      createdAtMs: Date.now(),
+      lockRoots: [root],
+      transactionRoot: root,
+      journalPath: activeJournal,
+    });
+
+    const staleToken = "stale-fixture-token";
+    await writeJson(
+      path.join(
+        root,
+        ".kramme-install-recovery-claims",
+        staleToken,
+        "owner.json",
+      ),
+      {
+        version: 1,
+        token: "claim-fixture-token",
+        pid: 2_147_483_647,
+        pluginName: "recovery",
+        createdAtMs: 1,
+        expectedToken: staleToken,
+        transactionRoot: root,
+        journalPath: activeJournal,
+      },
+    );
+    await writeFile(
+      path.join(
+        managedRoot,
+        ".kramme-install-recovery-conflicts",
+        activeToken,
+        "edited-0",
+      ),
+      "private conflict bytes\n",
+    );
+    await writeFile(activeBackup, "private backup bytes\n");
+    const before = await readFilesystemSnapshot(root);
+
+    const summary = await inspectInstallTransactions(root);
+
+    assert.deepEqual(summary.lock, { status: "active" });
+    assert.deepEqual(summary.journals, {
+      entry_count: 1,
+      inspected_count: 1,
+      status: "present",
+      status_counts: { active: 1 },
+      truncated: false,
+    });
+    assert.deepEqual(summary.recovery_claims, {
+      entry_count: 1,
+      inspected_count: 1,
+      status: "stale",
+      status_counts: { stale: 1 },
+      truncated: false,
+    });
+    assert.equal(summary.recovery_conflicts.status, "present");
+    assert.deepEqual(summary.recovery_conflicts.status_counts, { present: 1 });
+    assert.equal(summary.backups.status, "present");
+    assert.deepEqual(summary.backups.status_counts, { present: 1 });
+    const serialized = JSON.stringify(summary);
+    assert.doesNotMatch(serialized, /private|fixture-token|2147483647/);
+    assert.ok(!serialized.includes(root));
+    assert.ok(!serialized.includes(activeJournal));
+    assert.ok(!serialized.includes("must-not-be-reported"));
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+  });
+});
+
+test("transaction inspector correlates multi-root locks and active journals", async () => {
+  await withTempDir(async (root) => {
+    const secondaryRoot = path.join(root, "agents");
+    const activeToken = "correlated-token";
+    const journalPath = path.join(
+      root,
+      ".kramme-install-transactions",
+      activeToken,
+      "journal.json",
+    );
+    await writeJson(journalPath, {
+      version: 1,
+      token: activeToken,
+      status: "active",
+      records: [],
+    });
+    const owner = {
+      version: 1,
+      token: activeToken,
+      pid: process.pid,
+      pluginName: "private-plugin-name",
+      createdAtMs: Date.now(),
+      lockRoots: [root, secondaryRoot],
+      transactionRoot: root,
+      journalPath,
+    };
+    const primaryOwnerPath = path.join(
+      root,
+      ".kramme-install-lock",
+      "owner.json",
+    );
+    const secondaryOwnerPath = path.join(
+      secondaryRoot,
+      ".kramme-install-lock",
+      "owner.json",
+    );
+    await writeJson(primaryOwnerPath, owner);
+    await writeJson(secondaryOwnerPath, owner);
+
+    let before = await readFilesystemSnapshot(root);
+    let summary = await inspectInstallTransactions(root, {
+      lockRoots: [secondaryRoot],
+    });
+    assert.deepEqual(summary.lock, { status: "active" });
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+
+    await writeJson(primaryOwnerPath, {
+      ...owner,
+      token: "mismatched-token",
+      journalPath: path.join(
+        root,
+        ".kramme-install-transactions",
+        "mismatched-token",
+        "journal.json",
+      ),
+    });
+    before = await readFilesystemSnapshot(root);
+    summary = await inspectInstallTransactions(root, {
+      lockRoots: [secondaryRoot],
+    });
+    assert.deepEqual(summary.lock, { status: "suspicious" });
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+
+    await writeJson(primaryOwnerPath, owner);
+    const secondToken = "second-active-token";
+    await writeJson(
+      path.join(
+        root,
+        ".kramme-install-transactions",
+        secondToken,
+        "journal.json",
+      ),
+      { version: 1, token: secondToken, status: "active", records: [] },
+    );
+    before = await readFilesystemSnapshot(root);
+    summary = await inspectInstallTransactions(root, {
+      lockRoots: [secondaryRoot],
+    });
+    assert.equal(summary.journals.status, "suspicious");
+    assert.deepEqual(summary.journals.status_counts, { active: 2 });
+    assert.deepEqual(summary.lock, { status: "active" });
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+
+    await fs.rm(path.dirname(primaryOwnerPath), { recursive: true });
+    before = await readFilesystemSnapshot(root);
+    summary = await inspectInstallTransactions(root, {
+      lockRoots: [secondaryRoot],
+    });
+    assert.deepEqual(summary.lock, { status: "suspicious" });
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+
+    await fs.rm(path.dirname(secondaryOwnerPath), { recursive: true });
+    await fs.mkdir(path.dirname(primaryOwnerPath), { recursive: true });
+    before = await readFilesystemSnapshot(root);
+    summary = await inspectInstallTransactions(root);
+    assert.deepEqual(summary.lock, { status: "suspicious" });
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+  });
+});
+
+test("transaction inspector bounds malformed, unsupported, unreadable, and disappearing artifacts", async () => {
+  await withTempDir(async (root) => {
+    const malformedToken = "malformed-token";
+    const invalidShapeToken = "invalid-shape-token";
+    const oversizedToken = "oversized-token";
+    const raceToken = "race-token";
+    await writeFile(
+      path.join(root, ".kramme-install-lock", "owner.json"),
+      "not-json\n",
+    );
+    await writeFile(
+      path.join(
+        root,
+        ".kramme-install-transactions",
+        malformedToken,
+        "journal.json",
+      ),
+      "{not-json\n",
+    );
+    await writeJson(
+      path.join(
+        root,
+        ".kramme-install-transactions",
+        invalidShapeToken,
+        "journal.json",
+      ),
+      { version: 1, token: invalidShapeToken, records: [{}] },
+    );
+    await writeFile(
+      path.join(
+        root,
+        ".kramme-install-transactions",
+        oversizedToken,
+        "journal.json",
+      ),
+      JSON.stringify({ payload: "sensitive".repeat(10_000) }),
+    );
+    await writeJson(
+      path.join(
+        root,
+        ".kramme-install-transactions",
+        raceToken,
+        "journal.json",
+      ),
+      { version: 1, token: raceToken, status: "active", records: [] },
+    );
+    await writeFile(
+      path.join(
+        root,
+        ".kramme-install-recovery-claims",
+        "broken-claim",
+        "owner.json",
+      ),
+      "{}\n",
+    );
+    await writeFile(path.join(root, ".kramme-install-backups"), "not a dir\n");
+    for (let index = 0; index <= 50; index += 1) {
+      await fs.mkdir(
+        path.join(
+          root,
+          ".kramme-install-recovery-conflicts",
+          `conflict-${String(index).padStart(2, "0")}`,
+        ),
+        { recursive: true },
+      );
+    }
+    const before = await readFilesystemSnapshot(root);
+    const ownerPath = path.join(root, ".kramme-install-lock", "owner.json");
+    const racedTransaction = path.join(
+      root,
+      ".kramme-install-transactions",
+      raceToken,
+    );
+    const originalOpen = fs.open;
+    const originalLstat = fs.lstat;
+    let metadataOpenWasNonBlocking = fsConstants.O_NONBLOCK === undefined;
+    fs.open = async (target, flags, mode) => {
+      if (
+        typeof flags === "number" &&
+        fsConstants.O_NONBLOCK !== undefined &&
+        (flags & fsConstants.O_NONBLOCK) === fsConstants.O_NONBLOCK
+      ) {
+        metadataOpenWasNonBlocking = true;
+      }
+      if (String(target) === ownerPath) {
+        throw Object.assign(new Error("simulated unreadable metadata"), {
+          code: "EACCES",
+        });
+      }
+      return originalOpen(target, flags, mode);
+    };
+    fs.lstat = /** @type {typeof fs.lstat} */ (
+      async (target) => {
+        if (String(target) === racedTransaction) {
+          throw Object.assign(new Error("simulated concurrent removal"), {
+            code: "ENOENT",
+          });
+        }
+        return originalLstat(target);
+      }
+    );
+    let summary;
+    try {
+      summary = await inspectInstallTransactions(root);
+    } finally {
+      fs.open = originalOpen;
+      fs.lstat = originalLstat;
+    }
+
+    assert.deepEqual(summary.lock, { status: "unreadable" });
+    assert.equal(summary.journals.status, "malformed");
+    assert.deepEqual(summary.journals.status_counts, {
+      disappeared: 1,
+      malformed: 2,
+      unsupported: 1,
+    });
+    assert.equal(summary.recovery_claims.status, "malformed");
+    assert.equal(summary.backups.status, "unsupported");
+    assert.deepEqual(summary.recovery_conflicts, {
+      entry_count: 51,
+      inspected_count: 50,
+      status: "suspicious",
+      status_counts: { present: 50 },
+      truncated: true,
+    });
+    assert.doesNotMatch(JSON.stringify(summary), /sensitive/);
+    assert.equal(metadataOpenWasNonBlocking, true);
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+  });
+});
+
 test("converter doctor reports resolved plugin and healthy install state without writes", async () => {
   await withTempDir(async (root) => {
     const pluginRoot = path.join(root, "doctor-plugin");
     const codexHome = path.join(root, "output");
     const codexRoot = path.join(codexHome, ".codex");
     const agentsRoot = path.join(root, "agents");
+    const externalRoot = path.join(root, "external-agents");
+    const externalAgentsFile = path.join(externalRoot, "AGENTS.md");
     const statePath = path.join(codexRoot, ".kramme-install-state.json");
     await createFixturePlugin(pluginRoot, "doctor-plugin");
     await writeJson(statePath, { plugins: {}, version: 1 });
+    await writeFile(externalAgentsFile, "# External agents\n");
+    await fs.symlink(externalAgentsFile, path.join(codexRoot, "AGENTS.md"));
     const before = await readFilesystemSnapshot(root);
 
-    const diagnostic = await collectConverterDiagnostics({
-      agentsRoot,
-      codexHome,
-      pluginInput: pluginRoot,
-    });
+    let inspectedLockRoots;
+    const diagnostic = await collectConverterDiagnostics(
+      {
+        agentsRoot,
+        codexHome,
+        pluginInput: pluginRoot,
+      },
+      {
+        inspectInstallTransactions: async (transactionRoot, options) => {
+          inspectedLockRoots = options?.lockRoots;
+          return inspectInstallTransactions(transactionRoot, options);
+        },
+      },
+    );
 
     assert.deepEqual(diagnostic, {
       agents_root: agentsRoot,
@@ -74,7 +443,21 @@ test("converter doctor reports resolved plugin and healthy install state without
       plugin_source: pluginRoot,
       plugin_version: "1.0.0",
       schema_version: 1,
+      transaction_health: {
+        advisory: true,
+        backups: emptyArtifactCollection(),
+        entry_limit: 50,
+        journals: emptyArtifactCollection(),
+        lock: { status: "absent" },
+        metadata_byte_limit: 65_536,
+        recovery_claims: emptyArtifactCollection(),
+        recovery_conflicts: emptyArtifactCollection(),
+      },
     });
+    assert.deepEqual(
+      [...(inspectedLockRoots ?? [])].sort(),
+      [agentsRoot, externalRoot].sort(),
+    );
     assert.deepEqual(await readFilesystemSnapshot(root), before);
   });
 });
@@ -967,6 +1350,16 @@ const PREPARED_MUTATION_KEYS = [
   "target",
   "targetExists",
 ];
+
+function emptyArtifactCollection() {
+  return {
+    entry_count: 0,
+    inspected_count: 0,
+    status: "absent",
+    status_counts: {},
+    truncated: false,
+  };
+}
 
 test("prepared transaction mutations share one shape across target states", async () => {
   await withTempDir(async (root) => {

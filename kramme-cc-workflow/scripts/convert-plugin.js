@@ -210,7 +210,9 @@ async function runDoctor(parsed) {
 /** @param {unknown} value */
 function formatDoctorHumanValue(value) {
   if (value === null || value === undefined) return "none";
-  return String(value).replace(
+  const rendered =
+    typeof value === "object" ? JSON.stringify(value) : String(value);
+  return rendered.replace(
     /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g,
     (character) =>
       `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
@@ -326,6 +328,7 @@ Doctor fields:
   schema_version, plugin_name, plugin_version, plugin_source
   codex_root, agents_root, install_state_path
   install_state_status, install_state_from_disk, install_state_recovery_reason
+  transaction_health
 `;
   console.log(help);
   if (exitCode) process.exit(exitCode);

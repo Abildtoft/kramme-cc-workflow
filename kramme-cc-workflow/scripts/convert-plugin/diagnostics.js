@@ -1,6 +1,8 @@
 "use strict";
 
+const fs = require("fs/promises");
 const path = require("path");
+const { filesystemErrorCode } = require("./filesystem");
 
 const DIAGNOSTIC_SCHEMA_VERSION = 1;
 
@@ -11,6 +13,7 @@ const DIAGNOSTIC_SCHEMA_VERSION = 1;
  *   pluginInput: string,
  * }} DiagnosticOptions
  * @typedef {{
+ *   inspectInstallTransactions?: (root: string, options?: { lockRoots?: string[] }) => Promise<import("./install-transaction").TransactionHealthSummary>,
  *   loadClaudePlugin?: (inputPath: string) => Promise<import("./contracts").ClaudePlugin>,
  *   loadInstallState?: (root: string) => Promise<{ fromDisk: boolean, recoveryReason: string | null }>,
  *   resolvePluginInput?: (input: unknown) => Promise<string>,
@@ -31,6 +34,9 @@ async function collectConverterDiagnostics(options, dependencies = {}) {
   const loadInstallState =
     dependencies.loadInstallState ??
     require("./install-state").loadInstallState;
+  const inspectInstallTransactions =
+    dependencies.inspectInstallTransactions ??
+    require("./install-transaction").inspectInstallTransactions;
 
   const resolvedPluginPath = await resolvePluginInput(options.pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
@@ -38,6 +44,9 @@ async function collectConverterDiagnostics(options, dependencies = {}) {
   const agentsRoot = path.resolve(options.agentsRoot);
   const installStatePath = path.join(codexRoot, ".kramme-install-state.json");
   const { fromDisk, recoveryReason } = await loadInstallState(codexRoot);
+  const transactionHealth = await inspectInstallTransactions(codexRoot, {
+    lockRoots: await resolveDiagnosticLockRoots(codexRoot, agentsRoot),
+  });
 
   return {
     schema_version: DIAGNOSTIC_SCHEMA_VERSION,
@@ -50,7 +59,26 @@ async function collectConverterDiagnostics(options, dependencies = {}) {
     install_state_status: fromDisk ? "loaded" : "reconstructed",
     install_state_from_disk: fromDisk,
     install_state_recovery_reason: recoveryReason,
+    transaction_health: transactionHealth,
   };
+}
+
+/** @param {string} codexRoot @param {string} agentsRoot */
+async function resolveDiagnosticLockRoots(codexRoot, agentsRoot) {
+  const roots = [agentsRoot];
+  const agentsFile = path.join(codexRoot, "AGENTS.md");
+  try {
+    const stats = await fs.lstat(agentsFile);
+    if (stats.isSymbolicLink()) {
+      const linkTarget = await fs.readlink(agentsFile);
+      roots.push(
+        path.dirname(path.resolve(path.dirname(agentsFile), linkTarget)),
+      );
+    }
+  } catch (error) {
+    if (filesystemErrorCode(error) !== "ENOENT") throw error;
+  }
+  return roots;
 }
 
 /** @param {string} codexHome */
