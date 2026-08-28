@@ -91,6 +91,9 @@
       "kramme-cc-workflow/scripts/release.py": [
         "kramme-cc-workflow/tests/release.bats"
       ],
+      "kramme-cc-workflow/skills/kramme:code:plan-to-pr/scripts/validate-plan-state.py": [
+        "kramme-cc-workflow/tests/plan-to-pr-validation.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/render_walkthrough.py": [
         "kramme-cc-workflow/tests/pr-walkthrough.bats"
       ],
@@ -284,6 +287,11 @@
         "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
       ]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/plan-to-pr-validation.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md"]
     },
     {
       "kind": "guidance",
