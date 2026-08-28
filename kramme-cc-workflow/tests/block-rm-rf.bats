@@ -12,6 +12,18 @@ run_hook() {
 	run_safety_hook "$HOOK" "$1"
 }
 
+make_nested_bash_command() {
+	local command="$1"
+	local layers="$2"
+	local layer
+
+	for ((layer = 0; layer < layers; layer++)); do
+		printf -v command 'bash -c %q' "$command"
+	done
+
+	printf '%s\n' "$command"
+}
+
 # ============================================================================
 # BASIC ALLOW CASES
 # ============================================================================
@@ -468,6 +480,23 @@ run_hook() {
 
 @test "blocks bash -c 'rm -rf'" {
 	run run_hook 'bash -c "rm -rf directory/"'
+	is_blocked
+}
+
+@test "blocks destructive nested shells through the recursion boundary" {
+	local layers
+	for layers in 4 5 6; do
+		run run_hook "$(make_nested_bash_command "rm -rf directory/" "$layers")"
+		is_blocked
+	done
+}
+
+@test "fails closed only after safe nested shells exhaust the recursion bound" {
+	run run_hook "$(make_nested_bash_command "echo safe" 5)"
+	[ "$status" -eq 0 ]
+	is_allowed
+
+	run run_hook "$(make_nested_bash_command "echo safe" 6)"
 	is_blocked
 }
 
