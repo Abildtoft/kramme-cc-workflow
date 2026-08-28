@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import shlex
 import subprocess
 import sys
 import unittest
@@ -78,6 +79,7 @@ from command_safety import commit as parser_commit  # noqa: E402
 from command_safety import lexer as parser_lexer  # noqa: E402
 from command_safety import noninteractive as parser_noninteractive  # noqa: E402
 from command_safety import prefix as parser_prefix  # noqa: E402
+from command_safety import rm_rf as parser_rm_rf  # noqa: E402
 from command_safety import syntax as parser_syntax  # noqa: E402
 from command_safety import vocabulary as parser_vocabulary  # noqa: E402
 
@@ -1342,6 +1344,12 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
 class RmRfParserCliTest(unittest.TestCase):
     maxDiff = None
 
+    @staticmethod
+    def nested_shell_command(command: str, layers: int) -> str:
+        for _ in range(layers):
+            command = f"bash -c {shlex.quote(command)}"
+        return command
+
     CASES = [
         (
             "plain rm -rf",
@@ -1596,6 +1604,30 @@ class RmRfParserCliTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, "")
         self.assertEqual(result.stdout, json_line({"block": RM_RF_REASON}))
+
+    def test_recursion_boundary_fails_closed(self) -> None:
+        cases = [
+            ("destructive below limit", "rm -rf directory/", 4, RM_RF_REASON),
+            ("destructive at limit", "rm -rf directory/", 5, RM_RF_REASON),
+            ("destructive beyond limit", "rm -rf directory/", 6, RM_RF_REASON),
+            ("safe at limit", "echo safe", 5, None),
+            ("safe beyond limit", "echo safe", 6, RM_RF_REASON),
+        ]
+
+        for name, payload, layers, expected_reason in cases:
+            with self.subTest(name=name):
+                result = self.run_parser(self.nested_shell_command(payload, layers))
+
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(result.stderr, "")
+                self.assertEqual(result.stdout, json_line({"block": expected_reason}))
+
+    def test_segment_recursion_guard_fails_closed(self) -> None:
+        self.assertIsNone(parser_rm_rf._detect_rm_rf_segment(["echo", "safe"], [], depth=5))
+        self.assertEqual(
+            parser_rm_rf._detect_rm_rf_segment(["echo", "safe"], [], depth=6),
+            RM_RF_REASON,
+        )
 
 
 class GitCommandParserEntryPointTest(unittest.TestCase):

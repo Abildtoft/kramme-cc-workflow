@@ -32,6 +32,7 @@ FIND_DELETE_REASON = "find -delete is blocked. Use `trash` instead for recoverab
 FIND_EXEC_RM_RF_REASON = "find -exec rm -rf is blocked. Use `trash` instead."
 SHRED_REASON = "shred is blocked. Use `trash` instead for recoverable deletion."
 UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion."
+MAX_ANALYSIS_DEPTH = 5
 
 
 def _has_rf_flags(args: list[str]) -> bool:
@@ -198,8 +199,8 @@ def _detect_command_at(tokens: list[str], idx: int, substitutions: list[str], de
 
 
 def _detect_rm_rf_segment(tokens: list[str], substitutions: list[str], depth: int) -> Optional[str]:
-    if depth > 5:
-        return None
+    if depth > MAX_ANALYSIS_DEPTH:
+        return RM_RF_REASON
 
     process_reason = _detect_process_substitutions(tokens, substitutions, depth)
     if process_reason is not None:
@@ -241,8 +242,8 @@ def _detect_rm_rf_segment(tokens: list[str], substitutions: list[str], depth: in
 
 
 def _detect_rm_rf_command(command: str, depth: int = 0) -> Optional[str]:
-    if depth > 5:
-        return None
+    if depth > MAX_ANALYSIS_DEPTH:
+        return RM_RF_REASON
 
     sanitized_command, substitutions = replace_command_substitutions(command)
     tokens = tokenize(sanitized_command)
