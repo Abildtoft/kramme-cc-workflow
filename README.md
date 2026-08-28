@@ -119,6 +119,8 @@ Helper scripts install missing converter runtime dependencies and forward additi
 
 Codex output defaults to `~/.codex`. Beyond `prompts/` and `skills/`, the converter also generates agent skills (under the agents home, set with `--agents-home`), a converted hook plugin, and a managed tool-map block in the Codex `AGENTS.md`. For plugins that declare MCP servers, it also writes managed MCP config tables. See the [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md) for the exact source-to-output mapping.
 
+When `.kramme-install-state.json` is unavailable or invalid, installation continues by rebuilding it from managed manifests and prints one stderr warning with the reason: `missing`, `malformed-json`, or `invalid-shape`. The `missing` reason is expected on a first install, and the warning never includes state-file contents.
+
 Inspect the generated skill counts without installing:
 
 ```bash
