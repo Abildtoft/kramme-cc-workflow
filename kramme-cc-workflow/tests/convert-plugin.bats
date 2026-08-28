@@ -14,6 +14,90 @@ teardown() {
 	fi
 }
 
+create_isolated_converter() {
+	local fixture_root="$1"
+	mkdir -p "$fixture_root/scripts"
+	cp "$SCRIPT" "$fixture_root/scripts/convert-plugin.js"
+}
+
+add_failing_converter_modules() {
+	local fixture_root="$1"
+	local module_root="$fixture_root/scripts/convert-plugin"
+	mkdir -p "$module_root"
+
+	cat >"$module_root/codex-transformer.js" <<'JS'
+"use strict";
+
+module.exports = {};
+JS
+	cat >"$module_root/loader.js" <<'JS'
+"use strict";
+
+module.exports = {
+  async resolvePluginInput() {
+    if (process.env.FIXTURE_FAILURE === "duplicate") {
+      const cause = new Error("yaml package unavailable");
+      throw new Error(`Unable to resolve fixture plugin: ${cause.message}`, {
+        cause,
+      });
+    }
+    if (process.env.FIXTURE_FAILURE === "duplicate-prefix") {
+      const cause = new Error("primary conversion failure");
+      throw new Error(`${cause.message} Rollback failed: cleanup failure`, {
+        cause,
+      });
+    }
+    if (process.env.FIXTURE_FAILURE === "deep") {
+      let failure = new Error("cause-6");
+      for (let index = 5; index >= 1; index -= 1) {
+        failure = new Error(`cause-${index}`, { cause: failure });
+      }
+      throw failure;
+    }
+    if (process.env.FIXTURE_FAILURE === "plain-object") {
+      throw { message: "plain object failure", code: "EPLAIN" };
+    }
+    throw new Error("Unable to resolve fixture plugin", {
+      cause: new Error("yaml package unavailable"),
+    });
+  },
+};
+JS
+	cat >"$module_root/codex-writer.js" <<'JS'
+"use strict";
+
+module.exports = {};
+JS
+}
+
+add_stats_converter_modules() {
+	local fixture_root="$1"
+	local module_root="$fixture_root/scripts/convert-plugin"
+	mkdir -p "$module_root"
+
+	cat >"$module_root/codex-transformer.js" <<'JS'
+"use strict";
+
+module.exports = {
+  convertClaudeToCodex() {
+    return { skillDirs: [], generatedSkills: [], agentSkills: [] };
+  },
+};
+JS
+	cat >"$module_root/loader.js" <<'JS'
+"use strict";
+
+module.exports = {
+  async loadClaudePlugin() {
+    return {};
+  },
+  async resolvePluginInput(pluginInput) {
+    return pluginInput;
+  },
+};
+JS
+}
+
 create_fixture_plugin() {
 	local plugin_dir="$1"
 	local plugin_name="${2:-fixture-plugin}"
@@ -521,6 +605,117 @@ MD
 	[[ "$output" == *"agent_skills"* ]]
 }
 
+@test "help and unknown commands work without converter modules" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/dependency-free"
+	create_isolated_converter "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" --help
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Usage:"* ]]
+	[[ "$output" != *"Cannot find module"* ]]
+
+	run node "$isolated/scripts/convert-plugin.js" unknown
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Unknown command: unknown"* ]]
+	[[ "$output" == *"Usage:"* ]]
+	[[ "$output" != *"Cannot find module"* ]]
+}
+
+@test "missing converter modules render single-line install and stats errors" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/missing-modules"
+	create_isolated_converter "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Cannot find module"* ]]
+	[[ "$output" == *"codex-transformer"* ]]
+	[[ "$output" != *$'\n'* ]]
+	[[ "$output" != *"Require stack:"* ]]
+
+	run node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Cannot find module"* ]]
+	[[ "$output" == *"codex-transformer"* ]]
+	[[ "$output" != *$'\n'* ]]
+	[[ "$output" != *"Require stack:"* ]]
+}
+
+@test "converter failures render a bounded cause chain without a stack" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/causal-error"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
+
+	run env FIXTURE_FAILURE=duplicate node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
+
+	run env FIXTURE_FAILURE=duplicate-prefix node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "primary conversion failure Rollback failed: cleanup failure" ]
+}
+
+@test "converter failures bound deep cause chains" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/bounded-causal-error"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
+
+	run env FIXTURE_FAILURE=deep node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "cause-1: cause-2: cause-3: cause-4: cause-5" ]
+}
+
+@test "converter failures preserve non-Error rejection details" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/non-error"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
+
+	run env FIXTURE_FAILURE=plain-object node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"message"* ]]
+	[[ "$output" == *"plain object failure"* ]]
+	[[ "$output" == *"code"* ]]
+	[[ "$output" == *"EPLAIN"* ]]
+	[[ "$output" != *"[object Object]"* ]]
+}
+
+@test "stats does not load install-only writer modules" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/stats-without-writer"
+	create_isolated_converter "$isolated"
+	add_stats_converter_modules "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 0 ]
+	[ "$output" = $'codex_skills=0\nagent_skills=0' ]
+}
+
 @test "stats reports source, generated, and agent skills as text" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
@@ -596,10 +791,9 @@ MD
 
 	run node "$SCRIPT" install "$REPO_ROOT" --to opencode --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"Unknown target: opencode"* ]]
+	[ "$output" = "Unknown target: opencode" ]
 
 	run node "$SCRIPT" stats "$REPO_ROOT" --to opencode
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"Unknown target: opencode"* ]]
-	[[ "$output" != *"codex_skills="* ]]
+	[ "$output" = "Unknown target: opencode" ]
 }

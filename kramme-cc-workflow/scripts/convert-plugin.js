@@ -3,15 +3,8 @@
 
 const path = require("path");
 const os = require("os");
-const { convertClaudeToCodex } = require("./convert-plugin/codex-transformer");
-const {
-  loadClaudePlugin,
-  resolvePluginInput,
-} = require("./convert-plugin/loader");
-const {
-  resolveCodexOutputRoot,
-  writeCodexBundle,
-} = require("./convert-plugin/codex-writer");
+
+const ERROR_CAUSE_DEPTH_LIMIT = 5;
 
 const REMOVED_OPENCODE_INSTALL_OPTIONS = [
   {
@@ -77,6 +70,18 @@ async function runInstall(parsed) {
     );
   }
 
+  const {
+    convertClaudeToCodex,
+  } = require("./convert-plugin/codex-transformer");
+  const {
+    loadClaudePlugin,
+    resolvePluginInput,
+  } = require("./convert-plugin/loader");
+  const {
+    resolveCodexOutputRoot,
+    writeCodexBundle,
+  } = require("./convert-plugin/codex-writer");
+
   const resolvedPluginPath = await resolvePluginInput(pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
   const codexHome = resolveRoot(
@@ -137,6 +142,13 @@ function rejectRemovedOpenCodeInstallOptions(parsed) {
 async function runStats(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
   resolveTargetName(parsed);
+  const {
+    convertClaudeToCodex,
+  } = require("./convert-plugin/codex-transformer");
+  const {
+    loadClaudePlugin,
+    resolvePluginInput,
+  } = require("./convert-plugin/loader");
   const resolvedPluginPath = await resolvePluginInput(pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
 
@@ -254,7 +266,37 @@ function expandHome(value) {
   return value;
 }
 
+/** @param {unknown} error */
+function formatError(error) {
+  if (!(error instanceof Error)) return error;
+
+  /** @type {string[]} */
+  const messages = [];
+  /** @type {unknown} */
+  let current = error;
+
+  for (let depth = 0; depth < ERROR_CAUSE_DEPTH_LIMIT; depth += 1) {
+    if (!(current instanceof Error)) break;
+
+    const normalized = current.message.split(/\r?\n/, 1)[0].trim();
+    const alreadyRendered = messages.some(
+      (message) =>
+        message === normalized ||
+        message.endsWith(`: ${normalized}`) ||
+        message.startsWith(`${normalized} `),
+    );
+    if (normalized && !alreadyRendered) {
+      messages.push(normalized);
+    }
+
+    if (current.cause === undefined) break;
+    current = current.cause;
+  }
+
+  return messages.join(": ");
+}
+
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(formatError(error));
   process.exit(1);
 });
