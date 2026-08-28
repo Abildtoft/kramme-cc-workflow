@@ -379,6 +379,72 @@ test("hook plugin staging excludes local hook state and config files", async () 
   });
 });
 
+test("writer reports install-state recovery without disrupting installation", async () => {
+  await withTempDir(async (root) => {
+    const originalWarn = console.warn;
+    /** @type {string[]} */
+    const warnings = [];
+    console.warn = (...values) => {
+      warnings.push(values.map(String).join(" "));
+    };
+
+    try {
+      for (const { reason, stateContent } of [
+        { reason: "missing", stateContent: null },
+        {
+          reason: "malformed-json",
+          stateContent: '{"private-state":"do-not-log"',
+        },
+        {
+          reason: "invalid-shape",
+          stateContent: '{"private-state":"do-not-log"}\n',
+        },
+        {
+          reason: null,
+          stateContent: '{"version":1,"plugins":{}}\n',
+        },
+      ]) {
+        const caseName = reason ?? "healthy";
+        const outputRoot = path.join(root, caseName);
+        const codexRoot = path.join(outputRoot, ".codex");
+        const statePath = path.join(codexRoot, ".kramme-install-state.json");
+        if (stateContent !== null) {
+          await writeFile(statePath, stateContent);
+        }
+
+        const warningCount = warnings.length;
+        await writeCodexBundle(
+          outputRoot,
+          emptyCodexBundle({
+            prompts: [{ content: "Installed", name: "recovery-proof" }],
+          }),
+          {
+            agentsHome: path.join(root, "agents-home"),
+            confirm: { yes: true },
+            pluginName: `recovery-${caseName}`,
+          },
+        );
+
+        assert.equal(
+          await readText(path.join(codexRoot, "prompts", "recovery-proof.md")),
+          "Installed\n",
+        );
+        assert.deepEqual(
+          warnings.slice(warningCount),
+          reason === null
+            ? []
+            : [
+                `Codex install state recovery: rebuilt .kramme-install-state.json from manifests (reason: ${reason}).`,
+              ],
+        );
+      }
+      assert.doesNotMatch(warnings.join("\n"), /private-state|do-not-log/);
+    } finally {
+      console.warn = originalWarn;
+    }
+  });
+});
+
 test("writer preserves exact skill group outputs across pruning and removal", async () => {
   await withTempDir(async (root) => {
     const agentsHome = path.join(root, "agents-home");
