@@ -22,8 +22,12 @@ const {
 const {
   loadInstallState,
 } = require("../../scripts/convert-plugin/install-state");
+const {
+  collectConverterDiagnostics,
+} = require("../../scripts/convert-plugin/diagnostics");
 
 const {
+  createFixturePlugin,
   withTempDir,
   writeJson,
   writeFile,
@@ -40,6 +44,74 @@ test("install transaction exposes the narrow staging boundary", () => {
     "withInstallTransaction",
   ]);
   assert.equal(withStagingInstallTransaction, withInstallTransaction);
+});
+
+test("converter doctor reports resolved plugin and healthy install state without writes", async () => {
+  await withTempDir(async (root) => {
+    const pluginRoot = path.join(root, "doctor-plugin");
+    const codexHome = path.join(root, "output");
+    const codexRoot = path.join(codexHome, ".codex");
+    const agentsRoot = path.join(root, "agents");
+    const statePath = path.join(codexRoot, ".kramme-install-state.json");
+    await createFixturePlugin(pluginRoot, "doctor-plugin");
+    await writeJson(statePath, { plugins: {}, version: 1 });
+    const before = await readFilesystemSnapshot(root);
+
+    const diagnostic = await collectConverterDiagnostics({
+      agentsRoot,
+      codexHome,
+      pluginInput: pluginRoot,
+    });
+
+    assert.deepEqual(diagnostic, {
+      agents_root: agentsRoot,
+      codex_root: codexRoot,
+      install_state_from_disk: true,
+      install_state_path: statePath,
+      install_state_recovery_reason: null,
+      install_state_status: "loaded",
+      plugin_name: "doctor-plugin",
+      plugin_source: pluginRoot,
+      plugin_version: "1.0.0",
+      schema_version: 1,
+    });
+    assert.deepEqual(await readFilesystemSnapshot(root), before);
+  });
+});
+
+test("converter doctor reports every install-state rebuild reason without writes", async () => {
+  const fixtures = [
+    { content: null, reason: "missing" },
+    { content: "{not json\n", reason: "malformed-json" },
+    { content: "[]\n", reason: "invalid-shape" },
+  ];
+
+  for (const fixture of fixtures) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, "doctor-plugin");
+      const codexHome = path.join(root, "output");
+      const codexRoot = path.join(codexHome, ".codex");
+      const agentsRoot = path.join(root, "agents");
+      const statePath = path.join(codexRoot, ".kramme-install-state.json");
+      await createFixturePlugin(pluginRoot, "doctor-plugin");
+      if (fixture.content !== null) {
+        await writeFile(statePath, fixture.content);
+      }
+      const before = await readFilesystemSnapshot(root);
+
+      const diagnostic = await collectConverterDiagnostics({
+        agentsRoot,
+        codexHome,
+        pluginInput: pluginRoot,
+      });
+
+      assert.equal(diagnostic.install_state_from_disk, false);
+      assert.equal(diagnostic.install_state_status, "reconstructed");
+      assert.equal(diagnostic.install_state_recovery_reason, fixture.reason);
+      assert.equal(diagnostic.install_state_path, statePath);
+      assert.deepEqual(await readFilesystemSnapshot(root), before);
+    });
+  }
 });
 
 test("install state rebuild sanitizes legacy manifests and managed file paths", async () => {
@@ -1048,3 +1120,39 @@ test("prepared transaction mutations keep their filesystem call order", async ()
     ]);
   });
 });
+
+/**
+ * @param {string} root
+ * @param {string} [prefix]
+ * @returns {Promise<Record<string, { content?: string, mode?: number, target?: string, type: string }>>}
+ */
+async function readFilesystemSnapshot(root, prefix = "") {
+  const snapshot =
+    /** @type {Record<string, { content?: string, mode?: number, target?: string, type: string }>} */ ({});
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  entries.sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const file = path.join(root, entry.name);
+    const stats = await fs.lstat(file);
+    if (entry.isDirectory()) {
+      snapshot[`${relativePath}/`] = {
+        mode: stats.mode & 0o777,
+        type: "dir",
+      };
+      Object.assign(snapshot, await readFilesystemSnapshot(file, relativePath));
+    } else if (entry.isSymbolicLink()) {
+      snapshot[relativePath] = {
+        target: await fs.readlink(file),
+        type: "symlink",
+      };
+    } else if (entry.isFile()) {
+      snapshot[relativePath] = {
+        content: (await fs.readFile(file)).toString("base64"),
+        mode: stats.mode & 0o777,
+        type: "file",
+      };
+    }
+  }
+  return snapshot;
+}

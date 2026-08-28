@@ -130,6 +130,17 @@ node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow --jso
 
 The default output contains `codex_skills=<integer>` followed by `agent_skills=<integer>`. JSON output contains the same two integer fields in an object. `codex_skills` counts converted skill directories plus generated command skills; `agent_skills` counts generated Codex agent skills.
 
+Inspect the resolved plugin and managed install state without changing either output root:
+
+```bash
+node kramme-cc-workflow/scripts/convert-plugin.js doctor kramme-cc-workflow
+node kramme-cc-workflow/scripts/convert-plugin.js doctor kramme-cc-workflow --json
+```
+
+Doctor output is a stable schema-versioned record with `plugin_name`, `plugin_version`, and `plugin_source`; `codex_root` and `agents_root`; `install_state_path`, `install_state_status`, `install_state_from_disk`, and `install_state_recovery_reason`. The status is `loaded` when valid state came from disk and `reconstructed` when manifests were inspected after a `missing`, `malformed-json`, or `invalid-shape` state file. Human output uses one `key=value` field per line and escapes control characters as `\uNNNN`; `--json` returns the same fields with a JSON `null` recovery reason for healthy state.
+
+The command is read-only: it does not install, repair, lock, or create output directories, and it never prints environment values or state-file contents. Paths below the current home directory use `~` to avoid exposing the local username. Other resolved paths remain absolute, so review them before pasting diagnostics into a public issue.
+
 ### Updating
 
 For marketplace installs:
