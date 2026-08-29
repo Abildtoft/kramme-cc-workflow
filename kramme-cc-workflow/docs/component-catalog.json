@@ -254,7 +254,7 @@
     },
     {
       "name": "kramme:linear:issue-define",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-define/SKILL.md"
     },
     {
