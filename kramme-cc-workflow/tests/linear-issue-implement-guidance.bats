@@ -15,6 +15,8 @@ load 'test_helper/common'
 	    grep -qF "Local SIW work must be transferred to Linear before using this skill." "$skill/SKILL.md"
 	    grep -qF "run \`kramme:siw:transfer-to-linear\` first" "$skill/SKILL.md"
 	    ! grep -qF "kramme:siw:issue-implement" "$skill/SKILL.md"
+	    grep -qF "Reject direct, incomplete, mismatched, or duplicate use" "$skill/SKILL.md"
+	    grep -qF "Require current \`HEAD\`, committed paths, and dirty paths to equal the captured entry handoff" "$skill/references/branch-setup.md"
 
     branch_line=$(grep -nF "[Branch Setup] -> IMMEDIATELY create/switch to Linear'\''s branchName" "$skill/SKILL.md" | head -n1 | cut -d: -f1)
     reference_line=$(grep -nF "[Reference Mapping] -> Fetch linked Linear issues/docs and record inaccessible assets" "$skill/SKILL.md" | head -n1 | cut -d: -f1)
