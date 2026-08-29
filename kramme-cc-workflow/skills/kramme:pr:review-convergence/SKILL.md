@@ -121,15 +121,20 @@ Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
 Adversarial review: {not requested | provider, model, reviewed tree, validated findings}
 Remediation: {cycles used}/{MAX_AUTOMATIC_REMEDIATION_CYCLES}; stop={converged|diminishing returns|validation-only}; debt={score trend}
-Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
-Reviewer handoff JSON: {one RFC 8259 JSON object with `findings` and `focus` arrays from the producer-owned handoff ledgers}
+Findings: required unresolved={count}; fixed={count}, rejected={count}, deferred optional={count}, blocked={count}
+Unremediated issues:
+- Required unresolved: {none | gate + summary + why unresolved + smallest next decision or dependency}
+- Deferred optional: {none | gate + summary + benefit + why it was not fixed}
+- Rejected reviewer findings: {none | gate + summary + evidence-based rejection rationale}
+- Review focus: {none | kind + summary + rationale}
+Reviewer handoff JSON: {one RFC 8259 JSON object with `gut_check`, `findings`, and `focus` arrays from the producer-owned handoff ledgers}
 Diff comments posted: {cumulative newly posted count from the convergence policy ledger}
 Verification: {passed evidence | caller-owned after validation-only}
 Archive: .context/{archive-key}/reviews/
 Plan scope: {inactive | mode, validated scope plan, scope base, normalized paths}
 ```
 
-Serialize `Requirements JSON` as exactly one JSON string value: escape control characters, quotes, and backslashes per RFC 8259, and place no raw requirement lines outside that value. Serialize `Reviewer handoff JSON` as exactly one JSON object with only the `findings` and `focus` arrays defined by the policy's reviewer handoff ledger; emit empty arrays when nothing qualifies. Return `Diff comments posted` only from the policy's cumulative nonnegative-integer ledger; never reconstruct it from Conductor state. Callers must JSON-decode both JSON fields, compare the decoded requirements byte-for-byte with their frozen block, and validate every handoff entry's required keys and allowlisted disposition or kind before trusting later fields. Replace success wording with the exact limitation when coverage is degraded, a check is skipped, or a blocker remains. Never return `passed` with a nonzero required or blocked count, a dirty worktree, an out-of-scope plan path, or source changes after the latest focused check.
+Serialize `Requirements JSON` as exactly one JSON string value: escape control characters, quotes, and backslashes per RFC 8259, and place no raw requirement lines outside that value. Build `Unremediated issues` at every terminal handoff after review activity begins under the policy's final-state grouping rules; emit exactly `Unremediated issues: none` instead of the four groups when nothing qualifies. Serialize `Reviewer handoff JSON` as exactly one JSON object with only the `gut_check`, `findings`, and `focus` arrays defined by the policy's handoff ledgers; emit empty arrays when nothing qualifies. Return `Diff comments posted` only from the policy's cumulative nonnegative-integer ledger; never reconstruct it from Conductor state. Callers must JSON-decode both JSON fields, compare the decoded requirements byte-for-byte with their frozen block, and validate every handoff entry's required keys, conditional recovery fields, and allowlisted disposition or kind before trusting later fields. Replace success wording with the exact limitation when coverage is degraded, a check is skipped, or a blocker remains. Never return `passed` with a nonzero required or blocked count, a dirty worktree, an out-of-scope plan path, or source changes after the latest focused check.
 
 ## Artifact Lifecycle
 
