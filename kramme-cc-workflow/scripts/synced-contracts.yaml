@@ -44,6 +44,7 @@
       "paths": [
         "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
         "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/attachment-input.md",
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/shipping-contract.md",
         "kramme-cc-workflow/skills/kramme:pr:complete-work/references/shipping-contract.md",
         "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
       ]
@@ -56,6 +57,7 @@
         "marker": "Synced atomic scoped archive update contract (keep aligned across plan recovery):"
       },
       "paths": [
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/shipping-contract.md",
         "kramme-cc-workflow/skills/kramme:pr:complete-work/references/shipping-contract.md",
         "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
       ]

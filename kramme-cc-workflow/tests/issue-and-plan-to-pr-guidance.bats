@@ -14,11 +14,11 @@
 		    reconcile="skills/kramme:code:breakdown-findings/references/reconcile-workflow.md"
 	    plan_requirements="skills/kramme:code:breakdown-findings/references/plan-content-requirements.md"
 	    generation_checks="skills/kramme:code:breakdown-findings/references/generation-checks.md"
-    completion="skills/kramme:pr:complete-work/SKILL.md"
+    transitional_completion="skills/kramme:pr:complete-work/SKILL.md"
     convergence="skills/kramme:pr:review-convergence/SKILL.md"
     handoff="skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md"
     review="skills/kramme:pr:review-convergence/references/review-convergence.md"
-    shipping="skills/kramme:pr:complete-work/references/shipping-contract.md"
+    shipping="skills/kramme:code:plan-to-pr/references/shipping-contract.md"
     fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
     fix_ci_scope="skills/kramme:pr:fix-ci/references/scoped-plan.md"
     index_asset="skills/kramme:code:plan-to-pr/assets/standalone-index-template.md"
@@ -33,7 +33,7 @@
 		    test -f "$reconcile"
 	    test -f "$plan_requirements"
 	    test -f "$generation_checks"
-    test -f "$completion"
+    test -f "$transitional_completion"
     test -f "$convergence"
     test -f "$handoff"
     test -f "$index_asset"
@@ -182,13 +182,13 @@
     grep -qF "kramme:code:work-from-plan" "$skill"
     grep -qF "route \`direct\`" "$skill"
     ! grep -qF -- "--archive-key code-plan-to-pr" "$skill"
-    grep -qF -- "--scope-plan {active-plan}" "$skill"
-    grep -qF "Require the delegated work branch and local head/tree to equal the observed branch" "$skill"
+    grep -qF -- "--scope-plan {validated-scope-plan}" "$skill"
+    grep -qF "Require the work branch and local head/tree recorded by the completion result to equal the observed branch" "$skill"
     grep -qF "stop without advancing plan state on the first mismatch" "$skill"
     grep -qF "Set the selected plan header and matching index row to \`DONE\`." "$skill"
     grep -qF "full completion commit OID" "$skill"
-    grep -qF "the exact delegated \`Publication state\`" "$skill"
-    grep -qF "require the delegate to have reported both the remote branch and Pull Request absent" "$skill"
+    grep -qF "the exact \`Publication state\` recorded by the completion result" "$skill"
+    grep -qF "require the result to report both the remote branch and Pull Request absent" "$skill"
     grep -qF "record \`Publication state: absent\`" "$skill"
     grep -qF "Do not record a \`Landed commit\` merely because implementation or Pull Request creation completed." "$skill"
     grep -qF "Later plan input: pass the selected archived \`PR_PLAN_<label>_*.md\` path" "$skill"
@@ -202,7 +202,7 @@
     grep -qF "RECHECK_STANDALONE_SCOPE" "$convergence"
     grep -qF "store it as \`{proven-scope-base}\`, and require the recorded base commit to equal it" "$convergence"
     grep -qF "continue to item 5 without setting \`DONE\` or \`PUBLISHED_BLOCKED\`" "$skill"
-    grep -qF "the exact delegated \`Recovery\` payload" "$skill"
+    grep -qF "the exact \`Recovery\` payload recorded by the completion result" "$skill"
     grep -qF "Report only that recorded recovery (the exact synced scoped recovery payload when a Pull Request exists" "$skill"
     grep -qF "## Validate Standalone Provenance" "$handoff"
 	    grep -qF "set \`STANDALONE_ARCHIVE=false\`" "$handoff"
@@ -385,24 +385,24 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "shared completion workflow preserves ordered bounded review and shipping proof" {
+@test "plan-to-PR completion workflow preserves ordered bounded review and shipping proof" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:complete-work/SKILL.md"
+    skill="skills/kramme:code:plan-to-pr/SKILL.md"
     convergence="skills/kramme:pr:review-convergence/SKILL.md"
     review="skills/kramme:pr:review-convergence/references/review-convergence.md"
-    shipping="skills/kramme:pr:complete-work/references/shipping-contract.md"
+    shipping="skills/kramme:code:plan-to-pr/references/shipping-contract.md"
 
     test -f "$skill"
     test -f "$convergence"
     test -f "$review"
     test -f "$shipping"
-    grep -qF "user-invocable: false" "$skill"
-    grep -qF "Set \`{archive-key}=code-plan-to-pr\` internally" "$skill"
-    grep -qF "obsolete caller-supplied \`--archive-key\` option" "$skill"
-    grep -qF "Store only the canonical repository-relative path as \`{validated-scope-plan}\`" "$skill"
-    grep -qF "Do not interpret its workflow state here" "$skill"
+    grep -qF "user-invocable: true" "$skill"
+    grep -qF "Set \`{work-id}\` to \`{execution-label}\` and \`{archive-key}\` to \`code-plan-to-pr\`." "$skill"
+    grep -qF "Use only the already validated \`{active-plan}\` as \`{validated-scope-plan}\`." "$skill"
+    grep -qF "do not reparse the archive or widen its scope" "$skill"
+    ! grep -qF "Invoke \`kramme:pr:complete-work\`" "$skill"
     grep -qF "require it exactly once for \`code-plan-to-pr\`" "$convergence"
     grep -qF "Store the exact normalized list as \`VALIDATED_SCOPE_PATHS\`" "$convergence"
     grep -qF "every proposed and dirty path" "$review"
@@ -412,6 +412,7 @@
     grep -qF "kramme:pr:review-convergence" "$skill"
     grep -qF "JSON-decode its \`Requirements JSON\` field" "$skill"
     grep -qF "equal \`{work-requirements}\` byte-for-byte" "$skill"
+    grep -qF "Produce this structured completion result, then continue to the archive finalization below" "$skill"
     grep -qF "**Internal \`code-plan-to-pr\`:** treat the validated plan—not \`{supplied-requirements}\`—as authoritative" "$convergence"
     grep -qF "validation-only mode permits later caller-authorized CI/review commits" "$convergence"
     grep -qF "kramme:pr:code-review --parallel --inline" "$review"
@@ -447,7 +448,7 @@
     grep -qF "exact frozen sentinel-last \`--requirements {work-requirements}\` block" "$shipping"
     grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shipping"
 
-    scope_validation_line=$(grep -nF "Resolve the raw \`{scope-plan-input}\`" "$skill" | cut -d: -f1)
+    scope_validation_line=$(grep -nF "Use only the already validated \`{active-plan}\`" "$skill" | cut -d: -f1)
     pr_preflight_line=$(grep -nF "gh pr list --head \"{work-branch}\"" "$skill" | cut -d: -f1)
     early_recovery_line=$(grep -nF "If the branch already has any Pull Request" "$skill" | cut -d: -f1)
     [ "$scope_validation_line" -lt "$pr_preflight_line" ]
