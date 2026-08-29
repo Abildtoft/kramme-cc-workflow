@@ -23,6 +23,13 @@ git status --porcelain
 git branch --show-current
 ```
 
+If `RESUME_CURRENT_BRANCH=true`, use the parent-owned resume handoff instead of the ordinary dirty-worktree choice below:
+
+1. Require its issue identifier and exact branch to equal the freshly fetched Linear issue and its `branchName`.
+2. Require the current branch to equal that exact branch, `HEAD` to descend from the captured base, the remote branch still to be absent, and no merge, rebase, cherry-pick, revert, bisect, or unmerged path to be in progress.
+3. Require current `HEAD`, committed paths, and dirty paths to equal the captured entry handoff before continuing. Do not checkout, create, reset, stash, discard, stage, or commit in this branch-setup phase.
+4. Preserve the changes for the reference mapping, technical-plan reconciliation, implementation, and verification steps. A mismatch is a hard blocker; never fall through to the choices below.
+
 **If uncommitted changes exist:**
 
 If `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: uncommitted changes exist; rerun without --auto to choose stash, commit, discard, or abort`.

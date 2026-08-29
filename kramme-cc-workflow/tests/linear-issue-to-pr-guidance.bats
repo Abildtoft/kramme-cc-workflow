@@ -99,6 +99,32 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "Linear issue to PR continues only validated unpublished issue work" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    child="skills/kramme:linear:issue-implement/SKILL.md"
+    branch_setup="skills/kramme:linear:issue-implement/references/branch-setup.md"
+
+    grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--rounds <1-5>] [--ship]\"" "$parent"
+    grep -qF "\`--continue\` sets \`CONTINUE_MODE=true\`" "$parent"
+    grep -qF "require the captured entry branch to equal \`{issue-branch}\` exactly" "$parent"
+    grep -qF "Require at least one such path" "$parent"
+    grep -qF "Stop on any unrelated or ambiguous path" "$parent"
+    grep -qF "require \`{confirmed-state-id}\` to equal \`{target-status-id}\`" "$parent"
+    grep -qF "issue no Linear write" "$parent"
+    grep -qF -- "--auto --resume-current-branch" "$parent"
+    grep -qF "skipped — continuation preserves the existing workspace name" "$parent"
+    grep -qF "Accept the internal \`--resume-current-branch\` flag only when \`AUTO_MODE=true\`" "$child"
+    grep -qF "reconcile every committed and dirty path in the parent resume handoff" "$child"
+    grep -qF "If \`RESUME_CURRENT_BRANCH=true\`, use the parent-owned resume handoff" "$branch_setup"
+    grep -qF "Do not checkout, create, reset, stash, discard, stage, or commit" "$branch_setup"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "Linear issue to PR renames a detected Conductor workspace without making the adapter authoritative" {
 	run bash -c '
     set -e
