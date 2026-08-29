@@ -80,7 +80,7 @@ Parse flags as shell-style arguments from the leading option segment only:
 
 ### Mode
 
-If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue detection; identifiers inside the handoff are anchors and dependencies, not improvement targets.
+If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue detection. The handoff's `orchestration` values are correlation-only, while identifiers in `issue.dependencies.blockedBy` are verified Linear dependencies; neither is an improvement target.
 
 Otherwise, detect an existing issue from a `TEAM-123` identifier, a `linear.app` issue URL, or a 36-character UUID.
 
