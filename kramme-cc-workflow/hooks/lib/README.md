@@ -44,7 +44,7 @@ exit 0; missing or unknown modes exit 2.
 | --- | --- | --- | --- | --- |
 | `noninteractive` — [`noninteractive-git.sh`](../noninteractive-git.sh) | Command lists containing direct or prefixed Git commands, `env`/`sudo`/execution wrappers, `find`/`xargs` execution, inline shell commands, and command substitutions. Policy covers editor- or prompt-opening `git commit`, `rebase`, `add`, `merge`, and `cherry-pick` forms. | `{"block": null}` to allow, or `{"block": "<reason>"}` to block. | Follows inline shell commands and command substitutions through depth 4. | Tokenization, prefix-normalization, alias, or depth ambiguity returns the parser-error block reason. Unrecognized non-Git commands and Git forms outside the interactive policy pass. |
 | `commit-contexts` — [`confirm-review-responses.sh`](../confirm-review-responses.sh) | Command lists containing `git commit`, including normalized wrappers, repository-selection options and environment, inline shell commands, command substitutions, and index/worktree/pathspec selection forms. | An ordered array of commit-context objects; `[]` means no commit was found. See the field contract below. | Follows inline shell commands and command substitutions through depth 4 while carrying replayable repository state. | Parse ambiguity returns `[{"parse_error": "<reason>"}]`; unsupported commit selection adds `selection_error` to that context. The caller blocks on either error, dynamic repository selection, malformed fields, a string carrying a NUL byte, stdout that is not exactly one JSON document, or replay failure. |
-| `rm-rf` — [`block-rm-rf.sh`](../block-rm-rf.sh) | Command lists containing recursive-and-forced `rm`, `find -delete`, `find -exec`/`-execdir`, `xargs`, `shred`, or `unlink`, including normalized wrappers, inline shell commands, `eval`, shell functions, executable heredocs, and command/process substitutions. | `{"block": null}` to allow, or `{"block": "<reason>"}` to block. | Inspects supported destructive shapes through depth 5; content beyond that bound is not classified. | Tokenization, prefix-normalization, or Python recursion failure returns the generic `rm -rf` block reason. Commands with no recognized destructive shape, including shapes only beyond the nesting bound, pass. |
+| `rm-rf` — [`block-rm-rf.sh`](../block-rm-rf.sh) | Command lists containing recursive-and-forced `rm`, `find -delete`, `find -exec`/`-execdir`, `xargs`, `shred`, or `unlink`, including normalized wrappers, inline shell commands, `eval`, shell functions, executable heredocs, and command/process substitutions. | `{"block": null}` to allow, or `{"block": "<reason>"}` to block. | Inspects supported destructive shapes through depth 5. If another nested command would require analysis beyond that bound, the parser blocks instead of classifying its contents. | Tokenization, prefix-normalization, analysis-depth exhaustion, or Python recursion failure returns the generic `rm -rf` block reason. Commands with no recognized destructive shape pass only when analysis completes within the bound. |
 
 All modes bound recursive `env -S`/`--split-string` expansion to 64 expansions
 and 100,000 characters of expanded payload. Exceeding either bound is a parse
@@ -100,7 +100,7 @@ policy fixtures for each mode:
 | --- | --- |
 | `noninteractive` | `git commit` without a message blocks; `git commit -m ...` and safe prefixed variants allow. |
 | `commit-contexts` | `git -C repo commit`, worktree/index selection, pathspec files, dynamic repository selection, and malformed context fields. |
-| `rm-rf` | Direct and wrapped `rm -rf`, `find`/`xargs`, substitutions and shell heredocs, plus quoted text and `git rm` allow cases. |
+| `rm-rf` | Direct and wrapped `rm -rf`, `find`/`xargs`, substitutions and shell heredocs, quoted text and `git rm` allow cases, plus safe and destructive commands below, at, and beyond the analysis bound. |
 
 Run the helper toggle tests after changing `check-enabled.sh`:
 
@@ -114,6 +114,14 @@ suite and all three consumers:
 ```bash
 python3 -m unittest discover -s kramme-cc-workflow/tests/python -p test_git_command_parser.py
 bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats
+```
+
+For the `rm-rf` analysis-bound contract specifically, run its direct and
+consuming-hook suites:
+
+```bash
+make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_git_command_parser.py
+make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/block-rm-rf.bats
 ```
 
 For documentation-only changes, also check the scoped diff:
