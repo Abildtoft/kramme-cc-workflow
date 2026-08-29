@@ -194,7 +194,7 @@
     },
     {
       "kind": "guidance",
-      "suite": "kramme-cc-workflow/tests/agent-description-length.bats",
+      "suite": "kramme-cc-workflow/tests/feature-spec-guidance.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:docs:feature-spec/SKILL.md"]
     },
     {
