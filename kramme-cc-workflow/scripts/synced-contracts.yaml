@@ -83,7 +83,6 @@
         "marker": "Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
         "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
