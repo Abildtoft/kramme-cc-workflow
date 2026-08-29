@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import json
 
-from ..frontmatter import frontmatter_type_errors, parse_frontmatter
+from ..frontmatter import (
+    frontmatter_string_value,
+    frontmatter_type_errors,
+    parse_frontmatter,
+)
 from ..io import read_text, rel, skill_paths
 from ..schema import skill_frontmatter_required_fields
 from .types import CheckResult, LintContext
@@ -52,7 +56,7 @@ def check_mechanical(context: LintContext) -> CheckResult:
                 result.failures.append(f"mechanical: {relative} is missing frontmatter field {field!r}")
         for field, expected_type in frontmatter_type_errors(text, context.schema):
             result.failures.append(f"mechanical: {relative} frontmatter field {field!r} must be {expected_type}")
-        description = frontmatter.get("description")
+        description = frontmatter_string_value(text, "description")
         if description is not None:
             description_length = len(description)
             if warn_description > 0 and description_length >= warn_description:
@@ -62,7 +66,7 @@ def check_mechanical(context: LintContext) -> CheckResult:
                     f"mechanical: {relative} description is {description_length} chars, exceeds {max_description}"
                 )
 
-    agent_result = check_agent_frontmatter_names(context)
+    agent_result = check_agent_frontmatter(context)
     result.failures.extend(agent_result.failures)
 
     size_result = check_file_line_budgets(context)
@@ -303,14 +307,16 @@ def check_file_line_budgets(context: LintContext) -> CheckResult:
     return result
 
 
-def check_agent_frontmatter_names(context: LintContext) -> CheckResult:
+def check_agent_frontmatter(context: LintContext) -> CheckResult:
     result = CheckResult()
     config = context.registry.get("mechanical", {})
     pattern = config.get("agent_glob", "kramme-cc-workflow/agents/*.md")
+    max_description = int(config.get("max_description_chars", 1024))
 
     for path in skill_paths(context.root, pattern):
         relative = rel(path, context.root)
-        frontmatter = parse_frontmatter(read_text(path))
+        text = read_text(path)
+        frontmatter = parse_frontmatter(text)
         if frontmatter is None:
             result.failures.append(f"mechanical: {relative} is missing YAML frontmatter")
             continue
@@ -324,5 +330,12 @@ def check_agent_frontmatter_names(context: LintContext) -> CheckResult:
             result.failures.append(
                 f"mechanical: {relative} frontmatter name {actual_name!r} "
                 f"does not match agent filename {expected_name!r}"
+            )
+        description = frontmatter_string_value(text, "description")
+        if not isinstance(description, str) or not description.strip():
+            result.failures.append(f"mechanical: {relative} is missing frontmatter field 'description'")
+        elif len(description) > max_description:
+            result.failures.append(
+                f"mechanical: {relative} description is {len(description)} chars, exceeds {max_description}"
             )
     return result
