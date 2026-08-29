@@ -30,6 +30,7 @@ The target state is `agent-ready`: an autonomous agent with repository access an
 
 ## Agent-Readiness
 
+Synced Linear agent-readiness contract (keep aligned across Linear readiness workflows):
 An issue is `agent-ready` only when every item passes. Record the failing items for every other issue.
 
 | Item | Test |
@@ -37,7 +38,7 @@ An issue is `agent-ready` only when every item passes. Record the failing items 
 | Problem is stated | The issue says what is wrong or missing and for whom, not only what to build. |
 | Outcome is observable | A reader can describe the user-visible or system-visible behavior after the change. |
 | Acceptance criteria are verifiable by running something | Each criterion can be checked by a test, a command, a request, or a reproducible manual step with a stated expected result; none requires taste or a stakeholder's opinion. |
-| Scope is bounded | `scope = pr-sized`, and at least one explicit non-goal or boundary prevents the agent from expanding into neighboring work. |
+| Scope is bounded | The work is Pull Request-sized, and at least one explicit non-goal or boundary prevents the agent from expanding into neighboring work. |
 | Decisions are made | No open questions, "TBD", "discuss with", or competing options remain in the body or recent comments. Decisions that were made in comments are reflected in the description. |
 | Inputs are reachable | Reproduction steps, sample data, links, designs, or API contracts the work depends on are either in the issue or derivable from the repository. Nothing requires credentials, unreleased assets, or a person's tacit knowledge. |
 | Dependencies are clear | Blocking relations are resolved or explicitly stated as prerequisites with their identifiers. |
@@ -48,6 +49,8 @@ An issue is `agent-ready` only when every item passes. Record the failing items 
 | `agent-ready` | Every item passes. |
 | `needs-refinement` | One or more items fail, and the gap can be closed by a rewrite grounded in the repository or by one answer from a person. |
 | `human-only` | The gap is a product decision, design direction, or access an agent cannot obtain, and closing it is itself the work; or the issue is exploratory by nature ("investigate", "spike", "decide"). Keep such issues clear for humans; do not force them toward `agent-ready`. |
+
+Do not infer agent-readiness from priority, an `agent-ready` label, assignment, state name, or a phrase such as "straightforward" alone. Those are supporting signals, not substitutes for the checklist. When evidence for an applicable item is unavailable, classify the issue as `needs-refinement` rather than guessing unless the missing input or decision requires a person, which makes it `human-only`.
 
 Typical gaps and the action that closes them:
 

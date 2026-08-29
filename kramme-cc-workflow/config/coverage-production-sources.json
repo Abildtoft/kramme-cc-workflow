@@ -340,6 +340,13 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/linear-select-next-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:linear:select-next/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-issue-to-pr-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",

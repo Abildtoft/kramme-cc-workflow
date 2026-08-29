@@ -10,6 +10,18 @@
   ],
   "text_contracts": [
     {
+      "name": "linear-agent-readiness-rubric",
+      "extract_regex": "(?s)Synced Linear agent-readiness contract \\(keep aligned across Linear readiness workflows\\):\\s*(An issue is `agent-ready` only when every item passes\\..*?which makes it `human-only`\\.)",
+      "inventory": {
+        "glob": "kramme-cc-workflow/skills/kramme:linear:*/references/*.md",
+        "marker": "Synced Linear agent-readiness contract (keep aligned across Linear readiness workflows):"
+      },
+      "paths": [
+        "kramme-cc-workflow/skills/kramme:linear:backlog-refine/references/refinement-rubric.md",
+        "kramme-cc-workflow/skills/kramme:linear:select-next/references/scoring-rubric.md"
+      ]
+    },
+    {
       "name": "standalone-archive-identity-bytes",
       "extract_regex": "Synced standalone archive identity contract \\(keep aligned across archive consumers\\):\\s*(the binary manifest contains the ASCII bytes standalone-attachment, a NUL byte, \\{selected-basename\\}, a NUL byte, \\{plan-source-object-id\\}, and a newline\\.)",
       "inventory": {
@@ -1649,7 +1661,6 @@
       "kramme-cc-workflow/skills/kramme:hooks:configure-links/SKILL.md",
       "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md",
       "kramme-cc-workflow/skills/kramme:launch:announce/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:linear:select-next/SKILL.md",
       "kramme-cc-workflow/skills/kramme:nx:setup-portless/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
