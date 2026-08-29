@@ -4,8 +4,10 @@ setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
 	SKILL="$PLUGIN_ROOT/skills/kramme:pr:github-review/SKILL.md"
 	CONVERSATION_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/conversation-fetch.md"
+	COMMENT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/comment-drafting.md"
 	DRAFT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/draft-review.md"
 	REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/report-template.md"
+	UI_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/ui-relevance.md"
 	README="$PLUGIN_ROOT/../README.md"
 }
 
@@ -53,6 +55,73 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "conversation states have deterministic non-overlapping precedence" {
+	run python3 - "$CONVERSATION_REFERENCE" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text()
+required = [
+    "applying these rules in order and stopping at the first match",
+    "1. `resolved`",
+    "2. `author-responded`",
+    "3. `awaiting-you`",
+    "4. `your-open`",
+    "5. `peer-comment`",
+    "6. `new-from-others`",
+]
+positions = [text.index(item) for item in required]
+if positions != sorted(positions):
+    raise SystemExit("conversation-state precedence is not deterministic")
+PY
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review progressively loads UI classification and cleans temporary parents" {
+	run bash -c '
+    set -e
+    grep -qF "references/ui-relevance.md" "$1"
+    grep -qF "references/comment-drafting.md" "$1"
+    ! grep -qF "is_ui_relevant_path() {" "$1"
+    ! grep -qF "Sound like a person, not a report" "$1"
+    grep -qF "UI relevance path contract: \`ui-relevance-path-contract-v1\`" "$2"
+    grep -qF "is_ui_relevant_path() {" "$2"
+    grep -qF "rmdir \"\$TMP_PARENT\"" "$1"
+    grep -qF "Temporary parent retained for inspection" "$1"
+  ' _ "$SKILL" "$UI_REFERENCE"
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+
+	run bash -c '
+    grep -qF "Sound like a person, not a report" "$1"
+    grep -qF "give each anchored question its own \`Draft comment\` body" "$1"
+    grep -qF "Send only the prose bodies" "$1"
+  ' _ "$COMMENT_REFERENCE"
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review description stays below the burndown threshold" {
+	run python3 - "$SKILL" <<'PY'
+import pathlib
+import sys
+
+line = pathlib.Path(sys.argv[1]).read_text().splitlines()[2]
+prefix = 'description: "'
+if not line.startswith(prefix) or not line.endswith('"'):
+    raise SystemExit("expected a quoted one-line description")
+description = line[len(prefix):-1]
+if len(description) >= 500:
+    raise SystemExit(f"description has {len(description)} characters; expected fewer than 500")
+required = ["assigned reviewer", "GitHub PR", "inline comments", "pending review", "--draft-review", "kramme:pr:code-review", "kramme:pr:github-review-reply", "kramme:pr:resolve-review"]
+missing = [term for term in required if term not in description]
+if missing:
+    raise SystemExit("description lost trigger terms: " + ", ".join(missing))
+PY
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "draft review includes all eligible comments and reports every omission" {
 	run bash -c '
     set -e
@@ -63,8 +132,10 @@ PY
     grep -qF "must name every proposed item omitted" "$1"
     grep -qF "compare the validated snapshot'\''s comment count with the selected eligible count" "$1"
     grep -qF "They must match exactly" "$1"
+    grep -qF "Do not build or post a top-level review" "$1"
+    grep -qF "is empty, do not offer or create a pending review" "$1"
     grep -qF "give each anchored question its own \`Draft comment\` body" "$2"
-  ' _ "$DRAFT_REFERENCE" "$SKILL"
+  ' _ "$DRAFT_REFERENCE" "$COMMENT_REFERENCE"
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
@@ -104,9 +175,13 @@ payload_match = re.search(r"The payload shape is:\n\n```json\n(.*?)\n```", text,
 if not payload_match:
     raise SystemExit("missing draft payload example")
 
-payload = json.loads(payload_match.group(1).replace("<HEAD_OID>", "abc123").replace("<DRAFT_REVIEW_BODY>", "summary").replace("<humanized draft comment>", "question"))
+payload = json.loads(payload_match.group(1).replace("<HEAD_OID>", "abc123").replace("<humanized draft comment>", "question"))
 if "event" in payload:
     raise SystemExit("draft payload must omit event")
+if "body" in payload:
+    raise SystemExit("draft payload must omit the top-level review body")
+if not payload.get("comments"):
+    raise SystemExit("draft payload must contain at least one inline comment")
 
 create_blocks = [
     block
@@ -133,6 +208,8 @@ if create_block.index("PREWRITE_HEAD_OID") > create_block.index("DRAFT_RESPONSE=
 
 required = [
     '(has("event") | not)',
+    '(has("body") | not)',
+    '(.comments | (type == "array" and length > 0))',
     'git -C "$ORIG_ROOT" check-ignore -q -- .context/github-review-drafts/',
     'DRAFT_PAYLOAD=$(mktemp "$DRAFT_DIR/pr-$PR_NUMBER.XXXXXX")',
     'DRAFT_PAYLOAD_JSON=$(jq -ce',
@@ -179,8 +256,14 @@ if "GitHub was not changed only for statuses that confirm no write occurred" not
     raise SystemExit("skill must distinguish confirmed no-write outcomes")
 if "write outcome unknown" not in skill:
     raise SystemExit("skill must report unknown write outcomes")
-if "--draft-review" not in readme or "Writes the Markdown report before offering to create one unsubmitted pending GitHub review" not in readme:
+if "--draft-review" not in readme or "creates one unsubmitted pending review containing only eligible inline comments" not in readme:
     raise SystemExit("public docs must describe the draft-review flow")
+if "containing only eligible inline comments" not in readme:
+    raise SystemExit("public docs must state that pending reviews contain only inline comments")
+if "The skill does not post a review summary" not in report:
+    raise SystemExit("report instructions must keep review summaries off GitHub")
+if "with those comments and the summary" in skill:
+    raise SystemExit("skill must not offer to post a GitHub review summary")
 PY
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }

@@ -1,6 +1,6 @@
-# Creating one pending GitHub review
+# Creating one pending GitHub review with inline comments only
 
-Use Section 1 after the draft comments are humanized so the skill can make an exact offer. Follow Sections 2–4 only after the user authorizes the write, either by passing `--draft-review` or by clearly accepting the offer. That authorization covers one write: creating an unsubmitted pending review for the reviewed head. It does not authorize replies, thread resolution, review submission, approval, or change requests.
+Use Section 1 after the draft comments are humanized so the skill can make an exact offer. Follow Sections 2–4 only after the user authorizes the write, either by passing `--draft-review` or by clearly accepting the offer. That authorization covers one write: creating an unsubmitted pending review containing only direct inline comments for the reviewed head. It does not authorize a top-level review body, replies, thread resolution, review submission, approval, or change requests.
 
 ## 1. Select the proposed comments
 
@@ -13,7 +13,7 @@ Build `DRAFT_REVIEW_COMMENTS` from every fresh actionable item that has a concre
 
 For each included item, record `path`, integer `line`, `side: "RIGHT"`, and the exact humanized `body`. The report must name every proposed item omitted from the pending review and why. Never silently claim that all comments were included when any item was omitted.
 
-Build `DRAFT_REVIEW_BODY` from the recommended verdict rationale and genuine Strengths. Phrase the verdict as a recommendation because the review is still pending and the user decides how to submit it.
+Do not build or post a top-level review `body`. Keep the recommended verdict rationale, Strengths, and all other summary material in the local report only. If `DRAFT_REVIEW_COMMENTS` is empty, do not offer or create a pending review; use `DRAFT_REVIEW_STATUS="not created — no eligible inline comments"`.
 
 ## 2. Fail closed on stale or conflicting state
 
@@ -86,7 +86,6 @@ The payload shape is:
 ```json
 {
   "commit_id": "<HEAD_OID>",
-  "body": "<DRAFT_REVIEW_BODY>",
   "comments": [
     {
       "path": "src/example.ts",
@@ -98,16 +97,16 @@ The payload shape is:
 }
 ```
 
-The `comments` array may be empty when the review only has a summary. The payload must omit `event`; a blank or absent event is what makes the review pending. Validate before posting:
+The payload must omit both the top-level `body` and `event`, and the `comments` array must contain at least one eligible inline comment. An absent event is what makes the review pending. Validate before posting:
 
 ```bash
 if ! DRAFT_PAYLOAD_JSON=$(jq -ce --arg head "$HEAD_OID" '
   select(
     type == "object" and
     (has("event") | not) and
+    (has("body") | not) and
     .commit_id == $head and
-    (.body | type == "string") and
-    (.comments | type == "array") and
+    (.comments | (type == "array" and length > 0)) and
     all(.comments[];
       (.path | type == "string" and length > 0) and
       (.line | type == "number" and floor == . and . > 0) and
@@ -162,4 +161,4 @@ fi
 
 Do not call `POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews/{review_id}/events`. That endpoint submits the pending review and is always outside this skill's authority.
 
-Report the review ID, URL, retained run-unique payload path, and omitted-item count. Report an exact included comment count only when the response proves a pending review was created; report `0` for confirmed no-write outcomes and `unknown (<N> attempted)` for outcome-unknown or unexpected-state outcomes. Tell the user to inspect and edit the pending review in GitHub before choosing Approve, Comment, or Request changes. If the post-write head check marked the review stale or unverifiable, tell the user not to submit it.
+Report the review ID, URL, retained run-unique payload path, and omitted-item count. Report an exact included comment count only when the response proves a pending review was created; report `0` for confirmed no-write outcomes and `unknown (<N> attempted)` for outcome-unknown or unexpected-state outcomes. Tell the user to inspect and edit the pending review's inline comments in GitHub before choosing Approve, Comment, or Request changes. If the post-write head check marked the review stale or unverifiable, tell the user not to submit it.

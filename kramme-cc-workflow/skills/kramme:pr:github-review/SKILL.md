@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:github-review
-description: "Review a GitHub pull request where you are the assigned reviewer, not the author or assignee. Fetches the PR into an isolated worktree, runs code-quality plus UI review agents, maps existing conversations, skips duplicate findings, and drafts concise inline comments, replies, and a recommended verdict. Writes the Markdown report before offering to create one unsubmitted pending GitHub review; --draft-review skips that confirmation but still writes the report first. Not for reviewing your own branch before shipping (use kramme:pr:code-review), responding to reviewers on your own PR (use kramme:pr:github-review-reply), or resolving review findings (use kramme:pr:resolve-review)."
+description: "Review a GitHub PR where you are the assigned reviewer, not the author. Produces a local Markdown report, deduplicates existing conversations, and drafts inline comments, replies, and a verdict recommendation. With confirmation—or --draft-review—creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), responding on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
 argument-hint: "[pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
@@ -10,7 +10,7 @@ user-invocable: true
 
 Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, and produces a reviewer-facing assessment that can optionally become one pending GitHub review.
 
-This skill does not write to GitHub until the user authorizes it. It always materializes the Markdown review report before offering or attempting the GitHub write. After the report and draft comments are ready, it offers to create one pending GitHub review containing the proposed inline comments and summary. The explicit `--draft-review` flag supplies that authorization up front and skips the confirmation, but the report still comes first. Either path only creates the draft: the skill never submits the review or chooses a verdict on the user's behalf.
+This skill does not write to GitHub until the user authorizes it. It always materializes the Markdown review report before offering or attempting the GitHub write. After the report and draft comments are ready, it offers to create one pending GitHub review containing only the eligible proposed inline comments. The local report keeps the recommended verdict, rationale, strengths, and other summary context; none of that material is posted as the review body. The explicit `--draft-review` flag supplies authorization up front and skips the confirmation, but the report still comes first. Either path only creates the draft: the skill never submits the review or chooses a verdict on the user's behalf.
 
 ## Step 0: Parse Arguments
 
@@ -149,7 +149,9 @@ TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
 WORKTREE_DIR="$TMP_PARENT/wt"
 if ! git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD; then
   echo "Failed to create review worktree." >&2
-  echo "Temporary parent left for inspection: $TMP_PARENT" >&2
+  if ! rmdir "$TMP_PARENT"; then
+    echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
+  fi
   exit 1
 fi
 cd "$WORKTREE_DIR"
@@ -167,10 +169,14 @@ Synced base/diff scope contract (keep aligned across base-aware and diff-aware s
 if ! RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --base "$BASE_REF_ARG" --strict); then
   echo "Base/diff collection failed; see the message above." >&2
   cd "$ORIG_ROOT"
-  if ! git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
-    :
+  if git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+    if ! rmdir "$TMP_PARENT"; then
+      echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
+    fi
+  else
+    echo "Could not remove worktree automatically: $WORKTREE_DIR" >&2
+    echo "Temporary parent retained for inspection: $TMP_PARENT" >&2
   fi
-  echo "Temporary parent left for inspection: $TMP_PARENT" >&2
   exit 1
 fi
 eval "$RESOLVED"
@@ -180,54 +186,7 @@ The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimite
 
 ## Step 5: Classify Scope
 
-Decide whether to run the UI review pass. If `CODE_ONLY=true`, skip this and set `RUN_UI=false`.
-
-Use this contract marker for UI relevance: UI relevance path contract: `ui-relevance-path-contract-v1`.
-
-A file is UI-relevant when it matches any of these categories:
-
-- **Components**: `*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.astro`, `*.mdx`, `*.component.ts`, `*.component.html`
-- **Templates**: `*.html`, `*.htm`, `*.hbs`, `*.ejs`, `*.pug`
-- **Styles**: `*.css`, `*.scss`, `*.sass`, `*.less`, `*.styl`, `*.styled.ts`, `*.styled.js`, `*.module.css`, `*.module.scss`
-- **Configuration**: `tailwind.config.*`, `theme.*`, files under `design-tokens/`
-- **View and route directories**: files under `pages/`, `views/`, `screens/`, `routes/`, or `app/`
-- **UI component directories**: files under `component/`, `components/`, `ui/`, `widgets/`, `layouts/`, or `templates/`
-- **Style directories**: files under `styles/` or `css/`
-- **Static asset directories**: image or SVG files under `public/`, `static/`, or `assets/` (`*.svg`, `*.png`, `*.jpg`, `*.jpeg`, `*.gif`, `*.webp`, `*.avif`, `*.ico`)
-
-```bash
-is_ui_relevant_path() {
-  local path
-  path=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
-
-  case "$path" in
-    *.tsx | *.jsx | *.vue | *.svelte | *.astro | *.mdx | *.component.ts | *.component.html) return 0 ;;
-    *.html | *.htm | *.hbs | *.ejs | *.pug) return 0 ;;
-    *.css | *.scss | *.sass | *.less | *.styl | *.styled.ts | *.styled.js | *.module.css | *.module.scss) return 0 ;;
-    tailwind.config.* | */tailwind.config.* | theme.* | */theme.* | design-tokens/* | */design-tokens/*) return 0 ;;
-    pages/* | */pages/* | views/* | */views/* | screens/* | */screens/* | routes/* | */routes/* | app/* | */app/*) return 0 ;;
-    component/* | */component/* | components/* | */components/* | ui/* | */ui/* | widgets/* | */widgets/* | layouts/* | */layouts/* | templates/* | */templates/*) return 0 ;;
-    styles/* | */styles/* | css/* | */css/*) return 0 ;;
-    public/*.svg | public/*.png | public/*.jpg | public/*.jpeg | public/*.gif | public/*.webp | public/*.avif | public/*.ico) return 0 ;;
-    static/*.svg | static/*.png | static/*.jpg | static/*.jpeg | static/*.gif | static/*.webp | static/*.avif | static/*.ico) return 0 ;;
-    assets/*.svg | assets/*.png | assets/*.jpg | assets/*.jpeg | assets/*.gif | assets/*.webp | assets/*.avif | assets/*.ico) return 0 ;;
-    */public/*.svg | */public/*.png | */public/*.jpg | */public/*.jpeg | */public/*.gif | */public/*.webp | */public/*.avif | */public/*.ico) return 0 ;;
-    */static/*.svg | */static/*.png | */static/*.jpg | */static/*.jpeg | */static/*.gif | */static/*.webp | */static/*.avif | */static/*.ico) return 0 ;;
-    */assets/*.svg | */assets/*.png | */assets/*.jpg | */assets/*.jpeg | */assets/*.gif | */assets/*.webp | */assets/*.avif | */assets/*.ico) return 0 ;;
-  esac
-  return 1
-}
-
-RUN_UI=false
-if [ "${CODE_ONLY:-false}" != "true" ]; then
-  while IFS= read -r changed_file; do
-    if is_ui_relevant_path "$changed_file"; then
-      RUN_UI=true
-      break
-    fi
-  done <<< "$CHANGED_FILES"
-fi
-```
+If `CODE_ONLY=true`, set `RUN_UI=false` and skip the rest of this step without loading another resource. Otherwise read `references/ui-relevance.md` and follow its `ui-relevance-path-contract-v1` classifier against `CHANGED_FILES` to set `RUN_UI`.
 
 ## Step 6: Run the Reviews
 
@@ -268,10 +227,14 @@ cd "$ORIG_ROOT"
 if [ "${KEEP_WORKTREE:-false}" = "true" ]; then
   echo "Worktree kept at: $WORKTREE_DIR"
 else
-  if ! git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+  if git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+    if ! rmdir "$TMP_PARENT"; then
+      echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
+    fi
+  else
     echo "Could not remove worktree automatically: $WORKTREE_DIR" >&2
+    echo "Temporary parent retained for inspection: $TMP_PARENT" >&2
   fi
-  echo "Temporary parent left for inspection: $TMP_PARENT"
   git worktree prune
 fi
 ```
@@ -280,61 +243,21 @@ If `--keep-worktree` was passed, report the path so the user can inspect or remo
 
 ## Step 9: Draft the Review Comments
 
-Read the report format from `references/report-template.md`. Sort the captured findings into **Blocking**, **Important**, **Suggestions / Nits**, **Questions for the author**, and **Strengths**. Anchor each actionable finding to a concrete `path:line` so it maps to a GitHub inline comment. Drop or label findings the diff cannot prove, using `UNVERIFIED` (plausible but not traced) and `NOTICED BUT NOT TOUCHING` (pre-existing, not introduced by this PR).
-
-**Dedupe against the conversation.** Using the cross-reference from Step 7, do not draft a fresh comment for a finding the conversation already raises (by you, the author, or another reviewer). Move it to the report's "Already raised" list noting who raised it and the thread state, rather than posting a duplicate. If your fresh finding materially extends what the thread says (new evidence, higher severity), keep it as a reply on that thread instead of a new top-level comment.
-
-For every actionable finding, capture two separate things: the **evidence** (the full trace, reproduction, or reasoning — kept in the report for your own reference) and a **draft comment** (the lean, human-voiced text you would actually paste into a GitHub thread). The comment is the product of this skill — the wording matters as much as the finding. Apply these rules to every comment:
-
-- **Sound like a person, not a report.** Write the way a thoughtful colleague types into a review thread — plain, natural, a little informal. No finding-style structure, no severity labels, no bullet lists inside the comment. If it reads like generated output, rewrite it.
-- **Lead with a question, not a verdict.** Prefer a Socratic question that lets the author check the concern themselves — "What happens if `items` is empty here?", "Is there a reason the retry isn't bounded?", "Would pulling this into `parseRow` make the intent clearer?" — over assertions like "This is wrong" or "You must change this".
-- **Keep the evidence in the report, not the comment.** The trace, reproduction, and full reasoning belong in the finding's `Evidence` field so you have them when you decide. The comment carries only what the author needs to investigate or act — usually just the question and the specific line. Don't paste the whole rationale into the thread.
-- **Calibrate confidence to evidence.** State a plainly-traced failure directly, but never as a scolding. For anything `UNVERIFIED`, phrase it as a question or "I might be missing something, but …" — never as established fact.
-- **Be brief.** A sentence or two. No preamble, no restating what the code obviously does, no thanks-padding, no AI-attribution or meta-process text.
-- **One point per comment.** Don't bundle unrelated concerns into one thread.
-- **Keep what makes it actionable.** Concrete identifiers (function, file, variable) and the suggested direction stay in; the supporting evidence does not have to.
-- **Severity sets urgency, not tone.** A Blocking comment is still a clear question or concise statement, not a demand.
-
-`Strengths` is genuine praise worth saying in the summary, not padding. `Questions for the author` are open questions you genuinely could not resolve from the diff; give each anchored question its own `Draft comment` body so it is included with the other proposed inline comments.
-
-### Replies to the existing conversation
-
-For each thread from Step 7 that needs your input, draft a **reply** using the same voice rules above (human voice, Socratic, concise, calibrated, evidence kept in the report). Ground the reply in the live-tree verification from Step 7, lead with your decision, then keep it short:
-
-- `awaiting-you` / `author-responded` — say where you land, based on what you actually read in the current code. If verification is `addressed`, acknowledge it briefly, name what you saw (e.g. the guard now on that line), and note you'd resolve the thread. If `still-open`, say what's still there as a question, not a re-assertion. If `cant-tell` or the author asked you something, answer plainly or ask the one thing that would settle it.
-- `peer-comment` — draft a reply only if you genuinely want to add to it; otherwise surface it for awareness with no draft.
-- `your-open` — no reply (it's still waiting on them); surface it so you remember it's outstanding.
-- `new-from-others` — surface for awareness; reply only if it asks something of you.
-
-Do not draft a "will do" or acknowledgement reply for every thread — you are the reviewer, not the author. Only draft replies that move the review forward.
-
-**Recommended verdict** (the human confirms and posts; this skill never approves):
-
-- `REQUEST CHANGES` — one or more Blocking findings, or unresolved Blocking-level threads you opened.
-- `COMMENT` — no Blocking findings, but Important findings, open questions, or threads awaiting you remain.
-- `APPROVE` — no Blocking or Important findings, no unresolved concerns you raised, and the change clearly improves overall code health.
-
-When the PR is an ongoing review, weigh the conversation into the verdict: if your earlier concerns verified as `addressed` against the live tree in Step 7, recommend updating your standing decision (note your prior verdict from Step 7). If threads you opened are still unresolved, that holds the verdict at `REQUEST CHANGES` or `COMMENT`. State the verdict as a recommendation with a one-line rationale, followed by the reminder that the user makes the final call and posts the review themselves.
+Read `references/report-template.md` and `references/comment-drafting.md`. Follow the latter's finding categories, evidence/comment separation, conversation deduplication, reply rules, and verdict criteria to complete the report fields.
 
 ## Step 10: Humanize the Draft Comments
 
-Run the draft comment **and reply** bodies through `/kramme:text:humanize` to strip AI-isms before the report is written. This is best-effort: if the skill is unavailable, skip it, mark `Humanized: no` on each item, and continue.
-
-When humanize is available:
-
-- Send only the comment and reply bodies in a single batched call, separated by a stable delimiter that carries each item's index. Do **not** send file paths, line numbers, code snippets, finding IDs, reviewer quotes, or evidence — only the prose the author will read.
-- Map the humanized results back to items by index. If the returned count does not match the input, or a mapping is ambiguous, keep the original body for that item rather than risk mis-mapping.
-- Re-apply the humanized text, preserving the human voice, the Socratic question framing, the calibrated (non-overconfident) wording, factual claims and `UNVERIFIED` hedges, and necessary technical identifiers. If humanize makes an item more assertive, more verbose, more formal, or turns a question into a claim, keep the original wording and make the smallest manual edit needed to remove the AI-sounding phrasing.
-- Mark each humanized item `Humanized: yes`.
+Follow the humanization section of `references/comment-drafting.md`. Humanization is best-effort; preserve the original bodies and mark `Humanized: no` when the sibling skill is unavailable or its output cannot be mapped safely.
 
 ## Step 11: Materialize the Markdown Report
 
 Read `references/draft-review.md` and complete Section 1 to identify the eligible proposed inline comments and every omission. Do this after humanization so the count and bodies are final.
 
-Set the pre-write status according to the authorization state:
+Set the pre-write status according to the eligible inline-comment count and authorization state:
 
-- `CREATE_DRAFT_REVIEW=false` → `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`.
-- `CREATE_DRAFT_REVIEW=true` → `DRAFT_REVIEW_STATUS="not created — authorized; creation not attempted yet"`.
+- zero eligible inline comments → `DRAFT_REVIEW_STATUS="not created — no eligible inline comments"`.
+- otherwise, `CREATE_DRAFT_REVIEW=false` → `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`.
+- otherwise, `CREATE_DRAFT_REVIEW=true` → `DRAFT_REVIEW_STATUS="not created — authorized; creation not attempted yet"`.
 
 Use `references/report-template.md` to render the full report with that exact status. If `INLINE_MODE=true`, present the report in chat and do not write a file. Otherwise write it to `GITHUB_PR_REVIEW_OVERVIEW.md` at `ORIG_ROOT` (never inside the worktree, which is gone by now). Include the PR number and title in the header so an overwritten file is unambiguous. Treat the file as a working artifact that should not be committed.
 
@@ -342,15 +265,17 @@ Use `references/report-template.md` to render the full report with that exact st
 
 ## Step 12: Offer or Create a Pending Draft Review
 
-If `CREATE_DRAFT_REVIEW=false`, tell the user the report is ready, including its path when written to disk. Then show a compact offer with the exact eligible comment count, severity breakdown, omission count and reasons, existing-thread reply count, and recommended verdict. Ask:
+If there are zero eligible inline comments, tell the user the report is ready, make no GitHub write, and continue to Step 13. Do not offer or create an empty pending review.
 
-> `GITHUB_PR_REVIEW_OVERVIEW.md` is ready. Draft comments are ready: <N> eligible inline comments (<severity counts>), <M> omitted, and <R> existing-thread replies kept separate. Would you like me to create one unsubmitted pending GitHub review with those comments and the summary now?
+Otherwise, if `CREATE_DRAFT_REVIEW=false`, tell the user the report is ready, including its path when written to disk. Then show a compact offer with the exact eligible comment count, severity breakdown, omission count and reasons, existing-thread reply count, and recommended verdict. Ask:
+
+> `GITHUB_PR_REVIEW_OVERVIEW.md` is ready. Draft comments are ready: <N> eligible inline comments (<severity counts>), <M> omitted, and <R> existing-thread replies kept separate. Would you like me to create one unsubmitted pending GitHub review containing only those inline comments now?
 
 For `--inline`, replace the filename in the offer with "The inline Markdown report is ready."
 
 Stop and wait for the user's answer. A clear affirmative answer sets `CREATE_DRAFT_REVIEW=true` and authorizes this one pending-review write. If the user declines, set `DRAFT_REVIEW_STATUS="declined"`, make no GitHub write, refresh the report, and continue to Step 13. If the user asks to change any draft comments, apply those edits, re-humanize changed bodies when appropriate, recompute the counts, refresh the report first with `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`, and only then make the offer again. Silence or an ambiguous answer is not authorization.
 
-If `CREATE_DRAFT_REVIEW=true`—whether from `--draft-review` or the user's confirmation—clear the temporary pre-write sentinel with `DRAFT_REVIEW_STATUS=""`, then follow Sections 2–4 of `references/draft-review.md` exactly. Those sections use a nonempty `DRAFT_REVIEW_STATUS` to signal a guard failure or final outcome, so never enter them with either pre-write status still set. They check for head drift and an existing pending review, build and validate the payload, and create the review without an `event` field so GitHub leaves it in `PENDING` state. Never call the submit-review endpoint.
+If at least one eligible inline comment exists and `CREATE_DRAFT_REVIEW=true`—whether from `--draft-review` or the user's confirmation—clear the temporary pre-write sentinel with `DRAFT_REVIEW_STATUS=""`, then follow Sections 2–4 of `references/draft-review.md` exactly. Those sections use a nonempty `DRAFT_REVIEW_STATUS` to signal a guard failure or final outcome, so never enter them with either pre-write status still set. They check for head drift and an existing pending review, build and validate an inline-comments-only payload with no top-level review body or `event` field, and create the review so GitHub leaves it in `PENDING` state. Never call the submit-review endpoint.
 
 After Sections 2–4 finish, record the resulting draft-review status, review ID/URL, confirmed or unknown included-comment state, run-unique payload path, and any omitted proposed items, then refresh the already-materialized report with the final outcome. The initial report must not remain stale.
 
@@ -368,19 +293,3 @@ End by telling the user: the recommended verdict, the count of findings per seve
 - **Refreshed by:** re-running this skill on the same or a different PR (overwrites the file).
 - **Retired by:** `/kramme:workflow-artifacts:cleanup`, or manual deletion.
 - **Temporary worktree:** created under a `mktemp` directory during the run and removed in Step 8 unless `--keep-worktree` is set.
-
-## Examples
-
-```text
-/kramme:pr:github-review 482           # drafts comments, then offers to create a pending review
-/kramme:pr:github-review https://github.com/acme/app/pull/482
-/kramme:pr:github-review 482 --draft-review  # create one pending review; inspect and submit it in GitHub
-/kramme:pr:github-review               # no arg → uses current branch's open PR if it is directly review-requested from you
-/kramme:pr:github-review 482 --code-only
-/kramme:pr:github-review 482 --categories a11y,visual
-/kramme:pr:github-review 482 --inline --keep-worktree
-/kramme:pr:github-review 482 --base release/3.2
-/kramme:pr:github-review 482           # ongoing review → also maps existing threads and drafts replies
-/kramme:pr:github-review 482 --all-threads --include-bots
-/kramme:pr:github-review 482 --fresh   # ignore the conversation; clean first-pass assessment only
-```
