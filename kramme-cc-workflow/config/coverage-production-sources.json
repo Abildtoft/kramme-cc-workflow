@@ -341,9 +341,7 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-select-next-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/kramme:linear:select-next/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/kramme:linear:select-next/SKILL.md"]
     },
     {
       "kind": "guidance",

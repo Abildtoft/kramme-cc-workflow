@@ -30,8 +30,7 @@ The target state is `agent-ready`: an autonomous agent with repository access an
 
 ## Agent-Readiness
 
-Synced Linear agent-readiness contract (keep aligned across Linear readiness workflows):
-An issue is `agent-ready` only when every item passes. Record the failing items for every other issue.
+Synced Linear agent-readiness contract (keep aligned across Linear readiness workflows): An issue is `agent-ready` only when every item passes. Record the failing items for every other issue.
 
 | Item | Test |
 | --- | --- |

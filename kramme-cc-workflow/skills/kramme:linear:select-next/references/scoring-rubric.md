@@ -52,8 +52,7 @@ Subtract when the issue is not safe to start:
 
 ## Autonomous Agent-Readiness
 
-Synced Linear agent-readiness contract (keep aligned across Linear readiness workflows):
-An issue is `agent-ready` only when every item passes. Record the failing items for every other issue.
+Synced Linear agent-readiness contract (keep aligned across Linear readiness workflows): An issue is `agent-ready` only when every item passes. Record the failing items for every other issue.
 
 | Item | Test |
 | --- | --- |
