@@ -1744,6 +1744,7 @@
   "mechanical": {
     "require_skill_contract_coverage": true,
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "agent_glob": "kramme-cc-workflow/agents/*.md",
     "max_skill_lines": 500,
     "warn_skill_lines": 300,
     "skill_line_report_limit": 20,

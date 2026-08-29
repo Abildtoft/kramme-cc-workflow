@@ -14,9 +14,7 @@ _YAML_FLOW_NUMBER_PATTERN = re.compile(
     r"|\.[0-9]+(?:[eE][+-]?[0-9]+)?|0o[0-7]+|0x[0-9a-fA-F]+"
     r"|\.(?:inf|Inf|INF|nan|NaN|NAN))$"
 )
-_YAML_BLOCK_SCALAR_PATTERN = re.compile(
-    r"^[|>](?:[+-][1-9]?|[1-9][+-]?)?(?:\s+#.*)?$"
-)
+_YAML_BLOCK_SCALAR_PATTERN = re.compile(r"^[|>](?:[+-][1-9]?|[1-9][+-]?)?(?:\s+#.*)?$")
 _YAML_DOUBLE_QUOTE_ESCAPES = {
     "0": "\0",
     "a": "\a",
@@ -61,6 +59,15 @@ def parse_frontmatter(text: str) -> dict[str, str] | None:
 
 def parse_frontmatter_bool(frontmatter: dict[str, str], field: str) -> bool:
     return strip_quotes(frontmatter.get(field, "")).lower() == "true"
+
+
+def frontmatter_string_value(text: str, field: str) -> str | None:
+    """Return a scalar field's decoded value, including multiline YAML forms."""
+    value = _raw_frontmatter_values(text).get(field)
+    if not isinstance(value, str):
+        return None
+    decoded = _decode_yaml_quoted_string(value.strip())
+    return decoded if decoded is not None else value
 
 
 def frontmatter_type_errors(
@@ -114,9 +121,7 @@ def _raw_frontmatter_values(text: str) -> dict[str, str | list[str]]:
             values[field] = "\n".join(scalar_lines)
             index = scalar_index
             continue
-        if raw_value.startswith(('"', "'")) and not _quoted_scalar_is_closed(
-            raw_value
-        ):
+        if raw_value.startswith(('"', "'")) and not _quoted_scalar_is_closed(raw_value):
             quoted_lines = [raw_value]
             quoted_index = index + 1
             while quoted_index < end:
@@ -130,9 +135,7 @@ def _raw_frontmatter_values(text: str) -> dict[str, str | list[str]]:
             continue
         if raw_value:
             values[field] = (
-                _strip_quoted_scalar_comment(raw_value)
-                if raw_value.startswith(('"', "'"))
-                else raw_value.strip()
+                _strip_quoted_scalar_comment(raw_value) if raw_value.startswith(('"', "'")) else raw_value.strip()
             )
             index += 1
             continue
@@ -154,10 +157,7 @@ def _raw_frontmatter_values(text: str) -> dict[str, str | list[str]]:
                 scalar_index = item_index + 1
                 while scalar_index < end:
                     scalar_line = lines[scalar_index]
-                    if (
-                        scalar_line.strip()
-                        and _leading_whitespace(scalar_line) <= item_indent
-                    ):
+                    if scalar_line.strip() and _leading_whitespace(scalar_line) <= item_indent:
                         break
                     if scalar_line.strip():
                         scalar_lines.append(scalar_line.strip())
@@ -213,17 +213,11 @@ def _strip_quoted_scalar_comment(value: str) -> str:
     if end is None:
         return value
     remainder = value[end + 1 :]
-    is_comment = (
-        bool(remainder)
-        and remainder[0].isspace()
-        and remainder.lstrip().startswith("#")
-    )
+    is_comment = bool(remainder) and remainder[0].isspace() and remainder.lstrip().startswith("#")
     return value[: end + 1] if is_comment else value
 
 
-def _has_indented_child(
-    lines: list[str], start: int, end: int, parent_indent: int
-) -> bool:
+def _has_indented_child(lines: list[str], start: int, end: int, parent_indent: int) -> bool:
     for index in range(start, end):
         line = lines[index]
         if not line.strip() or line.lstrip().startswith("#"):
@@ -252,9 +246,7 @@ def _is_yaml_boolean(value: str | list[str]) -> bool:
     if isinstance(value, list):
         return False
     decoded = _decode_yaml_quoted_string(value.strip())
-    normalized = (
-        (decoded if decoded is not None else strip_quotes(value)).strip().lower()
-    )
+    normalized = (decoded if decoded is not None else strip_quotes(value)).strip().lower()
     return normalized in _YAML_BOOLEAN_VALUES
 
 
@@ -284,9 +276,7 @@ def _is_non_empty_yaml_scalar_string(
 def _is_non_empty_string_array(value: str | list[str]) -> bool:
     items = value if isinstance(value, list) else _parse_inline_array(value)
     if isinstance(value, list):
-        return bool(items) and all(
-            _is_non_empty_yaml_block_string(item) for item in items
-        )
+        return bool(items) and all(_is_non_empty_yaml_block_string(item) for item in items)
     return bool(items) and all(_is_non_empty_yaml_flow_string(item) for item in items)
 
 
@@ -309,11 +299,7 @@ def _is_non_empty_yaml_flow_string(value: str) -> bool:
             return False
         tagged_value = tag.group(2).strip()
         decoded_tagged_value = _decode_yaml_quoted_string(tagged_value)
-        normalized_tagged_value = (
-            decoded_tagged_value
-            if decoded_tagged_value is not None
-            else tagged_value
-        )
+        normalized_tagged_value = decoded_tagged_value if decoded_tagged_value is not None else tagged_value
         return bool(normalized_tagged_value.strip())
     decoded = _decode_yaml_quoted_string(normalized)
     if decoded is not None:
