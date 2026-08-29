@@ -232,7 +232,7 @@
       "paths": [
         "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md",
         "kramme-cc-workflow/skills/kramme:qa/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:pr:github-review/references/ui-relevance.md"
       ],
       "required_terms": [
         "*.tsx",
