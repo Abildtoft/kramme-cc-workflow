@@ -157,32 +157,125 @@ Then invoke `kramme:code:work-from-plan` with `{active-plan}`. A detached plan w
 
 ## Step 6: Complete the Pull Request Workflow
 
+### Recheck the Prepared Branch
+
+The implementation checkpoint is committed, but publication state may have changed since Step 4. Fail closed before review:
+
+1. Require `git status --porcelain` to be empty.
+2. Resolve and fetch `origin/{base-branch}` again. Require the fetched base name to equal the Step 4 base and the fetch to succeed.
+3. Capture the current branch as `{work-branch}`. Require it to equal `{plan-branch}`, differ from `{base-branch}`, and still pass the branch syntax checks from Step 4.
+4. Require at least one commit in `origin/{base-branch}..HEAD`.
+5. Use only the already validated `{active-plan}` as `{validated-scope-plan}`. Preserve `PLAN_SCOPE_MODE`, `{branch-base-commit}`, `SCOPE_PATHS`, and the validator-backed exact-file recheck; do not reparse the archive or widen its scope.
+6. Query `gh pr list --head "{work-branch}" --state all --limit 100 --json number,url,state,headRefName,headRefOid`. Require success and an empty list. API, authentication, network, rate-limit, or repository errors are blockers, not evidence of absence.
+7. Query `git ls-remote --heads origin "refs/heads/{work-branch}"`. Require success and a well-formed zero-line absent result.
+
+If the branch already has any Pull Request, route a later session to `kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}`. If only the remote branch exists, require coordination or a fresh source-workflow branch; this new-PR workflow never adopts it.
+
+### Invoke Review Convergence
+
+Set `{work-id}` to `{execution-label}` and `{archive-key}` to `code-plan-to-pr`. Build one frozen `{work-requirements}` handoff before delegation: state that `{validated-scope-plan}` is the authoritative prepared-work contract. Preserve its work label and require `kramme:pr:review-convergence` to validate the archive, read the complete plan, and freeze its goal, context, in-scope paths, requirements, completion criteria, verification obligations, constraints, and non-goals without inventing or thinning them.
+
 Build delegated arguments:
 
 ```text
---work-id {execution-label} --scope-plan {active-plan}
+--work-id {work-id} --archive-key {archive-key} --scope-plan {validated-scope-plan} [--strict] --requirements {work-requirements}
 ```
 
-Append `--strict` when `STRICT_REVIEW=true` and `--ship` when `SHIP_MODE=true`. Invoke `kramme:pr:complete-work` once with those arguments and capture its structured completion disposition. That hidden orchestrator must delegate the frozen archived-plan contract to `kramme:pr:review-convergence`; do not recreate review gates or a separate remediation budget in this caller.
+Append `--strict` only when `STRICT_REVIEW=true`. Invoke `kramme:pr:review-convergence` once and capture its structured handoff. Continue only when it returns `Review convergence: passed`, normal mode, the exact work ID and branch, a clean current tree matching its review tree, complete ordered-gate evidence, no required or blocked finding, and passed final verification. JSON-decode its `Requirements JSON` field and require the decoded value to equal `{work-requirements}` byte-for-byte.
 
-When it returns `success`, update only the archived plan set:
+For plan scope, require the handoff's validated scope plan, scope mode, scope base, and normalized paths to equal `{validated-scope-plan}`, `PLAN_SCOPE_MODE`, `{branch-base-commit}`, and `SCOPE_PATHS`. Preserve those exact returned values as `{scope-base-commit}`, `VALIDATED_SCOPE_PATHS`, and `RECHECK_STANDALONE_SCOPE`; they are the only scope state the shipping contract may use. Stop at any missing invariant. Never reconstruct or restart the delegated remediation loop in this caller.
 
-- Require the current branch to remain `{plan-branch}` and the worktree to be clean. Require the delegated work branch and local head/tree to equal the observed branch and full local `HEAD`/`HEAD^{tree}`. Collect every committed path in `{branch-base-commit}..HEAD`; require exact equality with one normalized scope path when `PLAN_SCOPE_MODE=exact-files`, and otherwise allow exact path or directory containment; stop without advancing plan state on the first mismatch.
+### Stop or Ship
+
+If `SHIP_MODE=false`, do not invoke `kramme:pr:create`. Produce this structured completion result, then continue to the archive finalization below:
+
+```text
+Completion disposition: success
+Pre-publication quality and verification: passed
+Publication state: absent
+Work branch: {work-branch}
+Local head/tree: {head} {tree}
+Remote head: absent
+Work item: {work-id}
+Implementation: complete
+Quality gates: complete ({standard|strict}; {active gates})
+Skipped gates: {gate + evidence-based reason | none}
+Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
+Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
+Verification: passed
+Pull Request: not created (--ship was not supplied)
+Blocker: none
+Recovery: none
+Next: $kramme:pr:create --auto --require-generated-description
+Then: $kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}
+```
+
+If `SHIP_MODE=true`, read `references/shipping-contract.md` and follow it completely. On success, produce this structured completion result:
+
+```text
+Completion disposition: success
+Pre-publication quality and verification: passed
+Publication state: open Pull Request
+Work branch: {work-branch}
+Local head/tree: {final-head} {final-tree}
+Remote head: {final-head}
+Work item: {work-id}
+Implementation: complete
+Quality gates: complete ({standard|strict}; {active gates})
+Skipped gates: {gate + evidence-based reason | none}
+Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
+Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
+Verification: initial tree {verified-tree} passed; final tree {final-tree} {unchanged|passed fresh verification}
+CI: {green|none configured}; review feedback addressed; final tree {final-tree}
+Pull Request: {url}
+Blocker: none
+Recovery: none
+History: narrative rewrite completed before PR creation; CI fix commits retained separately; final remote head matches the clean local tree
+```
+
+Replace success wording with the exact limitation when coverage is degraded, a check is skipped, or the workflow stops.
+
+### Completion Return Contract
+
+Every completion path must supply enough structured state for the archive finalization below:
+
+```text
+Completion disposition: success | prepublication_blocked | published_blocked
+Pre-publication quality and verification: passed | incomplete
+Publication state: absent | remote branch only | open Pull Request
+Work branch: {work-branch}
+Local head/tree: {head} {tree}
+Remote head: {oid | absent | unverified}
+Pull Request: {url | absent | unverified}
+Blocker: {exact blocker | none}
+Recovery: {exact next invocation | none}
+```
+
+- `success` means the requested non-ship or ship workflow completed.
+- `prepublication_blocked` means no remote branch or Pull Request exists. Preserve the exact clean local checkpoint so this source workflow can resume completion without rerunning implementation.
+- `published_blocked` means the exact branch was published or its Pull Request was created after quality convergence and final verification, but creation, CI/review stabilization, or final proof stopped. Preserve the shipping-contract handoff and do not call the overall result successful.
+- Never produce `prepublication_blocked` over a dirty tree, an unverified branch/head/tree, or unknown remote state. Treat any unstructured or incomplete result as a raw blocker.
+
+When the completion result is `success`, update only the archived plan set:
+
+- Require the current branch to remain `{plan-branch}` and the worktree to be clean. Require the work branch and local head/tree recorded by the completion result to equal the observed branch and full local `HEAD`/`HEAD^{tree}`. Collect every committed path in `{branch-base-commit}..HEAD`; require exact equality with one normalized scope path when `PLAN_SCOPE_MODE=exact-files`, and otherwise allow exact path or directory containment; stop without advancing plan state on the first mismatch.
 - Set the selected plan header and matching index row to `DONE`.
-- Add or refresh `## Execution Result` in the selected plan with completion date, verification evidence, full completion commit OID, final branch, and the exact delegated `Publication state`. When publication is absent, require the delegate to have reported both the remote branch and Pull Request absent, record `Publication state: absent`, and omit Pull Request identity, blocker, and recovery fields. When a Pull Request exists, record its exact number, URL, repository, state, base ref, head branch, and head OID. Do not record a `Landed commit` merely because implementation or Pull Request creation completed.
+- Add or refresh `## Execution Result` in the selected plan with completion date, verification evidence, full completion commit OID, final branch, and the exact `Publication state` recorded by the completion result. When publication is absent, require the result to report both the remote branch and Pull Request absent, record `Publication state: absent`, and omit Pull Request identity, blocker, and recovery fields. When a Pull Request exists, record its exact number, URL, repository, state, base ref, head branch, and head OID. Do not record a `Landed commit` merely because implementation or Pull Request creation completed.
 - Replace `## Workflow State` with `Stage: COMPLETE` and the final local head/tree while preserving the plan-set, plan, branch, base, and scope provenance fields.
 - Preserve every other plan's status and every rejection ID.
 - Re-read the archive and require index/plan status agreement.
 
 These updates are gitignored workflow state and do not alter the verified or shipped tree.
 
-When the delegate returns a blocker, fail closed while preserving a usable recovery state:
+When completion is blocked, fail closed while preserving a usable recovery state:
 
 1. Require the current branch to remain `{plan-branch}` and classify `git status --porcelain`; never create a retry checkpoint or advance source state over a dirty worktree.
-2. Require the structured disposition to be `prepublication_blocked` or `published_blocked`, then re-query the exact Pull Request and remote branch state. Authentication, API, network, repository, malformed-output, or disagreement with the delegate's publication state is a blocker and must be reported without guessing or advancing plan status.
-3. For `prepublication_blocked`, require both the Pull Request and remote branch to remain absent. Leave the plan/index status at `IN_PROGRESS`. Collect every committed path from `{branch-base-commit}` to current `HEAD`; require exact equality with one normalized scope path when `PLAN_SCOPE_MODE=exact-files`, and otherwise allow exact path or directory containment. Capture the exact head/tree, require them to match the delegate's checkpoint, and replace `## Workflow State` with `Stage: QUALITY_BLOCKED` plus the delegate's blocker and the full checkpoint provenance. Report the archived selected-plan path as the supported retry input.
-4. For `published_blocked`, require `Pre-publication quality and verification: passed` and require the re-queried publication state and local/remote identities to match the delegated handoff. Recheck every committed path from `{branch-base-commit}` to current `HEAD` using exact equality when `PLAN_SCOPE_MODE=exact-files`, and otherwise exact path or directory containment. Rerun the validator before advancing archive state, requiring exact-file eligibility only when `PLAN_SCOPE_MODE=exact-files`. If the delegate reported an out-of-scope post-publication path, either check finds one, or exact-file eligibility is no longer valid in exact-file mode, preserve the first mismatch as the exact shipping blocker and continue to item 5 without setting `DONE` or `PUBLISHED_BLOCKED`. Once the publication and identity proofs pass, set the selected plan and matching index row to `DONE`, add or refresh `## Execution Result` with completion evidence, final branch, publication state, the exact shipping blocker, the exact delegated `Recovery` payload, and, when a Pull Request exists, its exact number, URL, repository, state, base ref, head branch, and head OID; then set `## Workflow State` to `Stage: PUBLISHED_BLOCKED`. Re-read for status agreement. Report only that recorded recovery (the exact synced scoped recovery payload when a Pull Request exists, or the manual Pull Request creation payload when only the branch was published), and state explicitly that the source workflow is not a valid post-publication recovery path.
+2. Require the structured disposition to be `prepublication_blocked` or `published_blocked`, then re-query the exact Pull Request and remote branch state. Authentication, API, network, repository, malformed-output, or disagreement with the completion result's publication state is a blocker and must be reported without guessing or advancing plan status.
+3. For `prepublication_blocked`, require both the Pull Request and remote branch to remain absent. Leave the plan/index status at `IN_PROGRESS`. Collect every committed path from `{branch-base-commit}` to current `HEAD`; require exact equality with one normalized scope path when `PLAN_SCOPE_MODE=exact-files`, and otherwise allow exact path or directory containment. Capture the exact head/tree, require them to match the result's checkpoint, and replace `## Workflow State` with `Stage: QUALITY_BLOCKED` plus the result's blocker and the full checkpoint provenance. Report the archived selected-plan path as the supported retry input.
+4. For `published_blocked`, require `Pre-publication quality and verification: passed` and require the re-queried publication state and local/remote identities to match the completion handoff. Recheck every committed path from `{branch-base-commit}` to current `HEAD` using exact equality when `PLAN_SCOPE_MODE=exact-files`, and otherwise exact path or directory containment. Rerun the validator before advancing archive state, requiring exact-file eligibility only when `PLAN_SCOPE_MODE=exact-files`. If the completion result reports an out-of-scope post-publication path, either check finds one, or exact-file eligibility is no longer valid in exact-file mode, preserve the first mismatch as the exact shipping blocker and continue to item 5 without setting `DONE` or `PUBLISHED_BLOCKED`. Once the publication and identity proofs pass, set the selected plan and matching index row to `DONE`, add or refresh `## Execution Result` with completion evidence, final branch, publication state, the exact shipping blocker, the exact `Recovery` payload recorded by the completion result, and, when a Pull Request exists, its exact number, URL, repository, state, base ref, head branch, and head OID; then set `## Workflow State` to `Stage: PUBLISHED_BLOCKED`. Re-read for status agreement. Report only that recorded recovery (the exact synced scoped recovery payload when a Pull Request exists, or the manual Pull Request creation payload when only the branch was published), and state explicitly that the source workflow is not a valid post-publication recovery path.
 5. For an unstructured blocker or any failed proof above, retain the last valid archive state, report that no resumable checkpoint or implementation-finalization update was made, and surface the exact missing proof. The mere appearance of a concurrent remote branch is never evidence that this invocation completed pre-publication quality and verification.
+
+Review reports are produced and owned by `kramme:pr:review-convergence`, consumed during triage, and moved to `.context/{archive-key}/reviews/`. They remain gitignored and never enter the Pull Request. Implementation and remediation commits are consumed by `kramme:pr:create`, then refreshed only by accepted CI/review fixes. The Pull Request is created only after review and verification pass; merge or close retires it.
 
 `DONE` continues to mean implementation completion, not landing. A dependent plan still cannot start until Step 4 proves a merged Pull Request or explicit landed commit is reachable from the fetched base.
 
