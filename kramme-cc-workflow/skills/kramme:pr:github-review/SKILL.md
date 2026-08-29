@@ -149,7 +149,7 @@ TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
 WORKTREE_DIR="$TMP_PARENT/wt"
 if ! git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD; then
   echo "Failed to create review worktree." >&2
-  if ! rmdir "$TMP_PARENT" 2> /dev/null; then
+  if ! rmdir "$TMP_PARENT"; then
     echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
   fi
   exit 1
@@ -170,7 +170,7 @@ if ! RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --base "$
   echo "Base/diff collection failed; see the message above." >&2
   cd "$ORIG_ROOT"
   if git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
-    if ! rmdir "$TMP_PARENT" 2> /dev/null; then
+    if ! rmdir "$TMP_PARENT"; then
       echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
     fi
   else
@@ -228,7 +228,7 @@ if [ "${KEEP_WORKTREE:-false}" = "true" ]; then
   echo "Worktree kept at: $WORKTREE_DIR"
 else
   if git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
-    if ! rmdir "$TMP_PARENT" 2> /dev/null; then
+    if ! rmdir "$TMP_PARENT"; then
       echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
     fi
   else
