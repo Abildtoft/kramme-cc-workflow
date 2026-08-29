@@ -145,6 +145,10 @@ Supported variables:
 - `find . -delete`
 - `find . -exec rm -rf {} \;`
 
+### Analysis Bound
+
+The hook follows supported nested shell commands, `eval`, shell functions, executable heredocs, and command/process substitutions through analysis depth 5. A command that would require deeper analysis is blocked with the generic `rm -rf` reason, even when the hidden payload would ultimately be safe. This fail-closed bound prevents extra nesting from turning an unclassified destructive command into an allow decision; simplify an over-nested command so the hook can classify it.
+
 ### Allowed Commands
 
 - `git rm` (tracked by git, recoverable)
