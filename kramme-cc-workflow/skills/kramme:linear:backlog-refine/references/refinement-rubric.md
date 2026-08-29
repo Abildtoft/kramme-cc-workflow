@@ -26,7 +26,27 @@ The target state is `agent-ready`: an autonomous agent with repository access an
 | --- | --- |
 | `active` | Updated, commented on, or related to active work within `--stale-days`. |
 | `stale` | No update within `--stale-days` and no evidence either way about relevance. |
-| `obsolete` | Evidence that the work is done, superseded, or no longer relevant: a comment saying it was fixed or abandoned, a completed duplicate, a referenced feature or system that no longer exists, or a closed parent. |
+
+Freshness measures recency only. It never treats delivered work as obsolete and never selects a terminal state by itself.
+
+## Resolution Evidence
+
+| Grade | Test |
+| --- | --- |
+| `delivered` | Concrete evidence shows that the requested outcome or acceptance criteria were delivered or one of the issue's explicitly permitted resolutions occurred. For a parent, its own requested outcome or acceptance criteria must be delivered and every required child must be complete. |
+| `cancel-supported` | Concrete evidence shows the work was superseded, abandoned, or is no longer relevant; or a stale, empty issue has no owner or remaining value signal after relations and comments are checked. |
+| `none` | No sufficient evidence supports either terminal outcome. Continue grading the issue; do not infer a terminal action. |
+
+Use the issue's own requested outcome and acceptance criteria as the completion boundary. Supporting evidence may include linked merged Pull Requests, shipped changes, passing acceptance coverage, comments that identify the delivered resolution, and completed required children. Inspect referenced evidence rather than relying on matching terminology or the state of a related issue.
+
+For a parent issue:
+
+- Verify that its requested outcome or acceptance criteria are delivered; child state alone is not enough when the parent outcome remains unmet.
+- Verify every required child is complete.
+- Ignore an unfinished child only when the parent explicitly identifies that child as optional, a follow-up, or out of scope.
+- When child requiredness or delivery evidence is ambiguous, use `none`; never assume `delivered`.
+
+Age alone, partial progress, a closed parent, similar code, or a completed duplicate is not delivery evidence for the issue being graded. Likewise, age alone is not cancellation evidence when the issue carries priority, customer need, a due date, a milestone, a blocking relation, or a recent value signal.
 
 ## Agent-Readiness
 
@@ -77,17 +97,18 @@ Apply the first matching row:
 
 | Condition | Action |
 | --- | --- |
-| `freshness = obsolete` | `archive` |
+| `resolution-evidence = delivered` | `complete` |
+| `resolution-evidence = cancel-supported` | `cancel` |
 | Duplicate of a canonical issue | `merge` |
 | `clarity = clear` and `scope = oversized` | `split` |
-| `clarity = clear` and `scope = pr-sized` and `freshness = active` and `agent-readiness = agent-ready` or `human-only` | `keep` |
 | `clarity = clear` and `scope = pr-sized` and `agent-readiness = needs-refinement` closable from Linear and the repository | `rewrite` |
 | `clarity = clear` and `scope = pr-sized` and `agent-readiness = needs-refinement` closable only by a person | `ask` |
-| `clarity = clear` and `scope = pr-sized` and `freshness = stale` with any value signal | `keep`, and note the staleness |
-| `clarity = clear` and `scope = pr-sized` and `freshness = stale` with no value signal | `ask` |
 | `clarity = vague` and enough context in Linear to draft a better description | `rewrite` |
 | `clarity = vague` or `empty` and the missing information exists only with a person | `ask` |
-| `clarity = empty` and `freshness = stale` with no value signal and no owner | `archive` |
+| `clarity = clear` and `scope = pr-sized` and `freshness = stale` with no value signal | `ask` |
+| `clarity = clear` and `scope = pr-sized` and `freshness = active` and `agent-readiness = agent-ready` or `human-only` | `keep` |
+| `clarity = clear` and `scope = pr-sized` and `freshness = stale` with any value signal | `keep`, and note the staleness |
+| `clarity = empty` and `freshness = stale` with no value signal and no owner after relations and comments are checked | `cancel` |
 
 Value signals: Linear priority of Medium or higher, a customer need, a due date, a milestone or release, a `blocks` relation, or a comment from the last `--stale-days` asking for the work.
 
