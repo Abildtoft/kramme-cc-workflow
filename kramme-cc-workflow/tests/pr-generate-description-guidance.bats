@@ -7,6 +7,7 @@ load 'test_helper/common'
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:pr:generate-description"
+    direct="$skill/references/direct-update.md"
 
     test -f "$skill/SKILL.md"
     test -f "$skill/references/context-gathering.md"
@@ -40,6 +41,10 @@ load 'test_helper/common'
     grep -qF "Apply the \`Red Flags — STOP\` section from the already-loaded reference" "$skill/SKILL.md"
     ! grep -qF "use proper heading hierarchy" "$skill/SKILL.md"
     ! grep -qF "using tables for structured data" "$skill/SKILL.md"
+    grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$direct"
+    grep -qF "gh pr view --json title,body > \"\$PR_BACKUP\"" "$direct"
+    grep -qF "Generated PR payload files are missing or indirect" "$direct"
+    ! grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$direct"
   '
 
 	assert_required_contracts_registered \
@@ -70,14 +75,35 @@ load 'test_helper/common'
     grep -qF -- "--auto --no-update --base {BASE_BRANCH} --base-commit {BASE_COMMIT}" "$update"
     grep -qF "This skill owns the mutation; generation remains output-only." "$update"
     grep -qF "Do not omit \`--no-update\`" "$update"
-    grep -qF "LATEST_HEAD\" != \"\$PR_HEAD" "$update"
-    grep -qF "LATEST_STATE\" != \"OPEN" "$update"
+    grep -qF "PR_SNAPSHOT=\$(gh pr view --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state)" "$skill"
+    grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$update"
+    grep -qF "Could not back up and revalidate PR #\$PR_NUMBER; no update was made." "$update"
+    grep -qF "LATEST_PR_SNAPSHOT\" != \"\$PR_SNAPSHOT" "$update"
+    grep -qF "PR_STATE\" != \"OPEN" "$update"
+    grep -qF "LATEST_HEAD\" != \"\$CURRENT_HEAD" "$update"
+    grep -qF "LATEST_BASE_COMMIT\" != \"\$BASE_COMMIT" "$update"
+    grep -qF "Generated PR payload files are missing or indirect" "$update"
     grep -qF "gh pr edit \"\$PR_NUMBER\"" "$update"
-    grep -qF -- "--body-file \"\$UPDATE_DIR/new-body.md\"" "$update"
+    grep -qF -- "--body-file \"\$PR_BODY_FILE\"" "$update"
+    ! grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$update"
+    confirmation_line=$(grep -nF "Found <N> finding(s). Generate a replacement title and body" "$skill" | cut -d: -f1)
+    delegation_line=$(grep -nF "read \`references/confirmed-update.md\` and follow it" "$skill" | cut -d: -f1)
+    storage_line=$(grep -nF "UPDATE_DIR=\$(mktemp -d" "$update" | cut -d: -f1)
+    backup_line=$(grep -nF "if ! env GH_PROMPT_DISABLED=1 gh pr view" "$update" | cut -d: -f1)
+    snapshot_line=$(grep -nF "LATEST_PR_SNAPSHOT\" != \"\$PR_SNAPSHOT" "$update" | cut -d: -f1)
+    payload_line=$(grep -nF "Generated PR payload files are missing or indirect" "$update" | cut -d: -f1)
+    edit_line=$(grep -nF "gh pr edit \"\$PR_NUMBER\"" "$update" | cut -d: -f1)
+    [ "$confirmation_line" -lt "$delegation_line" ]
+    [ "$storage_line" -lt "$payload_line" ]
+    [ "$payload_line" -lt "$backup_line" ]
+    [ "$backup_line" -lt "$snapshot_line" ]
+    [ "$snapshot_line" -lt "$edit_line" ]
     ! grep -qF "it will detect the existing PR and update it directly" "$skill"
   '
 
-	assert_required_contracts_registered pr-verify-description-confirmed-update
+	assert_required_contracts_registered \
+		pr-verify-description-confirmed-update \
+		pr-verify-description-snapshot-baseline
 
 	[ "$status" -eq 0 ]
 }

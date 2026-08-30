@@ -116,6 +116,25 @@ After each description edit, if `{linear-issue-id}` is present, keep the default
 
 Before any publication step, validate `{feature-branch}` before using it as a git ref. It must be the current branch captured from `git branch --show-current`, pass `git check-ref-format --branch`, contain no shell metacharacters or whitespace, and must not begin with `-`. Stop if validation fails.
 
+Immediately before publication, re-resolve the local and server-side stack boundary:
+
+```bash
+STACK_REVALIDATION_FAILED=false
+LATEST_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be revalidated; stop before publication." >&2
+  STACK_REVALIDATION_FAILED=true
+}
+if [ "$STACK_REVALIDATION_FAILED" = false ] && ! (
+  eval "$LATEST_STACK_RESOLVED"
+  [ "$STACK_MEMBERSHIP" = none ]
+); then
+  echo "The branch joined a local or server-side stack after initial validation; stop before publication." >&2
+  STACK_REVALIDATION_FAILED=true
+fi
+```
+
+If `STACK_REVALIDATION_FAILED=true`, treat the unresolved or non-`none` membership as authorization-invalidating state drift. When `FRESH_REMOTE_MODE=true`, execute Step 10 before stopping so the local rewrite and preserved user state are restored; in either existing-remote mode, stop without rollback because this workflow did not rewrite the branch. Do not publish or create a default-base Pull Request from stale unstacked authorization.
+
 Immediately before any push, repeat the fail-closed open-Pull-Request check. Disable GitHub CLI prompting and run the query with the shell tool's bounded timeout:
 
 ```bash

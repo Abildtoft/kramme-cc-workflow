@@ -816,6 +816,17 @@
       ]
     },
     {
+      "name": "pr-create-stack-publication-boundary",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "contains": [
+        "STACK_REVALIDATION_FAILED=false",
+        "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
+        "The branch joined a local or server-side stack after initial validation; stop before publication.",
+        "If `STACK_REVALIDATION_FAILED=true`",
+        "Do not publish or create a default-base Pull Request from stale unstacked authorization."
+      ]
+    },
+    {
       "name": "pr-create-push-failure-rollback",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "contains": [
@@ -910,10 +921,14 @@
         "### Model Invocation Contract",
         "No other parent workflow is authorized by the model-invocation exception",
         "Outside that exact `kramme:pr:create` delegation, never invent `--auto` or `--authorize-history-rewrite`",
+        "The model must never invent `--force-backup`",
+        "only with the exact retry-safe value supplied by `kramme:pr:create`",
         "[--require-unstacked] [--no-push] [--authorize-history-rewrite]",
         "If `REQUIRE_UNSTACKED=true`, require `STACK_MEMBERSHIP=none` immediately after this resolution",
         "stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed",
         "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches",
+        "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
+        "The branch joined a local or server-side stack after initial validation; stop before rewriting history.",
         "If `--no-push` was passed, do not run any push command",
         "If `IN_STACK=true` and `--auto` was passed without `--authorize-history-rewrite`, stop before the reset",
         "STACK_BRANCH_NAMES=$(resolve_stack_branch_names)",
@@ -1208,10 +1223,24 @@
         "--auto --no-update --base {BASE_BRANCH} --base-commit {BASE_COMMIT}",
         "This skill owns the mutation; generation remains output-only.",
         "Do not omit `--no-update`",
-        "LATEST_HEAD\" != \"$PR_HEAD",
-        "LATEST_STATE\" != \"OPEN",
+        "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
+        "Could not back up and revalidate PR #$PR_NUMBER; no update was made.",
+        "LATEST_PR_SNAPSHOT\" != \"$PR_SNAPSHOT",
+        "PR_STATE\" != \"OPEN",
+        "LATEST_HEAD\" != \"$CURRENT_HEAD",
+        "LATEST_BASE_COMMIT\" != \"$BASE_COMMIT",
+        "Generated PR payload files are missing or indirect",
         "gh pr edit \"$PR_NUMBER\"",
-        "--body-file \"$UPDATE_DIR/new-body.md\""
+        "--body-file \"$PR_BODY_FILE\""
+      ]
+    },
+    {
+      "name": "pr-verify-description-snapshot-baseline",
+      "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
+      "contains": [
+        "CURRENT_HEAD=$(git rev-parse --verify HEAD)",
+        "PR_SNAPSHOT=$(gh pr view --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state)",
+        "Retain the exact `PR_SNAPSHOT` bytes as the optimistic-concurrency baseline"
       ]
     },
     {
@@ -1319,7 +1348,13 @@
     {
       "name": "pr-generate-description-direct-update-safety",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/direct-update.md",
-      "contains": ["do not mutate tracked files"]
+      "contains": [
+        "do not mutate tracked files",
+        "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
+        "gh pr view --json title,body > \"$PR_BACKUP\"",
+        "Generated PR payload files are missing or indirect",
+        "--body-file \"$PR_BODY_FILE\""
+      ]
     },
     {
       "name": "linear-issue-implement-reference-mapping",

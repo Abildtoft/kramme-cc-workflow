@@ -26,63 +26,88 @@ Before writing files or calling GitHub, require all of the following:
 
 If validation fails, report which invariant failed and stop without editing the PR. Do not repair or infer missing child output in the parent.
 
-## 3. Revalidate the mutation target
+## 3. Prepare private payload storage
 
-Immediately before publication, confirm the checkout and exact PR still match the values captured in Phase 1:
+Keep generated content outside the repository and out of the shell parser. Allocate one private, unpredictable directory and reject an indirect result:
 
 ```bash
-LATEST_PR=$(gh pr view "$PR_NUMBER" --json number,headRefName,state \
-  --template '{{printf "%v\t%v\t%v" .number .headRefName .state}}') || {
-  echo "Error: Could not revalidate PR #$PR_NUMBER; no update was made." >&2
+umask 077
+UPDATE_DIR=$(mktemp -d "/tmp/kramme-pr-description.XXXXXX") || {
+  echo "Error: Could not allocate private PR update storage; no update was made." >&2
   exit 1
 }
-IFS=$'\t' read -r LATEST_NUMBER LATEST_HEAD LATEST_STATE <<< "$LATEST_PR"
-
-if [ "$LATEST_NUMBER" != "$PR_NUMBER" ] \
-  || [ "$LATEST_HEAD" != "$PR_HEAD" ] \
-  || [ "$(git branch --show-current)" != "$CURRENT_BRANCH" ] \
-  || [ "$LATEST_STATE" != "OPEN" ]; then
-  echo "Error: PR target changed or is no longer open; no update was made." >&2
+if [ ! -d "$UPDATE_DIR" ] || [ -L "$UPDATE_DIR" ]; then
+  echo "Error: PR update storage is not a private directory; no update was made." >&2
   exit 1
 fi
-```
+chmod 700 "$UPDATE_DIR" || {
+  echo "Error: Could not secure PR update storage; no update was made." >&2
+  exit 1
+}
 
-Do not substitute a newly discovered PR. A changed target requires a fresh verification and confirmation.
-
-## 4. Back up and publish safely
-
-Anchor files to the repository root and keep generated Markdown out of the shell parser:
-
-```bash
-REPO_ROOT=$(git rev-parse --show-toplevel)
-UPDATE_DIR="$REPO_ROOT/.kramme-cc-workflow/pr-description"
-mkdir -p "$UPDATE_DIR"
-
-GIT_EXCLUDE=$(git rev-parse --git-path info/exclude)
-mkdir -p "$(dirname "$GIT_EXCLUDE")"
-touch "$GIT_EXCLUDE"
-if ! grep -qxF ".kramme-cc-workflow/" "$GIT_EXCLUDE"; then
-  printf '\n.kramme-cc-workflow/\n' >> "$GIT_EXCLUDE"
-fi
-
-PR_BACKUP="$UPDATE_DIR/pr-body.backup.$(date -u +%Y%m%dT%H%M%SZ).$$.md"
-gh pr view "$PR_NUMBER" --json body --jq '.body' > "$PR_BACKUP" 2> /dev/null
-if [ ! -s "$PR_BACKUP" ]; then
-  PR_BACKUP=""
-fi
+PR_TITLE_FILE="$UPDATE_DIR/new-title.txt"
+PR_BODY_FILE="$UPDATE_DIR/new-body.md"
+PR_BACKUP="$UPDATE_DIR/pr-metadata.backup.json"
 ```
 
 Use the runtime's native file-write capability to write the validated content exactly as returned:
 
-- Title, one line without a trailing newline: `$UPDATE_DIR/new-title.txt`
-- Full description Markdown: `$UPDATE_DIR/new-body.md`
+- Title, one line without a trailing newline: `$PR_TITLE_FILE`
+- Full description Markdown: `$PR_BODY_FILE`
 
-Do not pass generated content through shell interpolation or a heredoc. Then update the captured PR explicitly:
+Require both paths to be regular, non-symlink files after writing. Do not pass generated content through shell interpolation or a heredoc.
 
 ```bash
-gh pr edit "$PR_NUMBER" \
-  --title "$(cat "$UPDATE_DIR/new-title.txt")" \
-  --body-file "$UPDATE_DIR/new-body.md"
+if [ ! -f "$PR_TITLE_FILE" ] || [ -L "$PR_TITLE_FILE" ] \
+  || [ ! -f "$PR_BODY_FILE" ] || [ -L "$PR_BODY_FILE" ]; then
+  echo "Error: Generated PR payload files are missing or indirect; no update was made." >&2
+  exit 1
+fi
+
+cleanup_pr_payload() {
+  rm -f -- "$PR_TITLE_FILE" "$PR_BODY_FILE"
+}
+trap cleanup_pr_payload EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 ```
 
-If the edit fails, report the error and stop. If it succeeds, report the PR URL and new title; include the backup path only when `PR_BACKUP` is non-empty. Return to Phase 1 so the verifier reads the published title/body again and reports the post-update result.
+## 4. Back up, revalidate, and publish
+
+Immediately before publication, fetch the complete mutation target into the private backup. Fail closed when the backup cannot be created; an empty PR body is valid because the backup is JSON rather than a body-only file.
+
+```bash
+if ! env GH_PROMPT_DISABLED=1 gh pr view "$PR_NUMBER" \
+  --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state \
+  > "$PR_BACKUP"; then
+  rm -f -- "$PR_BACKUP"
+  echo "Error: Could not back up and revalidate PR #$PR_NUMBER; no update was made." >&2
+  exit 1
+fi
+LATEST_PR_SNAPSHOT=$(< "$PR_BACKUP")
+LATEST_HEAD=$(git rev-parse --verify HEAD) || {
+  echo "Error: Could not revalidate the current commit; no update was made." >&2
+  exit 1
+}
+LATEST_BASE_COMMIT=$(git rev-parse "$BASE_REF^{commit}") || {
+  echo "Error: Could not revalidate the pinned base; no update was made." >&2
+  exit 1
+}
+
+if [ "$LATEST_PR_SNAPSHOT" != "$PR_SNAPSHOT" ] \
+  || [ "$PR_STATE" != "OPEN" ] \
+  || [ "$(git branch --show-current)" != "$CURRENT_BRANCH" ] \
+  || [ "$LATEST_HEAD" != "$CURRENT_HEAD" ] \
+  || [ "$LATEST_BASE_COMMIT" != "$BASE_COMMIT" ]; then
+  echo "Error: The PR is not open or its snapshot, checkout, head commit, or base changed; no update was made." >&2
+  echo "Run verification again and confirm the new snapshot before publishing." >&2
+  exit 1
+fi
+
+env GH_PROMPT_DISABLED=1 gh pr edit "$PR_NUMBER" \
+  --title "$(cat "$PR_TITLE_FILE")" \
+  --body-file "$PR_BODY_FILE"
+```
+
+Do not substitute a newly discovered PR. Any snapshot drift requires fresh verification and confirmation. If the edit fails, report the error and stop. If it succeeds, report the PR URL and new title plus `Previous PR metadata backed up to: $PR_BACKUP`. Return to Phase 1 so the verifier reads the published title/body again and reports the post-update result.

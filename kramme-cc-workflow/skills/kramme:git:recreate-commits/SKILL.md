@@ -15,6 +15,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 - Invoke automatically only when the user clearly requested commit recreation or an active `kramme:pr:create` invocation explicitly delegates this phase. Do not infer authorization merely because a branch appears ready for cleanup or Pull Request creation.
 - The guarded `kramme:pr:create` delegation must pass `--require-unstacked --no-push`, its pinned base commit, and its retry-safe backup ref. No other parent workflow is authorized by the model-invocation exception.
 - Outside that exact `kramme:pr:create` delegation, never invent `--auto` or `--authorize-history-rewrite`. Without those caller-supplied flags, retain every documented confirmation before reset, restack, or publication.
+- The model must never invent `--force-backup`. It may pass `--backup-ref` automatically only with the exact retry-safe value supplied by `kramme:pr:create`; outside that delegation, the user must have supplied the exact `--backup-ref` value. These flags can create or repoint a local branch before the reset confirmation, so a general request to recreate commits is not authorization to originate them.
 - Model invocation changes routing only. It does not relax backup creation, branch and stack validation, final-tree identity, or lease-protected publication.
 
 **When not to use:** Don't run this on a branch that is already merged, on a protected or shared base branch, or on a branch other contributors have based active work on without coordinating first — the recreation rewrites history and the remote can only be updated with a force-push.
@@ -177,13 +178,26 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
    - Immediately before resetting, revalidate the branch, original tip, ordinary untracked work, and ignored paths that overlap the reset point:
 
      ```bash
+     if [ "${REQUIRE_UNSTACKED:-false}" = true ]; then
+       LATEST_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+         echo "Stack membership could not be revalidated; stop before rewriting history." >&2
+         exit 1
+       }
+       if ! (
+         eval "$LATEST_STACK_RESOLVED"
+         [ "$STACK_MEMBERSHIP" = none ]
+       ); then
+         echo "The branch joined a local or server-side stack after initial validation; stop before rewriting history." >&2
+         exit 1
+       fi
+     fi
      "${CLAUDE_PLUGIN_ROOT}/scripts/verify-rewrite-state.sh" \
        --expected-branch "$ORIGINAL_BRANCH" \
        --expected-tip "$ORIGINAL_TIP" \
        --reset-point "$RESET_POINT"
      ```
 
-     Any failure stops the workflow. Do not rely only on the earlier backup-time validation: diff analysis and commit planning create a real window in which the checkout can change.
+     Any failure stops the workflow. Do not rely only on the earlier backup-time or stack-membership validation: diff analysis and commit planning create a real window in which the checkout or authorization boundary can change.
 
    - Reset the branch to the reset point: `git reset --hard "$RESET_POINT"`. (`RESET_POINT` is `AFTER_COMMIT` when `--after` was given, otherwise the merge base.)
    - Rebuild the changes commit by commit. To guarantee a byte-identical end state, source the final content from `$ORIGINAL_TIP` rather than retyping it (retyping is how extra lines and drift creep in):

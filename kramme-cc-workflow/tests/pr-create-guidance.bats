@@ -38,11 +38,22 @@ file_mode() {
     grep -qF "### Model Invocation Contract" "$recreate"
     grep -qF "No other parent workflow is authorized by the model-invocation exception" "$recreate"
     grep -qF "Outside that exact \`kramme:pr:create\` delegation, never invent \`--auto\` or \`--authorize-history-rewrite\`" "$recreate"
+    grep -qF "The model must never invent \`--force-backup\`" "$recreate"
+    grep -qF "only with the exact retry-safe value supplied by \`kramme:pr:create\`" "$recreate"
     grep -qF "Every model-initiated invocation must include \`--no-update\`" "$description"
     grep -qF "[--authorize-history-rewrite]" "$create"
     grep -qF "AUTHORIZE_HISTORY_REWRITE=true" "$create"
     grep -qF "Auto mode does not set this variable" "$create"
     grep -qF -- "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"" "$create"
+    [ "$(grep -cF "skill: \"kramme:git:recreate-commits\", args:" "$create")" -eq 4 ]
+    while IFS= read -r invocation; do
+      case "$invocation" in
+        *"--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push"*) ;;
+        *) exit 1 ;;
+      esac
+    done < <(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create")
+    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--auto ")" -eq 2 ]
+    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--authorize-history-rewrite")" -eq 2 ]
     grep -qF "pass \`--authorize-history-rewrite\` only when the user supplied that flag" "$create"
     ! grep -qF "args: \"--auto --no-push\"" "$create"
     grep -qF "Always pass \`--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\`" "$create"
@@ -84,6 +95,7 @@ file_mode() {
 	assert_required_contracts_registered \
 		pr-create-description-generation-contract \
 		pr-create-history-rewrite-authorization \
+		pr-create-stack-publication-boundary \
 		pr-create-deferred-upstream-contract \
 		pr-create-absence-lease-contract \
 		pr-create-origin-push-url-helper \
@@ -109,6 +121,10 @@ file_mode() {
     grep -qF "If \`REQUIRE_UNSTACKED=true\`, require \`STACK_MEMBERSHIP=none\` immediately after this resolution" "$recreate"
     grep -qF "stop before the reset, even when \`--auto\` or \`--authorize-history-rewrite\` was passed" "$recreate"
     grep -qF "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches" "$recreate"
+    grep -qF "The branch joined a local or server-side stack after initial validation; stop before rewriting history." "$recreate"
+    latest_stack_line=$(grep -nF "LATEST_STACK_RESOLVED=" "$recreate" | tail -1 | cut -d: -f1)
+    reset_line=$(grep -nF "git reset --hard \"\$RESET_POINT\"" "$recreate" | head -1 | cut -d: -f1)
+    [ "$latest_stack_line" -lt "$reset_line" ]
     grep -qF "STACK_BRANCH_NAMES=\$(resolve_stack_branch_names)" "$recreate"
     grep -qF "require its output to equal \`STACK_BRANCH_NAMES\` byte-for-byte" "$recreate"
     grep -qF "enumerate every branch in \`STACK_BRANCHES\`" "$recreate"
@@ -118,6 +134,12 @@ file_mode() {
     grep -qF -- "--base-branch \"\$BASE_BRANCH\"" "$recreate"
     grep -qF "[ \"\$(git symbolic-ref --quiet --short HEAD)\" = \"\$ORIGINAL_BRANCH\" ]" "$recreate"
     grep -qF "verify-rewrite-state.sh" "$recreate"
+    publication="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    grep -qF "STACK_REVALIDATION_FAILED=false" "$publication"
+    grep -qF "Do not publish or create a default-base Pull Request from stale unstacked authorization." "$publication"
+    publication_stack_line=$(grep -nF "LATEST_STACK_RESOLVED=" "$publication" | head -1 | cut -d: -f1)
+    first_push_line=$(grep -nF "git push --no-follow-tags" "$publication" | head -1 | cut -d: -f1)
+    [ "$publication_stack_line" -lt "$first_push_line" ]
     grep -qF "The current branch changed after push-target resolution; stop before pushing." "$recreate"
     grep -qF "without the captured ref-specific \`--force-with-lease\`" "$recreate"
     grep -qF -- "--no-follow-tags" "$recreate"

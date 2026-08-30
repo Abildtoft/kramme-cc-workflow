@@ -80,11 +80,16 @@ Classify each potential drift point against the rubric below. Severity drives th
    fi
    ```
 
-2. Confirm and capture the current branch:
+2. Confirm and capture the current branch and commit:
 
    ```bash
    CURRENT_BRANCH=$(git branch --show-current)
+   CURRENT_HEAD=$(git rev-parse --verify HEAD) || {
+     echo "Error: Could not capture the current commit." >&2
+     exit 1
+   }
    printf '%s\n' "$CURRENT_BRANCH"
+   printf '%s\n' "$CURRENT_HEAD"
    ```
 
 3. Resolve the base branch with the shared plugin script. It uses the same 3-tier strategy: explicit `--base` override, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message instead of being silently swallowed:
@@ -92,7 +97,6 @@ Classify each potential drift point against the rubric below. Severity drives th
    ```bash
    RESOLVE_ARGS=(--strict)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
-
    RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
      echo "Error: Could not resolve base branch; see the message above. Re-run with --base <ref>." >&2
      exit 1
@@ -112,7 +116,12 @@ Classify each potential drift point against the rubric below. Severity drives th
 4. **ALWAYS** confirm a PR exists for the current branch and is in an open state:
 
    ```bash
-   gh pr view --json number,url,title,body,baseRefName,headRefName,state
+   PR_SNAPSHOT=$(gh pr view --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state) || {
+     echo "MISSING REQUIREMENT: no PR found for the current branch." >&2
+     echo "Run \`/kramme:pr:create\` or \`/kramme:pr:generate-description\` first." >&2
+     exit 1
+   }
+   printf '%s\n' "$PR_SNAPSHOT"
    ```
 
    If no PR exists, stop with:
@@ -124,7 +133,7 @@ Classify each potential drift point against the rubric below. Severity drives th
 
    If `state` is not `OPEN` (i.e. `MERGED` or `CLOSED`), warn but continue — verifying a merged PR's drift is occasionally useful (e.g. when preparing a follow-up). Prepend a `PR state: <STATE> (verification on non-open PR)` line to the report header so the user notices.
 
-   Capture `PR_NUMBER`, `PR_URL`, `PR_TITLE`, `PR_BODY`, `PR_HEAD`, and `PR_STATE` for downstream phases.
+   Capture `PR_NUMBER`, `PR_URL`, `PR_TITLE`, `PR_BODY`, `PR_BASE`, `PR_HEAD`, `PR_BASE_OID`, `PR_HEAD_OID`, and `PR_STATE` for downstream phases. Retain the exact `PR_SNAPSHOT` bytes as the optimistic-concurrency baseline for an optional confirmed update.
 
 ### Phase 2: Diff and Commit Gathering
 
@@ -136,17 +145,16 @@ Classify each potential drift point against the rubric below. Severity drives th
    git log origin/$BASE_BRANCH..HEAD --format="%h %s%n%b%n"
    ```
 
-2. Include local uncommitted work in the diff scope (the PR body should match what *will* be on the branch after the next push):
+2. Include local uncommitted work in the diff scope (the PR body should match what _will_ be on the branch after the next push):
 
    ```bash
    git status --porcelain
-   git diff HEAD       # staged + unstaged
+   git diff HEAD # staged + unstaged
    ```
 
    If local changes exist, **ALWAYS** note this in the report header (`Local uncommitted changes included in scope: <N> files`). If they're substantial and the user is verifying "after pushing", warn them that the comparison includes work not yet on the remote.
 
 3. Categorize changed files for the rubric:
-
    - Migrations / schema changes
    - New or removed endpoints / routes
    - New or removed dependencies (package.json, requirements.txt, go.mod, etc.)
@@ -180,10 +188,15 @@ Present an inline report (do not write a separate file). Use this structure:
 # PR Description Verification — #<PR_NUMBER>
 
 **PR:** <PR_URL>
+
 **Title:** <current title>
+
 **Base:** <BASE_BRANCH> · **Head:** <current branch>
+
 **Mode:** loose | strict
+
 **PR state:** <STATE> (only show this line when state is not OPEN)
+
 **Local uncommitted changes included in scope:** <N> files (only show when N > 0)
 
 ## Verdict
@@ -196,7 +209,7 @@ Present an inline report (do not write a separate file). Use this structure:
 
 ### Critical
 
-- **[Type]** *(Location)* — <one-sentence summary>
+- **[Type]** _(Location)_ — <one-sentence summary>
   - Body says: "<quoted or paraphrased>"
   - Diff shows: <evidence with file paths>
   - Fix: <concrete recommendation>
@@ -260,12 +273,12 @@ Use these uppercase markers in the report (and in conversation output around it)
 
 Watch for these — each one means a finding is about to be wrongly suppressed:
 
-- *"The diff is small, the description doesn't need to cover everything."* → Size doesn't excuse contradictions. A two-line diff that flips a default still needs that line in the body.
-- *"The reviewer can see the migration in the file tree."* → The body's `Potential concerns` block is the contract; visible-in-diff does not equal disclosed.
-- *"The title says `fix` but it's basically a fix."* → Conventional Commit type drives changelogs and release notes. If the dominant change is a feature, the title is wrong regardless of how the author thinks of it.
-- *"SemVer can wait until release day."* → SemVer is the consumer promise. A PR that changes a public contract must disclose the version and migration implications while reviewers can still evaluate them.
-- *"`Things I didn't touch: None` is fine — the author probably considered it."* → Only fine when nothing adjacent was changed. If the diff touches adjacent files, the block needs an entry.
-- *"The author will rewrite the description before merge anyway."* → Maybe — but the point of this skill is to remove that step or to make it explicit now, not to assume future cleanup.
+- _"The diff is small, the description doesn't need to cover everything."_ → Size doesn't excuse contradictions. A two-line diff that flips a default still needs that line in the body.
+- _"The reviewer can see the migration in the file tree."_ → The body's `Potential concerns` block is the contract; visible-in-diff does not equal disclosed.
+- _"The title says `fix` but it's basically a fix."_ → Conventional Commit type drives changelogs and release notes. If the dominant change is a feature, the title is wrong regardless of how the author thinks of it.
+- _"SemVer can wait until release day."_ → SemVer is the consumer promise. A PR that changes a public contract must disclose the version and migration implications while reviewers can still evaluate them.
+- _"`Things I didn't touch: None` is fine — the author probably considered it."_ → Only fine when nothing adjacent was changed. If the diff touches adjacent files, the block needs an entry.
+- _"The author will rewrite the description before merge anyway."_ → Maybe — but the point of this skill is to remove that step or to make it explicit now, not to assume future cleanup.
 
 ## Red Flags — STOP
 

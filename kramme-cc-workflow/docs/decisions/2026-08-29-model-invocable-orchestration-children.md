@@ -13,7 +13,7 @@ Claude Code rejects Skill-tool invocation of any skill with `disable-model-invoc
 
 Permit a narrow exception to the default rule that side-effecting skills are model-disabled. Apply it only to these children of `kramme:pr:create`:
 
-- `kramme:git:recreate-commits` is model-invocable only for direct user requests and delegation from `pr:create`. The parent always supplies `--require-unstacked`, `--no-push`, a pinned base commit, and a retry-safe backup ref. The directly invoked parent owns the authorization represented by its `--auto` or `--authorize-history-rewrite` mode, preserves its unstacked-only boundary across delegation, and remains the sole remote publisher.
+- `kramme:git:recreate-commits` is model-invocable only for direct user requests and delegation from `pr:create`. The parent always supplies `--require-unstacked`, `--no-push`, a pinned base commit, and a retry-safe backup ref. The child revalidates unstacked membership at the reset boundary, and the parent repeats that check at publication. The directly invoked parent owns the authorization represented by its `--auto` or `--authorize-history-rewrite` mode and remains the sole remote publisher. Model callers cannot invent `--force-backup`; only `pr:create` may automatically supply its exact derived `--backup-ref`.
 - `kramme:pr:generate-description` is model-invocable, but every model caller must supply `--no-update`. Only a direct user invocation may omit that guard and update an existing Pull Request.
 
 Each child must narrowly route model use, document its least-side-effect model contract, and retain its existing confirmation and validation gates. Focused tests must pin the parent arguments.
