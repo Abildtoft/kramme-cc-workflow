@@ -10,6 +10,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 ### Changed
 
+- **Breaking:** Remove `/kramme:launch:announce` and `/kramme:launch:rollout`; launch-copy drafting and rollout planning remain available as ordinary agent requests, but no dedicated replacement preserves staged execution, monitoring and rollback gates, temporary-control cleanup, or rollout-owned Product Pulse handoff production.
 - **Breaking:** Remove `/kramme:changelog:generate`; daily and weekly merge summaries and plugin release-note queries no longer have a dedicated skill.
 - **Breaking:** Expand `/kramme:setup --json` required-runtime reporting: Bash, `jq`, Python, and Node now appear in `required`; Python and Node can report `outdated` or `error`; and `jq` and Node no longer appear in `recommended`. Consumers must locate tools by `name` instead of assuming group membership and treat every non-`ok` required status as blocking. Ship this contract change only in the next major release.
 - Breaking: Replaced `/kramme:visual:diff-review [branch|commit|PR#|range]` with `/kramme:pr:walkthrough --report [branch|commit|PR#|range]`.
