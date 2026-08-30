@@ -823,7 +823,12 @@
         "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
         "The branch joined a local or server-side stack after initial validation; stop before publication.",
         "If `STACK_REVALIDATION_FAILED=true`",
-        "Do not publish or create a default-base Pull Request from stale unstacked authorization."
+        "Do not publish or create a default-base Pull Request from stale unstacked authorization.",
+        "FINAL_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
+        "The branch joined a local or server-side stack before the fast-forward push",
+        "The branch joined a local or server-side stack before the fresh push",
+        "The branch joined a local or server-side stack before Pull Request creation",
+        "If this final stack guard fails"
       ]
     },
     {
@@ -1220,16 +1225,19 @@
       "name": "pr-verify-description-confirmed-update",
       "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/references/confirmed-update.md",
       "contains": [
-        "--auto --no-update --base {BASE_BRANCH} --base-commit {BASE_COMMIT}",
+        "--auto --no-update --base {base-branch} --base-commit {base-commit}",
         "This skill owns the mutation; generation remains output-only.",
         "Do not omit `--no-update`",
         "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
+        "Capture the single printed line as agent-tracked `{update-dir}`",
+        "UPDATE_DIR=\"{update-dir}\"",
         "Could not back up and revalidate PR #$PR_NUMBER; no update was made.",
-        "LATEST_PR_SNAPSHOT\" != \"$PR_SNAPSHOT",
+        "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"$PR_SNAPSHOT_FINGERPRINT",
         "PR_STATE\" != \"OPEN",
         "LATEST_HEAD\" != \"$CURRENT_HEAD",
         "LATEST_BASE_COMMIT\" != \"$BASE_COMMIT",
-        "Generated PR payload files are missing or indirect",
+        "LATEST_WORKTREE_FINGERPRINT\" != \"$WORKTREE_FINGERPRINT",
+        "Generated PR payload storage is missing or indirect",
         "gh pr edit \"$PR_NUMBER\"",
         "--body-file \"$PR_BODY_FILE\""
       ]
@@ -1239,8 +1247,12 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
       "contains": [
         "CURRENT_HEAD=$(git rev-parse --verify HEAD)",
-        "PR_SNAPSHOT=$(gh pr view --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state)",
-        "Retain the exact `PR_SNAPSHOT` bytes as the optimistic-concurrency baseline"
+        "PR_SNAPSHOT=$(env GH_PROMPT_DISABLED=1 gh pr view",
+        "Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above.",
+        "PR_SNAPSHOT_FINGERPRINT=$(printf '%s' \"$PR_SNAPSHOT\" | git hash-object --stdin)",
+        "WORKTREE_MANIFEST=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh\")",
+        "Capture the full 40-character value as immutable agent-tracked `{worktree-fingerprint}`",
+        "--fix is unavailable for a <PR_STATE> Pull Request"
       ]
     },
     {
@@ -1351,9 +1363,31 @@
       "contains": [
         "do not mutate tracked files",
         "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
+        "Capture the single printed line as agent-tracked `{update-dir}`",
+        "UPDATE_DIR=\"{update-dir}\"",
         "gh pr view --json title,body > \"$PR_BACKUP\"",
         "Generated PR payload files are missing or indirect",
         "--body-file \"$PR_BODY_FILE\""
+      ]
+    },
+    {
+      "name": "pr-generate-description-save-and-checklist-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+      "contains": [
+        "SAVE_NAMESPACE=\"$REPO_ROOT/.kramme-cc-workflow\"",
+        "PR description save path is indirect; no file was written.",
+        "if ! grep -qxF \".kramme-cc-workflow/\" \"$GIT_EXCLUDE\"",
+        "write the description there with the runtime's native file-write capability"
+      ]
+    },
+    {
+      "name": "pr-generate-description-direct-update-checklist",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/verification-checklist.md",
+      "contains": [
+        "captured one validated private `/tmp` directory as agent state",
+        "mandatory title/body JSON backup",
+        "same shell invocation as validation and cleanup",
+        "self-contained local-exclude and symlink-rejection procedure"
       ]
     },
     {

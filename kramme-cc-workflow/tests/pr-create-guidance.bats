@@ -64,6 +64,20 @@ file_mode() {
     grep -qF "If any actor creates the remote branch after Step 5, the lease fails" "$confirmation"
     grep -qF "no Pull Request could have existed for that branch at the moment this workflow created it" "$confirmation"
     grep -qF "Immediately before any push, repeat the fail-closed open-Pull-Request check" "$confirmation"
+    [ "$(grep -cF "FINAL_STACK_RESOLVED=" "$confirmation")" -eq 3 ]
+    fast_guard_line=$(grep -nF "FINAL_STACK_RESOLVED=" "$confirmation" | sed -n 1p | cut -d: -f1)
+    fresh_guard_line=$(grep -nF "FINAL_STACK_RESOLVED=" "$confirmation" | sed -n 2p | cut -d: -f1)
+    create_guard_line=$(grep -nF "FINAL_STACK_RESOLVED=" "$confirmation" | sed -n 3p | cut -d: -f1)
+    fast_push_line=$(grep -nF "git push --no-follow-tags" "$confirmation" | head -1 | cut -d: -f1)
+    fresh_push_line=$(grep -nF "git push --force-with-lease=\"{rollback-origin-ref}:\"" "$confirmation" | head -1 | cut -d: -f1)
+    create_line=$(grep -nF "env GH_PROMPT_DISABLED=1 gh pr create" "$confirmation" | head -1 | cut -d: -f1)
+    [ "$fast_guard_line" -lt "$fast_push_line" ]
+    [ "$fresh_guard_line" -lt "$fresh_push_line" ]
+    [ "$create_guard_line" -lt "$create_line" ]
+    grep -qF "[ \"\$STACK_MEMBERSHIP\" = none ]" "$confirmation"
+    grep -qF "The branch joined a local or server-side stack before the fast-forward push" "$confirmation"
+    grep -qF "The branch joined a local or server-side stack before the fresh push" "$confirmation"
+    grep -qF "The branch joined a local or server-side stack before Pull Request creation" "$confirmation"
     grep -qF "If an open Pull Request appeared after Step 3.5" "$confirmation"
     grep -qF "does not prove that this invocation owns the Pull Request" "$confirmation"
     grep -qF -- "--force-with-lease=\"{rollback-origin-ref}:\"" "$confirmation"

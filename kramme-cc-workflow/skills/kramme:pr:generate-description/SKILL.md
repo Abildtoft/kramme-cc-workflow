@@ -325,7 +325,32 @@ Here is your generated PR:
 
 After presenting the description, ask: "Would you like me to save this description to a markdown file?"
 
-If yes, save to `$REPO_ROOT/.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` where `REPO_ROOT=$(git rev-parse --show-toplevel)`. Add `.kramme-cc-workflow/` to git's local exclude file first if it is not already listed (use the same idempotent check as step 1 of `references/direct-update.md`), so the saved file is not accidentally committed without mutating tracked files. Confirm the absolute file path after saving.
+If yes, prepare the save-only namespace with this self-contained procedure. It is intentionally separate from `references/direct-update.md`, whose private update storage must remain outside the repository:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
+SAVE_NAMESPACE="$REPO_ROOT/.kramme-cc-workflow"
+SAVE_DIR="$SAVE_NAMESPACE/pr-description"
+PR_DESCRIPTION_FILE="$SAVE_DIR/PR_DESCRIPTION.md"
+if [ -L "$SAVE_NAMESPACE" ] || [ -L "$SAVE_DIR" ] || [ -L "$PR_DESCRIPTION_FILE" ]; then
+  echo "Error: PR description save path is indirect; no file was written." >&2
+  exit 1
+fi
+mkdir -p "$SAVE_DIR" || exit 1
+if [ ! -d "$SAVE_DIR" ] || [ -L "$SAVE_DIR" ]; then
+  echo "Error: PR description save directory is invalid; no file was written." >&2
+  exit 1
+fi
+GIT_EXCLUDE=$(git rev-parse --git-path info/exclude) || exit 1
+mkdir -p "$(dirname "$GIT_EXCLUDE")" || exit 1
+touch "$GIT_EXCLUDE" || exit 1
+if ! grep -qxF ".kramme-cc-workflow/" "$GIT_EXCLUDE"; then
+  printf '\n.kramme-cc-workflow/\n' >> "$GIT_EXCLUDE"
+fi
+printf '%s\n' "$PR_DESCRIPTION_FILE"
+```
+
+Capture the single printed absolute path, require it to remain below the validated `SAVE_DIR`, and write the description there with the runtime's native file-write capability. Confirm the absolute path after saving.
 
 ### Phase 5: Pre-publish Verification
 

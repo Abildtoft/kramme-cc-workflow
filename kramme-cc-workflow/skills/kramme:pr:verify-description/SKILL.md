@@ -88,9 +88,11 @@ Classify each potential drift point against the rubric below. Severity drives th
      echo "Error: Could not capture the current commit." >&2
      exit 1
    }
-   printf '%s\n' "$CURRENT_BRANCH"
-   printf '%s\n' "$CURRENT_HEAD"
+   printf 'CURRENT_BRANCH=%s\n' "$CURRENT_BRANCH"
+   printf 'CURRENT_HEAD=%s\n' "$CURRENT_HEAD"
    ```
+
+   Capture the labeled values as immutable agent-tracked `{current-branch}` and `{current-head}`. Each later Bash block runs in a new shell, so later mutation guidance substitutes these validated literals rather than assuming the variables persist.
 
 3. Resolve the base branch with the shared plugin script. It uses the same 3-tier strategy: explicit `--base` override, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message instead of being silently swallowed:
 
@@ -111,17 +113,28 @@ Classify each potential drift point against the rubric below. Severity drives th
      echo "Error: Could not pin resolved base ref $BASE_REF." >&2
      exit 1
    }
+   printf 'BASE_REF=%s\n' "$BASE_REF"
+   printf 'BASE_BRANCH=%s\n' "$BASE_BRANCH"
+   printf 'BASE_COMMIT=%s\n' "$BASE_COMMIT"
    ```
+
+   Capture the labeled values as immutable agent-tracked `{base-ref}`, `{base-branch}`, and `{base-commit}`. Require `{base-commit}` to remain a full 40-character lowercase commit OID.
 
 4. **ALWAYS** confirm a PR exists for the current branch and is in an open state:
 
    ```bash
-   PR_SNAPSHOT=$(gh pr view --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state) || {
-     echo "MISSING REQUIREMENT: no PR found for the current branch." >&2
-     echo "Run \`/kramme:pr:create\` or \`/kramme:pr:generate-description\` first." >&2
+   PR_SNAPSHOT=$(env GH_PROMPT_DISABLED=1 gh pr view \
+     --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state) || {
+     echo "Error: Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above." >&2
+     echo "If gh reported that no PR exists, run \`/kramme:pr:create\` or \`/kramme:pr:generate-description\`." >&2
+     exit 1
+   }
+   PR_SNAPSHOT_FINGERPRINT=$(printf '%s' "$PR_SNAPSHOT" | git hash-object --stdin) || {
+     echo "Error: Could not fingerprint the Pull Request snapshot." >&2
      exit 1
    }
    printf '%s\n' "$PR_SNAPSHOT"
+   printf 'PR_SNAPSHOT_FINGERPRINT=%s\n' "$PR_SNAPSHOT_FINGERPRINT"
    ```
 
    If no PR exists, stop with:
@@ -133,7 +146,23 @@ Classify each potential drift point against the rubric below. Severity drives th
 
    If `state` is not `OPEN` (i.e. `MERGED` or `CLOSED`), warn but continue — verifying a merged PR's drift is occasionally useful (e.g. when preparing a follow-up). Prepend a `PR state: <STATE> (verification on non-open PR)` line to the report header so the user notices.
 
-   Capture `PR_NUMBER`, `PR_URL`, `PR_TITLE`, `PR_BODY`, `PR_BASE`, `PR_HEAD`, `PR_BASE_OID`, `PR_HEAD_OID`, and `PR_STATE` for downstream phases. Retain the exact `PR_SNAPSHOT` bytes as the optimistic-concurrency baseline for an optional confirmed update.
+   Capture `PR_NUMBER`, `PR_URL`, `PR_TITLE`, `PR_BODY`, `PR_BASE`, `PR_HEAD`, `PR_BASE_OID`, `PR_HEAD_OID`, `PR_STATE`, and the printed fingerprint as agent-tracked values for downstream phases. The fingerprint represents the exact `PR_SNAPSHOT` bytes without requiring later shell interpolation of untrusted title/body content.
+
+5. Capture the complete mutable local scope that Phase 2 may describe:
+
+   ```bash
+   WORKTREE_MANIFEST=$("${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh") || {
+     echo "Error: Could not capture the local working-tree scope." >&2
+     exit 1
+   }
+   WORKTREE_FINGERPRINT=$(printf '%s' "$WORKTREE_MANIFEST" | git hash-object --stdin) || {
+     echo "Error: Could not fingerprint the local working-tree scope." >&2
+     exit 1
+   }
+   printf 'WORKTREE_FINGERPRINT=%s\n' "$WORKTREE_FINGERPRINT"
+   ```
+
+   Capture the full 40-character value as immutable agent-tracked `{worktree-fingerprint}`. It covers staged, unstaged, and untracked non-ignored paths, matching the mutable local scope considered below.
 
 ### Phase 2: Diff and Commit Gathering
 
@@ -246,7 +275,9 @@ Present an inline report (do not write a separate file). Use this structure:
 
 **Skip this phase if `FIX_MODE` is not set.**
 
-If `FIX_MODE=true` and at least one Important or Critical finding was reported, ask the user once:
+If `FIX_MODE=true`, `PR_STATE` is not `OPEN`, and at least one Important or Critical finding was reported, do not prompt or invoke the generator. Report `MISSING REQUIREMENT: --fix is unavailable for a <PR_STATE> Pull Request; verification remains read-only.` and stop after the report.
+
+If `FIX_MODE=true`, `PR_STATE=OPEN`, and at least one Important or Critical finding was reported, ask the user once:
 
 ```
 Found <N> finding(s). Generate a replacement title and body, then update

@@ -4,10 +4,11 @@ load 'test_helper/common'
 
 @test "generate-description prose guidance is covered by contracts" {
 	run bash -c '
-    set -e
+	    set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:pr:generate-description"
     direct="$skill/references/direct-update.md"
+    checklist="$skill/references/verification-checklist.md"
 
     test -f "$skill/SKILL.md"
     test -f "$skill/references/context-gathering.md"
@@ -42,8 +43,16 @@ load 'test_helper/common'
     ! grep -qF "use proper heading hierarchy" "$skill/SKILL.md"
     ! grep -qF "using tables for structured data" "$skill/SKILL.md"
     grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$direct"
+    grep -qF "Capture the single printed line as agent-tracked `{update-dir}`" "$direct"
+    grep -qF "UPDATE_DIR=\"{update-dir}\"" "$direct"
     grep -qF "gh pr view --json title,body > \"\$PR_BACKUP\"" "$direct"
     grep -qF "Generated PR payload files are missing or indirect" "$direct"
+    grep -qF "mandatory title/body JSON backup" "$checklist"
+    grep -qF "same shell invocation as validation and cleanup" "$checklist"
+    grep -qF "self-contained local-exclude and symlink-rejection procedure" "$checklist"
+    ! grep -qF "repo-root anchored backup, local git exclude update" "$checklist"
+    grep -qF "SAVE_NAMESPACE=\"\$REPO_ROOT/.kramme-cc-workflow\"" "$skill/SKILL.md"
+    ! grep -qF "same idempotent check as step 1" "$skill/SKILL.md"
     ! grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$direct"
   '
 
@@ -56,14 +65,16 @@ load 'test_helper/common'
 		pr-generate-description-antipattern-examples \
 		pr-generate-description-red-flag-examples \
 		pr-generate-description-visual-capture-safety \
-		pr-generate-description-direct-update-safety
+		pr-generate-description-direct-update-safety \
+		pr-generate-description-save-and-checklist-contract \
+		pr-generate-description-direct-update-checklist
 
-	[ "$status" -eq 0 ]
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "verify-description owns confirmed publication after output-only generation" {
 	run bash -c '
-    set -euo pipefail
+	    set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:pr:verify-description/SKILL.md"
     update="skills/kramme:pr:verify-description/references/confirmed-update.md"
@@ -72,29 +83,42 @@ load 'test_helper/common'
     grep -qF "disable-model-invocation: true" "$skill"
     grep -qF "kramme:pr:generate-description --auto --no-update" "$skill"
     grep -qF "read \`references/confirmed-update.md\` and follow it" "$skill"
-    grep -qF -- "--auto --no-update --base {BASE_BRANCH} --base-commit {BASE_COMMIT}" "$update"
+    grep -qF -- "--auto --no-update --base {base-branch} --base-commit {base-commit}" "$update"
     grep -qF "This skill owns the mutation; generation remains output-only." "$update"
     grep -qF "Do not omit \`--no-update\`" "$update"
-    grep -qF "PR_SNAPSHOT=\$(gh pr view --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state)" "$skill"
+    grep -qF "PR_SNAPSHOT=\$(env GH_PROMPT_DISABLED=1 gh pr view" "$skill"
+    grep -qF "Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above." "$skill"
+	    grep -qF "PR_SNAPSHOT_FINGERPRINT=" "$skill"
+	    grep -qF "git hash-object --stdin" "$skill"
+    grep -qF "WORKTREE_MANIFEST=\$(\"\${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh\")" "$skill"
+    grep -qF -- "--fix is unavailable for a <PR_STATE> Pull Request" "$skill"
     grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$update"
+    grep -qF "Capture the single printed line as agent-tracked `{update-dir}`" "$update"
+    grep -qF "UPDATE_DIR=\"{update-dir}\"" "$update"
     grep -qF "Could not back up and revalidate PR #\$PR_NUMBER; no update was made." "$update"
-    grep -qF "LATEST_PR_SNAPSHOT\" != \"\$PR_SNAPSHOT" "$update"
+    grep -qF "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"\$PR_SNAPSHOT_FINGERPRINT" "$update"
     grep -qF "PR_STATE\" != \"OPEN" "$update"
     grep -qF "LATEST_HEAD\" != \"\$CURRENT_HEAD" "$update"
     grep -qF "LATEST_BASE_COMMIT\" != \"\$BASE_COMMIT" "$update"
-    grep -qF "Generated PR payload files are missing or indirect" "$update"
+    grep -qF "LATEST_WORKTREE_FINGERPRINT\" != \"\$WORKTREE_FINGERPRINT" "$update"
+    grep -qF "Generated PR payload storage is missing or indirect" "$update"
     grep -qF "gh pr edit \"\$PR_NUMBER\"" "$update"
     grep -qF -- "--body-file \"\$PR_BODY_FILE\"" "$update"
     ! grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$update"
     confirmation_line=$(grep -nF "Found <N> finding(s). Generate a replacement title and body" "$skill" | cut -d: -f1)
+    non_open_line=$(grep -nF -- "--fix is unavailable for a <PR_STATE> Pull Request" "$skill" | cut -d: -f1)
     delegation_line=$(grep -nF "read \`references/confirmed-update.md\` and follow it" "$skill" | cut -d: -f1)
     storage_line=$(grep -nF "UPDATE_DIR=\$(mktemp -d" "$update" | cut -d: -f1)
     backup_line=$(grep -nF "if ! env GH_PROMPT_DISABLED=1 gh pr view" "$update" | cut -d: -f1)
-    snapshot_line=$(grep -nF "LATEST_PR_SNAPSHOT\" != \"\$PR_SNAPSHOT" "$update" | cut -d: -f1)
-    payload_line=$(grep -nF "Generated PR payload files are missing or indirect" "$update" | cut -d: -f1)
+    snapshot_line=$(grep -nF "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"\$PR_SNAPSHOT_FINGERPRINT" "$update" | cut -d: -f1)
+    payload_line=$(grep -nF "Generated PR payload storage is missing or indirect" "$update" | cut -d: -f1)
+    cleanup_line=$(grep -nF "trap cleanup_pr_payload EXIT" "$update" | cut -d: -f1)
     edit_line=$(grep -nF "gh pr edit \"\$PR_NUMBER\"" "$update" | cut -d: -f1)
+    [ "$non_open_line" -lt "$confirmation_line" ]
     [ "$confirmation_line" -lt "$delegation_line" ]
     [ "$storage_line" -lt "$payload_line" ]
+    [ "$payload_line" -lt "$cleanup_line" ]
+    [ "$cleanup_line" -lt "$backup_line" ]
     [ "$payload_line" -lt "$backup_line" ]
     [ "$backup_line" -lt "$snapshot_line" ]
     [ "$snapshot_line" -lt "$edit_line" ]
@@ -105,7 +129,7 @@ load 'test_helper/common'
 		pr-verify-description-confirmed-update \
 		pr-verify-description-snapshot-baseline
 
-	[ "$status" -eq 0 ]
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "generate-description base guidance uses canonical resolver contract" {

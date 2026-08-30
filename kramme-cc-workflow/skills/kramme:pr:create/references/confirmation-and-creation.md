@@ -178,6 +178,17 @@ Only after every invariant passes, publish the unchanged local commits with an e
 
 ```bash
 NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
+FINAL_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be revalidated at the fast-forward push boundary; stop before publication." >&2
+  exit 1
+}
+if ! (
+  eval "$FINAL_STACK_RESOLVED"
+  [ "$STACK_MEMBERSHIP" = none ]
+); then
+  echo "The branch joined a local or server-side stack before the fast-forward push; stop before publication." >&2
+  exit 1
+fi
 env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
   git push --no-follow-tags \
   --force-with-lease="refs/heads/{feature-branch}:{observed-origin-oid}" \
@@ -200,11 +211,22 @@ Step 5 proved that `{rollback-origin-ref}` was absent. Use the quoted, explicit 
 
 ```bash
 NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
+FINAL_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be revalidated at the fresh push boundary; run Step 10 and stop." >&2
+  exit 1
+}
+if ! (
+  eval "$FINAL_STACK_RESOLVED"
+  [ "$STACK_MEMBERSHIP" = none ]
+); then
+  echo "The branch joined a local or server-side stack before the fresh push; run Step 10 and stop." >&2
+  exit 1
+fi
 env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
   git push --force-with-lease="{rollback-origin-ref}:" -u origin "HEAD:{rollback-origin-ref}"
 ```
 
-Do not use plain `--force`, an absence lease for a pre-existing remote ref, an implicit destination, or a tracking ref read after the rewrite as the lease baseline. `kramme:git:recreate-commits --no-push` left this fresh remote absent; this is the fresh mode's sole remote update before Pull Request creation.
+Do not use plain `--force`, an absence lease for a pre-existing remote ref, an implicit destination, or a tracking ref read after the rewrite as the lease baseline. `kramme:git:recreate-commits --no-push` left this fresh remote absent; this is the fresh mode's sole remote update before Pull Request creation. If the final stack guard fails, execute Step 10 before stopping; do not classify that failure as an ambiguous push outcome because no push ran.
 
 If the push command exits non-zero, its remote outcome is ambiguous. Execute Step 10 from `state-and-rollback.md`; that rollback restores local state and re-queries `{rollback-origin-ref}` without modifying it. Then show the full generated description directly in the conversation for copy/paste and use the rollback's observed remote classification:
 
@@ -256,6 +278,17 @@ trap cleanup_pr_files EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+FINAL_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be revalidated at the Pull Request creation boundary; stop before creation." >&2
+  exit 1
+}
+if ! (
+  eval "$FINAL_STACK_RESOLVED"
+  [ "$STACK_MEMBERSHIP" = none ]
+); then
+  echo "The branch joined a local or server-side stack before Pull Request creation; stop before creation." >&2
+  exit 1
+fi
 env GH_PROMPT_DISABLED=1 gh pr create \
   --base "{base-branch}" \
   --head "{feature-branch}" \
@@ -263,6 +296,8 @@ env GH_PROMPT_DISABLED=1 gh pr create \
   --title "$(cat "$PR_TITLE_FILE")" \
   --body-file "$PR_BODY_FILE"
 ```
+
+If this final stack guard fails, the trap removes the payload files and no Pull Request is created. When `FRESH_REMOTE_MODE=true`, execute Step 10 before stopping; in either existing-remote mode, stop without rollback. Do not treat a guard failure as a `gh pr create` failure because the creation command did not run.
 
 When `DRAFT_MODE=true`, add `--draft \` as the second line.
 

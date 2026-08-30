@@ -2314,6 +2314,8 @@ EOF
     pr-generate-description-red-flag-examples \
     pr-generate-description-visual-capture-safety \
     pr-generate-description-direct-update-safety \
+    pr-generate-description-save-and-checklist-contract \
+    pr-generate-description-direct-update-checklist \
     pr-plan-reconcile-safety \
     pr-plan-reconcile-migration-guidance \
     pr-plan-split-reconcile-scope \
