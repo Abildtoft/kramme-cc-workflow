@@ -146,6 +146,171 @@ load 'test_helper/common'
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "confirmed update publication fails closed for every captured drift" {
+	local update="${BATS_TEST_DIRNAME}/../skills/kramme:pr:verify-description/references/confirmed-update.md"
+	local block="$BATS_TEST_TMPDIR/confirmed-update.sh"
+	local fake_bin="$BATS_TEST_TMPDIR/bin"
+	local plugin_root="$BATS_TEST_TMPDIR/plugin"
+	local update_dir="$BATS_TEST_TMPDIR/update"
+	local title_file="$update_dir/new-title.txt"
+	local body_file="$update_dir/new-body.md"
+	local backup_file="$update_dir/pr-metadata.backup.json"
+	local edit_log="$BATS_TEST_TMPDIR/edits.log"
+	local current_head="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	local base_commit="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	local base_ref="refs/remotes/origin/main"
+	local pr_json snapshot_fingerprint worktree_fingerprint
+
+	awk '
+		$0 == "```bash" {
+			bash_blocks++
+			if (bash_blocks == 2) {
+				capture = 1
+				next
+			}
+		}
+		capture && $0 == "```" { exit }
+		capture { print }
+	' "$update" >"$block"
+	[ -s "$block" ]
+
+	mkdir -p "$fake_bin" "$plugin_root/scripts" "$update_dir"
+	export REAL_GIT
+	REAL_GIT=$(command -v git)
+	export TEST_HEAD="$current_head"
+	export TEST_BASE_COMMIT="$base_commit"
+	export TEST_BASE_REF="$base_ref"
+	export TEST_BRANCH="feature"
+	export EDIT_LOG="$edit_log"
+	export WORKTREE_MANIFEST="tree-stable"
+	pr_json='{"number":42,"url":"https://example.test/pr/42","title":"old","body":"old body","baseRefName":"main","headRefName":"feature","baseRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","state":"OPEN"}'
+	export PR_JSON_BASE="$pr_json"
+	export PR_JSON_DRIFT='{"number":42,"url":"https://example.test/pr/42","title":"changed","body":"old body","baseRefName":"main","headRefName":"feature","baseRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","state":"OPEN"}'
+	snapshot_fingerprint=$(printf '%s' "$pr_json" | "$REAL_GIT" hash-object --stdin)
+	worktree_fingerprint=$(printf '%s' "$WORKTREE_MANIFEST" | "$REAL_GIT" hash-object --stdin)
+
+	write_file "$fake_bin/git" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+case "$1" in
+hash-object)
+  exec "$REAL_GIT" "$@"
+  ;;
+rev-parse)
+  if [ "${2:-}" = "--verify" ] && [ "${3:-}" = "HEAD" ]; then
+    if [ "${TEST_FAILURE:-}" = "head" ]; then
+      printf '%s\n' 'cccccccccccccccccccccccccccccccccccccccc'
+    else
+      printf '%s\n' "$TEST_HEAD"
+    fi
+  elif [ "${2:-}" = "$TEST_BASE_REF^{commit}" ]; then
+    if [ "${TEST_FAILURE:-}" = "base" ]; then
+      printf '%s\n' 'dddddddddddddddddddddddddddddddddddddddd'
+    else
+      printf '%s\n' "$TEST_BASE_COMMIT"
+    fi
+  else
+    printf 'unexpected git rev-parse invocation: %s\n' "$*" >&2
+    exit 2
+  fi
+  ;;
+branch)
+  [ "${2:-}" = "--show-current" ] || exit 2
+  printf '%s\n' "$TEST_BRANCH"
+  ;;
+*)
+  printf 'unexpected git invocation: %s\n' "$*" >&2
+  exit 2
+  ;;
+esac
+EOF
+
+	write_file "$fake_bin/gh" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+case "${1:-} ${2:-}" in
+"pr view")
+  if [ "${TEST_FAILURE:-}" = "backup" ]; then
+    exit 1
+  elif [ "${TEST_FAILURE:-}" = "snapshot" ]; then
+    printf '%s\n' "$PR_JSON_DRIFT"
+  else
+    printf '%s\n' "$PR_JSON_BASE"
+  fi
+  ;;
+"pr edit")
+  printf 'edit\n' >>"$EDIT_LOG"
+  ;;
+*)
+  printf 'unexpected gh invocation: %s\n' "$*" >&2
+  exit 2
+  ;;
+esac
+EOF
+
+	write_file "$plugin_root/scripts/review-tree-fingerprint.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eu
+if [ "${TEST_FAILURE:-}" = "worktree" ]; then
+  printf '%s\n' 'tree-drift'
+else
+  printf '%s\n' "$WORKTREE_MANIFEST"
+fi
+EOF
+	chmod +x "$fake_bin/git" "$fake_bin/gh" "$plugin_root/scripts/review-tree-fingerprint.sh"
+
+	python3 - "$block" \
+		"$update_dir" "$title_file" "$body_file" "$backup_file" \
+		"$current_head" "$base_ref" "$base_commit" \
+		"$snapshot_fingerprint" "$worktree_fingerprint" <<'PY'
+from pathlib import Path
+import sys
+
+block = Path(sys.argv[1])
+values = {
+    "{update-dir}": sys.argv[2],
+    "{pr-title-file}": sys.argv[3],
+    "{pr-body-file}": sys.argv[4],
+    "{pr-backup}": sys.argv[5],
+    "{pr-number}": "42",
+    "{pr-state}": "OPEN",
+    "{current-branch}": "feature",
+    "{current-head}": sys.argv[6],
+    "{base-ref}": sys.argv[7],
+    "{base-commit}": sys.argv[8],
+    "{pr-snapshot-fingerprint}": sys.argv[9],
+    "{worktree-fingerprint}": sys.argv[10],
+}
+text = block.read_text()
+for placeholder, value in values.items():
+    text = text.replace(placeholder, value)
+block.write_text(text)
+PY
+
+	run_publication() {
+		local failure="$1"
+		printf '%s' 'fix: update description' >"$title_file"
+		printf '%s\n' 'Updated body' >"$body_file"
+		: >"$edit_log"
+		run env \
+			PATH="$fake_bin:$PATH" \
+			CLAUDE_PLUGIN_ROOT="$plugin_root" \
+			TEST_FAILURE="$failure" \
+			bash "$block"
+	}
+
+	run_publication ""
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+	[ "$(wc -l <"$edit_log")" -eq 1 ]
+
+	local failure
+	for failure in backup snapshot head base worktree; do
+		run_publication "$failure"
+		[ "$status" -ne 0 ]
+		[ ! -s "$edit_log" ]
+	done
+}
+
 @test "generate-description base guidance uses canonical resolver contract" {
 	run bash -c '
     set -euo pipefail

@@ -20,9 +20,6 @@ Use this when `DIRECT_UPDATE=true`.
      echo "Error: Could not secure PR update storage." >&2
      exit 1
    }
-   PR_TITLE_FILE="$UPDATE_DIR/new-title.txt"
-   PR_BODY_FILE="$UPDATE_DIR/new-body.md"
-   PR_BACKUP="$UPDATE_DIR/pr-metadata.backup.json"
    printf '%s\n' "$UPDATE_DIR"
    ```
 
