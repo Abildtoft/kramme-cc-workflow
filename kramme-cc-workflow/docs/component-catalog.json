@@ -48,6 +48,11 @@
       "path": "kramme-cc-workflow/skills/kramme:code:deprecate/SKILL.md"
     },
     {
+      "name": "kramme:code:forward-progress",
+      "invocation": "Background",
+      "path": "kramme-cc-workflow/skills/kramme:code:forward-progress/SKILL.md"
+    },
+    {
       "name": "kramme:code:harden-security",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:code:harden-security/SKILL.md"
