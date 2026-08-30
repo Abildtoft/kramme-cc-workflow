@@ -732,8 +732,8 @@
         "`--auto` is fully non-interactive",
         "never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts",
         "REQUIRE_GENERATED_DESCRIPTION=true",
-        "Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push`",
-        "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push\"",
+        "Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push`",
+        "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"",
         "sole remote-mutation owner"
       ]
     },
@@ -908,8 +908,12 @@
       "contains": [
         "disable-model-invocation: false",
         "### Model Invocation Contract",
-        "Outside a parent delegation, never invent `--auto` or `--authorize-history-rewrite`",
-        "[--no-push] [--authorize-history-rewrite]",
+        "No other parent workflow is authorized by the model-invocation exception",
+        "Outside that exact `kramme:pr:create` delegation, never invent `--auto` or `--authorize-history-rewrite`",
+        "[--require-unstacked] [--no-push] [--authorize-history-rewrite]",
+        "If `REQUIRE_UNSTACKED=true`, require `STACK_MEMBERSHIP=none` immediately after this resolution",
+        "stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed",
+        "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches",
         "If `--no-push` was passed, do not run any push command",
         "If `IN_STACK=true` and `--auto` was passed without `--authorize-history-rewrite`, stop before the reset",
         "STACK_BRANCH_NAMES=$(resolve_stack_branch_names)",

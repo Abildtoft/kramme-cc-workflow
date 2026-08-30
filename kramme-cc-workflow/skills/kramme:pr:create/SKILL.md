@@ -248,15 +248,15 @@ multiSelect: false
 
 ### 6.2 Invoke the Skill
 
-**IMPORTANT:** Use the Skill tool to invoke `recreate-commits`. Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push` so the nested rewrite retains branch metadata, uses the same pinned base commit, and gets a retry-safe recovery ref while this orchestrator remains the sole remote-mutation owner. Also pass `--auto` when `AUTO_MODE=true`, and pass `--authorize-history-rewrite` only when the user supplied that flag and `AUTHORIZE_HISTORY_REWRITE=true`. Step 4.5 already proved the branch is unstacked; any later stack detection is state drift and must stop the nested skill before reset. When both variables are explicitly true, pass both flags.
+**IMPORTANT:** Use the Skill tool to invoke `recreate-commits`. Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push` so the nested rewrite retains branch metadata, uses the same pinned base commit, gets a retry-safe recovery ref, and enforces this workflow's unstacked-only authorization while this orchestrator remains the sole remote-mutation owner. Also pass `--auto` when `AUTO_MODE=true`, and pass `--authorize-history-rewrite` only when the user supplied that flag and `AUTHORIZE_HISTORY_REWRITE=true`. Step 4.5 already proved the branch is unstacked; any later stack detection is state drift and `--require-unstacked` must stop the nested skill before reset. When both variables are explicitly true, pass both flags.
 
 Examples:
 
 ```yaml
-skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push"
-skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push --authorize-history-rewrite"
-skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push"
-skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push --authorize-history-rewrite"
+skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push"
+skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push --authorize-history-rewrite"
+skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push"
+skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push --authorize-history-rewrite"
 ```
 
 This skill will:
