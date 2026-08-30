@@ -906,6 +906,9 @@
       "name": "recreate-commits-deferred-push-contract",
       "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
       "contains": [
+        "disable-model-invocation: false",
+        "### Model Invocation Contract",
+        "Outside a parent delegation, never invent `--auto` or `--authorize-history-rewrite`",
         "[--no-push] [--authorize-history-rewrite]",
         "If `--no-push` was passed, do not run any push command",
         "If `IN_STACK=true` and `--auto` was passed without `--authorize-history-rewrite`, stop before the reset",
@@ -1186,10 +1189,12 @@
       "name": "pr-generate-description-subskill-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
       "contains": [
+        "disable-model-invocation: false",
         "### Sub-Skill Invocation Contract",
         "it must pass `--auto`",
         "must also pass `--no-update`",
-        "OUTPUT_ONLY=true"
+        "OUTPUT_ONLY=true",
+        "Every model-initiated invocation must include `--no-update`"
       ]
     },
     {

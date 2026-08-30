@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:generate-description
-description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or, when explicitly invoked with --auto, updates an existing PR.
+description: Write a structured PR title and body from git diff, commit log, and Linear context when requested or delegated by a PR workflow. Model callers use output-only mode; a direct --auto invocation may update an existing PR.
 argument-hint: "[--auto] [--no-update] [--visual] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
@@ -24,6 +24,8 @@ If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and rem
 ### Sub-Skill Invocation Contract
 
 When another skill invokes this one as an orchestration step, it must pass `--auto` (and should pass `--base <ref> --base-commit <oid>` when it already resolved and pinned the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
+
+Every model-initiated invocation must include `--no-update`. Omitting `--no-update` is reserved for a direct user invocation because that mode may mutate an existing Pull Request. Model invocation changes routing only; it never supplies permission to publish generated content.
 
 ## Instructions
 

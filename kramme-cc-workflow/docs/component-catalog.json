@@ -209,7 +209,7 @@
     },
     {
       "name": "kramme:git:recreate-commits",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md"
     },
     {
@@ -314,7 +314,7 @@
     },
     {
       "name": "kramme:pr:generate-description",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md"
     },
     {

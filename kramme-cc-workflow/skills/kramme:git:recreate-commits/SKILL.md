@@ -1,14 +1,21 @@
 ---
 name: kramme:git:recreate-commits
-description: Use when asked to recreate commits with narrative-quality history on the current branch. Not for merged branches or shared branches others have based work on — it rewrites history and uses --force-with-lease when remote synchronization is enabled.
+description: Recreate commits with narrative-quality history when the user asks or an active PR workflow delegates it. Not for merged or shared branches — it rewrites history and uses --force-with-lease unless remote synchronization is disabled.
 argument-hint: "[--auto] [--coarse|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--no-push] [--authorize-history-rewrite]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 Reimplement the current branch with a clean, narrative-quality git commit history suitable for reviewer comprehension. By default, recreate commits on the current branch (not a new clean branch).
 
-This rewrites history and requires a force-push to sync any existing remote history unless `--no-push` delegates that synchronization to a parent workflow. It is user-triggered only (it does not auto-invoke).
+This rewrites history and requires a force-push to sync any existing remote history unless `--no-push` delegates that synchronization to a parent workflow. It is model-invocable so directly invoked parent workflows can compose it without copying its behavior.
+
+### Model Invocation Contract
+
+- Invoke automatically only when the user clearly requested commit recreation or an active parent workflow explicitly delegates this phase. Do not infer authorization merely because a branch appears ready for cleanup or Pull Request creation.
+- A parent workflow must pass `--no-push` when it owns publication. `kramme:pr:create` must also pass its pinned base commit and retry-safe backup ref.
+- Outside a parent delegation, never invent `--auto` or `--authorize-history-rewrite`. Without those caller-supplied flags, retain every documented confirmation before reset, restack, or publication.
+- Model invocation changes routing only. It does not relax backup creation, branch and stack validation, final-tree identity, or lease-protected publication.
 
 **When not to use:** Don't run this on a branch that is already merged, on a protected or shared base branch, or on a branch other contributors have based active work on without coordinating first — the recreation rewrites history and the remote can only be updated with a force-push.
 

@@ -30,7 +30,14 @@ file_mode() {
     branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
     confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
     recreate="skills/kramme:git:recreate-commits/SKILL.md"
+    description="skills/kramme:pr:generate-description/SKILL.md"
 
+    grep -qF "disable-model-invocation: true" "$create"
+    grep -qF "disable-model-invocation: false" "$recreate"
+    grep -qF "disable-model-invocation: false" "$description"
+    grep -qF "### Model Invocation Contract" "$recreate"
+    grep -qF "Outside a parent delegation, never invent \`--auto\` or \`--authorize-history-rewrite\`" "$recreate"
+    grep -qF "Every model-initiated invocation must include \`--no-update\`" "$description"
     grep -qF "[--authorize-history-rewrite]" "$create"
     grep -qF "AUTHORIZE_HISTORY_REWRITE=true" "$create"
     grep -qF "Auto mode does not set this variable" "$create"
@@ -38,6 +45,7 @@ file_mode() {
     grep -qF "pass \`--authorize-history-rewrite\` only when the user supplied that flag" "$create"
     ! grep -qF "args: \"--auto --no-push\"" "$create"
     grep -qF "Always pass \`--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push\`" "$create"
+    grep -qF "Always pass \`--auto --no-update --base {base-source-ref} --base-commit {base-ref}\`" "$create"
     grep -qF "Do not push or change upstream configuration" "$branch"
     ! grep -qF "git push -u origin \$(git branch --show-current)" "$branch"
     grep -qF "Step 5 proved that \`{rollback-origin-ref}\` was absent" "$confirmation"
@@ -73,6 +81,7 @@ file_mode() {
   '
 
 	assert_required_contracts_registered \
+		pr-create-description-generation-contract \
 		pr-create-history-rewrite-authorization \
 		pr-create-deferred-upstream-contract \
 		pr-create-absence-lease-contract \
@@ -80,6 +89,7 @@ file_mode() {
 		pr-create-push-failure-rollback \
 		pr-create-remote-absence-contract \
 		recreate-commits-deferred-push-contract \
+		pr-generate-description-subskill-contract \
 		recreate-commits-push-target-helper \
 		recreate-commits-retry-safe-backup \
 		resolve-base-pinned-commit-contract \
