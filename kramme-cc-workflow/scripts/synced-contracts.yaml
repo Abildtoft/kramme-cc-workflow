@@ -1661,7 +1661,6 @@
       "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md",
       "kramme-cc-workflow/skills/kramme:hooks:configure-links/SKILL.md",
       "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:launch:announce/SKILL.md",
       "kramme-cc-workflow/skills/kramme:nx:setup-portless/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
