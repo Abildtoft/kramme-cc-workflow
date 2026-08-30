@@ -345,7 +345,10 @@ GIT_EXCLUDE=$(git rev-parse --git-path info/exclude) || exit 1
 mkdir -p "$(dirname "$GIT_EXCLUDE")" || exit 1
 touch "$GIT_EXCLUDE" || exit 1
 if ! grep -qxF ".kramme-cc-workflow/" "$GIT_EXCLUDE"; then
-  printf '\n.kramme-cc-workflow/\n' >> "$GIT_EXCLUDE"
+  printf '\n.kramme-cc-workflow/\n' >> "$GIT_EXCLUDE" || {
+    echo "Error: Could not update Git's local exclude file; the description was not saved." >&2
+    exit 1
+  }
 fi
 printf '%s\n' "$PR_DESCRIPTION_FILE"
 ```

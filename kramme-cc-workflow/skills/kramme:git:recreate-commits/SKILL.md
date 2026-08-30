@@ -178,24 +178,24 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
    - Immediately before resetting, revalidate the branch, original tip, ordinary untracked work, and ignored paths that overlap the reset point:
 
      ```bash
-     if [ "${REQUIRE_UNSTACKED:-false}" = true ]; then
-       LATEST_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
-         echo "Stack membership could not be revalidated; stop before rewriting history." >&2
-         exit 1
-       }
-       if ! (
-         eval "$LATEST_STACK_RESOLVED"
-         [ "$STACK_MEMBERSHIP" = none ]
-       ); then
-         echo "The branch joined a local or server-side stack after initial validation; stop before rewriting history." >&2
-         exit 1
-       fi
+     LATEST_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+       echo "Stack membership could not be revalidated; stop before rewriting history." >&2
+       exit 1
+     }
+     if ! (
+       eval "$LATEST_STACK_RESOLVED"
+       [ "$STACK_MEMBERSHIP" = none ]
+     ); then
+       echo "The branch joined a local or server-side stack after initial validation; stop before rewriting history." >&2
+       exit 1
      fi
      "${CLAUDE_PLUGIN_ROOT}/scripts/verify-rewrite-state.sh" \
        --expected-branch "$ORIGINAL_BRANCH" \
        --expected-tip "$ORIGINAL_TIP" \
        --reset-point "$RESET_POINT"
      ```
+
+     Run the stack-revalidation block above only when the parsed agent state has `REQUIRE_UNSTACKED=true`; omit it for ordinary direct invocations that may intentionally rewrite a local stack. Do not wrap it in a shell-local `REQUIRE_UNSTACKED` conditional: argument parsing and this destructive boundary run in separate shell invocations.
 
      Any failure stops the workflow. Do not rely only on the earlier backup-time or stack-membership validation: diff analysis and commit planning create a real window in which the checkout or authorization boundary can change.
 

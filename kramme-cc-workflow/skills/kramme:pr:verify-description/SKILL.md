@@ -84,6 +84,11 @@ Classify each potential drift point against the rubric below. Severity drives th
 
    ```bash
    CURRENT_BRANCH=$(git branch --show-current)
+   if [[ ! "$CURRENT_BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] \
+     || ! git check-ref-format --branch "$CURRENT_BRANCH" > /dev/null 2>&1; then
+     echo "Error: Current branch is not safe for later shell substitution." >&2
+     exit 1
+   fi
    CURRENT_HEAD=$(git rev-parse --verify HEAD) || {
      echo "Error: Could not capture the current commit." >&2
      exit 1
@@ -113,6 +118,11 @@ Classify each potential drift point against the rubric below. Severity drives th
      echo "Error: Could not pin resolved base ref $BASE_REF." >&2
      exit 1
    }
+   if [[ ! "$BASE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] \
+     || ! git check-ref-format --branch "$BASE_REF" > /dev/null 2>&1; then
+     echo "Error: Resolved base ref is not safe for later shell substitution." >&2
+     exit 1
+   fi
    printf 'BASE_REF=%s\n' "$BASE_REF"
    printf 'BASE_BRANCH=%s\n' "$BASE_BRANCH"
    printf 'BASE_COMMIT=%s\n' "$BASE_COMMIT"
@@ -125,8 +135,17 @@ Classify each potential drift point against the rubric below. Severity drives th
    ```bash
    PR_SNAPSHOT=$(env GH_PROMPT_DISABLED=1 gh pr view \
      --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state) || {
+     PR_MATCH_COUNT=$(env GH_PROMPT_DISABLED=1 gh pr list \
+       --head "$CURRENT_BRANCH" --state all --json number --jq 'length') || {
+       echo "Error: Could not inspect Pull Requests for the current branch; preserve the gh diagnostics above." >&2
+       exit 1
+     }
+     if [ "$PR_MATCH_COUNT" = 0 ]; then
+       echo "MISSING REQUIREMENT: no PR found for the current branch." >&2
+       echo "Run \`/kramme:pr:create\` or \`/kramme:pr:generate-description\` first." >&2
+       exit 1
+     fi
      echo "Error: Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above." >&2
-     echo "If gh reported that no PR exists, run \`/kramme:pr:create\` or \`/kramme:pr:generate-description\`." >&2
      exit 1
    }
    PR_SNAPSHOT_FINGERPRINT=$(printf '%s' "$PR_SNAPSHOT" | git hash-object --stdin) || {
@@ -274,6 +293,8 @@ Present an inline report (do not write a separate file). Use this structure:
 ### Phase 5: Optional Fix Delegation
 
 **Skip this phase if `FIX_MODE` is not set.**
+
+If `FIX_MODE=true` and either `PR_BASE` differs from `BASE_BRANCH` or `PR_BASE_OID` differs from `BASE_COMMIT`, do not prompt or invoke the generator. Report `MISSING REQUIREMENT: fix mode requires the generated base to match the Pull Request target; rerun without --base or resolve the base again.` and stop after the report. Stability checks are insufficient when the two captured snapshots disagree from the start.
 
 If `FIX_MODE=true`, `PR_STATE` is not `OPEN`, and at least one Important or Critical finding was reported, do not prompt or invoke the generator. Report `MISSING REQUIREMENT: --fix is unavailable for a <PR_STATE> Pull Request; verification remains read-only.` and stop after the report.
 

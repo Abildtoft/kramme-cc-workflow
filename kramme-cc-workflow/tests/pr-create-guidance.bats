@@ -136,6 +136,9 @@ file_mode() {
     grep -qF "stop before the reset, even when \`--auto\` or \`--authorize-history-rewrite\` was passed" "$recreate"
     grep -qF "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches" "$recreate"
     grep -qF "The branch joined a local or server-side stack after initial validation; stop before rewriting history." "$recreate"
+    grep -qF "Run the stack-revalidation block above only when the parsed agent state has \`REQUIRE_UNSTACKED=true\`" "$recreate"
+    grep -qF "Do not wrap it in a shell-local \`REQUIRE_UNSTACKED\` conditional" "$recreate"
+    ! grep -qF '\${REQUIRE_UNSTACKED:-false}' "$recreate"
     latest_stack_line=$(grep -nF "LATEST_STACK_RESOLVED=" "$recreate" | tail -1 | cut -d: -f1)
     reset_line=$(grep -nF "git reset --hard \"\$RESET_POINT\"" "$recreate" | head -1 | cut -d: -f1)
     [ "$latest_stack_line" -lt "$reset_line" ]

@@ -52,6 +52,7 @@ load 'test_helper/common'
     grep -qF "self-contained local-exclude and symlink-rejection procedure" "$checklist"
     ! grep -qF "repo-root anchored backup, local git exclude update" "$checklist"
     grep -qF "SAVE_NAMESPACE=\"\$REPO_ROOT/.kramme-cc-workflow\"" "$skill/SKILL.md"
+    grep -qF "Could not update Git'\''s local exclude file; the description was not saved." "$skill/SKILL.md"
     ! grep -qF "same idempotent check as step 1" "$skill/SKILL.md"
     ! grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$direct"
   '
@@ -87,6 +88,14 @@ load 'test_helper/common'
     grep -qF "This skill owns the mutation; generation remains output-only." "$update"
     grep -qF "Do not omit \`--no-update\`" "$update"
     grep -qF "PR_SNAPSHOT=\$(env GH_PROMPT_DISABLED=1 gh pr view" "$skill"
+    grep -qF "PR_MATCH_COUNT=\$(env GH_PROMPT_DISABLED=1 gh pr list" "$skill"
+    grep -qF "if [ \"\$PR_MATCH_COUNT\" = 0 ]; then" "$skill"
+    grep -qF "MISSING REQUIREMENT: no PR found for the current branch." "$skill"
+    grep -qF "[[ ! \"\$CURRENT_BRANCH\" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*\$ ]]" "$skill"
+    grep -qF "[[ ! \"\$BASE_REF\" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*\$ ]]" "$skill"
+    grep -qF "Current branch is not safe for later shell substitution." "$skill"
+    grep -qF "Resolved base ref is not safe for later shell substitution." "$skill"
+    grep -qF "fix mode requires the generated base to match the Pull Request target" "$skill"
     grep -qF "Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above." "$skill"
 	    grep -qF "PR_SNAPSHOT_FINGERPRINT=" "$skill"
 	    grep -qF "git hash-object --stdin" "$skill"
@@ -106,6 +115,9 @@ load 'test_helper/common'
     grep -qF -- "--body-file \"\$PR_BODY_FILE\"" "$update"
     ! grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$update"
     confirmation_line=$(grep -nF "Found <N> finding(s). Generate a replacement title and body" "$skill" | cut -d: -f1)
+    no_pr_line=$(grep -nF "MISSING REQUIREMENT: no PR found for the current branch." "$skill" | head -1 | cut -d: -f1)
+    generic_pr_failure_line=$(grep -nF "Could not inspect a Pull Request for the current branch" "$skill" | cut -d: -f1)
+    base_match_line=$(grep -nF "fix mode requires the generated base to match the Pull Request target" "$skill" | cut -d: -f1)
     non_open_line=$(grep -nF -- "--fix is unavailable for a <PR_STATE> Pull Request" "$skill" | cut -d: -f1)
     delegation_line=$(grep -nF "read \`references/confirmed-update.md\` and follow it" "$skill" | cut -d: -f1)
     storage_line=$(grep -nF "UPDATE_DIR=\$(mktemp -d" "$update" | cut -d: -f1)
@@ -115,6 +127,8 @@ load 'test_helper/common'
     cleanup_line=$(grep -nF "trap cleanup_pr_payload EXIT" "$update" | cut -d: -f1)
     edit_line=$(grep -nF "gh pr edit \"\$PR_NUMBER\"" "$update" | cut -d: -f1)
     [ "$non_open_line" -lt "$confirmation_line" ]
+    [ "$base_match_line" -lt "$confirmation_line" ]
+    [ "$no_pr_line" -lt "$generic_pr_failure_line" ]
     [ "$confirmation_line" -lt "$delegation_line" ]
     [ "$storage_line" -lt "$payload_line" ]
     [ "$payload_line" -lt "$cleanup_line" ]

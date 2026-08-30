@@ -1247,11 +1247,16 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
       "contains": [
         "CURRENT_HEAD=$(git rev-parse --verify HEAD)",
+        "Current branch is not safe for later shell substitution.",
         "PR_SNAPSHOT=$(env GH_PROMPT_DISABLED=1 gh pr view",
+        "PR_MATCH_COUNT=$(env GH_PROMPT_DISABLED=1 gh pr list",
+        "MISSING REQUIREMENT: no PR found for the current branch.",
         "Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above.",
         "PR_SNAPSHOT_FINGERPRINT=$(printf '%s' \"$PR_SNAPSHOT\" | git hash-object --stdin)",
+        "Resolved base ref is not safe for later shell substitution.",
         "WORKTREE_MANIFEST=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh\")",
         "Capture the full 40-character value as immutable agent-tracked `{worktree-fingerprint}`",
+        "fix mode requires the generated base to match the Pull Request target",
         "--fix is unavailable for a <PR_STATE> Pull Request"
       ]
     },
@@ -1377,6 +1382,7 @@
         "SAVE_NAMESPACE=\"$REPO_ROOT/.kramme-cc-workflow\"",
         "PR description save path is indirect; no file was written.",
         "if ! grep -qxF \".kramme-cc-workflow/\" \"$GIT_EXCLUDE\"",
+        "Could not update Git's local exclude file; the description was not saved.",
         "write the description there with the runtime's native file-write capability"
       ]
     },
