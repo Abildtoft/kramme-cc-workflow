@@ -110,6 +110,10 @@ Removal decision update (2026-08-20): repository maintainers approved accelerate
 
 This approval explicitly waives the normal deprecation and additional-zero-use-quarter interval. The decision does not rely on usage alone: the skill has no owner case, no recorded adoption, and no distinct replacement workflow. Daily and weekly summaries and plugin release-history questions become ordinary agent requests, while manual releases update `CHANGELOG.md` directly. Removing the command is a breaking migration because those requests no longer have a dedicated skill, so the removal must ship in the next major release.
 
+Removal decision update (2026-08-29): repository maintainers approved accelerated removal of `kramme:launch:announce` and `kramme:launch:rollout`. The maintainer's complete available local telemetry contains no recorded invocation: the current 30-day, 90-day, and all-history reports each return zero records for both skills. Tracking begins on 2026-05-28, so this establishes no recorded use throughout the instrumented history; it does not claim visibility into uninstrumented use before that date.
+
+This approval waives the normal deprecation and additional-zero-use-quarter interval. Neither skill has recorded adoption. Launch-copy drafting and staged rollout planning remain available as ordinary agent requests, while removing both commands avoids retaining either skill solely to preserve a zero-use `launch` domain. The dedicated rollout safety guidance and rollout-owned handoff producer and template are removed; `kramme:product:pulse` continues to ingest legacy or external `PRODUCT PULSE HANDOFF` blocks. Removing the commands is a breaking migration and must ship in the next major release.
+
 ### Overlapping skills
 
 | Case | 30-day use | 90-day use | Verdict under this policy | Reason |

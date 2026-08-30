@@ -228,16 +228,6 @@
       "path": "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md"
     },
     {
-      "name": "kramme:launch:announce",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:launch:announce/SKILL.md"
-    },
-    {
-      "name": "kramme:launch:rollout",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:launch:rollout/SKILL.md"
-    },
-    {
       "name": "kramme:learn:verify-understanding",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:learn:verify-understanding/SKILL.md"

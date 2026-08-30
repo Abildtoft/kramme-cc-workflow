@@ -325,15 +325,6 @@ CI/CD pipeline design and gate planning.
 | --- | --- | --- | --- |
 | `/kramme:ci:design-pipeline` | User, Auto | — | Design a CI/CD pipeline with quality gates, a <10-minute budget, feature-flag lifecycle, and an exit checklist. Use when adding a new CI pipeline, changing gate configuration, or planning a rollout for a new service. Complementary to kramme:pr:fix-ci (which fixes failures in an existing pipeline). Covers gate ordering, secrets storage, branch protection, rollback mechanism, and staged-rollout guardrails — not a rollout-execution runbook. |
 
-#### Launch
-
-Post-merge rollout, release communication, canary gates, and rollback discipline.
-
-| Skill | Invocation | Arguments | Description |
-| --- | --- | --- | --- |
-| `/kramme:launch:rollout` | User | — | Execute a post-merge launch with contextual staged rollout, evidence-based decision gates, and rollback triggers. Apply explicit user or organization policy first, observed system evidence second, and a confirmed fallback profile only when neither defines the rollout. Supports feature flags or equivalent reversible controls. Use after merging a user-facing change that needs safe rollout. Not for PR creation, CI debugging, or pre-merge checks. |
-| `/kramme:launch:announce` | User | `[feature, PR, or release context] [--channels changelog,social,email,demo]` | Drafts user-facing launch announcement copy for a shipped feature from PRs, diffs, changelog notes, or user-provided context. Supports changelog blurbs, short social posts, email snippets, and demo scripts. Use after rollout or when announcement drafts are needed. Drafts only; not for staged rollout, rollback decisions, posting, publishing, or internal changelog summaries. |
-
 #### Browser & QA
 
 Live product inspection and structured testing.
@@ -818,7 +809,6 @@ material and its skill-local notices.
 - `kramme:docs:solution-note` and `kramme:docs:solution-refresh`: Adapted from skills `ce-compound` and `ce-compound-refresh`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:docs:review`: Adapted from [ce-doc-review](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-doc-review).
 - `kramme:code:work-from-plan`: Adapted from [ce-work](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-work) and [ce-plan](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-plan) as a thin routing adapter, not a full autonomous execution pipeline.
-- `kramme:launch:announce`: Adapted from [ce-promote](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-promote).
 - `kramme:visual:demo-reel` and PR visual evidence delegation: Adapted from [ce-demo-reel](https://github.com/EveryInc/compound-engineering-plugin/tree/b6250490bec4c0488d68ad66d72bd99f6edb95fd/plugins/compound-engineering/skills/ce-demo-reel), reviewed at commit `b6250490bec4c0488d68ad66d72bd99f6edb95fd`.
 - Codex converter: Inspired by the plugin's converter approach.
 - External-source adaptation policy, copied-script attribution guardrails, and artifact-lifecycle prompts: Informed by [the repository at commit `6f9ab03a031c054a8046659926251fb6c149269f`](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f), including representative skills `ce-compound`, `ce-compound-refresh`, `ce-plan`, `ce-code-review`, and `ce-optimize`.
