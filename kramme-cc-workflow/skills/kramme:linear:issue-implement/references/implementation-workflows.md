@@ -2,6 +2,8 @@
 
 Three workflow options based on user's selected approach.
 
+During Guided or Autonomous implementation, apply `kramme:code:forward-progress` when resuming prior work, retrying a failed step, or stale workflow state would repeat proven work: continue from the latest proven work and rerun only the smallest dependency cone affected by a meaningful change or demonstrated defect. Branch identity, Linear requirements, user confirmations, resume proofs, acceptance criteria, and verification remain substantive controls and must never be bypassed under that convention. Context Setup Only performs no implementation, so it only reports the prepared starting point.
+
 ## Guided Implementation (Option 1)
 
 **Goal:** Create detailed plan, implement with user verification at each step.
