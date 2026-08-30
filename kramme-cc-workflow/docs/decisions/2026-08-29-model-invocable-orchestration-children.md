@@ -21,6 +21,7 @@ Each child must narrowly route model use, document its least-side-effect model c
 ## Consequences
 
 - `kramme:pr:create --auto` can use the existing child skills through Claude Code's Skill tool without duplicating their workflows.
+- The user-invoked, model-disabled `kramme:pr:verify-description --fix` delegates only output-only generation; after its own y/N confirmation, the verifier validates and publishes the returned content itself. This does not grant the child mutation authority or add another exception.
 - The children become visible to the model, and their routing and argument contracts are advisory rather than a platform-enforced authorization check.
 - Additional side-effecting children remain model-disabled unless an accepted ADR names the exact parent-child exception.
 

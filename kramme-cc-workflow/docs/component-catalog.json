@@ -374,7 +374,7 @@
     },
     {
       "name": "kramme:pr:verify-description",
-      "invocation": "User, Auto",
+      "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md"
     },
     {

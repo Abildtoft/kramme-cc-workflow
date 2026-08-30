@@ -56,6 +56,32 @@ load 'test_helper/common'
 	[ "$status" -eq 0 ]
 }
 
+@test "verify-description owns confirmed publication after output-only generation" {
+	run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:pr:verify-description/SKILL.md"
+    update="skills/kramme:pr:verify-description/references/confirmed-update.md"
+
+    test -f "$update"
+    grep -qF "disable-model-invocation: true" "$skill"
+    grep -qF "kramme:pr:generate-description --auto --no-update" "$skill"
+    grep -qF "read \`references/confirmed-update.md\` and follow it" "$skill"
+    grep -qF -- "--auto --no-update --base {BASE_BRANCH} --base-commit {BASE_COMMIT}" "$update"
+    grep -qF "This skill owns the mutation; generation remains output-only." "$update"
+    grep -qF "Do not omit \`--no-update\`" "$update"
+    grep -qF "LATEST_HEAD\" != \"\$PR_HEAD" "$update"
+    grep -qF "LATEST_STATE\" != \"OPEN" "$update"
+    grep -qF "gh pr edit \"\$PR_NUMBER\"" "$update"
+    grep -qF -- "--body-file \"\$UPDATE_DIR/new-body.md\"" "$update"
+    ! grep -qF "it will detect the existing PR and update it directly" "$skill"
+  '
+
+	assert_required_contracts_registered pr-verify-description-confirmed-update
+
+	[ "$status" -eq 0 ]
+}
+
 @test "generate-description base guidance uses canonical resolver contract" {
 	run bash -c '
     set -euo pipefail

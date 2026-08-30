@@ -1202,6 +1202,19 @@
       ]
     },
     {
+      "name": "pr-verify-description-confirmed-update",
+      "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/references/confirmed-update.md",
+      "contains": [
+        "--auto --no-update --base {BASE_BRANCH} --base-commit {BASE_COMMIT}",
+        "This skill owns the mutation; generation remains output-only.",
+        "Do not omit `--no-update`",
+        "LATEST_HEAD\" != \"$PR_HEAD",
+        "LATEST_STATE\" != \"OPEN",
+        "gh pr edit \"$PR_NUMBER\"",
+        "--body-file \"$UPDATE_DIR/new-body.md\""
+      ]
+    },
+    {
       "name": "pr-generate-description-main-guidance",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
       "contains": [
@@ -1661,7 +1674,6 @@
       "kramme-cc-workflow/skills/kramme:linear:select-next/SKILL.md",
       "kramme-cc-workflow/skills/kramme:nx:setup-portless/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
       "kramme-cc-workflow/skills/kramme:product:design-critic/SKILL.md",
       "kramme-cc-workflow/skills/kramme:product:review/SKILL.md",
       "kramme-cc-workflow/skills/kramme:product:strategy/SKILL.md",
