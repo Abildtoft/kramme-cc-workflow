@@ -745,8 +745,8 @@
         "`--auto` is fully non-interactive",
         "never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts",
         "REQUIRE_GENERATED_DESCRIPTION=true",
-        "Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push`",
-        "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --no-push\"",
+        "Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push`",
+        "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"",
         "sole remote-mutation owner"
       ]
     },
@@ -826,6 +826,22 @@
         "env GH_PROMPT_DISABLED=1 gh pr create",
         "Do not use plain `--force`, an absence lease for a pre-existing remote ref",
         "fresh mode's sole remote update before Pull Request creation"
+      ]
+    },
+    {
+      "name": "pr-create-stack-publication-boundary",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "contains": [
+        "STACK_REVALIDATION_FAILED=false",
+        "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
+        "The branch joined a local or server-side stack after initial validation; stop before publication.",
+        "If `STACK_REVALIDATION_FAILED=true`",
+        "Do not publish or create a default-base Pull Request from stale unstacked authorization.",
+        "FINAL_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
+        "The branch joined a local or server-side stack before the fast-forward push",
+        "The branch joined a local or server-side stack before the fresh push",
+        "The branch joined a local or server-side stack before Pull Request creation",
+        "If this final stack guard fails"
       ]
     },
     {
@@ -919,7 +935,18 @@
       "name": "recreate-commits-deferred-push-contract",
       "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
       "contains": [
-        "[--no-push] [--authorize-history-rewrite]",
+        "disable-model-invocation: false",
+        "### Model Invocation Contract",
+        "No other parent workflow is authorized by the model-invocation exception",
+        "Outside that exact `kramme:pr:create` delegation, never invent `--auto` or `--authorize-history-rewrite`",
+        "The model must never invent `--force-backup`",
+        "only with the exact retry-safe value supplied by `kramme:pr:create`",
+        "[--require-unstacked] [--no-push] [--authorize-history-rewrite]",
+        "If `REQUIRE_UNSTACKED=true`, require `STACK_MEMBERSHIP=none` immediately after this resolution",
+        "stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed",
+        "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches",
+        "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
+        "The branch joined a local or server-side stack after initial validation; stop before rewriting history.",
         "If `--no-push` was passed, do not run any push command",
         "If `IN_STACK=true` and `--auto` was passed without `--authorize-history-rewrite`, stop before the reset",
         "STACK_BRANCH_NAMES=$(resolve_stack_branch_names)",
@@ -1199,10 +1226,51 @@
       "name": "pr-generate-description-subskill-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
       "contains": [
+        "disable-model-invocation: false",
         "### Sub-Skill Invocation Contract",
         "it must pass `--auto`",
         "must also pass `--no-update`",
-        "OUTPUT_ONLY=true"
+        "OUTPUT_ONLY=true",
+        "Every model-initiated invocation must include `--no-update`"
+      ]
+    },
+    {
+      "name": "pr-verify-description-confirmed-update",
+      "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/references/confirmed-update.md",
+      "contains": [
+        "--auto --no-update --base {base-branch} --base-commit {base-commit}",
+        "This skill owns the mutation; generation remains output-only.",
+        "Do not omit `--no-update`",
+        "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
+        "Capture the single printed line as agent-tracked `{update-dir}`",
+        "UPDATE_DIR=\"{update-dir}\"",
+        "Could not back up and revalidate PR #$PR_NUMBER; no update was made.",
+        "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"$PR_SNAPSHOT_FINGERPRINT",
+        "PR_STATE\" != \"OPEN",
+        "LATEST_HEAD\" != \"$CURRENT_HEAD",
+        "LATEST_BASE_COMMIT\" != \"$BASE_COMMIT",
+        "LATEST_WORKTREE_FINGERPRINT\" != \"$WORKTREE_FINGERPRINT",
+        "Generated PR payload storage is missing or indirect",
+        "gh pr edit \"$PR_NUMBER\"",
+        "--body-file \"$PR_BODY_FILE\""
+      ]
+    },
+    {
+      "name": "pr-verify-description-snapshot-baseline",
+      "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
+      "contains": [
+        "CURRENT_HEAD=$(git rev-parse --verify HEAD)",
+        "Current branch is not safe for later shell substitution.",
+        "PR_SNAPSHOT=$(env GH_PROMPT_DISABLED=1 gh pr view",
+        "PR_MATCH_COUNT=$(env GH_PROMPT_DISABLED=1 gh pr list",
+        "MISSING REQUIREMENT: no PR found for the current branch.",
+        "Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above.",
+        "PR_SNAPSHOT_FINGERPRINT=$(printf '%s' \"$PR_SNAPSHOT\" | git hash-object --stdin)",
+        "Resolved base ref is not safe for later shell substitution.",
+        "WORKTREE_MANIFEST=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh\")",
+        "Capture the full 40-character value as immutable agent-tracked `{worktree-fingerprint}`",
+        "fix mode requires the generated base to match the Pull Request target",
+        "--fix is unavailable for a <PR_STATE> Pull Request"
       ]
     },
     {
@@ -1310,7 +1378,36 @@
     {
       "name": "pr-generate-description-direct-update-safety",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/direct-update.md",
-      "contains": ["do not mutate tracked files"]
+      "contains": [
+        "do not mutate tracked files",
+        "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
+        "Capture the single printed line as agent-tracked `{update-dir}`",
+        "UPDATE_DIR=\"{update-dir}\"",
+        "gh pr view --json title,body > \"$PR_BACKUP\"",
+        "Generated PR payload files are missing or indirect",
+        "--body-file \"$PR_BODY_FILE\""
+      ]
+    },
+    {
+      "name": "pr-generate-description-save-and-checklist-contract",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+      "contains": [
+        "SAVE_NAMESPACE=\"$REPO_ROOT/.kramme-cc-workflow\"",
+        "PR description save path is indirect; no file was written.",
+        "if ! grep -qxF \".kramme-cc-workflow/\" \"$GIT_EXCLUDE\"",
+        "Could not update Git's local exclude file; the description was not saved.",
+        "write the description there with the runtime's native file-write capability"
+      ]
+    },
+    {
+      "name": "pr-generate-description-direct-update-checklist",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/verification-checklist.md",
+      "contains": [
+        "captured one validated private `/tmp` directory as agent state",
+        "mandatory title/body JSON backup",
+        "same shell invocation as validation and cleanup",
+        "self-contained local-exclude and symlink-rejection procedure"
+      ]
     },
     {
       "name": "linear-issue-implement-reference-mapping",
@@ -1663,7 +1760,6 @@
       "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md",
       "kramme-cc-workflow/skills/kramme:nx:setup-portless/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
       "kramme-cc-workflow/skills/kramme:product:design-critic/SKILL.md",
       "kramme-cc-workflow/skills/kramme:product:review/SKILL.md",
       "kramme-cc-workflow/skills/kramme:product:strategy/SKILL.md",

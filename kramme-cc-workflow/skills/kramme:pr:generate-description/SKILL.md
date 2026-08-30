@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:generate-description
-description: Write a structured PR title and body from git diff, commit log, and Linear context. Outputs markdown for copy-paste or, when explicitly invoked with --auto, updates an existing PR.
+description: Write a structured PR title and body from git diff, commit log, and Linear context when requested or delegated by a PR workflow. Model callers use output-only mode; a direct --auto invocation may update an existing PR.
 argument-hint: "[--auto] [--no-update] [--visual] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
@@ -24,6 +24,8 @@ If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and rem
 ### Sub-Skill Invocation Contract
 
 When another skill invokes this one as an orchestration step, it must pass `--auto` (and should pass `--base <ref> --base-commit <oid>` when it already resolved and pinned the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
+
+Every model-initiated invocation must include `--no-update`. Omitting `--no-update` is reserved for a direct user invocation because that mode may mutate an existing Pull Request. Model invocation changes routing only; it never supplies permission to publish generated content.
 
 ## Instructions
 
@@ -323,7 +325,35 @@ Here is your generated PR:
 
 After presenting the description, ask: "Would you like me to save this description to a markdown file?"
 
-If yes, save to `$REPO_ROOT/.kramme-cc-workflow/pr-description/PR_DESCRIPTION.md` where `REPO_ROOT=$(git rev-parse --show-toplevel)`. Add `.kramme-cc-workflow/` to git's local exclude file first if it is not already listed (use the same idempotent check as step 1 of `references/direct-update.md`), so the saved file is not accidentally committed without mutating tracked files. Confirm the absolute file path after saving.
+If yes, prepare the save-only namespace with this self-contained procedure. It is intentionally separate from `references/direct-update.md`, whose private update storage must remain outside the repository:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
+SAVE_NAMESPACE="$REPO_ROOT/.kramme-cc-workflow"
+SAVE_DIR="$SAVE_NAMESPACE/pr-description"
+PR_DESCRIPTION_FILE="$SAVE_DIR/PR_DESCRIPTION.md"
+if [ -L "$SAVE_NAMESPACE" ] || [ -L "$SAVE_DIR" ] || [ -L "$PR_DESCRIPTION_FILE" ]; then
+  echo "Error: PR description save path is indirect; no file was written." >&2
+  exit 1
+fi
+mkdir -p "$SAVE_DIR" || exit 1
+if [ ! -d "$SAVE_DIR" ] || [ -L "$SAVE_DIR" ]; then
+  echo "Error: PR description save directory is invalid; no file was written." >&2
+  exit 1
+fi
+GIT_EXCLUDE=$(git rev-parse --git-path info/exclude) || exit 1
+mkdir -p "$(dirname "$GIT_EXCLUDE")" || exit 1
+touch "$GIT_EXCLUDE" || exit 1
+if ! grep -qxF ".kramme-cc-workflow/" "$GIT_EXCLUDE"; then
+  printf '\n.kramme-cc-workflow/\n' >> "$GIT_EXCLUDE" || {
+    echo "Error: Could not update Git's local exclude file; the description was not saved." >&2
+    exit 1
+  }
+fi
+printf '%s\n' "$PR_DESCRIPTION_FILE"
+```
+
+Capture the single printed absolute path, require it to remain below the validated `SAVE_DIR`, and write the description there with the runtime's native file-write capability. Confirm the absolute path after saving.
 
 ### Phase 5: Pre-publish Verification
 

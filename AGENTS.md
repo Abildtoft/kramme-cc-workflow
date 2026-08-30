@@ -66,6 +66,7 @@ user-invocable: true
 - **CAN** add `kramme-platforms` to restrict a skill to `[claude-code]`, `[codex]`, or both; omit it to include the skill on all platforms.
 - **ALWAYS** restrict skills that require Claude Code-only behavior such as Agent Teams to `kramme-platforms: [claude-code]`.
 - **ALWAYS** set `disable-model-invocation: true` for user-triggered skills with side effects such as git mutations, file deletion, or Pull Request creation; use `false` when model auto-invocation is safe.
+- **CAN** set `disable-model-invocation: false` for a side-effecting child skill only when an accepted ADR names the exact child and parent, its description narrowly routes model use, its body defines a least-side-effect model-invocation contract, and focused tests pin the parent's guarded arguments.
 - **ALWAYS** set `user-invocable: false` only for background conventions that should not appear in the slash-command menu; use `true` for skills users should see there.
 - **PREFER** the Agent Skills directory shape below and keep `SKILL.md` focused on orchestration:
 

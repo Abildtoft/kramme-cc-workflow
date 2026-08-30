@@ -319,6 +319,15 @@ load_assignments() {
 	! grep -E '< (base|reference)-branch >' "$strategies"
 }
 
+@test "stack workflow does not delegate mutating description generation" {
+	local stack_skill="$REPO_ROOT/skills/kramme:pr:stack/SKILL.md"
+
+	grep -F 'Do not invoke `kramme:pr:generate-description` from inside this skill' "$stack_skill"
+	grep -F 'every model-initiated call to that child must use output-only `--no-update`' "$stack_skill"
+	grep -F 'ask the user to invoke `/kramme:pr:generate-description --auto` directly' "$stack_skill"
+	! grep -F 'run `kramme:pr:generate-description` per PR' "$stack_skill"
+}
+
 @test "history rewrite flows restack before their stack-wide push" {
 	local flow
 	for flow in \

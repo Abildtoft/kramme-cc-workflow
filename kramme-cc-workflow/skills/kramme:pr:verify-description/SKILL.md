@@ -1,8 +1,8 @@
 ---
 name: kramme:pr:verify-description
-description: Compare an existing PR's title and body against the actual branch diff and report drift — false claims, missing major changes, stale scope, missing risk callouts. Use after pushing changes to a branch with an open PR, or before requesting review. Read-only by default; add --fix to delegate to kramme:pr:generate-description for an updated description. Complements kramme:pr:code-review (which checks description accuracy as one signal among many code-quality checks) by being a fast, focused, single-purpose check that runs in seconds.
+description: Compare an existing PR's title and body against the actual branch diff and report drift — false claims, missing major changes, stale scope, missing risk callouts. Use after pushing changes to a branch with an open PR, or before requesting review. Read-only by default; --fix confirms the update, delegates output-only generation, and publishes from this skill. Complements kramme:pr:code-review by being a fast, focused check.
 argument-hint: "[--fix] [--base <ref>] [--strict]"
-disable-model-invocation: false
+disable-model-invocation: true
 user-invocable: true
 ---
 
@@ -12,7 +12,7 @@ user-invocable: true
 
 Parse `$ARGUMENTS` for flags:
 
-- `--fix`: After reporting drift, ask the user once whether to delegate to `kramme:pr:generate-description --auto` to regenerate and update the PR body. Default is report-only.
+- `--fix`: After reporting drift, ask the user once whether to generate replacement title/body content and update the PR from this skill. Default is report-only.
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 - `--strict`: Tighten the accuracy bar. Flag every bullet in the description that cannot be tied to a diff hunk. Default mode is loose — only contradictions, material omissions, and missing risk callouts surface.
 
@@ -80,18 +80,30 @@ Classify each potential drift point against the rubric below. Severity drives th
    fi
    ```
 
-2. Confirm the current branch:
+2. Confirm and capture the current branch and commit:
 
    ```bash
-   git branch --show-current
+   CURRENT_BRANCH=$(git branch --show-current)
+   if [[ ! "$CURRENT_BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] \
+     || ! git check-ref-format --branch "$CURRENT_BRANCH" > /dev/null 2>&1; then
+     echo "Error: Current branch is not safe for later shell substitution." >&2
+     exit 1
+   fi
+   CURRENT_HEAD=$(git rev-parse --verify HEAD) || {
+     echo "Error: Could not capture the current commit." >&2
+     exit 1
+   }
+   printf 'CURRENT_BRANCH=%s\n' "$CURRENT_BRANCH"
+   printf 'CURRENT_HEAD=%s\n' "$CURRENT_HEAD"
    ```
+
+   Capture the labeled values as immutable agent-tracked `{current-branch}` and `{current-head}`. Each later Bash block runs in a new shell, so later mutation guidance substitutes these validated literals rather than assuming the variables persist.
 
 3. Resolve the base branch with the shared plugin script. It uses the same 3-tier strategy: explicit `--base` override, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message instead of being silently swallowed:
 
    ```bash
    RESOLVE_ARGS=(--strict)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
-
    RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
      echo "Error: Could not resolve base branch; see the message above. Re-run with --base <ref>." >&2
      exit 1
@@ -99,12 +111,49 @@ Classify each potential drift point against the rubric below. Severity drives th
    eval "$RESOLVED"
    ```
 
-   The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE` for the diff commands in Phase 2.
+   The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE` for the diff commands in Phase 2. Pin the resolved base tip for optional fix delegation:
+
+   ```bash
+   BASE_COMMIT=$(git rev-parse "$BASE_REF^{commit}") || {
+     echo "Error: Could not pin resolved base ref $BASE_REF." >&2
+     exit 1
+   }
+   if [[ ! "$BASE_REF" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*$ ]] \
+     || ! git check-ref-format --branch "$BASE_REF" > /dev/null 2>&1; then
+     echo "Error: Resolved base ref is not safe for later shell substitution." >&2
+     exit 1
+   fi
+   printf 'BASE_REF=%s\n' "$BASE_REF"
+   printf 'BASE_BRANCH=%s\n' "$BASE_BRANCH"
+   printf 'BASE_COMMIT=%s\n' "$BASE_COMMIT"
+   ```
+
+   Capture the labeled values as immutable agent-tracked `{base-ref}`, `{base-branch}`, and `{base-commit}`. Require `{base-commit}` to remain a full 40-character lowercase commit OID.
 
 4. **ALWAYS** confirm a PR exists for the current branch and is in an open state:
 
    ```bash
-   gh pr view --json number,url,title,body,baseRefName,headRefName,state
+   PR_SNAPSHOT=$(env GH_PROMPT_DISABLED=1 gh pr view \
+     --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state) || {
+     PR_MATCH_COUNT=$(env GH_PROMPT_DISABLED=1 gh pr list \
+       --head "$CURRENT_BRANCH" --state all --json number --jq 'length') || {
+       echo "Error: Could not inspect Pull Requests for the current branch; preserve the gh diagnostics above." >&2
+       exit 1
+     }
+     if [ "$PR_MATCH_COUNT" = 0 ]; then
+       echo "MISSING REQUIREMENT: no PR found for the current branch." >&2
+       echo "Run \`/kramme:pr:create\` or \`/kramme:pr:generate-description\` first." >&2
+       exit 1
+     fi
+     echo "Error: Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above." >&2
+     exit 1
+   }
+   PR_SNAPSHOT_FINGERPRINT=$(printf '%s' "$PR_SNAPSHOT" | git hash-object --stdin) || {
+     echo "Error: Could not fingerprint the Pull Request snapshot." >&2
+     exit 1
+   }
+   printf '%s\n' "$PR_SNAPSHOT"
+   printf 'PR_SNAPSHOT_FINGERPRINT=%s\n' "$PR_SNAPSHOT_FINGERPRINT"
    ```
 
    If no PR exists, stop with:
@@ -116,7 +165,23 @@ Classify each potential drift point against the rubric below. Severity drives th
 
    If `state` is not `OPEN` (i.e. `MERGED` or `CLOSED`), warn but continue — verifying a merged PR's drift is occasionally useful (e.g. when preparing a follow-up). Prepend a `PR state: <STATE> (verification on non-open PR)` line to the report header so the user notices.
 
-   Capture `PR_NUMBER`, `PR_URL`, `PR_TITLE`, `PR_BODY`, `PR_STATE` for downstream phases.
+   Capture `PR_NUMBER`, `PR_URL`, `PR_TITLE`, `PR_BODY`, `PR_BASE`, `PR_HEAD`, `PR_BASE_OID`, `PR_HEAD_OID`, `PR_STATE`, and the printed fingerprint as agent-tracked values for downstream phases. The fingerprint represents the exact `PR_SNAPSHOT` bytes without requiring later shell interpolation of untrusted title/body content.
+
+5. Capture the complete mutable local scope that Phase 2 may describe:
+
+   ```bash
+   WORKTREE_MANIFEST=$("${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh") || {
+     echo "Error: Could not capture the local working-tree scope." >&2
+     exit 1
+   }
+   WORKTREE_FINGERPRINT=$(printf '%s' "$WORKTREE_MANIFEST" | git hash-object --stdin) || {
+     echo "Error: Could not fingerprint the local working-tree scope." >&2
+     exit 1
+   }
+   printf 'WORKTREE_FINGERPRINT=%s\n' "$WORKTREE_FINGERPRINT"
+   ```
+
+   Capture the full 40-character value as immutable agent-tracked `{worktree-fingerprint}`. It covers staged, unstaged, and untracked non-ignored paths, matching the mutable local scope considered below.
 
 ### Phase 2: Diff and Commit Gathering
 
@@ -128,17 +193,16 @@ Classify each potential drift point against the rubric below. Severity drives th
    git log origin/$BASE_BRANCH..HEAD --format="%h %s%n%b%n"
    ```
 
-2. Include local uncommitted work in the diff scope (the PR body should match what *will* be on the branch after the next push):
+2. Include local uncommitted work in the diff scope (the PR body should match what _will_ be on the branch after the next push):
 
    ```bash
    git status --porcelain
-   git diff HEAD       # staged + unstaged
+   git diff HEAD # staged + unstaged
    ```
 
    If local changes exist, **ALWAYS** note this in the report header (`Local uncommitted changes included in scope: <N> files`). If they're substantial and the user is verifying "after pushing", warn them that the comparison includes work not yet on the remote.
 
 3. Categorize changed files for the rubric:
-
    - Migrations / schema changes
    - New or removed endpoints / routes
    - New or removed dependencies (package.json, requirements.txt, go.mod, etc.)
@@ -172,10 +236,15 @@ Present an inline report (do not write a separate file). Use this structure:
 # PR Description Verification — #<PR_NUMBER>
 
 **PR:** <PR_URL>
+
 **Title:** <current title>
+
 **Base:** <BASE_BRANCH> · **Head:** <current branch>
+
 **Mode:** loose | strict
+
 **PR state:** <STATE> (only show this line when state is not OPEN)
+
 **Local uncommitted changes included in scope:** <N> files (only show when N > 0)
 
 ## Verdict
@@ -188,7 +257,7 @@ Present an inline report (do not write a separate file). Use this structure:
 
 ### Critical
 
-- **[Type]** *(Location)* — <one-sentence summary>
+- **[Type]** _(Location)_ — <one-sentence summary>
   - Body says: "<quoted or paraphrased>"
   - Diff shows: <evidence with file paths>
   - Fix: <concrete recommendation>
@@ -209,7 +278,7 @@ Present an inline report (do not write a separate file). Use this structure:
 ## Next steps
 
 - <if no findings: "Description matches the diff. Safe to request review.">
-- <if findings: numbered list of fix options, ending with "Run `/kramme:pr:verify-description --fix` to regenerate via kramme:pr:generate-description --auto">
+- <if findings: numbered list of fix options, ending with "Run `/kramme:pr:verify-description --fix` to generate a replacement and apply the confirmed update">
 ```
 
 **ALWAYS** include both the `VERDICT_TAG:` line (for tooling) and the prose verdict line. Map findings to verdict like this:
@@ -225,14 +294,18 @@ Present an inline report (do not write a separate file). Use this structure:
 
 **Skip this phase if `FIX_MODE` is not set.**
 
-If `FIX_MODE=true` and at least one Important or Critical finding was reported, ask the user once:
+If `FIX_MODE=true` and either `PR_BASE` differs from `BASE_BRANCH` or `PR_BASE_OID` differs from `BASE_COMMIT`, do not prompt or invoke the generator. Report `MISSING REQUIREMENT: fix mode requires the generated base to match the Pull Request target; rerun without --base or resolve the base again.` and stop after the report. Stability checks are insufficient when the two captured snapshots disagree from the start.
+
+If `FIX_MODE=true`, `PR_STATE` is not `OPEN`, and at least one Important or Critical finding was reported, do not prompt or invoke the generator. Report `MISSING REQUIREMENT: --fix is unavailable for a <PR_STATE> Pull Request; verification remains read-only.` and stop after the report.
+
+If `FIX_MODE=true`, `PR_STATE=OPEN`, and at least one Important or Critical finding was reported, ask the user once:
 
 ```
-Found <N> finding(s). Regenerate the PR description by running
-`/kramme:pr:generate-description --auto`? [y/N]
+Found <N> finding(s). Generate a replacement title and body, then update
+PR #<PR_NUMBER>? [y/N]
 ```
 
-- On `y`: invoke the `kramme:pr:generate-description` skill with `--auto` (it will detect the existing PR and update it directly). Then re-run Phase 1-4 of this skill to verify the regenerated body actually resolves the findings — if any Critical or Important finding persists, report it and stop.
+- On `y`: read `references/confirmed-update.md` and follow it. That procedure invokes `kramme:pr:generate-description --auto --no-update` for output only, validates the returned title/body, revalidates the exact PR target, and applies the confirmed update from this skill. Then re-run Phase 1-4 to verify the regenerated body actually resolves the findings — if any Critical or Important finding persists, report it and stop.
 - On `n` or no response: stop. Print the report and exit.
 - If `FIX_MODE=true` but the verdict was `Accurate`, do not prompt — just confirm "Nothing to fix."
 - If `kramme:pr:generate-description` is not available in this environment, report the drift findings only, note `MISSING REQUIREMENT: kramme:pr:generate-description not installed; --fix unavailable`, and stop. Do not attempt to rewrite the PR body manually.
@@ -252,12 +325,12 @@ Use these uppercase markers in the report (and in conversation output around it)
 
 Watch for these — each one means a finding is about to be wrongly suppressed:
 
-- *"The diff is small, the description doesn't need to cover everything."* → Size doesn't excuse contradictions. A two-line diff that flips a default still needs that line in the body.
-- *"The reviewer can see the migration in the file tree."* → The body's `Potential concerns` block is the contract; visible-in-diff does not equal disclosed.
-- *"The title says `fix` but it's basically a fix."* → Conventional Commit type drives changelogs and release notes. If the dominant change is a feature, the title is wrong regardless of how the author thinks of it.
-- *"SemVer can wait until release day."* → SemVer is the consumer promise. A PR that changes a public contract must disclose the version and migration implications while reviewers can still evaluate them.
-- *"`Things I didn't touch: None` is fine — the author probably considered it."* → Only fine when nothing adjacent was changed. If the diff touches adjacent files, the block needs an entry.
-- *"The author will rewrite the description before merge anyway."* → Maybe — but the point of this skill is to remove that step or to make it explicit now, not to assume future cleanup.
+- _"The diff is small, the description doesn't need to cover everything."_ → Size doesn't excuse contradictions. A two-line diff that flips a default still needs that line in the body.
+- _"The reviewer can see the migration in the file tree."_ → The body's `Potential concerns` block is the contract; visible-in-diff does not equal disclosed.
+- _"The title says `fix` but it's basically a fix."_ → Conventional Commit type drives changelogs and release notes. If the dominant change is a feature, the title is wrong regardless of how the author thinks of it.
+- _"SemVer can wait until release day."_ → SemVer is the consumer promise. A PR that changes a public contract must disclose the version and migration implications while reviewers can still evaluate them.
+- _"`Things I didn't touch: None` is fine — the author probably considered it."_ → Only fine when nothing adjacent was changed. If the diff touches adjacent files, the block needs an entry.
+- _"The author will rewrite the description before merge anyway."_ → Maybe — but the point of this skill is to remove that step or to make it explicit now, not to assume future cleanup.
 
 ## Red Flags — STOP
 
@@ -267,7 +340,7 @@ Pause and re-examine the diff if any of these are true while drafting the report
 - You're about to return `Accurate` but the diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, integration contract, or schema, and the body has no release impact, SemVer, changelog, or migration story.
 - You're tempted to soften a Critical finding to Important because "the author probably knows".
 - The report has more `Not flagged` entries than `Findings` — that usually means the bar is set too low; reconsider whether several of the skipped items are actually material.
-- You're about to invoke `kramme:pr:generate-description --auto` without explicit user confirmation.
+- You're about to invoke `kramme:pr:generate-description --auto --no-update` without explicit user confirmation.
 - The diff is empty or near-empty (only whitespace, comments, or formatting) — there's nothing to verify against; return `Accurate` and stop.
 
 ## Verification
@@ -283,13 +356,13 @@ Before presenting the report, self-check:
 - [ ] Severity assignments follow the rubric in `## Scope and Rubric` — Critical is reserved for merge-blocking misinformation.
 - [ ] Loose-mode reports contain only Important and Critical findings; Suggestions appear only under `--strict`.
 - [ ] Both `VERDICT_TAG:` and the prose verdict are present and match the highest finding severity.
-- [ ] `--fix` flow asked for y/N confirmation before delegating to `kramme:pr:generate-description`, and stopped cleanly if the sibling skill is unavailable.
-- [ ] Report was emitted inline; no file was written.
+- [ ] `--fix` flow asked for y/N confirmation before delegating output-only generation, validated the returned content and exact PR target, and stopped cleanly if the sibling skill is unavailable.
+- [ ] Report was emitted inline; no separate verification report file was written.
 - [ ] No code review findings (style, types, security, performance) appear in the report — that's `kramme:pr:code-review`'s job.
 
 ## Notes
 
-- This skill is read-only by default. The only side effect is the optional `--fix` delegation, which itself requires explicit user confirmation.
+- This skill is read-only by default. Its optional `--fix` path updates the exact open PR only after explicit user confirmation; the delegated generator remains output-only.
 - The diff is the source of truth; the description is the suspect. When the body and the diff disagree, the recommended fix is always to update the body, not the code.
 - Suggestions are intentionally suppressed in loose mode to keep the signal-to-noise ratio high. Reviewers rerunning this skill should not be drowning in nits.
 - This skill complements `kramme:pr:code-review`, which checks description accuracy as one signal among many. Use this skill when you only need the description check and want it fast; use `pr:code-review` when you want a full quality pass.

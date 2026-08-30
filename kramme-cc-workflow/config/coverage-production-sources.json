@@ -381,7 +381,8 @@
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/pr-generate-description-guidance.bats",
       "skills": [
-        "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md"
       ]
     },
     {
