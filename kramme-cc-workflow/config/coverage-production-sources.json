@@ -220,6 +220,11 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/code-migrate-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:code:migrate/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/test-audit-guidance.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:test:audit/SKILL.md"]
     },
