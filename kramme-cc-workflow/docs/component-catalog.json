@@ -283,11 +283,6 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md"
     },
     {
-      "name": "kramme:pr:complete-work",
-      "invocation": "Hidden",
-      "path": "kramme-cc-workflow/skills/kramme:pr:complete-work/SKILL.md"
-    },
-    {
       "name": "kramme:pr:convention-review",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md"
