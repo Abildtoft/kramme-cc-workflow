@@ -78,8 +78,7 @@ When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` 
 
 When `PLAN_SCOPE_ACTIVE=false`, use `AskUserQuestion` even when `AUTO_MODE=true` and present exactly these choices:
 
-1. **Rebase then fix CI (Recommended)** - Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism.
-   This selection authorizes its safe unattended push mode, which preserves conflict, red-flag, and verification gates. If it proves that the rebase and push succeeded, return to Step 1 with the original parsed `fix-ci` modes still active, recheck base synchronization, then watch and fix CI. If it stops or cannot prove the push succeeded, stop this workflow with its blocker; do not watch the stale remote branch or silently choose the skip path.
+1. **Rebase then fix CI (Recommended)** - Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism. This selection authorizes its safe unattended push mode, which preserves conflict, red-flag, and verification gates. If it proves that the rebase and push succeeded, return to Step 1 with the original parsed `fix-ci` modes still active, recheck base synchronization, then watch and fix CI. If it stops or cannot prove the push succeeded, stop this workflow with its blocker; do not watch the stale remote branch or silently choose the skip path.
 2. **Skip rebase and fix CI** - Record that the user accepted the reported base drift for this run and continue to Step 3 without changing history. Do not ask again during this invocation unless the Pull Request's base branch changes.
 
 Do not run `git rebase` or force-push inline from this skill; the delegated rebase workflow owns stack handling and all history-rewrite safety gates.
