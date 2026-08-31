@@ -20,6 +20,58 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 - **Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`. Existing prompts and automation must remove `--auto`; no-argument calls use the canonical branch review scope, while former base-branch arguments must become explicit file or directory scopes. The replacement verifies and checkpoints scoped uncommitted input, then commits each simplification separately. Ship this command removal only in the next major release.
 
+## [0.78.0] - 2026-08-31
+
+### Added
+
+- Offer rebase choice before fixing CI (#883)
+- **BREAKING:** Remove source-driven component (#884)
+- Preserve proven implementation progress (#881)
+- Add optional CI stabilization (#878)
+- **BREAKING:** Remove unused launch workflow skills (#877)
+- Resume interrupted PR implementations (#874)
+- Switch Conductor branches automatically (#872)
+- Enable automatic issue-definition routing (#871)
+- Distinguish completed and canceled backlog work (#869)
+- Select agent-ready parallel issues (#868)
+- Report install transaction health (#865)
+- Add doctor diagnostics (#864)
+- Add deterministic state validation (#859)
+- Add cross-provider adversarial review (#856)
+- Rename Conductor workspaces for issues (#853)
+- Add deterministic UI slop checker (#850)
+- Add sibling bug analysis (#852)
+- Safely fast-forward existing remotes (#849)
+- Add skill effectiveness analysis (#847)
+- Add NUL diff output (#843)
+- Add behavior documentation workflow (#842)
+
+### Changed
+
+- Internalize source grounding (#882)
+- **BREAKING:** Remove redundant complete-work component (#880)
+- Move completion runtime into plan-to-pr (#876)
+- Document runtime safety boundaries (#867)
+- **BREAKING:** Move implementation workflows to Linear (#858)
+- Standardize NUL diff collection (#857)
+- Consume NUL diff fields directly (#855)
+- Shorten routing descriptions (#854)
+- Deduplicate safety epilogues (#851)
+- Split phase guidance (#848)
+- Disclose rollout templates on demand (#846)
+- Centralize review workflow guidance (#845)
+- Shorten workspace safety contract (#844)
+
+### Fixed
+
+- Enable guarded child delegation (#879)
+- Isolate and restore findings state (#875)
+- Preserve unresolved handoffs (#873)
+- Keep pending reviews inline-only (#866)
+- Keep CLI help dependency-light (#863)
+- Fail closed at recursion bounds (#862)
+- Surface install-state recovery (#861)
+
 ## [0.77.0] - 2026-08-24
 
 ### Added
@@ -906,6 +958,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.78.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.77.0...v0.78.0
 [0.77.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.76.0...v0.77.0
 [0.76.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.75.0...v0.76.0
 [0.75.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.74.0...v0.75.0
