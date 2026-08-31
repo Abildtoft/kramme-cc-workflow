@@ -8,6 +8,7 @@ SKILL="skills/kramme:code:migrate/SKILL.md"
 GROUNDING="skills/kramme:code:migrate/references/source-grounding.md"
 SOURCES="skills/kramme:code:migrate/references/sources.yaml"
 CONTEXT_SETUP="skills/kramme:session:context-setup/SKILL.md"
+CODEMODS="skills/kramme:code:migrate/references/codemod-registry.md"
 
 @test "migration loads a self-contained source-grounding contract" {
   test -f "$GROUNDING"
@@ -48,4 +49,9 @@ CONTEXT_SETUP="skills/kramme:session:context-setup/SKILL.md"
   grep -qF 'usage: inspiration' "$SOURCES"
   grep -qF 'last_reviewed_at: 2026-08-30' "$SOURCES"
   grep -qF 'baseline_hash: "sha256:3ac95b5c852740047f3572aafc24c41f7f732990e63bfd22d43330ecaba1c9b6"' "$SOURCES"
+}
+
+@test "migration codemod guidance avoids unreviewed remote script execution" {
+  grep -qF 'npm install --location=global @getgrit/cli' "$CODEMODS"
+  ! grep -qF 'curl -fsSL https://docs.grit.io/install | bash' "$CODEMODS"
 }
