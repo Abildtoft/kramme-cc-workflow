@@ -3,15 +3,8 @@
 
 const path = require("path");
 const os = require("os");
-const { convertClaudeToCodex } = require("./convert-plugin/codex-transformer");
-const {
-  loadClaudePlugin,
-  resolvePluginInput,
-} = require("./convert-plugin/loader");
-const {
-  resolveCodexOutputRoot,
-  writeCodexBundle,
-} = require("./convert-plugin/codex-writer");
+
+const ERROR_CAUSE_DEPTH_LIMIT = 5;
 
 const REMOVED_OPENCODE_INSTALL_OPTIONS = [
   {
@@ -58,10 +51,14 @@ async function main() {
     return;
   }
 
-  if (command !== "install" && command !== "stats") {
-    console.error(`Unknown command: ${command}`);
-    printHelp(1);
+  if (command === "doctor") {
+    const parsed = parseArgs(argv.slice(1));
+    await runDoctor(parsed);
+    return;
   }
+
+  console.error(`Unknown command: ${command}`);
+  printHelp(1);
 }
 
 /** @param {ParsedArgs} parsed */
@@ -76,6 +73,18 @@ async function runInstall(parsed) {
       "--also is no longer supported; install the Codex target directly.",
     );
   }
+
+  const {
+    convertClaudeToCodex,
+  } = require("./convert-plugin/codex-transformer");
+  const {
+    loadClaudePlugin,
+    resolvePluginInput,
+  } = require("./convert-plugin/loader");
+  const {
+    resolveCodexOutputRoot,
+    writeCodexBundle,
+  } = require("./convert-plugin/codex-writer");
 
   const resolvedPluginPath = await resolvePluginInput(pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
@@ -137,6 +146,13 @@ function rejectRemovedOpenCodeInstallOptions(parsed) {
 async function runStats(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
   resolveTargetName(parsed);
+  const {
+    convertClaudeToCodex,
+  } = require("./convert-plugin/codex-transformer");
+  const {
+    loadClaudePlugin,
+    resolvePluginInput,
+  } = require("./convert-plugin/loader");
   const resolvedPluginPath = await resolvePluginInput(pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
 
@@ -158,11 +174,143 @@ async function runStats(parsed) {
   }
 }
 
+/** @param {ParsedArgs} parsed */
+async function runDoctor(parsed) {
+  validateDoctorArgs(parsed);
+  resolveTargetName(parsed);
+  const outputAsJson = parseDoctorJsonOption(parsed.json);
+  const codexHome = resolveRoot(
+    readDoctorPathOption(parsed, "codex-home", "codexHome"),
+    ".codex",
+  );
+  const agentsRoot = resolveRoot(
+    readDoctorPathOption(parsed, "agents-home", "agentsHome"),
+    ".agents",
+  );
+  const {
+    collectConverterDiagnostics,
+  } = require("./convert-plugin/diagnostics");
+  const diagnostic = await collectConverterDiagnostics({
+    agentsRoot,
+    codexHome,
+    pluginInput: parsed._[0],
+  });
+  const output = sanitizeDiagnosticPaths(diagnostic);
+
+  if (outputAsJson) {
+    console.log(JSON.stringify(output));
+    return;
+  }
+
+  for (const [key, value] of Object.entries(output)) {
+    console.log(`${key}=${formatDoctorHumanValue(value)}`);
+  }
+}
+
+/** @param {unknown} value */
+function formatDoctorHumanValue(value) {
+  if (value === null || value === undefined) return "none";
+  const rendered =
+    typeof value === "object" ? JSON.stringify(value) : String(value);
+  return rendered.replace(
+    /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g,
+    (character) =>
+      `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
+}
+
+/** @param {ParsedArgs} parsed */
+function validateDoctorArgs(parsed) {
+  if (parsed._.length !== 1) {
+    throw new Error("doctor requires exactly one plugin name or path.");
+  }
+
+  const allowed = new Set([
+    "_",
+    "agents-home",
+    "agentsHome",
+    "codex-home",
+    "codexHome",
+    "json",
+    "to",
+  ]);
+  const unsupported = Object.keys(parsed).find((key) => !allowed.has(key));
+  if (unsupported) {
+    throw new Error(`doctor does not support --${unsupported}.`);
+  }
+}
+
+/**
+ * @param {ParsedArgs} parsed
+ * @param {string} kebabKey
+ * @param {string} camelKey
+ */
+function readDoctorPathOption(parsed, kebabKey, camelKey) {
+  const value = parsed[kebabKey] ?? parsed[camelKey];
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`--${kebabKey} requires a directory.`);
+  }
+  return value;
+}
+
+/** @param {string | boolean | string[] | undefined} value */
+function parseDoctorJsonOption(value) {
+  if (value === undefined) return false;
+  if (typeof value === "boolean") return value;
+  if (Array.isArray(value)) {
+    throw new Error("--json requires a boolean value when one is provided.");
+  }
+  const normalized = value.trim().toLowerCase();
+  if (["true", "1", "yes"].includes(normalized)) return true;
+  if (["false", "0", "no"].includes(normalized)) return false;
+  throw new Error("--json requires a boolean value when one is provided.");
+}
+
+/** @param {Record<string, unknown>} diagnostic */
+function sanitizeDiagnosticPaths(diagnostic) {
+  return {
+    ...diagnostic,
+    plugin_source: sanitizeHomePath(diagnostic.plugin_source),
+    codex_root: sanitizeHomePath(diagnostic.codex_root),
+    agents_root: sanitizeHomePath(diagnostic.agents_root),
+    install_state_path: sanitizeHomePath(diagnostic.install_state_path),
+  };
+}
+
+/** @param {unknown} value */
+function sanitizeHomePath(value) {
+  const resolved = path.resolve(String(value));
+  const home = path.resolve(os.homedir());
+  if (resolved === home) return "~";
+  if (resolved.startsWith(`${home}${path.sep}`)) {
+    return `~${path.sep}${path.relative(home, resolved)}`;
+  }
+  return resolved;
+}
+
+/** @param {unknown} value */
+function sanitizeDoctorError(value) {
+  const home = path.resolve(os.homedir());
+  const homeBoundary = new RegExp(
+    `(^|[\\s"'(=,:])${escapeRegExp(home)}(?=$|${escapeRegExp(path.sep)}|["'\\)\\],:;])`,
+    "g",
+  );
+  const redacted = String(value).replace(homeBoundary, "$1~");
+  return formatDoctorHumanValue(redacted);
+}
+
+/** @param {string} value */
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /** @param {number} exitCode */
 function printHelp(exitCode) {
   const help = `Usage:
   scripts/convert-plugin.js install <plugin-name|path> [options]
   scripts/convert-plugin.js stats <plugin-name|path> [options]
+  scripts/convert-plugin.js doctor <plugin-name|path> [options]
 
 Options:
   --to <target>           Target format: codex (default: codex)
@@ -170,11 +318,17 @@ Options:
   --agents-home <dir>     Agents root (default: ~/.agents)
   --yes, -y               Assume "yes" for all cleanup confirmations
   --non-interactive       Never prompt; use default answers for confirmations
-  --json                  (stats only) print a JSON object instead of key=value lines
+  --json                  (stats and doctor) print JSON instead of key=value lines
 
 Stats fields:
   codex_skills            Number of Codex skills (skill directories plus generated command skills)
   agent_skills            Number of generated Codex agent skills
+
+Doctor fields:
+  schema_version, plugin_name, plugin_version, plugin_source
+  codex_root, agents_root, install_state_path
+  install_state_status, install_state_from_disk, install_state_recovery_reason
+  transaction_health
 `;
   console.log(help);
   if (exitCode) process.exit(exitCode);
@@ -254,7 +408,40 @@ function expandHome(value) {
   return value;
 }
 
+/** @param {unknown} error */
+function formatError(error) {
+  if (!(error instanceof Error)) return error;
+
+  /** @type {string[]} */
+  const messages = [];
+  /** @type {unknown} */
+  let current = error;
+
+  for (let depth = 0; depth < ERROR_CAUSE_DEPTH_LIMIT; depth += 1) {
+    if (!(current instanceof Error)) break;
+
+    const normalized = current.message.split(/\r?\n/, 1)[0].trim();
+    const alreadyRendered = messages.some(
+      (message) =>
+        message === normalized ||
+        message.endsWith(`: ${normalized}`) ||
+        message.startsWith(`${normalized} `),
+    );
+    if (normalized && !alreadyRendered) {
+      messages.push(normalized);
+    }
+
+    if (current.cause === undefined) break;
+    current = current.cause;
+  }
+
+  return messages.join(": ");
+}
+
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  const formatted = formatError(error);
+  console.error(
+    process.argv[2] === "doctor" ? sanitizeDoctorError(formatted) : formatted,
+  );
   process.exit(1);
 });

@@ -14,7 +14,7 @@ Start implementing a Linear issue through an extensive planning phase before any
 
 **Prerequisite:** Requires the Linear MCP server. For work prepared through SIW, run `kramme:siw:transfer-to-linear` first and invoke this skill with the resulting Linear issue identifier.
 
-Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before extracting the Linear issue id. `--auto` skips plan and approach confirmation when the technical path is clear, then chooses Autonomous Implementation. It does not bypass dirty-worktree handling, branch verification, missing Linear metadata, or genuinely blocking product/technical ambiguities.
+Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before extracting the Linear issue id. `--auto` skips plan and approach confirmation when the technical path is clear, then chooses Autonomous Implementation. It does not bypass dirty-worktree handling, branch verification, missing Linear metadata, or genuinely blocking product/technical ambiguities. Accept the internal `--resume-current-branch` flag only when `AUTO_MODE=true` and the invoking `kramme:linear:issue-to-pr --continue` workflow supplies its validated issue ID, exact branch, base commit, entry `HEAD`, remote-absence proof, committed paths, and dirty paths as a parent-owned resume handoff. Set `RESUME_CURRENT_BRANCH=true` and remove the flag before issue-ID extraction. Reject direct, incomplete, mismatched, or duplicate use; this internal adapter is not a standalone dirty-tree bypass.
 
 ## Process Overview
 
@@ -315,6 +315,8 @@ Read example question patterns from `references/question-examples.md` when compo
 After gathering answers, create a comprehensive technical plan that translates the product requirements into a concrete implementation approach:
 
 Read the technical plan template from `assets/technical-plan.md` and populate it based on the gathered context and user answers.
+
+When `RESUME_CURRENT_BRANCH=true`, reconcile every committed and dirty path in the parent resume handoff against the fetched issue, mapped references, codebase evidence, and this completed technical plan. Require the current branch and entry lineage still to match the handoff, require every entry path to be necessary or already-valid work for the issue, and inspect the existing diff before planning further edits. Stop without modifying, staging, stashing, discarding, or resetting anything if a path is unrelated, ambiguous, missing from the working copy, or incompatible with the chosen approach. Record the accepted entry paths and any autonomous decision needed to finish them for the parent reviewer handoff.
 
 **Present this plan to the user and get confirmation before proceeding to implementation approach selection.** If `AUTO_MODE=true`, present the plan, add `AUTO: proceeding with autonomous implementation`, and continue without the confirmation prompt only when no blocking ambiguity remains.
 

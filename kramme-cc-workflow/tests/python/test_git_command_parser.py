@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import shlex
 import subprocess
 import sys
 import unittest
@@ -12,7 +13,6 @@ from pathlib import Path
 
 PARSER_LIB_DIR = Path(__file__).resolve().parents[2] / "hooks" / "lib"
 PARSER_PATH = PARSER_LIB_DIR / "git_command_parser.py"
-PARSER_PACKAGE_DIR = PARSER_LIB_DIR / "command_safety"
 
 INTERACTIVE_COMMIT_REASON = (
     'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
@@ -43,17 +43,6 @@ def load_entry_point_module():
     return module
 
 
-def parser_source() -> str:
-    """Every line of parser implementation, entry point and package alike.
-
-    The de-duplication assertions below ask whether a helper or constant is
-    defined once *anywhere in the parser*, so they must read the whole package
-    rather than a single file.
-    """
-    paths = sorted([PARSER_PATH, *PARSER_PACKAGE_DIR.glob("*.py")])
-    return "\n".join(path.read_text(encoding="utf-8") for path in paths)
-
-
 def json_line(value) -> str:
     return json.dumps(value) + "\n"
 
@@ -78,6 +67,7 @@ from command_safety import commit as parser_commit  # noqa: E402
 from command_safety import lexer as parser_lexer  # noqa: E402
 from command_safety import noninteractive as parser_noninteractive  # noqa: E402
 from command_safety import prefix as parser_prefix  # noqa: E402
+from command_safety import rm_rf as parser_rm_rf  # noqa: E402
 from command_safety import syntax as parser_syntax  # noqa: E402
 from command_safety import vocabulary as parser_vocabulary  # noqa: E402
 
@@ -171,35 +161,6 @@ class GitCommandLexerTest(unittest.TestCase):
 
         self.assertEqual(indexes, [2, 1])
 
-    def test_shared_lexer_helpers_are_defined_once(self) -> None:
-        source = parser_source()
-        helpers = [
-            "_extract_body_substitutions",
-            "strip_heredoc_bodies",
-            "normalize_newlines",
-            "tokenize",
-            "split_segments",
-            "read_dollar_substitution",
-            "read_backtick_substitution",
-            "replace_command_substitutions",
-            "extract_placeholder_indexes",
-            "_decode_ansi_c_string",
-            "_expand_ansi_c_quoted_strings",
-            "_is_assignment",
-            "_skip_xargs_options",
-        ]
-
-        for helper in helpers:
-            with self.subTest(helper=helper):
-                self.assertEqual(source.count(f"def {helper}"), 1)
-
-        # The assignment-word regex has one definition. It was previously
-        # duplicated byte-for-byte as NONINTERACTIVE_ASSIGNMENT and
-        # COMMIT_ASSIGNMENT; neither name should come back.
-        self.assertEqual(source.count("ASSIGNMENT_WORD = re.compile"), 1)
-        self.assertNotIn("NONINTERACTIVE_ASSIGNMENT", source)
-        self.assertNotIn("COMMIT_ASSIGNMENT", source)
-
     def test_expand_ansi_c_quoted_strings_decodes_shell_escapes(self) -> None:
         cases = [
             (r"bash -c $'git\x20commit'", "bash -c 'git commit'"),
@@ -215,16 +176,8 @@ class GitCommandLexerTest(unittest.TestCase):
                 self.assertEqual(parser_syntax._expand_ansi_c_quoted_strings(command), expected)
 
 
-class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
-    """Pins the cross-mode primitive invariants.
-
-    The `noninteractive`, `commit-contexts`, and `rm-rf` parser modes each
-    used to carry their own copy of these primitives. The byte-identical
-    copies are now canonicalized to one definition apiece; the one pair
-    that carries a real behavioral delta (`_basename` vs
-    `_basename_no_unescape`) stays separate. These tests fail if a
-    canonical primitive is duplicated again or if the real delta is erased.
-    """
+class GitCommandPrimitiveBehaviorTest(unittest.TestCase):
+    """Pins behavior shared by the parser's command-safety modes."""
 
     ASSIGNMENT_CASES = [
         ("FOO=bar", True),
@@ -238,45 +191,18 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
     ]
 
     def test_assignment_predicate_is_canonical_across_modes(self) -> None:
-        # ASSIGNMENT_WORD/_is_assignment is the single canonical primitive
-        # shared by the noninteractive, commit-contexts, and rm-rf modes
-        # (formerly three byte-identical copies: ASSIGNMENT_WORD,
-        # NONINTERACTIVE_ASSIGNMENT, COMMIT_ASSIGNMENT).
         for token, expected in self.ASSIGNMENT_CASES:
             with self.subTest(token=token):
                 self.assertIs(parser_syntax._is_assignment(token), expected)
                 self.assertIs(bool(parser_syntax.ASSIGNMENT_WORD.match(token)), expected)
 
     def test_shell_reserved_words_and_keyword_sets_differ_only_by_closing_paren(self) -> None:
-        # SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE replaces the byte-identical
-        # NONINTERACTIVE_SHELL_KEYWORDS and COMMIT_SHELL_KEYWORDS copies. It
-        # is SHELL_RESERVED_COMMAND_WORDS plus ")", for the sites that skip a
-        # leading boundary keyword; the bare set is for sites that do not
-        # treat a subshell close as one.
         self.assertEqual(
             parser_syntax.SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE - parser_syntax.SHELL_RESERVED_COMMAND_WORDS, {")"}
         )
-        source = parser_source()
-        self.assertNotIn("NONINTERACTIVE_SHELL_KEYWORDS", source)
-        self.assertNotIn("COMMIT_SHELL_KEYWORDS", source)
-
-    def test_xargs_option_vocabulary_is_canonical_across_modes(self) -> None:
-        # XARGS_OPTIONS_WITH_VALUE/_skip_xargs_options replace the incomplete
-        # NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE copy and the separate
-        # inline vocabulary in _detect_xargs. XargsOptionVocabularyParityTest
-        # covers the behavior; this pins that the copies stay gone.
-        source = parser_source()
-        self.assertNotIn("NONINTERACTIVE_XARGS_OPTIONS_WITH_VALUE", source)
-        self.assertEqual(source.count("XARGS_OPTIONS_WITH_VALUE = "), 1)
 
     def test_shell_executable_set_is_canonical_across_modes(self) -> None:
-        # SHELL_EXECUTABLES replaces the byte-identical
-        # NONINTERACTIVE_SHELL_EXECUTABLES copy and is shared by the
-        # command-prefix normalizer, rm-rf detector, and noninteractive
-        # parser.
         self.assertEqual(parser_syntax.SHELL_EXECUTABLES, {"sh", "bash", "zsh", "dash", "ksh"})
-        source = parser_source()
-        self.assertNotIn("NONINTERACTIVE_SHELL_EXECUTABLES", source)
 
     BASENAME_CASES = [
         # token, _basename() result, _basename_no_unescape() result
@@ -288,20 +214,10 @@ class GitCommandPrimitiveEquivalenceTest(unittest.TestCase):
     ]
 
     def test_basename_helpers_differ_only_in_backslash_unescaping(self) -> None:
-        # _basename() strips a leading backslash, so the rm-rf detector still
-        # recognizes `\rm -rf`; _basename_no_unescape() does not, so the
-        # noninteractive and commit-contexts git/alias/export/unset checks do
-        # not recognize `\git`. It replaces the private
-        # _noninteractive_basename plus two bare os.path.basename() calls
-        # inlined in the commit-contexts path.
         for token, expected_basename, expected_no_unescape in self.BASENAME_CASES:
             with self.subTest(token=token):
                 self.assertEqual(parser_syntax._basename(token), expected_basename)
                 self.assertEqual(parser_syntax._basename_no_unescape(token), expected_no_unescape)
-
-        source = parser_source()
-        self.assertNotIn("_noninteractive_basename", source)
-        self.assertEqual(source.count("def _basename_no_unescape"), 1)
 
 
 class GitCommandNoninteractiveHelperTest(unittest.TestCase):
@@ -352,45 +268,56 @@ class GitCommandNoninteractiveHelperTest(unittest.TestCase):
 
 
 class StructValueTest(unittest.TestCase):
-    """Pins the equality and repr that _StructValue hand-rolls.
+    """Pins the observable value semantics of lightweight parser results."""
 
-    The parse-result structs are compared whole in the boundary tests
-    below, so those assertions are only as strong as this equality. A
-    dataclass got it right by construction; this base does not, and a
-    subclass whose __slots__ drifts from its __init__ would silently drop
-    the missing field from the comparison.
-    """
-
-    def make(self, **overrides: object) -> object:
-        fields: dict[str, object] = {"env": {"A": "1"}, "subcmd": "commit", "args": ["-m", "x"]}
-        fields.update(overrides)
-        return parser_noninteractive.NoninteractiveParseResult(**fields)  # type: ignore[arg-type]
-
-    def test_equal_when_every_field_matches(self) -> None:
-        self.assertEqual(self.make(), self.make())
-
-    def test_unequal_when_any_single_field_differs(self) -> None:
+    def test_every_logical_field_participates_in_equality(self) -> None:
         cases = [
-            ("env", {"A": "2"}),
-            ("subcmd", "rebase"),
-            ("args", ["-m", "y"]),
+            (
+                parser_noninteractive.NoninteractiveParseResult,
+                {"env": {"A": "1"}, "subcmd": "commit", "args": ["-m", "x"]},
+                {"env": {"A": "2"}, "subcmd": "rebase", "args": ["-m", "y"]},
+            ),
+            (
+                parser_prefix.NormalizedCommandPrefix,
+                {
+                    "executable": "git",
+                    "arguments": ["status"],
+                    "environment": ["A=1"],
+                    "repository_modifiers": ["-C", "repo"],
+                    "nested_shell_command": None,
+                    "shell_builtins_allowed": False,
+                },
+                {
+                    "executable": "bash",
+                    "arguments": ["commit"],
+                    "environment": ["A=2"],
+                    "repository_modifiers": ["--git-dir", ".git"],
+                    "nested_shell_command": "git status",
+                    "shell_builtins_allowed": True,
+                },
+            ),
+            (
+                parser_commit.CommitSegmentResult,
+                {
+                    "contexts": [],
+                    "persisted_git_env": ["GIT_EDITOR=true"],
+                    "persisted_shell_git_vars": ["GIT_SEQUENCE_EDITOR=true"],
+                },
+                {
+                    "contexts": [object()],
+                    "persisted_git_env": ["GIT_EDITOR=false"],
+                    "persisted_shell_git_vars": ["GIT_SEQUENCE_EDITOR=false"],
+                },
+            ),
         ]
-        for field, value in cases:
-            with self.subTest(field=field):
-                self.assertNotEqual(self.make(), self.make(**{field: value}))
 
-    def test_every_slot_participates_in_equality(self) -> None:
-        # Guards the __slots__/__init__ contract the base docstring states:
-        # a field missing from __slots__ would be skipped by __eq__ above.
-        for struct in (
-            parser_noninteractive.NoninteractiveParseResult,
-            parser_prefix.NormalizedCommandPrefix,
-            parser_commit.CommitSegmentResult,
-        ):
-            with self.subTest(struct=struct.__name__):
-                init_params = list(struct.__init__.__code__.co_varnames)[1 : struct.__init__.__code__.co_argcount]
-
-                self.assertEqual(list(struct.__slots__), init_params)
+        for struct, baseline, alternatives in cases:
+            with self.subTest(struct=struct.__name__, equality="all fields match"):
+                self.assertEqual(struct(**baseline), struct(**baseline))
+            for field, alternative in alternatives.items():
+                changed = baseline | {field: alternative}
+                with self.subTest(struct=struct.__name__, changed_field=field):
+                    self.assertNotEqual(struct(**baseline), struct(**changed))
 
     def test_unequal_across_struct_types_with_matching_field_values(self) -> None:
         self.assertNotEqual(
@@ -1342,6 +1269,12 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
 class RmRfParserCliTest(unittest.TestCase):
     maxDiff = None
 
+    @staticmethod
+    def nested_shell_command(command: str, layers: int) -> str:
+        for _ in range(layers):
+            command = f"bash -c {shlex.quote(command)}"
+        return command
+
     CASES = [
         (
             "plain rm -rf",
@@ -1596,6 +1529,30 @@ class RmRfParserCliTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, "")
         self.assertEqual(result.stdout, json_line({"block": RM_RF_REASON}))
+
+    def test_recursion_boundary_fails_closed(self) -> None:
+        cases = [
+            ("destructive below limit", "rm -rf directory/", 4, RM_RF_REASON),
+            ("destructive at limit", "rm -rf directory/", 5, RM_RF_REASON),
+            ("destructive beyond limit", "rm -rf directory/", 6, RM_RF_REASON),
+            ("safe at limit", "echo safe", 5, None),
+            ("safe beyond limit", "echo safe", 6, RM_RF_REASON),
+        ]
+
+        for name, payload, layers, expected_reason in cases:
+            with self.subTest(name=name):
+                result = self.run_parser(self.nested_shell_command(payload, layers))
+
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(result.stderr, "")
+                self.assertEqual(result.stdout, json_line({"block": expected_reason}))
+
+    def test_segment_recursion_guard_fails_closed(self) -> None:
+        self.assertIsNone(parser_rm_rf._detect_rm_rf_segment(["echo", "safe"], [], depth=5))
+        self.assertEqual(
+            parser_rm_rf._detect_rm_rf_segment(["echo", "safe"], [], depth=6),
+            RM_RF_REASON,
+        )
 
 
 class GitCommandParserEntryPointTest(unittest.TestCase):

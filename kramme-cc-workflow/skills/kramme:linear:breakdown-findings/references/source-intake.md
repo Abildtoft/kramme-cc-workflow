@@ -48,7 +48,7 @@ Validate every theme. If any required field is absent, stop and request either a
 
 ## Normalize findings
 
-For every findings-mode item, capture:
+For every findings-mode item, capture the following in the parent-only normalization ledger:
 
 - stable source reference (`SRC-##`, plus section/line or source finding ID when available);
 - complete problem statement and affected behavior;
@@ -76,6 +76,6 @@ Reject raw idea lists that lack evidence or validation context. Route a single a
 3. Never use model-normalized problem statements, summaries, inferred fields, argument position, or prose paraphrases as identity inputs.
 4. Sort source records by content digest and stable locator. Serialize `{schema_version: 1, sources: [...], selected_finding_locators: [...]}` as compact JSON with lexicographically sorted object keys and LF line endings. Reject duplicate source records rather than relying on their input order.
 5. Compute SHA-256 over those exact UTF-8 bytes and use the first 12 lowercase hexadecimal characters as `SOURCE_SET_KEY`.
-6. Keep the source-identity manifest in memory only. Never create a batch file.
+6. Keep the source-identity manifest in memory only. Never create a batch file or copy source references, finding IDs, or the source-set key into a Linear issue handoff's `issue` object.
 
-The same exact source set and selected finding locators must produce the same `SOURCE_SET_KEY` regardless of argument order. Use this key only for in-memory plan, handoff, and result correlation; never write it to Linear. Changed source is a different source set, while changed repository revision, team, or project requires fresh reconciliation and scope validation.
+The same exact source set and selected finding locators must produce the same `SOURCE_SET_KEY` regardless of argument order. Use this key only for the in-memory plan and the handoff/result correlation envelope; never write it to Linear, and never write another non-Linear source identifier there. Changed source is a different source set, while changed repository revision, team, or project requires fresh reconciliation and scope validation.

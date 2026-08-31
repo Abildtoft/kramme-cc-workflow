@@ -14,6 +14,90 @@ teardown() {
 	fi
 }
 
+create_isolated_converter() {
+	local fixture_root="$1"
+	mkdir -p "$fixture_root/scripts"
+	cp "$SCRIPT" "$fixture_root/scripts/convert-plugin.js"
+}
+
+add_failing_converter_modules() {
+	local fixture_root="$1"
+	local module_root="$fixture_root/scripts/convert-plugin"
+	mkdir -p "$module_root"
+
+	cat >"$module_root/codex-transformer.js" <<'JS'
+"use strict";
+
+module.exports = {};
+JS
+	cat >"$module_root/loader.js" <<'JS'
+"use strict";
+
+module.exports = {
+  async resolvePluginInput() {
+    if (process.env.FIXTURE_FAILURE === "duplicate") {
+      const cause = new Error("yaml package unavailable");
+      throw new Error(`Unable to resolve fixture plugin: ${cause.message}`, {
+        cause,
+      });
+    }
+    if (process.env.FIXTURE_FAILURE === "duplicate-prefix") {
+      const cause = new Error("primary conversion failure");
+      throw new Error(`${cause.message} Rollback failed: cleanup failure`, {
+        cause,
+      });
+    }
+    if (process.env.FIXTURE_FAILURE === "deep") {
+      let failure = new Error("cause-6");
+      for (let index = 5; index >= 1; index -= 1) {
+        failure = new Error(`cause-${index}`, { cause: failure });
+      }
+      throw failure;
+    }
+    if (process.env.FIXTURE_FAILURE === "plain-object") {
+      throw { message: "plain object failure", code: "EPLAIN" };
+    }
+    throw new Error("Unable to resolve fixture plugin", {
+      cause: new Error("yaml package unavailable"),
+    });
+  },
+};
+JS
+	cat >"$module_root/codex-writer.js" <<'JS'
+"use strict";
+
+module.exports = {};
+JS
+}
+
+add_stats_converter_modules() {
+	local fixture_root="$1"
+	local module_root="$fixture_root/scripts/convert-plugin"
+	mkdir -p "$module_root"
+
+	cat >"$module_root/codex-transformer.js" <<'JS'
+"use strict";
+
+module.exports = {
+  convertClaudeToCodex() {
+    return { skillDirs: [], generatedSkills: [], agentSkills: [] };
+  },
+};
+JS
+	cat >"$module_root/loader.js" <<'JS'
+"use strict";
+
+module.exports = {
+  async loadClaudePlugin() {
+    return {};
+  },
+  async resolvePluginInput(pluginInput) {
+    return pluginInput;
+  },
+};
+JS
+}
+
 create_fixture_plugin() {
 	local plugin_dir="$1"
 	local plugin_name="${2:-fixture-plugin}"
@@ -509,7 +593,7 @@ MD
 	[ ! -d "$TMP_DIR/.agents/skills/kramme:temp-agent" ]
 }
 
-@test "help documents stats field names" {
+@test "help documents stats and doctor field names" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
 	fi
@@ -519,6 +603,128 @@ MD
 	[[ "$output" == *"Stats fields:"* ]]
 	[[ "$output" == *"codex_skills"* ]]
 	[[ "$output" == *"agent_skills"* ]]
+	[[ "$output" == *"Doctor fields:"* ]]
+	[[ "$output" == *"plugin_source"* ]]
+	[[ "$output" == *"install_state_recovery_reason"* ]]
+	[[ "$output" == *"transaction_health"* ]]
+}
+
+@test "help and unknown commands work without converter modules" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/dependency-free"
+	create_isolated_converter "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" --help
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Usage:"* ]]
+	[[ "$output" != *"Cannot find module"* ]]
+
+	run node "$isolated/scripts/convert-plugin.js" unknown
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Unknown command: unknown"* ]]
+	[[ "$output" == *"Usage:"* ]]
+	[[ "$output" != *"Cannot find module"* ]]
+}
+
+@test "missing converter modules render single-line command errors" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/missing-modules"
+	create_isolated_converter "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Cannot find module"* ]]
+	[[ "$output" == *"codex-transformer"* ]]
+	[[ "$output" != *$'\n'* ]]
+	[[ "$output" != *"Require stack:"* ]]
+
+	run node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Cannot find module"* ]]
+	[[ "$output" == *"codex-transformer"* ]]
+	[[ "$output" != *$'\n'* ]]
+	[[ "$output" != *"Require stack:"* ]]
+
+	run node "$isolated/scripts/convert-plugin.js" doctor fixture
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Cannot find module"* ]]
+	[[ "$output" == *"diagnostics"* ]]
+	[[ "$output" != *$'\n'* ]]
+	[[ "$output" != *"Require stack:"* ]]
+}
+
+@test "converter failures render a bounded cause chain without a stack" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/causal-error"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
+
+	run env FIXTURE_FAILURE=duplicate node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
+
+	run env FIXTURE_FAILURE=duplicate-prefix node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "primary conversion failure Rollback failed: cleanup failure" ]
+}
+
+@test "converter failures bound deep cause chains" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/bounded-causal-error"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
+
+	run env FIXTURE_FAILURE=deep node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "cause-1: cause-2: cause-3: cause-4: cause-5" ]
+}
+
+@test "converter failures preserve non-Error rejection details" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/non-error"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
+
+	run env FIXTURE_FAILURE=plain-object node "$isolated/scripts/convert-plugin.js" install fixture --yes
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"message"* ]]
+	[[ "$output" == *"plain object failure"* ]]
+	[[ "$output" == *"code"* ]]
+	[[ "$output" == *"EPLAIN"* ]]
+	[[ "$output" != *"[object Object]"* ]]
+}
+
+@test "stats does not load install-only writer modules" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/stats-without-writer"
+	create_isolated_converter "$isolated"
+	add_stats_converter_modules "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 0 ]
+	[ "$output" = $'codex_skills=0\nagent_skills=0' ]
 }
 
 @test "stats reports source, generated, and agent skills as text" {
@@ -562,6 +768,138 @@ MD
 	[ ! -d "$TMP_DIR/home/.agents" ]
 }
 
+@test "doctor reports stable human and JSON diagnostics" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/doctor-plugin"
+	local codex_home="$TMP_DIR/output"
+	local codex_root="$codex_home/.codex"
+	local agents_root="$TMP_DIR/agents"
+	create_fixture_plugin "$PLUGIN_DIR" "doctor-plugin"
+	mkdir -p "$codex_root"
+	cat >"$codex_root/.kramme-install-state.json" <<'JSON'
+{"version":1,"plugins":{}}
+JSON
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$agents_root"
+	[ "$status" -eq 0 ]
+	local empty_collection
+	empty_collection='{"entry_count":0,"inspected_count":0,"status":"absent","status_counts":{},"truncated":false}'
+	local transaction_health
+	transaction_health="{\"advisory\":true,\"backups\":$empty_collection,\"entry_limit\":50,\"journals\":$empty_collection,\"lock\":{\"status\":\"absent\"},\"metadata_byte_limit\":65536,\"recovery_claims\":$empty_collection,\"recovery_conflicts\":$empty_collection}"
+	local expected_text
+	expected_text="$(printf '%s\n' \
+		'schema_version=1' \
+		'plugin_name=doctor-plugin' \
+		'plugin_version=1.0.0' \
+		"plugin_source=$PLUGIN_DIR" \
+		"codex_root=$codex_root" \
+		"agents_root=$agents_root" \
+		"install_state_path=$codex_root/.kramme-install-state.json" \
+		'install_state_status=loaded' \
+		'install_state_from_disk=true' \
+		'install_state_recovery_reason=none' \
+		"transaction_health=$transaction_health")"
+	[ "$output" = "$expected_text" ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$agents_root" --json
+	[ "$status" -eq 0 ]
+	local expected_json
+	expected_json="$(jq -cn \
+		--arg plugin_source "$PLUGIN_DIR" \
+		--arg codex_root "$codex_root" \
+		--arg agents_root "$agents_root" \
+		--argjson transaction_health "$transaction_health" \
+		'{schema_version:1,plugin_name:"doctor-plugin",plugin_version:"1.0.0",plugin_source:$plugin_source,codex_root:$codex_root,agents_root:$agents_root,install_state_path:($codex_root+"/.kramme-install-state.json"),install_state_status:"loaded",install_state_from_disk:true,install_state_recovery_reason:null,transaction_health:$transaction_health}')"
+	[ "$output" = "$expected_json" ]
+}
+
+@test "doctor rejects unusable input and unsupported options" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	run node "$SCRIPT" doctor
+	[ "$status" -eq 1 ]
+	[ "$output" = "doctor requires exactly one plugin name or path." ]
+
+	run node "$SCRIPT" doctor "$TMP_DIR/not-a-plugin"
+	[ "$status" -eq 1 ]
+	[ "$output" = "Could not resolve plugin \"$TMP_DIR/not-a-plugin\"." ]
+
+	run node "$SCRIPT" doctor "$REPO_ROOT" --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "doctor does not support --yes." ]
+
+	run node "$SCRIPT" doctor "$REPO_ROOT" --codex-home
+	[ "$status" -eq 1 ]
+	[ "$output" = "--codex-home requires a directory." ]
+
+	run node "$SCRIPT" doctor "$REPO_ROOT" --json=maybe
+	[ "$status" -eq 1 ]
+	[ "$output" = "--json requires a boolean value when one is provided." ]
+}
+
+@test "doctor redacts home paths without creating output roots" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local home="$TMP_DIR/home"
+	local plugin_dir="$home/doctor-plugin"
+	create_fixture_plugin "$plugin_dir" "doctor-plugin"
+
+	run env HOME="$home" node "$SCRIPT" doctor "$plugin_dir" --json
+	[ "$status" -eq 0 ]
+	run jq -er '
+		.plugin_source == "~/doctor-plugin" and
+		.codex_root == "~/.codex" and
+		.agents_root == "~/.agents" and
+		.install_state_path == "~/.codex/.kramme-install-state.json" and
+		.install_state_status == "reconstructed" and
+		.install_state_recovery_reason == "missing"
+	' <<<"$output"
+	[ "$status" -eq 0 ]
+	[ ! -e "$home/.codex" ]
+	[ ! -e "$home/.agents" ]
+
+	run env HOME="$home" node "$SCRIPT" doctor "$home/missing-plugin"
+	[ "$status" -eq 1 ]
+	[ "$output" = 'Could not resolve plugin "~/missing-plugin".' ]
+
+	run env HOME="$home" node "$SCRIPT" doctor "$home"
+	[ "$status" -eq 1 ]
+	[ "$output" = 'Could not find .claude-plugin/plugin.json under ~' ]
+
+	local embedded_path="$TMP_DIR/backup$home/missing-plugin"
+	run env HOME="$home" node "$SCRIPT" doctor "$embedded_path"
+	[ "$status" -eq 1 ]
+	[ "$output" = "Could not resolve plugin \"$embedded_path\"." ]
+
+	local sibling_path="$home copy/missing-plugin"
+	run env HOME="$home" node "$SCRIPT" doctor "$sibling_path"
+	[ "$status" -eq 1 ]
+	[ "$output" = "Could not resolve plugin \"$sibling_path\"." ]
+}
+
+@test "doctor escapes control characters in human diagnostics" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local plugin_dir="$TMP_DIR/"$'doctor\nplugin'
+	create_fixture_plugin "$plugin_dir" 'doctor\u001b[31m'
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$plugin_dir"
+	[ "$status" -eq 0 ]
+	[ "${#lines[@]}" -eq 11 ]
+	[[ "$output" == *'plugin_name=doctor\u001b[31m'* ]]
+	[[ "$output" == *"plugin_source=$TMP_DIR/doctor\\u000aplugin"* ]]
+	[[ "$output" != *$'\033'* ]]
+}
+
 @test "opencode-only install options are rejected" {
 	if ! command -v node >/dev/null 2>&1; then
 		skip "node is required for converter tests"
@@ -596,10 +934,9 @@ MD
 
 	run node "$SCRIPT" install "$REPO_ROOT" --to opencode --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"Unknown target: opencode"* ]]
+	[ "$output" = "Unknown target: opencode" ]
 
 	run node "$SCRIPT" stats "$REPO_ROOT" --to opencode
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"Unknown target: opencode"* ]]
-	[[ "$output" != *"codex_skills="* ]]
+	[ "$output" = "Unknown target: opencode" ]
 }

@@ -33,7 +33,7 @@ Exclude a finding only with evidence and a durable reason:
 - not actionable or outside the requested scope;
 - contradicted by a settled decision and explicitly rejected rather than merely unclear.
 
-Keep unresolved decision conflicts as blocked themes. Do not convert uncertainty into exclusion. Record each exclusion with all source references, reason, and evidence; Phase 5 places the record in the anchor issue.
+Keep unresolved decision conflicts as blocked themes. Do not convert uncertainty into exclusion. Record each exclusion with all source references, reason, and evidence in the parent-only report; never place exclusions or their source identifiers in a Linear issue.
 
 ## Cluster findings into PR-sized themes
 

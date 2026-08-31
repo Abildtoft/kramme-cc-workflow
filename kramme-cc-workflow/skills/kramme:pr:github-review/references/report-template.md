@@ -88,7 +88,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
 
 ## Strengths (X found)
 
-- <what this PR does well — worth saying in the review summary>
+- <what this PR does well — retained in this local report, not posted as a GitHub review body>
 
 ## Already Raised in the Conversation (X found)
 
@@ -102,7 +102,7 @@ _Fresh findings suppressed because the conversation already covers them — list
 
 ## Manual posting
 
-If this run created a pending review, open the review URL above, inspect or edit every inline comment and the summary, then use GitHub's **Finish your review** flow to choose Approve, Comment, or Request changes. This skill never performs that submission step.
+If this run created a pending review, open the review URL above, inspect or edit every inline comment, then use GitHub's **Finish your review** flow to choose Approve, Comment, or Request changes. The skill does not post a review summary and never performs the submission step.
 
 If the pending-review offer was declined or a confirmed no-write blocker was resolved, the clearest later path is to re-run the skill with `--draft-review`. It will repeat the head, pending-review, ignored-payload, and payload-validation guards before creating one unsubmitted pending review.
 
@@ -133,5 +133,5 @@ gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/r
 - **Draft Review** — distinguish eligible proposed comments from comments actually included. Before the offer or write, use `not created — awaiting authorization` or `not created — authorized; creation not attempted yet`, with zero included comments and no payload. Existing-thread replies and non-diff anchors cannot be bundled into the pending review and must be listed as omissions rather than silently dropped; identify them by thread, scope, or another concrete descriptor when no `path:line` exists. `PENDING` means the skill created the review but did not submit it. Exact included counts require a confirmed pending-review response; ambiguous outcomes report the attempted count separately.
 - **Already Raised in the Conversation** — fresh findings you suppressed because someone already raised them. Naming who raised it and linking the thread keeps you from re-posting and shows the concern is tracked. If your finding materially extends the existing thread, draft it as a reply under Open Conversation instead of listing it here.
 - **Verdict** — see the skill's draft step for the REQUEST CHANGES / COMMENT / APPROVE criteria and how an ongoing review's conversation weighs in. Always a recommendation — never posted automatically.
-- **Strengths** — a review with zero positive observations is usually miscalibrated. If the PR genuinely has nothing to praise, say so explicitly rather than omitting the section.
+- **Strengths** — a review with zero positive observations is usually miscalibrated. Keep strengths in this local report only; never turn them into a top-level GitHub review body. If the PR genuinely has nothing to praise, say so explicitly rather than omitting the section.
 - **Markers** — keep `UNVERIFIED` on findings you could not trace from the diff, and `NOTICED BUT NOT TOUCHING` on issues that pre-date this PR, so the author can separate "you introduced this" from "this was already here."

@@ -978,6 +978,56 @@ class MechanicalCheckTest(unittest.TestCase):
         self.assertEqual(warning_paths, expected_paths)
         self.assertIn("(over hard budget; warn at 5, fail above 9)", result.warnings[0])
 
+    def test_agent_description_uses_yaml_value_and_canonical_hard_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            agent_path = root / "agents" / "kramme:example.md"
+            agent_path.parent.mkdir(parents=True)
+            agent_path.write_text(
+                """---
+name: kramme:example
+description: >-
+  abc
+  def
+model: inherit
+color: blue
+---
+# Example
+""",
+                encoding="utf-8",
+            )
+            (agent_path.parent / "kramme:missing.md").write_text(
+                """---
+name: kramme:missing
+model: inherit
+color: blue
+---
+# Missing description
+""",
+                encoding="utf-8",
+            )
+            context = lint_skill_contracts.LintContext(
+                root=root,
+                registry={
+                    "mechanical": {
+                        "skill_glob": "skills/*/SKILL.md",
+                        "agent_glob": "agents/*.md",
+                        "max_description_chars": 6,
+                    }
+                },
+                schema={},
+            )
+
+            result = lint_skill_contracts.check_mechanical(context)
+
+        self.assertEqual(
+            result.failures,
+            [
+                "mechanical: agents/kramme:example.md description is 7 chars, exceeds 6",
+                "mechanical: agents/kramme:missing.md is missing frontmatter field 'description'",
+            ],
+        )
+
 
 class CompatibilityEntryPointTest(unittest.TestCase):
     def test_legacy_script_reexports_package_api(self) -> None:

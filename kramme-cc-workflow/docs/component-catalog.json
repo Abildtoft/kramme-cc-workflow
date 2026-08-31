@@ -48,6 +48,11 @@
       "path": "kramme-cc-workflow/skills/kramme:code:deprecate/SKILL.md"
     },
     {
+      "name": "kramme:code:forward-progress",
+      "invocation": "Background",
+      "path": "kramme-cc-workflow/skills/kramme:code:forward-progress/SKILL.md"
+    },
+    {
       "name": "kramme:code:harden-security",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:code:harden-security/SKILL.md"
@@ -91,11 +96,6 @@
       "name": "kramme:code:refactor-pass",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md"
-    },
-    {
-      "name": "kramme:code:source-driven",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:code:source-driven/SKILL.md"
     },
     {
       "name": "kramme:code:weakness-audit",
@@ -209,7 +209,7 @@
     },
     {
       "name": "kramme:git:recreate-commits",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md"
     },
     {
@@ -228,16 +228,6 @@
       "path": "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md"
     },
     {
-      "name": "kramme:launch:announce",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:launch:announce/SKILL.md"
-    },
-    {
-      "name": "kramme:launch:rollout",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:launch:rollout/SKILL.md"
-    },
-    {
       "name": "kramme:learn:verify-understanding",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:learn:verify-understanding/SKILL.md"
@@ -254,7 +244,7 @@
     },
     {
       "name": "kramme:linear:issue-define",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-define/SKILL.md"
     },
     {
@@ -293,11 +283,6 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md"
     },
     {
-      "name": "kramme:pr:complete-work",
-      "invocation": "Hidden",
-      "path": "kramme-cc-workflow/skills/kramme:pr:complete-work/SKILL.md"
-    },
-    {
       "name": "kramme:pr:convention-review",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md"
@@ -314,7 +299,7 @@
     },
     {
       "name": "kramme:pr:generate-description",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md"
     },
     {
@@ -374,7 +359,7 @@
     },
     {
       "name": "kramme:pr:verify-description",
-      "invocation": "User, Auto",
+      "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md"
     },
     {

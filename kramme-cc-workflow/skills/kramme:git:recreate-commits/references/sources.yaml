@@ -1,4 +1,11 @@
 sources:
+  - id: anthropic-claude-code-skills
+    url: https://code.claude.com/docs/en/skills
+    title: "Claude Code Docs - Extend Claude with skills"
+    rationale: "The model-invocation metadata and direct-user versus Skill-tool routing boundary follow Claude Code's documented skill invocation controls."
+    usage: inspiration
+    last_reviewed_at: 2026-08-29
+    baseline_hash: "sha256:a84b5b394a31b71d8548f0a9d378a05f32b07164c6bec813bc3de5cb241a5965"
   - id: addy-git-workflow-versioning
     url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/git-workflow-and-versioning/SKILL.md
     title: "Addy Osmani agent-skills - git workflow and versioning"

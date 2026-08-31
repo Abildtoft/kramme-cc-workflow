@@ -26,18 +26,38 @@ The target state is `agent-ready`: an autonomous agent with repository access an
 | --- | --- |
 | `active` | Updated, commented on, or related to active work within `--stale-days`. |
 | `stale` | No update within `--stale-days` and no evidence either way about relevance. |
-| `obsolete` | Evidence that the work is done, superseded, or no longer relevant: a comment saying it was fixed or abandoned, a completed duplicate, a referenced feature or system that no longer exists, or a closed parent. |
+
+Freshness measures recency only. It never treats delivered work as obsolete and never selects a terminal state by itself.
+
+## Resolution Evidence
+
+| Grade | Test |
+| --- | --- |
+| `delivered` | Concrete evidence shows that the requested outcome or acceptance criteria were delivered or one of the issue's explicitly permitted resolutions occurred. For a parent, its own requested outcome or acceptance criteria must be delivered and every required child must be complete. |
+| `cancel-supported` | Concrete evidence shows the work was superseded, abandoned, or is no longer relevant; or a stale, empty issue has no owner or remaining value signal after relations and comments are checked. |
+| `none` | No sufficient evidence supports either terminal outcome. Continue grading the issue; do not infer a terminal action. |
+
+Use the issue's own requested outcome and acceptance criteria as the completion boundary. Supporting evidence may include linked merged Pull Requests, shipped changes, passing acceptance coverage, comments that identify the delivered resolution, and completed required children. Inspect referenced evidence rather than relying on matching terminology or the state of a related issue.
+
+For a parent issue:
+
+- Verify that its requested outcome or acceptance criteria are delivered; child state alone is not enough when the parent outcome remains unmet.
+- Verify every required child is complete.
+- Ignore an unfinished child only when the parent explicitly identifies that child as optional, a follow-up, or out of scope.
+- When child requiredness or delivery evidence is ambiguous, use `none`; never assume `delivered`.
+
+Age alone, partial progress, a closed parent, similar code, or a completed duplicate is not delivery evidence for the issue being graded. Likewise, age alone is not cancellation evidence when the issue carries priority, customer need, a due date, a milestone, a blocking relation, or a recent value signal.
 
 ## Agent-Readiness
 
-An issue is `agent-ready` only when every item passes. Record the failing items for every other issue.
+Synced Linear agent-readiness contract (keep aligned across Linear readiness workflows): An issue is `agent-ready` only when every item passes. Record the failing items for every other issue.
 
 | Item | Test |
 | --- | --- |
 | Problem is stated | The issue says what is wrong or missing and for whom, not only what to build. |
 | Outcome is observable | A reader can describe the user-visible or system-visible behavior after the change. |
 | Acceptance criteria are verifiable by running something | Each criterion can be checked by a test, a command, a request, or a reproducible manual step with a stated expected result; none requires taste or a stakeholder's opinion. |
-| Scope is bounded | `scope = pr-sized`, and at least one explicit non-goal or boundary prevents the agent from expanding into neighboring work. |
+| Scope is bounded | The work is Pull Request-sized, and at least one explicit non-goal or boundary prevents the agent from expanding into neighboring work. |
 | Decisions are made | No open questions, "TBD", "discuss with", or competing options remain in the body or recent comments. Decisions that were made in comments are reflected in the description. |
 | Inputs are reachable | Reproduction steps, sample data, links, designs, or API contracts the work depends on are either in the issue or derivable from the repository. Nothing requires credentials, unreleased assets, or a person's tacit knowledge. |
 | Dependencies are clear | Blocking relations are resolved or explicitly stated as prerequisites with their identifiers. |
@@ -48,6 +68,8 @@ An issue is `agent-ready` only when every item passes. Record the failing items 
 | `agent-ready` | Every item passes. |
 | `needs-refinement` | One or more items fail, and the gap can be closed by a rewrite grounded in the repository or by one answer from a person. |
 | `human-only` | The gap is a product decision, design direction, or access an agent cannot obtain, and closing it is itself the work; or the issue is exploratory by nature ("investigate", "spike", "decide"). Keep such issues clear for humans; do not force them toward `agent-ready`. |
+
+Do not infer agent-readiness from priority, an `agent-ready` label, assignment, state name, or a phrase such as "straightforward" alone. Those are supporting signals, not substitutes for the checklist. When evidence for an applicable item is unavailable, classify the issue as `needs-refinement` rather than guessing unless the missing input or decision requires a person, which makes it `human-only`.
 
 Typical gaps and the action that closes them:
 
@@ -75,17 +97,18 @@ Apply the first matching row:
 
 | Condition | Action |
 | --- | --- |
-| `freshness = obsolete` | `archive` |
+| `resolution-evidence = delivered` | `complete` |
+| `resolution-evidence = cancel-supported` | `cancel` |
 | Duplicate of a canonical issue | `merge` |
 | `clarity = clear` and `scope = oversized` | `split` |
-| `clarity = clear` and `scope = pr-sized` and `freshness = active` and `agent-readiness = agent-ready` or `human-only` | `keep` |
 | `clarity = clear` and `scope = pr-sized` and `agent-readiness = needs-refinement` closable from Linear and the repository | `rewrite` |
 | `clarity = clear` and `scope = pr-sized` and `agent-readiness = needs-refinement` closable only by a person | `ask` |
-| `clarity = clear` and `scope = pr-sized` and `freshness = stale` with any value signal | `keep`, and note the staleness |
-| `clarity = clear` and `scope = pr-sized` and `freshness = stale` with no value signal | `ask` |
 | `clarity = vague` and enough context in Linear to draft a better description | `rewrite` |
 | `clarity = vague` or `empty` and the missing information exists only with a person | `ask` |
-| `clarity = empty` and `freshness = stale` with no value signal and no owner | `archive` |
+| `clarity = clear` and `scope = pr-sized` and `freshness = stale` with no value signal | `ask` |
+| `clarity = clear` and `scope = pr-sized` and `freshness = active` and `agent-readiness = agent-ready` or `human-only` | `keep` |
+| `clarity = clear` and `scope = pr-sized` and `freshness = stale` with any value signal | `keep`, and note the staleness |
+| `clarity = empty` and `freshness = stale` with no value signal and no owner after relations and comments are checked | `cancel` |
 
 Value signals: Linear priority of Medium or higher, a customer need, a due date, a milestone or release, a `blocks` relation, or a comment from the last `--stale-days` asking for the work.
 

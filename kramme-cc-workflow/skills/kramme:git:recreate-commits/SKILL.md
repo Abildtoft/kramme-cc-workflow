@@ -1,14 +1,22 @@
 ---
 name: kramme:git:recreate-commits
-description: Use when asked to recreate commits with narrative-quality history on the current branch. Not for merged branches or shared branches others have based work on — it rewrites history and uses --force-with-lease when remote synchronization is enabled.
-argument-hint: "[--auto] [--coarse|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--no-push] [--authorize-history-rewrite]"
-disable-model-invocation: true
+description: Recreate commits with narrative-quality history when the user asks or kramme:pr:create delegates its guarded rewrite phase. Not for merged or shared branches — it rewrites history and uses --force-with-lease unless remote synchronization is disabled.
+argument-hint: "[--auto] [--coarse|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]"
+disable-model-invocation: false
 user-invocable: true
 ---
 
 Reimplement the current branch with a clean, narrative-quality git commit history suitable for reviewer comprehension. By default, recreate commits on the current branch (not a new clean branch).
 
-This rewrites history and requires a force-push to sync any existing remote history unless `--no-push` delegates that synchronization to a parent workflow. It is user-triggered only (it does not auto-invoke).
+This rewrites history and requires a force-push to sync any existing remote history unless `--no-push` delegates that synchronization to `kramme:pr:create`. It is model-invocable so that the directly invoked parent can compose it without copying its behavior.
+
+### Model Invocation Contract
+
+- Invoke automatically only when the user clearly requested commit recreation or an active `kramme:pr:create` invocation explicitly delegates this phase. Do not infer authorization merely because a branch appears ready for cleanup or Pull Request creation.
+- The guarded `kramme:pr:create` delegation must pass `--require-unstacked --no-push`, its pinned base commit, and its retry-safe backup ref. No other parent workflow is authorized by the model-invocation exception.
+- Outside that exact `kramme:pr:create` delegation, never invent `--auto` or `--authorize-history-rewrite`. Without those caller-supplied flags, retain every documented confirmation before reset, restack, or publication.
+- The model must never invent `--force-backup`. It may pass `--backup-ref` automatically only with the exact retry-safe value supplied by `kramme:pr:create`; outside that delegation, the user must have supplied the exact `--backup-ref` value. These flags can create or repoint a local branch before the reset confirmation, so a general request to recreate commits is not authorization to originate them.
+- Model invocation changes routing only. It does not relax backup creation, branch and stack validation, final-tree identity, or lease-protected publication.
 
 **When not to use:** Don't run this on a branch that is already merged, on a protected or shared base branch, or on a branch other contributors have based active work on without coordinating first — the recreation rewrites history and the remote can only be updated with a force-push.
 
@@ -22,6 +30,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 - `--after <commit>` — Only recreate commits after `<commit>`, keeping all earlier history intact. Accepts any valid git ref (SHA, short SHA, `HEAD~3`, etc.). The commit must exist and be an ancestor of `HEAD`. When set, the diff scope becomes `<commit>..HEAD` and the reset point becomes `<commit>` instead of the merge base.
 - `--backup-ref <branch>` — Use a caller-selected conservative recovery branch name. This requires backup mode and is primarily for parent workflows that need retry-safe per-input-tip backup names.
 - `--force-backup` — Allow the resolution script to replace an existing `<branch>-recreate-backup` branch after you have inspected that backup and confirmed it is safe to move. An exact-tip backup is reused idempotently without this flag; a backup at any different tip makes the script stop so retries cannot destroy the original recovery point.
+- `--require-unstacked` — Require the branch to remain outside every local or server-side stack when membership is resolved immediately before rewrite authorization. Set `REQUIRE_UNSTACKED=true` when present and stop before reset if membership is anything other than `none`. `kramme:pr:create` always passes this flag to preserve its earlier unstacked-only authorization across delegation.
 - `--no-push` — Rewrite and verify the local branch but do not mutate its remote. Report that synchronization is delegated to the caller. `kramme:pr:create` always uses this mode so description generation and confirmation finish before the only remote update.
 - `--authorize-history-rewrite` — Explicit authorization to skip the reset confirmation and, unless `--no-push` is also set, the publication confirmation. It is optional for an unstacked auto invocation but required in addition to `--auto` before auto mode may rewrite or publish a stack. It never bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
 
@@ -63,6 +72,8 @@ This rewrites history and requires a force-push to sync any existing remote hist
    }
    eval "$STACK_RESOLVED"
    ```
+
+   If `REQUIRE_UNSTACKED=true`, require `STACK_MEMBERSHIP=none` immediately after this resolution. Any local or server-side membership is state drift from the parent workflow's validated boundary: stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed. Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches.
 
    Set `IN_STACK=true` only for `STACK_MEMBERSHIP=local`; set it false for `none`. If membership is `remote`, stop before the reset: the PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry. Authentication, API, parsing, and unexpected CLI failures also stop rather than falling through to the single-branch flow.
 
@@ -167,13 +178,26 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
    - Immediately before resetting, revalidate the branch, original tip, ordinary untracked work, and ignored paths that overlap the reset point:
 
      ```bash
+     LATEST_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
+       echo "Stack membership could not be revalidated; stop before rewriting history." >&2
+       exit 1
+     }
+     if ! (
+       eval "$LATEST_STACK_RESOLVED"
+       [ "$STACK_MEMBERSHIP" = none ]
+     ); then
+       echo "The branch joined a local or server-side stack after initial validation; stop before rewriting history." >&2
+       exit 1
+     fi
      "${CLAUDE_PLUGIN_ROOT}/scripts/verify-rewrite-state.sh" \
        --expected-branch "$ORIGINAL_BRANCH" \
        --expected-tip "$ORIGINAL_TIP" \
        --reset-point "$RESET_POINT"
      ```
 
-     Any failure stops the workflow. Do not rely only on the earlier backup-time validation: diff analysis and commit planning create a real window in which the checkout can change.
+     Run the stack-revalidation block above only when the parsed agent state has `REQUIRE_UNSTACKED=true`; omit it for ordinary direct invocations that may intentionally rewrite a local stack. Do not wrap it in a shell-local `REQUIRE_UNSTACKED` conditional: argument parsing and this destructive boundary run in separate shell invocations.
+
+     Any failure stops the workflow. Do not rely only on the earlier backup-time or stack-membership validation: diff analysis and commit planning create a real window in which the checkout or authorization boundary can change.
 
    - Reset the branch to the reset point: `git reset --hard "$RESET_POINT"`. (`RESET_POINT` is `AFTER_COMMIT` when `--after` was given, otherwise the merge base.)
    - Rebuild the changes commit by commit. To guarantee a byte-identical end state, source the final content from `$ORIGINAL_TIP` rather than retyping it (retyping is how extra lines and drift creep in):

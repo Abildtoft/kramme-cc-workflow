@@ -115,7 +115,7 @@ gh stack submit --auto --open # same, but ready for review
 `--auto` titles each PR from its commits (single commit → commit subject; multiple → humanized branch name) and cannot set custom titles or bodies. Immediately after submitting, bring every PR up to the repository's standards:
 
 - List the PRs: `gh stack view --json | jq -r '.branches[] | select(.pr) | "\(.pr.number) \(.name)"'`
-- For each, write a proper title and body with `gh pr edit <number> --title ... --body ...` (or run `kramme:pr:generate-description` per PR — it scopes the diff to the PR's own base, so each body describes only that layer).
+- For each, write a proper title and body with `gh pr edit <number> --title ... --body ...`. Do not invoke `kramme:pr:generate-description` from inside this skill: every model-initiated call to that child must use output-only `--no-update`, while this workflow has no separate validated payload and publication phase. If generated assistance is needed, stop this workflow, check out the intended PR branch, and ask the user to invoke `/kramme:pr:generate-description --auto` directly.
 - Name the chain position in each body ("PR 2 of 3 in this stack") — the Stack Map UI shows it, but reviewer notifications don't.
 
 Re-running `submit --auto` is safe: it pushes changed branches, creates PRs only for branches without one, and repairs base branches.

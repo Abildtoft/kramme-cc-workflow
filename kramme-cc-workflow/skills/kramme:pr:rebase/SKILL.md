@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:rebase
-description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch. Use when your PR is behind the base branch.
-argument-hint: "[--auto] [--force-push] [--base <branch>]"
+description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Optionally delegates post-push CI stabilization to kramme:pr:fix-ci. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch. Use when your PR is behind the base branch.
+argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -20,6 +20,7 @@ A feature branch is a cost that compounds every day it stays open. It drifts fro
 
 - `--auto` - Dangerous unattended mode. Continue through risky cases, bypass verification and confirmation gates, and push immediately with `--force-with-lease` after any completed rebase.
 - `--force-push` - Safe unattended push mode. Skip only the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase, while keeping all conflict, red-flag, and verification gates.
+- `--fix-ci` - After a successful rebase push, delegate to `kramme:pr:fix-ci` to watch CI, address failures and review feedback, push fixes, and repeat until the Pull Request is green. This does not bypass any rebase push gate.
 - `--base <branch>` - Override auto-detected base branch (e.g., `--base develop`)
 
 `--force-push` is the safe replacement for the old `--auto` behavior. It only bypasses the final confirmation prompt when the rebase completes without unresolved risk.
@@ -46,7 +47,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 
 ### Step 0: Parse Arguments
 
-If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--force-push`, set `FORCE_PUSH_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
+If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--force-push`, set `FORCE_PUSH_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--fix-ci`, set `FIX_CI_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
 
 If both `--auto` and `--force-push` are present, `--auto` wins because it is the broader dangerous mode. Continue with `AUTO_MODE=true` and ignore `FORCE_PUSH_MODE`.
 
@@ -112,7 +113,7 @@ When `IN_STACK=true`, swap the git commands but keep every gate:
 
 - **Steps 2–3 replacement:** run `gh stack rebase` instead of `git rebase --autostash origin/<base-branch>`. It fetches, fast-forwards the trunk, and cascade-rebases every stack branch onto its updated parent. It has no autostash — if the working tree is dirty, `git stash` first and `git stash pop` after. On conflict (exit code 3), resolve each conflicted file under the same rules, round cap, and red flags as Step 3, then `gh stack rebase --continue`; abort with `gh stack rebase --abort` (restores all branches).
 - **Step 5 replacement:** the validated push procedure becomes `gh stack push` — it pushes all stack branches with `--force-with-lease --atomic`. All Step 5 gates and modes apply unchanged.
-- **Step 6 addition:** report every branch the rebase touched, not just the current one (`gh stack view --json` shows the updated heads and PR states).
+- **Step 7 addition:** report every branch the rebase touched, not just the current one (`gh stack view --json` shows the updated heads and PR states).
 
 ### Step 2: Fetch Latest
 
@@ -197,6 +198,8 @@ Otherwise, present a summary of what was auto-resolved. In normal and `--force-p
 
 ### Step 5: Force Push
 
+Initialize `PUSH_COMPLETED=false`. Set it to true only after the applicable validated push command returns success. A rejected lease, failed stack push, declined confirmation, or any stop before pushing must leave it false.
+
 All force-push paths in this step must use this validated push procedure:
 
 ```bash
@@ -237,7 +240,22 @@ If confirmed, use the validated push procedure.
 
 **Note:** `--force-with-lease` refuses to overwrite remote commits you haven't fetched, providing safety against overwriting others' work.
 
-### Step 6: Report Results
+### Step 6: Stabilize CI (when requested)
+
+If `FIX_CI_MODE` is not true, skip to Step 7.
+
+Require `PUSH_COMPLETED=true` before delegating. If it is false, do not invoke `kramme:pr:fix-ci`; report that the rebase remains local or the push failed and therefore no remote CI run can be stabilized by this workflow, then skip to Step 7.
+
+Invoke the sibling skill through the platform skill mechanism rather than reproducing its polling or remediation loop:
+
+- When `AUTO_MODE=true`, invoke `$kramme:pr:fix-ci --auto` so the explicitly requested unattended workflow remains unattended through CI remediation and consolidation.
+- Otherwise, invoke `$kramme:pr:fix-ci` with no additional flags. Its normal consolidation choice remains visible to the user; `--force-push` only controls the rebase push and must not silently opt the delegated workflow into unattended consolidation.
+
+The delegated skill owns Pull Request discovery, stack-aware fix pushes, `gh pr checks --watch`, failure-log inspection, review-feedback handling, retry limits, consolidation, and its `CI remediation JSON` handoff. Do not poll CI separately before invoking it. For a local stack, it stabilizes the current branch's Pull Request and applies its own stack propagation rules; do not claim that sibling Pull Requests were watched.
+
+Preserve and report the successful rebase/push separately from the delegated workflow outcome. Report the last CI and review-feedback state established by the delegated workflow; if CI reached green before a later consolidation or coordination blocker, report both facts instead of treating the blocker as a CI failure. Never infer green CI when the delegated workflow did not establish it. Retain the remediation handoff for the final report on both success and blocker returns.
+
+### Step 7: Report Results
 
 Show the commit log relative to the `BASE_BRANCH` resolved in Step 1. Quote the entire revision range so the shell passes it as one argument:
 
@@ -245,9 +263,11 @@ Show the commit log relative to the `BASE_BRANCH` resolved in Step 1. Quote the 
 git log --oneline "origin/$BASE_BRANCH..HEAD"
 ```
 
-Confirm success:
+Confirm the rebase and push separately from optional CI stabilization:
 
 > "Branch rebased onto `origin/<base-branch>` and pushed."
+
+When `FIX_CI_MODE=true` and `PUSH_COMPLETED=true`, also report whether the delegated workflow reached green CI and addressed review feedback, name any later blocker separately, and include its `CI remediation JSON` line. The commit log may include fixes or consolidation produced by that workflow. When `FIX_CI_MODE=true` and `PUSH_COMPLETED=false`, report that CI stabilization was not started and do not require or fabricate a remediation handoff.
 
 ## Common Rationalizations
 
@@ -283,4 +303,6 @@ Before force-pushing, self-check:
 - [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `FORCE_PUSH_MODE=true` / `AUTO_MODE=true` allowed skipping confirmation.
 - [ ] `--force-with-lease` (not `--force`) is the flag being used.
 - [ ] If the branch is in a stack (Step 1.5), `gh stack rebase` / `gh stack push` were used — never a single-branch rebase or push.
+- [ ] If `FIX_CI_MODE=true`, `PUSH_COMPLETED=true` before `kramme:pr:fix-ci` was invoked; a failed or skipped push never started CI remediation.
+- [ ] If `FIX_CI_MODE=true` and `PUSH_COMPLETED=true`, the final report distinguishes rebase/push success, the last CI and review-feedback state established by the delegated workflow, and any later blocker, and includes the delegated `CI remediation JSON` handoff. If `PUSH_COMPLETED=false`, it reports that stabilization was not started and does not require a handoff.
 - [ ] Post-push `git log --oneline origin/<base>..HEAD` shows the expected linear history.

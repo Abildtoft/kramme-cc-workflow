@@ -2,7 +2,7 @@
 name: kramme:linear:issue-define
 description: "Requires the Linear MCP server. Create or improve a well-structured Linear issue through guided refinement. Use with --auto to create one new Linear issue from rough input using light clarification, duplicate checking, metadata selection, and approval instead of the full interview; add --ask to ask every relevant interview question before drafting. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue)."
 argument-hint: "[--auto [--ask]] [--] [issue-id or description and/or file paths for context]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
@@ -80,7 +80,7 @@ Parse flags as shell-style arguments from the leading option segment only:
 
 ### Mode
 
-If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue detection; identifiers inside the handoff are anchors and dependencies, not improvement targets.
+If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue detection. The handoff's `orchestration` values are correlation-only, while identifiers in `issue.dependencies.blockedBy` are verified Linear dependencies; neither is an improvement target.
 
 Otherwise, detect an existing issue from a `TEAM-123` identifier, a `linear.app` issue URL, or a 36-character UUID.
 

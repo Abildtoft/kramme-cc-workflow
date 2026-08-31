@@ -99,6 +99,32 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "Linear issue to PR continues only validated unpublished issue work" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    child="skills/kramme:linear:issue-implement/SKILL.md"
+    branch_setup="skills/kramme:linear:issue-implement/references/branch-setup.md"
+
+    grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--rounds <1-5>] [--ship]\"" "$parent"
+    grep -qF "\`--continue\` sets \`CONTINUE_MODE=true\`" "$parent"
+    grep -qF "require the captured entry branch to equal \`{issue-branch}\` exactly" "$parent"
+    grep -qF "Require at least one such path" "$parent"
+    grep -qF "Stop on any unrelated or ambiguous path" "$parent"
+    grep -qF "require \`{confirmed-state-id}\` to equal \`{target-status-id}\`" "$parent"
+    grep -qF "issue no Linear write" "$parent"
+    grep -qF -- "--auto --resume-current-branch" "$parent"
+    grep -qF "skipped — continuation preserves the existing workspace name" "$parent"
+    grep -qF "Accept the internal \`--resume-current-branch\` flag only when \`AUTO_MODE=true\`" "$child"
+    grep -qF "reconcile every committed and dirty path in the parent resume handoff" "$child"
+    grep -qF "If \`RESUME_CURRENT_BRANCH=true\`, use the parent-owned resume handoff" "$branch_setup"
+    grep -qF "Do not checkout, create, reset, stash, discard, stage, or commit" "$branch_setup"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "Linear issue to PR renames a detected Conductor workspace without making the adapter authoritative" {
 	run bash -c '
     set -e
@@ -276,6 +302,61 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "shared convergence summarizes findings it did not remediate" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:pr:review-convergence/SKILL.md"
+    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+
+    remediation=$(grep -nF "Remediation: {cycles used}/{MAX_AUTOMATIC_REMEDIATION_CYCLES}" "$skill" | cut -d: -f1)
+    overview=$(grep -nF "Unremediated issues:" "$skill" | head -1 | cut -d: -f1)
+    [ "$remediation" -lt "$overview" ]
+
+    grep -qF "Initialize one producer-owned \`GUT_CHECK_DISPOSITIONS\` ledger" "$policy"
+    grep -qF "Give each Gut Check item a run-scoped \`GC-NNN\` identifier and record \`id\`, \`gate\` (\`gut-check\`), \`summary\`, final \`disposition\`" "$policy"
+    grep -qF "and \`routed_finding_fingerprint\`, using JSON \`null\` until a quality gate adopts it" "$policy"
+    grep -qF "For a blocked Gut Check item, also record \`attempted_fix_evidence\`" "$policy"
+    grep -qF "Initialize \`REVIEW_ACTIVITY_STATUS\` to \`not_started\` beside the ledgers" "$policy"
+    grep -qF "Before and after each Gate 0 or quality-gate invocation, update it with the gate, status (\`started\`, \`completed\`, or \`failed\`)" "$policy"
+    grep -qF "Build one concise human-readable overview at every terminal handoff after review activity begins" "$policy"
+    grep -qF "an early Gate 0 blocker, an initial no-change pass, a post-remediation pass, the single validation-only pass, or an interrupted quality pass" "$policy"
+    grep -qF "Use \`REVIEW_ACTIVITY_STATUS\`, \`GUT_CHECK_DISPOSITIONS\`, the cycle ledger when present in normal mode, \`REVIEWER_HANDOFF_FINDINGS\`, and \`REVIEWER_HANDOFF_FOCUS\` as the only sources" "$policy"
+    grep -qF "when failed or incomplete \`REVIEW_ACTIVITY_STATUS\` evidence or a cycle-ledger verification failure is not already represented" "$policy"
+    grep -qF "record one \`required_unresolved\` finding entry for that gate" "$policy"
+    grep -qF "never reconstruct the overview from superseded reports" "$policy"
+    grep -qF "**Required unresolved**" "$policy"
+    grep -qF "**Deferred optional**" "$policy"
+    grep -qF "**Rejected reviewer findings**" "$policy"
+    grep -qF "**Review focus**" "$policy"
+    grep -qF "Record a focus entry" "$policy"
+    grep -qF "Each entry contains \`fingerprint\`, \`kind\`" "$policy"
+    grep -qF "every \`routed\` Gut Check item that could not reach its owning quality gate before an early terminal blocker" "$policy"
+    grep -qF "Render an unlinked routed item with kind \`unreviewed_routed\`" "$policy"
+    grep -qF "\`routed\` Gut Check items linked to an owning finding fingerprint" "$policy"
+    grep -qF "when both ledgers contain the same fingerprint, keep only the finding" "$policy"
+    grep -qF "\`required_unresolved\`, or \`blocked\`" "$policy"
+    grep -qF "Use \`required_unresolved\` when an accepted required finding remains active at a bounded stop" "$policy"
+    grep -qF "For \`deferred_optional\`, require the rationale to retain the concrete benefit, estimated change amplification, and follow-up scope" "$policy"
+    grep -qF "For \`required_unresolved\` or \`blocked\`, also require \`attempted_fix_evidence\`" "$policy"
+    grep -qF "\`deferred_optional\` — valid but deliberately excluded because it exceeds the frozen work requirements" "$policy"
+    grep -qF "\`required_unresolved\` — only at a bounded stop" "$policy"
+    grep -qF "record it as \`required_unresolved\` with the remaining fingerprint" "$policy"
+    grep -qF "include the concrete benefit, estimated change amplification, rationale, and follow-up scope" "$policy"
+    grep -qF "Exclude findings whose final disposition is \`fixed\`" "$policy"
+    grep -qF "return exactly \`Unremediated issues: none\`" "$policy"
+    grep -qF "Findings: required unresolved={count}; fixed={count}, rejected={count}, deferred optional={count}, blocked={count}" "$skill"
+    grep -qF -- "- Required unresolved:" "$skill"
+    grep -qF -- "- Deferred optional:" "$skill"
+    grep -qF "Rejected reviewer findings:" "$skill"
+    grep -qF -- "- Review focus:" "$skill"
+    grep -qF "Reviewer handoff JSON: {one RFC 8259 JSON object with \`gut_check\`, \`findings\`, and \`focus\` arrays" "$skill"
+    grep -qF "Build \`Unremediated issues\` at every terminal handoff after review activity begins" "$skill"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "shared convergence isolates reports per caller and supports validation-only" {
 	run bash -c '
     set -e
@@ -402,18 +483,27 @@
     grep -qF "Never re-read \`.context/linear-issue-to-pr/reviews/\` here" "$parent"
     grep -qF "every decision or assumption the delegated workflow made" "$parent"
     grep -qF "JSON-decode the returned \`Reviewer handoff JSON\` field" "$parent"
+    grep -qF "Require exactly \`gut_check\`, \`findings\`, and \`focus\` arrays" "$parent"
+    grep -qF "conditional recovery fields, and enum values before using it" "$parent"
     grep -qF "the validated \`CI remediation JSON\` plus any final-tree \`Reviewer handoff JSON\`" "$parent"
     grep -qF "raw text to \`kramme:text:clarify\`" "$parent"
     grep -qF "restore anything the rewrite dropped before posting" "$parent"
     grep -qF "post the draft unchanged rather than blocking the report" "$parent"
     grep -qF "Reviewer handoff JSON:" "$convergence"
+    grep -qF "required keys, conditional recovery fields, and allowlisted disposition or kind before trusting later fields" "$convergence"
     grep -qF "REVIEWER_HANDOFF_FINDINGS" "$policy"
     grep -qF "not the replaceable report archive" "$policy"
     grep -qF "CI_REMEDIATION_LEDGER" "$fix_ci"
     grep -qF "CI remediation JSON:" "$fix_ci"
     grep -qF "Require its \`CI remediation JSON\` field" "$shipping"
-    grep -qF "merge it with the initial handoff by fingerprint and final disposition" "$shipping"
+    grep -qF "merge \`findings\` and \`focus\` entries by fingerprint and final disposition" "$shipping"
     grep -qF "Return the validated \`CI remediation JSON\` and the merged initial/final \`Reviewer handoff JSON\`" "$shipping"
+    grep -qF "retain the initial \`gut_check\` array unchanged because validation-only never runs Gate 0" "$shipping"
+    grep -qF "initial \`gut_check\`, plus fingerprint-merged \`findings\` and \`focus\`" "$shipping"
+    grep -qF "retain the initial \`gut_check\` array unchanged because validation-only does not rerun Gate 0" "$parent"
+    grep -qF "merge only \`findings\` and \`focus\` with the final-tree handoff" "$parent"
+    grep -qF "retained rejected or blocked Gut Check items" "$parent"
+    grep -qF "Deduplicate a routed Gut Check item linked to an owning finding fingerprint" "$parent"
     grep -qF "Shipped summaries merge CI remediation and final-tree validation evidence" "$readme"
     grep -qF "reviewer handoff summary" "$readme"
 
@@ -422,7 +512,7 @@
     [ "$capture_line" -lt "$shipping_line" ]
 
     validation_line=$(grep -nF "invoke \`kramme:pr:review-convergence\` exactly once" "$shipping" | cut -d: -f1)
-    merge_line=$(grep -nF "merge it with the initial handoff by fingerprint and final disposition" "$shipping" | cut -d: -f1)
+    merge_line=$(grep -nF "merge \`findings\` and \`focus\` entries by fingerprint and final disposition" "$shipping" | cut -d: -f1)
     [ "$validation_line" -le "$merge_line" ]
   '
 

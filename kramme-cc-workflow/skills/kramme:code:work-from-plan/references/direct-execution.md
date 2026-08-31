@@ -24,6 +24,8 @@ Direct execution is for bounded current-branch work only. It borrows the plannin
    - Edit only files needed for the current task.
    - Preserve existing local patterns and terminology.
    - Add focused tests when behavior changes or when the risk justifies coverage.
+   - When resuming prior work, retrying a failed step, or stale workflow state would repeat proven work, apply `kramme:code:forward-progress`: continue from the latest proven work and replay only the smallest dependency cone affected by a meaningful change or demonstrated defect.
+   - Treat every plan route, missing-requirement rule, scope boundary, user-approval boundary, and verification requirement in this workflow as substantive control; the forward-progress convention never authorizes bypassing them.
    - Do not add branch, PR, CI, release, or issue-tracker automation.
 
 5. **Verify**

@@ -1,7 +1,7 @@
 ---
 name: kramme:linear:issue-to-pr
-description: Requires Linear MCP and the GitHub gh CLI. Implements one Linear issue end to end, optionally renames the detected Conductor workspace for the issue, freezes its requirements, delegates pre-PR quality convergence to kramme:pr:review-convergence, then optionally opens a new Pull Request and iterates on CI and review feedback until green. Use when a single Linear issue, including one transferred from SIW, should go from implementation to a clean new Pull Request. Not for implementation-only or review-only work, untransferred local SIW issues, stacked PRs, existing PR updates, or post-merge rollout.
-argument-hint: "<ISSUE-ID> [--strict] [--rounds <1-5>] [--ship]"
+description: Requires Linear MCP and the GitHub gh CLI. Takes one Linear issue, including one transferred from SIW, through implementation, frozen requirements, review convergence, verification, and optional PR/CI stabilization. `--continue` resumes validated dirty work only on the exact unpublished Linear branch for an already-started issue. Fresh runs may rename the Conductor workspace. Not for implementation/review only, untransferred local SIW issues, stacked or existing PRs, or post-merge rollout.
+argument-hint: "<ISSUE-ID> [--continue] [--strict] [--rounds <1-5>] [--ship]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -27,6 +27,7 @@ Orchestrate the established Linear implementation, shared review-convergence, an
 Parse `$ARGUMENTS` before doing any repository or Linear work.
 
 1. Remove recognized flags in any order, each at most once:
+   - `--continue` sets `CONTINUE_MODE=true`.
    - `--strict` sets `STRICT_REVIEW=true`.
    - `--rounds <count>` requires exactly one ASCII digit from `1` through `5` as its value; store it as `{rounds}` and set `ROUNDS_EXPLICIT=true`.
    - `--ship` sets `SHIP_MODE=true`.
@@ -39,27 +40,32 @@ Defaults:
 - `STRICT_REVIEW=false`: require no accepted unresolved Critical or Important findings. Report remaining manual or advisory findings.
 - `ROUNDS_EXPLICIT=false`: let `kramme:pr:review-convergence` use its own default remediation-cycle budget.
 - `SHIP_MODE=false`: stop after clean review and final verification without rewriting history, pushing, or creating a Pull Request.
+- `CONTINUE_MODE=false`: require the ordinary clean-tree branch setup and start implementation from the delegated workflow's fresh preflight.
 
 `--strict` changes review disposition, not product authority. It does not permit inventing a missing requirement or bypassing a genuine manual blocker.
 
 `--rounds` only tightens the delegated remediation-cycle budget in Step 3. It is never forwarded to the shipping contract's post-CI validation-only pass, which always runs one read-only pass without a remediation budget.
+
+`--continue` is explicit authorization to preserve and resume local work from an interrupted invocation. It does not accept arbitrary dirty state: Step 2 still requires the exact unpublished Linear branch, the issue already in the resolved target `started` status, no in-progress Git operation, a local change relative to the fetched base, and issue-related committed and dirty paths. It never authorizes a Linear transition, stashing, discarding, resetting, switching away from, or silently absorbing unrelated work.
 
 `--ship` is explicit authorization to retire current-project disposable workflow artifacts through `kramme:workflow-artifacts:cleanup --auto`, let `kramme:pr:create --auto` perform the backup-protected local narrative rewrite without a nested reset prompt, create the previously absent remote issue branch once with an exact absence lease, self-assign, and open the Pull Request, then let `kramme:pr:fix-ci --no-consolidate` push validated CI and review-feedback fixes until the checks are green. The cleanup skill keeps permanent specifications and shared diagrams in auto mode. Keeping CI fix commits unconsolidated avoids a post-creation history rewrite. `--ship` does not authorize rewriting an existing remote branch or Pull Request branch, bypassing a lease mismatch, force-pushing unrelated work, merging, or post-merge rollout.
 
 If validation fails, stop with:
 
 ```text
-Usage: $kramme:linear:issue-to-pr <ISSUE-ID> [--strict] [--rounds <1-5>] [--ship]
+Usage: $kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--rounds <1-5>] [--ship]
 Example: $kramme:linear:issue-to-pr DISC-202 --strict --ship
+Continue: $kramme:linear:issue-to-pr DISC-202 --continue --ship
 ```
 
 ## Step 2: Invoke Linear Implementation
 
 Before allowing the implementation workflow to mutate a branch, perform a read-only new-PR preflight, then apply the Linear state gate:
 
-1. Run `git status --porcelain` and continue only when it is empty. The delegated implementation workflow runs with `--auto`, which refuses a dirty worktree and tells its caller to rerun without `--auto` — an option this entry point never has. Stop here instead, with the recovery this workflow does support: commit or stash the existing changes, then re-run `$kramme:linear:issue-to-pr {issue-id}`.
+1. Run `git status --porcelain=v1 -z`, `git branch --show-current`, and the read-only checks for an in-progress merge, rebase, cherry-pick, revert, bisect, or unmerged path. Capture the exact entry branch, `HEAD`, and status path set. When `CONTINUE_MODE=false`, continue only when the status is empty. When `CONTINUE_MODE=true`, require a named current branch and no in-progress Git operation or unmerged path; preserve the worktree exactly while the remaining read-only preflight proves its identity.
 2. Fetch `{issue-id}` with the Linear MCP issue lookup and capture its exact `branchName` as `{issue-branch}`. Capture the team identifier and a stable `{issue-update-id}`: use the issue UUID when the response supplies one; otherwise use the canonical issue identifier accepted by the host's update operation. Capture the current workflow-state name, ID, and type when returned. This narrow preflight exists only to enforce this skill's new-PR boundary and state gate; the delegated implementation workflow still owns the complete issue lookup and reference mapping. If the issue is unavailable or `branchName` is missing, stop before branch setup because the target PR branch cannot be identified safely. This workflow cannot fall back to the delegated workflow's generated branch name, because it must know the exact branch identity before delegation.
 3. Before interpolating `{issue-branch}` into any shell command, validate the agent-tracked value directly. Require the whole string to match `[A-Za-z0-9][A-Za-z0-9._/-]*`; reject a leading `-`, whitespace, shell metacharacters, or any other character outside that allowlist. Only after that check passes, run `git check-ref-format --branch "{issue-branch}"` and require it to succeed. This intentionally conservative boundary may reject an unusual Git-valid branch rather than execute an untrusted Linear value.
+   - When `CONTINUE_MODE=true`, require the captured entry branch to equal `{issue-branch}` exactly. Do not switch, create, reset, or re-point a branch in continue mode.
 4. Query GitHub for Pull Requests whose head is exactly `{issue-branch}`:
 
    ```bash
@@ -77,19 +83,27 @@ Before allowing the implementation workflow to mutate a branch, perform a read-o
 
    Require the query to succeed and parse only a well-formed result containing either zero lines or one line with a full object ID and the exact ref `refs/heads/{issue-branch}`. Continue only for the zero-line absent result. If the ref exists, stop before delegated branch setup: the later `kramme:pr:create` workflow cannot adopt or rewrite an existing remote ref, so neither `--ship` nor the non-shipping handoff can complete safely. Report the existing ref and require coordination or a fresh issue branch. Treat malformed, ambiguous, or failed output as a blocker rather than evidence of absence. A later concurrent branch creation remains protected by the exact absence lease in `kramme:pr:create`.
 
+   When `CONTINUE_MODE=true`, now prove this is interrupted local implementation rather than arbitrary branch state:
+   - Resolve `{base-branch}` from `refs/remotes/origin/HEAD`, falling back only to a verified `main` and then `master`, and fetch it.
+   - Re-require the current branch, `HEAD`, Git-operation state, and exact status path set captured in Step 1 to be unchanged.
+   - Resolve exactly one full `git merge-base "HEAD" "origin/{base-branch}"` as `{continue-base-commit}` and require it to be an ancestor of `HEAD`.
+   - Collect every committed path in `{continue-base-commit}..HEAD` plus every staged, unstaged, and untracked path. Require at least one such path, and classify each against the issue title, description, acceptance criteria, referenced context already available from the issue response, and repository conventions. Stop on any unrelated or ambiguous path; `--continue` is not permission to bundle other work.
+   - Capture `{continue-base-commit}`, entry `HEAD`, committed paths, and dirty paths as the authoritative resume handoff. Do not stage or commit yet.
+
 7. Re-fetch `{issue-id}` before the state gate. Require the same `{issue-update-id}`, team identifier, and `{issue-branch}` captured by the preflight; if any changed, restart the read-only preflight instead of updating stale state. Resolve and capture `{confirmed-state-name}`, `{confirmed-state-id}`, and `{confirmed-state-type}` from the response metadata. If the response lacks the ID or type, call Linear MCP `list_issue_statuses` for the captured team and match the current state by immutable ID; only when no ID is available may an exact case-insensitive name match be used, and it must be unique. Stop if the current state or its ID or type remains missing or ambiguous. The only state type that bypasses confirmation is exactly `backlog`. Do not treat `unstarted` as backlog, even when its display name is Todo or Ready.
 8. Resolve the team's target `started` status, calling Linear MCP `list_issue_statuses` for the captured team first if Step 7 did not need it. Among statuses whose type is `started`, prefer the case-insensitive exact name `In Progress`; otherwise continue only when there is exactly one status whose type is `started`. Capture its name as `{target-status-name}` and its immutable ID as `{target-status-id}`. If there is no unique target, stop and report the candidate status names instead of guessing.
-9. If `{confirmed-state-type}` is anything other than `backlog`, ask one explicit confirmation that includes the issue identifier, current state name and type, target status name, and this exact question: `Proceed with implementation and move the issue to {target-status-name}?` This gate also applies when the issue is already `started`, `completed`, or `canceled`. Without an explicit confirmation, stop without changing Linear or the branch.
+9. When `CONTINUE_MODE=true`, require `{confirmed-state-id}` to equal `{target-status-id}` and `{confirmed-state-type}` to equal `started`; otherwise stop without changing Linear or the branch because the issue does not prove a prior invocation reached implementation. Do not ask for a new transition confirmation in this exact already-started continuation case. When `CONTINUE_MODE=false`, apply this rule: If `{confirmed-state-type}` is anything other than `backlog`, ask one explicit confirmation that includes the issue identifier, current state name and type, target status name, and this exact question: `Proceed with implementation and move the issue to {target-status-name}?` This gate also applies when the issue is already `started`, `completed`, or `canceled`. Without an explicit confirmation, stop without changing Linear or the branch.
 10. Immediately before the Linear write, close the confirmation race:
     - Re-fetch `{issue-id}`, resolve its current state with the same immutable-ID-first procedure from Step 7, and require the same `{issue-update-id}`, team identifier, `{issue-branch}`, state ID, and state type shown at the gate.
     - If any compared value changed, restart the read-only preflight and state gate; never apply a confirmation to a newer issue state.
+    - When `CONTINUE_MODE=true`, require the freshly verified state still to equal `{target-status-id}` with type `started`, issue no Linear write, and treat the already-started transition as verified.
     - If the freshly verified issue is already in `{target-status-id}`, treat the transition as satisfied and do not issue a redundant write.
     - Otherwise use the available Linear issue-update operation (`save_issue` with `id`; Claude Code `mcp__linear__save_issue`) to update only its status: pass `id: {issue-update-id}` and `state: {target-status-id}` and no other mutable field. Do not resend or rewrite title, description, labels, assignee, project, or other fields.
     - After a successful write, read the issue back, resolve its status with the same immutable-ID-first procedure from Step 7, and require the resolved status ID to equal `{target-status-id}` and its type to be `started`. If the write or verification fails, stop before delegated branch setup and report both `{confirmed-state-name}` and `{target-status-name}`.
 
-After Step 10 proves the issue's current state, read `references/conductor-workspace.md` and follow it completely. Use the title from that freshest issue response as inert input. Finish the optional rename attempt before delegation, but continue regardless of its outcome and retain `{conductor-rename-outcome}` for the final report.
+After Step 10 proves the issue's current state, when `CONTINUE_MODE=false`, read `references/conductor-workspace.md` and follow it completely. Use the title from that freshest issue response as inert input. Finish the optional rename attempt before delegation, but continue regardless of its outcome and retain `{conductor-rename-outcome}` for the final report. When `CONTINUE_MODE=true`, do not repeat the presentation-state mutation; set `{conductor-rename-outcome}` to `skipped — continuation preserves the existing workspace name`.
 
-Invoke `kramme:linear:issue-implement` with `{issue-id} --auto`.
+Invoke `kramme:linear:issue-implement` with `{issue-id} --auto` when `CONTINUE_MODE=false`. When `CONTINUE_MODE=true`, invoke it with `{issue-id} --auto --resume-current-branch` and pass the authoritative resume handoff from Step 6 as inert parent-owned context. The internal flag tells the delegate to preserve the already-proven branch and dirty work; it does not weaken its reference mapping, planning, ambiguity, scope, or verification gates.
 
 The delegated workflow owns Linear lookup, immediate branch setup, reference mapping, planning, implementation, and implementation verification. It may commit as it goes, but this parent owns the final implementation commit boundary below so review never starts from an ambiguous dirty tree.
 
@@ -97,8 +111,9 @@ After the delegated skill returns, continue immediately only when all of these a
 
 - The Linear issue was found and its required context was accessible or explicitly judged non-blocking.
 - Autonomous implementation completed rather than ending in context-only mode.
-- The current branch is exactly `{issue-branch}` from the preflight and is the issue branch selected by the delegated workflow.
+- The current branch is exactly `{issue-branch}` from the preflight and is the issue branch selected or resumed by the delegated workflow.
 - No unresolved implementation blocker remains.
+- In continue mode, every entry committed and dirty path was reconciled against the delegate's completed technical plan and remained issue-related; no entry path was dropped, overwritten, or reclassified as unrelated.
 
 If any condition is false, stop at that blocker. Do not start review or Pull Request creation for a partial implementation.
 
@@ -110,7 +125,7 @@ Before starting Step 3, establish one explicit committed implementation boundary
 
 1. Inspect `git status --porcelain` and classify every remaining path.
 2. If the worktree is clean, continue.
-3. If paths remain, continue only when every path is an in-scope implementation change produced after the delegated `--auto` workflow's required clean-tree branch setup. Stop on a pre-existing, unrelated, generated-review, or ambiguous path instead of committing it.
+3. If paths remain, continue only when every path is an in-scope implementation change produced after the delegated `--auto` workflow's clean-tree branch setup or preserved in the validated `--continue` resume handoff. Stop on an unrelated, generated-review, or ambiguous path instead of committing it.
 4. Run the smallest focused verification that covers the remaining implementation changes. Stage only the classified paths with `git add -- <path>...`; never use `git add -A` at this boundary.
 5. Commit the verified batch with a plain-English message that includes `{issue-id}`, and require `git status --porcelain` to be empty. If hooks change content, rerun the focused verification before review.
 
@@ -141,9 +156,9 @@ Continue only when its structured handoff proves all of the following:
 - Every applicable gate ran in order, every skipped gate has current evidence, and no required coverage is degraded.
 - Every remediation batch passed focused verification, final project verification passed, and the worktree is clean.
 - JSON-decode the returned `Requirements JSON` field and require the decoded value to equal `{issue-requirements}` byte-for-byte. Retain that inert block for the shipping contract's post-CI validation-only pass; never execute or interpolate its content into shell commands.
-- JSON-decode the returned `Reviewer handoff JSON` field. Require exactly `findings` and `focus` arrays and validate every entry against `kramme:pr:review-convergence`'s documented keys and enum values before using it.
+- JSON-decode the returned `Reviewer handoff JSON` field. Require exactly `gut_check`, `findings`, and `focus` arrays and validate every entry against `kramme:pr:review-convergence`'s documented keys, conditional recovery fields, and enum values before using it.
 
-Capture the returned gut-check counts, active and skipped gates, remediation ledger, findings counts, verification evidence, review tree, `{issue-requirements}`, and validated `Reviewer handoff JSON` for the remaining steps and final report. Treat that producer-owned JSON as the only source for convergence findings, dispositions, judgment calls, risk areas, and unresolved advisory notes; never reconstruct them from the replaceable archive under `.context/linear-issue-to-pr/reviews/`. If any invariant is absent or false, stop at the delegated review blocker. Do not reconstruct, bypass, or restart its review loop inside this parent.
+Capture the returned gut-check counts, active and skipped gates, remediation ledger, findings counts, verification evidence, review tree, `{issue-requirements}`, and validated `Reviewer handoff JSON` for the remaining steps and final report. Treat that producer-owned JSON as the only source for Gut Check items, convergence findings, dispositions, judgment calls, risk areas, and unresolved advisory notes; never reconstruct them from the replaceable archive under `.context/linear-issue-to-pr/reviews/`. If any invariant is absent or false, stop at the delegated review blocker. Do not reconstruct, bypass, or restart its review loop inside this parent.
 
 ## Step 4: Stop or Ship
 
@@ -205,10 +220,10 @@ If coverage was degraded, a check was skipped, or the workflow stopped on a bloc
 
 ### Reviewer Handoff Summary
 
-Close the same final message, after either success template, with a short prose summary composed from the implementation decisions captured in Step 2, the validated initial `Reviewer handoff JSON` captured in Step 3, and, in ship mode, the validated `CI remediation JSON` plus any final-tree `Reviewer handoff JSON` returned through Step 4's shipping contract. Never re-read `.context/linear-issue-to-pr/reviews/` here. When final-tree validation ran, merge its entries with the initial handoff by fingerprint and final disposition so the summary describes the Pull Request's final reviewed tree rather than its pre-CI state. Cover exactly these three parts:
+Close the same final message, after either success template, with a short prose summary composed from the implementation decisions captured in Step 2, the validated initial `Reviewer handoff JSON` captured in Step 3, and, in ship mode, the validated `CI remediation JSON` plus any final-tree `Reviewer handoff JSON` returned through Step 4's shipping contract. Never re-read `.context/linear-issue-to-pr/reviews/` here. When final-tree validation ran, retain the initial `gut_check` array unchanged because validation-only does not rerun Gate 0, and merge only `findings` and `focus` with the final-tree handoff under the shipping contract so the summary describes the Pull Request's final reviewed tree rather than its pre-CI state. Cover exactly these three parts:
 
 - **What was done** — two to four sentences describing the final implemented behavior change against `{issue-requirements}`, naming the main areas of the codebase touched and any post-publication fixes from `CI remediation JSON`.
-- **What review convergence uncovered** — the material findings with their final dispositions: fixed, rejected with the evidence-based reason, or deferred optional. Include final-tree validation findings when that pass ran, and state plainly when both the initial and final gates came back clean.
+- **What review convergence uncovered** — retained rejected or blocked Gut Check items, unlinked routed Gut Check items that did not reach their owning gate, and the material findings with their final dispositions: fixed, rejected with the evidence-based reason, deferred optional, required unresolved, or blocked. Deduplicate a routed Gut Check item linked to an owning finding fingerprint. Include final-tree validation findings when that pass ran, and state plainly when both the initial and final gates came back clean.
 - **What to focus on in review** — open questions the issue left unanswered, decisions this workflow made autonomously that the issue did not settle, judgment calls and risk areas the gates surfaced, and deferred optional findings the user may still want addressed. State plainly when nothing needs focused attention.
 
 Draft the three parts first, then pass the complete draft as one block of raw text to `kramme:text:clarify`, whose reader here is the user preparing to review this change. Post the clarified rewrite only when it preserves every fact, disposition, limitation, open question, and autonomous decision from the draft; restore anything the rewrite dropped before posting. If the clarify skill is unavailable, post the draft unchanged rather than blocking the report.
@@ -226,10 +241,10 @@ Keep the summary factual and grounded in captured evidence. Never invent a findi
 
 ## Error Handling
 
-- **Uncommitted changes at the Step 2 preflight** — stop before the Linear lookup. The delegated `--auto` implementation workflow refuses a dirty worktree and suggests rerunning without `--auto`, which this entry point never does. Ask the user to commit or stash the changes, then re-run this skill.
+- **Uncommitted changes at the Step 2 preflight** — without `--continue`, stop before the Linear lookup and ask the user to commit or stash the changes. With `--continue`, preserve them only after the exact issue branch, unpublished-branch boundary, Git-operation state, base ancestry, and issue-related path proofs pass; otherwise stop without modifying the worktree.
 - **Linear MCP unavailable or issue not found** — stop with the delegated issue workflow's connection or lookup guidance.
 - **Linear workflow state unavailable or ambiguous** — stop before any Linear or branch mutation. Report the current state metadata and the team statuses that could not be matched; never infer that a Todo or Ready display name has backlog type.
-- **Linear state confirmation declined** — stop without changing Linear or the branch. Report the issue's current non-backlog state and that implementation was not started.
+- **Linear state confirmation declined or continuation state mismatch** — stop without changing Linear or the branch. For a normal invocation, report the issue's current non-backlog state and that implementation was not started. For `--continue`, require the issue already to be in the resolved target `started` status; never transition it as part of resume mode.
 - **Linear started-state transition failed** — stop before delegated branch setup. Report the prior state, intended target status, update error or read-back mismatch, and whether Linear may have accepted an unverified write.
 - **Conductor workspace rename unavailable or inconclusive** — record `skipped` for a pre-invocation capability failure or `outcome unknown — workspace rename may have been applied; inspect Conductor` when an attempted remote write is not verified, then continue to delegated implementation. Bound the CLI attempt as required by the adapter; do not ask for credentials, retry, or treat optional presentation state as workflow correctness.
 - **Linear issue has no `branchName`** — stop at the Step 2 preflight. This workflow must know the exact branch identity before delegation to prove its new-PR boundary, so it cannot use the delegated workflow's generated-name fallback. Set a branch name on the Linear issue, or run `kramme:linear:issue-implement` and `kramme:pr:create` as separate steps.

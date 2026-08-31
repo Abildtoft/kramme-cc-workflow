@@ -36,8 +36,9 @@ Run this before presenting copy-paste output, before `gh pr edit`, and before sa
 
 ## Output routing
 
-- [ ] `DIRECT_UPDATE=true`: no blocking missing requirements are present, then ran the Phase 4 sequence in order: repo-root anchored backup, local git exclude update, title/body files written outside shell interpolation, `gh pr edit --title "$(cat ...)" --body-file ...`. The success message includes the backup line only when the backup file is non-empty.
+- [ ] `DIRECT_UPDATE=true`: no blocking missing requirements are present, then completed `references/direct-update.md` in order: captured one validated private `/tmp` directory as agent state, wrote title/body through the runtime's native writer, revalidated regular non-symlink payloads, created the mandatory title/body JSON backup, and ran `gh pr edit` in the same shell invocation as validation and cleanup. The success message always includes the retained metadata-backup path.
 - [ ] `DIRECT_UPDATE=false`: presented copy-paste output; only asked about saving when `NON_INTERACTIVE=false`.
+- [ ] A user-confirmed save used the self-contained local-exclude and symlink-rejection procedure in `SKILL.md`; it did not depend on the private direct-update flow.
 - [ ] Any `MISSING REQUIREMENT`, `UNVERIFIED`, `CONFUSION`, or `NOTICED BUT NOT TOUCHING` markers are emitted in the run output, not embedded in the PR body.
 - [ ] Workflow artifact setup did not modify tracked files solely to ignore generated PR-description files.
 

@@ -162,7 +162,8 @@ async function runCodexInstallAttempt(
           agentsDestination: currentAgentsDestination,
         };
       }
-      const { state: installState } = await loadInstallState(codexRoot);
+      const { recoveryReason, state: installState } =
+        await loadInstallState(codexRoot);
       const previousEntries = await getPreviousInstallEntries(
         codexRoot,
         installState,
@@ -171,6 +172,11 @@ async function runCodexInstallAttempt(
       );
       if (!lockAgentHome && previousEntries.agentSkills.length > 0) {
         return { status: "agent-home-lock-required" };
+      }
+      if (recoveryReason) {
+        console.warn(
+          `Codex install state recovery: rebuilt .kramme-install-state.json from manifests (reason: ${recoveryReason}).`,
+        );
       }
       const codexStagingRoot = await createInstallStagingRoot(
         codexRoot,

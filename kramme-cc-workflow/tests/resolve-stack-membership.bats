@@ -319,6 +319,15 @@ load_assignments() {
 	! grep -E '< (base|reference)-branch >' "$strategies"
 }
 
+@test "stack workflow does not delegate mutating description generation" {
+	local stack_skill="$REPO_ROOT/skills/kramme:pr:stack/SKILL.md"
+
+	grep -F 'Do not invoke `kramme:pr:generate-description` from inside this skill' "$stack_skill"
+	grep -F 'every model-initiated call to that child must use output-only `--no-update`' "$stack_skill"
+	grep -F 'ask the user to invoke `/kramme:pr:generate-description --auto` directly' "$stack_skill"
+	! grep -F 'run `kramme:pr:generate-description` per PR' "$stack_skill"
+}
+
 @test "history rewrite flows restack before their stack-wide push" {
 	local flow
 	for flow in \
@@ -377,4 +386,36 @@ load_assignments() {
 
 	grep -F 'git log --oneline "origin/$BASE_BRANCH..HEAD"' "$rebase_skill"
 	! grep -F 'git log --oneline origin/ < base-branch > ..HEAD' "$rebase_skill"
+}
+
+@test "rebase fix-ci mode is opt-in and delegates only after a successful push" {
+	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local opt_in_guard_line
+	local push_guard_line
+	local default_delegate_line
+	local auto_delegate_line
+
+	grep -F 'argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>]"' "$rebase_skill"
+	grep -F 'set `FIX_CI_MODE=true`' "$rebase_skill"
+	grep -F 'Set it to true only after the applicable validated push command returns success.' "$rebase_skill"
+
+	opt_in_guard_line=$(grep -nF 'If `FIX_CI_MODE` is not true, skip to Step 7.' "$rebase_skill" | cut -d: -f1)
+	push_guard_line=$(grep -nF 'Require `PUSH_COMPLETED=true` before delegating.' "$rebase_skill" | cut -d: -f1)
+	default_delegate_line=$(grep -nF 'invoke `$kramme:pr:fix-ci` with no additional flags.' "$rebase_skill" | cut -d: -f1)
+	auto_delegate_line=$(grep -nF 'invoke `$kramme:pr:fix-ci --auto`' "$rebase_skill" | cut -d: -f1)
+	[ -n "$opt_in_guard_line" ]
+	[ -n "$push_guard_line" ]
+	[ -n "$default_delegate_line" ]
+	[ -n "$auto_delegate_line" ]
+	[ "$opt_in_guard_line" -lt "$default_delegate_line" ]
+	[ "$opt_in_guard_line" -lt "$auto_delegate_line" ]
+	[ "$push_guard_line" -lt "$default_delegate_line" ]
+	[ "$push_guard_line" -lt "$auto_delegate_line" ]
+
+	grep -F 'Do not poll CI separately before invoking it.' "$rebase_skill"
+	grep -F 'do not claim that sibling Pull Requests were watched.' "$rebase_skill"
+	grep -F 'if CI reached green before a later consolidation or coordination blocker, report both facts' "$rebase_skill"
+	grep -F 'When `FIX_CI_MODE=true` and `PUSH_COMPLETED=true`' "$rebase_skill"
+	grep -F 'When `FIX_CI_MODE=true` and `PUSH_COMPLETED=false`' "$rebase_skill"
+	grep -F 'do not require or fabricate a remediation handoff.' "$rebase_skill"
 }

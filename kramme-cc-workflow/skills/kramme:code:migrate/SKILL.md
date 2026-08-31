@@ -10,7 +10,7 @@ user-invocable: true
 
 Plan and execute framework/library version migrations with phased upgrades, codemod automation, and verification gates between each phase.
 
-Use `kramme:code:source-driven` for the official-doc grounding discipline inside this workflow, and `kramme:code:deprecate` after the migration when the old path still needs an explicit announcement / migration / removal plan.
+This workflow owns its migration-specific official-source discipline. Use `kramme:code:deprecate` after the migration when the old path still needs an explicit announcement / migration / removal plan.
 
 Skip for: patch or minor version bumps with no breaking changes, isolated single-package upgrades, runtime-only changes (e.g. bumping `.nvmrc` without language/API changes), and routine dependency updates — use `kramme:deps:audit` or `kramme:pr:create` directly instead.
 
@@ -86,8 +86,8 @@ options:
   - Abort — leave artifacts untouched, stop here
 ```
 
-   - On **Resume**: load the existing plan, check out the branch, ask the user for the phase number to start from, then jump to Step 6 with that phase.
-   - On **Restart**: confirm branch deletion explicitly before deleting; then continue to Step 1.
+- On **Resume**: load the existing plan, check out the branch, ask the user for the phase number to start from, then jump to Step 6 with that phase.
+- On **Restart**: confirm branch deletion explicitly before deleting; then continue to Step 1.
 
 ---
 
@@ -126,11 +126,11 @@ options:
 
 ## Step 2: Fetch Migration Guide
 
-Run the DETECT / FETCH / IMPLEMENT / CITE workflow from `kramme:code:source-driven` here. Treat that skill as the source of truth for how to ground, fetch, and cite documentation. This step adds only the migration-specific scope: which sources to check and what migration details to extract.
+Read and follow `references/source-grounding.md` now. It defines the migration-specific DETECT / FETCH / IMPLEMENT / CITE contract, including source authority, version matching, conflicts, blocking evidence gaps, and citations.
 
 1. Read known migration sources from `references/migration-sources.md` to identify the official migration-guide URLs, changelogs, and framework-specific upgrade hubs for the target stack.
 
-2. Use the `kramme:code:source-driven` fetch discipline to retrieve the official migration guide and any adjacent official changelog / breaking-change references for `{framework} {current} -> {target}`.
+2. Use the local source-grounding contract to retrieve the official migration guide and any adjacent official changelog / breaking-change references for `{framework} {current} -> {target}`.
    - Prefer the exact official URLs or URL patterns from `references/migration-sources.md`.
    - Record the deep links you relied on.
    - If an important migration claim cannot be backed by an official source, emit `UNVERIFIED` instead of guessing.
@@ -146,7 +146,7 @@ Run the DETECT / FETCH / IMPLEMENT / CITE workflow from `kramme:code:source-driv
 
 5. Read common patterns from `references/common-breaking-patterns.md`.
 
-6. If **no official guide found**: mark that gap explicitly, then search community resources as a fallback and warn the user that manual verification may be needed before implementation.
+6. If **no official guide is found**: mark the affected claims `UNVERIFIED`. Community resources may help locate an official source, but they are not migration evidence. Do not implement a change that depends on an unresolved claim.
 
 ---
 
@@ -344,7 +344,7 @@ Next Steps:
 
 | Scenario | Action |
 | --- | --- |
-| No migration guide found | Proceed with codebase analysis, warn about manual research |
+| No migration guide found | Mark affected claims `UNVERIFIED`; continue analysis only where it is source-independent and block implementation that depends on the gap |
 | Target version doesn't exist | Abort: `Version {target} not found for {framework}` |
 | Current version not detected | If `AUTO_MODE=true`, abort with a clear error. Otherwise ask the user for the current version |
 | Codemod fails | Capture error, skip to manual approach, log failure |

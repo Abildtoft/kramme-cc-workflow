@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:fix-ci
-description: Iterate on a PR until CI passes. Use when you need to fix CI failures, address review feedback, or continuously push fixes until all checks are green. Automates the feedback-fix-push-wait cycle and accepts a validated archived plan for scope-bound plan-to-PR shipping or recovery.
+description: Iterate on a PR until CI passes. When an unscoped PR branch is behind its base, offers a safe automatic rebase or an explicit skip before watching and fixing CI. Also addresses review feedback, continuously pushes fixes until checks are green, and accepts a validated archived plan for scope-bound shipping or recovery.
 argument-hint: "[--fixup] [--auto] [--no-consolidate] [--scope-plan <archived-plan>]"
 disable-model-invocation: true
 user-invocable: true
@@ -28,6 +28,8 @@ The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, m
 - `--no-consolidate` - Skip the consolidation prompt after CI passes. Use for scripting or when you want to keep `[FIX PIPELINE]` commits separate.
 - `--auto` - Run the CI fix loop unattended where possible. After CI passes, automatically consolidate `[FIX PIPELINE]` commits using the automated consolidation flow instead of prompting. If consolidation cannot be completed safely, stop with `MISSING REQUIREMENT` rather than leaving fix commits separate.
 - `--scope-plan <archived-plan>` - Reconstruct and enforce a plan-to-PR mutation boundary from a validated archive. This mode requires `--no-consolidate`, rejects `--fixup` and `--auto`, and persists a scoped recovery checkpoint after every pushed fix.
+
+When an unscoped Pull Request is behind its base, the workflow asks whether to rebase and push automatically before fixing CI or to skip rebasing for this run. `--auto` does not answer this history-rewrite question on the user's behalf.
 
 Before Step 1, parse `$ARGUMENTS`. If `--fixup` is present, set `FIXUP_MODE=true`; if `--auto` is present, set `AUTO_MODE=true`; if `--no-consolidate` is present, set `NO_CONSOLIDATE=true`. Parse `--scope-plan <path>` at most once and store its raw value without using it in a command. Reject unknown flags, duplicate valued flags, missing values, and positional arguments. If both `--auto` and `--no-consolidate` are present, stop with `MISSING REQUIREMENT: choose either --auto to consolidate fix commits or --no-consolidate to keep them separate`.
 
@@ -70,7 +72,19 @@ git fetch origin "$BASE"
 git rev-list --left-right --count "origin/$BASE"...HEAD
 ```
 
-If the left count is non-zero (the base has commits not in the branch), inspect what moved (`git log --name-only HEAD.."origin/$BASE"`). Only stop if the base movement plausibly affects CI for this PR — it touches the same files or directories the branch changes, CI workflow/config files, lockfiles, or shared build tooling. When `PLAN_SCOPE_ACTIVE=false`, point the user at `/kramme:pr:rebase` before proceeding. When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` or changing history: the recorded base and checkpoint remain part of the scoped provenance contract, so require a refreshed or explicitly re-authorized scoped plan before continuing. Otherwise note the drift and continue iterating.
+If the left count is non-zero (the base has commits not in the branch), inspect what moved (`git log --name-only HEAD.."origin/$BASE"`) and whether it plausibly affects CI for this PR — it touches the same files or directories the branch changes, CI workflow/config files, lockfiles, or shared build tooling.
+
+When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` or changing history if that movement plausibly affects CI: the recorded base and checkpoint remain part of the scoped provenance contract, so require a refreshed or explicitly re-authorized scoped plan before continuing. Otherwise note the drift and continue iterating.
+
+When `PLAN_SCOPE_ACTIVE=false`, use `AskUserQuestion` even when `AUTO_MODE=true` and present exactly these choices:
+
+1. **Rebase then fix CI (Recommended)** - Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism.
+
+   This selection authorizes its safe unattended push mode, which preserves conflict, red-flag, and verification gates. If it proves that the rebase and push succeeded, return to Step 1 with the original parsed `fix-ci` modes still active, recheck base synchronization, then watch and fix CI. If it stops or cannot prove the push succeeded, stop this workflow with its blocker; do not watch the stale remote branch or silently choose the skip path.
+
+2. **Skip rebase and fix CI** - Record that the user accepted the reported base drift for this run and continue to Step 3 without changing history. Do not ask again during this invocation unless the Pull Request's base branch changes.
+
+Do not run `git rebase` or force-push inline from this skill; the delegated rebase workflow owns stack handling and all history-rewrite safety gates.
 
 Before starting the fix loop, snapshot the pre-existing working-tree state so Step 8 can keep it out of fix commits:
 
@@ -257,7 +271,7 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 **Stop Immediately:**
 
 - No PR exists for the current branch
-- An unscoped branch is out of sync in a way that plausibly affects CI (point the user at `/kramme:pr:rebase`)
+- A delegated rebase did not prove that its rewritten branch was pushed (surface its blocker; do not fall back to the skip path)
 - A scoped branch's base moved in a way that plausibly affects CI (fail closed without rebasing and require a refreshed or explicitly re-authorized scoped plan)
 
 ---
@@ -276,6 +290,7 @@ If disablement is genuinely warranted — a confirmed false positive, a test tha
 - **`--auto`**: Working unattended, want `[FIX PIPELINE]` commits automatically consolidated once CI and review feedback are clear
 - **`--fixup`**: Working alone, want clean history throughout, comfortable with force push
 - **`--no-consolidate`**: Working in a context where history rewrite is undesirable and `[FIX PIPELINE]` commits should remain visible
+- **Behind the base**: In an unscoped run, choose the safe automatic rebase-and-push path or explicitly skip rebasing and continue with CI
 
 ---
 
