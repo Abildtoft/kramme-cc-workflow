@@ -185,6 +185,16 @@
       ]
     },
     {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/forward-progress-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:forward-progress/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md"
+      ]
+    },
+    {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/adversarial-review-runner.bats",
       "skills": [
