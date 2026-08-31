@@ -114,11 +114,16 @@ Removal decision update (2026-08-29): repository maintainers approved accelerate
 
 This approval waives the normal deprecation and additional-zero-use-quarter interval. Neither skill has recorded adoption. Launch-copy drafting and staged rollout planning remain available as ordinary agent requests, while removing both commands avoids retaining either skill solely to preserve a zero-use `launch` domain. The dedicated rollout safety guidance and rollout-owned handoff producer and template are removed; `kramme:product:pulse` continues to ingest legacy or external `PRODUCT PULSE HANDOFF` blocks. Removing the commands is a breaking migration and must ship in the next major release.
 
+Removal decision update (2026-08-31): repository maintainers approved accelerated removal of `kramme:code:source-driven`. Reports run on 2026-08-29 show zero recorded invocations in the current 30-day, 90-day, and all-history windows. Tracking begins on 2026-05-28, so this establishes no recorded use throughout the instrumented history without making claims about earlier uninstrumented use.
+
+Usage is not the sole basis for removal. Generic source grounding is an implementation discipline rather than a distinct durable outcome or permission boundary, and retaining a separate route would duplicate consumer prompts, provenance, catalog entries, and maintenance. Version migrations use the self-contained official-source contract in `kramme:code:migrate`; bounded cited research artifacts use `kramme:research`; ordinary implementation verifies unstable third-party facts through the host's source tools. The dedicated command removal is breaking and must ship in the next major release.
+
 ### Overlapping skills
 
 | Case | 30-day use | 90-day use | Verdict under this policy | Reason |
 | --- | --: | --: | --- | --- |
 | `kramme:code:cleanup-ai` / `kramme:code:refactor-pass` | 0 / 0 | 0 / 0 | Merged (2026-08-03) | Both target post-feature branch simplification with overlapping cleanup outcomes. The AI-slop reviewer and confidence bands are implementation technique and mode, not a distinct user outcome. |
+| `kramme:code:source-driven` / consumer-local source grounding | 0 / — | 0 / — | Remove (approved 2026-08-31) | Source grounding is a mode inside the workflow that consumes it. Migrations retain the self-contained contract; cited research remains a distinct artifact-producing route. |
 | `kramme:qa` / `kramme:qa:intake` / `kramme:debug:investigate` | 0 / 0 / 0 | 0 / 0 / 0 | Keep separate | Their positive routes differ: probe a live app and produce evidence; convert multiple user-reported bugs into tickets; or reproduce one bug and trace its root cause. Their outputs and side effects differ. |
 | `kramme:code:breakdown-findings` / former SIW counterpart | 14 / 0 | 27 / 0 | SIW counterpart removed (2026-08-26) | The code skill remains for persistent Pull Request plan files. SIW audit decisions now route through `kramme:siw:resolve-audit`, avoiding a redundant findings entry point. |
 
