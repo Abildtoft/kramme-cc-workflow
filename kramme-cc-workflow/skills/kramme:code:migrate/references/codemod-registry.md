@@ -13,7 +13,7 @@ Known codemod tools and automated migration utilities.
 
 ### grit
 
-- **Install:** `curl -fsSL https://docs.grit.io/install | bash`
+- **Install:** `npm install --location=global @getgrit/cli`
 - **Usage:** `grit apply <pattern>`
 - **What:** Pattern-based code transformations using GritQL
 
