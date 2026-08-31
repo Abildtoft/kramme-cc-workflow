@@ -10,6 +10,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 ### Changed
 
+- **Breaking:** Remove `/kramme:code:source-driven`; use `/kramme:code:migrate` for version migrations, `/kramme:research` for bounded cited research artifacts, and host source tools for ordinary source-backed implementation.
 - **Breaking:** Remove hidden `kramme:pr:complete-work` after moving archived-plan completion, review convergence, verification, and optional shipping into `/kramme:code:plan-to-pr`; the user-facing plan-to-PR route is unchanged.
 - **Breaking:** Remove `/kramme:launch:announce` and `/kramme:launch:rollout`; launch-copy drafting and rollout planning remain available as ordinary agent requests, but no dedicated replacement preserves staged execution, monitoring and rollback gates, temporary-control cleanup, or rollout-owned Product Pulse handoff production.
 - **Breaking:** Remove `/kramme:changelog:generate`; daily and weekly merge summaries and plugin release-note queries no longer have a dedicated skill.
