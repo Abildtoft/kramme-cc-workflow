@@ -11,6 +11,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 ### Changed
 
 - **Breaking:** Remove `/kramme:code:incremental` after no recorded use during instrumented history. Use ordinary implementation requests for small verified slices and `/kramme:code:refactor-pass` for narrow behavior-preserving cleanup. No dedicated replacement preserves the former structural-refactor interview, Decision Document, and tiny-commit planning workflow.
+- **Breaking:** Remove `/kramme:test:tdd`; `/kramme:debug:triage-to-issue` now owns RED-GREEN and Prove-It planning for bug tickets, while direct test-first implementation follows repository conventions without a dedicated command. Ship this removal only in the next major release.
 - **Breaking:** Remove `/kramme:code:source-driven`; use `/kramme:code:migrate` for version migrations, `/kramme:research` for bounded cited research artifacts, and host source tools for ordinary source-backed implementation.
 - **Breaking:** Remove hidden `kramme:pr:complete-work` after moving archived-plan completion, review convergence, verification, and optional shipping into `/kramme:code:plan-to-pr`; the user-facing plan-to-PR route is unchanged.
 - **Breaking:** Remove `/kramme:launch:announce` and `/kramme:launch:rollout`; launch-copy drafting and rollout planning remain available as ordinary agent requests, but no dedicated replacement preserves staged execution, monitoring and rollback gates, temporary-control cleanup, or rollout-owned Product Pulse handoff production.

@@ -503,11 +503,6 @@
       "path": "kramme-cc-workflow/skills/kramme:test:generate/SKILL.md"
     },
     {
-      "name": "kramme:test:tdd",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:test:tdd/SKILL.md"
-    },
-    {
       "name": "kramme:text:clarify",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md"
