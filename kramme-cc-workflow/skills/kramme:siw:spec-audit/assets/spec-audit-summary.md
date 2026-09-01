@@ -2,7 +2,7 @@
 
 Spec Files: {list}
 
-Quality Scores: Coherence: {Strong/Adequate/Weak/Missing} Completeness: {Strong/Adequate/Weak/Missing} Clarity: {Strong/Adequate/Weak/Missing} Scope: {Strong/Adequate/Weak/Missing} Actionability: {Strong/Adequate/Weak/Missing} Testability: {Strong/Adequate/Weak/Missing} Value Proposition: {Strong/Adequate/Weak/Missing} Technical Design: {Strong/Adequate/Weak/Missing}
+Quality Scores: Coherence: {Strong/Adequate/Weak/Missing} Completeness: {Strong/Adequate/Weak/Missing} Clarity: {Strong/Adequate/Weak/Missing} Scope: {Strong/Adequate/Weak/Missing} Actionability: {Strong/Adequate/Weak/Missing} Testability: {Strong/Adequate/Weak/Missing} Rationale Documentation: {Strong/Adequate/Weak/Missing} Technical Design: {Strong/Adequate/Weak/Missing}
 
 Findings: Critical: {N} Major: {N} Minor: {N} Total: {N} {If preserved critical caps exist:} Preserved Critical Caps: {N} (reported as Minor due to Work Context but still decision-required)
 

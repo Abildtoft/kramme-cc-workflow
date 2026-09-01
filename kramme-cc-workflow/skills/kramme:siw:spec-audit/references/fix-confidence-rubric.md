@@ -98,7 +98,7 @@ If a later reporting step displays one of these findings as Minor because of Wor
 
 A finding is safety-capped if ANY of these apply:
 
-1. Severity is Critical AND dimension is Completeness, Scope, or Value Proposition
+1. Severity is Critical AND dimension is Completeness, Scope, or Rationale Documentation (`Value Proposition` in legacy reports)
 2. Recommendation uses decision-signal language: "consider", "decide whether", "choose between", "discuss with", "evaluate options"
 3. Finding explicitly involves adding or removing items from scope
 4. Finding involves defining success criteria substance (not just making existing criteria measurable)

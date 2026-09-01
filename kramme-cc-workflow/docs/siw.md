@@ -100,11 +100,11 @@ Discovery and audits move specifications toward `planning-ready`. `issue-define`
 
 ### Product audit
 
-`/kramme:siw:product-audit` reviews target users, problem/solution fit, user states, critical moments, scope, success criteria, and prioritization. Use it before transfer when product correctness matters independently of specification mechanics.
+`/kramme:siw:product-audit` reviews target users, problem/solution fit, user states, critical moments, product scope, success criteria, prioritization, and strategy alignment. Use it when the question is whether the specification proposes the right product for the right users.
 
 ### Specification audit
 
-`/kramme:siw:spec-audit` reviews coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design.
+`/kramme:siw:spec-audit` reviews coherence, completeness, clarity, implementation-scope consistency, actionability, testability, rationale documentation, and technical design. Use it when the question is whether implementation can proceed correctly without guessing. It checks that product rationale is explicit and internally consistent, but leaves product correctness, prioritization, and strategy judgment to `/kramme:siw:product-audit`.
 
 - `--inline` returns a read-only report.
 - `--apply` delegates mechanical fixes to the canonical safe-fix procedure.

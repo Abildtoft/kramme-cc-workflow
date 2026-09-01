@@ -152,27 +152,29 @@ Check for:
 
 ---
 
-## Dimension: Value Proposition
+## Dimension: Rationale Documentation
+
+Assess whether the specification records enough product rationale to guide implementation. Evaluate the presence, clarity, and internal consistency of that rationale only. Do not judge whether the product is worth building, whether the chosen solution is the best one, or whether prioritization and strategy are correct; those questions belong to `/kramme:siw:product-audit`.
 
 Check for:
 
-1. **Missing or weak problem statement.** Is it clear what problem this solves? Is the problem validated or assumed?
+1. **Missing or unclear problem statement.** Does the spec explicitly state the problem that its requirements are intended to address? Are assumptions labeled as assumptions instead of presented as validated facts?
 
-2. **Missing stakeholder identification.** Who benefits from this? Who is affected?
+2. **Missing beneficiary or stakeholder identification.** Does the spec state who benefits from the work and who is affected, clearly enough to interpret requirements and tradeoffs?
 
-3. **Unjustified solution approach.** Why THIS solution and not alternatives? Were alternatives considered?
+3. **Undocumented decision rationale.** Does the spec record why its chosen approach was selected and note materially relevant alternatives or constraints? Check whether the rationale exists and is understandable; do not substitute a different product decision.
 
-4. **Missing success metrics.** How will we know this was worth doing?
+4. **Missing intended outcomes.** Does the spec connect its requirements and success criteria to stated outcomes or metrics, so implementers understand what the work is meant to achieve?
 
-5. **Over-engineering signals.** Is the solution complexity proportional to the problem? Are there simpler alternatives that would suffice?
+5. **Missing priority or timing context.** When sequencing or tradeoffs depend on urgency, does the spec explain why the work matters now?
 
-6. **Missing context.** Why now? What changed that makes this work necessary?
+6. **Rationale inconsistencies.** Do the stated problem, beneficiaries, outcomes, constraints, and selected approach agree with one another? Flag contradictions or gaps that would force implementation choices to rely on guessed intent.
 
 **Severity guide:**
 
-- Critical: No problem statement, solution doesn't match stated problem
-- Major: No alternatives considered, no success metrics
-- Minor: Weak justification, missing minor context
+- Critical: Missing or contradictory rationale leaves the intended behavior or a core implementation tradeoff unknowable
+- Major: A key problem, beneficiary, outcome, constraint, or decision rationale is absent or ambiguous enough that implementers must infer intent
+- Minor: Non-critical context or traceability is incomplete but implementation intent remains clear
 
 ---
 

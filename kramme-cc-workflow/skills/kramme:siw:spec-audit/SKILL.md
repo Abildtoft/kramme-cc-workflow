@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:spec-audit
-description: Audit specification documents for quality — coherence, completeness, clarity, scope, actionability, testability, value proposition, and technical design. Supports --inline and --apply. Use --team for multi-agent cross-validation and codebase pattern review.
+description: Audit specifications for implementation readiness — coherence, completeness, clarity, scope consistency, actionability, testability, rationale documentation, and technical design. Checks whether product rationale is explicit and internally consistent without judging product correctness; use kramme:siw:product-audit for that. Supports --inline and --apply. Use --team for multi-agent cross-validation and codebase pattern review.
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Audit Specification Quality
 
-Evaluate specification documents for quality across 8 dimensions before implementation begins. The standard workflow is spec-only; `--team` also runs a bounded codebase pattern reviewer that checks whether the spec introduces new implementation patterns without rationale.
+Evaluate specification documents for implementation readiness across 8 dimensions before implementation begins. Use this skill when the question is whether implementation can proceed correctly without guessing. It checks whether product rationale is documented clearly enough to guide implementation, but does not decide whether the product problem, solution, prioritization, or strategy is correct; use `/kramme:siw:product-audit` for that product judgment. The standard workflow is spec-only; `--team` also runs a bounded codebase pattern reviewer that checks whether the spec introduces new implementation patterns without rationale.
 
 **IMPORTANT:** This is a thorough quality audit. Do not return early. Do not assume a section is well-written without reading it carefully. Check every part of the specification against quality criteria. The goal is to find ALL weaknesses — a clean report is suspicious, not reassuring.
 
@@ -89,6 +89,7 @@ After reading all spec files, look for a `## Work Context` section in the spec f
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
    - If multiple spec files define Work Context, prefer the top-level `siw/*.md` candidate (specs in `siw/supporting-specs/` are auxiliary). If more than one top-level spec defines Work Context, use the lexicographically first one and emit a one-line warning that names the ignored files.
+   - Ignore the legacy dimension name `Value Proposition` in priority and deprioritized lists before applying dimension routing or severity caps. It described product judgment now owned by `/kramme:siw:product-audit`; do not reinterpret it as the implementation-facing Rationale Documentation dimension.
 2. If not found or malformed, default to Production Feature (all dimensions equally weighted, no caps)
 3. Store as `work_context`
 
@@ -141,18 +142,18 @@ Group the 8 quality dimensions across Explore agents based on spec size:
 
 **Small specs** (single file, under 200 lines) — **2 agents:**
 
-- Agent A: Coherence, Completeness, Value Proposition, Scope
+- Agent A: Coherence, Completeness, Rationale Documentation, Scope
 - Agent B: Clarity, Actionability, Testability, Technical Design
 
 **Medium specs** (1-3 files, 200-800 lines) — **3 agents:**
 
-- Agent A: Coherence, Value Proposition, Technical Design
+- Agent A: Coherence, Rationale Documentation, Technical Design
 - Agent B: Completeness, Scope
 - Agent C: Clarity, Actionability, Testability
 
 **Large specs** (3+ files or 800+ lines) — **4 agents:**
 
-- Agent A: Coherence, Value Proposition
+- Agent A: Coherence, Rationale Documentation
 - Agent B: Completeness, Scope
 - Agent C: Clarity, Actionability
 - Agent D: Testability, Technical Design
@@ -175,7 +176,7 @@ Each agent receives the full spec text and analysis instructions for its assigne
 
 Read the dimension-specific instructions from `references/dimension-instructions.md` and include the relevant dimension blocks in each agent's prompt based on its assigned dimensions.
 
-The 8 dimensions are: Coherence, Completeness, Clarity, Scope, Actionability, Testability, Value Proposition, Technical Design. Each includes check items and a severity guide.
+The 8 dimensions are: Coherence, Completeness, Clarity, Scope, Actionability, Testability, Rationale Documentation, Technical Design. Each includes check items and a severity guide.
 
 ---
 

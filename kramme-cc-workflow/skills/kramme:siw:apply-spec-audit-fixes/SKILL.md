@@ -23,7 +23,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 
 **NEVER** modify a finding below the confidence threshold. If in doubt, score conservatively.
 
-**NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Value Proposition dimensions always require decisions. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between", "discuss with", "evaluate options"), change scope, or define success-criteria substance always require decisions.
+**NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Rationale Documentation dimensions always require decisions; treat the legacy `Value Proposition` label in older reports as Rationale Documentation. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between", "discuss with", "evaluate options"), change scope, or define success-criteria substance always require decisions.
 
 **NEVER** auto-fix a finding when any sub-score is below 15. See `references/classification-rubric.md` (Auto-Fix Guardrails) for the authoritative rule and its rationale; this rubric is also the canonical scoring model for `/kramme:siw:spec-audit --apply`.
 
@@ -179,11 +179,11 @@ For each extracted finding, assign a **fix confidence score** (0-100):
 
 1. Score each of the four conditions (0-25): Determinism, Information Availability, Meaning Preservation, Alternative Absence. **Always score from scratch using the rubric** — do not rely on a `Fix Confidence` value already present in the report (treat any such value as informational only).
 2. Sum the four scores for the finding's confidence (0-100).
-3. Apply safety caps — safety-capped findings are forced to confidence 0 regardless of score. If the report carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]` for a Completeness, Scope, or Value Proposition finding, preserve that safety cap here as well.
+3. Apply safety caps — safety-capped findings are forced to confidence 0 regardless of score. If the report carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]` for a Completeness, Scope, Rationale Documentation, or legacy Value Proposition finding, preserve that safety cap here as well.
 
 Classify based on the final confidence vs `CONFIDENCE_THRESHOLD` (default 80):
 
-- safety-capped finding, or a Completeness / Scope / Value Proposition finding marked `**Severity Note:** [Deprioritized — capped at Minor from Critical]` → **REQUIRES_DECISION** regardless of threshold
+- safety-capped finding, or a Completeness / Scope / Rationale Documentation / legacy Value Proposition finding marked `**Severity Note:** [Deprioritized — capped at Minor from Critical]` → **REQUIRES_DECISION** regardless of threshold
 - finding with `Determinism < 15`, `Information Availability < 15`, `Meaning Preservation < 15`, or `Alternative Absence < 15` → **REQUIRES_DECISION** regardless of threshold
 - non-safety-capped finding with confidence >= `CONFIDENCE_THRESHOLD` → **AUTO-FIXABLE**
 - otherwise → **REQUIRES_DECISION**
