@@ -122,6 +122,10 @@ Removal decision update (2026-09-01): repository maintainers approved accelerate
 
 Usage is not the sole basis for removal. Small verified slices are an implementation discipline that agents can apply during ordinary implementation rather than a distinct durable outcome or permission boundary. The narrower `/kramme:code:refactor-pass` route preserves behavior-preserving cleanup, but it does not replace the removed structural-refactor interview, Decision Document, or tiny-commit planning workflow. Removing the dedicated command reduces catalog and maintenance surface while intentionally retiring that planning artifact; the command removal is breaking and must ship in the next major release.
 
+Removal decision update (2026-09-01): repository maintainers approved accelerated removal of `kramme:test:tdd`. Reports run on 2026-09-01 show zero recorded invocations in the current 30-day, 90-day, and all-history windows. Tracking begins on 2026-05-28, so this establishes no recorded use throughout the instrumented history without making claims about earlier uninstrumented use.
+
+This approval explicitly waives the normal deprecation and additional-zero-use-quarter interval. Usage is not the sole basis for removal: bug-ticket planning retains the RED-GREEN and Prove-It contract in `kramme:debug:triage-to-issue`, while direct test-first implementation remains a repository-guided implementation discipline rather than a distinct durable outcome or permission boundary. The standalone command's broader interactive TDD guidance and supporting references are retired instead of copied into unrelated skills. Removing the command is a breaking migration and must ship in the next major release.
+
 ### Overlapping skills
 
 | Case | 30-day use | 90-day use | Verdict under this policy | Reason |

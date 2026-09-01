@@ -1764,7 +1764,6 @@
       "kramme-cc-workflow/skills/kramme:session:context-setup/SKILL.md",
       "kramme-cc-workflow/skills/kramme:discovery:wayfinder/SKILL.md",
       "kramme-cc-workflow/skills/kramme:test:generate/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:test:tdd/SKILL.md",
       "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md",
       "kramme-cc-workflow/skills/kramme:text:humanize/SKILL.md",
       "kramme-cc-workflow/skills/kramme:verify:before-completion/SKILL.md",

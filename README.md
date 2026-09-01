@@ -411,12 +411,11 @@ Dependency auditing and management.
 
 #### Testing
 
-Test generation, coverage, and test-first discipline.
+Test generation and coverage analysis.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:test:audit` | User, Auto | `[full \| path <file-or-folder> \| changed [--base <ref>]] [--max-findings N]` | Audits an existing test suite for low-value, brittle, obsolete, duplicated, provider-shape-coupled, or weak tests. Produces a read-only, evidence-backed REMOVE / REPAIR / CONSOLIDATE / INVESTIGATE report. Use to find poor-quality tests across a repository or path. Not for generating or ordinarily running tests, PR coverage review, or editing or pruning tests. |
-| `/kramme:test:tdd` | User, Auto | — | (experimental) Drive implementation with tests. Write a failing test that characterizes the requirement or reproduces the bug, implement the minimum to pass, then refactor with tests green. Use when implementing new logic, fixing a bug (Prove-It pattern), or changing behavior. Complementary to kramme:test:generate, which writes tests for existing untested code. |
 | `/kramme:test:generate` | User | `[file-path or directory] [--auto]` | (experimental) Generate tests for existing code by analyzing project test patterns and conventions. Use when adding test coverage to untested files or generating test stubs. |
 
 #### Git
@@ -795,7 +794,7 @@ material and its skill-local notices.
 - `kramme:docs:feature-spec`: Adapted from [spec-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development).
 - `kramme:docs:adr`: Adapted from [documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
 - `kramme:code:deprecate`: Adapted from [deprecation-and-migration](https://github.com/addyosmani/agent-skills/tree/main/skills/deprecation-and-migration).
-- `kramme:test:tdd`: Adapted from [test-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/test-driven-development).
+- `kramme:debug:triage-to-issue` Prove-It regression-test conventions: Adapted from [test-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/test-driven-development).
 - `kramme:browse` security boundaries, JavaScript constraints, content boundary markers, and Addy marker/epilogue conventions: adapted from [browser-testing-with-devtools](https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools).
 - `kramme:qa` network triage ladder, clean-console standard, accessibility ladder, and Addy marker/epilogue conventions: adapted from [browser-testing-with-devtools](https://github.com/addyosmani/agent-skills/tree/main/skills/browser-testing-with-devtools).
 - `kramme:git:commit-message`, `kramme:pr:generate-description`, `kramme:git:recreate-commits`, `kramme:pr:rebase`: Addy output markers, Change Summary triplet (`CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS`), 3-section epilogue, 6-item pre-commit checklist, and "dev branches are costs" framing adapted from [git-workflow-and-versioning](https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning). Addy's per-commit Conventional Commits rule is explicitly rejected.
@@ -817,6 +816,7 @@ material and its skill-local notices.
 
 ### Other sources
 
+- `kramme:debug:triage-to-issue`: The hands-off bug-to-issue workflow is adapted from Matt Pocock's [triage-issue](https://github.com/mattpocock/skills/tree/383b6a06d59c4ce0ffcb14112bfd91265a86cf91/skills/triage-issue), while its vertical RED-GREEN cycle guidance is adapted from Pocock's [TDD skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd).
 - `kramme:docs:update-agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
 - `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
 - `kramme:text:clarify`: Inspired by [fofr's GOV.UK style skill](https://gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2) and official GOV.UK guidance on [identifying user needs](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/plan-manage-content/identify-user-needs/) and [using clear language](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/), adapted into a locale-neutral reader-task workflow.
