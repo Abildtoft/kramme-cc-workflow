@@ -516,13 +516,36 @@ EOF
 
 @test "spec-audit fix-confidence rubric is synced as a skill-local resource" {
   local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
+  local auto_fix_skill="$BATS_TEST_DIRNAME/../skills/kramme:siw:apply-spec-audit-fixes/SKILL.md"
   local auto_fix_rubric="$BATS_TEST_DIRNAME/../skills/kramme:siw:apply-spec-audit-fixes/references/classification-rubric.md"
   local audit_rubric="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/references/fix-confidence-rubric.md"
 
   test -f "$auto_fix_rubric"
   test -f "$audit_rubric"
   cmp -s "$auto_fix_rubric" "$audit_rubric"
+  grep -qF 'Critical findings in Completeness, Scope, or Rationale Documentation dimensions always require decisions; treat the legacy `Value Proposition` label in older reports as Rationale Documentation.' "$auto_fix_skill"
+  grep -qF 'Severity is Critical AND dimension is Completeness, Scope, or Rationale Documentation (`Value Proposition` in legacy reports)' "$auto_fix_rubric"
   grep -qF '"name": "siw-spec-audit-fix-confidence-rubric"' "$registry"
+}
+
+@test "spec-audit rationale documentation contract reaches downstream consumers" {
+  local issue_template="$BATS_TEST_DIRNAME/../skills/kramme:siw:resolve-audit/assets/issue-spec.md.template"
+  local report_format="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/assets/spec-audit-report-format.md"
+  local report_summary="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/assets/spec-audit-summary.md"
+  local team_mode="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/references/team-mode.md"
+
+  grep -qF 'actionability/testability/rationale documentation/technical design' "$issue_template"
+  ! grep -qF 'actionability/testability/value/technical design' "$issue_template"
+  grep -qF -- '- **Rationale Documentation or Technical Design gaps** -> message design-auditor' "$team_mode"
+  ! grep -qF -- '- **Design flaws or value gaps** -> message design-auditor' "$team_mode"
+  grep -qF '| Rationale Documentation |' "$report_format"
+  ! grep -qF '| Value Proposition |' "$report_format"
+  grep -qF 'Rationale Documentation:' "$report_summary"
+  ! grep -qF 'Value Proposition:' "$report_summary"
+  grep -qxF '**Dimension:** {dimension}' "$report_format"
+  grep -qxF '**Severity:** Critical' "$report_format"
+  grep -qxF '**Fix Confidence:** {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})' "$report_format"
+  grep -qxF '**Location:** {source_file} > {source_section}' "$report_format"
 }
 
 @test "visual shared asset generator passes current tree" {

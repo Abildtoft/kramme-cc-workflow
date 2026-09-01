@@ -303,6 +303,31 @@ NODE
 	[ "$status" -eq 0 ]
 }
 
+@test "SIW product and spec audits keep distinct review boundaries" {
+	local product_skill="$BATS_TEST_DIRNAME/../skills/kramme:siw:product-audit/SKILL.md"
+	local product_prompt="$BATS_TEST_DIRNAME/../skills/kramme:siw:product-audit/references/product-reviewer-prompt.md"
+	local spec_skill="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/SKILL.md"
+	local dimensions="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/references/dimension-instructions.md"
+	local team_mode="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/references/team-mode.md"
+	local work_contexts="$BATS_TEST_DIRNAME/../skills/kramme:siw:init/references/work-context-profiles.md"
+
+	grep -qF "whether the specification proposes the right product for the right users" "$product_skill"
+	grep -qF "whether implementation can proceed correctly without guessing" "$spec_skill"
+	grep -qF "## Dimension: Rationale Documentation" "$dimensions"
+	grep -qF "those questions belong to \`/kramme:siw:product-audit\`" "$dimensions"
+	grep -qF "Do not judge whether the product is worth building" "$dimensions"
+	grep -qF "### 2. Problem/Solution Fit" "$product_prompt"
+	grep -qF "Are there simpler alternatives the spec doesn't consider?" "$product_prompt"
+	grep -qF '| `design-auditor` | Rationale Documentation, Technical Design |' "$team_mode"
+	grep -qF "without re-deciding product strategy" "$team_mode"
+	grep -qF "Ignore the legacy dimension name \`Value Proposition\`" "$spec_skill"
+	grep -qF "do not reinterpret it as the implementation-facing Rationale Documentation dimension" "$spec_skill"
+	grep -qF "| Prototype / Spike | Prototype | Early Exploration | Actionability, Technical Design | Completeness, Testability |" "$work_contexts"
+	grep -qF "| Internal Tool | Internal Tool | Varies | Actionability, Clarity | None |" "$work_contexts"
+	grep -qF "| Tech Debt / Refactor | Refactor | Maintenance | Technical Design, Testability | Scope |" "$work_contexts"
+	! grep -qF "## Dimension: Value Proposition" "$dimensions"
+}
+
 @test "parent-relative runtime resource references cannot escape a skill" {
 	local skills_dir="$BATS_TEST_TMPDIR/parent-relative/skills"
 	mkdir -p "$skills_dir/owner"
