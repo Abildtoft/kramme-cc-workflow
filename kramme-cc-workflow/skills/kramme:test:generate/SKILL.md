@@ -12,7 +12,7 @@ Generate tests for existing code by analyzing the project's test framework, conv
 
 **IMPORTANT:** This skill creates new test files and runs them. It does NOT modify source code — if a generated test fails, the test is fixed, not the source.
 
-**When to use:** Adding coverage to existing, untested code. For test-first new logic or bug reproduction, use `kramme:test:tdd` instead. Generate E2E specs only when explicitly asked — default to the project's unit test framework.
+**When to use:** Adding coverage to existing, untested code. For test-first new logic or bug reproduction, follow the repository's normal test-first workflow instead. Generate E2E specs only when explicitly asked — default to the project's unit test framework.
 
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 

@@ -8,7 +8,7 @@ user-invocable: true
 
 # Triage a Bug to an Implementation-Ready Issue
 
-One command, one ticket. Take a bug description, run a root-cause investigation, design a TDD fix plan, and file a refactor-durable issue an autonomous (AUTO-mode) agent can pick up and implement. The composed result is what manually chaining `kramme:debug:investigate` → `kramme:test:tdd` → `kramme:linear:issue-define` would produce, but in one orchestrated pass.
+One command, one ticket. Take a bug description, run a root-cause investigation, design a TDD fix plan, and file a refactor-durable issue an autonomous (AUTO-mode) agent can pick up and implement. The workflow combines `kramme:debug:investigate`, an inline RED-GREEN plan, and the issue conventions from `kramme:linear:issue-define`.
 
 ## When to use
 
@@ -20,7 +20,7 @@ One command, one ticket. Take a bug description, run a root-cause investigation,
 
 - The bug needs interactive investigation with multiple confidence gates → use `kramme:debug:investigate` directly.
 - You want to discuss the bug conversationally, or log several bugs from one QA pass → use `kramme:qa:intake` (conversational multi-bug intake).
-- You're going to implement the fix yourself in the same session → run `kramme:debug:investigate` then `kramme:test:tdd` (Prove-It); skip the ticket overhead.
+- You're going to implement the fix yourself in the same session → run `kramme:debug:investigate`, reproduce the bug with a failing public-interface test, then make the minimum fix; skip the ticket overhead.
 - The "bug" is actually a feature request, scope question, or design proposal → use `kramme:linear:issue-define` directly.
 
 ---
@@ -103,16 +103,16 @@ If the investigation could not reproduce the bug, mark this in the draft body as
 
 ### Phase 4 — TDD plan
 
-Invoke `kramme:test:tdd` via the Skill tool, framed as a **planning-only** call: ask it to produce the Prove-It cycle structure for the bug just analyzed, but do **not** write or run tests in this session — the goal is the plan that will live in the issue body. If Skill invocation is unavailable or blocked, locate and Read the sub-skill's `SKILL.md` from the installed skills directory and follow its Prove-It conventions inline.
+Build the TDD plan directly from the investigation evidence. Do **not** write or run tests in this session — the goal is the plan that will live in the issue body.
 
-Capture:
+The plan must contain:
 
-- An ordered list of RED-GREEN cycles. Each RED is a behavior assertion through a public interface. Each GREEN is the minimal change to pass.
-- The Prove-It test sketch (one explicit "this test should FAIL before the fix and PASS after" cycle).
+- An ordered, vertical list of RED-GREEN cycles: one failing test followed by the minimum change to pass before the next cycle begins.
+- A RED assertion through a public interface using the reproduction inputs captured in Phase 3 and an independently derived expected result.
+- A GREEN step stated as the smallest contract-level behavior change that makes that assertion pass.
+- One explicit Prove-It cycle whose regression test should **FAIL before the fix and PASS after**.
 
-If the sub-skill output contains implementation details (private function names, internal class names), strip them in Phase 6.
-
-> **Caveat (v1 honesty).** `kramme:test:tdd` is written as instructions for a TDD session, not a pure planner. In v1, treat its output as guidance for the cycle list above; if the sub-skill insists on driving an interactive cycle, abort the sub-skill call and produce the cycle list inline using the Prove-It conventions from `kramme:test:tdd` (RED-GREEN, behavior through public interface, Prove-It regression test). A future `--lite` flag will skip this handoff entirely.
+If reproduction is `UNVERIFIED`, make the first RED step the implementer's reproduction gate and preserve the marker in the issue body. If the draft contains implementation details (private function names, internal class names), strip them in Phase 6.
 
 ### Phase 5 — Acceptance criteria
 
@@ -287,7 +287,6 @@ Watch for these — they signal the durability rule is about to break.
 ## Integration points
 
 - **`kramme:debug:investigate`** — source of the investigation phase (Steps 1–6 + Step 8 reporting). The orchestrator stops it at the propose-fix gate via the "Report only" option.
-- **`kramme:test:tdd`** — source of the Prove-It cycle conventions and RED-GREEN structure used in Phase 4. v1 captures the patterns; the sub-skill itself may not be invocable as a pure planner (see Phase 4 caveat).
 - **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly through the available Linear create operation (Claude Code `mcp__linear__create_issue`; Codex `save_issue` without `id`) for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
 - **`kramme:linear:issue-implement`** — downstream implementation consumer. A local SIW ticket reaches it through `kramme:siw:transfer-to-linear` without re-investigation.
 
