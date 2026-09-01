@@ -199,7 +199,6 @@ Budgets are floors, not ceilings — a PR that adds 30 KB to the bundle without 
 If these siblings are installed:
 
 - **Downstream review** — the `kramme:performance-oracle` agent verifies measurements and bottleneck identification post-hoc. Following MEASURE/VERIFY discipline here makes that review mechanical.
-- **Companion** — `kramme:code:incremental`: each optimization is one slice through the incremental loop. The five-step workflow fits inside a single increment; the budget becomes the increment's exit criterion.
 - **Boundary** — `kramme:code:optimize` owns repeatable harness-driven experiments across multiple variants; this skill owns one-shot review-and-fix performance passes where the bottleneck and fix are measured directly.
 
 ---

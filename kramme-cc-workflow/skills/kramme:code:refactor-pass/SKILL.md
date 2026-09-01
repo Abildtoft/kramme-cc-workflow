@@ -284,7 +284,6 @@ If you notice adjacent work outside the saved rewrite scope, emit the exact `NOT
 ## Integration with other skills
 
 - **Verification**: Step 4 delegates to `kramme:verify:run`.
-- **Sibling — slice discipline**: `kramme:code:incremental` applies the same one-thing-at-a-time rule to feature work. Refactor passes obey the same six rules; this skill is the refactor-flavored loop.
 - **Default aspect — AI slop**: default mode uses `kramme:deslop-reviewer` to seed the same verified simplification queue; AI provenance changes discovery, not mutation, verification, commit, or recovery behavior.
 - **Alternative — scrap and rewrite**: if the recent code is inelegant enough that simplification would touch more than ~50% of it, stop the default loop and use this skill's `--rewrite` mode. A mediocre implementation is sometimes best scrapped rather than patched.
 - **Broader scan**: if the simplification opportunities extend beyond the recent diff, stop and suggest `kramme:code:refactor-opportunities` for a codebase-wide scan.

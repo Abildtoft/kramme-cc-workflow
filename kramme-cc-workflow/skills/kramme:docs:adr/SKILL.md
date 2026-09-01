@@ -202,7 +202,6 @@ If the predecessor was authored by someone else, emit `ASK FIRST` before proceed
 - **Sibling — API surface decisions**: `kramme:code:api-design` often surfaces choices that warrant an ADR (public surface shape, backwards-compatibility policy, versioning).
 - **Sibling — migration strategy**: `kramme:code:migrate` frequently produces an ADR recording the chosen migration path and what alternatives were rejected.
 - **Sibling — initiative-local decisions**: `kramme:siw:init` establishes the spec and decision log; `kramme:siw:transfer-to-linear` carries them into the Linear project. Do not double-log those here.
-- **Upstream discipline**: `kramme:code:incremental` — when an ADR accompanies code changes, each slice stays scoped to its own decision. Do not bundle multiple ADR-worthy decisions into one slice.
 
 ## Inline-offer pattern (for other skills)
 

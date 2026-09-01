@@ -58,11 +58,6 @@
       "path": "kramme-cc-workflow/skills/kramme:code:harden-security/SKILL.md"
     },
     {
-      "name": "kramme:code:incremental",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:code:incremental/SKILL.md"
-    },
-    {
       "name": "kramme:code:migrate",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:code:migrate/SKILL.md"
