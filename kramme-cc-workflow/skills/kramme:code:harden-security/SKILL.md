@@ -218,7 +218,6 @@ Noisy on purpose — false positives are preferable to a real key landing in git
 ## Integration with other skills
 
 - **Sibling authoring**: `kramme:code:api-design` owns where the trust boundary lives for a given surface — this skill owns what happens at that boundary. When adding a new endpoint, design the contract with `kramme:code:api-design`, then harden it here.
-- **Upstream discipline**: `kramme:code:incremental` — each security-relevant change follows the slice discipline. Splitting a "fix auth + add rate limit + rotate the secret" change into three slices keeps each reviewable.
 - **Downstream review agents** (Claude Code only):
   - `kramme:auth-reviewer` — verifies auth/authz/CSRF/session checks this skill was supposed to put in place.
   - `kramme:data-reviewer` — verifies crypto usage, info-disclosure, and DoS bounds.

@@ -140,4 +140,4 @@ Do not interleave designs with comparison commentary; let each stand first.
 
 - Interfaces with a single obvious shape (e.g., a getter for one field). Do not multiply variants for the sake of it.
 - Internal helpers that are not on a stable surface — the contract-stability concern that motivates Design It Twice does not apply to private code.
-- When you already have working code and are asking "should I refactor". That is a refactor question, not a design question; use `kramme:code:refactor-opportunities` and `kramme:code:incremental --refactor` instead.
+- When you already have working code and are asking "should I refactor". That is a refactor question, not a design question; use `kramme:code:refactor-opportunities` to survey the codebase or `kramme:code:refactor-pass` for a narrow cleanup instead.
