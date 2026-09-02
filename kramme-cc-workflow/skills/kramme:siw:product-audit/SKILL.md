@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:product-audit
-description: (experimental) Product audit of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, success criteria quality, and prioritization quality. Infers likely user goals and non-goals when the spec is incomplete. Not for code review or implementation auditing. Supports inline report output with --inline.
+description: (experimental) Product audit of SIW specs and plans before implementation. Evaluates target user clarity, problem/solution fit, user state modeling, critical moments coverage, scope correctness, success criteria quality, and prioritization quality. Infers likely user goals and non-goals when the spec is incomplete. Not for implementation-readiness or specification-mechanics review; use kramme:siw:spec-audit. Supports inline report output with --inline.
 argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--inline]"
 disable-model-invocation: true
 user-invocable: true
@@ -9,7 +9,7 @@ kramme-platforms: [claude-code, codex]
 
 # Product Audit of SIW Specs
 
-Critique specification documents from a product perspective before implementation begins. This is a spec-only analysis — no codebase code is read or compared.
+Critique specification documents from a product perspective before implementation begins. Use this skill when the question is whether the specification proposes the right product for the right users. For whether the specification is clear, complete, testable, technically sound, and ready to implement without guessing, use `/kramme:siw:spec-audit`. This is a spec-only analysis — no codebase code is read or compared.
 
 **IMPORTANT:** This is a thorough product critique. Do not return early. Do not assume a section is well-designed without reading it carefully. Evaluate whether the spec will actually solve the right problem for the right users. A clean report is suspicious, not reassuring.
 

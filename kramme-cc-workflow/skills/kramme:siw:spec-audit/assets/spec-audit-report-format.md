@@ -1,17 +1,18 @@
 # Spec Audit Report
 
 **Date:** {current date}
+
 **Spec Files Reviewed:** {list of spec files with paths}
 
 ## Work Context Applied
 
 {If work_context found:}
 
-| Attribute                | Value           |
-| ------------------------ | --------------- |
-| Work Type                | {work_type}     |
-| Priority Dimensions      | {list}          |
-| Deprioritized Dimensions | {list}          |
+| Attribute                | Value       |
+| ------------------------ | ----------- |
+| Work Type                | {work_type} |
+| Priority Dimensions      | {list}      |
+| Deprioritized Dimensions | {list}      |
 
 **Effect:** Findings in deprioritized dimensions are capped at Minor severity. If a deprioritized finding was originally Critical or Major, keep the final severity at Minor and record `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]` so downstream tools preserve the original urgency. Priority dimension findings are strictly evaluated.
 
@@ -19,16 +20,16 @@
 
 ## Summary
 
-| Dimension         | Score                          | Findings |
-| ----------------- | ------------------------------ | -------- |
-| Coherence         | {Strong/Adequate/Weak/Missing} | {count}  |
-| Completeness      | {Strong/Adequate/Weak/Missing} | {count}  |
-| Clarity           | {Strong/Adequate/Weak/Missing} | {count}  |
-| Scope             | {Strong/Adequate/Weak/Missing} | {count}  |
-| Actionability     | {Strong/Adequate/Weak/Missing} | {count}  |
-| Testability       | {Strong/Adequate/Weak/Missing} | {count}  |
-| Value Proposition | {Strong/Adequate/Weak/Missing} | {count}  |
-| Technical Design  | {Strong/Adequate/Weak/Missing} | {count}  |
+| Dimension               | Score                          | Findings |
+| ----------------------- | ------------------------------ | -------- |
+| Coherence               | {Strong/Adequate/Weak/Missing} | {count}  |
+| Completeness            | {Strong/Adequate/Weak/Missing} | {count}  |
+| Clarity                 | {Strong/Adequate/Weak/Missing} | {count}  |
+| Scope                   | {Strong/Adequate/Weak/Missing} | {count}  |
+| Actionability           | {Strong/Adequate/Weak/Missing} | {count}  |
+| Testability             | {Strong/Adequate/Weak/Missing} | {count}  |
+| Rationale Documentation | {Strong/Adequate/Weak/Missing} | {count}  |
+| Technical Design        | {Strong/Adequate/Weak/Missing} | {count}  |
 
 | Severity  | Count       |
 | --------- | ----------- |
@@ -46,8 +47,11 @@
 ### SPEC-001: {Brief title}
 
 **Dimension:** {dimension}
+
 **Severity:** Critical
+
 **Fix Confidence:** {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
+
 **Location:** {source_file} > {source_section}
 
 **Details:** {explanation with quotes from the spec}

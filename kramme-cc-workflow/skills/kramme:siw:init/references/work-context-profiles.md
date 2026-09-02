@@ -7,17 +7,17 @@ Work Context is an optional metadata section in SIW specs that tells downstream 
 | Profile | Work Type | Default Maturity | Priority Dimensions | Deprioritized Dimensions |
 | --- | --- | --- | --- | --- |
 | Production Feature | Production | Full Lifecycle | All 8 active | None |
-| Prototype / Spike | Prototype | Early Exploration | Actionability, Technical Design | Value Proposition, Completeness, Testability |
-| Internal Tool | Internal Tool | Varies | Actionability, Clarity | Value Proposition |
-| Tech Debt / Refactor | Refactor | Maintenance | Technical Design, Testability | Value Proposition, Scope |
+| Prototype / Spike | Prototype | Early Exploration | Actionability, Technical Design | Completeness, Testability |
+| Internal Tool | Internal Tool | Varies | Actionability, Clarity | None |
+| Tech Debt / Refactor | Refactor | Maintenance | Technical Design, Testability | Scope |
 | Documentation / Process | Documentation | Varies | Clarity, Completeness | Technical Design |
 
 ### Profile Notes (default content for the Notes field)
 
 - **Production Feature**: _(empty)_
-- **Prototype / Spike**: "Focus on proving the concept works. Commercial viability to be assessed later."
-- **Internal Tool**: "Built for internal team use. User research and market fit are not relevant."
-- **Tech Debt / Refactor**: "Focus on safe transformation. Scope is defined by what needs changing."
+- **Prototype / Spike**: "Focus on proving the concept works. Keep implementation rationale explicit while completeness and test coverage may mature later."
+- **Internal Tool**: "Built for internal team use. Keep the problem and decision rationale explicit; market-fit analysis is not required."
+- **Tech Debt / Refactor**: "Focus on safe transformation. Document why the change is needed and the constraints that define it."
 - **Documentation / Process**: "Focus on clear, complete documentation. Technical implementation details are secondary."
 
 ## Section Format

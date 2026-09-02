@@ -6,7 +6,7 @@
 
 {Executive summary — what the spec says or fails to say, and why it matters}
 
-**Audit Finding:** `{finding_id}` **Dimension:** {coherence/completeness/clarity/scope/actionability/testability/value/technical design} **Source:** `{report_path}` {If present} **Severity Note:** {copied from audit report}
+**Audit Finding:** `{finding_id}` **Dimension:** {coherence/completeness/clarity/scope/actionability/testability/rationale documentation/technical design} **Source:** `{report_path}` {If present} **Severity Note:** {copied from audit report}
 
 ## Context
 

@@ -48,7 +48,7 @@ Spawn **4 dimension auditors**, **1 codebase pattern reviewer**, and **1 cross-r
 | `structure-auditor` | Coherence, Completeness | Contradictions and gaps are deeply intertwined — contradictions often manifest as completeness gaps |
 | `clarity-auditor` | Clarity, Actionability | Vague requirements are also non-actionable; a single agent can flag both the ambiguity and its implementation impact |
 | `validation-auditor` | Testability, Scope | Untestable criteria often stem from scope problems (implicit inclusions, missing boundaries) |
-| `design-auditor` | Value Proposition, Technical Design | The most judgment-intensive dimensions; a strategic lens assesses whether the design matches the stated problem |
+| `design-auditor` | Rationale Documentation, Technical Design | Checks that product intent is recorded clearly enough to guide technical choices, then audits those choices without re-deciding product strategy |
 | `codebase-pattern-reviewer` | Technical Design support | Checks whether proposed implementation choices follow existing codebase patterns or introduce new ones without rationale |
 | `cross-reviewer` | Meta-review | Cross-dimension pattern detection, suspiciously-clean challenge, duplicate detection |
 
@@ -59,7 +59,7 @@ Spawn **4 dimension auditors**, **1 codebase pattern reviewer**, and **1 cross-r
 - Task 1: "Audit Coherence + Completeness" — assigned to `structure-auditor`
 - Task 2: "Audit Clarity + Actionability" — assigned to `clarity-auditor`
 - Task 3: "Audit Testability + Scope" — assigned to `validation-auditor`
-- Task 4: "Audit Value Proposition + Technical Design" — assigned to `design-auditor`
+- Task 4: "Audit Rationale Documentation + Technical Design" — assigned to `design-auditor`
 - Task 5: "Review codebase pattern fit" — assigned to `codebase-pattern-reviewer`
 
 **Phase 2 task (blocked on all Phase 1 tasks):**
@@ -70,7 +70,7 @@ Spawn **4 dimension auditors**, **1 codebase pattern reviewer**, and **1 cross-r
 
 Each dimension auditor receives the full spec text and analysis instructions for its assigned dimensions.
 
-Read `references/dimension-instructions.md` in this skill folder and paste the relevant blocks (Coherence, Completeness, Clarity, Scope, Actionability, Testability, Value Proposition, Technical Design) into each agent's prompt.
+Read `references/dimension-instructions.md` in this skill folder and paste the relevant blocks (Coherence, Completeness, Clarity, Scope, Actionability, Testability, Rationale Documentation, Technical Design) into each agent's prompt.
 
 **Base prompt for each auditor:**
 
@@ -134,7 +134,7 @@ message them using SendMessage:
 - **Contradictions or structural issues** -> message structure-auditor
 - **Ambiguity or unclear wording** -> message clarity-auditor
 - **Untestable criteria or scope issues** -> message validation-auditor
-- **Design flaws or value gaps** -> message design-auditor
+- **Rationale Documentation or Technical Design gaps** -> message design-auditor
 
 Message content:
 "[CROSS-REF] In {spec_file} > {section}, I found {brief finding}.
