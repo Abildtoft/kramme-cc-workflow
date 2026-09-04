@@ -115,7 +115,7 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
       "rule_id": "TM1",
-      "reason": "Re-reviewed intentional TM1 finding for the Pull Request creation rollback path: the hard reset restores the feature branch to the full original commit captured before history recreation, runs only after strict branch-name and full-commit-ID validation, and preserves the recreation backup ref for manual recovery.",
+      "reason": "Re-reviewed intentional TM1 finding for the Pull Request creation rollback path: remote-append rollback validates the clean worktree, branch, and exact prepared tip immediately before using reset --keep, while fresh-mode hard reset restores only the feature branch to the full original commit after strict branch-name and full-commit-ID validation; both paths preserve the recreation backup ref for manual recovery.",
       "owner": "kramme",
       "accepted_at": "2026-08-30",
       "review_after": "2026-09-30"

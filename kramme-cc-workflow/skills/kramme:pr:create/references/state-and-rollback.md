@@ -1,6 +1,6 @@
 # State Preservation and Rollback
 
-Use this reference for `/kramme:pr:create` Step 5 (before invoking destructive sub-skills) and Step 10 (abort path). These steps apply only when `FRESH_REMOTE_MODE=true`; existing exact-tip and fast-forward modes never rewrite local history and do not create rollback state.
+Use this reference for `/kramme:pr:create` Step 5 (before invoking destructive sub-skills) and Step 10 (abort path). These steps apply when `FRESH_REMOTE_MODE=true` or `REMOTE_APPEND_MODE=true`. Clean exact-tip and fast-forward modes never rewrite local history and do not create rollback state.
 
 ## Agent-tracked state
 
@@ -14,7 +14,8 @@ Track these throughout the workflow:
 - `{original-branch}` — the validated feature branch immediately before history rewriting.
 - `{original-commit}` — the feature-branch tip immediately before the temporary include commit and history rewriting.
 - `{rollback-origin-ref}` — `refs/heads/{original-branch}`, captured before history rewriting.
-- `{rollback-origin-oid}` — always `<absent>` for a run that may continue; an existing remote ref is a blocker before history rewriting.
+- `{rollback-origin-oid}` — `<absent>` in fresh mode or the immutable `{observed-origin-oid}` in remote-append mode.
+- `{origin-push-url-assignment}` — the helper's byte-exact, shell-quoted `ORIGIN_PUSH_URL=...` assignment for the frozen existing-remote publication endpoint; the helper rejects inline credentials, other credential-bearing URL syntax, executable remote-helper forms, and unsupported transports before emitting it. Never decode it into agent state or substitute the raw URL into shell source. Not used in fresh mode.
 - `{base-source-ref}` / `{base-ref}` / `{base-branch}` — validated source ref, pinned 40-character base commit, and branch metadata captured in Step 2.
 - `{uncommitted-disposition}` — `none`, `committed-for-inclusion`, or `excluded-and-stashed`.
 - `{include-commit}` — temporary commit created from uncommitted work when the user chooses to include it; otherwise `<none>`.
@@ -22,10 +23,15 @@ Track these throughout the workflow:
 - `{stash-message}` — unique stash message used for excluded uncommitted changes; otherwise `<none>`.
 - `{recreate-input-tip}` — validated full `HEAD` OID after the include/exclude decision and immediately before Step 6.
 - `{recreate-backup-ref}` — conservative input-tip-specific recovery branch name passed to `recreate-commits`.
+- `{rollback-expected-tip}` — remote-append rollback guard derived in Step 10 from the validated `{publication-commit}` when available, otherwise from the unchanged `{recreate-input-tip}`.
 
 ## Step 5: State Preservation
 
-### 5.1 Prove Fresh-Mode Remote Absence and Prepare the Feature Branch
+### 5.1 Prepare the Mode-Specific Rollback Baseline
+
+Require exactly one of `FRESH_REMOTE_MODE=true` and `REMOTE_APPEND_MODE=true`.
+
+#### Fresh remote
 
 Require `FRESH_REMOTE_MODE=true`. `{feature-branch}`, `{entry-branch}`, and `{entry-commit}` already passed the trust boundary in the branch-selection reference. Revalidate them directly before mutation. Set `{rollback-origin-ref}` to `refs/heads/{feature-branch}`, then query the authoritative remote state before creating or switching any branch:
 
@@ -35,7 +41,7 @@ env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE
   git ls-remote --heads origin "{rollback-origin-ref}"
 ```
 
-Require the query to succeed and continue only when it returns no matching ref. Capture `<absent>` as `{rollback-origin-oid}`. A network, authentication, repository, or malformed-output failure is a blocker and must leave the invocation on its entry checkout. This absence requirement protects only the fresh-remote rewrite path; Step 4 routes safe existing remotes around Step 5 without invoking a rewrite.
+Require the query to succeed and continue only when it returns no matching ref. Capture `<absent>` as `{rollback-origin-oid}`. A network, authentication, repository, or malformed-output failure is a blocker and must leave the invocation on its entry checkout. This absence requirement protects only the fresh-remote rewrite path; Step 4 routes safe clean existing remotes around Step 5 without invoking a rewrite, while dirty auto-mode existing remotes enter the append path below.
 
 If the successful query returns a full OID, stop before branch creation or `kramme:git:recreate-commits`. Never check out or adopt that remote branch.
 
@@ -58,7 +64,15 @@ git rev-parse HEAD        # -> {original-commit}
 
 Require `{original-branch}` to equal `{feature-branch}` and `{original-commit}` to be a full 40-character lowercase commit ID. A Git ref lease can protect a branch OID, but it cannot atomically prevent another actor from opening a Pull Request between a GitHub PR check and a force-push. Neither `--auto` nor `--authorize-history-rewrite` may bypass this fresh-mode remote-absence requirement.
 
-Initialize state after recording the branch and commit:
+#### Existing remote append
+
+When `REMOTE_APPEND_MODE=true`, require `AUTO_MODE=true`, `{feature-branch-created}=false`, non-empty `{worktree-status}`, and the current validated branch to remain `{feature-branch}`. Require `git rev-parse HEAD` to remain exactly `{entry-commit}`. Set `{original-branch}` to `{feature-branch}`, `{original-commit}` to `{entry-commit}`, and `{rollback-origin-ref}` to `refs/heads/{feature-branch}`. Validate both original values exactly as in fresh mode.
+
+Require `{observed-origin-oid}` to be a full 40-character lowercase commit OID that exists locally, then set `{rollback-origin-oid}` to `{observed-origin-oid}`. Re-query the frozen endpoint with the same bounded, noninteractive strict procedure used during classification: insert the unchanged `{origin-push-url-assignment}` as an assignment line and pass only `"$ORIGIN_PUSH_URL"` to `git ls-remote --heads --`. Require exactly one well-formed result at `{observed-origin-oid}`. Also require `git merge-base --is-ancestor "{observed-origin-oid}" "{entry-commit}"` to succeed. A missing or changed ref, remote query error, branch or local-tip change, or ancestry failure stops before staging any work.
+
+This captures an existing-remote rollback baseline without authorizing a rewrite of it. Step 6 must pass `--after {observed-origin-oid}` so `recreate-commits` resets only the unpublished tail. Step 8 remains the sole owner of the OID-leased remote update.
+
+After either mode-specific baseline succeeds, initialize state:
 
 - `{uncommitted-disposition}` = `none`
 - `{include-commit}` = `<none>`
@@ -69,7 +83,7 @@ Initialize state after recording the branch and commit:
 
 If `git status --porcelain` (from Step 4.1) reported no output, continue with the initialized state above.
 
-If uncommitted changes are present and `AUTO_MODE=true`, do not prompt. Select **Commit and include** and execute that path below. Auto mode treats all current tracked, untracked, and unignored working-tree changes as work to include in the PR; the temporary commit makes them available to `kramme:git:recreate-commits`.
+If uncommitted changes are present and `AUTO_MODE=true`, do not prompt. Select **Commit and include** and execute that path below. Auto mode treats all current tracked, untracked, and unignored working-tree changes as work to include in the PR; the temporary commit makes them available to `kramme:git:recreate-commits`. This is the only valid disposition in `REMOTE_APPEND_MODE`.
 
 If uncommitted changes are present and `AUTO_MODE=false`, do **not** silently stash, commit, or ignore them. Show the current status, then ask:
 
@@ -88,7 +102,11 @@ multiSelect: false
 
 #### If "Commit and include"
 
-Run:
+Before staging, run `"{pr-create-skill-dir}/scripts/verify-clean-worktree.sh" --allow-visible` to validate tracked paths hidden by `assume-unchanged` or `skip-worktree` without rejecting the visible changes that this path is about to include.
+
+If this check fails, stop before staging or committing. When `{feature-branch-created}=true`, execute Step 5.3 first because the working tree is still unmodified by this step. Otherwise leave the existing feature branch untouched and surface the error.
+
+After the hidden-path check succeeds, run:
 
 ```bash
 INDEX_PATH=$(git rev-parse --git-path index)
@@ -205,20 +223,46 @@ Resolve manually when ready.
 
 Execute when the user aborts at any confirmation, or when a critical failure path in Steps 6–8 routes here. All commands below use the captured agent-tracked state — substitute literal values when emitting.
 
+### 10.0 Refuse Rollback After Local Drift
+
+When `REMOTE_APPEND_MODE=true`, derive `{rollback-expected-tip}` before any checkout, reset, cherry-pick, or stash operation:
+
+- If `{publication-commit}` was captured as a valid full commit OID, use it. This covers failures after successful commit recreation.
+- Otherwise require `{recreate-input-tip}` to be a valid full commit OID that still exists locally and use it. This permits safe recovery when `recreate-commits` failed before changing the prepared input tip.
+- If neither value is valid, refuse automatic rollback and preserve the current state for manual recovery.
+
+After validating `{original-branch}` and `{original-commit}` exactly as described in Step 10.1, prove that rollback would touch only the prepared state owned by this invocation. Run the final guard and reset in one bounded shell invocation so another tool call cannot separate the ownership proof from the destructive transition:
+
+```bash
+ROLLBACK_CURRENT_BRANCH=$(git branch --show-current) || exit 1
+ROLLBACK_CURRENT_TIP=$(git rev-parse HEAD) || exit 1
+if ! "{pr-create-skill-dir}/scripts/verify-clean-worktree.sh" \
+  || [ "$ROLLBACK_CURRENT_BRANCH" != "{feature-branch}" ] \
+  || [ "$ROLLBACK_CURRENT_TIP" != "{rollback-expected-tip}" ]; then
+  echo "Prepared append state drifted; refusing automatic rollback." >&2
+  exit 1
+fi
+git reset --keep "{original-commit}"
+```
+
+If `{rollback-expected-tip}` is unavailable, any guard fails, or `git reset --keep` refuses because the worktree changed, do not execute the remainder of Step 10. Preserve the current checkout, `{include-commit}`, and `{recreate-backup-ref}`, and report that the incomplete or unexpected local state must be recovered manually. This permits rollback from the unchanged pre-recreation input or the validated completed recreation while preventing partial rewrites, edits, commits, resets, or checkout changes from being erased. Never substitute `git reset --hard` in remote-append mode.
+
 ### 10.1 Return to Original State
 
 Before checkout/reset, validate `{original-branch}` and `{original-commit}` exactly as the captured Step 5 values. `{original-branch}` must pass `git check-ref-format --branch`, contain no whitespace or shell metacharacters, and must not begin with `-`. `{original-commit}` must be a full 40-character lowercase hex commit ID that exists locally. If either value fails validation, stop and surface the captured values for manual recovery instead of running checkout or reset.
 
-After validation, switch back to the validated feature branch and restore its tip, worktree, and index to the validated original commit. Use quoted, already-validated arguments only; do not interpolate unvalidated captured values into a shell command string.
+In `REMOTE_APPEND_MODE`, Step 10.0 already required the current feature branch and restored it with the guarded `git reset --keep`; do not run another checkout or reset here.
 
-Use the explicit commands below after validation:
+In `FRESH_REMOTE_MODE`, after validation, switch back to the validated feature branch and restore its tip, worktree, and index to the validated original commit. Use quoted, already-validated arguments only; do not interpolate unvalidated captured values into a shell command string.
+
+Use the explicit commands below after validation only in fresh mode:
 
 ```bash
 git checkout "{original-branch}"
 git reset --hard "{original-commit}"
 ```
 
-`recreate-commits` rewrites history on the feature branch in place, so resetting to `{original-commit}` restores the pre-rewrite commit graph. Do not delete `{recreate-backup-ref}` automatically; its input-tip suffix prevents a restored retry with a new temporary include commit from colliding with it, while an identical retry reuses it.
+`recreate-commits` rewrites history on the feature branch in place, so the mode-specific reset to `{original-commit}` restores the pre-rewrite commit graph. Do not delete `{recreate-backup-ref}` automatically; its input-tip suffix prevents a restored retry with a new temporary include commit from colliding with it, while an identical retry reuses it.
 
 ### 10.2 Restore Stashed Changes
 
@@ -279,7 +323,24 @@ After local feature restoration succeeds:
 
 ### 10.4 Confirm Rollback
 
-Query `{rollback-origin-ref}` again with the same `git ls-remote --heads origin "{rollback-origin-ref}"` procedure. Compare the observed OID (or `<absent>`) with `{rollback-origin-oid}`. This is a read-only proof: never force-push, delete, or recreate the remote ref during automatic rollback.
+Query `{rollback-origin-ref}` again with the shell tool's bounded timeout and the same strict one-line parser used during classification. Disable terminal and credential-manager prompting in both modes:
+
+```bash
+NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
+env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
+  git ls-remote --heads origin "{rollback-origin-ref}"
+```
+
+Use that form in fresh mode. In remote-append mode, insert the unchanged serialized assignment first and query only through its shell variable:
+
+```bash
+{origin-push-url-assignment}
+NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
+env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
+  git ls-remote --heads -- "$ORIGIN_PUSH_URL" "{rollback-origin-ref}"
+```
+
+Compare the strictly parsed observed OID (or `<absent>`) with `{rollback-origin-oid}`. A command failure, malformed response, or prompt requirement classifies the result as `unverified`. This is a read-only proof: never force-push, delete, or recreate the remote ref during automatic rollback.
 
 Classify the result as:
 

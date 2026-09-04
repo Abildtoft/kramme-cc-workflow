@@ -862,12 +862,60 @@
         "FRESH_REMOTE_MODE=true",
         "REMOTE_RECOVERY_MODE=true",
         "REMOTE_FAST_FORWARD_MODE=true",
+        "REMOTE_APPEND_MODE=true",
         "skip Steps 5 and 6",
         "preserve the existing local commit history",
         "git merge-base --is-ancestor \"{observed-origin-oid}\" \"{entry-commit}\"",
         "scripts/verify-clean-worktree.sh",
         "detects modified assume-unchanged tracked content",
         "never invokes `kramme:git:recreate-commits`"
+      ]
+    },
+    {
+      "name": "pr-create-existing-remote-append-orchestration",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "contains": [
+        "When `AUTO_MODE=true`, route dirty existing-remote work to `REMOTE_APPEND_MODE`",
+        "Resolve and freeze `{origin-push-url-assignment}`",
+        "executable remote-helper forms, and unsupported transports",
+        "Require the frozen endpoint to remain at `{observed-origin-oid}`",
+        "--after {observed-origin-oid}",
+        "rewrites only the unpublished tail after the observed remote tip",
+        "capture the rewritten local `HEAD` as `{publication-commit}`",
+        "After any remote-append push attempt, preserve the prepared local state"
+      ]
+    },
+    {
+      "name": "pr-create-existing-remote-append-state",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
+      "contains": [
+        "When `REMOTE_APPEND_MODE=true`",
+        "set `{rollback-origin-oid}` to `{observed-origin-oid}`",
+        "origin-push-url-assignment",
+        "This is the only valid disposition in `REMOTE_APPEND_MODE`",
+        "verify-clean-worktree.sh\" --allow-visible",
+        "git cherry-pick --no-commit \"{include-commit}\"",
+        "### 10.0 Refuse Rollback After Local Drift",
+        "derive `{rollback-expected-tip}`",
+        "Otherwise require `{recreate-input-tip}`",
+        "final guard and reset in one bounded shell invocation",
+        "git reset --keep \"{original-commit}\"",
+        "Never substitute `git reset --hard` in remote-append mode",
+        "shell tool's bounded timeout",
+        "git ls-remote --heads -- \"$ORIGIN_PUSH_URL\""
+      ]
+    },
+    {
+      "name": "pr-create-existing-remote-append-publication",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "contains": [
+        "Publication: Existing remote branch; append local work with an OID lease",
+        "When `REMOTE_FAST_FORWARD_MODE=true` or `REMOTE_APPEND_MODE=true`",
+        "HEAD` to remain exactly `{publication-commit}`",
+        "\"{publication-commit}:refs/heads/{feature-branch}\"",
+        "still at `{observed-origin-oid}` — the update has not been observed",
+        "Preserve the prepared append branch and recovery refs in every outcome",
+        "now at `{publication-commit}`"
       ]
     },
     {
@@ -878,7 +926,10 @@
         "Could not inspect the working tree",
         "git ls-files -v -z",
         "git update-index --no-assume-unchanged -z --stdin",
-        "Assume-unchanged tracked content differs from the index"
+        "git update-index --no-skip-worktree -z --stdin",
+        "An absent skip-worktree path is normal in a sparse checkout",
+        "git diff-files --quiet",
+        "Hidden tracked content differs from the index"
       ]
     },
     {
@@ -889,8 +940,9 @@
         "Never adopt a remote branch selected from a different entry checkout",
         "record `{branch-action}=reuse-existing-exact-tip`",
         "scripts/resolve-origin-push-url.sh",
-        "git ls-remote --heads -- \"{origin-push-url}\"",
-        "git fetch --no-tags --no-write-fetch-head -- \"{origin-push-url}\"",
+        "origin-push-url-assignment",
+        "git ls-remote --heads -- \"$ORIGIN_PUSH_URL\"",
+        "git fetch --no-tags --no-write-fetch-head -- \"$ORIGIN_PUSH_URL\"",
         "git merge-base --is-ancestor \"{observed-origin-oid}\" \"{entry-commit}\"",
         "record `{branch-action}=fast-forward-existing-remote`",
         "report that the remote contains commits absent locally",
@@ -905,11 +957,11 @@
         "Require `HEAD` to remain exactly `{entry-commit}`",
         "Require the authoritative remote OID to remain exactly `{observed-origin-oid}`",
         "Do not run `git push` in this mode",
-        "#### Existing remote fast-forward",
+        "#### Existing remote OID-leased publication",
         "git push --no-follow-tags",
         "--force-with-lease=\"refs/heads/{feature-branch}:{observed-origin-oid}\"",
-        "\"{origin-push-url}\" \"{entry-commit}:refs/heads/{feature-branch}\"",
-        "Do not set or change upstream configuration in this existing-remote mode",
+        "\"$ORIGIN_PUSH_URL\" \"{publication-commit}:refs/heads/{feature-branch}\"",
+        "Do not set or change upstream configuration in either existing-remote publishing mode",
         "The exact lease rejects every remote change after classification",
         "--head \"{feature-branch}\"",
         "prevents `gh pr create` from offering to push or fork",
