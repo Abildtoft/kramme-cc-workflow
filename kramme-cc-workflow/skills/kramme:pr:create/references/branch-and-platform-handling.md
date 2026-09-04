@@ -1,6 +1,6 @@
 # Branch and Base Selection
 
-Use this reference for `/kramme:pr:create` Steps 2–3. This phase selects and validates `{base-source-ref}`, pinned `{base-ref}`, `{base-branch}`, and `{feature-branch}` without creating, deleting, or switching branches. It also captures `{observed-origin-oid}` as either `<absent>` or one authoritative remote tip. Step 5 owns the only branch-creation mutation after all pre-mutation checks pass; an existing remote is classified here without rewriting local history.
+Use this reference for `/kramme:pr:create` Steps 2–3. This phase selects and validates `{base-source-ref}`, pinned `{base-ref}`, `{base-branch}`, and `{feature-branch}` without creating, deleting, or switching branches. It also captures `{observed-origin-oid}` as either `<absent>` or one authoritative remote tip. Step 5 owns the only branch-creation mutation after all pre-mutation checks pass; an existing remote is classified here without rewriting published history.
 
 **AUTO MODE:** If `AUTO_MODE=true`, choose documented deterministic defaults instead of asking questions. Stop on ambiguity or a hard blocker.
 
@@ -61,7 +61,7 @@ Track `{linear-issue-id}` as nullable workflow state. If `LINEAR_ISSUE_OVERRIDE`
 
 If `{entry-branch}` is neither `<detached>` nor `{base-branch}`, select it as `{feature-branch}`. When `{linear-issue-id}` is empty, scan the validated branch name for `[A-Z]{2,5}-\d+` case-insensitively; normalize a match to uppercase.
 
-Do not push or change upstream configuration. A corresponding `origin` ref is classified below; a clean current branch may use a non-rewriting path when the remote is at the exact local tip or is a strict ancestor of it.
+Do not push or change upstream configuration. A corresponding `origin` ref is classified below; a clean current branch may use a non-rewriting path when the remote is at the exact local tip or is a strict ancestor of it. Step 4 may also admit dirty work in auto mode by preserving the observed remote prefix and recreating only the unpublished tail.
 
 ### Detached HEAD or currently on the base
 
@@ -135,7 +135,7 @@ Require the remote query to succeed. Accept only empty output or one line whose 
 - If the remote ref exists and `{feature-branch}` differs from the already-current validated `{entry-branch}`, stop. Never adopt a remote branch selected from a different entry checkout, fetch it, check it out, or create a local tracking branch.
 - If the remote ref exists on the already-current branch, compare `{observed-origin-oid}` directly with `{entry-commit}`:
   - If they match exactly, record `{branch-action}=reuse-existing-exact-tip`. Do not fetch, push, or change upstream configuration.
-  - If they differ, freeze the one effective push endpoint before classifying ancestry. Resolve `{pr-create-skill-dir}` as above, run the helper below, require success, evaluate only its shell-quoted assignment, and capture `ORIGIN_PUSH_URL` as agent-tracked `{origin-push-url}` without printing it:
+  - If they differ, freeze the one effective push endpoint before classifying ancestry. Resolve `{pr-create-skill-dir}` as above, run the helper below, and require success. The helper rejects inline credentials, other credential-bearing URL syntax, executable remote-helper forms, and unsupported transports before emitting output. Capture its complete single-line, shell-quoted `ORIGIN_PUSH_URL=...` output byte-for-byte as agent-tracked `{origin-push-url-assignment}` without printing or decoding it. Evaluate that trusted assignment only inside the current shell invocation when the URL must be passed as a variable:
 
     ```bash
     ORIGIN_PUSH_RESOLVED=$("{pr-create-skill-dir}/scripts/resolve-origin-push-url.sh") || {
@@ -145,12 +145,15 @@ Require the remote query to succeed. Accept only empty output or one line whose 
     eval "$ORIGIN_PUSH_RESOLVED"
     ```
 
+    Require the captured assignment to contain no newline and begin exactly with `ORIGIN_PUSH_URL=`. Never carry the decoded `ORIGIN_PUSH_URL` value as agent state and never substitute it directly into generated shell source. Every later shell invocation inserts the unchanged `{origin-push-url-assignment}` as its own assignment line, then passes only `"$ORIGIN_PUSH_URL"` to Git.
+
     Re-run the strict remote query against the frozen endpoint:
 
     ```bash
+    {origin-push-url-assignment}
     NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
     env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
-      git ls-remote --heads -- "{origin-push-url}" "refs/heads/{feature-branch}"
+      git ls-remote --heads -- "$ORIGIN_PUSH_URL" "refs/heads/{feature-branch}"
     ```
 
     Require the returned OID to remain exactly `{observed-origin-oid}`. This proves that classification and publication observe the same frozen endpoint; a missing branch, malformed response, or differing OID is a blocker.
@@ -158,17 +161,18 @@ Require the remote query to succeed. Accept only empty output or one line whose 
   - Ensure the observed remote commit object is available locally before classifying ancestry. When `git cat-file -e "{observed-origin-oid}^{commit}"` cannot verify it, fetch only the validated branch from the frozen endpoint into the object database without updating a local or remote-tracking ref:
 
     ```bash
+    {origin-push-url-assignment}
     NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
     env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
-      git fetch --no-tags --no-write-fetch-head -- "{origin-push-url}" "refs/heads/{feature-branch}"
+      git fetch --no-tags --no-write-fetch-head -- "$ORIGIN_PUSH_URL" "refs/heads/{feature-branch}"
     ```
 
-    Require the fetch to succeed, then repeat the strict `git ls-remote --heads -- "{origin-push-url}"` query and require its OID to remain exactly `{observed-origin-oid}`. A changed remote tip is a blocker, even when the new tip would also be an ancestor of local `HEAD`. Require `git cat-file -e "{observed-origin-oid}^{commit}"` to succeed after the fetch.
+    Require the fetch to succeed, then repeat the strict query through the same serialized assignment and `git ls-remote --heads -- "$ORIGIN_PUSH_URL"` form, and require its OID to remain exactly `{observed-origin-oid}`. A changed remote tip is a blocker, even when the new tip would also be an ancestor of local `HEAD`. Require `git cat-file -e "{observed-origin-oid}^{commit}"` to succeed after the fetch.
 
-  - Run `git merge-base --is-ancestor "{observed-origin-oid}" "{entry-commit}"`. If it succeeds, the differing remote tip is a strict ancestor of the captured local tip; record `{branch-action}=fast-forward-existing-remote`. This mode preserves the local commits and defers one OID-leased fast-forward push of immutable `{entry-commit}` to the frozen `{origin-push-url}` in Step 8.
+  - Run `git merge-base --is-ancestor "{observed-origin-oid}" "{entry-commit}"`. If it succeeds, the differing remote tip is a strict ancestor of the captured local tip; record `{branch-action}=fast-forward-existing-remote`. This mode preserves the local commits and defers one OID-leased fast-forward push of immutable `{entry-commit}` to the endpoint encoded by `{origin-push-url-assignment}` in Step 8.
   - If that ancestry check exits `1`, run `git merge-base --is-ancestor "{entry-commit}" "{observed-origin-oid}"` only to classify the blocker. If it succeeds, report that the remote contains commits absent locally. If it exits `1`, report genuine divergence. Any merge-base execution error is also a hard blocker. Never merge, reset, rebase, or invoke history rewriting to reconcile either case.
 
 - If the remote ref is absent and `{feature-branch}` equals the already-current validated branch, record `{branch-action}=use-current`.
 - If neither local nor remote ref exists, record `{branch-action}=create-from-entry-head`. Do not create it yet.
 
-Step 3.5 now checks GitHub for an existing Pull Request using the validated selected name. Step 4 checks that the entry `HEAD` or worktree has changes and applies the additional clean-tree gate before enabling either existing-remote mode. Step 5 repeats the authoritative remote-absence check only for fresh-remote rewrite paths and creates `{feature-branch}` directly from `{entry-commit}` when required.
+Step 3.5 now checks GitHub for an existing Pull Request using the validated selected name. Step 4 checks that the entry `HEAD` or worktree has changes, applies the clean-tree gate to non-rewriting existing-remote modes, and may route dirty auto-mode work to guarded remote append. Step 5 repeats the authoritative remote-absence check only for fresh-remote rewrite paths, revalidates the captured remote OID before append preparation, and creates `{feature-branch}` directly from `{entry-commit}` when required.

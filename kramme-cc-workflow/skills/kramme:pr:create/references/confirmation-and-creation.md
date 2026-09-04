@@ -2,7 +2,7 @@
 
 Use this reference for `/kramme:pr:create` Steps 8–9 after the branch is prepared, commits are finalized, and the PR title/body have been generated.
 
-`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. In the fresh-remote path, `{rollback-origin-ref}` is the remote ref that Step 5 proved absent. In exact-tip recovery, `{entry-commit}` and `{observed-origin-oid}` are identical. In remote fast-forward mode, `{observed-origin-oid}` is a strict ancestor of `{entry-commit}` and `{origin-push-url}` is the one frozen publication endpoint that returned that OID during classification. All are immutable values captured before description generation. `{title}` and `{description}` are validated Step 7 generator output or validated user-supplied replacements. `{linear-issue-id}` may be captured during branch handling. Substitute literal values when emitting commands and messages — these are agent-tracked, not shell variables.
+`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. In the fresh-remote path, `{rollback-origin-ref}` is the remote ref that Step 5 proved absent. In exact-tip recovery, `{entry-commit}` and `{observed-origin-oid}` are identical. In clean remote fast-forward mode, `{publication-commit}` equals `{entry-commit}`. In remote-append mode, `{publication-commit}` is the rewritten local tip captured after Step 6, while `{observed-origin-oid}` remains the immutable published-prefix boundary. Both publishing existing-remote modes use the endpoint encoded by `{origin-push-url-assignment}`, the byte-exact shell-quoted assignment returned by the helper for the endpoint that reported the observed OID. All are immutable values captured before description generation. `{title}` and `{description}` are validated Step 7 generator output or validated user-supplied replacements. `{linear-issue-id}` may be captured during branch handling. Substitute literal validated values when emitting commands, but insert `{origin-push-url-assignment}` only as its own assignment line and pass `"$ORIGIN_PUSH_URL"` to Git; never insert the decoded URL into shell source.
 
 ## Step 8: Confirmation and Creation
 
@@ -46,6 +46,7 @@ Add the line matching the one active mode below the status line:
 
 - `REMOTE_RECOVERY_MODE=true`: `Publication: Existing remote branch; no history rewrite or push`
 - `REMOTE_FAST_FORWARD_MODE=true`: `Publication: Existing remote branch; preserve commits with an OID-leased fast-forward`
+- `REMOTE_APPEND_MODE=true`: `Publication: Existing remote branch; append local work with an OID lease`
 - `FRESH_REMOTE_MODE=true`: `Publication: Fresh remote branch with an absence-leased push`
 
 ### 8.2 Confirm Creation
@@ -86,7 +87,7 @@ multiSelect: false
 
 If **"Abort"** selected:
 
-When `FRESH_REMOTE_MODE=true`, execute Step 10 in `references/state-and-rollback.md` (rollback), then stop. In either existing-remote mode, stop without rollback because no mutation occurred. Do not push.
+When `FRESH_REMOTE_MODE=true`, execute Step 10 in `references/state-and-rollback.md` (rollback), then stop. In a clean existing-remote mode, stop without rollback because no mutation occurred. Remote append is auto-only and cannot reach this confirmation. Do not push.
 
 If **"Edit description first"** selected, run the edit loop below before re-prompting:
 
@@ -133,7 +134,7 @@ if [ "$STACK_REVALIDATION_FAILED" = false ] && ! (
 fi
 ```
 
-If `STACK_REVALIDATION_FAILED=true`, treat the unresolved or non-`none` membership as authorization-invalidating state drift. When `FRESH_REMOTE_MODE=true`, execute Step 10 before stopping so the local rewrite and preserved user state are restored; in either existing-remote mode, stop without rollback because this workflow did not rewrite the branch. Do not publish or create a default-base Pull Request from stale unstacked authorization.
+If `STACK_REVALIDATION_FAILED=true`, treat the unresolved or non-`none` membership as authorization-invalidating state drift. When `FRESH_REMOTE_MODE=true` or `REMOTE_APPEND_MODE=true`, execute Step 10 before stopping so the local rewrite and preserved user state are restored; in a clean existing-remote mode, stop without rollback because this workflow did not rewrite the branch. Do not publish or create a default-base Pull Request from stale unstacked authorization.
 
 Immediately before any push, repeat the fail-closed open-Pull-Request check. Disable GitHub CLI prompting and run the query with the shell tool's bounded timeout:
 
@@ -141,7 +142,7 @@ Immediately before any push, repeat the fail-closed open-Pull-Request check. Dis
 env GH_PROMPT_DISABLED=1 gh pr list --head "{feature-branch}" --state open --limit 100 --json number,url,state,headRefName
 ```
 
-Require this command to succeed. Continue only when the successful response is an empty list. If an open Pull Request appeared after Step 3.5, execute Step 10 from `state-and-rollback.md` only when `FRESH_REMOTE_MODE=true`; otherwise stop without rollback. In every mode, report the Pull Request URL and stop without pushing. A matching remote head does not prove that this invocation owns the Pull Request, and neither `AUTO_MODE` nor `AUTHORIZE_HISTORY_REWRITE` may adopt or rewrite it.
+Require this command to succeed. Continue only when the successful response is an empty list. If an open Pull Request appeared after Step 3.5, execute Step 10 from `state-and-rollback.md` when `FRESH_REMOTE_MODE=true` or `REMOTE_APPEND_MODE=true`; otherwise stop without rollback. In every mode, report the Pull Request URL and stop without pushing. A matching remote head does not prove that this invocation owns the Pull Request, and neither `AUTO_MODE` nor `AUTHORIZE_HISTORY_REWRITE` may adopt or rewrite it.
 
 #### Existing exact-tip recovery
 
@@ -158,25 +159,27 @@ env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE
 
 Require the clean-worktree helper to succeed before running the remaining commands, and require the current branch to remain `{feature-branch}`. Require `HEAD` to remain exactly `{entry-commit}`. Parse the remote query with the same strict one-line boundary as Step 3. Require the authoritative remote OID to remain exactly `{observed-origin-oid}`. Also require `{entry-commit}` and `{observed-origin-oid}` to remain equal as captured. A clean-tree inspection failure, malformed output, missing ref, dirty tree, checkout change, local-tip change, query failure, or remote-tip change is a hard blocker. Do not run `git push` in this mode; continue directly to Step 8.4 only after every invariant passes. Because this path does not mutate the branch, a concurrent Pull Request creation can only cause `gh pr create` to fail or return an existing-PR error—it cannot cause this invocation to rewrite that Pull Request's commits.
 
-#### Existing remote fast-forward
+#### Existing remote OID-leased publication
 
-When `REMOTE_FAST_FORWARD_MODE=true`, revalidate every preservation invariant immediately before pushing:
+When `REMOTE_FAST_FORWARD_MODE=true` or `REMOTE_APPEND_MODE=true`, revalidate every preservation invariant immediately before pushing:
 
 ```bash
+{origin-push-url-assignment}
 "{pr-create-skill-dir}/scripts/verify-clean-worktree.sh"
 git branch --show-current
 git rev-parse HEAD
 NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
 env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
-  git ls-remote --heads -- "{origin-push-url}" "refs/heads/{feature-branch}"
-git merge-base --is-ancestor "{observed-origin-oid}" "{entry-commit}"
+  git ls-remote --heads -- "$ORIGIN_PUSH_URL" "refs/heads/{feature-branch}"
+git merge-base --is-ancestor "{observed-origin-oid}" "{publication-commit}"
 ```
 
-Require the clean-worktree helper to succeed, the current branch to remain `{feature-branch}`, and `HEAD` to remain exactly `{entry-commit}`. Parse the frozen-endpoint query with the same strict one-line boundary as Step 3 and require its OID to remain exactly `{observed-origin-oid}`. Require `{observed-origin-oid}` to differ from `{entry-commit}` and the ancestry check to succeed, proving the observed remote is still a strict ancestor of the unchanged local tip. Any inspection failure, malformed output, missing or changed ref, dirty tree, checkout change, local-tip change, ancestry failure, or execution error is a hard blocker.
+Require the clean-worktree helper to succeed, the current branch to remain `{feature-branch}`, and `HEAD` to remain exactly `{publication-commit}`. Parse the frozen-endpoint query with the same strict one-line boundary as Step 3 and require its OID to remain exactly `{observed-origin-oid}`. Require `{observed-origin-oid}` to differ from `{publication-commit}` and the ancestry check to succeed, proving the observed remote is still a strict ancestor of the immutable local publication tip. In clean fast-forward mode, also require `{publication-commit}` to equal `{entry-commit}`. In remote-append mode, require it to equal the post-Step-6 OID and leave the local recovery backup intact. A malformed or changed remote response, ancestry failure, or other remote-only error is a hard blocker; when append's local branch, tip, and clean-tree invariants still hold, execute Step 10 before stopping because no push has run. If the worktree is dirty or the checkout/local tip changed, do not roll back: preserve the current local state and recovery refs for manual inspection. Clean fast-forward mode always stops without rollback.
 
-Only after every invariant passes, publish the unchanged local commits with an explicit destination and an exact OID lease:
+Only after every invariant passes, publish the captured local commit with an explicit destination and an exact OID lease:
 
 ```bash
+{origin-push-url-assignment}
 NONINTERACTIVE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes"
 FINAL_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
   echo "Stack membership could not be revalidated at the fast-forward push boundary; stop before publication." >&2
@@ -192,16 +195,18 @@ fi
 env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE_GIT_SSH_COMMAND" \
   git push --no-follow-tags \
   --force-with-lease="refs/heads/{feature-branch}:{observed-origin-oid}" \
-  -- "{origin-push-url}" "{entry-commit}:refs/heads/{feature-branch}"
+  -- "$ORIGIN_PUSH_URL" "{publication-commit}:refs/heads/{feature-branch}"
 ```
 
-The immutable source prevents a concurrent local checkout, reset, or commit from changing what is published after revalidation. The explicit frozen endpoint, single refspec, and `--no-follow-tags` prevent configured push URLs, refspecs, or tag-following from widening publication. The exact lease rejects every remote change after classification, including a concurrent change that remains an ancestor of local `HEAD`. The immediately preceding strict-ancestor proof ensures this invocation cannot use the force capability to replace remote-only work. Do not reset, rebase, recreate, or otherwise rewrite the local commits before this push. Do not set or change upstream configuration in this existing-remote mode.
+If the final stack guard fails before this push, execute Step 10 when `REMOTE_APPEND_MODE=true`; clean fast-forward mode stops without rollback. Do not classify a guard failure as an ambiguous push outcome because no push ran.
 
-If this push exits non-zero, do not continue to `gh pr create` and do not run Step 10. Re-query `"{origin-push-url}"` with the same strict `git ls-remote --heads -- "{origin-push-url}" "refs/heads/{feature-branch}"` procedure and report one of these results without modifying it:
+The immutable source prevents a concurrent local checkout, reset, or commit from changing what is published after revalidation. The explicit frozen endpoint, single refspec, and `--no-follow-tags` prevent configured push URLs, refspecs, or tag-following from widening publication. The exact lease rejects every remote change after classification, including a concurrent change that remains an ancestor of local `HEAD`. The immediately preceding strict-ancestor proof ensures this invocation cannot use the force capability to replace remote-only work. In clean fast-forward mode, do not reset, rebase, recreate, or otherwise rewrite the local commits before this push. Remote append may recreate only the unpublished tail before `{publication-commit}` is captured; after capture, do not change it. Do not set or change upstream configuration in either existing-remote publishing mode.
 
-- still at `{observed-origin-oid}` — the update did not land; it is safe to rerun after resolving the push failure
-- now at `{entry-commit}` — the update may have landed despite the non-zero status; verify the remote and create the Pull Request manually or rerun for exact-tip recovery
-- at any other OID, absent, malformed, or unverified — remote state changed or cannot be proven; coordinate before retrying
+If this push exits non-zero, do not continue to `gh pr create` and do not execute Step 10 when `REMOTE_APPEND_MODE=true`. A non-zero result is an ambiguous publication attempt even when an immediate query still sees the old OID: an in-flight receive may complete after that observation. Preserve the prepared append branch and recovery refs in every outcome. Re-query through `{origin-push-url-assignment}` and `git ls-remote --heads -- "$ORIGIN_PUSH_URL" "refs/heads/{feature-branch}"` with the same bounded, noninteractive, strict procedure, using the result only to report current observed state:
+
+- still at `{observed-origin-oid}` — the update has not been observed; preserve the prepared append state because the failed push may still be in flight. Clean fast-forward mode leaves local commits unchanged
+- now at `{publication-commit}` — the update may have landed despite the non-zero status; preserve the published local state, verify the remote, and create the Pull Request manually or rerun for exact-tip recovery
+- at any other OID, absent, malformed, or unverified — remote state changed or cannot be proven; preserve the prepared local state and coordinate before retrying
 
 #### Fresh remote publication
 
@@ -248,7 +253,7 @@ When the remote now exists, provide the manual Pull Request URL when it can be d
 
 Create the PR body through a temporary file. Do not pass generated Markdown through shell interpolation or a heredoc; body content can legally contain shell metacharacters or a literal `EOF` line.
 
-1. Capture `git rev-parse --verify HEAD` as `{publication-head}` immediately before allocating the temporary files. Require a full 40-character lowercase commit OID. In either existing-remote mode it must still equal `{entry-commit}`; in fresh publication it is the rewritten commit that the successful Step 8.3 push published.
+1. Capture `git rev-parse --verify HEAD` as `{publication-head}` immediately before allocating the temporary files. Require a full 40-character lowercase commit OID. In exact-tip recovery it must still equal `{entry-commit}`; in either existing-remote publishing mode it must equal `{publication-commit}`; in fresh publication it is the rewritten commit that the successful Step 8.3 push published.
 
 2. Create and capture temp file paths. Use the fixed `/tmp` templates so every captured path is shell-safe. If the second allocation fails, remove the first file before stopping:
 
@@ -297,7 +302,7 @@ env GH_PROMPT_DISABLED=1 gh pr create \
   --body-file "$PR_BODY_FILE"
 ```
 
-If this final stack guard fails, the trap removes the payload files and no Pull Request is created. When `FRESH_REMOTE_MODE=true`, execute Step 10 before stopping; in either existing-remote mode, stop without rollback. Do not treat a guard failure as a `gh pr create` failure because the creation command did not run.
+If this final stack guard fails, the trap removes the payload files and no Pull Request is created. When `FRESH_REMOTE_MODE=true`, execute Step 10 before stopping. Every existing-remote publication already completed in Step 8.3, so preserve that published state and stop without rollback. Do not treat a guard failure as a `gh pr create` failure because the creation command did not run.
 
 When `DRAFT_MODE=true`, add `--draft \` as the second line.
 
@@ -318,9 +323,9 @@ Always pass the validated explicit `--head` value. This prevents `gh pr create` 
 
 ### 8.5 Handle PR Creation Failure
 
-If `gh pr create` fails after a successful fresh or fast-forward push, or while reusing the verified exact-tip remote branch:
+If `gh pr create` fails after a successful fresh, clean fast-forward, or remote-append push, or while reusing the verified exact-tip remote branch:
 
-Before showing manual creation instructions, execute Step 9.0 from `references/state-and-rollback.md` only in the fresh-remote path so any excluded uncommitted changes are restored locally or explicitly reported for manual conflict resolution. Existing-remote modes skip Step 9.0 because they required a clean tree. Do not run Step 10 here: the branch already exists remotely, and the failure output should preserve that manual-creation path.
+Before showing manual creation instructions, execute Step 9.0 from `references/state-and-rollback.md` only in the fresh-remote path so any excluded uncommitted changes are restored locally or explicitly reported for manual conflict resolution. Existing-remote modes skip Step 9.0: clean modes created no stash, while remote append committed and published all dirty work. Do not run Step 10 here: the branch already exists remotely, and the failure output should preserve that manual-creation path.
 
 ```
 Warning: Failed to create [PR] automatically.
@@ -352,7 +357,7 @@ On successful creation, emit the message below. When `DRAFT_MODE=true`, substitu
 URL: {pr-url}
 Branch: {feature-branch} -> {base-branch}
 Status: Ready for review
-Uncommitted work: {none | committed and included before history rewrite | excluded from PR and restored locally | excluded from PR but restore needs manual conflict resolution}
+Uncommitted work: {none | committed and included before history rewrite | committed and included as appended narrative commits | excluded from PR and restored locally | excluded from PR but restore needs manual conflict resolution}
 
 Commits included:
   - {commit 1 summary}

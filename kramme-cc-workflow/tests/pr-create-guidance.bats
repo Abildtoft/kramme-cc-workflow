@@ -45,15 +45,15 @@ file_mode() {
     grep -qF "AUTHORIZE_HISTORY_REWRITE=true" "$create"
     grep -qF "Auto mode does not set this variable" "$create"
     grep -qF -- "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"" "$create"
-    [ "$(grep -cF "skill: \"kramme:git:recreate-commits\", args:" "$create")" -eq 4 ]
+    [ "$(grep -cF "skill: \"kramme:git:recreate-commits\", args:" "$create")" -eq 5 ]
     while IFS= read -r invocation; do
-      case "$invocation" in
-        *"--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push"*) ;;
-        *) exit 1 ;;
-      esac
+      [[ "$invocation" == *"--base {base-source-ref} --base-commit {base-ref}"* ]]
+      [[ "$invocation" == *"--backup-ref {recreate-backup-ref}"* ]]
+      [[ "$invocation" == *"--require-unstacked --no-push"* ]]
     done < <(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create")
-    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--auto ")" -eq 2 ]
+    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--auto ")" -eq 3 ]
     [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--authorize-history-rewrite")" -eq 2 ]
+    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--after {observed-origin-oid}")" -eq 1 ]
     grep -qF "pass \`--authorize-history-rewrite\` only when the user supplied that flag" "$create"
     ! grep -qF "args: \"--auto --no-push\"" "$create"
     grep -qF "Always pass \`--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\`" "$create"
@@ -83,7 +83,9 @@ file_mode() {
     grep -qF -- "--force-with-lease=\"{rollback-origin-ref}:\"" "$confirmation"
     grep -qF -- "--force-with-lease=\"refs/heads/{feature-branch}:{observed-origin-oid}\"" "$confirmation"
     grep -qF -- "--no-follow-tags" "$confirmation"
-    grep -qF -- "\"{origin-push-url}\" \"{entry-commit}:refs/heads/{feature-branch}\"" "$confirmation"
+    grep -qF -- "-- \"\$ORIGIN_PUSH_URL\" \"{publication-commit}:refs/heads/{feature-branch}\"" "$confirmation"
+    grep -qF "{origin-push-url-assignment}" "$confirmation"
+    ! grep -qF "\"{origin-push-url}\"" "$confirmation"
     ! grep -qF -- "-u origin \"HEAD:refs/heads/{feature-branch}\"" "$confirmation"
     grep -qF "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never" "$confirmation"
     grep -qF "authentication failure is a hard blocker, never a reason to wait for terminal input" "$confirmation"
@@ -164,7 +166,7 @@ file_mode() {
     grep -qF -- "-- \"\$PUSH_REMOTE_URL\" \"HEAD:\${PUSH_REMOTE_REF}\"" "$recreate"
     ! grep -qF "push with \`git push --force-with-lease\`" "$recreate"
     ! grep -qF "\`--auto\` alone is not authorization" "$recreate"
-  '
+	'
 
 	[ "$status" -eq 0 ]
 }
@@ -186,7 +188,7 @@ file_mode() {
     grep -qF "Before resetting, unless \`--authorize-history-rewrite\` was passed or (\`--auto\` was passed and \`IN_STACK=false\`), obtain the applicable confirmation" "$recreate"
     grep -qF "Before pushing, unless \`--authorize-history-rewrite\` was passed or (\`--auto\` was passed and \`IN_STACK=false\`), obtain the applicable publication confirmation" "$recreate"
     grep -qF "[--auto] [--coarse\\|--granular]" ../README.md
-  '
+	  '
 
 	[ "$status" -eq 0 ]
 }
@@ -323,6 +325,214 @@ file_mode() {
 	[ "$remote_head" != "$entry_commit" ]
 }
 
+@test "serialized push URL remains inert across shell invocations" {
+	remote="$BATS_TEST_TMPDIR/remote-\$(touch injected-by-url).git"
+	publisher="$BATS_TEST_TMPDIR/publisher"
+	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
+	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+
+	cd "$publisher"
+	run "$resolver"
+	[ "$status" -eq 0 ]
+	assignment="$output"
+	[[ "$assignment" == ORIGIN_PUSH_URL=* ]]
+
+	run bash -c '
+    set -e
+    assignment=$1
+    eval "$assignment"
+    git ls-remote --heads -- "$ORIGIN_PUSH_URL" refs/heads/main
+  ' _ "$assignment"
+
+	[ "$status" -eq 0 ]
+	[ ! -e "$publisher/injected-by-url" ]
+}
+
+@test "origin push URL resolver rejects inline credentials without echoing them" {
+	remote="$BATS_TEST_TMPDIR/remote.git"
+	publisher="$BATS_TEST_TMPDIR/publisher"
+	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
+	git -C "$publisher" remote set-url --push origin "https://oauth2:secret-token@example.invalid/repo.git"
+
+	cd "$publisher"
+	run "$resolver"
+
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"must not contain inline HTTP credentials"* ]]
+	[[ "$output" != *"secret-token"* ]]
+}
+
+@test "origin push URL resolver rejects executable and unknown transports" {
+	remote="$BATS_TEST_TMPDIR/remote.git"
+	publisher="$BATS_TEST_TMPDIR/publisher"
+	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
+
+	for push_url in "ext::sh -c touch% payload-marker" "custom-helper::payload-marker" "custom://payload-marker"; do
+		git -C "$publisher" remote set-url --push origin "$push_url"
+		cd "$publisher"
+		run "$resolver"
+
+		[ "$status" -ne 0 ]
+		[[ "$output" == *"executable Git remote-helper syntax"* || "$output" == *"unsupported transport"* ]]
+		[[ "$output" != *"payload-marker"* ]]
+	done
+}
+
+@test "dirty append preserves the published prefix for exact and ancestor tips" {
+	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+
+	for mode in exact ancestor; do
+		remote="$BATS_TEST_TMPDIR/$mode-remote.git"
+		publisher="$BATS_TEST_TMPDIR/$mode-publisher"
+		init_test_git_repo "$publisher" --origin "$remote" --file tracked.txt
+		git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+		git -C "$publisher" checkout -b feature >/dev/null
+		printf 'published\n' >>"$publisher/tracked.txt"
+		git -C "$publisher" commit -am "published prefix" >/dev/null
+		git -C "$publisher" push -u origin feature >/dev/null
+		observed=$(git -C "$publisher" rev-parse HEAD)
+
+		if [ "$mode" = ancestor ]; then
+			printf 'unpublished\n' >>"$publisher/tracked.txt"
+			git -C "$publisher" commit -am "unpublished local work" >/dev/null
+		fi
+		entry_commit=$(git -C "$publisher" rev-parse HEAD)
+		printf 'staged\n' >"$publisher/staged.txt"
+		git -C "$publisher" add staged.txt
+		printf 'unstaged\n' >>"$publisher/tracked.txt"
+		printf 'untracked\n' >"$publisher/untracked.txt"
+		git -C "$publisher" add -A
+		git -C "$publisher" commit -m "include dirty work" >/dev/null
+		include_commit=$(git -C "$publisher" rev-parse HEAD)
+
+		git -C "$publisher" reset --soft "$observed"
+		git -C "$publisher" commit -m "narrative append" >/dev/null
+		publication_commit=$(git -C "$publisher" rev-parse HEAD)
+		git -C "$publisher" diff --quiet "$include_commit" "$publication_commit"
+		[ "$(git -C "$publisher" rev-parse "$publication_commit^")" = "$observed" ]
+		git -C "$publisher" merge-base --is-ancestor "$observed" "$publication_commit"
+
+		cd "$publisher"
+		run "$resolver"
+		[ "$status" -eq 0 ]
+		eval "$output"
+		run git push --no-follow-tags \
+			--force-with-lease=refs/heads/feature:"$observed" \
+			-- "$ORIGIN_PUSH_URL" "$publication_commit:refs/heads/feature"
+		[ "$status" -eq 0 ]
+
+		remote_head=$(git ls-remote --heads -- "$ORIGIN_PUSH_URL" refs/heads/feature | awk '{print $1}')
+		[ "$remote_head" = "$publication_commit" ]
+		[ "$(git show "$remote_head:staged.txt")" = staged ]
+		[ "$(git show "$remote_head:untracked.txt")" = untracked ]
+		[[ "$(git show "$remote_head:tracked.txt")" == *unstaged* ]]
+		if [ "$mode" = exact ]; then
+			[ "$entry_commit" = "$observed" ]
+		else
+			[ "$entry_commit" != "$observed" ]
+			[[ "$(git show "$remote_head:tracked.txt")" == *unpublished* ]]
+		fi
+	done
+}
+
+@test "dirty append can safely restore its pre-publication state" {
+	remote="$BATS_TEST_TMPDIR/rollback-remote.git"
+	publisher="$BATS_TEST_TMPDIR/rollback-publisher"
+	clean_check="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	init_test_git_repo "$publisher" --origin "$remote" --file tracked.txt
+	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+	git -C "$publisher" checkout -b feature >/dev/null
+	printf 'published\n' >>"$publisher/tracked.txt"
+	git -C "$publisher" commit -am "published prefix" >/dev/null
+	git -C "$publisher" push -u origin feature >/dev/null
+	original_commit=$(git -C "$publisher" rev-parse HEAD)
+
+	printf 'dirty tracked\n' >>"$publisher/tracked.txt"
+	printf 'dirty untracked\n' >"$publisher/untracked.txt"
+	git -C "$publisher" add -A
+	git -C "$publisher" commit -m "include dirty work" >/dev/null
+	include_commit=$(git -C "$publisher" rev-parse HEAD)
+	git -C "$publisher" reset --soft "$original_commit"
+	git -C "$publisher" commit -m "narrative append" >/dev/null
+	publication_commit=$(git -C "$publisher" rev-parse HEAD)
+
+	cd "$publisher"
+	run "$clean_check"
+	[ "$status" -eq 0 ]
+	[ "$(git -C "$publisher" branch --show-current)" = feature ]
+	[ "$(git -C "$publisher" rev-parse HEAD)" = "$publication_commit" ]
+	git -C "$publisher" reset --keep "$original_commit" >/dev/null
+	git -C "$publisher" cherry-pick --no-commit "$include_commit" >/dev/null
+	git -C "$publisher" reset >/dev/null
+
+	[ "$(git -C "$publisher" rev-parse HEAD)" = "$original_commit" ]
+	[ "$(git -C "$publisher" ls-remote --heads origin refs/heads/feature | awk '{print $1}')" = "$original_commit" ]
+	[[ "$(git -C "$publisher" status --porcelain)" == *" M tracked.txt"* ]]
+	[[ "$(git -C "$publisher" status --porcelain)" == *"?? untracked.txt"* ]]
+	[[ "$(cat "$publisher/tracked.txt")" == *"dirty tracked"* ]]
+	[ "$(cat "$publisher/untracked.txt")" = "dirty untracked" ]
+}
+
+@test "dirty append can restore a safe pre-recreation input after child failure" {
+	remote="$BATS_TEST_TMPDIR/pre-recreation-remote.git"
+	publisher="$BATS_TEST_TMPDIR/pre-recreation-publisher"
+	clean_check="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	init_test_git_repo "$publisher" --origin "$remote" --file tracked.txt
+	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+	git -C "$publisher" checkout -b feature >/dev/null
+	printf 'published\n' >>"$publisher/tracked.txt"
+	git -C "$publisher" commit -am "published prefix" >/dev/null
+	git -C "$publisher" push -u origin feature >/dev/null
+	original_commit=$(git -C "$publisher" rev-parse HEAD)
+
+	printf 'dirty tracked\n' >>"$publisher/tracked.txt"
+	printf 'dirty untracked\n' >"$publisher/untracked.txt"
+	git -C "$publisher" add -A
+	git -C "$publisher" commit -m "include dirty work" >/dev/null
+	include_commit=$(git -C "$publisher" rev-parse HEAD)
+	recreate_input_tip=$include_commit
+
+	cd "$publisher"
+	run "$clean_check"
+	[ "$status" -eq 0 ]
+	[ "$(git branch --show-current)" = feature ]
+	[ "$(git rev-parse HEAD)" = "$recreate_input_tip" ]
+
+	git reset --keep "$original_commit" >/dev/null
+	git cherry-pick --no-commit "$include_commit" >/dev/null
+	git reset >/dev/null
+
+	[ "$(git rev-parse HEAD)" = "$original_commit" ]
+	[[ "$(git status --porcelain)" == *" M tracked.txt"* ]]
+	[[ "$(git status --porcelain)" == *"?? untracked.txt"* ]]
+}
+
+@test "dirty append rollback refuses work added after its final guard" {
+	repo="$BATS_TEST_TMPDIR/rollback-drift-repo"
+	clean_check="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	init_test_git_repo "$repo" --file tracked.txt
+	original_commit=$(git -C "$repo" rev-parse HEAD)
+
+	printf 'prepared\n' >"$repo/tracked.txt"
+	git -C "$repo" commit -am "prepared append" >/dev/null
+	prepared_commit=$(git -C "$repo" rev-parse HEAD)
+
+	cd "$repo"
+	run "$clean_check"
+	[ "$status" -eq 0 ]
+	[ "$(git rev-parse HEAD)" = "$prepared_commit" ]
+
+	printf 'parallel work\n' >tracked.txt
+	run git reset --keep "$original_commit"
+
+	[ "$status" -ne 0 ]
+	[ "$(git rev-parse HEAD)" = "$prepared_commit" ]
+	[ "$(cat tracked.txt)" = "parallel work" ]
+}
+
 @test "origin push URL resolver rejects multiple publication endpoints" {
 	remote="$BATS_TEST_TMPDIR/remote.git"
 	mirror="$BATS_TEST_TMPDIR/mirror.git"
@@ -351,29 +561,36 @@ file_mode() {
 
     grep -qF "REMOTE_RECOVERY_MODE=true" "$create"
     grep -qF "REMOTE_FAST_FORWARD_MODE=true" "$create"
+    grep -qF "REMOTE_APPEND_MODE=true" "$create"
     grep -qF "skip Steps 5 and 6" "$create"
     grep -qF "preserve the existing local commit history" "$create"
     grep -qF "capture its exact full OID as \`{observed-origin-oid}\`" "$branch"
     grep -qF "scripts/resolve-origin-push-url.sh" "$branch"
-    grep -qF "git ls-remote --heads -- \"{origin-push-url}\"" "$branch"
-    grep -qF "git fetch --no-tags --no-write-fetch-head -- \"{origin-push-url}\"" "$branch"
+    grep -qF "{origin-push-url-assignment}" "$branch"
+    grep -qF "git ls-remote --heads -- \"\$ORIGIN_PUSH_URL\"" "$branch"
+    grep -qF "git fetch --no-tags --no-write-fetch-head -- \"\$ORIGIN_PUSH_URL\"" "$branch"
     grep -qF "git merge-base --is-ancestor \"{observed-origin-oid}\" \"{entry-commit}\"" "$branch"
     grep -qF "record \`{branch-action}=fast-forward-existing-remote\`" "$branch"
     grep -qF "report that the remote contains commits absent locally" "$branch"
     grep -qF "report genuine divergence" "$branch"
     grep -qF "Never merge, reset, rebase, or invoke history rewriting" "$branch"
-    grep -qF "If uncommitted changes exist, stop" "$create"
+    grep -qF "When \`AUTO_MODE=true\`, route dirty existing-remote work to \`REMOTE_APPEND_MODE\`" "$create"
+    grep -qF -- "--after {observed-origin-oid}" "$create"
+    grep -qF "rewrites only the unpublished tail after the observed remote tip" "$create"
     grep -qF "Never adopt a remote branch selected from a different entry checkout" "$branch"
     grep -qF "continue only when it returns no matching ref" "$state"
     grep -qF "stop before branch creation or \`kramme:git:recreate-commits\`" "$state"
     grep -qF "cannot atomically prevent another actor from opening a Pull Request" "$state"
     grep -qF "REMOTE_RECOVERY_MODE=true" "$confirmation"
     grep -qF "REMOTE_FAST_FORWARD_MODE=true" "$confirmation"
+    grep -qF "REMOTE_APPEND_MODE=true" "$confirmation"
     grep -qF "Do not run \`git push\` in this mode" "$confirmation"
     grep -qF "Require the authoritative remote OID to remain exactly \`{observed-origin-oid}\`" "$confirmation"
     grep -qF "Require \`HEAD\` to remain exactly \`{entry-commit}\`" "$confirmation"
     grep -qF "require its OID to remain exactly \`{observed-origin-oid}\`" "$confirmation"
     grep -qF "The exact lease rejects every remote change after classification" "$confirmation"
+    grep -qF "\"{publication-commit}:refs/heads/{feature-branch}\"" "$confirmation"
+    grep -qF "execute Step 10 before stopping" "$confirmation"
     grep -qF -- "--head \"{feature-branch}\"" "$confirmation"
     grep -qF "prevents \`gh pr create\` from offering to push or fork" "$confirmation"
     grep -qF "Do not use plain \`--force\`, an absence lease for a pre-existing remote ref" "$confirmation"
@@ -385,6 +602,56 @@ file_mode() {
 		pr-create-clean-worktree-helper \
 		pr-create-existing-remote-classification \
 		pr-create-existing-remote-publication
+
+	[ "$status" -eq 0 ]
+}
+
+@test "pr-create auto mode appends dirty work to a safely reusable existing remote" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    state="skills/kramme:pr:create/references/state-and-rollback.md"
+    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+
+    grep -qF "REMOTE_APPEND_MODE=true" "$create"
+    grep -qF "require \`AUTO_MODE=true\`" "$create"
+    grep -qF "Resolve and freeze \`{origin-push-url-assignment}\`" "$create"
+    grep -qF "Require the frozen endpoint to remain at \`{observed-origin-oid}\`" "$create"
+    grep -qF "execute Step 5" "$create"
+    grep -qF -- "--after {observed-origin-oid}" "$create"
+    grep -qF "capture the rewritten local \`HEAD\` as \`{publication-commit}\`" "$create"
+
+    grep -qF "When \`REMOTE_APPEND_MODE=true\`" "$state"
+    grep -qF "set \`{rollback-origin-oid}\` to \`{observed-origin-oid}\`" "$state"
+	    grep -qF "Commit and include" "$state"
+	    grep -qF "verify-clean-worktree.sh\" --allow-visible" "$state"
+	    grep -qF "origin-push-url-assignment" "$state"
+
+    grep -qF "Publication: Existing remote branch; append local work with an OID lease" "$confirmation"
+    grep -qF "When \`REMOTE_FAST_FORWARD_MODE=true\` or \`REMOTE_APPEND_MODE=true\`" "$confirmation"
+    grep -qF "HEAD\` to remain exactly \`{publication-commit}\`" "$confirmation"
+    grep -qF -- "--force-with-lease=\"refs/heads/{feature-branch}:{observed-origin-oid}\"" "$confirmation"
+    grep -qF "\"{publication-commit}:refs/heads/{feature-branch}\"" "$confirmation"
+    grep -qF "still at \`{observed-origin-oid}\` — the update has not been observed" "$confirmation"
+	    grep -qF "Preserve the prepared append branch and recovery refs in every outcome" "$confirmation"
+	    grep -qF "now at \`{publication-commit}\`" "$confirmation"
+	    grep -qF "### 10.0 Refuse Rollback After Local Drift" "$state"
+	    grep -qF "derive \`{rollback-expected-tip}\`" "$state"
+	    grep -qF "Otherwise require \`{recreate-input-tip}\`" "$state"
+	    grep -qF "final guard and reset in one bounded shell invocation" "$state"
+	    grep -qF "git reset --keep \"{original-commit}\"" "$state"
+	    grep -qF "Never substitute \`git reset --hard\` in remote-append mode" "$state"
+	    grep -qF "shell tool'\''s bounded timeout" "$state"
+	    grep -qF "git ls-remote --heads -- \"\$ORIGIN_PUSH_URL\"" "$state"
+	    grep -qF "Remote append is auto-only and cannot reach this confirmation" "$confirmation"
+	    grep -qF "reject inline credentials, other credential-bearing URL syntax, executable remote-helper forms, and unsupported transports" "$create"
+  '
+
+	assert_required_contracts_registered \
+		pr-create-existing-remote-append-orchestration \
+		pr-create-existing-remote-append-state \
+		pr-create-existing-remote-append-publication
 
 	[ "$status" -eq 0 ]
 }
@@ -422,7 +689,61 @@ file_mode() {
 
 	run bash -c 'cd "$1" && "$2"' _ "$repo" "$verifier"
 	[ "$status" -ne 0 ]
-	[[ "$output" == *"Assume-unchanged tracked content differs from the index"* ]]
+	[[ "$output" == *"Hidden tracked content differs from the index"* ]]
+}
+
+@test "pr-create verifier detects skip-worktree edits while allowing visible work" {
+	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+
+	git init "$repo"
+	git -C "$repo" config user.name "Test User"
+	git -C "$repo" config user.email "test@example.com"
+	printf 'hidden\n' >"$repo/hidden.txt"
+	printf 'visible\n' >"$repo/visible.txt"
+	git -C "$repo" add hidden.txt visible.txt
+	git -C "$repo" commit -m "initial"
+
+	printf 'visible change\n' >"$repo/visible.txt"
+	run bash -c 'cd "$1" && "$2" --allow-visible' _ "$repo" "$verifier"
+	[ "$status" -eq 0 ]
+
+	git -C "$repo" checkout -- visible.txt
+	git -C "$repo" update-index --skip-worktree hidden.txt
+	printf 'hidden change\n' >"$repo/hidden.txt"
+	run bash -c 'cd "$1" && "$2"' _ "$repo" "$verifier"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Hidden tracked content differs from the index"* ]]
+
+	printf 'visible change\n' >"$repo/visible.txt"
+	run bash -c 'cd "$1" && "$2" --allow-visible' _ "$repo" "$verifier"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Hidden tracked content differs from the index"* ]]
+}
+
+@test "pr-create verifier accepts clean sparse-checkout omissions" {
+	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	repo="$BATS_TEST_TMPDIR/sparse-repo"
+
+	git init "$repo"
+	git -C "$repo" config user.name "Test User"
+	git -C "$repo" config user.email "test@example.com"
+	mkdir -p "$repo/kept" "$repo/omitted"
+	printf 'kept\n' >"$repo/kept/file.txt"
+	printf 'omitted\n' >"$repo/omitted/file.txt"
+	git -C "$repo" add .
+	git -C "$repo" commit -m "initial"
+	git -C "$repo" sparse-checkout init --cone
+	git -C "$repo" sparse-checkout set kept
+	[ ! -e "$repo/omitted/file.txt" ]
+
+	cd "$repo"
+	run "$verifier"
+	[ "$status" -eq 0 ]
+
+	printf 'visible change\n' >kept/file.txt
+	run "$verifier" --allow-visible
+	[ "$status" -eq 0 ]
 }
 
 @test "pr-create clean-worktree verifier fails closed when status inspection fails" {
