@@ -1228,6 +1228,7 @@
         "gh pr create --help",
         "--attach file",
         "also pass `--visual --for-pr-create` when `ATTACHMENTS_SUPPORTED=true`",
+        "the generator must treat visual evidence as relevant and attempt capture whenever a safe runnable surface is available",
         "DEMO_EVIDENCE_MANIFEST:",
         "scripts/prepare-demo-attachments.py",
         "Demo capture and attachment preparation are best-effort",
@@ -1456,6 +1457,8 @@
       "contains": [
         "Never print full env-file contents or any non-port variables",
         "--for-pr-description --base-commit {MERGE_BASE} [--url <url>] -- VISUAL_CAPTURE_TARGET",
+        "UI-facing changes are presumptively relevant visual evidence",
+        "A UI-facing diff always proceeds to the best-effort delegation",
         "PUBLISHING_PARENT=true",
         "DEMO_EVIDENCE_MANIFEST:",
         "Do not emit `DEMO_EVIDENCE_MANIFEST:` because no publishing parent is present",

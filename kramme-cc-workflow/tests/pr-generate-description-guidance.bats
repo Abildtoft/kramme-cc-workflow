@@ -23,6 +23,8 @@ load 'test_helper/common'
     ! grep -qF "find . .github docs -maxdepth 2" "$skill/references/context-gathering.md"
     grep -qF "github-pr-template-docs" "$skill/references/sources.yaml"
     grep -qF -- "--for-pr-description --base-commit {MERGE_BASE} [--url <url>] -- VISUAL_CAPTURE_TARGET" "$skill/references/visual-capture.md"
+    grep -qF "UI-facing changes are presumptively relevant visual evidence" "$skill/references/visual-capture.md"
+    grep -qF "A UI-facing diff always proceeds to the best-effort delegation" "$skill/references/visual-capture.md"
     grep -qF "PUBLISHING_PARENT=true" "$skill/SKILL.md"
     grep -qF "Do not emit \`DEMO_EVIDENCE_MANIFEST:\` because no publishing parent is present" "$skill/references/visual-capture.md"
     grep -qF "DEMO_EVIDENCE_MANIFEST:" "$skill/references/visual-capture.md"

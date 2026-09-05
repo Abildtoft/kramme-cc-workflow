@@ -13,6 +13,10 @@ Build a concise evidence target from Phase 2 diff analysis:
 - whether the change is a feature, bug fix, visual state change, or interaction,
 - any known safety constraints such as auth, private data, or destructive flows.
 
+Treat a diff as UI-facing when it changes user-visible components, pages, views, routes, templates, styles, themes, design tokens, visual assets, or interaction/state behavior such as loading, validation, error, or empty states. Judge the behavior represented by the diff rather than relying only on directory names or file extensions.
+
+UI-facing changes are presumptively relevant visual evidence. Keep `VISUAL_MODE=true` and attempt demo capture whenever the environment offers a safe runnable surface; do not downgrade a UI change to the placeholder merely because it is small, copy-only, or visually subtle. Let `kramme:visual:demo-reel` choose the useful feasible screenshot or video tier. If no safe runnable surface can be resolved, authentication or private-data constraints prevent capture, or the delegated capture fails, retain its specific skipped reason and continue without evidence.
+
 Do not start a dev server. Do not call browser tools in this phase. Do not duplicate the shared dev-server port cascade here. If a web URL must be discovered, the demo-reel skill uses the shared detector:
 
 ```bash
@@ -21,7 +25,7 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
 
 When checking env files for URL discovery, the shared script reads only the `PORT=` assignment needed for discovery. Never print full env-file contents or any non-port variables, and ignore non-numeric or out-of-range port values.
 
-Store the target summary as `VISUAL_CAPTURE_TARGET`. If no observable behavior exists, clear `VISUAL_MODE` and use the placeholder Screenshots/Videos section.
+Store the target summary as `VISUAL_CAPTURE_TARGET`. Only clear `VISUAL_MODE` when the diff has neither UI-facing changes nor other observable behavior. A UI-facing diff always proceeds to the best-effort delegation in Phase 3.5.
 
 ## Phase 3.5: Invoke Demo Evidence Capture
 
