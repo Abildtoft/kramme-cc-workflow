@@ -22,6 +22,12 @@ load 'test_helper/common'
 
     ! grep -qF "find . .github docs -maxdepth 2" "$skill/references/context-gathering.md"
     grep -qF "github-pr-template-docs" "$skill/references/sources.yaml"
+    grep -qF -- "--for-pr-description --base-commit {MERGE_BASE} [--url <url>] -- VISUAL_CAPTURE_TARGET" "$skill/references/visual-capture.md"
+    grep -qF "PUBLISHING_PARENT=true" "$skill/SKILL.md"
+    grep -qF "Do not emit \`DEMO_EVIDENCE_MANIFEST:\` because no publishing parent is present" "$skill/references/visual-capture.md"
+    grep -qF "DEMO_EVIDENCE_MANIFEST:" "$skill/references/visual-capture.md"
+    grep -qF "Never place the marker or any local artifact path between the description delimiters" "$skill/references/visual-capture.md"
+    ! grep -qF "Drag and drop into the PR description on GitHub" "$skill/references/visual-capture.md"
     grep -qF "The \"no Linear ID\" condition is the only non-blocking \`MISSING REQUIREMENT:\` marker." "$skill/SKILL.md"
     grep -qF "Treat every other \`MISSING REQUIREMENT:\` marker" "$skill/SKILL.md"
     grep -qF "including future marker types not yet listed here" "$skill/SKILL.md"

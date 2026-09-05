@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:create
-description: Use when creating a PR from the current branch with a generated description. Rewrites unpublished work into narrative commits, recovers an exact-tip remote, or safely appends committed and auto-included local work when the existing remote is at or behind local HEAD.
+description: Create a PR from the current branch with a generated description and attach useful screenshot/video evidence when observable behavior can be captured. Rewrites unpublished work into narrative commits, recovers an exact-tip remote, or safely appends committed and auto-included local work when the existing remote is at or behind local HEAD.
 argument-hint: "[--auto] [--draft] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: true
 user-invocable: true
@@ -44,7 +44,7 @@ Step 4.5 Reject stacked branches
     +-- Existing safe tip, dirty + --auto: preserve published commits,
                                          recreate only the unpublished tail
     |
-Step 7  Invoke kramme:pr:generate-description (fail closed in auto mode)
+Step 7  Generate description + best-effort demo evidence
     |
 Step 8  Preview + confirmation
         - Abort        --> Step 10 rollback only when rewrite state exists
@@ -63,7 +63,7 @@ The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool
 - `references/pre-validation-checks.md` — Step 1: repository safety checks.
 - `references/branch-and-platform-handling.md` — Steps 2–3: entry-state capture, immutable-base resolution, ref validation, mutation-free feature-branch selection, and authoritative remote-tip classification.
 - `references/state-and-rollback.md` — Steps 5 and 10: state capture, stash handling, abort/rollback.
-- `references/confirmation-and-creation.md` — Steps 8–9: preview, confirmation, edit loop, absence- or OID-leased publication, exact-tip reuse, `gh pr create`, draft mode, and success output.
+- `references/confirmation-and-creation.md` — Steps 8–9: preview, confirmation, edit loop, absence- or OID-leased publication, exact-tip reuse, repeatable `gh pr create --attach` flags, draft mode, and success output.
 
 ## Step 0: Parse Arguments
 
@@ -315,7 +315,9 @@ Recovery:
 
 ### 7.1 Invoke the Skill
 
-Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--auto --no-update --base {base-source-ref} --base-commit {base-ref}` because this orchestrator owns the review/edit gate, the sub-skill must use the same pinned base commit while retaining branch metadata, and it must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation. When `{linear-issue-id}` is set, also pass `--linear-issue {linear-issue-id}` so the generator uses the validated identifier instead of re-extracting it from the branch.
+Before invoking the generator, run `env GH_PROMPT_DISABLED=1 gh pr create --help` and inspect its successful output for the exact `--attach file` flag. This proves only that the installed CLI accepts attachment syntax; repository permissions, authentication type, and GitHub host support are rechecked by `gh` at the Step 8.4 creation boundary. Set `ATTACHMENTS_SUPPORTED=true` only when both the help command and flag check succeed; otherwise set it to `false`, record that the installed GitHub CLI lacks usable attachment support, and continue without visual capture.
+
+Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--auto --no-update --base {base-source-ref} --base-commit {base-ref}` because this orchestrator owns the review/edit gate, the sub-skill must use the same pinned base commit while retaining branch metadata, and it must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation; also pass `--visual --for-pr-create` when `ATTACHMENTS_SUPPORTED=true`, so the generator can decide from the pinned diff whether observable behavior warrants capture and knows this exact parent owns the manifest handoff. When `{linear-issue-id}` is set, also pass `--linear-issue {linear-issue-id}` so the generator uses the validated identifier instead of re-extracting it from the branch.
 
 The skill will:
 
@@ -323,12 +325,13 @@ The skill will:
 - Check for Linear issue references in branch name
 - Generate a conventional commit-style **title** (`<type>(<scope>): <description>`)
 - Generate a comprehensive description
+- When supported and applicable, delegate local screenshot/video capture and return `DEMO_EVIDENCE_MANIFEST` outside the PR body
 
 When it returns, continue to Step 8. See the "Workflow rule" near the top of this skill.
 
 ### 7.2 Capture the Title and Description
 
-Capture the generated title, the full description for Step 8, and any uppercase output markers from the generator.
+Capture the generated title, the full description for Step 8, and any uppercase output markers from the generator. `DEMO_EVIDENCE_MANIFEST:` is a local orchestration handoff, not body content; never include that marker or its path in `{description}`.
 
 Before preview or publication, require a usable title and body:
 
@@ -358,11 +361,30 @@ If the skill returns no usable output and either `AUTO_MODE=true` or `REQUIRE_GE
 
 Otherwise, use `AskUserQuestion` to offer **Retry generation**, **Provide title and body**, or **Abort**. Validate manually supplied content with the same title/body checks above and apply the `{linear-issue-id}` normalization from Step 7.2. Never create a Pull Request containing placeholder fallback text.
 
+### 7.4 Prepare Demo Evidence Attachments
+
+Initialize `ATTACH_ARGS` as an empty shell array, `DEMO_ATTACHMENT_COUNT=0`, and `{demo-evidence-status}` to the Step 7.1 capability result.
+
+When `ATTACHMENTS_SUPPORTED=true` and the generator returned exactly one `DEMO_EVIDENCE_MANIFEST: <path>` marker, require the whole path to match `^/[A-Za-z0-9._/: -]+/manifest\.json$` before putting it in a shell command. Resolve `{pr-create-skill-dir}` to the directory containing this `SKILL.md` and run:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
+python3 "{pr-create-skill-dir}/scripts/prepare-demo-attachments.py" \
+  --repo-root "$REPO_ROOT" \
+  --manifest "{demo-evidence-manifest}"
+```
+
+Capture stdout as JSON. Never `eval`, source, or render it as shell code. Require `schema_version: 1`, a recognized non-skipped tier, a one-line description, and one through 50 attachments. The helper enforces the `.context/demo-reels/` containment boundary, direct regular files, supported GitHub image/video extensions and size limits, matching media kinds, unique paths, one-line alt descriptions, and no symlink traversal.
+
+Retain the validated manifest path rather than rendering attachment values into shell source. At the creation boundary, the helper will emit NUL-delimited `flag_value` records that are read directly into `ATTACH_ARGS`. Image values include `#<alt text>`; video values do not because GitHub renders video as a player without alt text. Never construct a command string, use `eval`, or interpolate attachment values as shell syntax. Set `DEMO_ATTACHMENT_COUNT` from the validated array and `{demo-evidence-status}` to `{tier}: {description}`.
+
+If the marker is missing, duplicated, malformed, or the helper rejects it, keep `ATTACH_ARGS` empty, record the reason in `{demo-evidence-status}`, and continue. Demo capture and attachment preparation are best-effort and must not block an otherwise valid PR. Never put a local evidence path in `{description}`. Let `gh` append successfully uploaded evidence inline at the end of the body; do not invent local Markdown references or reorder a repository PR template to position the media.
+
 ---
 
 ## Step 8: Confirmation and Creation
 
-Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, edit loop, fresh-branch absence-leased push, exact-tip reuse, existing-branch OID-leased publication, `gh pr create`, and failure handling. Substitute `{base-branch}`, `{base-source-ref}`, `{base-ref}`, `{entry-commit}`, `{publication-commit}`, `{observed-origin-oid}`, the shell-quoted `{origin-push-url-assignment}` for an existing-remote publication, `{original-branch}`, `{rollback-origin-ref}`, the validated title, and the generated description when emitting commands. Never substitute a decoded push URL into shell source. Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
+Read `references/confirmation-and-creation.md` and execute Step 8 from that file. It contains the preview format, confirmation prompt, edit loop, fresh-branch absence-leased push, exact-tip reuse, existing-branch OID-leased publication, repeatable `gh pr create --attach` arguments, and failure handling. Substitute `{base-branch}`, `{base-source-ref}`, `{base-ref}`, `{entry-commit}`, `{publication-commit}`, `{observed-origin-oid}`, the shell-quoted `{origin-push-url-assignment}` for an existing-remote publication, `{original-branch}`, `{rollback-origin-ref}`, the validated title, generated description, `ATTACH_ARGS`, `DEMO_ATTACHMENT_COUNT`, and `{demo-evidence-status}` when emitting commands. Never substitute a decoded push URL into shell source. Carry `{linear-issue-id}` into Step 8 if captured so edited descriptions still follow the Linear closing-keyword policy.
 
 ---
 
@@ -401,7 +423,7 @@ This skill creates PRs with `gh pr create --assignee @me`. This is intentional �
 For a fresh remote branch, invoke both sub-skills:
 
 1. `kramme:git:recreate-commits` for clean commit history
-2. `kramme:pr:generate-description` for a comprehensive description
+2. `kramme:pr:generate-description` for a comprehensive description and best-effort reviewer evidence when `gh pr create --attach` is available
 
 This keeps PRs consistent across the workflow.
 

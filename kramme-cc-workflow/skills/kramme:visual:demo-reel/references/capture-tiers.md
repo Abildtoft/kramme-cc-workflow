@@ -16,7 +16,7 @@ Use the lightest evidence tier that proves the observable behavior.
 3. If the behavior is web UI with meaningful motion or interaction, prefer browser reel when browser automation and `ffmpeg` are available.
 4. If the behavior is CLI motion or multi-step terminal interaction, prefer terminal recording when `vhs` is available.
 5. If richer tooling is missing, choose static screenshots or before/after screenshots instead of blocking.
-6. If capture requires secrets, private data, paid services, cloud credentials, or destructive actions, stop and ask for a safe capture path.
+6. If capture requires secrets, private data, paid services, cloud credentials, or destructive actions, return `Tier: skipped` with the reason in delegated mode; otherwise stop and ask for a safe capture path.
 
 ## Fallback Order
 

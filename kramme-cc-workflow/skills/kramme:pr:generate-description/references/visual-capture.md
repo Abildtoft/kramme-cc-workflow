@@ -25,7 +25,7 @@ Store the target summary as `VISUAL_CAPTURE_TARGET`. If no observable behavior e
 
 ## Phase 3.5: Invoke Demo Evidence Capture
 
-Call or follow `kramme:visual:demo-reel` with `VISUAL_CAPTURE_TARGET`. If the user supplied an explicit app URL in the surrounding request, pass it through as `--url <url>`; otherwise let demo-reel resolve `auto` when web capture is appropriate.
+Invoke `kramme:visual:demo-reel` through the Skill tool with trusted controls first and the opaque target after a literal separator: `--for-pr-description --base-commit {MERGE_BASE} [--url <url>] -- VISUAL_CAPTURE_TARGET`. `{MERGE_BASE}` is the full commit OID exported by Phase 1 and used for this description's committed diff. Include `--url <url>` only when the user supplied an explicit app URL in the surrounding request; otherwise let demo-reel resolve `auto` when web capture is appropriate. Never omit the delegated-mode flag, pinned base, or separator, and never ask the child to upload or publish.
 
 Expected result shape:
 
@@ -34,6 +34,7 @@ Expected result shape:
 Tier: static|before-after|browser-reel|terminal-recording|skipped
 Description: <one sentence describing what the evidence shows>
 Directory: <local artifact directory>
+Manifest: <local artifact directory>/manifest.json
 Files:
 - <path or "none">
 PR Markdown:
@@ -41,7 +42,7 @@ PR Markdown:
 === End Demo Evidence ===
 ```
 
-If demo-reel returns `Tier: skipped`, no files, or a capture failure, use the placeholder Screenshots/Videos section. Visual capture failures must not block PR description generation.
+If demo-reel returns `Tier: skipped`, no files, a missing manifest, or a capture failure, use the placeholder Screenshots/Videos section. Visual capture failures must not block PR description generation.
 
 ## Build the Screenshots / Videos Section
 
@@ -49,19 +50,37 @@ If demo-reel returns `Tier: skipped`, no files, or a capture failure, use the pl
 
 Use the returned embed guidance in the PR body.
 
-**If demo-reel returns local-only files and `DIRECT_UPDATE=false`:**
+**If demo-reel returns local-only files and `PUBLISHING_PARENT=true`:**
 
-Include a local-only table so the PR creator can drag and drop the files manually:
+Keep local paths out of the body. Use this section to retain reviewer context while a publishing parent lets `gh --attach` append uploaded media inline to the body:
 
 ```markdown
 ## Screenshots / Videos
 
-Screenshots or demo artifacts captured locally. Drag and drop into the PR description on GitHub:
-
-| Evidence | What it shows | Path |
-| --- | --- | --- |
-| <label> | <description> | `<local-path>` |
+<!-- Captured demo evidence is attached below during PR publication when supported. -->
 ```
+
+After the copy-paste-ready description, emit exactly one separate marker:
+
+```text
+DEMO_EVIDENCE_MANIFEST: <absolute path to manifest.json>
+```
+
+The marker is an orchestration handoff, not PR body content. Never place the marker or any local artifact path between the description delimiters.
+
+**If demo-reel returns local-only files, `PUBLISHING_PARENT` is not true, and `DIRECT_UPDATE=false`:**
+
+Include a local-only table so the direct caller can attach the files manually:
+
+```markdown
+## Screenshots / Videos
+
+| Evidence | What it shows | Path           |
+| -------- | ------------- | -------------- |
+| <label>  | <description> | `<local-path>` |
+```
+
+Emit the local file list and manifest path outside the description delimiters. Do not emit `DEMO_EVIDENCE_MANIFEST:` because no publishing parent is present.
 
 **If demo-reel returns local-only files and `DIRECT_UPDATE=true`:**
 
@@ -73,7 +92,7 @@ Use this PR body section:
 <!-- Demo evidence was captured locally but not embedded automatically. Attach screenshots or video to this PR manually if helpful. -->
 ```
 
-Then emit the local file list in the skill conversation output, outside the PR body.
+Then emit the local file list and manifest path in the skill conversation output, outside the PR body. This mode does not attach automatically because direct update keeps its existing title/body-only mutation contract.
 
 **If no evidence was captured:**
 
