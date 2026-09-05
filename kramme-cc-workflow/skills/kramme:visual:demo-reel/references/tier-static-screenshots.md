@@ -12,7 +12,7 @@ Use static screenshots when one or more still states prove the change.
    - error/empty/loading state only when that state changed.
 4. Save files under `DEMO_REEL_DIR` with descriptive lowercase names, such as `settings-default.png` or `checkout-empty-state.png`.
 
-Use the available browser screenshot tool when possible. If no browser automation can save files directly, save returned image data through the runtime's file-write capability. If neither is available, ask the user to provide a screenshot or use the OS screenshot tool, then place the file in `DEMO_REEL_DIR`.
+Use the available browser screenshot tool when possible. If no browser automation can save files directly, save returned image data through the runtime's file-write capability. If neither is available, return `Tier: skipped` in delegated mode; otherwise ask the user to provide a screenshot or use the OS screenshot tool, then place the file in `DEMO_REEL_DIR`.
 
 ## CLI or Terminal Output
 
@@ -27,7 +27,7 @@ Do not label a transcript of tests as demo evidence. The command must be product
 Return a local-only PR table:
 
 ```markdown
-| Evidence | What it shows | Local path |
-| --- | --- | --- |
-| Screenshot | <state proved> | `<path>` |
+| Evidence   | What it shows  | Local path |
+| ---------- | -------------- | ---------- |
+| Screenshot | <state proved> | `<path>`   |
 ```

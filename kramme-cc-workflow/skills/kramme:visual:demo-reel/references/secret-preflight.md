@@ -4,7 +4,7 @@ Recordings must not contain credentials, tokens, private data, or destructive ac
 
 ## Hard Stops
 
-Stop and ask before recording when the planned evidence would show:
+In delegated mode, return `Tier: skipped` with the safety reason instead of asking. Otherwise, stop and ask before recording when the planned evidence would show:
 
 - credentials, access tokens, API keys, auth headers, cookies, or signed URLs,
 - customer data, private messages, production admin surfaces, billing details, or personal data,

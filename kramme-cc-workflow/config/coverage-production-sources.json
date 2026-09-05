@@ -101,6 +101,9 @@
       "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py": [
         "kramme-cc-workflow/tests/pr-walkthrough.bats"
       ],
+      "kramme-cc-workflow/skills/kramme:pr:create/scripts/prepare-demo-attachments.py": [
+        "kramme-cc-workflow/tests/pr-create-guidance.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-errors.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],

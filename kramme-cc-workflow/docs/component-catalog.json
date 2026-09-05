@@ -529,7 +529,7 @@
     },
     {
       "name": "kramme:visual:demo-reel",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md"
     },
     {

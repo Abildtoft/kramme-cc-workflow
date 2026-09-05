@@ -2,7 +2,7 @@
 
 Use this reference for `/kramme:pr:create` Steps 8–9 after the branch is prepared, commits are finalized, and the PR title/body have been generated.
 
-`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. In the fresh-remote path, `{rollback-origin-ref}` is the remote ref that Step 5 proved absent. In exact-tip recovery, `{entry-commit}` and `{observed-origin-oid}` are identical. In clean remote fast-forward mode, `{publication-commit}` equals `{entry-commit}`. In remote-append mode, `{publication-commit}` is the rewritten local tip captured after Step 6, while `{observed-origin-oid}` remains the immutable published-prefix boundary. Both publishing existing-remote modes use the endpoint encoded by `{origin-push-url-assignment}`, the byte-exact shell-quoted assignment returned by the helper for the endpoint that reported the observed OID. All are immutable values captured before description generation. `{title}` and `{description}` are validated Step 7 generator output or validated user-supplied replacements. `{linear-issue-id}` may be captured during branch handling. Substitute literal validated values when emitting commands, but insert `{origin-push-url-assignment}` only as its own assignment line and pass `"$ORIGIN_PUSH_URL"` to Git; never insert the decoded URL into shell source.
+`{base-branch}` is the value captured in Steps 2–3. `{feature-branch}` is the current branch. In the fresh-remote path, `{rollback-origin-ref}` is the remote ref that Step 5 proved absent. In exact-tip recovery, `{entry-commit}` and `{observed-origin-oid}` are identical. In clean remote fast-forward mode, `{publication-commit}` equals `{entry-commit}`. In remote-append mode, `{publication-commit}` is the rewritten local tip captured after Step 6, while `{observed-origin-oid}` remains the immutable published-prefix boundary. Both publishing existing-remote modes use the endpoint encoded by `{origin-push-url-assignment}`, the byte-exact shell-quoted assignment returned by the helper for the endpoint that reported the observed OID. All are immutable values captured before description generation. `{title}` and `{description}` are validated Step 7 generator output or validated user-supplied replacements. `{linear-issue-id}` may be captured during branch handling. `{demo-evidence-manifest}`, `DEMO_ATTACHMENT_COUNT`, and `{demo-evidence-status}` come from Step 7.4 and never enter the PR body as local paths. Substitute literal validated values when emitting commands, but insert `{origin-push-url-assignment}` only as its own assignment line and pass `"$ORIGIN_PUSH_URL"` to Git; never insert the decoded URL into shell source.
 
 ## Step 8: Confirmation and Creation
 
@@ -18,6 +18,7 @@ When `DRAFT_MODE=false`, use:
 Title: {title}
 Branch: {feature-branch} -> {base-branch}
 Status: Ready for review
+Demo evidence: {demo-evidence-status}
 
 Description Preview:
 ---
@@ -33,6 +34,7 @@ Draft [PR] Ready to Create
 Title: {title}
 Branch: {feature-branch} -> {base-branch}
 Status: Draft
+Demo evidence: {demo-evidence-status}
 
 Description Preview:
 ---
@@ -112,6 +114,8 @@ If **"Edit description first"** selected, run the edit loop below before re-prom
 3. Apply the chosen edit (capture new `{title}` and/or `{description}`), rerun the Step 7.2 title/body validation, then return to Step 8.1 to re-preview and re-confirm. Do not preview or publish invalid edited content. Loop until the user selects **"Create PR"** / **"Create Draft PR"** or **"Abort"**.
 
 After each description edit, if `{linear-issue-id}` is present, keep the default Linear closing line as `Closes {linear-issue-id}`. Replace `Fixes {linear-issue-id}` or `Resolves {linear-issue-id}` with `Closes {linear-issue-id}` unless the user explicitly asked for that alternative keyword in the edit request. If the edited description links the same issue with a non-closing keyword (`Related to`, `Refs`, or `References`), preserve that link and do not add a separate closing line.
+
+When `DEMO_ATTACHMENT_COUNT` is greater than zero, never place `{demo-evidence-manifest}`, an artifact filename, or any local filesystem path in the edited body. `gh pr create --attach` appends only successfully uploaded evidence inline at the end of the body.
 
 ### 8.3 Revalidate and Publish the Branch
 
@@ -255,7 +259,7 @@ Create the PR body through a temporary file. Do not pass generated Markdown thro
 
 1. Capture `git rev-parse --verify HEAD` as `{publication-head}` immediately before allocating the temporary files. Require a full 40-character lowercase commit OID. In exact-tip recovery it must still equal `{entry-commit}`; in either existing-remote publishing mode it must equal `{publication-commit}`; in fresh publication it is the rewritten commit that the successful Step 8.3 push published.
 
-2. Create and capture temp file paths. Use the fixed `/tmp` templates so every captured path is shell-safe. If the second allocation fails, remove the first file before stopping:
+2. Create and capture temp file paths. Use the fixed `/tmp` templates so every captured path is shell-safe. Allocate the attachment-values file only when `DEMO_ATTACHMENT_COUNT` is greater than zero. If a later allocation fails, remove the files already allocated before stopping:
 
    ```bash
    if ! PR_TITLE_FILE=$(mktemp "/tmp/kramme-pr-title.XXXXXX"); then
@@ -265,19 +269,36 @@ Create the PR body through a temporary file. Do not pass generated Markdown thro
      rm -f -- "$PR_TITLE_FILE"
      exit 1
    fi
+   PR_ATTACHMENTS_FILE=""
+   if [ "{demo-attachment-count}" -gt 0 ]; then
+     if ! PR_ATTACHMENTS_FILE=$(mktemp "/tmp/kramme-pr-attachments.XXXXXX"); then
+       rm -f -- "$PR_TITLE_FILE" "$PR_BODY_FILE"
+       exit 1
+     fi
+   fi
    echo "$PR_TITLE_FILE"
    echo "$PR_BODY_FILE"
+   [ -z "$PR_ATTACHMENTS_FILE" ] || echo "$PR_ATTACHMENTS_FILE"
    ```
 
-3. Require each captured path to match `/tmp/kramme-pr-(title|body).[A-Za-z0-9]+`, then write `{title}` and `{description}` to the corresponding path using the runtime's file-write capability. Do not use `cat <<EOF`, `printf "{description}"`, or any other shell-parsed form for generated Markdown.
+3. Require each captured path to match `/tmp/kramme-pr-(title|body|attachments).[A-Za-z0-9]+`, then write `{title}` and `{description}` to the corresponding payload paths using the runtime's file-write capability. Do not use `cat <<EOF`, `printf "{description}"`, or any other shell-parsed form for generated Markdown. When attachments are expected, run the command below. It revalidates every evidence file at the creation boundary and emits values separated by NUL bytes so none become shell source. If it fails, empty the attachment-values file, set the effective attachment count to zero, record the diagnostic in `{demo-evidence-status}`, and continue without attachments.
 
-4. Emit the command below with the shell tool's bounded timeout. `GH_PROMPT_DISABLED=1` makes authentication or other interaction requirements fail closed. Include `--draft` on the first line only when `DRAFT_MODE=true`; otherwise omit it entirely (do not emit an empty flag). Substitute the validated captured paths for `{pr-title-file}` and `{pr-body-file}`. The trap removes both files on success, failure, or interruption.
+   ```bash
+   python3 "{pr-create-skill-dir}/scripts/prepare-demo-attachments.py" \
+     --repo-root "{repo-root}" \
+     --manifest "{demo-evidence-manifest}" \
+     --format nul > "{pr-attachments-file}"
+   ```
+
+4. Emit the command below with the shell tool's bounded timeout. `GH_PROMPT_DISABLED=1` makes authentication or other interaction requirements fail closed. Include `--draft` on the first line only when `DRAFT_MODE=true`; otherwise omit it entirely (do not emit an empty flag). Substitute the validated captured paths and expected attachment count. The trap removes all temporary payload files on success, failure, or interruption; captured evidence remains under `.context/demo-reels/`.
 
 ```bash
 PR_TITLE_FILE="{pr-title-file}"
 PR_BODY_FILE="{pr-body-file}"
+PR_ATTACHMENTS_FILE="{pr-attachments-file-or-empty}"
 cleanup_pr_files() {
   rm -f -- "$PR_TITLE_FILE" "$PR_BODY_FILE"
+  [ -z "$PR_ATTACHMENTS_FILE" ] || rm -f -- "$PR_ATTACHMENTS_FILE"
 }
 trap cleanup_pr_files EXIT
 trap 'exit 129' HUP
@@ -294,21 +315,79 @@ if ! (
   echo "The branch joined a local or server-side stack before Pull Request creation; stop before creation." >&2
   exit 1
 fi
-env GH_PROMPT_DISABLED=1 gh pr create \
-  --base "{base-branch}" \
-  --head "{feature-branch}" \
-  --assignee @me \
-  --title "$(cat "$PR_TITLE_FILE")" \
-  --body-file "$PR_BODY_FILE"
+ATTACH_ARGS=()
+EFFECTIVE_DEMO_ATTACHMENT_COUNT={demo-attachment-count}
+DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=false
+if [ "{demo-attachment-count}" -gt 0 ]; then
+  ATTACHMENT_READ_COUNT=0
+  while IFS= read -r -d '' ATTACHMENT_VALUE; do
+    ATTACH_ARGS+=(--attach "$ATTACHMENT_VALUE")
+    ATTACHMENT_READ_COUNT=$((ATTACHMENT_READ_COUNT + 1))
+  done < "$PR_ATTACHMENTS_FILE"
+  if [ "$ATTACHMENT_READ_COUNT" -ne "{demo-attachment-count}" ]; then
+    echo "Validated demo attachment count changed; creating the Pull Request without attachments." >&2
+    ATTACH_ARGS=()
+    EFFECTIVE_DEMO_ATTACHMENT_COUNT=0
+  fi
+fi
+run_pr_create() {
+  env GH_PROMPT_DISABLED=1 gh pr create \
+    --base "{base-branch}" \
+    --head "{feature-branch}" \
+    --assignee @me \
+    --title "$(cat "$PR_TITLE_FILE")" \
+    --body-file "$PR_BODY_FILE" \
+    "$@"
+}
+attachment_failure_proves_no_pr() {
+  case "$1" in
+    "attaching files is not supported on GitHub Enterprise Server" | \
+      "unsupported authentication type" | \
+      "could not determine which repository to attach files to" | \
+      "could not determine your permission on the repository to attach files" | \
+      "attaching files requires write access to the repository") return 0 ;;
+  esac
+  printf '%s\n' "$1" | grep -qxF "no pull request was created"
+}
+if PR_CREATE_OUTPUT=$(run_pr_create "${ATTACH_ARGS[@]}" 2>&1); then
+  PR_CREATE_STATUS=0
+else
+  PR_CREATE_STATUS=$?
+fi
+if [ "$PR_CREATE_STATUS" -ne 0 ] \
+  && [ "$EFFECTIVE_DEMO_ATTACHMENT_COUNT" -gt 0 ] \
+  && attachment_failure_proves_no_pr "$PR_CREATE_OUTPUT"; then
+  INITIAL_ATTACHMENT_FAILURE=$PR_CREATE_OUTPUT
+  ATTACH_ARGS=()
+  EFFECTIVE_DEMO_ATTACHMENT_COUNT=0
+  DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=true
+  printf '%s\n' "$INITIAL_ATTACHMENT_FAILURE" >&2
+  printf '%s\n' "Attachment upload failed before Pull Request creation; retried once without demo evidence." >&2
+  if RETRY_OUTPUT=$(run_pr_create 2>&1); then
+    PR_CREATE_OUTPUT=$RETRY_OUTPUT
+    PR_CREATE_STATUS=0
+  else
+    PR_CREATE_STATUS=$?
+    PR_CREATE_OUTPUT=$RETRY_OUTPUT
+  fi
+fi
+printf '%s\n' "$PR_CREATE_OUTPUT"
+printf '%s\n' \
+  "PR_CREATE_STATUS=$PR_CREATE_STATUS" \
+  "EFFECTIVE_DEMO_ATTACHMENT_COUNT=$EFFECTIVE_DEMO_ATTACHMENT_COUNT" \
+  "DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=$DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE"
+exit "$PR_CREATE_STATUS"
 ```
 
 If this final stack guard fails, the trap removes the payload files and no Pull Request is created. When `FRESH_REMOTE_MODE=true`, execute Step 10 before stopping. Every existing-remote publication already completed in Step 8.3, so preserve that published state and stop without rollback. Do not treat a guard failure as a `gh pr create` failure because the creation command did not run.
 
 When `DRAFT_MODE=true`, add `--draft \` as the second line.
 
-Always pass the validated explicit `--head` value. This prevents `gh pr create` from offering to push or fork when exact-tip recovery is using a remote branch without local upstream configuration; the skill's own mode-specific publication step remains the only allowed push.
+Always pass the validated explicit `--head` value. This prevents `gh pr create` from offering to push or fork when exact-tip recovery is using a remote branch without local upstream configuration; the skill's own mode-specific publication step remains the only allowed push. `ATTACH_ARGS` contains one separate repeatable `--attach` pair per validated image or video. Because the body does not contain local paths, GitHub appends only successful uploads inline and a failed upload cannot leave an inaccessible path in the PR.
 
-5. After `gh pr create` succeeds, query the created Pull Request through the same GitHub repository context with the shell tool's bounded timeout:
+5. Capture the final three labeled result lines from the creation command. Require exactly one of each, a decimal `PR_CREATE_STATUS`, a non-negative decimal `EFFECTIVE_DEMO_ATTACHMENT_COUNT`, and `DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=true|false`; treat missing, duplicated, or malformed result state as an unproven creation failure. The shell tool's exit status must equal `PR_CREATE_STATUS`. When the retry marker is `true`, require effective attachment count zero and preserve the separately printed first upload diagnostic. A zero status means the attachment-free retry succeeded; set `{demo-evidence-status}` to `skipped — every upload failed before creation; Pull Request creation retried once without evidence`. A non-zero status belongs only to the attachment-free retry because `PR_CREATE_OUTPUT` is replaced rather than concatenated with the first failure.
+
+   Query the created Pull Request through the same GitHub repository context with the shell tool's bounded timeout when `PR_CREATE_STATUS=0`. Also run the query when `PR_CREATE_STATUS` is non-zero and either `EFFECTIVE_DEMO_ATTACHMENT_COUNT` is greater than zero or `DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=true`. The former may mean GitHub CLI created the PR after only some attachments uploaded; the latter may mean the attachment-free retry created the PR before a later metadata failure:
 
    ```bash
    env GH_PROMPT_DISABLED=1 gh pr list \
@@ -321,9 +400,11 @@ Always pass the validated explicit `--head` value. This prevents `gh pr create` 
 
    Require this query to succeed and return exactly one record. Require `state` to be `OPEN`, `baseRefName` to equal `{base-branch}`, `headRefName` to equal `{feature-branch}`, and `headRefOid` to equal `{publication-head}` exactly. Capture its `url` as `{pr-url}` for Step 9. A missing, malformed, duplicate, or mismatched result means GitHub did not prove that the created Pull Request contains the commit this invocation inspected. Report the creation result and observed metadata, but do not run Step 9 or claim success; do not roll back, close, or delete the Pull Request or branch automatically.
 
+   When `PR_CREATE_STATUS` is non-zero, require `PR_CREATE_OUTPUT` to contain `{pr-url}` as a standalone line. Explicitly reject the `a pull request ... already exists:` diagnostic; matching head/base/OID metadata does not prove this invocation created that Pull Request. For that race, report the concurrently created Pull Request and stop without Step 9 or manual-creation guidance. When `DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=true`, require effective attachment count zero, preserve the retry diagnostic, set `{demo-evidence-status}` to `skipped — uploads failed before creation; attachment-free creation completed with a warning`, and continue to Step 9 without applying attachment-specific partial-success rules to the first failure. Otherwise require effective attachment count greater than zero. When that output contains an attachment-specific diagnostic beginning `could not upload ` or `failed to upload ` that names one of the validated artifact paths, treat the PR as created with partially attached evidence, preserve every CLI diagnostic, set `{demo-evidence-status}` to `partially attached`, and continue to Step 9 with a warning. If the output proves a created PR but lacks the attachment-specific diagnostic, preserve the diagnostic, set `{demo-evidence-status}` to `created with warning — attachment status unclassified`, and continue to Step 9 without claiming partial attachment or concealing a metadata-update failure. Do not retry attachments automatically after possible creation: successful uploads cannot be rolled back, and a blind retry could duplicate them. The creation block's exact allowlist covers only attachment failures that GitHub CLI reports before Pull Request submission, and it retries once without attachments. Continue to Step 8.5 only when no created Pull Request was proven.
+
 ### 8.5 Handle PR Creation Failure
 
-If `gh pr create` fails after a successful fresh, clean fast-forward, or remote-append push, or while reusing the verified exact-tip remote branch:
+If `gh pr create` fails after a successful fresh, clean fast-forward, or remote-append push, or while reusing the verified exact-tip remote branch, and Step 8.4 did not prove the partial-attachment success case:
 
 Before showing manual creation instructions, execute Step 9.0 from `references/state-and-rollback.md` only in the fresh-remote path so any excluded uncommitted changes are restored locally or explicitly reported for manual conflict resolution. Existing-remote modes skip Step 9.0: clean modes created no stash, while remote append committed and published all dirty work. Do not run Step 10 here: the branch already exists remotely, and the failure output should preserve that manual-creation path.
 
@@ -358,6 +439,7 @@ URL: {pr-url}
 Branch: {feature-branch} -> {base-branch}
 Status: Ready for review
 Uncommitted work: {none | committed and included before history rewrite | committed and included as appended narrative commits | excluded from PR and restored locally | excluded from PR but restore needs manual conflict resolution}
+Demo evidence: {attached N files | partially attached — inspect the reported upload failure | created with warning — attachment status unclassified | skipped/unavailable with reason}
 
 Commits included:
   - {commit 1 summary}
@@ -366,6 +448,6 @@ Commits included:
 
 Next steps:
   1. Review the PR description for accuracy
-  2. Add screenshots or videos if applicable
+  2. Review the attached demo evidence and add only any missing state noted above
   3. Run tests and ensure CI passes
 ```

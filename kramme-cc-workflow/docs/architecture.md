@@ -30,7 +30,7 @@ Command-safety hooks share a fail-closed parser boundary: the shell wrappers in 
 
 For Codex, `scripts/convert-plugin.js` is the entry point. It loads the Claude plugin, filters platform-specific skills, converts skills and agents, rewrites shared script references, stages output, updates managed install state, and writes Codex config tables when hooks or MCP servers are present. Installation mutations flow from staging through `install-transaction.js`, which owns locks, journals, backups, commit/rollback, and recovery. The `doctor` path is separate and read-only: `diagnostics.js` uses the transaction inspector for a bounded advisory snapshot without acquiring locks or repairing artifacts. See the [converter module map](../scripts/convert-plugin/README.md#module-map) for ownership and focused verification; the root [README](../../README.md#codex) remains the public command reference.
 
-Browser and visual workflows use the shared dev-server detector in `scripts/dev-server/`. It resolves an already running local app; it does not start a server.
+Browser and visual workflows use the shared dev-server detector in `scripts/dev-server/`. The detector only resolves an already running local app. A caller may own a separately documented startup lifecycle; delegated PR demo capture permits one tightly bounded local-development startup attempt and owns cleanup of the process it launched.
 
 How much independence skills and agents take at runtime is described in [agent-autonomy.md](agent-autonomy.md).
 

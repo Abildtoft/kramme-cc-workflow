@@ -2,6 +2,225 @@
 
 load 'test_helper/common'
 
+@test "pr-create captures and attaches reviewer demo evidence" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    visual="skills/kramme:pr:generate-description/references/visual-capture.md"
+    sources="skills/kramme:pr:create/references/sources.yaml"
+
+    grep -qF "gh pr create --help" "$create"
+    grep -qF -- "--attach file" "$create"
+    grep -qF "also pass \`--visual --for-pr-create\` when \`ATTACHMENTS_SUPPORTED=true\`" "$create"
+    grep -qF "the generator must treat visual evidence as relevant and attempt capture whenever a safe runnable surface is available" "$create"
+    grep -qF "make a bounded attempt to start an easy, safe local development environment" "$create"
+    grep -qF "additionally pass \`--start-if-easy\` as the guarded environment-startup capability" "$create"
+    grep -qF "DEMO_EVIDENCE_MANIFEST:" "$create"
+    grep -qF "scripts/prepare-demo-attachments.py" "$create"
+    grep -qF "Demo capture and attachment preparation are best-effort" "$create"
+    grep -qF "Never put a local evidence path in \`{description}\`" "$create"
+    grep -qF -- "--for-pr-description --base-commit {MERGE_BASE}" "$visual"
+    grep -qF "Never place the marker or any local artifact path between the description delimiters" "$visual"
+    grep -qF -- "--format nul" "$confirmation"
+    grep -qF "ATTACH_ARGS+=(--attach \"\$ATTACHMENT_VALUE\")" "$confirmation"
+    grep -qF "\"\${ATTACH_ARGS[@]}\"" "$confirmation"
+    grep -qF "EFFECTIVE_DEMO_ATTACHMENT_COUNT" "$confirmation"
+    grep -qF "PR_CREATE_OUTPUT" "$confirmation"
+    grep -qF "PR_CREATE_STATUS=" "$confirmation"
+    grep -qF "DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=" "$confirmation"
+    grep -qF "no pull request was created" "$confirmation"
+    grep -qF "attaching files is not supported on GitHub Enterprise Server" "$confirmation"
+    grep -qF "attachment_failure_proves_no_pr" "$confirmation"
+    grep -qF "attachment-specific diagnostic" "$confirmation"
+    grep -qF "retried once without demo evidence" "$confirmation"
+    grep -qF "exit \"\$PR_CREATE_STATUS\"" "$confirmation"
+    grep -qF "Explicitly reject the \`a pull request ... already exists:\` diagnostic" "$confirmation"
+    grep -qF "partially attached evidence" "$confirmation"
+    grep -qF "Do not retry attachments automatically" "$confirmation"
+    grep -qF "github-cli-pr-create-attachments" "$sources"
+    grep -qF "github-cli-attachment-validation" "$sources"
+    grep -qF "UI-facing changes trigger best-effort local environment startup and screenshot/video capture" ../README.md
+  '
+
+	assert_required_contracts_registered \
+		pr-create-demo-evidence-orchestration \
+		pr-create-demo-evidence-publication \
+		pr-generate-description-visual-capture-safety \
+		visual-demo-reel-model-invocation-contract
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "pr-create demo attachment helper validates safe image and video manifests" {
+	helper="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/prepare-demo-attachments.py"
+	repo="$BATS_TEST_TMPDIR/demo-repo"
+	run_dir="$repo/.context/demo-reels/run-1"
+	mkdir -p "$run_dir"
+	repo=$(cd "$repo" && pwd -P)
+	run_dir="$repo/.context/demo-reels/run-1"
+	printf 'png\n' >"$run_dir/result.png"
+	printf 'video\n' >"$run_dir/flow.mp4"
+	printf '{"schema_version":1,"tier":"browser-reel","description":"The changed flow works.","artifacts":[{"path":"%s","kind":"image","description":"Completed result"},{"path":"%s","kind":"video","description":"Interactive flow"}],"created_at":"20260904T000000Z"}\n' \
+		"$run_dir/result.png" "$run_dir/flow.mp4" >"$run_dir/manifest.json"
+
+	run python3 "$helper" --repo-root "$repo" --manifest "$run_dir/manifest.json"
+	[ "$status" -eq 0 ]
+	python3 -c 'import json,sys; value=json.loads(sys.argv[1]); assert value["schema_version"] == 1; assert len(value["attachments"]) == 2; assert value["attachments"][0]["flag_value"].endswith("result.png#Completed result"); assert value["attachments"][1]["flag_value"].endswith("flow.mp4")' "$output"
+
+	flags="$BATS_TEST_TMPDIR/attachment-flags"
+	python3 "$helper" --repo-root "$repo" --manifest "$run_dir/manifest.json" --format nul >"$flags"
+	python3 -c 'import pathlib,sys; values=pathlib.Path(sys.argv[1]).read_bytes().split(b"\0"); assert len(values) == 3 and values[-1] == b""' "$flags"
+}
+
+@test "pr-create demo attachment helper rejects paths outside the capture run" {
+	helper="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/prepare-demo-attachments.py"
+	repo="$BATS_TEST_TMPDIR/demo-repo"
+	run_dir="$repo/.context/demo-reels/run-1"
+	mkdir -p "$run_dir"
+	printf 'outside\n' >"$repo/outside.png"
+	printf '{"schema_version":1,"tier":"static","description":"Unsafe path.","artifacts":[{"path":"%s","kind":"image","description":"Outside file"}],"created_at":"20260904T000000Z"}\n' \
+		"$repo/outside.png" >"$run_dir/manifest.json"
+
+	run python3 "$helper" --repo-root "$repo" --manifest "$run_dir/manifest.json"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"must stay below"* ]]
+}
+
+@test "pr-create demo attachment helper rejects hardlink aliases of one file" {
+	helper="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/prepare-demo-attachments.py"
+	repo="$BATS_TEST_TMPDIR/demo-repo"
+	run_dir="$repo/.context/demo-reels/run-1"
+	mkdir -p "$run_dir"
+	repo=$(cd "$repo" && pwd -P)
+	run_dir="$repo/.context/demo-reels/run-1"
+	printf 'png\n' >"$run_dir/result.png"
+	ln "$run_dir/result.png" "$run_dir/result-alias.png"
+	printf '{"schema_version":1,"tier":"static","description":"Duplicate file.","artifacts":[{"path":"%s","kind":"image","description":"Original"},{"path":"%s","kind":"image","description":"Alias"}],"created_at":"20260904T000000Z"}\n' \
+		"$run_dir/result.png" "$run_dir/result-alias.png" >"$run_dir/manifest.json"
+
+	run python3 "$helper" --repo-root "$repo" --manifest "$run_dir/manifest.json"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"refers to a duplicated file"* ]]
+}
+
+extract_pr_creation_block() {
+	python3 - "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text()
+section = source.split("4. Emit the command below", 1)[1]
+block = section.split("```bash", 1)[1].split("```", 1)[0].strip()
+pathlib.Path(sys.argv[2]).write_text(f"{block}\n")
+PY
+}
+
+prepare_pr_creation_case() {
+	case_dir="$1"
+	scenario="$2"
+	confirmation="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/confirmation-and-creation.md"
+	case_block="$case_dir/create.sh"
+	fake_bin="$case_dir/bin"
+	plugin_root="$case_dir/plugin"
+	case_counter="$case_dir/counter"
+	mkdir -p "$fake_bin" "$plugin_root/scripts"
+	extract_pr_creation_block "$confirmation" "$case_block"
+	printf 'Title\n' >"$case_dir/title"
+	printf 'Body\n' >"$case_dir/body"
+	printf '/tmp/evidence.png#Visible\0' >"$case_dir/attachments"
+	python3 - "$case_block" "$case_dir" <<'PY'
+import pathlib
+import sys
+
+block_path = pathlib.Path(sys.argv[1])
+case_dir = pathlib.Path(sys.argv[2])
+text = block_path.read_text()
+text = text.replace("{pr-title-file}", str(case_dir / "title"))
+text = text.replace("{pr-body-file}", str(case_dir / "body"))
+text = text.replace("{pr-attachments-file-or-empty}", str(case_dir / "attachments"))
+text = text.replace("{demo-attachment-count}", "1")
+block_path.write_text(text)
+PY
+	cat >"$plugin_root/scripts/resolve-stack-membership.sh" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' 'STACK_MEMBERSHIP=none'
+SH
+	chmod +x "$plugin_root/scripts/resolve-stack-membership.sh"
+	cat >"$fake_bin/gh" <<'SH'
+#!/usr/bin/env bash
+count=0
+[ ! -f "$GH_COUNTER" ] || count=$(cat "$GH_COUNTER")
+count=$((count + 1))
+printf '%s\n' "$count" >"$GH_COUNTER"
+case "$ATTACHMENT_SCENARIO:$count" in
+  ghes-retry:1)
+    printf '%s\n' 'attaching files is not supported on GitHub Enterprise Server'
+    exit 1
+    ;;
+  retry-postcreate:1)
+    printf '%s\n' 'attaching files requires write access to the repository'
+    exit 1
+    ;;
+  retry-postcreate:2)
+    printf '%s\n' 'https://example.test/pull/42' 'failed to add assignee'
+    exit 1
+    ;;
+  unrelated:1)
+    printf '%s\n' 'network timeout'
+    exit 1
+    ;;
+  *)
+    printf '%s\n' 'https://example.test/pull/42'
+    ;;
+esac
+SH
+	chmod +x "$fake_bin/gh"
+	export PATH="$fake_bin:$PATH"
+	export CLAUDE_PLUGIN_ROOT="$plugin_root"
+	export GH_COUNTER="$case_counter"
+	export ATTACHMENT_SCENARIO="$scenario"
+}
+
+@test "pr-create retries exact remote pre-creation attachment failures without evidence" {
+	prepare_pr_creation_case "$BATS_TEST_TMPDIR/ghes" ghes-retry
+
+	run bash "$case_block"
+	[ "$status" -eq 0 ]
+	[ "$(cat "$case_counter")" -eq 2 ]
+	[[ "$output" == *"attaching files is not supported on GitHub Enterprise Server"* ]]
+	[[ "$output" == *"PR_CREATE_STATUS=0"* ]]
+	[[ "$output" == *"EFFECTIVE_DEMO_ATTACHMENT_COUNT=0"* ]]
+	[[ "$output" == *"DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=true"* ]]
+}
+
+@test "pr-create keeps failed attachment-free retry state separate from the first failure" {
+	prepare_pr_creation_case "$BATS_TEST_TMPDIR/postcreate" retry-postcreate
+	stderr_file="$BATS_TEST_TMPDIR/postcreate-stderr"
+
+	run bash -c 'bash "$1" 2>"$2"' _ "$case_block" "$stderr_file"
+	[ "$status" -eq 1 ]
+	[ "$(cat "$case_counter")" -eq 2 ]
+	[[ "$output" == *"https://example.test/pull/42"* ]]
+	[[ "$output" != *"attaching files requires write access to the repository"* ]]
+	grep -qF "attaching files requires write access to the repository" "$stderr_file"
+	[[ "$output" == *"PR_CREATE_STATUS=1"* ]]
+	[[ "$output" == *"EFFECTIVE_DEMO_ATTACHMENT_COUNT=0"* ]]
+	[[ "$output" == *"DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=true"* ]]
+}
+
+@test "pr-create does not retry unrelated failures" {
+	prepare_pr_creation_case "$BATS_TEST_TMPDIR/unrelated" unrelated
+
+	run bash "$case_block"
+	[ "$status" -eq 1 ]
+	[ "$(cat "$case_counter")" -eq 1 ]
+	[[ "$output" == *"PR_CREATE_STATUS=1"* ]]
+	[[ "$output" == *"EFFECTIVE_DEMO_ATTACHMENT_COUNT=1"* ]]
+	[[ "$output" == *"DEMO_ATTACHMENT_RETRY_WITHOUT_EVIDENCE=false"* ]]
+}
+
 extract_commit_and_include_block() {
 	python3 - "$1" "$2" <<'PY'
 import pathlib
@@ -58,6 +277,7 @@ file_mode() {
     ! grep -qF "args: \"--auto --no-push\"" "$create"
     grep -qF "Always pass \`--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\`" "$create"
     grep -qF "Always pass \`--auto --no-update --base {base-source-ref} --base-commit {base-ref}\`" "$create"
+    grep -qF "also pass \`--visual --for-pr-create\`" "$create"
     grep -qF "Do not push or change upstream configuration" "$branch"
     ! grep -qF "git push -u origin \$(git branch --show-current)" "$branch"
     grep -qF "Step 5 proved that \`{rollback-origin-ref}\` was absent" "$confirmation"
