@@ -11,6 +11,7 @@ load 'test_helper/common'
     test -f "$skill/SKILL.md"
     test -f "$skill/references/capture-tiers.md"
     test -f "$skill/references/secret-preflight.md"
+    test -f "$skill/references/environment-startup.md"
     test -f "$skill/references/tier-static-screenshots.md"
     test -f "$skill/references/tier-before-after-screenshots.md"
     test -f "$skill/references/tier-browser-reel.md"
@@ -28,6 +29,11 @@ load 'test_helper/common'
     grep -qF "Require delegated callers to put trusted flags before exactly one \`--\` separator" "$skill/SKILL.md"
     grep -qF "git -C \"\$REPO_ROOT\" check-ignore -q -- .context/demo-reels/" "$skill/SKILL.md"
     grep -qF "otherwise return \`Tier: skipped\` in delegated mode" "$skill/SKILL.md"
+    grep -qF "Accept it only with valid delegated PR mode; otherwise reject it" "$skill/SKILL.md"
+    grep -qF "when \`START_IF_EASY=true\` and the target is UI-facing" "$skill/SKILL.md"
+    grep -qF "Never automatically execute a new or modified command supplied by the branch under review" "$skill/references/environment-startup.md"
+    grep -qF "For at most 60 seconds" "$skill/references/environment-startup.md"
+    grep -qF "Never kill by port, executable name, or pattern" "$skill/references/environment-startup.md"
     grep -qF "return \`Tier: skipped\` with the reason in delegated mode" "$skill/references/capture-tiers.md"
     grep -qF "In delegated mode, return \`Tier: skipped\` with the safety reason instead of asking" "$skill/references/secret-preflight.md"
     grep -qF "return \`Tier: skipped\` in delegated mode" "$skill/references/tier-static-screenshots.md"
@@ -36,6 +42,7 @@ load 'test_helper/common'
 
 	assert_required_contracts_registered \
 		visual-demo-reel-guidance \
+		visual-demo-reel-environment-startup \
 		visual-demo-reel-capture-tiers \
 		visual-demo-reel-source-manifest \
 		visual-demo-reel-model-invocation-contract

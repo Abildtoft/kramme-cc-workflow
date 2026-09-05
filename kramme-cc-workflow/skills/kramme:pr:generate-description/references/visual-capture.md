@@ -15,9 +15,9 @@ Build a concise evidence target from Phase 2 diff analysis:
 
 Treat a diff as UI-facing when it changes user-visible components, pages, views, routes, templates, styles, themes, design tokens, visual assets, or interaction/state behavior such as loading, validation, error, or empty states. Judge the behavior represented by the diff rather than relying only on directory names or file extensions.
 
-UI-facing changes are presumptively relevant visual evidence. Keep `VISUAL_MODE=true` and attempt demo capture whenever the environment offers a safe runnable surface; do not downgrade a UI change to the placeholder merely because it is small, copy-only, or visually subtle. Let `kramme:visual:demo-reel` choose the useful feasible screenshot or video tier. If no safe runnable surface can be resolved, authentication or private-data constraints prevent capture, or the delegated capture fails, retain its specific skipped reason and continue without evidence.
+UI-facing changes are presumptively relevant visual evidence. Keep `VISUAL_MODE=true` and attempt demo capture whenever the environment offers a safe runnable surface; do not downgrade a UI change to the placeholder merely because it is small, copy-only, or visually subtle. If no app is already running, let `kramme:visual:demo-reel` make a bounded best-effort startup attempt when the repository has one straightforward, safe local development entrypoint. Let that child choose the useful feasible screenshot or video tier. If no safe runnable surface can be resolved or started, authentication or private-data constraints prevent capture, or the delegated capture fails, retain its specific skipped reason and continue without evidence.
 
-Do not start a dev server. Do not call browser tools in this phase. Do not duplicate the shared dev-server port cascade here. If a web URL must be discovered, the demo-reel skill uses the shared detector:
+Do not start a dev server in this PR-description phase. Do not call browser tools here or duplicate the shared dev-server port cascade. The delegated demo-reel skill owns any qualifying environment startup, readiness check, capture, and cleanup. If a web URL must be discovered, it uses the shared detector:
 
 ```bash
 ${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh auto
@@ -29,7 +29,7 @@ Store the target summary as `VISUAL_CAPTURE_TARGET`. Only clear `VISUAL_MODE` wh
 
 ## Phase 3.5: Invoke Demo Evidence Capture
 
-Invoke `kramme:visual:demo-reel` through the Skill tool with trusted controls first and the opaque target after a literal separator: `--for-pr-description --base-commit {MERGE_BASE} [--url <url>] -- VISUAL_CAPTURE_TARGET`. `{MERGE_BASE}` is the full commit OID exported by Phase 1 and used for this description's committed diff. Include `--url <url>` only when the user supplied an explicit app URL in the surrounding request; otherwise let demo-reel resolve `auto` when web capture is appropriate. Never omit the delegated-mode flag, pinned base, or separator, and never ask the child to upload or publish.
+Invoke `kramme:visual:demo-reel` through the Skill tool with trusted controls first and the opaque target after a literal separator: `--for-pr-description --base-commit {MERGE_BASE} [--start-if-easy] [--url <url>] -- VISUAL_CAPTURE_TARGET`. `{MERGE_BASE}` is the full commit OID exported by Phase 1 and used for this description's committed diff. Include `--start-if-easy` only when `START_IF_EASY=true` and the pinned diff is UI-facing; this is the explicit capability granted by `kramme:pr:create --auto`. Include `--url <url>` only when the user supplied an explicit app URL in the surrounding request; otherwise let demo-reel resolve `auto` when web capture is appropriate. Never omit the delegated-mode flag, pinned base, or separator, and never ask the child to upload or publish.
 
 Expected result shape:
 

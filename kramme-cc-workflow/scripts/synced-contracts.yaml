@@ -1229,6 +1229,8 @@
         "--attach file",
         "also pass `--visual --for-pr-create` when `ATTACHMENTS_SUPPORTED=true`",
         "the generator must treat visual evidence as relevant and attempt capture whenever a safe runnable surface is available",
+        "make a bounded attempt to start an easy, safe local development environment",
+        "additionally pass `--start-if-easy` as the guarded environment-startup capability",
         "DEMO_EVIDENCE_MANIFEST:",
         "scripts/prepare-demo-attachments.py",
         "Demo capture and attachment preparation are best-effort",
@@ -1456,9 +1458,12 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/visual-capture.md",
       "contains": [
         "Never print full env-file contents or any non-port variables",
-        "--for-pr-description --base-commit {MERGE_BASE} [--url <url>] -- VISUAL_CAPTURE_TARGET",
+        "--for-pr-description --base-commit {MERGE_BASE} [--start-if-easy] [--url <url>] -- VISUAL_CAPTURE_TARGET",
         "UI-facing changes are presumptively relevant visual evidence",
         "A UI-facing diff always proceeds to the best-effort delegation",
+        "make a bounded best-effort startup attempt",
+        "owns any qualifying environment startup, readiness check, capture, and cleanup",
+        "Include `--start-if-easy` only when `START_IF_EASY=true` and the pinned diff is UI-facing",
         "PUBLISHING_PARENT=true",
         "DEMO_EVIDENCE_MANIFEST:",
         "Do not emit `DEMO_EVIDENCE_MANIFEST:` because no publishing parent is present",
@@ -1557,9 +1562,22 @@
         "--for-pr-description --base-commit <oid>",
         "No other parent workflow is authorized by this model-invocation exception",
         "Delegated mode is non-interactive and best-effort",
+        "references/environment-startup.md",
+        "Accept it only with valid delegated PR mode; otherwise reject it",
+        "when `START_IF_EASY=true` and the target is UI-facing",
         "Require delegated callers to put trusted flags before exactly one `--` separator",
         "git -C \"$REPO_ROOT\" check-ignore -q -- .context/demo-reels/",
         "otherwise return `Tier: skipped` in delegated mode"
+      ]
+    },
+    {
+      "name": "visual-demo-reel-environment-startup",
+      "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/references/environment-startup.md",
+      "contains": [
+        "Never automatically execute a new or modified command supplied by the branch under review",
+        "For at most 60 seconds",
+        "Never kill by port, executable name, or pattern",
+        "do not stream logs into the conversation"
       ]
     },
     {

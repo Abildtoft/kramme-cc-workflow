@@ -1,6 +1,6 @@
 ---
 name: kramme:visual:demo-reel
-description: Capture local screenshots, before/after images, browser reels, terminal recordings, or short video proof when explicitly requested or when kramme:pr:generate-description delegates reviewer-evidence capture.
+description: Capture local screenshots, before/after images, browser reels, terminal recordings, or short video proof when explicitly requested or delegated for PR evidence. For delegated UI capture, make a bounded attempt to start a straightforward safe local environment when needed.
 argument-hint: "[what to capture] [--url <url>|auto] [--tier static|before-after|browser-reel|terminal-recording]"
 disable-model-invocation: false
 user-invocable: true
@@ -16,7 +16,7 @@ This skill stores artifacts locally under `.context/demo-reels/<timestamp>/` and
 
 - Use this skill for a direct user request to capture demo evidence, or as the exact child of `kramme:pr:generate-description` when that parent passes `--for-pr-description --base-commit <oid>`.
 - No other parent workflow is authorized by this model-invocation exception. Outside that exact delegation, never invent `--for-pr-description`.
-- Delegated mode is non-interactive and best-effort: it may write only below `.context/demo-reels/`, never starts a server, never uploads evidence, and returns `Tier: skipped` instead of asking a question or blocking its parent when safe capture is unavailable.
+- Delegated mode is non-interactive and best-effort: it stores its own evidence and logs only below `.context/demo-reels/`, may start one qualifying local development process under `references/environment-startup.md` only when the parent passes `--start-if-easy`, never uploads evidence, and returns `Tier: skipped` instead of asking a question or blocking its parent when safe capture is unavailable.
 - `--base-commit` pins inference to the diff already validated by the parent. It does not authorize executing destructive product flows or weakening the secret preflight.
 
 ## Parse Arguments
@@ -29,6 +29,7 @@ Parse `$ARGUMENTS`. When a literal `--` separator is present, parse flags only b
 - `--tier <tier>`: optional requested tier. Valid tiers: `static`, `before-after`, `browser-reel`, `terminal-recording`.
 - `--for-pr-description`: internal delegated mode. Require exactly one accompanying `--base-commit <oid>` value.
 - `--base-commit <oid>`: require a full 40-character lowercase commit OID and use it as the diff base when inferring the capture target. Reject this flag outside `--for-pr-description` mode.
+- `--start-if-easy`: internal startup capability. Accept it only with valid delegated PR mode; otherwise reject it. Set `START_IF_EASY=true` only when this flag is present.
 
 Set `DELEGATED_PR_MODE=true` only when `--for-pr-description` and its valid `--base-commit` are both present. Reject unknown flags and conflicting repeated values. Require delegated callers to put trusted flags before exactly one `--` separator and the capture target after it.
 
@@ -81,7 +82,7 @@ Store the returned path as `DEMO_REEL_DIR`. Put every artifact for this run in t
 
 ### Step 3: Discover Web App URL When Needed
 
-If the target is web UI and no explicit `--url` was provided, use the shared dev-server detector. Do not start a server and do not duplicate its port heuristics:
+If the target is web UI and no explicit `--url` was provided, use the shared dev-server detector first. Do not duplicate its port heuristics:
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh" auto
@@ -91,10 +92,12 @@ Handle output:
 
 - `http://...` or `https://...`: use it as `TARGET_URL`.
 - `__MULTIPLE_URLS__`: ask the user to choose unless the caller already supplied a route-specific target; in delegated mode, skip instead of prompting.
-- `__NO_RUNNING_SERVER__`: fall back to non-browser tiers only if they still prove the behavior; otherwise return `Tier: skipped` in delegated mode, or stop and tell the user to start the dev server in direct mode.
+- `__NO_RUNNING_SERVER__`: when `START_IF_EASY=true` and the target is UI-facing, read `references/environment-startup.md` and make its bounded best-effort startup attempt. If startup does not produce one reachable URL, fall back to non-browser tiers only if they still prove the behavior; otherwise return `Tier: skipped` in delegated mode with the startup reason. Without that capability, retain the previous behavior: fall back to a useful non-browser tier, return a skipped result in delegated mode, or tell the user to start the server in direct mode.
 - `ERROR: ...`: return `Tier: skipped` with the diagnostic in delegated mode; otherwise stop and report it.
 
 When checking env files for URL discovery, the shared script reads only `PORT=` assignments. Never print full env-file contents or non-port variables.
+
+When this skill starts an environment, keep its process handle through capture and execute the reference's cleanup step before returning success, skipped, or failure output.
 
 ### Step 4: Tool Preflight
 

@@ -15,6 +15,8 @@ load 'test_helper/common'
     grep -qF -- "--attach file" "$create"
     grep -qF "also pass \`--visual --for-pr-create\` when \`ATTACHMENTS_SUPPORTED=true\`" "$create"
     grep -qF "the generator must treat visual evidence as relevant and attempt capture whenever a safe runnable surface is available" "$create"
+    grep -qF "make a bounded attempt to start an easy, safe local development environment" "$create"
+    grep -qF "additionally pass \`--start-if-easy\` as the guarded environment-startup capability" "$create"
     grep -qF "DEMO_EVIDENCE_MANIFEST:" "$create"
     grep -qF "scripts/prepare-demo-attachments.py" "$create"
     grep -qF "Demo capture and attachment preparation are best-effort" "$create"
@@ -39,7 +41,7 @@ load 'test_helper/common'
     grep -qF "Do not retry attachments automatically" "$confirmation"
     grep -qF "github-cli-pr-create-attachments" "$sources"
     grep -qF "github-cli-attachment-validation" "$sources"
-    grep -qF "UI-facing changes trigger a best-effort screenshot/video capture attempt" ../README.md
+    grep -qF "UI-facing changes trigger best-effort local environment startup and screenshot/video capture" ../README.md
   '
 
 	assert_required_contracts_registered \

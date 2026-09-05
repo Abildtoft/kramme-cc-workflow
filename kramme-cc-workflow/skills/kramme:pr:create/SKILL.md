@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:create
-description: Create a PR from the current branch with a generated description. UI-facing changes trigger a best-effort screenshot/video capture attempt, and successful evidence is attached. Rewrites unpublished work into narrative commits, recovers an exact-tip remote, or safely appends committed and auto-included local work when the existing remote is at or behind local HEAD.
+description: Create a PR from the current branch with a generated description. UI-facing changes trigger best-effort local environment startup and screenshot/video capture when straightforward, and successful evidence is attached. Rewrites unpublished work into narrative commits, recovers an exact-tip remote, or safely appends committed and auto-included local work when the existing remote is at or behind local HEAD.
 argument-hint: "[--auto] [--draft] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: true
 user-invocable: true
@@ -317,7 +317,7 @@ Recovery:
 
 Before invoking the generator, run `env GH_PROMPT_DISABLED=1 gh pr create --help` and inspect its successful output for the exact `--attach file` flag. This proves only that the installed CLI accepts attachment syntax; repository permissions, authentication type, and GitHub host support are rechecked by `gh` at the Step 8.4 creation boundary. Set `ATTACHMENTS_SUPPORTED=true` only when both the help command and flag check succeed; otherwise set it to `false`, record that the installed GitHub CLI lacks usable attachment support, and continue without visual capture.
 
-Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--auto --no-update --base {base-source-ref} --base-commit {base-ref}` because this orchestrator owns the review/edit gate, the sub-skill must use the same pinned base commit while retaining branch metadata, and it must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation; also pass `--visual --for-pr-create` when `ATTACHMENTS_SUPPORTED=true`, so the generator can decide from the pinned diff whether observable behavior warrants capture and knows this exact parent owns the manifest handoff. When the pinned diff is UI-facing, the generator must treat visual evidence as relevant and attempt capture whenever a safe runnable surface is available; inability to capture remains best-effort and must not block Pull Request creation. When `{linear-issue-id}` is set, also pass `--linear-issue {linear-issue-id}` so the generator uses the validated identifier instead of re-extracting it from the branch.
+Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--auto --no-update --base {base-source-ref} --base-commit {base-ref}` because this orchestrator owns the review/edit gate, the sub-skill must use the same pinned base commit while retaining branch metadata, and it must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation; also pass `--visual --for-pr-create` when `ATTACHMENTS_SUPPORTED=true`, so the generator can decide from the pinned diff whether observable behavior warrants capture and knows this exact parent owns the manifest handoff. When both `AUTO_MODE=true` and `ATTACHMENTS_SUPPORTED=true`, additionally pass `--start-if-easy` as the guarded environment-startup capability. When the pinned diff is UI-facing, the generator must treat visual evidence as relevant and attempt capture whenever a safe runnable surface is available. With that startup capability, when no app is already running, the delegated capture worker must also make a bounded attempt to start an easy, safe local development environment under its environment-startup contract. Inability to start or capture remains best-effort and must not block Pull Request creation. When `{linear-issue-id}` is set, also pass `--linear-issue {linear-issue-id}` so the generator uses the validated identifier instead of re-extracting it from the branch.
 
 The skill will:
 
@@ -325,7 +325,7 @@ The skill will:
 - Check for Linear issue references in branch name
 - Generate a conventional commit-style **title** (`<type>(<scope>): <description>`)
 - Generate a comprehensive description
-- For UI-facing changes when attachment support is available, attempt local screenshot/video capture and return `DEMO_EVIDENCE_MANIFEST` outside the PR body when capture succeeds
+- For UI-facing changes when attachment support is available, start a straightforward safe local environment when needed, attempt screenshot/video capture, and return `DEMO_EVIDENCE_MANIFEST` outside the PR body when capture succeeds
 
 When it returns, continue to Step 8. See the "Workflow rule" near the top of this skill.
 
