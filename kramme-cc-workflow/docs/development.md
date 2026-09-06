@@ -74,7 +74,11 @@ make -C kramme-cc-workflow test-format
 make -C kramme-cc-workflow test-skill-usage
 ```
 
-The initial coverage baselines are 80% lines, 70% branches, and 80% functions for Node, plus a 35% production-line aggregate for Python. They sit below the measured results (84.26%/75.56%/86.38% for Node, and 49.59% for Python locally against 51.23% in CI) and should only ratchet upward.
+The initial coverage baselines are 80% lines, 70% branches, and 80% functions for Node, plus a 35% production-line aggregate for Python. They sit below the measured results (91.82%/82.66%/95.24% for the Node production aggregate on Node 20.20.2, and 49.59% for Python locally against 51.23% in CI) and should only ratchet upward.
+
+`coverage-node` keeps the human-readable test report separate from the machine-readable LCOV report. The gate matches each LCOV source to the JavaScript production inventory, sums hit and total counters for `measured` sources, and applies the baselines to those weighted production totals. Test files and registered `contract_only` sources do not contribute to the denominator. Missing measured sources, unregistered production sources, malformed records, duplicate source records, and impossible hit/total pairs fail the gate. A valid zero branch or function denominator is treated as 100% because the measured sources contain no obligations for that metric.
+
+The copied-Makefile regression fixture was exercised with Node 20.20.2 and the development runtime, Node 24.14.1. On both runtimes, deliberately undercovered production failed the gate despite a test file containing 120 fully executed assertions; the counter fixtures also cover unequal file sizes so a simple average of per-file percentages cannot satisfy the contract.
 
 `coverage-python` also enforces a 20% per-file floor (`PYTHON_FILE_COVERAGE_MIN`) on every `measured` source and prints the ten lowest-covered files with the floor each one must clear. Sources that predate the floor are seeded in `python.measured_floors` with the lower value they currently hold; a seeded file that climbs 15 points past the default floor (`PYTHON_FILE_COVERAGE_STALE_MARGIN`) fails the gate until its entry is deleted, so the ratchet only moves upward. Keep floors conservative: `trace` attributes lines slightly differently across supported Python versions, so a floor set at a file's exact measurement will flap.
 
