@@ -51,19 +51,9 @@ is_conductor_path() {
 
 normalize_existing_path() {
   local path="$1"
-  local dir
-  local base
-  dir=$(dirname "$path")
-  base=$(basename "$path")
-
-  if [ ! -d "$dir" ]; then
-    printf '%s\n' "$path"
-    return
-  fi
-
   (
-    cd "$dir"
-    printf '%s/%s\n' "$(pwd -P)" "$base"
+    CDPATH='' cd -- "$path" > /dev/null 2>&1 || exit 1
+    pwd -P
   )
 }
 
@@ -255,8 +245,18 @@ case "$action" in
       echo "Refusing to remove worktree without --yes." >&2
       exit 1
     fi
-    normalized_path=$(normalize_existing_path "$path")
-    if is_conductor_path "$normalized_path" && [ "$allow_conductor" -ne 1 ]; then
+    if ! normalized_path=$(normalize_existing_path "$path"); then
+      echo "Refusing to remove worktree with unresolved path: $path" >&2
+      exit 1
+    fi
+    normalized_current_workspace_path=""
+    if [ -n "${CONDUCTOR_WORKSPACE_PATH:-}" ]; then
+      if ! normalized_current_workspace_path=$(normalize_existing_path "$CONDUCTOR_WORKSPACE_PATH"); then
+        echo "Refusing to remove worktree while configured Conductor workspace path is unresolved: $CONDUCTOR_WORKSPACE_PATH" >&2
+        exit 1
+      fi
+    fi
+    if CONDUCTOR_WORKSPACE_PATH="$normalized_current_workspace_path" is_conductor_path "$normalized_path" && [ "$allow_conductor" -ne 1 ]; then
       echo "Refusing to remove likely Conductor workspace without --allow-conductor: $normalized_path" >&2
       exit 1
     fi
