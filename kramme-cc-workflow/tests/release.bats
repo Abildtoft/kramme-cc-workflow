@@ -61,6 +61,37 @@ init_release_fixture_repo() {
   git -C "$TMP_ROOT" config tag.gpgsign false
 }
 
+# Create a disposable bare remote holding the fixture's initial commit on main.
+init_release_fixture_origin() {
+  ORIGIN="$TMP_ROOT/origin.git"
+  git init --bare "$ORIGIN" >/dev/null
+  git -C "$TMP_ROOT" remote add origin "$ORIGIN"
+  git -C "$TMP_ROOT" push -q origin HEAD:refs/heads/main
+}
+
+# Record every push the release attempts, optionally rejecting it, so tests can assert
+# which remote writes were even tried rather than only their final effect.
+install_release_push_logging_git() {
+  MOCK_BIN="$TMP_ROOT/bin"
+  mkdir -p "$MOCK_BIN"
+  # Exported like RELEASE_REAL_GIT: the mock reads it from its own environment, so a
+  # caller that forgot to thread it through would log nowhere and still assert clean.
+  export RELEASE_PUSH_LOG="$TMP_ROOT/push.log"
+  : >"$RELEASE_PUSH_LOG"
+  cat >"$MOCK_BIN/git" <<'SH'
+#!/bin/sh
+if [ "$1" = "push" ]; then
+  printf '%s\n' "$*" >>"$RELEASE_PUSH_LOG"
+  if [ -n "$RELEASE_PUSH_FAILS" ]; then
+    echo "simulated push rejection" >&2
+    exit 77
+  fi
+fi
+exec "$RELEASE_REAL_GIT" "$@"
+SH
+  chmod +x "$MOCK_BIN/git"
+}
+
 install_release_make_mock() {
   MOCK_BIN="$TMP_ROOT/bin"
   mkdir -p "$MOCK_BIN"
@@ -517,6 +548,116 @@ SH
   [ "$(git hash-object "$TMP_ROOT/index.before")" = "$(git hash-object "$TMP_ROOT/.git/index")" ]
 }
 
+@test "release refuses to replace an existing local release branch" {
+  INITIAL_BRANCH="$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)"
+  git -C "$TMP_ROOT" branch release/v0.64.1
+  BRANCH_OID_BEFORE="$(git -C "$TMP_ROOT" rev-parse release/v0.64.1)"
+  cp "$TMP_ROOT/.git/index" "$TMP_ROOT/index.before"
+
+  # No make mock is installed, so reaching the dependency check would fail differently.
+  run python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"local branch release/v0.64.1 already exists"* ]]
+  [[ "$output" == *"No file, branch, or remote ref was changed."* ]]
+  [ "$(git -C "$TMP_ROOT" rev-parse release/v0.64.1)" = "$BRANCH_OID_BEFORE" ]
+  [ "$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)" = "$INITIAL_BRANCH" ]
+  [ "$(git hash-object "$TMP_ROOT/index.before")" = "$(git hash-object "$TMP_ROOT/.git/index")" ]
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/package.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+}
+
+@test "release refuses to replace an existing remote release branch" {
+  init_release_fixture_origin
+  git -C "$TMP_ROOT" push -q origin HEAD:refs/heads/release/v0.64.1
+  REMOTE_OID_BEFORE="$(git -C "$ORIGIN" rev-parse refs/heads/release/v0.64.1)"
+
+  run python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"remote branch origin/release/v0.64.1 already exists"* ]]
+  [[ "$output" == *"No file, branch, or remote ref was changed."* ]]
+  [ "$(git -C "$ORIGIN" rev-parse refs/heads/release/v0.64.1)" = "$REMOTE_OID_BEFORE" ]
+  [ -z "$(git -C "$TMP_ROOT" branch --list release/v0.64.1)" ]
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+}
+
+@test "release refuses unrelated staged content and leaves the index untouched" {
+  printf 'unrelated staged\n' >"$TMP_ROOT/unrelated.txt"
+  git -C "$TMP_ROOT" add unrelated.txt
+  STAGED_BLOB_BEFORE="$(git -C "$TMP_ROOT" rev-parse :unrelated.txt)"
+  cp "$TMP_ROOT/.git/index" "$TMP_ROOT/index.before"
+
+  run python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unrelated staged changes would enter the release commit: unrelated.txt"* ]]
+  [[ "$output" == *"No file, branch, or remote ref was changed."* ]]
+  [ "$(git hash-object "$TMP_ROOT/index.before")" = "$(git hash-object "$TMP_ROOT/.git/index")" ]
+  [ "$(git -C "$TMP_ROOT" rev-parse :unrelated.txt)" = "$STAGED_BLOB_BEFORE" ]
+  [ -z "$(git -C "$TMP_ROOT" branch --list release/v0.64.1)" ]
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+}
+
+@test "local release preparation writes no remote refs and leaves the installer version alone" {
+  install_release_make_mock
+  init_release_fixture_origin
+  install_release_push_logging_git
+  printf '{\n  "name": "installer",\n  "version": "9.9.9"\n}\n' >"$TMP_ROOT/package.json"
+  git -C "$ORIGIN" show-ref >"$TMP_ROOT/origin-refs.before"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" \
+    bash -c 'printf "y\n" | python3 "$1" patch' _ "$PLUGIN_ROOT/scripts/release.py"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Created branch release/v0.64.1"* ]]
+  [[ "$output" == *"Run: git push origin release/v0.64.1"* ]]
+  [ ! -s "$RELEASE_PUSH_LOG" ]
+  git -C "$ORIGIN" show-ref >"$TMP_ROOT/origin-refs.after"
+  diff "$TMP_ROOT/origin-refs.before" "$TMP_ROOT/origin-refs.after"
+  [ "$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)" = "release/v0.64.1" ]
+  [ "$(git -C "$TMP_ROOT" log -1 --pretty=%s)" = "Release v0.64.1" ]
+  grep -q '"version": "0.64.1"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  grep -q '"version": "9.9.9"' "$TMP_ROOT/package.json"
+}
+
+@test "failed CI push leaves every existing remote ref at its original OID" {
+  install_release_make_mock
+  init_release_fixture_origin
+  install_release_push_logging_git
+  git -C "$ORIGIN" show-ref >"$TMP_ROOT/origin-refs.before"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" RELEASE_PUSH_FAILS=1 \
+    python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Release git step failed: git push origin release/v0.64.1"* ]]
+  [[ "$output" == *"Restored release files to their pre-release state."* ]]
+  [ "$(cat "$RELEASE_PUSH_LOG")" = "push origin release/v0.64.1" ]
+  git -C "$ORIGIN" show-ref >"$TMP_ROOT/origin-refs.after"
+  diff "$TMP_ROOT/origin-refs.before" "$TMP_ROOT/origin-refs.after"
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+
+  # The attempt created a branch it must not delete, so it has to name it.
+  [ -n "$(git -C "$TMP_ROOT" branch --list release/v0.64.1)" ]
+  [[ "$output" == *"Left local branch release/v0.64.1 in place"* ]]
+  [[ "$output" == *"git branch -D release/v0.64.1"* ]]
+
+  # Retrying without that cleanup refuses on the leftover instead of replacing it.
+  LEFTOVER_OID="$(git -C "$TMP_ROOT" rev-parse release/v0.64.1)"
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" RELEASE_PUSH_FAILS=1 \
+    python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"local branch release/v0.64.1 already exists"* ]]
+  [ "$(git -C "$TMP_ROOT" rev-parse release/v0.64.1)" = "$LEFTOVER_OID" ]
+  [ "$(cat "$RELEASE_PUSH_LOG")" = "push origin release/v0.64.1" ]
+}
+
 @test "release fixtures keep signing local when the inherited signer is unavailable" {
   [ "$(git config --global --get commit.gpgsign)" = "true" ]
   [ "$(git config --global --get tag.gpgsign)" = "true" ]
@@ -530,6 +671,162 @@ SH
   [ "$status" -eq 0 ]
   [ "$(git -C "$TMP_ROOT" log -1 --pretty=%s)" = "Release v0.64.1" ]
   [ "$(git -C "$TMP_ROOT" log -1 --pretty='%G?')" = "N" ]
+}
+
+@test "release refuses when origin cannot be inspected" {
+  git -C "$TMP_ROOT" remote add origin "$TMP_ROOT/nonexistent.git"
+  cp "$TMP_ROOT/.git/index" "$TMP_ROOT/index.before"
+
+  run python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"could not inspect origin/release/v0.64.1"* ]]
+  [[ "$output" == *"No file, branch, or remote ref was changed."* ]]
+  [ "$(git hash-object "$TMP_ROOT/index.before")" = "$(git hash-object "$TMP_ROOT/.git/index")" ]
+  [ -z "$(git -C "$TMP_ROOT" branch --list release/v0.64.1)" ]
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+}
+
+@test "release refuses work staged during verification and keeps it staged" {
+  MOCK_BIN="$TMP_ROOT/bin"
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/make" <<'SH'
+#!/bin/sh
+set -e
+
+if [ "$*" = "check-deps" ]; then
+  exit 0
+fi
+
+if [ "$*" != "verify" ]; then
+  echo "unexpected make args: $*" >&2
+  exit 2
+fi
+
+grep -q '"version": "0.64.1"' .claude-plugin/plugin.json
+# Stand in for a contributor staging unrelated work while verification runs.
+printf 'staged during verify\n' >"$RELEASE_RACE_ROOT/unrelated.txt"
+git -C "$RELEASE_RACE_ROOT" add unrelated.txt
+SH
+  chmod +x "$MOCK_BIN/make"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" RELEASE_RACE_ROOT="$TMP_ROOT" \
+    python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"unrelated staged changes would enter the release commit: unrelated.txt"* ]]
+  [[ "$output" == *"Aborting after restoring release files."* ]]
+  # The refusal must not discard the staging it refused for.
+  [ "$(git -C "$TMP_ROOT" rev-parse :unrelated.txt)" = "$(git hash-object "$TMP_ROOT/unrelated.txt")" ]
+  [ -z "$(git -C "$TMP_ROOT" branch --list release/v0.64.1)" ]
+  grep -q '"version": "0.64.0"' "$PLUGIN_ROOT/.claude-plugin/plugin.json"
+  ! grep -q '## \[0.64.1\]' "$PLUGIN_ROOT/CHANGELOG.md"
+}
+
+@test "release ignores a rename Git detects in the working tree" {
+  install_release_make_mock
+  printf 'aaaa\nbbbb\ncccc\ndddd\neeee\n' >"$TMP_ROOT/rename-source.txt"
+  git -C "$TMP_ROOT" add rename-source.txt
+  git -C "$TMP_ROOT" commit -m "add rename source" >/dev/null
+  mv "$TMP_ROOT/rename-source.txt" "$TMP_ROOT/rename-target.txt"
+  git -C "$TMP_ROOT" add -N rename-target.txt
+  # Git reports this in the worktree column, which stages nothing.
+  [[ "$(git -C "$TMP_ROOT" status --porcelain -- rename-source.txt rename-target.txt)" == " R "* ]]
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" bash -c 'printf "y\n" | python3 "$1" patch' _ "$PLUGIN_ROOT/scripts/release.py"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Release preflight refused"* ]]
+  [ "$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)" = "release/v0.64.1" ]
+  [ "$(git -C "$TMP_ROOT" log -1 --pretty=%s)" = "Release v0.64.1" ]
+}
+
+@test "the branch re-check does not re-inspect the remote" {
+  init_release_fixture_origin
+  MOCK_BIN="$TMP_ROOT/bin"
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/make" <<'SH'
+#!/bin/sh
+set -e
+
+if [ "$*" = "check-deps" ]; then
+  exit 0
+fi
+
+if [ "$*" != "verify" ]; then
+  echo "unexpected make args: $*" >&2
+  exit 2
+fi
+
+grep -q '"version": "0.64.1"' .claude-plugin/plugin.json
+# Break the remote after the first preflight has already inspected it.
+git -C "$RELEASE_RACE_ROOT" remote set-url origin "$RELEASE_RACE_ROOT/nonexistent.git"
+SH
+  chmod +x "$MOCK_BIN/make"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" RELEASE_RACE_ROOT="$TMP_ROOT" \
+    bash -c 'printf "y\n" | python3 "$1" patch' _ "$PLUGIN_ROOT/scripts/release.py"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"could not inspect origin"* ]]
+  [ "$(git -C "$TMP_ROOT" rev-parse --abbrev-ref HEAD)" = "release/v0.64.1" ]
+  [ "$(git -C "$TMP_ROOT" log -1 --pretty=%s)" = "Release v0.64.1" ]
+}
+
+@test "release commits content staged in its own files" {
+  install_release_make_mock
+  printf '# Changelog\nstaged release note\n' >"$PLUGIN_ROOT/CHANGELOG.md"
+  git -C "$TMP_ROOT" add kramme-cc-workflow/CHANGELOG.md
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" bash -c 'printf "y\n" | python3 "$1" patch' _ "$PLUGIN_ROOT/scripts/release.py"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"Release preflight refused"* ]]
+  # Documented in RELEASE.md: release-owned files are rewritten from disk and committed,
+  # so staging them is not the "unrelated staged content" the preflight refuses.
+  git -C "$TMP_ROOT" show HEAD:kramme-cc-workflow/CHANGELOG.md | grep -q 'staged release note'
+  [ "$(git -C "$TMP_ROOT" show --name-only --pretty=format: HEAD | sed '/^$/d' | sort | tr '\n' ' ')" \
+    = "kramme-cc-workflow/.claude-plugin/plugin.json kramme-cc-workflow/CHANGELOG.md kramme-cc-workflow/package.json " ]
+}
+
+@test "an incomplete refusal rollback names the files it could not restore" {
+  MOCK_BIN="$TMP_ROOT/bin"
+  mkdir -p "$MOCK_BIN"
+  cat >"$MOCK_BIN/make" <<'SH'
+#!/bin/sh
+set -e
+
+if [ "$*" = "check-deps" ]; then
+  exit 0
+fi
+
+if [ "$*" != "verify" ]; then
+  echo "unexpected make args: $*" >&2
+  exit 2
+fi
+
+grep -q '"version": "0.64.1"' .claude-plugin/plugin.json
+# Trigger the re-check, then make one release file impossible to restore.
+printf 'staged during verify\n' >"$RELEASE_RACE_ROOT/unrelated.txt"
+git -C "$RELEASE_RACE_ROOT" add unrelated.txt
+chmod 444 CHANGELOG.md
+SH
+  chmod +x "$MOCK_BIN/make"
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" RELEASE_RACE_ROOT="$TMP_ROOT" \
+    python3 "$PLUGIN_ROOT/scripts/release.py" patch --ci
+
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"Still holding this release's content: $PLUGIN_ROOT/CHANGELOG.md"* ]]
+  [[ "$output" == *"Restore those files yourself; your index was not touched."* ]]
+  [[ "$output" == *"Aborting with incomplete rollback."* ]]
+  # No manual-recovery block: it would tell the operator to overwrite the index.
+  [[ "$output" != *"Automatic rollback was incomplete."* ]]
+  # The staged work that caused the refusal is still staged.
+  [ "$(git -C "$TMP_ROOT" rev-parse :unrelated.txt)" = "$(git hash-object "$TMP_ROOT/unrelated.txt")" ]
+  [ -z "$(git -C "$TMP_ROOT" branch --list release/v0.64.1)" ]
+  chmod 644 "$PLUGIN_ROOT/CHANGELOG.md"
 }
 
 @test "release workflow isolates SkillSpector from verification dependencies" {
