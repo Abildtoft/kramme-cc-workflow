@@ -778,7 +778,9 @@ src/component.tsx"
 MY_REVIEW_OVERVIEW.md
 REVIEW_OVERVIEW.markdown
 AUDIT_IMPLEMENTATION_REPORT.md.bak
-AUDIT_SPEC_REPORT.md.bak"
+AUDIT_SPEC_REPORT.md.bak
+DEPRECATION_PLANNING.md
+DEPRECATION_PLAN_billing-v1-api.txt"
 	run run_hook "git commit -m 'test'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
@@ -846,6 +848,20 @@ REVIEW_SUMMARY.md"
 @test "allows git commit when siw/OPEN_ISSUES_OVERVIEW.md is staged" {
 	mock_git_staged "siw/OPEN_ISSUES_OVERVIEW.md"
 	run run_hook "git commit -m 'overview staged'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows git commit when siw/issues content is staged" {
+	mock_git_staged "siw/issues/ISSUE-G-001.md"
+	run run_hook "git commit -m 'issue staged'"
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows git commit when session-search cache content is staged" {
+	mock_git_staged ".context/session-search/results.json"
+	run run_hook "git commit -m 'session search cache staged'"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
@@ -939,6 +955,41 @@ REVIEW_SUMMARY.md"
 	run run_hook "git commit -m 'qa baseline staged'"
 	is_blocked
 	[[ "$output" == *"QA_BASELINE.json"* ]]
+}
+
+@test "blocks git commit when OUTSIDE_VIEW_REPORT.md is staged" {
+	mock_git_staged "OUTSIDE_VIEW_REPORT.md"
+	run run_hook "git commit -m 'outside view report staged'"
+	is_blocked
+	[[ "$output" == *"OUTSIDE_VIEW_REPORT.md"* ]]
+}
+
+@test "blocks git commit when AGENT_NATIVE_AUDIT.md is staged" {
+	mock_git_staged "AGENT_NATIVE_AUDIT.md"
+	run run_hook "git commit -m 'agent native audit staged'"
+	is_blocked
+	[[ "$output" == *"AGENT_NATIVE_AUDIT.md"* ]]
+}
+
+@test "blocks git commit when legacy DEPRECATION_PLAN.md is staged" {
+	mock_git_staged "DEPRECATION_PLAN.md"
+	run run_hook "git commit -m 'legacy deprecation plan staged'"
+	is_blocked
+	[[ "$output" == *"DEPRECATION_PLAN.md"* ]]
+}
+
+@test "blocks git commit when suffixed deprecation plan matching glob is staged" {
+	mock_git_staged "DEPRECATION_PLAN_billing-v1-api.md"
+	run run_hook "git commit -m 'suffixed deprecation plan staged'"
+	is_blocked
+	[[ "$output" == *"DEPRECATION_PLAN_billing-v1-api.md"* ]]
+}
+
+@test "blocks git commit when suffixed deprecation plan is staged in subdirectory" {
+	mock_git_staged "siw/DEPRECATION_PLAN_billing-v1-api.md"
+	run run_hook "git commit -m 'suffixed deprecation plan in siw'"
+	is_blocked
+	[[ "$output" == *"siw/DEPRECATION_PLAN_billing-v1-api.md"* ]]
 }
 
 @test "blocks git commit when configured artifact is staged with other files" {
