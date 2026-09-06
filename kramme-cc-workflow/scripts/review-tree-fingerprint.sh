@@ -4,14 +4,15 @@
 # evidence and could also mutate: tracked files that differ from HEAD (staged
 # or unstaged) and untracked, non-ignored files.
 #
-# Output is one "<state><TAB><path>" line per path, sorted, where <state> is a
-# git blob OID for a regular file, "absent" for a listed-but-missing path,
-# "symlink:<target>", "nonfile", or "unreadable".
+# Output starts with one "@head<TAB><commit>" metadata record, followed by one
+# sorted "<state><TAB><path>" line per path. <state> is a git blob OID for a
+# regular file, "absent" for a listed-but-missing path, "symlink:<target>",
+# "nonfile", or "unreadable".
 #
 # Capture the manifest before launching review agents and again after
-# collecting their findings. Any difference means the shared working tree
-# changed during the review, so findings citing the differing paths were
-# formed against text that no longer exists on disk.
+# collecting their findings. Changed HEAD metadata invalidates the complete
+# review batch; changed path records require re-verifying findings for those
+# paths against the current working tree.
 #
 # Ignored files are deliberately excluded: build output and caches are not
 # review evidence, and hashing them would make every incidental write look
@@ -25,7 +26,8 @@ Usage: review-tree-fingerprint.sh
 
 Prints a sorted manifest of the working tree's mutable review surface:
 tracked paths differing from HEAD plus untracked, non-ignored paths.
-Diff two captures to see which paths changed during a review.
+The first record identifies the captured HEAD commit. Compare it before path
+records; a different commit invalidates the review rather than naming a path.
 USAGE
 }
 
@@ -47,7 +49,7 @@ if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   exit 1
 fi
 
-if ! git rev-parse --verify --quiet HEAD > /dev/null; then
+if ! CAPTURED_HEAD=$(git rev-parse --verify --quiet 'HEAD^{commit}'); then
   echo "review-tree-fingerprint.sh: HEAD has no commit to compare against" >&2
   exit 1
 fi
@@ -58,8 +60,12 @@ REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT"
 
 collect_paths() {
-  git diff --name-only -z HEAD --
-  git ls-files --others --exclude-standard -z
+  local captured_head=$1
+
+  # This function runs in a tested pipeline, where Bash suppresses errexit.
+  # Propagate each producer failure explicitly so the manifest fails closed.
+  git diff --name-only -z "$captured_head" -- || return 1
+  git ls-files --others --exclude-standard -z || return 1
 }
 
 describe_paths() {
@@ -78,4 +84,18 @@ describe_paths() {
   done
 }
 
-collect_paths | describe_paths | LC_ALL=C sort -u
+if ! PATH_MANIFEST=$(collect_paths "$CAPTURED_HEAD" | describe_paths | LC_ALL=C sort -u); then
+  echo "review-tree-fingerprint.sh: could not capture working-tree paths" >&2
+  exit 1
+fi
+
+CURRENT_HEAD=$(git rev-parse --verify 'HEAD^{commit}')
+if [ "$CURRENT_HEAD" != "$CAPTURED_HEAD" ]; then
+  echo "review-tree-fingerprint.sh: HEAD changed during manifest capture" >&2
+  exit 1
+fi
+
+printf '@head\t%s\n' "$CAPTURED_HEAD"
+if [ -n "$PATH_MANIFEST" ]; then
+  printf '%s\n' "$PATH_MANIFEST"
+fi
