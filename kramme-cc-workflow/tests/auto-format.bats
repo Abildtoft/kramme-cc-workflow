@@ -603,7 +603,7 @@ EOF
 	[ -f "$debug_log" ]
 	[ "$(wc -c <"$debug_log")" -le 65536 ]
 	grep -q 'hostile' "$debug_log"
-	log_mode=$(stat -f %Lp "$debug_log" 2>/dev/null || stat -c %a "$debug_log")
+	log_mode=$(stat -c %a "$debug_log" 2>/dev/null || stat -f %Lp "$debug_log")
 	[ "$log_mode" = "600" ]
 }
 
