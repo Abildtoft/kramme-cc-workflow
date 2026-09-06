@@ -300,14 +300,24 @@ def _retry_recovery_command(git_root: Path, args: list[str]) -> RecoveryCommandO
     )
 
 
-def _files_match_snapshot(snapshot: dict[Path, bytes | None]) -> bool:
+def unrestored_release_files(snapshot: dict[Path, bytes | None]) -> list[str]:
+    """Return captured files whose contents still differ, for recovery output."""
+    stale = []
     for path, expected in snapshot.items():
-        if expected is None:
-            if path.exists():
-                return False
-        elif not path.exists() or path.read_bytes() != expected:
-            return False
-    return True
+        try:
+            if expected is None:
+                matches = not path.exists()
+            else:
+                matches = path.exists() and path.read_bytes() == expected
+        except OSError:
+            matches = False
+        if not matches:
+            stale.append(str(path))
+    return sorted(stale)
+
+
+def _files_match_snapshot(snapshot: dict[Path, bytes | None]) -> bool:
+    return not unrestored_release_files(snapshot)
 
 
 def _write_recovery_backups(snapshot: dict[Path, bytes | None]) -> dict[Path, Path]:
@@ -610,6 +620,14 @@ def main() -> int:
     if args.dry_run:
         print("(dry run - no changes will be made)\n")
 
+    # Refuse before the first version or changelog edit; a later preflight would still mutate.
+    try:
+        check_release_preflight(repo_root, new_version)
+    except ReleasePreflightError as exc:
+        print(f"\nRelease preflight refused: {exc}")
+        print("No file, branch, or remote ref was changed.")
+        return 1
+
     if not args.dry_run:
         print("\nChecking release verification dependencies...")
         if not check_release_dependencies(repo_root):
@@ -660,6 +678,34 @@ def main() -> int:
         # 4. Git commit and push branch
         print("4. Creating release branch...")
         branch_name = git_commit_and_push_branch(repo_root, new_version, args.dry_run, args.ci)
+    except ReleasePreflightError as exc:
+        # This refusal precedes every branch, HEAD, and index change this attempt makes,
+        # so only the version and changelog edits need undoing. Restoring the full
+        # snapshot would rewrite .git/index and discard the staged work being protected.
+        restored = True
+        if release_snapshot is not None:
+            try:
+                restore_files(release_snapshot.files)
+            except OSError:
+                # A partial restore leaves later files untouched too; the end-state
+                # check below decides the outcome and names every one of them.
+                pass
+            stale = unrestored_release_files(release_snapshot.files)
+            restored = not stale
+            if restored:
+                print("  Restored release files to their pre-release state.")
+            else:
+                # print_manual_recovery would tell the operator to overwrite .git/index,
+                # which holds the staged work this refusal protects. Name the files
+                # instead and leave the index alone.
+                print(f"  Still holding this release's content: {', '.join(stale)}")
+                print("  Restore those files yourself; your index was not touched.")
+        print(f"\nRelease preflight refused: {exc}")
+        if not restored:
+            print("Aborting with incomplete rollback.")
+            return 2
+        print("Aborting after restoring release files.")
+        return 1
     except ChangelogHistoryError as exc:
         if release_snapshot is not None:
             if not restore_release_state(release_snapshot).succeeded:
