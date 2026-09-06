@@ -25,11 +25,85 @@ teardown() {
   fi
 }
 
-@test "fingerprint reports a clean tree as an empty manifest" {
+@test "fingerprint reports a clean tree with HEAD metadata" {
   run "$FINGERPRINT"
 
   [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  [ "$output" = $'@head\t'"$(git rev-parse HEAD)" ]
+}
+
+@test "fingerprint is stable at one commit and changes across clean commits and branches" {
+  local initial_branch initial_manifest advanced_manifest
+  initial_branch="$(git branch --show-current)"
+  initial_manifest="$("$FINGERPRINT")"
+
+  [ "$("$FINGERPRINT")" = "$initial_manifest" ]
+
+  git switch -c other-clean-branch > /dev/null
+  git commit --allow-empty -m "advance clean branch" > /dev/null
+  advanced_manifest="$("$FINGERPRINT")"
+
+  [ "$advanced_manifest" = $'@head\t'"$(git rev-parse HEAD)" ]
+  [ "$advanced_manifest" != "$initial_manifest" ]
+
+  git switch "$initial_branch" > /dev/null
+  [ "$("$FINGERPRINT")" = "$initial_manifest" ]
+}
+
+@test "fingerprint stays stable when TMPDIR is inside the worktree" {
+  local first_manifest second_manifest
+
+  first_manifest="$(TMPDIR="$WORK" "$FINGERPRINT")"
+  second_manifest="$(TMPDIR="$WORK" "$FINGERPRINT")"
+
+  [ "$first_manifest" = "$second_manifest" ]
+  [ "$first_manifest" = $'@head\t'"$(git rev-parse HEAD)" ]
+}
+
+@test "fingerprint fails rather than spanning a moving HEAD" {
+  local fake_bin real_git
+  fake_bin="$TMP_DIR/bin"
+  real_git="$(command -v git)"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/git" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${1-}" = "ls-files" ] && [ "${2-}" = "--others" ]; then
+  "$REAL_GIT" commit --allow-empty -m "move head during capture" > /dev/null
+fi
+exec "$REAL_GIT" "$@"
+EOF
+  chmod +x "$fake_bin/git"
+
+  run env REAL_GIT="$real_git" PATH="$fake_bin:$PATH" "$FINGERPRINT"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"HEAD changed during manifest capture"* ]]
+  [[ "$output" != *$'@head\t'* ]]
+}
+
+@test "fingerprint fails without metadata when either path collection command fails" {
+  local failing_command fake_bin real_git
+  fake_bin="$TMP_DIR/bin"
+  real_git="$(command -v git)"
+  mkdir -p "$fake_bin"
+  cat > "$fake_bin/git" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+if [ "${1-}" = "$FAIL_COMMAND" ]; then
+  exit 23
+fi
+exec "$REAL_GIT" "$@"
+EOF
+  chmod +x "$fake_bin/git"
+
+  for failing_command in diff ls-files; do
+    run env FAIL_COMMAND="$failing_command" REAL_GIT="$real_git" PATH="$fake_bin:$PATH" "$FINGERPRINT"
+
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"could not capture working-tree paths"* ]]
+    [[ "$output" != *$'@head\t'* ]]
+  done
 }
 
 @test "fingerprint detects a mutated tracked file" {
@@ -53,6 +127,16 @@ teardown() {
   [[ "$output" == *"added.txt"* ]]
 }
 
+@test "fingerprint describes an untracked symlink without confusing metadata and paths" {
+  ln -s tracked.txt linked.txt
+
+  run "$FINGERPRINT"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == $'@head\t'"$(git rev-parse HEAD)"$'\n'* ]]
+  [[ "$output" == *$'symlink:tracked.txt\tlinked.txt'* ]]
+}
+
 @test "fingerprint marks a deleted tracked file as absent" {
   rm tracked.txt
 
@@ -72,7 +156,7 @@ teardown() {
   run "$FINGERPRINT"
 
   [ "$status" -eq 0 ]
-  [ -z "$output" ]
+  [ "$output" = $'@head\t'"$(git rev-parse HEAD)" ]
 }
 
 @test "fingerprint output is stable across invocation directories" {
@@ -103,6 +187,8 @@ teardown() {
   grep -qF "## Shared working tree" "$DISCIPLINE"
   grep -qF "**Every spawned reviewer is read-only.**" "$DISCIPLINE"
   grep -qF "scripts/review-tree-fingerprint.sh" "$DISCIPLINE"
+  grep -qF 'Parse the single `@head<TAB><commit>` metadata record before interpreting any path record.' "$DISCIPLINE"
+  grep -qF "discard all findings from the stale batch" "$DISCIPLINE"
   grep -qF "Drop any finding whose cited code does not reproduce." "$DISCIPLINE"
   grep -qF "Never revert or clean them automatically" "$DISCIPLINE"
   grep -qF "The post-review working-tree manifest matches the pre-launch capture" "$DISCIPLINE"
@@ -115,6 +201,8 @@ teardown() {
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$SKILL"
   grep -qF '**Working-tree integrity check.**' "$SKILL"
   grep -qF 'diff "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"' "$SKILL"
+  grep -qF 'Compare the `@head` metadata records before deriving `MUTATED_PATHS`' "$SKILL"
+  grep -qF 'stop without writing `REVIEW_OVERVIEW.md`' "$SKILL"
   grep -qF 'apply the mutation handling in the `Shared working tree` section of `references/review-discipline.md`' "$SKILL"
   grep -qF "stop without writing \`REVIEW_OVERVIEW.md\` and report the mutation instead" "$SKILL"
   ! grep -qF 'No reviewer may create, edit, delete, move, or rename files' "$SKILL"
@@ -127,6 +215,8 @@ teardown() {
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$TEAM_MODE"
   grep -qF "**working-tree integrity check**" "$TEAM_MODE"
   grep -qF "TREE_MANIFEST_AFTER" "$TEAM_MODE"
+  grep -qF 'compare the `@head` metadata records before interpreting path differences' "$TEAM_MODE"
+  grep -qF 'discard every finding from the stale batch' "$TEAM_MODE"
   ! grep -qF 'no creating, editing, deleting, moving, or renaming files' "$TEAM_MODE"
 }
 
@@ -139,6 +229,8 @@ teardown() {
   grep -qF "# Shared working tree" "$UX_DISCIPLINE"
   grep -qF "**Every spawned reviewer is read-only.**" "$UX_DISCIPLINE"
   grep -qF '${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh' "$UX_DISCIPLINE"
+  grep -qF 'Parse the single `@head<TAB><commit>` metadata record before interpreting any path record.' "$UX_DISCIPLINE"
+  grep -qF "discard all findings from the stale batch" "$UX_DISCIPLINE"
   grep -qF "a screenshot, recording, or trace must not be saved into the repository working tree" "$UX_DISCIPLINE"
   grep -qF "Drop any finding whose cited code does not reproduce." "$UX_DISCIPLINE"
   grep -qF "Never revert or clean them automatically" "$UX_DISCIPLINE"
@@ -149,6 +241,8 @@ teardown() {
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$UX_SKILL"
   grep -qF '**Working-tree integrity check.**' "$UX_SKILL"
   grep -qF 'diff "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"' "$UX_SKILL"
+  grep -qF 'Compare the `@head` metadata records before deriving `MUTATED_PATHS`' "$UX_SKILL"
+  grep -qF 'stop without writing `UX_REVIEW_OVERVIEW.md`' "$UX_SKILL"
   grep -qF "never save a screenshot, recording, or trace into the repository working tree" "$UX_SKILL"
   grep -qF "Parallel reviewers share one working tree" "$UX_SKILL"
   grep -qF "stop without writing \`UX_REVIEW_OVERVIEW.md\` and report the mutation instead" "$UX_SKILL"
@@ -159,6 +253,8 @@ teardown() {
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$UX_TEAM_MODE"
   grep -qF "**working-tree integrity check**" "$UX_TEAM_MODE"
   grep -qF "TREE_MANIFEST_AFTER" "$UX_TEAM_MODE"
+  grep -qF 'compare the `@head` metadata records before interpreting path differences' "$UX_TEAM_MODE"
+  grep -qF 'discard every finding from the stale batch' "$UX_TEAM_MODE"
 }
 
 @test "ux report formats can report a mutated working tree" {
