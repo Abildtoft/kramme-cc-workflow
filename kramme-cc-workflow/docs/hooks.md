@@ -229,6 +229,8 @@ The trust file format is one absolute project root per line. Blank lines and `#`
 
 If a CLAUDE.md directive exists but the project is not trusted, the hook skips that directive, falls through to detected formatters, and reports how to enable the directive in the system message. Project-wide npm format scripts are also skipped in this case because they are executable project-controlled code.
 
+Trust is checked on every invocation, including when formatter detection comes from the cache. Cached command strings remain data: the hook validates the cache shape, decodes empty and escaped fields losslessly, and never sources or evaluates the cache file.
+
 ### Caching
 
 Detection results are cached in `${XDG_CACHE_HOME:-$HOME/.cache}/claude-format` to avoid re-scanning project files on every write. The cache is automatically invalidated when any of these files change:
@@ -239,12 +241,20 @@ To clear the default cache manually: `trash ~/.cache/claude-format`
 
 If you install or remove a global formatter binary after the first run, clear the cache manually unless one of the watched project config files also changed.
 
+Malformed cache data is ignored and replaced by a fresh detection result.
+
+### Failure Diagnostics
+
+Set `KRAMME_AUTOFORMAT_DEBUG=1` to retain bounded formatter failure evidence locally. The hook stores only the latest failed attempt for the project at `${XDG_CACHE_HOME:-$HOME/.cache}/claude-format/<project-cache-key>.last-error.log`, limits retained stderr to 64 KiB, creates the file with mode `0600`, and reports its path in the hook message. Successful-attempt output is discarded, raw diagnostics never enter hook JSON, and an inability to create the diagnostic file does not prevent formatting.
+
+Debug retention is off by default. Unset `KRAMME_AUTOFORMAT_DEBUG` or set it to any value other than `1` to keep formatter output ephemeral.
+
 ### Skipped Files
 
 The hook automatically skips:
 
 - **Binary files**: png, jpg, pdf, zip, exe, dll, woff, etc.
-- **Generated directories**: node_modules/, dist/, build/, .git/, vendor/, **pycache**/, coverage/
+- **Generated directories**: exact path components named `node_modules/`, `dist/`, `build/`, `.git/`, `vendor/`, `__pycache__/`, `coverage/`, `.cache/`, `.next/`, `.nuxt/`, or `.output/` (names such as `redist/` and `rebuild/` are not skipped)
 - **Lock files**: \*.lock, package-lock.json, pnpm-lock.yaml
 - **Source maps**: \*.map
 - **Minified files**: _.min.js, _.min.css
