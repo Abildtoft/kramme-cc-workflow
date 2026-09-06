@@ -595,6 +595,8 @@ Event handlers that run automatically at specific points in the Claude Code life
 <!-- END SOURCE-SYNCED HOOK ROWS -->
 <!-- prettier-ignore-end -->
 
+For opt-in formatter failure evidence, set `KRAMME_AUTOFORMAT_DEBUG=1`. The auto-format hook retains only the latest failed attempt's first 64 KiB of stderr in a private mode-`0600` file under `${XDG_CACHE_HOME:-$HOME/.cache}/claude-format` and reports the path without copying raw diagnostics into hook JSON. Debug retention is disabled by default; see [auto-format hook details](kramme-cc-workflow/docs/hooks.md#failure-diagnostics).
+
 Use `/kramme:hooks:toggle` to enable/disable hooks. State persists in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `kramme-cc-workflow/hooks/hook-state.json`.
 
 ## Recommended Auto Modes
