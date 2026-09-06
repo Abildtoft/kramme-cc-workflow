@@ -5,6 +5,20 @@ setup() {
   export RELEASE_PRETTIER="$BATS_TEST_DIRNAME/../../node_modules/.bin/prettier"
   export RELEASE_TEST_PATH="$PATH"
   TMP_ROOT="$(cd "$(mktemp -d)" && pwd -P)"
+  # Fixtures must behave the same under a contributor's inherited signing settings, so
+  # every Git command here reads an isolated global config that demands a signer that
+  # does not exist. Only the fixture repository's own config keeps signing off.
+  export GIT_CONFIG_GLOBAL="$TMP_ROOT/gitconfig-global"
+  export GIT_CONFIG_SYSTEM="$TMP_ROOT/gitconfig-system"
+  cat >"$GIT_CONFIG_GLOBAL" <<EOF
+[commit]
+	gpgsign = true
+[tag]
+	gpgsign = true
+[gpg]
+	program = $TMP_ROOT/missing-signer
+EOF
+  : >"$GIT_CONFIG_SYSTEM"
   SCRIPT="$BATS_TEST_DIRNAME/../scripts/release.py"
   PLUGIN_ROOT="$TMP_ROOT/kramme-cc-workflow"
   mkdir -p "$PLUGIN_ROOT/.claude-plugin" "$PLUGIN_ROOT/scripts"
@@ -25,15 +39,26 @@ EOF
 EOF
   cp "$BATS_TEST_DIRNAME/../scripts/release.py" "$PLUGIN_ROOT/scripts/release.py"
   cp "$BATS_TEST_DIRNAME/../scripts/changelog.py" "$PLUGIN_ROOT/scripts/changelog.py"
-  git -C "$TMP_ROOT" init >/dev/null
-  git -C "$TMP_ROOT" config user.email "test@example.com"
-  git -C "$TMP_ROOT" config user.name "Test User"
+  init_release_fixture_repo
   git -C "$TMP_ROOT" add .
   git -C "$TMP_ROOT" commit -m "initial" >/dev/null
 }
 
 teardown() {
   rm -rf "$TMP_ROOT"
+}
+
+# Mirrors init_test_git_repo in tests/test_helper/common.bash: repository-local identity
+# with commit and tag signing off, so fixtures never depend on the contributor's global
+# Git configuration. Kept local because that helper commits its own tracked.txt as the
+# initial commit and renames the branch, while these fixtures init in place over files
+# already written and commit that set themselves.
+init_release_fixture_repo() {
+  git -C "$TMP_ROOT" init >/dev/null
+  git -C "$TMP_ROOT" config user.email "test@example.com"
+  git -C "$TMP_ROOT" config user.name "Test User"
+  git -C "$TMP_ROOT" config commit.gpgsign false
+  git -C "$TMP_ROOT" config tag.gpgsign false
 }
 
 install_release_make_mock() {
@@ -179,9 +204,7 @@ SH
 
 @test "release aborts and restores files when changelog history cannot be read" {
   rm -rf "$TMP_ROOT/.git"
-  git -C "$TMP_ROOT" init >/dev/null
-  git -C "$TMP_ROOT" config user.email "test@example.com"
-  git -C "$TMP_ROOT" config user.name "Test User"
+  init_release_fixture_repo
   MOCK_BIN="$TMP_ROOT/bin"
   mkdir -p "$MOCK_BIN"
   cat >"$MOCK_BIN/make" <<'SH'
@@ -492,6 +515,21 @@ SH
 
   [ -f "$TMP_ROOT/.git/index" ]
   [ "$(git hash-object "$TMP_ROOT/index.before")" = "$(git hash-object "$TMP_ROOT/.git/index")" ]
+}
+
+@test "release fixtures keep signing local when the inherited signer is unavailable" {
+  [ "$(git config --global --get commit.gpgsign)" = "true" ]
+  [ "$(git config --global --get tag.gpgsign)" = "true" ]
+  [ ! -e "$(git config --global --get gpg.program)" ]
+  [ "$(git -C "$TMP_ROOT" config --get commit.gpgsign)" = "false" ]
+  [ "$(git -C "$TMP_ROOT" config --get tag.gpgsign)" = "false" ]
+  install_release_make_mock
+
+  run env PATH="$MOCK_BIN:$RELEASE_TEST_PATH" bash -c 'printf "y\n" | python3 "$1" patch' _ "$PLUGIN_ROOT/scripts/release.py"
+
+  [ "$status" -eq 0 ]
+  [ "$(git -C "$TMP_ROOT" log -1 --pretty=%s)" = "Release v0.64.1" ]
+  [ "$(git -C "$TMP_ROOT" log -1 --pretty='%G?')" = "N" ]
 }
 
 @test "release workflow isolates SkillSpector from verification dependencies" {
