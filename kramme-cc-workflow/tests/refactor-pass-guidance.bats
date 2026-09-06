@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+PROTECTED_REGISTRY="skills/kramme:code:refactor-pass/references/protected-workflow-artifacts.txt"
+
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
 }
@@ -134,9 +136,52 @@ setup() {
 }
 
 @test "protected workflow artifacts stay synchronized with the commit guard" {
-  grep -qF "REFACTOR_OPPORTUNITIES_OVERVIEW.md" \
-    "skills/kramme:code:refactor-pass/references/protected-workflow-artifacts.txt"
-  cmp -s \
-    "skills/kramme:code:refactor-pass/references/protected-workflow-artifacts.txt" \
-    "hooks/confirm-review-artifacts.txt"
+  cmp "$PROTECTED_REGISTRY" "hooks/confirm-review-artifacts.txt"
 }
+
+@test "protected workflow artifacts include the workflow output names the commit guard must block" {
+  local output_name
+  for output_name in \
+    'REVIEW_OVERVIEW.md' \
+    'CODEBASE_WEAKNESS_REPORT.md' \
+    'OUTSIDE_VIEW_REPORT.md' \
+    'REFACTOR_OPPORTUNITIES_OVERVIEW.md' \
+    'AGENT_NATIVE_AUDIT.md' \
+    'PR_PLAN_*.md' \
+    'DEPRECATION_PLAN.md' \
+    'DEPRECATION_PLAN_*.md'; do
+    if ! grep -qxF "$output_name" "$PROTECTED_REGISTRY"; then
+      printf 'missing protected artifact entry: %s\n' "$output_name" >&2
+      return 1
+    fi
+  done
+}
+
+# Verbatim cross-check only: the hook matches entries as globs, so a basename
+# entry would cover these paths without listing them. The allow cases in
+# tests/confirm-review-responses.bats are what prove they stay committable.
+# Disposability is not the criterion - every protected entry is disposable too -
+# nor is the directory, since siw/PRODUCT_AUDIT.md is blocked.
+@test "protected workflow artifacts omit the disposable siw and .context paths" {
+  local disposable="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+  local disposable_path
+
+  # A missing registry makes grep exit non-zero, indistinguishable from
+  # "entry absent", so prove it exists before asserting absence.
+  test -f "$PROTECTED_REGISTRY"
+  for disposable_path in \
+    'siw/LOG.md' \
+    'siw/OPEN_ISSUES_OVERVIEW.md' \
+    'siw/issues/' \
+    '.context/session-search/'; do
+    if ! grep -qF "\"$disposable_path\"" "$disposable"; then
+      printf 'disposable inventory no longer lists: %s\n' "$disposable_path" >&2
+      return 1
+    fi
+    if grep -qxF "$disposable_path" "$PROTECTED_REGISTRY"; then
+      printf 'disposable path must not be protected: %s\n' "$disposable_path" >&2
+      return 1
+    fi
+  done
+}
+
