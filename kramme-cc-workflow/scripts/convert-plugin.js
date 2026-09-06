@@ -74,6 +74,16 @@ async function runInstall(parsed) {
     );
   }
 
+  // Option errors must surface before plugin resolution errors, so read every
+  // option before requiring the converter modules below.
+  const { codexHome, agentsHome } = resolveHomeRoots(parsed);
+  const confirmOptions = {
+    yes: readBooleanOption(parsed, "yes", ["y"]),
+    nonInteractive: readBooleanOption(parsed, "non-interactive", [
+      "nonInteractive",
+    ]),
+  };
+
   const {
     convertClaudeToCodex,
   } = require("./convert-plugin/codex-transformer");
@@ -88,22 +98,7 @@ async function runInstall(parsed) {
 
   const resolvedPluginPath = await resolvePluginInput(pluginInput);
   const plugin = await loadClaudePlugin(resolvedPluginPath);
-  const codexHome = resolveRoot(
-    parsed["codex-home"] ?? parsed.codexHome,
-    ".codex",
-  );
   const codexRoot = resolveCodexOutputRoot(codexHome);
-  const agentsHome = resolveRoot(
-    parsed["agents-home"] ?? parsed.agentsHome,
-    ".agents",
-  );
-  const confirmOptions = {
-    yes: parseBoolean(parsed.yes ?? parsed.y, false),
-    nonInteractive: parseBoolean(
-      parsed["non-interactive"] ?? parsed.nonInteractive,
-      false,
-    ),
-  };
 
   const bundle = convertClaudeToCodex(plugin);
   if (!bundle) {
@@ -146,6 +141,7 @@ function rejectRemovedOpenCodeInstallOptions(parsed) {
 async function runStats(parsed) {
   const pluginInput = parsed._[0] ?? process.cwd();
   resolveTargetName(parsed);
+  const outputAsJson = readBooleanOption(parsed, "json");
   const {
     convertClaudeToCodex,
   } = require("./convert-plugin/codex-transformer");
@@ -163,7 +159,6 @@ async function runStats(parsed) {
     agent_skills: codexBundle.agentSkills?.length ?? 0,
   };
 
-  const outputAsJson = parseBoolean(parsed.json, false);
   if (outputAsJson) {
     console.log(JSON.stringify(stats));
     return;
@@ -178,15 +173,8 @@ async function runStats(parsed) {
 async function runDoctor(parsed) {
   validateDoctorArgs(parsed);
   resolveTargetName(parsed);
-  const outputAsJson = parseDoctorJsonOption(parsed.json);
-  const codexHome = resolveRoot(
-    readDoctorPathOption(parsed, "codex-home", "codexHome"),
-    ".codex",
-  );
-  const agentsRoot = resolveRoot(
-    readDoctorPathOption(parsed, "agents-home", "agentsHome"),
-    ".agents",
-  );
+  const outputAsJson = readBooleanOption(parsed, "json");
+  const { codexHome, agentsHome: agentsRoot } = resolveHomeRoots(parsed);
   const {
     collectConverterDiagnostics,
   } = require("./convert-plugin/diagnostics");
@@ -243,28 +231,59 @@ function validateDoctorArgs(parsed) {
 /**
  * @param {ParsedArgs} parsed
  * @param {string} kebabKey
- * @param {string} camelKey
+ * @param {string[]} [aliasKeys]
  */
-function readDoctorPathOption(parsed, kebabKey, camelKey) {
-  const value = parsed[kebabKey] ?? parsed[camelKey];
+function readOptionValue(parsed, kebabKey, aliasKeys = []) {
+  for (const key of [kebabKey, ...aliasKeys]) {
+    if (Object.hasOwn(parsed, key)) return parsed[key];
+  }
+  return undefined;
+}
+
+/**
+ * @param {ParsedArgs} parsed
+ * @param {string} kebabKey
+ * @param {string[]} aliasKeys
+ */
+function readPathOption(parsed, kebabKey, aliasKeys) {
+  const value = readOptionValue(parsed, kebabKey, aliasKeys);
   if (value === undefined) return undefined;
   if (typeof value !== "string" || !value.trim()) {
     throw new Error(`--${kebabKey} requires a directory.`);
   }
-  return value;
+  return value.trim();
 }
 
-/** @param {string | boolean | string[] | undefined} value */
-function parseDoctorJsonOption(value) {
+/**
+ * @param {ParsedArgs} parsed
+ * @param {string} kebabKey
+ * @param {string[]} [aliasKeys]
+ */
+function readBooleanOption(parsed, kebabKey, aliasKeys = []) {
+  const value = readOptionValue(parsed, kebabKey, aliasKeys);
   if (value === undefined) return false;
   if (typeof value === "boolean") return value;
-  if (Array.isArray(value)) {
-    throw new Error("--json requires a boolean value when one is provided.");
-  }
-  const normalized = value.trim().toLowerCase();
+  const normalized =
+    typeof value === "string" ? value.trim().toLowerCase() : "";
   if (["true", "1", "yes"].includes(normalized)) return true;
   if (["false", "0", "no"].includes(normalized)) return false;
-  throw new Error("--json requires a boolean value when one is provided.");
+  throw new Error(
+    `--${kebabKey} requires a boolean value when one is provided.`,
+  );
+}
+
+/** @param {ParsedArgs} parsed */
+function resolveHomeRoots(parsed) {
+  return {
+    codexHome: resolveRoot(
+      readPathOption(parsed, "codex-home", ["codexHome"]),
+      ".codex",
+    ),
+    agentsHome: resolveRoot(
+      readPathOption(parsed, "agents-home", ["agentsHome"]),
+      ".agents",
+    ),
+  };
 }
 
 /** @param {Record<string, unknown>} diagnostic */
@@ -320,6 +339,9 @@ Options:
   --non-interactive       Never prompt; use default answers for confirmations
   --json                  (stats and doctor) print JSON instead of key=value lines
 
+Long boolean options (--yes, --non-interactive, --json) also accept an explicit
+=true or =false value (or 1/0, yes/no); any other value is rejected.
+
 Stats fields:
   codex_skills            Number of Codex skills (skill directories plus generated command skills)
   agent_skills            Number of generated Codex agent skills
@@ -346,17 +368,18 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg.startsWith("--")) {
-      const [key, inlineValue] = arg.slice(2).split("=");
-      if (inlineValue !== undefined) {
-        result[key] = inlineValue;
+      const body = arg.slice(2);
+      const separator = body.indexOf("=");
+      if (separator !== -1) {
+        result[body.slice(0, separator)] = body.slice(separator + 1);
         continue;
       }
       const next = argv[i + 1];
       if (next && !next.startsWith("-")) {
-        result[key] = next;
+        result[body] = next;
         i += 1;
       } else {
-        result[key] = true;
+        result[body] = true;
       }
       continue;
     }
@@ -379,24 +402,12 @@ function parseArgs(argv) {
   return result;
 }
 
-/** @param {unknown} value @param {boolean} fallback */
-function parseBoolean(value, fallback) {
-  if (value === undefined) return fallback;
-  if (typeof value === "boolean") return value;
-  const normalized = String(value).trim().toLowerCase();
-  if (normalized === "true" || normalized === "1" || normalized === "yes")
-    return true;
-  if (normalized === "false" || normalized === "0" || normalized === "no")
-    return false;
-  return fallback;
-}
-
-/** @param {unknown} value @param {...string} defaultSegments */
+/** @param {string | undefined} value @param {...string} defaultSegments */
 function resolveRoot(value, ...defaultSegments) {
-  if (value && String(value).trim()) {
-    return path.resolve(expandHome(String(value).trim()));
+  if (value === undefined) {
+    return path.join(os.homedir(), ...defaultSegments);
   }
-  return path.join(os.homedir(), ...defaultSegments);
+  return path.resolve(expandHome(value));
 }
 
 /** @param {string} value */
