@@ -300,14 +300,24 @@ def _retry_recovery_command(git_root: Path, args: list[str]) -> RecoveryCommandO
     )
 
 
-def _files_match_snapshot(snapshot: dict[Path, bytes | None]) -> bool:
+def unrestored_release_files(snapshot: dict[Path, bytes | None]) -> list[str]:
+    """Return captured files whose contents still differ, for recovery output."""
+    stale = []
     for path, expected in snapshot.items():
-        if expected is None:
-            if path.exists():
-                return False
-        elif not path.exists() or path.read_bytes() != expected:
-            return False
-    return True
+        try:
+            if expected is None:
+                matches = not path.exists()
+            else:
+                matches = path.exists() and path.read_bytes() == expected
+        except OSError:
+            matches = False
+        if not matches:
+            stale.append(str(path))
+    return sorted(stale)
+
+
+def _files_match_snapshot(snapshot: dict[Path, bytes | None]) -> bool:
+    return not unrestored_release_files(snapshot)
 
 
 def _write_recovery_backups(snapshot: dict[Path, bytes | None]) -> dict[Path, Path]:
@@ -408,6 +418,125 @@ def restore_release_state(
     return result
 
 
+class ReleasePreflightError(Exception):
+    """Release preparation was refused, or the repository could not be inspected.
+
+    main()'s preflight raises before anything is written. The re-check inside
+    git_commit_and_push_branch raises after the version and changelog edits, which
+    main() then restores.
+    """
+
+
+def get_release_branch_name(version: str) -> str:
+    """Return the release branch name for a version."""
+    return f"release/v{version}"
+
+
+def local_branch_exists(git_root: Path, branch_name: str) -> bool:
+    """Report whether a local branch exists, treating Git errors as blockers."""
+    result = subprocess.run(
+        ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return True
+    if result.returncode == 1:
+        return False
+    raise ReleasePreflightError(f"could not inspect local branch {branch_name}: {result.stderr.strip()}")
+
+
+def git_remote_exists(git_root: Path, remote: str) -> bool:
+    """Report whether a remote is configured, treating Git errors as blockers."""
+    result = subprocess.run(["git", "remote"], cwd=git_root, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise ReleasePreflightError(f"could not list Git remotes: {result.stderr.strip()}")
+    return remote in result.stdout.split()
+
+
+def remote_branch_exists(git_root: Path, remote: str, branch_name: str) -> bool:
+    """Report whether a remote branch exists; failed inspection is a blocker, not an absence."""
+    result = subprocess.run(
+        ["git", "ls-remote", "--heads", "--exit-code", remote, f"refs/heads/{branch_name}"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return True
+    if result.returncode == 2:
+        return False
+    raise ReleasePreflightError(f"could not inspect {remote}/{branch_name}: {result.stderr.strip()}")
+
+
+def get_staged_paths(git_root: Path) -> list[str]:
+    """Return every repository-root-relative path staged in the index."""
+    result = subprocess.run(
+        # --cached compares the index with HEAD without refreshing it, so this
+        # preflight cannot disturb the index bytes or mode it is inspecting.
+        # --no-renames reports a staged rename as both its source and destination path,
+        # so neither half can cross the release allowlist unnoticed.
+        ["git", "diff", "--cached", "--name-only", "--no-renames", "-z"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise ReleasePreflightError(f"could not read the Git index: {result.stderr.strip()}")
+    return [path for path in result.stdout.split("\0") if path]
+
+
+def get_release_allowlist(git_root: Path, repo_root: Path) -> set[str]:
+    """Return the repository-root-relative paths the release commit is allowed to contain."""
+    git_root = git_root.resolve()
+    allowlist = set()
+    for path in get_release_mutation_paths(repo_root):
+        try:
+            allowlist.add(path.resolve().relative_to(git_root).as_posix())
+        except ValueError as exc:
+            raise ReleasePreflightError(f"release file {path} is outside the repository") from exc
+    return allowlist
+
+
+def check_release_preflight(repo_root: Path, version: str, check_remote: bool = True) -> None:
+    """Refuse release preparation that would replace a release branch or absorb unrelated work."""
+    git_root = get_git_root()
+    branch_name = get_release_branch_name(version)
+
+    if local_branch_exists(git_root, branch_name):
+        raise ReleasePreflightError(
+            f"local branch {branch_name} already exists. Inspect it, then delete or rename it yourself; "
+            "the release never replaces an existing branch."
+        )
+
+    if check_remote and git_remote_exists(git_root, "origin") and remote_branch_exists(git_root, "origin", branch_name):
+        raise ReleasePreflightError(
+            f"remote branch origin/{branch_name} already exists. Merge or delete it yourself; "
+            "the release never deletes or force-pushes a remote ref."
+        )
+
+    allowlist = get_release_allowlist(git_root, repo_root)
+    unrelated = sorted(path for path in get_staged_paths(git_root) if path not in allowlist)
+    if unrelated:
+        raise ReleasePreflightError(
+            "unrelated staged changes would enter the release commit: "
+            f"{', '.join(unrelated)}. Commit, unstage, or stash them first."
+        )
+
+
+def report_leftover_release_branch(version: str) -> None:
+    """Name the branch this attempt created. The preflight refuses a pre-existing one."""
+    branch_name = get_release_branch_name(version)
+    try:
+        if not local_branch_exists(get_git_root(), branch_name):
+            return
+    except ReleasePreflightError:
+        return
+    print(f"  Left local branch {branch_name} in place; the release never deletes a branch.")
+    print(f"  Clear it before retrying: git branch -D {branch_name}")
+
+
 def run_verification(repo_root: Path) -> bool:
     """Run the full release verification gate."""
     result = subprocess.run(["make", "verify"], cwd=repo_root)
@@ -422,36 +551,28 @@ def check_release_dependencies(repo_root: Path) -> bool:
 
 def git_commit_and_push_branch(repo_root: Path, version: str, dry_run: bool, ci_mode: bool) -> str:
     """Create release branch with version bump commit. Returns branch name."""
-    branch_name = f"release/v{version}"
+    branch_name = get_release_branch_name(version)
     git_root = get_git_root()
 
-    # Collect all files to stage
-    stage_files = [
-        str(repo_root / ".claude-plugin" / "plugin.json"),
-        str(repo_root / "package.json"),
-        str(repo_root / "CHANGELOG.md"),
-    ]
-    for sibling_file in get_sibling_version_files():
-        stage_files.append(str(sibling_file))
+    # One definition of the release file set, shared with the preflight allowlist so the
+    # staged set and the permitted set cannot drift apart.
+    stage_files = [str(path) for path in get_release_mutation_paths(repo_root)]
 
     if dry_run:
-        print(f"  Would clean up existing branch: {branch_name} (if exists)")
         print(f"  Would run: git checkout -b {branch_name}")
         print(f"  Would stage: {', '.join(stage_files)}")
         print(f'  Would run: git commit -m "Release v{version}"')
-        print(f"  Would run: git push origin {branch_name}")
+        if ci_mode:
+            print(f"  Would run: git push origin {branch_name}")
+        else:
+            print(f"  Would leave {branch_name} local; push it yourself with: git push origin {branch_name}")
     else:
-        # Clean up any existing release branch (from failed previous attempts)
-        subprocess.run(
-            ["git", "branch", "-D", branch_name],
-            cwd=git_root,
-            capture_output=True,
-        )
-        subprocess.run(
-            ["git", "push", "origin", "--delete", branch_name],
-            cwd=git_root,
-            capture_output=True,
-        )
+        # make check-deps, make verify, and (interactively) the confirmation prompt run
+        # between main()'s preflight and this point, so a branch or an unrelated staged
+        # path can appear in that window. Re-check locally rather than replacing a branch or
+        # absorbing work; a remote race is left to a non-forcing push, which rejects
+        # rather than clobbering -- below under --ci, otherwise the operator's own.
+        check_release_preflight(repo_root, version, check_remote=False)
 
         # Create release branch
         subprocess.run(["git", "checkout", "-b", branch_name], cwd=git_root, check=True)
@@ -500,6 +621,14 @@ def main() -> int:
     print(f"Release: {current_version} -> {new_version}")
     if args.dry_run:
         print("(dry run - no changes will be made)\n")
+
+    # Refuse before the first version or changelog edit; a later preflight would still mutate.
+    try:
+        check_release_preflight(repo_root, new_version)
+    except ReleasePreflightError as exc:
+        print(f"\nRelease preflight refused: {exc}")
+        print("No file, branch, or remote ref was changed.")
+        return 1
 
     if not args.dry_run:
         print("\nChecking release verification dependencies...")
@@ -551,6 +680,34 @@ def main() -> int:
         # 4. Git commit and push branch
         print("4. Creating release branch...")
         branch_name = git_commit_and_push_branch(repo_root, new_version, args.dry_run, args.ci)
+    except ReleasePreflightError as exc:
+        # This refusal precedes every branch, HEAD, and index change this attempt makes,
+        # so only the version and changelog edits need undoing. Restoring the full
+        # snapshot would rewrite .git/index and discard the staged work being protected.
+        restored = True
+        if release_snapshot is not None:
+            try:
+                restore_files(release_snapshot.files)
+            except OSError:
+                # A partial restore leaves later files untouched too; the end-state
+                # check below decides the outcome and names every one of them.
+                pass
+            stale = unrestored_release_files(release_snapshot.files)
+            restored = not stale
+            if restored:
+                print("  Restored release files to their pre-release state.")
+            else:
+                # print_manual_recovery would tell the operator to overwrite .git/index,
+                # which holds the staged work this refusal protects. Name the files
+                # instead and leave the index alone.
+                print(f"  Still holding this release's content: {', '.join(stale)}")
+                print("  Restore those files yourself; your index was not touched.")
+        print(f"\nRelease preflight refused: {exc}")
+        if not restored:
+            print("Aborting with incomplete rollback.")
+            return 2
+        print("Aborting after restoring release files.")
+        return 1
     except ChangelogHistoryError as exc:
         if release_snapshot is not None:
             if not restore_release_state(release_snapshot).succeeded:
@@ -561,22 +718,23 @@ def main() -> int:
         print("Aborting after restoring release files.")
         return 1
     except subprocess.CalledProcessError as exc:
-        if release_snapshot is not None:
-            if not restore_release_state(release_snapshot).succeeded:
-                command = " ".join(str(part) for part in exc.cmd)
-                print(f"\nRelease git step failed: {command}")
-                print("Aborting with incomplete rollback.")
-                return 2
         command = " ".join(str(part) for part in exc.cmd)
+        rolled_back = release_snapshot is None or restore_release_state(release_snapshot).succeeded
+        report_leftover_release_branch(new_version)
         print(f"\nRelease git step failed: {command}")
+        if not rolled_back:
+            print("Aborting with incomplete rollback.")
+            return 2
         print("Aborting after restoring release files.")
         return 1
     except Exception as exc:
         if release_snapshot is not None:
             if not restore_release_state(release_snapshot).succeeded:
+                report_leftover_release_branch(new_version)
                 print(f"\nRelease failed: {exc}")
                 print("Aborting with incomplete rollback.")
                 return 2
+        report_leftover_release_branch(new_version)
         raise
 
     if args.ci:

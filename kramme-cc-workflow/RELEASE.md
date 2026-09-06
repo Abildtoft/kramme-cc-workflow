@@ -10,6 +10,35 @@ Run the commands in this document from the plugin root (`kramme-cc-workflow/`). 
 - **Minor** (0.2.0 → 0.3.0): New commands, agents, skills, or hooks
 - **Major** (0.2.0 → 1.0.0): Breaking changes
 
+## Release Preflight
+
+Both script-driven paths — the GitHub Actions workflow and `scripts/release.py` — run the same read-only preflight before editing any file, and refuse when:
+
+- A local `release/vX.Y.Z` branch already exists.
+- A `release/vX.Y.Z` branch already exists on `origin`.
+- Git cannot be inspected. A failed lookup of `origin`, the local refs, or the index is a blocker rather than proof that the condition is absent, so an unreachable or unauthenticated remote refuses the release.
+- Anything outside the release's own files is staged. Those are the plugin's `.claude-plugin/plugin.json`, `package.json`, and `CHANGELOG.md`, plus any sibling plugin manifest named by `.claude-plugin/marketplace.json`. The first three are plugin-root-relative: the repository-root `package.json` is not among them, so commit or unstage any change to it before starting a release.
+
+The Manual Release steps at the end of this document bypass the preflight entirely; check for leftovers yourself before following them.
+
+A refusal prints `Release preflight refused:` and never rewrites your index. The preflight that runs before any edit changes nothing at all.
+
+The release re-checks the local conditions once more just before creating the branch, because `make check-deps`, `make verify`, and — interactively — the confirmation prompt all run in between. A refusal there ends one of two ways:
+
+- `Aborting after restoring release files.` (exit 1) — the version and changelog edits were undone.
+- `Aborting with incomplete rollback.` (exit 2) — some edits are still on disk. The run names those files; restore them yourself. Your index is left untouched either way.
+
+The release never deletes, replaces, or force-pushes a branch. A run that fails after creating `release/vX.Y.Z` names the branch it left behind and prints the cleanup command. A successful rollback rewinds that branch to the pre-release commit but does not remove it, so clear it before retrying:
+
+```bash
+git branch -D release/vX.Y.Z
+git push origin --delete release/vX.Y.Z
+```
+
+For a staged-content refusal, commit, `git restore --staged <path>`, or stash the unrelated paths.
+
+Content in the release's own files is different: the release re-reads those files from disk and commits whatever it finds, so unstaging does not keep an edit out of the release. Revert it with `git restore --source=HEAD --staged --worktree <path>`, commit it separately, or stash it first. Plain `git restore <path>` restores the working tree _from the index_, so a staged edit survives it.
+
 ## Automated Release
 
 ### Option 1: GitHub Actions (Recommended)
@@ -27,6 +56,7 @@ The workflow will:
 - Run tests
 - Bump version in the plugin manifest `.claude-plugin/plugin.json` and plugin package `package.json`
 - Create a release branch and commit
+- Push that branch to `origin` (the only automated push of the release branch)
 - Create a Pull Request to main
 - After PR merge, automatically create git tag and GitHub Release
 
@@ -53,12 +83,14 @@ python scripts/release.py patch --dry-run
 
 The script will:
 
-- Run tests
+- Run the release preflight and refuse before changing anything if it fails
+- Check release verification dependencies
 - Prompt for confirmation
 - Bump version in the plugin manifest `.claude-plugin/plugin.json` and plugin package `package.json`
-- Create a release branch and commit
+- Generate the changelog entry, then run `make verify` before creating any branch
+- Create a release branch and commit locally
 
-After running, push the branch and create a PR:
+Local preparation writes nothing to the remote. It reads `origin` to detect an existing release branch — including under `--dry-run`, which otherwise reports only the local steps it would take. Pushing is yours to do:
 
 ```bash
 git push origin release/vX.Y.Z
