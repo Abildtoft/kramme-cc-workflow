@@ -408,6 +408,113 @@ def restore_release_state(
     return result
 
 
+class ReleasePreflightError(Exception):
+    """Release preparation was refused, or the repository could not be inspected.
+
+    main()'s preflight raises before anything is written. The re-check inside
+    git_commit_and_push_branch raises after the version and changelog edits, which
+    main() then restores.
+    """
+
+
+def get_release_branch_name(version: str) -> str:
+    """Return the release branch name for a version."""
+    return f"release/v{version}"
+
+
+def local_branch_exists(git_root: Path, branch_name: str) -> bool:
+    """Report whether a local branch exists, treating Git errors as blockers."""
+    result = subprocess.run(
+        ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return True
+    if result.returncode == 1:
+        return False
+    raise ReleasePreflightError(f"could not inspect local branch {branch_name}: {result.stderr.strip()}")
+
+
+def git_remote_exists(git_root: Path, remote: str) -> bool:
+    """Report whether a remote is configured, treating Git errors as blockers."""
+    result = subprocess.run(["git", "remote"], cwd=git_root, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise ReleasePreflightError(f"could not list Git remotes: {result.stderr.strip()}")
+    return remote in result.stdout.split()
+
+
+def remote_branch_exists(git_root: Path, remote: str, branch_name: str) -> bool:
+    """Report whether a remote branch exists; failed inspection is a blocker, not an absence."""
+    result = subprocess.run(
+        ["git", "ls-remote", "--heads", "--exit-code", remote, f"refs/heads/{branch_name}"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return True
+    if result.returncode == 2:
+        return False
+    raise ReleasePreflightError(f"could not inspect {remote}/{branch_name}: {result.stderr.strip()}")
+
+
+def get_staged_paths(git_root: Path) -> list[str]:
+    """Return every repository-root-relative path staged in the index."""
+    result = subprocess.run(
+        # --cached compares the index with HEAD without refreshing it, so this
+        # preflight cannot disturb the index bytes or mode it is inspecting.
+        # --no-renames reports a staged rename as both its source and destination path,
+        # so neither half can cross the release allowlist unnoticed.
+        ["git", "diff", "--cached", "--name-only", "--no-renames", "-z"],
+        cwd=git_root,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise ReleasePreflightError(f"could not read the Git index: {result.stderr.strip()}")
+    return [path for path in result.stdout.split("\0") if path]
+
+
+def get_release_allowlist(git_root: Path, repo_root: Path) -> set[str]:
+    """Return the repository-root-relative paths the release commit is allowed to contain."""
+    git_root = git_root.resolve()
+    allowlist = set()
+    for path in get_release_mutation_paths(repo_root):
+        try:
+            allowlist.add(path.resolve().relative_to(git_root).as_posix())
+        except ValueError as exc:
+            raise ReleasePreflightError(f"release file {path} is outside the repository") from exc
+    return allowlist
+
+
+def check_release_preflight(repo_root: Path, version: str, check_remote: bool = True) -> None:
+    """Refuse release preparation that would replace a release branch or absorb unrelated work."""
+    git_root = get_git_root()
+    branch_name = get_release_branch_name(version)
+
+    if local_branch_exists(git_root, branch_name):
+        raise ReleasePreflightError(
+            f"local branch {branch_name} already exists. Inspect it, then delete or rename it yourself; "
+            "the release never replaces an existing branch."
+        )
+
+    if check_remote and git_remote_exists(git_root, "origin") and remote_branch_exists(git_root, "origin", branch_name):
+        raise ReleasePreflightError(
+            f"remote branch origin/{branch_name} already exists. Merge or delete it yourself; "
+            "the release never deletes or force-pushes a remote ref."
+        )
+
+    allowlist = get_release_allowlist(git_root, repo_root)
+    unrelated = sorted(path for path in get_staged_paths(git_root) if path not in allowlist)
+    if unrelated:
+        raise ReleasePreflightError(
+            "unrelated staged changes would enter the release commit: "
+            f"{', '.join(unrelated)}. Commit, unstage, or stash them first."
+        )
+
+
 def run_verification(repo_root: Path) -> bool:
     """Run the full release verification gate."""
     result = subprocess.run(["make", "verify"], cwd=repo_root)
@@ -472,6 +579,8 @@ def git_commit_and_push_branch(repo_root: Path, version: str, dry_run: bool, ci_
             print(f"  Run: git push origin {branch_name}")
 
     return branch_name
+
+
 
 
 def main() -> int:
