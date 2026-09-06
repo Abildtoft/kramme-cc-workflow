@@ -1247,9 +1247,11 @@ def validate_checkpoint(
     branch_tip = git_text(context, ["rev-parse", "--verify", f"refs/heads/{branch}^{{commit}}"])
     if branch_tip != head:
         raise ValidationError("CHECKPOINT_BRANCH_MISMATCH", "Derived local branch tip does not match checkpoint head.")
-    committed = git_text(context, ["diff", "--name-only", f"{base}..{head}"])
+    committed = git_text(context, ["diff", "--no-renames", "--name-only", f"{base}..{head}"])
     committed_paths = committed.splitlines() if committed else []
-    exact_mismatch = scope_mode == "exact-files" and committed_paths != sorted(scope_paths)
+    exact_mismatch = scope_mode == "exact-files" and (
+        not committed_paths or any(path not in scope_paths for path in committed_paths)
+    )
     containment_mismatch = scope_mode == "containment" and (
         not committed_paths
         or any(

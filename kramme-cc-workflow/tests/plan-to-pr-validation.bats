@@ -68,6 +68,20 @@ Stop on invalid state.
 EOF
 }
 
+add_scope_path() {
+	local plan="$1"
+	local scope_path="$2"
+	python3 - "$plan" "$scope_path" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+marker = "\n### Out of Scope\n"
+addition = f"\n- `{sys.argv[2]}` - validate this exact file.\n"
+path.write_text(path.read_text().replace(marker, addition + marker, 1))
+PY
+}
+
 write_parallel_root_index() {
 	cat >"$REPO/PR_PLAN_INDEX.md" <<EOF
 # PR Plan Index
@@ -1027,8 +1041,9 @@ PY
 	assert_error ARCHIVE_SOURCE_DIVERGED
 }
 
-@test "validator proves a complete archived checkpoint without changing files" {
+@test "validator accepts a nonempty exact-file checkpoint scope subset" {
 	write_plan "$REPO/source.md" A01A TODO
+	add_scope_path "$REPO/source.md" allowed-but-unchanged.txt
 	archive="$(write_archive "$REPO/source.md" IN_PROGRESS)"
 	set_id="$(basename "$(dirname "$archive")")"
 	short_id="${set_id#ps-}"
@@ -1052,7 +1067,7 @@ PY
 - **Base commit:** \`$BASE_COMMIT\`
 - **Checkpoint head:** \`$head\`
 - **Checkpoint tree:** \`$tree\`
-- **Scope paths:** \`tracked.txt\`
+- **Scope paths:** \`tracked.txt\`, \`allowed-but-unchanged.txt\`
 EOF
 	before="$(tree_digest)"
 
@@ -1063,6 +1078,38 @@ EOF
 	[ "$(json_get facts.checkpoint.verified)" = "true" ]
 	[ "$(json_get facts.drift_check_reason)" = "checkpoint-resume" ]
 	[ "$(tree_digest)" = "$before" ]
+}
+
+@test "exact-file checkpoints reject an empty committed path set" {
+	write_plan "$REPO/source.md" A01A TODO
+	add_scope_path "$REPO/source.md" allowed-but-unchanged.txt
+	archive="$(write_archive "$REPO/source.md" IN_PROGRESS)"
+	set_id="$(basename "$(dirname "$archive")")"
+	short_id="${set_id#ps-}"
+	short_id="${short_id:0:16}"
+	branch="plan/${short_id}-a01a-validate-plan-state"
+	git -C "$REPO" branch "$branch"
+	head="$(git -C "$REPO" rev-parse "$branch")"
+	tree="$(git -C "$REPO" rev-parse "$branch^{tree}")"
+	cat >>"$archive/PR_PLAN_A01A_VALIDATE_PLAN_STATE.md" <<EOF
+
+## Workflow State
+
+- **Stage:** IMPLEMENTED
+- **Plan set:** \`$set_id\`
+- **Plan:** \`PR_PLAN_A01A_VALIDATE_PLAN_STATE.md\`
+- **Branch:** \`$branch\`
+- **Base commit:** \`$BASE_COMMIT\`
+- **Checkpoint head:** \`$head\`
+- **Checkpoint tree:** \`$tree\`
+- **Scope paths:** \`tracked.txt\`, \`allowed-but-unchanged.txt\`
+EOF
+
+	run python3 "$VALIDATOR" --repo-root "$REPO" "$archive/PR_PLAN_A01A_VALIDATE_PLAN_STATE.md"
+
+	assert_error CHECKPOINT_COMMITTED_SCOPE_MISMATCH
+	[ "$(json_get error.details.committed_paths)" = "[]" ]
+	[ "$(json_get error.details.scope_mode)" = "exact-files" ]
 }
 
 @test "exact-file checkpoints reject extra committed paths" {
@@ -1097,6 +1144,82 @@ EOF
 	run python3 "$VALIDATOR" --repo-root "$REPO" "$archive/PR_PLAN_A01A_VALIDATE_PLAN_STATE.md"
 
 	assert_error CHECKPOINT_COMMITTED_SCOPE_MISMATCH
+	[ "$(json_get error.details.committed_paths)" = '["extra.txt", "tracked.txt"]' ]
+	[ "$(json_get error.details.scope_paths)" = '["tracked.txt"]' ]
+}
+
+@test "exact-file checkpoints reject a rename destination outside scope" {
+	printf 'original\n' >"$REPO/tracked.txt"
+	git -C "$REPO" add tracked.txt
+	git -C "$REPO" commit -m "add rename source fixture" >/dev/null
+	BASE_COMMIT="$(git -C "$REPO" rev-parse HEAD)"
+	write_plan "$REPO/source.md" A01A TODO
+	archive="$(write_archive "$REPO/source.md" IN_PROGRESS)"
+	set_id="$(basename "$(dirname "$archive")")"
+	short_id="${set_id#ps-}"
+	short_id="${short_id:0:16}"
+	branch="plan/${short_id}-a01a-validate-plan-state"
+	git -C "$REPO" switch -c "$branch" >/dev/null
+	git -C "$REPO" mv tracked.txt renamed.txt
+	git -C "$REPO" commit -m "rename fixture outside scope" >/dev/null
+	head="$(git -C "$REPO" rev-parse HEAD)"
+	tree="$(git -C "$REPO" rev-parse HEAD^{tree})"
+	git -C "$REPO" switch main >/dev/null
+	cat >>"$archive/PR_PLAN_A01A_VALIDATE_PLAN_STATE.md" <<EOF
+
+## Workflow State
+
+- **Stage:** IMPLEMENTED
+- **Plan set:** \`$set_id\`
+- **Plan:** \`PR_PLAN_A01A_VALIDATE_PLAN_STATE.md\`
+- **Branch:** \`$branch\`
+- **Base commit:** \`$BASE_COMMIT\`
+- **Checkpoint head:** \`$head\`
+- **Checkpoint tree:** \`$tree\`
+- **Scope paths:** \`tracked.txt\`
+EOF
+
+	run python3 "$VALIDATOR" --repo-root "$REPO" "$archive/PR_PLAN_A01A_VALIDATE_PLAN_STATE.md"
+
+	assert_error CHECKPOINT_COMMITTED_SCOPE_MISMATCH
+	[ "$(json_get error.details.committed_paths)" = '["renamed.txt", "tracked.txt"]' ]
+}
+
+@test "exact-file checkpoints reject a rename source outside scope" {
+	printf 'original\n' >"$REPO/outside.txt"
+	git -C "$REPO" add outside.txt
+	git -C "$REPO" commit -m "add out-of-scope rename source fixture" >/dev/null
+	BASE_COMMIT="$(git -C "$REPO" rev-parse HEAD)"
+	write_plan "$REPO/source.md" A01A TODO allowed.txt
+	archive="$(write_archive "$REPO/source.md" IN_PROGRESS)"
+	set_id="$(basename "$(dirname "$archive")")"
+	short_id="${set_id#ps-}"
+	short_id="${short_id:0:16}"
+	branch="plan/${short_id}-a01a-validate-plan-state"
+	git -C "$REPO" switch -c "$branch" >/dev/null
+	git -C "$REPO" mv outside.txt allowed.txt
+	git -C "$REPO" commit -m "rename fixture into scope" >/dev/null
+	head="$(git -C "$REPO" rev-parse HEAD)"
+	tree="$(git -C "$REPO" rev-parse HEAD^{tree})"
+	git -C "$REPO" switch main >/dev/null
+	cat >>"$archive/PR_PLAN_A01A_VALIDATE_PLAN_STATE.md" <<EOF
+
+## Workflow State
+
+- **Stage:** IMPLEMENTED
+- **Plan set:** \`$set_id\`
+- **Plan:** \`PR_PLAN_A01A_VALIDATE_PLAN_STATE.md\`
+- **Branch:** \`$branch\`
+- **Base commit:** \`$BASE_COMMIT\`
+- **Checkpoint head:** \`$head\`
+- **Checkpoint tree:** \`$tree\`
+- **Scope paths:** \`allowed.txt\`
+EOF
+
+	run python3 "$VALIDATOR" --repo-root "$REPO" "$archive/PR_PLAN_A01A_VALIDATE_PLAN_STATE.md"
+
+	assert_error CHECKPOINT_COMMITTED_SCOPE_MISMATCH
+	[ "$(json_get error.details.committed_paths)" = '["allowed.txt", "outside.txt"]' ]
 }
 
 @test "validator accepts descendant commits for a containment checkpoint" {
