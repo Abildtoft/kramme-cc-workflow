@@ -49,9 +49,11 @@ Same as `/kramme:pr:resolve-review` Step 2:
 3. **Severity prioritization** -- critical > important > suggestion
 4. **Action-class gate** -- Apply the standard skill's Step 2d. Manual findings that Step 2d keeps unresolved or deferred are never assigned to resolver agents; the lead records their proposal or next state using the standard skill's manual-findings output format. Any manual finding that Step 2d classifies as implementation payload remains resolver-eligible. Do not re-enumerate those states here; Step 2d is the canonical eligibility contract.
 
-If no resolver-eligible implementation candidates remain after the action-class gate, the lead writes the manual proposals and summary back to the source review, then stops before Step 3. Do not prompt for a parallel plan or spawn resolver agents for a manual-only review.
+If neither resolver-eligible implementation candidates nor pending dependency work remain after the action-class gate, the lead writes the manual proposals and summary back to the source review, then stops before Step 3. Use the standard Step 2d pending-work rule, including dependents of earlier processed deletions and deletions newly deferred by the lead. If only pending dependency work remains, delegate directly to the standard workflow at Step 2.5 with the accepted report, evaluated outcomes, and parsed flags; do not restart review discovery or discard dependency context. Do not prompt for a parallel plan or spawn resolver agents for a manual-only or dependency-only review.
 
 ### Step 3: Group Findings by File Area
+
+Before grouping by file, apply the standard Step 2d dependency-graph validation. Remove every dependency-connected component from the parallel candidate set and list it under `Sequential`; the lead resolves each component in topological order through the standard Step 3 flow, including the focused verification that establishes each dependency outcome. Never assign a dependency and its dependent to separate agents or decide the dependent's activation before that outcome exists.
 
 Group in-scope findings so that no two groups touch the same files:
 
@@ -110,6 +112,8 @@ If any findings were identified as overlapping multiple groups in Step 3:
 
 - Wait for parallel resolution to complete
 - Assign these findings to an agent that already owns one of the overlapping files, OR resolve them directly as the lead
+
+Resolve dependency-connected components directly as the lead through the standard sequential flow. File ownership never overrides dependency order.
 
 ### Step 7: Monitor and Coordinate
 

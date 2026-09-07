@@ -22,6 +22,8 @@ Use this format for each comment:
 
 **Location:** `path/to/file.ts:123` or `review-scope`
 
+**Depends on:** `CR-NNN — activate after dependency is addressed` or `CR-NNN — activate if dependency is not addressed after processing` (preserve when present; otherwise omit)
+
 **Reviewer's comment:**
 
 > [Quote the original review comment]
@@ -47,6 +49,8 @@ Use this simplified format for each finding:
 #### Finding #N: [Brief description]
 
 **Location:** `path/to/file.ts:123` or `review-scope`
+
+**Depends on:** `CR-NNN — activate after dependency is addressed` or `CR-NNN — activate if dependency is not addressed after processing` (preserve when present; otherwise omit)
 
 **Issue:** [Description of the issue]
 
@@ -111,6 +115,12 @@ After the finding is completed, remove the decision-pending fields and any `Proc
 **Decision outcome:** [What was implemented or completed, including the relevant files or process action]
 
 Do not leave proposal-only fields on an addressed or acknowledged finding.
+
+## Dependent findings
+
+Preserve `Depends on` on every lifecycle update so later runs retain the ordering and activation condition. When a dependent finding is not yet active, keep `Resolution status: open` and record which dependency outcome it awaits. When a fallback dependency is addressed, use `Resolution status: acknowledged` with `Action taken: Acknowledged — dependency addressed; conditional cleanup is no longer needed.`
+
+When the user explicitly reopens a deletion, also reset each fallback dependent acknowledged by that deletion to `Resolution status: open` with `Action taken: Open — dependency reopened; awaiting its new outcome.` Do this before reprocessing the deletion so the dependent can be evaluated after the new verified outcome. This narrow transition does not reopen unrelated acknowledged findings or follow-on cleanup that was already completed.
 
 ## Summary
 

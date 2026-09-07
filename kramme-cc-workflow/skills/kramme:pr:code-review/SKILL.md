@@ -113,7 +113,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
 
    If a previous-review source exists:
    - Parse the file to extract all parseable prior findings, not only addressed ones.
-   - Extract for each finding: finding ID, location (`file:line`, `review-scope`, or `PR description`), issue description, resolution status, action taken, and evidence when available.
+   - Extract for each finding: finding ID, location (`file:line`, `review-scope`, or `PR description`), issue description, resolution status, `Depends on` when present, action taken, and evidence when available.
    - Accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels when parsing existing entries, and normalize any of them to the same `location` field.
    - Accept `Resolution status:` and `**Resolution status:**` when present. Normalize values to one of: `open`, `addressed`, `deferred`, `acknowledged`, or `skipped`.
    - If no explicit resolution status is present, infer it conservatively:
@@ -131,6 +131,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    - `- Location: path/to/file.ts:123`, `review-scope`, or `PR description`
    - Legacy compatibility: `**Location:** path/to/file.ts:123` and `**File:** path/to/file.ts:123` should be treated the same as the structured `Location` field
    - `- Resolution status: open|addressed|deferred|acknowledged|skipped`
+   - `- Depends on: CR-NNN — activate after dependency is addressed` or `- Depends on: CR-NNN — activate if dependency is not addressed after processing` when present
    - **Issue/Finding:** [description]
    - **Action taken:** [what was done]
 
@@ -256,8 +257,9 @@ If a previous-review source was found in Step 5:
   - For PR description findings: both findings use location `PR description`
 - **Carry forward as active** when a previous finding with `Resolution status: open`, `deferred`, `acknowledged`, or `skipped` still applies to the current diff:
   - Preserve the previous finding ID when the root cause is the same.
-  - Refresh the location, severity, confidence, owner, and evidence from the current review when the current run has better data.
+  - Refresh the location, severity, confidence, owner, `Depends on`, and evidence from the current review when the current run has better data.
   - Keep the previous status visible by setting `Resolution status: open` in the active finding and adding evidence that it was carried forward from the previous-review source.
+  - Resolve a carried `Depends on` source ID to the retained current deletion finding with the same root cause, then replace it with that finding's final ID in Step 11. If the referenced deletion finding was dropped, remove the dependency and revalidate the cleanup against the surviving code before keeping it.
 - For previous non-addressed findings that do not match any current reviewer finding, perform a lightweight revalidation against the current review scope:
   - If the finding's file or scope is no longer present or the old root cause cannot be found, do not carry it forward.
   - If the root cause is still present in changed code, carry it forward as an active finding with the previous ID and evidence that it was revalidated from the previous-review source.
@@ -274,7 +276,7 @@ If a previous-review source was found in Step 5:
 
 11. **Aggregate Results**
 
-After validation, slop meta-review, and previous-review processing, apply the `Confidence and merge rules` and `Correctness and security precedence` sections of `references/review-discipline.md` before emphasis.
+After validation, slop meta-review, and previous-review processing, apply the `Confidence and merge rules` and `Correctness and security precedence` sections of `references/review-discipline.md`, including its `Deletion dependencies` check, before emphasis.
 
 After validation, slop meta-review, and previous-review processing, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
@@ -296,7 +298,7 @@ Assign stable `Finding ID` values to every active finding after dedupe, filterin
 - Preserve an existing ID if a finding is carried forward from the previous-review source and still describes the same root cause.
 - Include the ID in the final report so follow-up workflows can pass exact findings to `/kramme:pr:resolve-review`.
 - Set `Resolution status: open` on every active finding emitted by this review. Only `/kramme:pr:resolve-review` or a human follow-up should change that status to `addressed`, `deferred`, `acknowledged`, or `skipped`.
-- After IDs are assigned, revisit any kept cleanup-collision Suggestions and replace their provisional blocker text with the final blocking `CR-XXX` ID. Do not promote or reclassify cleanup findings during this ID reconciliation.
+- After IDs are assigned, revisit any kept cleanup-collision Suggestions and replace their provisional blocker text with the final blocking `CR-XXX` ID. Replace every deletion dependency's provisional finding identity with its final `CR-XXX` ID at the same time. Do not promote or reclassify cleanup findings during this ID reconciliation.
 
 Then summarize:
 

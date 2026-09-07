@@ -221,6 +221,8 @@ Before implementation, `issue-to-pr` validates Linear's target branch and verifi
 /kramme:pr:fix-ci         # iterate until CI passes
 ```
 
+Code review uses a **challenge → delete → simplify** sequence: establish the required outcome, question unsupported implementation assumptions, consider removing unnecessary mechanisms, then simplify what remains. Standard and Team Mode reviews reconcile deletion and cleanup findings so they do not recommend polishing code proposed for removal. Conditional cleanup remains a separate tracked finding; resolution validates dependency graphs, processes connected findings sequentially after each dependency has a verified outcome, and keeps correctness and security findings ahead of cleanup.
+
 More review skills cover product, convention, UX, and GitHub-reviewer flows. Which one should you use?
 
 | Need | Use |

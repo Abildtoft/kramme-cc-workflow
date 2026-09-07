@@ -5,6 +5,8 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 ```markdown
 # PR Review Summary
 
+Review producer: kramme:pr:code-review
+
 ## Relevance Filter
 
 - X findings validated as PR-caused
@@ -81,6 +83,7 @@ Working tree mutated during review: {paths}; findings citing them were re-verifi
   - Action class: advisory
   - Owner: author | maintainer | reviewer | unknown
   - Resolution status: open
+  - Depends on: CR-NNN — activate after dependency is addressed | CR-NNN — activate if dependency is not addressed after processing (conditional cleanup only)
   - Evidence: concrete context or UNVERIFIED reason
 
 ## Slop Warnings (X found)
@@ -136,9 +139,11 @@ Approve if the change definitely improves overall code health.
 - **Manual blocker / Next human decision** — required for every manual Critical/Important finding and omitted for `gated_auto` findings. If no manual blocker exists, reclassify the finding as `gated_auto` or downgrade it to an advisory suggestion.
 - **Auto-resolution Readiness** — count only Critical/Important findings. Suggestions and FYI items are not counted here; `/kramme:pr:resolve-review` applies its own safe-advisory test when deciding whether to pick one up. If there are no manual blockers, write `Manual blockers: none`.
 - **Previous Review Context** — always include this section. Use `Source: none` and zero counts when no previous-review source was found. When `--previous-review <path>` was used, display that path so cross-workspace handoffs are auditable.
+- **Review producer** — emit the exact report-level marker `Review producer: kramme:pr:code-review` so an inline report keeps its dependency contract when handed to `/kramme:pr:resolve-review` through chat or another supported transport.
 - **Dead Code** — keep dead-code findings in the severity bucket that matches their impact, and use the ask shape verbatim. Example: `[agent-name]: DEAD CODE IDENTIFIED: [location, location, ...]. Safe to remove these?` Never rewrite as "delete these files" or "remove unused imports."
 - **Emphasis** — emphasis may promote matching suggestions, but other validated findings keep their original severities. Cleanup-dimension promotions are provisional; optional cleanup without concrete merge-blocking impact returns to Suggestions during action-class normalization.
 - **Cleanup collisions** — `lean`, `refactor`, and `simplify` findings that collide with unresolved correctness/security findings stay advisory or are suppressed. When kept, evidence should name the blocking `CR-XXX` after final IDs are assigned.
+- **Deletion dependencies** — keep conditional cleanup as a separate advisory finding. Use `Depends on: CR-NNN — activate after dependency is addressed` when deletion enables the cleanup, or `Depends on: CR-NNN — activate if dependency is not addressed after processing` when the cleanup is a fallback for rejected, deferred, skipped, or blocked deletion.
 - **Approval Standard** — always include; it's the exit-criteria statement, not boilerplate.
 - **FYI** in Strengths — a review with zero positive observations is usually miscalibrated. If the PR genuinely has nothing to praise, say so explicitly rather than omitting the section.
 
