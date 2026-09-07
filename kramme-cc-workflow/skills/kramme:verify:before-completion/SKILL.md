@@ -43,6 +43,8 @@ Skip any step = the claim remains unverified
 
 If no command can prove the claim — no test/build/lint exists, or it cannot run in this environment — say so explicitly: name what you changed and what you could not verify. "Cannot verify X here" is an honest status; "X passes" without evidence is not.
 
+For claims about user experience (UX: clear, reliable task completion), developer experience (DX: understanding, maintenance, testing, and debugging), or agent experience (AX: context discovery, predictable execution, recovery, and verification), identify evidence appropriate to the affected workflow. Check established behavior and contracts outside the intended change with relevant regression coverage, and verify intentional changes against the new expectations. Report material tradeoffs and verification limits; passing checks do not prove that nothing can break. Unchanged or inapplicable dimensions need no invented improvement or extra work outside scope.
+
 ## Common Failures
 
 | Claim | Requires | Not Sufficient |

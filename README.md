@@ -171,6 +171,8 @@ Restart Claude Code after updating for changes to take effect.
 
 These skills cover the full lifecycle of a change. Most work runs through the middle phases; only the situational **Chart** phase up front is reached for when a task is too big or foggy to plan in one pass.
 
+Feature specification, API design, Linear implementation planning, review resolution, agent-readiness recommendations, skill authoring/review, and completion verification consider user experience (UX), developer experience (DX), and agent experience (AX) together. Prefer improvements across all three within scope, preserve established behavior and contracts outside the intended change, make intentional changes and material tradeoffs explicit, and support regression claims with relevant checks. Unchanged or inapplicable dimensions are acceptable; the principle does not require extra scope.
+
 | Phase | When to use it | Skills |
 | --- | --- | --- |
 | **Chart** (situational) | Huge or foggy initiatives whose route can't fit in one session | `/kramme:discovery:wayfinder` |

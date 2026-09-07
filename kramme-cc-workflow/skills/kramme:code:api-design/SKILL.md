@@ -36,6 +36,8 @@ SIMPLICITY CHECK: <the smallest interface that meets the requirement>
 
 If the interface you end up designing is not the smallest version, write a second line explaining what forced the expansion. If there is no forcing requirement, ship the smaller surface.
 
+Within that scope, consider user experience (UX: clear, reliable task completion), developer experience (DX: ease of understanding, maintenance, testing, and debugging), and agent experience (AX: discoverable contracts, predictable calls, recoverable errors, and verifiable results). Prefer designs that improve all three while preserving established behavior and contracts outside the intended change. When the task changes an existing contract, make the intentional change and its compatibility or migration effects explicit. Unchanged or inapplicable dimensions are acceptable; do not add speculative interfaces to manufacture improvements. Explain material tradeoffs and identify relevant compatibility checks.
+
 ### Rule 1 — Contract first
 
 Design the contract before the handler. The contract is: input type, output type, error cases, HTTP status mapping, and naming. Write it down — as a TypeScript type, an OpenAPI stub, a comment block, whatever the project reads — _before_ writing implementation code.

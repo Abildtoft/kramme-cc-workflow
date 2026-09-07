@@ -42,6 +42,7 @@ Review one or more skills against the skill-authoring rubric. This is a read-onl
    - If the contract is unclear, treat that as a review finding instead of guessing intent.
 
 6. **Review against the rubric**
+   - **UX/DX/AX decision quality**: Relevant choices consider user experience (clear interaction and reliable task completion), developer experience (maintainable structure and easy testing/debugging), and agent experience (unambiguous discovery, execution, recovery, and handoffs). Prefer improvements across all three while preserving established behavior and contracts outside the intended change; look for explicit intentional changes, concrete material tradeoffs, and relevant verification. Unchanged or inapplicable dimensions are acceptable. Flag evidenced harm or a consequential omitted tradeoff, not missing acronym boilerplate, and do not expand the skill's job to manufacture improvements.
    - **Focused and composable**: The skill owns one coherent job, avoids bundling unrelated workflows, and composes with other skills by reference instead of duplicating their responsibilities.
    - **Prompt footprint**: The frontmatter description preserves trigger nouns while staying compact; `SKILL.md` contains only essential workflow; generic advice, repeated examples, and information the agent can infer are removed or moved out of the loaded path.
    - **Ecosystem fit**: When ecosystem evidence is available, the skill is not an unnecessary duplicate, unused loaded skill, or root/configuration mismatch.
