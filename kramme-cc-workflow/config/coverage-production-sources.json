@@ -211,6 +211,20 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/experience-quality-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:agent-readiness/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:api-design/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:docs:feature-spec/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:resolve-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:skill:create/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:skill:review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:verify:before-completion/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/audit-agent-config-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:code:audit-agent-config/SKILL.md"
