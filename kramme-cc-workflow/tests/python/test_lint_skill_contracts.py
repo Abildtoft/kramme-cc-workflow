@@ -713,7 +713,7 @@ class CheckRegistryTest(unittest.TestCase):
                 "ui_relevance_contracts",
                 "marker_manifests",
                 "source_provenance",
-                "epilogue_order",
+                "epilogue_forbidden",
                 "hooks_json",
                 "readme_skill_sync",
                 "component_catalog",

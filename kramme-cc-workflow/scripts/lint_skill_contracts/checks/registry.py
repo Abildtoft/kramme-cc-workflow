@@ -11,7 +11,7 @@ from .basic import (
     check_text_contracts,
 )
 from .component_catalog import check_component_catalog
-from .epilogue import check_epilogue_order
+from .epilogue import check_epilogue_forbidden
 from .hooks_json import check_hooks_json
 from .marker_manifest import check_marker_manifests
 from .mechanical import check_mechanical
@@ -30,7 +30,7 @@ CHECKS: tuple[tuple[str, CheckFunc], ...] = (
     ("ui_relevance_contracts", check_ui_relevance_contracts),
     ("marker_manifests", check_marker_manifests),
     ("source_provenance", check_source_provenance),
-    ("epilogue_order", check_epilogue_order),
+    ("epilogue_forbidden", check_epilogue_forbidden),
     ("hooks_json", check_hooks_json),
     ("readme_skill_sync", check_readme_skill_sync),
     ("component_catalog", check_component_catalog),

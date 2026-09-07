@@ -21,7 +21,7 @@ from .checks.basic import (
     heading_lines,
 )
 from .checks.component_catalog import check_component_catalog
-from .checks.epilogue import canonical_epilogue_heading, check_epilogue_order
+from .checks.epilogue import check_epilogue_forbidden
 from .checks.hooks_json import check_hooks_json
 from .checks.marker_manifest import (
     allow_empty_field_keys,
@@ -129,12 +129,11 @@ __all__ = [
     "agent_catalog_entries",
     "agent_name_from_readme_cell",
     "allow_empty_field_keys",
-    "canonical_epilogue_heading",
     "catalog_relative_path",
     "check_base_diff_scope",
     "check_component_catalog",
     "check_component_catalog_drift",
-    "check_epilogue_order",
+    "check_epilogue_forbidden",
     "check_file_identity",
     "check_hooks_json",
     "check_marker_manifests",

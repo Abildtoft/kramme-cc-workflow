@@ -3254,17 +3254,15 @@ EOF
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
-@test "epilogue order drift fails" {
-  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## Common Rationalizations\n\n## Verification'
+@test "forbidden epilogue heading fails" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## Red Flags — STOP\n\n- never\n\n## Verification\n\n- [ ] done'
   write_file "$TMP_ROOT/registry.yaml" <<'EOF'
 {
-  "epilogue_order": {
+  "epilogue_forbidden": {
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
-    "trigger_heading_regex": "^#{2,3}\\s+Common Rationalizations\\b",
-    "required_headings": [
-      "Common Rationalizations",
-      "Red Flags",
-      "Verification"
+    "forbidden_heading_regexes": [
+      "^#{2,3}\\s+Common Rationalizations\\b",
+      "^#{2,3}\\s+Red Flags\\b"
     ],
     "allowlist": []
   }
@@ -3274,8 +3272,29 @@ EOF
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"epilogue order"* ]]
+  [[ "$output" == *"epilogue forbidden"* ]]
   [[ "$output" == *"Red Flags"* ]]
+}
+
+@test "trimmed verification section passes epilogue check" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## Verification\n\n- [ ] the artifact exists'
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "epilogue_forbidden": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "forbidden_heading_regexes": [
+      "^#{2,3}\\s+Common Rationalizations\\b",
+      "^#{2,3}\\s+Red Flags\\b"
+    ],
+    "allowlist": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
 }
 
 @test "mechanical frontmatter regression fails" {

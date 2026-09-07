@@ -1446,12 +1446,7 @@
     {
       "name": "pr-generate-description-red-flag-examples",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/red-flags.md",
-      "contains": [
-        "I ran format and lint locally, so I should include them",
-        "Local tests could not run because dependencies or services were missing",
-        "The body mentions local setup failures",
-        "A longer description is safer"
-      ]
+      "contains": ["The body mentions local setup failures"]
     },
     {
       "name": "pr-generate-description-visual-capture-safety",
@@ -1805,14 +1800,13 @@
       ".agents/skills/*/references/sources-snapshot"
     ]
   },
-  "epilogue_order": {
+  "epilogue_forbidden": {
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
-    "trigger_heading_regex": "^#{2,3}\\s+Common Rationalizations\\b",
-    "required_headings": [
-      "Common Rationalizations",
-      "Red Flags",
-      "Verification"
+    "forbidden_heading_regexes": [
+      "^#{2,3}\\s+Common Rationalizations\\b",
+      "^#{2,3}\\s+Red Flags\\b"
     ],
+    "decision": "docs/decisions/2026-09-07-skill-epilogue-verification-only.md",
     "allowlist": []
   },
   "hooks_json": {

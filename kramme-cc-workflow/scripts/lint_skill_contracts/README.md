@@ -15,7 +15,7 @@ the parsing, validation, synchronization, and reporting behavior.
 | Contract schema | `schema.py` | Schema loading, fallback behavior, required frontmatter fields, or source-manifest fields are wrong. |
 | Check orchestration | `checks/types.py`, `checks/registry.py` | Check ordering, shared context, or failure and warning aggregation is wrong. |
 | Text and file contracts | `checks/basic.py` | Synced text, inventory, heading order, file identity, or required-file checks are wrong. |
-| Workflow guidance contracts | `checks/base_diff_scope.py`, `checks/epilogue.py`, `checks/ui_relevance.py` | Base-diff guidance, skill epilogue order, or UI-relevance rules and fixtures are wrong. |
+| Workflow guidance contracts | `checks/base_diff_scope.py`, `checks/epilogue.py`, `checks/ui_relevance.py` | Base-diff guidance, forbidden skill epilogue sections, or UI-relevance rules and fixtures are wrong. |
 | Manifest, provenance, hook, and mechanical contracts | `checks/marker_manifest.py`, `checks/source_provenance.py`, `checks/hooks_json.py`, `checks/mechanical.py` | Source manifests, copied-source licensing or immutable origin metadata, forbidden source snapshots, hook registration, frontmatter, naming, or skill line budgets are wrong. |
 | Routing distinctness | `checks/routing_distinctness.py` | Skill descriptions overlap too closely for auto-invocation routing, a recorded routing boundary is stale, removable, or missing its positive clause, or the nearest-pair burndown is wrong. |
 | README synchronization | `readme.py`, `checks/readme_sync.py` | Skill, agent, or hook reference rows drift, or generated component-reference output is wrong. |
