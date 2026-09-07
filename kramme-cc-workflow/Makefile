@@ -297,20 +297,26 @@ coverage: unit-coverage coverage-bats-contract
 unit-coverage: coverage-node coverage-python
 
 # Native coverage thresholds were added after the Node 20 version used in CI,
-# so enforce its built-in report here. See https://nodejs.org/api/cli.html#--test-coverage-linesthreshold
+# so aggregate its LCOV counters here. See https://nodejs.org/api/test.html#coverage-reporters
 coverage-node: check-node-deps check-coverage-inventory-deps
-	@tmpdir=$$(mktemp -d); report="$$tmpdir/node-coverage.txt"; inventory_rows="$$tmpdir/node-inventory.tsv"; \
+	@tmpdir=$$(mktemp -d); report="$$tmpdir/node-tests.txt"; coverage_report="$$tmpdir/node-coverage.lcov"; inventory_rows="$$tmpdir/node-inventory.tsv"; \
 		jq -er '.javascript as $$language | select(($$language.measured | type) == "array" and ($$language.measured | length) > 0 and ($$language.contract_only | type) == "object") | (($$language.measured[] | ["measured", .]), ($$language.contract_only | keys[] | ["registered", .])) | @tsv' "$(COVERAGE_PRODUCTION_INVENTORY)" >"$$inventory_rows" || { echo "Production coverage inventory is malformed"; rm -rf "$$tmpdir"; exit 1; }; \
-		node --test --experimental-test-coverage $(NODE_TEST_FILES) >"$$report" 2>&1; status=$$?; \
+		node --test --experimental-test-coverage --test-reporter=spec --test-reporter=lcov --test-reporter-destination="$$report" --test-reporter-destination="$$coverage_report" $(NODE_TEST_FILES); status=$$?; \
 		cat "$$report"; \
 		if [ $$status -ne 0 ]; then rm -rf "$$tmpdir"; exit $$status; fi; \
-		awk -F '|' -v plugin="$(PLUGIN_REL)" -v min_lines="$(NODE_COVERAGE_LINES)" -v min_branches="$(NODE_COVERAGE_BRANCHES)" -v min_functions="$(NODE_COVERAGE_FUNCTIONS)" ' \
+		awk -v root="$(ROOT_DIR)" -v plugin="$(PLUGIN_REL)" -v min_lines="$(NODE_COVERAGE_LINES)" -v min_branches="$(NODE_COVERAGE_BRANCHES)" -v min_functions="$(NODE_COVERAGE_FUNCTIONS)" ' \
 			NR == FNR { \
 				split($$0, inventory_entry, "\t"); registered[inventory_entry[2]]=1; \
 				if (inventory_entry[1] == "measured") { expected[inventory_entry[2]]=1; order[++expected_count]=inventory_entry[2] } \
 				next \
 			} \
 			function trim(value) { gsub(/^[[:space:]]+|[[:space:]]+$$/, "", value); return value } \
+			function normalize_path(value) { \
+				value=trim(value); gsub(/\\/, "/", value); sub(/^\.\//, "", value); \
+				if (index(value, root "/") == 1) value=substr(value, length(root) + 2); \
+				if (index(value, plugin "/") != 1) value=plugin "/" value; \
+				return value \
+			} \
 			function print_paths(label, count, values,    position, limit) { \
 				limit=count < 10 ? count : 10; \
 				printf "%s (%d): ", label, count > "/dev/stderr"; \
@@ -318,45 +324,67 @@ coverage-node: check-node-deps check-coverage-inventory-deps
 				if (count > limit) printf ", ... (+%d more)", count - limit > "/dev/stderr"; \
 				print "" > "/dev/stderr" \
 			} \
-			NF < 4 { next } \
-			{ \
-				item=$$1; sub(/^ℹ/, "", item); sub(/^#/, "", item); \
-				indent=match(item, /[^ ]/) - 1; item=trim(item); \
-				if (item == "all files") { \
-					lines=$$2; branches=$$3; functions=$$4; \
-					gsub(/[^0-9.]/, "", lines); gsub(/[^0-9.]/, "", branches); gsub(/[^0-9.]/, "", functions); \
-					found_summary=1; next \
-				} \
-				line_percent=trim($$2); \
-				if (line_percent !~ /^[0-9]+([.][0-9]+)?$$/) { \
-					if (item != "" && item != "file") { \
-						parents[indent]=item; \
-						for (level=indent + 1; level < 20; level++) delete parents[level] \
+			function malformed() { malformed_report=1 } \
+			function reset_record(    counter_key) { \
+				for (counter_key in counter) delete counter[counter_key]; \
+				active=0; ignored=0; path="" \
+			} \
+			function finish_record(    position, key) { \
+				if (!active) { malformed(); return } \
+				if (!ignored) { \
+					required[1]="LF"; required[2]="LH"; required[3]="BRF"; required[4]="BRH"; required[5]="FNF"; required[6]="FNH"; \
+					for (position=1; position <= 6; position++) { \
+						key=required[position]; \
+						if (!(key in counter)) malformed() \
 					} \
+					if (("LF" in counter) && ("LH" in counter) && counter["LH"] > counter["LF"]) malformed(); \
+					if (("BRF" in counter) && ("BRH" in counter) && counter["BRH"] > counter["BRF"]) malformed(); \
+					if (("FNF" in counter) && ("FNH" in counter) && counter["FNH"] > counter["FNF"]) malformed(); \
+					if (path in seen) malformed(); \
+					seen[path]=1; \
+					if (!(path in registered)) { \
+						unexpected_order[++unexpected_count]=path \
+					} else if (path in expected) { \
+						if (counter["LF"] == 0) malformed(); \
+						line_total+=counter["LF"]; line_hit+=counter["LH"]; \
+						branch_total+=counter["BRF"]; branch_hit+=counter["BRH"]; \
+						function_total+=counter["FNF"]; function_hit+=counter["FNH"] \
+					} \
+				} \
+				reset_record() \
+			} \
+			{ \
+				record=$$0; sub(/\r$$/, "", record); \
+				if (record ~ /^SF:/) { \
+					if (active) malformed(); \
+					path=normalize_path(substr(record, 4)); active=1; ignored=(path ~ /(^|\/)tests\//); \
+					if (path == plugin "/") malformed(); \
 					next \
 				} \
-				path=item; \
-				if (index(path, "/") == 0) { \
-					for (level=indent - 1; level >= 0; level--) if (level in parents) path=parents[level] "/" path \
+				if (record == "end_of_record") { finish_record(); next } \
+				if (record ~ /^(LF|LH|BRF|BRH|FNF|FNH):/) { \
+					if (!active) { malformed(); next } \
+					field_count=split(record, field, ":"); key=field[1]; value=field[2]; \
+					if (field_count != 2 || value !~ /^[0-9]+$$/ || (key in counter)) malformed(); \
+					else counter[key]=value + 0 \
 				} \
-				gsub(/\\/, "/", path); \
-				if (index(path, plugin "/") != 1) path=plugin "/" path; \
-				if (path ~ /(^|\/)tests\//) next; \
-				seen[path]=1; \
-				if (!(path in registered) && !(path in unexpected)) unexpected_order[++unexpected_count]=path; \
-				unexpected[path]=1 \
 			} \
 			END { \
+				if (active) malformed(); \
 				for (position=1; position <= expected_count; position++) if (!(order[position] in seen)) missing[++missing_count]=order[position]; \
 				if (missing_count) { print_paths("Node coverage missing inventory files", missing_count, missing); failed=1 } \
 				if (unexpected_count) { print_paths("Node coverage report has unregistered production files", unexpected_count, unexpected_order); failed=1 } \
-				if (!found_summary) { print "Node coverage summary not found" > "/dev/stderr"; failed=1 } \
-				else if (lines + 0 < min_lines || branches + 0 < min_branches || functions + 0 < min_functions) { \
+				if (malformed_report) { print "Node LCOV coverage report is malformed" > "/dev/stderr"; failed=1 } \
+				lines=line_total ? (100 * line_hit / line_total) : 100; \
+				branches=branch_total ? (100 * branch_hit / branch_total) : 100; \
+				functions=function_total ? (100 * function_hit / function_total) : 100; \
+				printf "Node production coverage: lines %.2f%% (%d/%d), branches %.2f%% (%d/%d), functions %.2f%% (%d/%d)\n", lines, line_hit, line_total, branches, branch_hit, branch_total, functions, function_hit, function_total; \
+				if (lines < min_lines || branches < min_branches || functions < min_functions) { \
 					printf "Node coverage below baseline: lines %.2f/%.2f, branches %.2f/%.2f, functions %.2f/%.2f\n", lines, min_lines, branches, min_branches, functions, min_functions > "/dev/stderr"; \
 					failed=1 \
 				} \
 				exit failed \
-			}' "$$inventory_rows" "$$report"; \
+			}' "$$inventory_rows" "$$coverage_report"; \
 		status=$$?; rm -rf "$$tmpdir"; exit $$status
 
 coverage-python: check-python-deps check-coverage-inventory-deps test-python

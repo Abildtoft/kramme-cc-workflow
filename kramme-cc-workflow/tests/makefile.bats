@@ -1,5 +1,11 @@
 #!/usr/bin/env bats
 
+teardown() {
+  if [[ -n "${MAKEFILE_RUNTIME_ROOT:-}" && "$MAKEFILE_RUNTIME_ROOT" == "$BATS_TEST_DIRNAME/../../.context/node-coverage-runtime."* ]]; then
+    rm -rf -- "$MAKEFILE_RUNTIME_ROOT"
+  fi
+}
+
 create_fake_tool() {
   local path="$1"
   mkdir -p "$(dirname "$path")"
@@ -43,7 +49,8 @@ MD
 
 setup_makefile_contract_repo() {
   local repo_name="${1:-makefile-contract}"
-  MAKEFILE_CONTRACT_REPO="$BATS_TEST_TMPDIR/$repo_name"
+  local parent_dir="${2:-$BATS_TEST_TMPDIR}"
+  MAKEFILE_CONTRACT_REPO="$parent_dir/$repo_name"
   MAKEFILE_CONTRACT_BIN="$MAKEFILE_CONTRACT_REPO/bin"
   mkdir -p \
     "$MAKEFILE_CONTRACT_REPO/.agents/skills" \
@@ -109,9 +116,76 @@ update_fake_inventory() {
 create_fake_node_coverage_tool() {
   cat >"$MAKEFILE_CONTRACT_BIN/node" <<'SH'
 #!/bin/sh
-cat "$NODE_COVERAGE_FIXTURE"
+case "$1" in
+  -e) exit 0 ;;
+esac
+
+reporter_one=
+reporter_two=
+destination_one=
+destination_two=
+for argument in "$@"; do
+  case "$argument" in
+    --test-reporter=*)
+      if [ -z "$reporter_one" ]; then
+        reporter_one=${argument#*=}
+      else
+        reporter_two=${argument#*=}
+      fi
+      ;;
+    --test-reporter-destination=*)
+      if [ -z "$destination_one" ]; then
+        destination_one=${argument#*=}
+      else
+        destination_two=${argument#*=}
+      fi
+      ;;
+  esac
+done
+
+write_report() {
+  reporter="$1"
+  destination="$2"
+  case "$reporter" in
+    spec)
+      printf '%s\n' "${NODE_TEST_OUTPUT:-fake node tests passed}" >"$destination"
+      ;;
+    lcov)
+      cat "$NODE_COVERAGE_FIXTURE" >"$destination"
+      ;;
+    *)
+      echo "unexpected reporter: $reporter" >&2
+      exit 2
+      ;;
+  esac
+}
+
+write_report "$reporter_one" "$destination_one"
+write_report "$reporter_two" "$destination_two"
+exit "${NODE_TEST_STATUS:-0}"
 SH
   chmod +x "$MAKEFILE_CONTRACT_BIN/node"
+}
+
+write_node_lcov_record() {
+  local path="$1"
+  local line_hit="$2"
+  local line_total="$3"
+  local branch_hit="$4"
+  local branch_total="$5"
+  local function_hit="$6"
+  local function_total="$7"
+  cat >>"$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" <<REPORT
+TN:
+SF:$path
+FNF:$function_total
+FNH:$function_hit
+BRF:$branch_total
+BRH:$branch_hit
+LF:$line_total
+LH:$line_hit
+end_of_record
+REPORT
 }
 
 create_fake_python_coverage_tool() {
@@ -554,28 +628,20 @@ SH
 @test "coverage-node accepts values exactly at the baselines" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool
-  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
-ℹ scripts          |       |       |       |
-ℹ  example.js      | 80.00 | 70.00 | 80.00 |
-ℹ all files        | 80.00 | 70.00 | 80.00 |
-REPORT
+  write_node_lcov_record "scripts/example.js" 8 10 7 10 8 10
 
-  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"Node production coverage: lines 80.00% (8/10), branches 70.00% (7/10), functions 80.00% (8/10)"* ]]
 }
 
-@test "coverage-node accepts Node 20 TAP rows and ignores test files" {
+@test "coverage-node accepts values above the baselines" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool
-  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
-# file                         | line % | branch % | funcs % |
-# scripts/example.js           |  80.00 |    70.00 |   80.00 |
-# tests/node/example.test.js   | 100.00 |   100.00 |  100.00 |
-# all files                    |  80.00 |    70.00 |   80.00 |
-REPORT
+  write_node_lcov_record "scripts/example.js" 9 10 8 10 9 10
 
-  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
   [ "$status" -eq 0 ]
 }
@@ -583,15 +649,39 @@ REPORT
 @test "coverage-node rejects values below a baseline" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool
-  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
-ℹ scripts          |       |       |       |
-ℹ  example.js      | 79.99 | 70.00 | 80.00 |
-ℹ all files        | 79.99 | 70.00 | 80.00 |
-REPORT
+  write_node_lcov_record "scripts/example.js" 7999 10000 7 10 8 10
 
-  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
   [ "$status" -ne 0 ]
+  [[ "$output" == *"Node coverage below baseline"* ]]
+}
+
+@test "coverage-node weights counters instead of averaging file percentages" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/large.js"
+  update_fake_inventory '.javascript.measured += ["plugin/scripts/large.js"]'
+  write_node_lcov_record "scripts/example.js" 1 1 1 1 1 1
+  write_node_lcov_record "scripts/large.js" 78 99 69 99 78 99
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"lines 79.00% (79/100), branches 70.00% (70/100), functions 79.00% (79/100)"* ]]
+  [[ "$output" == *"Node coverage below baseline"* ]]
+}
+
+@test "coverage-node excludes fully covered test counters from production totals" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  write_node_lcov_record "scripts/example.js" 1 10 1 10 1 10
+  write_node_lcov_record "tests/node/example.test.js" 1000 1000 1000 1000 1000 1000
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"lines 10.00% (1/10), branches 10.00% (1/10), functions 10.00% (1/10)"* ]]
   [[ "$output" == *"Node coverage below baseline"* ]]
 }
 
@@ -600,13 +690,9 @@ REPORT
   create_fake_node_coverage_tool
   printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/unloaded.js"
   update_fake_inventory '.javascript.measured += ["plugin/scripts/unloaded.js"]'
-  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
-ℹ scripts          |       |       |       |
-ℹ  example.js      | 80.00 | 70.00 | 80.00 |
-ℹ all files        | 80.00 | 70.00 | 80.00 |
-REPORT
+  write_node_lcov_record "scripts/example.js" 8 10 7 10 8 10
 
-  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"Node coverage missing inventory files (1): plugin/scripts/unloaded.js"* ]]
@@ -617,44 +703,153 @@ REPORT
   create_fake_node_coverage_tool
   printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/contract.js"
   update_fake_inventory '.javascript.contract_only["plugin/scripts/contract.js"] = ["plugin/tests/example.bats"]'
-  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
-ℹ scripts          |       |       |       |
-ℹ  contract.js     | 80.00 | 70.00 | 80.00 |
-ℹ  example.js      | 80.00 | 70.00 | 80.00 |
-ℹ all files        | 80.00 | 70.00 | 80.00 |
-REPORT
+  write_node_lcov_record "scripts/contract.js" 0 100 0 100 0 100
+  write_node_lcov_record "scripts/example.js" 8 10 7 10 8 10
 
-  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"lines 80.00% (8/10), branches 70.00% (7/10), functions 80.00% (8/10)"* ]]
 }
 
 @test "coverage-node rejects an unregistered production file in the report" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool
   printf '"use strict";\n' >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/unregistered.js"
-  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt" <<'REPORT'
-ℹ scripts          |       |       |       |
-ℹ  example.js      | 80.00 | 70.00 | 80.00 |
-ℹ  unregistered.js | 80.00 | 70.00 | 80.00 |
-ℹ all files        | 80.00 | 70.00 | 80.00 |
-REPORT
+  write_node_lcov_record "scripts/example.js" 8 10 7 10 8 10
+  write_node_lcov_record "scripts/unregistered.js" 8 10 7 10 8 10
 
-  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
   [ "$status" -ne 0 ]
   [[ "$output" == *"Node coverage report has unregistered production files (1): plugin/scripts/unregistered.js"* ]]
 }
 
-@test "coverage-node rejects a missing summary" {
+@test "coverage-node rejects malformed LCOV counters" {
   setup_makefile_contract_repo
   create_fake_node_coverage_tool
-  printf 'no coverage rows\n' >"$MAKEFILE_CONTRACT_REPO/node-coverage.txt"
+  cat >"$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" <<'REPORT'
+TN:
+SF:scripts/example.js
+FNF:10
+FNH:8
+BRF:10
+BRH:7
+LF:10
+end_of_record
+REPORT
 
-  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.txt" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
 
   [ "$status" -ne 0 ]
-  [[ "$output" == *"Node coverage summary not found"* ]]
+  [[ "$output" == *"Node LCOV coverage report is malformed"* ]]
+}
+
+@test "coverage-node rejects duplicate production records" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  write_node_lcov_record "scripts/example.js" 8 10 7 10 8 10
+  write_node_lcov_record "scripts/example.js" 8 10 7 10 8 10
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Node LCOV coverage report is malformed"* ]]
+}
+
+@test "coverage-node rejects impossible hit counters" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  write_node_lcov_record "scripts/example.js" 11 10 7 10 8 10
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Node LCOV coverage report is malformed"* ]]
+}
+
+@test "coverage-node rejects a measured source with no line obligations" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  write_node_lcov_record "scripts/example.js" 0 0 0 0 0 0
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Node LCOV coverage report is malformed"* ]]
+}
+
+@test "coverage-node treats valid zero branch and function denominators as fully covered" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  write_node_lcov_record "scripts/example.js" 8 10 0 0 0 0
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"branches 100.00% (0/0), functions 100.00% (0/0)"* ]]
+}
+
+@test "coverage-node preserves the Node test process exit status" {
+  setup_makefile_contract_repo
+  create_fake_node_coverage_tool
+  write_node_lcov_record "scripts/example.js" 8 10 7 10 8 10
+
+  run env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" NODE_COVERAGE_FIXTURE="$MAKEFILE_CONTRACT_REPO/node-coverage.lcov" NODE_TEST_OUTPUT="fixture test failed" NODE_TEST_STATUS=7 make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"fixture test failed"* ]]
+  [[ "$output" == *"Error 7"* ]]
+  [[ "$output" != *"Node production coverage"* ]]
+}
+
+@test "coverage-node rejects undercovered production on the actual Node runtime" {
+  mkdir -p "$BATS_TEST_DIRNAME/../../.context"
+  MAKEFILE_RUNTIME_ROOT=$(mktemp -d "$BATS_TEST_DIRNAME/../../.context/node-coverage-runtime.XXXXXX")
+  setup_makefile_contract_repo "makefile-contract" "$MAKEFILE_RUNTIME_ROOT"
+  mkdir -p \
+    "$MAKEFILE_CONTRACT_REPO/plugin/node_modules/yaml" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/tests/node"
+  printf 'module.exports = {};\n' >"$MAKEFILE_CONTRACT_REPO/plugin/node_modules/yaml/index.js"
+  cat >"$MAKEFILE_CONTRACT_REPO/plugin/scripts/example.js" <<'JS'
+"use strict";
+
+function classify(value) {
+  if (value > 20) return "very-large";
+  if (value > 10) return "large";
+  if (value > 5) return "medium";
+  if (value > 0) return "small";
+  return "none";
+}
+
+function unused(value) {
+  if (value > 3) return value + 1;
+  if (value > 2) return value + 2;
+  if (value > 1) return value + 3;
+  return value + 4;
+}
+
+module.exports = { classify, unused };
+JS
+  {
+    printf '%s\n' \
+      '"use strict";' \
+      'const assert = require("node:assert/strict");' \
+      'const test = require("node:test");' \
+      'const { classify } = require("../../scripts/example.js");' \
+      'test("covers one production path and many test lines", () => {'
+    for value in $(seq 1 120); do
+      printf '  assert.equal(%d, %d);\n' "$value" "$value"
+    done
+    printf '%s\n' \
+      '  assert.equal(classify(25), "very-large");' \
+      '});'
+  } >"$MAKEFILE_CONTRACT_REPO/plugin/tests/node/coverage-runtime.test.js"
+
+  run make -C "$MAKEFILE_CONTRACT_REPO/plugin" --no-print-directory coverage-node NODE_TEST_FILES=tests/node/coverage-runtime.test.js
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"Node coverage below baseline"* ]]
 }
 
 @test "coverage-python accepts values exactly at the baseline" {
