@@ -1,8 +1,8 @@
 # Refinement Rubric
 
-Grade every backlog issue on five dimensions, then map the grades to one action. Grades are a thinking aid; the report must cite the concrete evidence, not just the label.
+Grade every backlog issue on five dimensions and report startability as a separate axis, then map the grades to one action. Grades are a thinking aid; the report must cite the concrete evidence, not just the label.
 
-The target state is `agent-ready`: an autonomous agent with repository access and no human in the loop could take the issue, implement it, verify it, and open a Pull Request that a reviewer would accept. Every `rewrite`, `split`, and `ask` exists to move an issue toward that state or to establish that it cannot get there.
+The target state is `agent-ready`: the specification gives an autonomous agent enough information to implement and verify the issue once its declared prerequisites are satisfied. Report whether work can start separately. Every `rewrite`, `split`, and `ask` exists to move an issue toward that state or to establish that it cannot get there.
 
 ## Clarity
 
@@ -65,11 +65,15 @@ Synced Linear agent-readiness contract (keep aligned across Linear readiness wor
 
 | Grade | Meaning |
 | --- | --- |
-| `agent-ready` | Every item passes. |
-| `needs-refinement` | One or more items fail, and the gap can be closed by a rewrite grounded in the repository or by one answer from a person. |
-| `human-only` | The gap is a product decision, design direction, or access an agent cannot obtain, and closing it is itself the work; or the issue is exploratory by nature ("investigate", "spike", "decide"). Keep such issues clear for humans; do not force them toward `agent-ready`. |
+| `agent-ready` | Every item passes with concrete evidence. The specification is complete; declared prerequisites may still prevent starting. |
+| `needs-refinement` | An item fails or required evidence is unknown. A repository-grounded rewrite, an answer, or a supplied input could enable autonomous work. A missing product decision or inaccessible asset is a refinement gap when it is an input to implementation. |
+| `human-only` | Human judgment, design direction, or privileged access is itself the required work and cannot be delegated to the agent. Keep such issues clear for humans; do not force them toward `agent-ready`. |
 
-Do not infer agent-readiness from priority, an `agent-ready` label, assignment, state name, or a phrase such as "straightforward" alone. Those are supporting signals, not substitutes for the checklist. When evidence for an applicable item is unavailable, classify the issue as `needs-refinement` rather than guessing unless the missing input or decision requires a person, which makes it `human-only`.
+An investigation or spike can be `agent-ready` when it has a bounded question, reachable inputs, a defined evidence-based deliverable, and an observable stopping condition. For example, reproduce a regression and report the triggering conditions with a regression test. Do not classify by verbs such as "investigate" or "decide" alone; choosing a product direction that requires stakeholder judgment remains `human-only`.
+
+For each `agent-ready` specification, assess startability separately: `ready-to-start` requires verified satisfied prerequisites and no unresolved blocker; `awaiting-prerequisite` names known unresolved dependencies by identifier; `unknown` names missing dependency or access evidence. Only `ready-to-start` issues are eligible for immediate implementation. A documented prerequisite passes the dependency clarity item but does not establish startability.
+
+Do not infer agent-readiness from priority, an `agent-ready` label, assignment, state name, or a phrase such as "straightforward" alone. Those are supporting signals, not substitutes for the checklist. Record evidence for every passing item and gaps for failing or unknown items. Never promote an issue while required evidence is unknown.
 
 Typical gaps and the action that closes them:
 
@@ -80,7 +84,7 @@ Typical gaps and the action that closes them:
 | Decision recorded in a comment but not the description | `rewrite`: fold the decision into the body |
 | Open decision with no recorded answer | `ask`: one question to the owner; do not choose on their behalf |
 | Several outcomes in one issue | `split`: each child to the agent-ready bar |
-| Depends on a design or asset that does not exist yet | `ask` or `human-only`; never `agent-ready` |
+| Depends on a design or asset that does not exist yet | `needs-refinement` and `ask` for the missing input; `human-only` only when producing the human judgment or inaccessible work is itself the task |
 
 ## Duplicates
 
@@ -126,3 +130,13 @@ Draft to the agent-readiness checklist: the reader is an autonomous agent that w
 - Describe modules, behaviors, and contracts; do not include file paths, line numbers, or internal helper or class names, because they rot after refactors.
 - Preserve every concrete fact from the original, such as reproduction steps, customer references, and links. Rewrite the framing, not the evidence.
 - Split children must each be independently shippable; if a child only makes sense after another, say so in the child's description rather than folding them back together.
+
+Each split child needs a full implementation brief, not only a title and one-line scope:
+
+- Stable draft key and title; problem, affected user, and observable outcome.
+- Explicit scope and non-goals, plus decisions already made.
+- Individually checkable acceptance criteria with expected results, and a verification method the agent can use to detect completion.
+- Reachable inputs and relevant module or contract context.
+- Prerequisites identified by existing Linear identifier or sibling draft key; say "none" when no prerequisite exists. The apply phase translates these into `blockedBy` relations as well as description text.
+
+Re-grade each complete child description against every checklist item. Preserve unresolved gaps and mark the child `needs-refinement` rather than padding the brief with invented requirements. Reject cyclic or unresolved draft-key references before presenting a split for approval; dependent children may be fully specified while still awaiting a prerequisite.

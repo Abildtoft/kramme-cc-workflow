@@ -67,11 +67,15 @@ Synced Linear agent-readiness contract (keep aligned across Linear readiness wor
 
 | Grade | Meaning |
 | --- | --- |
-| `agent-ready` | Every item passes. |
-| `needs-refinement` | One or more items fail, and the gap can be closed by a rewrite grounded in the repository or by one answer from a person. |
-| `human-only` | The gap is a product decision, design direction, or access an agent cannot obtain, and closing it is itself the work; or the issue is exploratory by nature ("investigate", "spike", "decide"). Keep such issues clear for humans; do not force them toward `agent-ready`. |
+| `agent-ready` | Every item passes with concrete evidence. The specification is complete; declared prerequisites may still prevent starting. |
+| `needs-refinement` | An item fails or required evidence is unknown. A repository-grounded rewrite, an answer, or a supplied input could enable autonomous work. A missing product decision or inaccessible asset is a refinement gap when it is an input to implementation. |
+| `human-only` | Human judgment, design direction, or privileged access is itself the required work and cannot be delegated to the agent. Keep such issues clear for humans; do not force them toward `agent-ready`. |
 
-Do not infer agent-readiness from priority, an `agent-ready` label, assignment, state name, or a phrase such as "straightforward" alone. Those are supporting signals, not substitutes for the checklist. When evidence for an applicable item is unavailable, classify the issue as `needs-refinement` rather than guessing unless the missing input or decision requires a person, which makes it `human-only`.
+An investigation or spike can be `agent-ready` when it has a bounded question, reachable inputs, a defined evidence-based deliverable, and an observable stopping condition. For example, reproduce a regression and report the triggering conditions with a regression test. Do not classify by verbs such as "investigate" or "decide" alone; choosing a product direction that requires stakeholder judgment remains `human-only`.
+
+For each `agent-ready` specification, assess startability separately: `ready-to-start` requires verified satisfied prerequisites and no unresolved blocker; `awaiting-prerequisite` names known unresolved dependencies by identifier; `unknown` names missing dependency or access evidence. Only `ready-to-start` issues are eligible for immediate implementation. A documented prerequisite passes the dependency clarity item but does not establish startability.
+
+Do not infer agent-readiness from priority, an `agent-ready` label, assignment, state name, or a phrase such as "straightforward" alone. Those are supporting signals, not substitutes for the checklist. Record evidence for every passing item and gaps for failing or unknown items. Never promote an issue while required evidence is unknown.
 
 When `--agent-ready-only` is active, these classes are a hard eligibility gate rather than a score adjustment.
 
