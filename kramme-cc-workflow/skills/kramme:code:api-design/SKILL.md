@@ -40,7 +40,7 @@ Within that scope, consider user experience (UX: clear, reliable task completion
 
 ### Rule 1 — Contract first
 
-Design the contract before the handler. The contract is: input type, output type, error cases, HTTP status mapping, and naming. Write it down — as a TypeScript type, an OpenAPI stub, a comment block, whatever the project reads — _before_ writing implementation code.
+Design the contract before the handler. The contract is: input type, output type, error cases, HTTP status mapping, and naming. Write it down — as a TypeScript type, an OpenAPI stub, a comment block, whatever the project reads — _before_ writing implementation code. Keep internal-only fields (`user_internal_id`, `debug_payload`) out of the output type.
 
 Signs the contract is not first:
 
@@ -52,7 +52,7 @@ If any of these are happening, stop. Write the contract, then continue.
 
 ### Rule 2 — Validate at boundaries, not between internals
 
-Validation belongs at the points where untrusted data enters your trusted code — once — and nowhere else; internal functions trust their inputs. The full trust-boundary doctrine (what counts as a boundary, the validate-once pattern, third-party responses) lives in `/kramme:code:harden-security`.
+Validation belongs at the points where untrusted data enters your trusted code — once — and nowhere else; internal functions trust their inputs. The full trust-boundary doctrine (what counts as a boundary, the validate-once pattern, third-party responses) lives in `/kramme:code:harden-security`. Start strict: loosening validation later is cheap, tightening it is a breaking change.
 
 ### Convention detection (before Rules 3–5)
 
@@ -60,7 +60,7 @@ Before applying Rules 3–5, scan the project's existing API surfaces for an est
 
 ### Rule 3 — Consistent error shape
 
-Every error returned from the API uses the same shape: `{ code, message, details? }` (the `APIError` type). HTTP status comes from a fixed mapping: 400 invalid data, 401 not authenticated, 403 not authorized, 404 not found, 409 conflict, 422 validation failed, 500 server error (never expose internals).
+Every error returned from the API uses the same shape: `{ code, message, details? }` (the `APIError` type). HTTP status comes from a fixed mapping: 400 invalid data, 401 not authenticated, 403 not authorized, 404 not found, 409 conflict, 422 validation failed, 500 server error (never expose internals). Do not repeat the HTTP status inside the error body — it is already on the response, and two sources of truth drift — and never return a 200 that carries an `error` field.
 
 Never mix error shapes across endpoints — callers build parsing logic against the first shape they see, and Hyrum's Law nails that shape in place. The canonical `APIError` type, full status mapping, worked examples per status code, and the 500-disclosure rule live in `references/error-shapes.md`.
 
@@ -137,45 +137,3 @@ The first interface that comes to mind is rarely the best. Design It Twice draft
 
 - **Upstream**: `kramme:siw:generate-phases` — when a planned phase introduces a new interface, run this skill first to lock the contract before slicing begins.
 - **Downstream review**: the `kramme:injection-reviewer` and `kramme:auth-reviewer` agents verify the validation and authorization boundaries set here. A contract that declares its validation boundary makes these reviews mechanical.
-
----
-
-## Common Rationalizations
-
-These are the lies you will tell yourself to justify shipping an unstable contract:
-
-- _"I'll validate in the service layer, it's cleaner."_ → No. Validate at the boundary. The service layer is internal; pushing validation there hides the real edge of trust.
-- _"This endpoint is internal, no pagination needed."_ → Internal today, public tomorrow. Add pagination now; adding it later is a breaking change.
-- _"The client doesn't care about the error shape, they just check the status code."_ → Until one of them doesn't. Then the inconsistent shape becomes load-bearing for exactly one caller, and you cannot fix it.
-- _"I'll rename this field before anyone uses it."_ → There is no "before anyone uses it." The first caller is faster than you think.
-- _"These two endpoints are similar enough to share the same response type."_ → Reusing a read type as a write payload is the most common source of accidentally public fields. Split them.
-- _"We can tighten the validation later."_ → Loosening is cheap; tightening is a breaking change. Start strict.
-- _"I'll add the status code to the error body so clients can read it there."_ → Redundant state. The status code is on the response already. Two sources of truth drift.
-
-## Red Flags
-
-If you notice any of these in your own design, stop and redesign:
-
-- Verbs in REST URLs (`/api/createTask`, `/deleteUser`).
-- Mixed error formats across endpoints in the same service.
-- List endpoints without pagination.
-- Third-party API responses flowing into business logic without validation.
-- The response type is the exact same type used as the input — no Input/Output separation.
-- Internal field names leaking into the response (`user_internal_id`, `debug_payload`).
-- Status code and response shape inconsistent — 200 with an `error` field, 400 with no error at all.
-- A field whose meaning depends on another field's value, without a discriminated-union tag to make it safe.
-- Adjacent endpoints in the same module use different shape conventions, and this design adds a third.
-
-## Verification
-
-Before declaring the contract done, self-check every item:
-
-- Does the endpoint follow the resource-noun naming rule (plural, no verbs)?
-- Do all error responses use the `APIError` shape with a correct HTTP status from the Rule 3 mapping (full table in `references/error-shapes.md`)?
-- Do list endpoints return the pagination envelope?
-- Are all untrusted inputs validated exactly at the boundary — and no inputs validated redundantly between internals?
-- Do public types have separate Input and Output variants where the read shape differs from the write shape?
-- For any ID type used in multiple modules, is it branded (TS) or otherwise distinct from a raw string?
-- Is there a `NOTICED BUT NOT TOUCHING` entry for every inconsistency in adjacent code that this design did not fix?
-
-If any answer is no, close the gap before handing off to implementation.

@@ -101,6 +101,8 @@ Capture from the returned log:
 
 If the investigation could not reproduce the bug, mark this in the draft body as `UNVERIFIED: bug could not be reproduced from the report; implementer must verify the failure scenario before merging`.
 
+If the confidence rating is `Low`, ask one clarifying question before drafting — do not file a low-confidence root cause silently.
+
 ### Phase 4 — TDD plan
 
 Build the TDD plan directly from the investigation evidence. Do **not** write or run tests in this session — the goal is the plan that will live in the issue body.
@@ -126,7 +128,7 @@ If reproduction was `UNVERIFIED`, add: `[ ] Fix is verified by reproducing the o
 
 ### Phase 6 — Strip implementation specifics (durability rule)
 
-Take the merged context from Phases 3–5 and rewrite it for the issue body. The body must remain useful after a major refactor.
+Take the merged context from Phases 3–5 and rewrite it for the issue body. The body must remain useful after a major refactor. If the body reads as too vague once internals are stripped, the investigation is not done — a contract-level statement should exist, so return to Phase 3 rather than reinserting internals.
 
 **Forbidden in the body:**
 
@@ -259,47 +261,8 @@ Reuse from `kramme:debug:investigate`:
 
 ---
 
-## Common rationalizations
-
-Watch for these — they signal the durability rule is about to break.
-
-| Excuse | Reality |
-| --- | --- |
-| "The file path is the clearest way to point at the bug." | Paths rot. The reader six months from now needs the _behavior_ the bug breaks, not yesterday's filename. |
-| "Line numbers are pinned to a commit, so they're stable." | They're stable until the next refactor. The issue is supposed to outlive that. |
-| "The internal helper name is the actual root cause." | If the bug is "this private helper is wrong," the fix is also rename-stable: describe the contract the helper represents. |
-| "If I strip everything internal, the issue is too vague." | Then the investigation isn't done. The contract-level statement _should_ exist; if it doesn't, return to Phase 3. |
-| "I'll just include the file path in a code block — that's allowed." | Code blocks are for repro commands. A bare path is still a path; readers parse it the same way. |
-
----
-
-## Red flags — STOP
-
-- The drafted body contains any `:\d+` pattern outside a fenced code block.
-- The drafted body references a private function or internal class by name.
-- No acceptance criteria block, or the criteria are implementation steps rather than behavior assertions.
-- A RED step asserts on internal state instead of an observable through a public interface.
-- The investigation came back with `Low` confidence and no clarifying question was asked.
-- The user passed `--yes` but the durability grep returned matches in prose — bypass the gate would file a leaky issue. Halt and require explicit approval.
-
----
-
 ## Integration points
 
 - **`kramme:debug:investigate`** — source of the investigation phase (Steps 1–6 + Step 8 reporting). The orchestrator stops it at the propose-fix gate via the "Report only" option.
 - **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly through the available Linear create operation (Claude Code `mcp__linear__create_issue`; Codex `save_issue` without `id`) for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
 - **`kramme:linear:issue-implement`** — downstream implementation consumer. A local SIW ticket reaches it through `kramme:siw:transfer-to-linear` without re-investigation.
-
----
-
-## Verification (before declaring the run complete)
-
-- [ ] Capture happened with at most one question (zero if `$ARGUMENTS` had a description).
-- [ ] Sink chosen via auto-detection or one runtime question (per Phase 2 decision table).
-- [ ] Investigation returned a `[ROOT CAUSE]` line and a confidence rating.
-- [ ] TDD plan has at least one RED-GREEN cycle and one Prove-It cycle.
-- [ ] Issue body has all six template sections.
-- [ ] Durability grep on the body returns zero matches in prose (matches in fenced code blocks allowed).
-- [ ] Approval gate fired (or `--yes` was passed).
-- [ ] Issue URL or path was surfaced in the `CHANGES MADE` block.
-- [ ] No fix was applied — implementation is out of scope.

@@ -169,7 +169,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
    3. **Third pass (fine only):** Selectively break sub-steps further, but only where a piece is a significant, self-standing addition (e.g., a substantial new function or module). Do not split trivial one-liner changes or tightly coupled changes that belong together.
    4. **Fourth pass (atomic only):** Continue decomposing every sub-step until each commit adds exactly one function, one type definition, one config block, one import group, or one test case. Do NOT self-limit or cap the commit count. If the diff is large enough to warrant 150, 200, or 300+ commits, produce that many. The goal is tutorial-granularity: a reviewer should be able to read each commit in under 30 seconds. The only reason to stop splitting is when a change is truly indivisible (e.g., a single-line fix, or two lines that are syntactically dependent).
 
-   Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial.
+   Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial. If two planned commits would need the same summary sentence, they are one commit.
 
 5. **Reimplement the work**
    - Before resetting, unless `--authorize-history-rewrite` was passed or (`--auto` was passed and `IN_STACK=false`), obtain the applicable confirmation. The original tip is preserved at `BACKUP_REF`, so the reset is recoverable, but destructive to the working tree. Auto or explicit authorization skips only this prompt within the boundary described above, not the backup or validation requirements.
@@ -205,7 +205,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
      - Sub-file (fine/atomic) commits: `git checkout -p "$ORIGINAL_TIP" -- <path>` (or `git restore -p --source "$ORIGINAL_TIP" <path>`) and stage only the hunks that belong to this commit.
    - Each commit must:
      - Introduce a single coherent idea.
-     - Include a clear commit message and description.
+     - Include a clear, plain-English commit message and description.
      - Add comments when needed to explain intent.
 
 6. **Verify correctness**
@@ -240,7 +240,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
          -- "$PUSH_REMOTE_URL" "HEAD:${PUSH_REMOTE_REF}"
        ```
 
-       Never use an argumentless `git push --force-with-lease`: configured push refspecs or `push.default=matching` can select unrelated branches, a named remote can expand to multiple push URLs, `push.followTags` can publish annotated tags, and a default lease can accept fetched upstream commits that the local recovery backup does not contain.
+       Never force-push without the captured ref-specific `--force-with-lease`, `--no-follow-tags`, the frozen single push URL, an explicit single-branch refspec, or authorization appropriate to the unstacked or stacked boundary. Never use an argumentless `git push --force-with-lease`: configured push refspecs or `push.default=matching` can select unrelated branches, a named remote can expand to multiple push URLs, `push.followTags` can publish annotated tags, and a default lease can accept fetched upstream commits that the local recovery backup does not contain.
 
    - If `IN_STACK=true`, push the already-restacked whole stack instead of a single branch:
 
@@ -286,36 +286,3 @@ Use these uppercase markers when reasoning about the recreation plan and reporti
 - **CONFUSION** — signals in the original history that don't match the final state. `CONFUSION: can't tell if the Phase 2 rename was intentional or accidental — folded into the rename commit`.
 - **MISSING REQUIREMENT** — input needed before reimplementation can proceed. `MISSING REQUIREMENT: granularity not specified and --auto not passed — asking the user before planning`.
 - **PLAN** — commit storyline announced before executing. `PLAN: 12 commits across 3 groupings — auth middleware, user API, tests`.
-
-## Common Rationalizations
-
-Lies you'll tell yourself mid-recreation. Each has a correct response:
-
-- _"This sub-step is trivial — I'll fold it into the next commit."_ → Then it becomes invisible to the reviewer. If it's a distinct idea, it's a distinct commit.
-- _"The middle commits don't build — I'll `--no-verify` through it."_ → Allowed as the exception, not the rule. Surface it in `POTENTIAL CONCERNS` or restructure so builds pass.
-- _"I'll squash the noisy fix-up commits into the bigger one."_ → Fine only if the fix-up isn't its own idea. If it's "I forgot to handle null", it's its own commit.
-- _"I can skip the final diff check — I've been careful."_ → The only guarantee the recreated branch matches the original is the diff check. Run it.
-
-## Red Flags — STOP
-
-Pause and reshape the storyline if any of these are true:
-
-- The final tree diff against the original end state is non-empty.
-- More than one commit would need the same summary sentence.
-- Force-pushing without the captured ref-specific `--force-with-lease`, `--no-follow-tags`, the frozen single push URL, an explicit single-branch refspec, or authorization appropriate to the unstacked or stacked boundary.
-- The branch is part of a GitHub stack and a single-branch force-push is about to run without restacking the branches above (`gh stack rebase --upstack --no-trunk` + `gh stack push`).
-- Any commit message contains AI attribution or `Co-Authored-By: Claude`.
-- The recreated branch has more lines than the original (you introduced code during the rewrite).
-
-## Verification
-
-Before declaring the recreation done, self-check:
-
-- [ ] `git diff "$ORIGINAL_TIP" HEAD` is empty — end state matches exactly.
-- [ ] Untracked files were rejected before backup creation and reset.
-- [ ] The branch, original tip, worktree, and ignored reset-point collisions were rechecked immediately before reset.
-- [ ] Any unstacked remote sync uses the captured effective push-destination OID, frozen push URL, explicit remote ref, `--no-follow-tags`, and single-branch refspec.
-- [ ] Each commit introduces a single coherent idea with a plain-English subject line.
-- [ ] `--no-verify` usage, if any, is called out in `POTENTIAL CONCERNS`.
-- [ ] No AI attribution in any commit subject or body.
-- [ ] The `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` block was emitted.

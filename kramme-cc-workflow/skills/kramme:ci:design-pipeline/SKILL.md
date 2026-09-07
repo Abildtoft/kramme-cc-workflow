@@ -72,7 +72,7 @@ Default order, fastest first:
 
 The ordering matters because **fast-fail saves contributor time**. A broken lint should cancel the rest of the pipeline in under a minute, not block at integration-test time after eight minutes of compute.
 
-For gates already present in the repo, annotate which already exist and which are new. Do not silently replace existing gates — explicitly name every delta and confirm with the user.
+For gates already present in the repo, annotate which already exist and which are new. Do not silently replace existing gates — explicitly name every delta, including any lowered threshold, and confirm with the user. A "temporary" skip of a gate is a gate change too: it needs a named removal date, or it is a removal.
 
 ---
 
@@ -123,7 +123,7 @@ For the canary → full-rollout sequence, short summary. If the design requires 
 
 - **Secrets** must live in a secrets manager (GitHub Actions secrets, AWS Secrets Manager, Vault). Not in committed files. Not in plaintext `.env` files (gitignore is a convention, not a boundary). Not in CI-level env vars without masking. Never echoed in logs.
 - **Branch protection** must require the full PR gate set on the default branch. Required checks should include every blocking gate that runs before merge. If a gate also has an extended post-merge or nightly companion, name that separately instead of presenting it as a required PR check.
-- **Merge queue** (optional) — if the team ships multiple PRs per day, a merge queue prevents "green at PR time, red at merge time" drift by re-running the pipeline on the merged commit before landing.
+- **Merge queue** (optional) — if the team ships multiple PRs per day, a merge queue prevents "green at PR time, red at merge time" drift by re-running the pipeline on the merged commit before landing. The queue adds a gate on top of the PR checks; it must not bypass or replace PR-level gate enforcement.
 
 ---
 
@@ -168,44 +168,10 @@ Use these markers verbatim (uppercase, no decoration), one marker per line. They
 
 ---
 
-## Common rationalizations
-
-Watch for these excuses — they signal the design is about to regress:
-
-| Excuse | Reality |
-| --- | --- |
-| "We can skip the audit gate for speed." | Audit cost is one-time to set up and seconds to run with caching. The cost of a shipped vulnerability is unbounded. |
-| "Secrets in `.env` are fine, it's gitignored." | Gitignore is a convention, not a boundary. One `git add -A` and secrets are in history. Use a secrets manager. |
-| "We'll remove the flag later." | "Later" is where dead flags live forever. Every flag ships with a named removal criterion or it doesn't ship. |
-| "Integration tests are slow, skip them on PR." | Skipping is how regressions ship. Parallelize, shard, or gate-per-change — don't remove the gate. |
-| "We don't need branch protection, the team is small." | Small teams make small mistakes at high velocity. Branch protection costs nothing and catches the one 2am push that otherwise lands unreviewed. |
-| "The pipeline is 18 minutes but nobody complains." | People route around slow pipelines — smaller PRs get batched, tests get skipped locally, hook bypasses creep in. The complaint surfaces as erosion, not a bug report. |
-
----
-
-## Red Flags — STOP
-
-If any of these are true, pause and re-design before recommending the pipeline:
-
-- No rollback mechanism, or one that exists only on paper.
-- Secrets stored in committed files, unmasked CI variables, or plaintext env files.
-- Branch protection disabled, or gates not marked required.
-- Pipeline over 10 minutes with no plan to shrink it.
-- A feature flag with no removal criterion named.
-- A gate recommendation made without emitting `STACK DETECTED` first.
-- "Temporary" skip of a gate with no named removal date.
-- A merge-queue configuration that bypasses PR-level gate enforcement.
-
----
-
 ## Verification
 
 Before handing the design off, confirm:
 
-- [ ] `STACK DETECTED` was emitted and names platform, language, package manager, and existing pipeline state.
-- [ ] Every gate in the proposal is marked as either pre-existing or new; no silent replacements.
 - [ ] Every exit-checklist item has a clear owner or status (done / deferred with reason / not applicable with reason).
 - [ ] Every `UNVERIFIED`, `CONFUSION`, or `MISSING REQUIREMENT` marker is resolved or explicitly deferred by the user.
-- [ ] Feature flags (if any) have named removal criteria.
 - [ ] The full pipeline runtime has been estimated, not guessed — numbers come from current CI data or comparable repos, not optimism.
-- [ ] The user has explicitly approved any gate removal, threshold lowering, or skip-on-PR decision.

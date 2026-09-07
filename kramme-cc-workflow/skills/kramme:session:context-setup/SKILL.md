@@ -9,13 +9,13 @@ user-invocable: true
 
 Configure effective agent context at session start or after output quality degrades. Context quality dominates output quality: the agent can only reason about what is in its window, and a noisy window degrades reasoning as much as a missing one. This skill turns context preparation into an explicit, repeatable step instead of something that gets skipped because it feels like overhead.
 
-This skill produces no file. It configures in-session context and emits markers plus a final self-check; its only mutating path is the delegated rules-file repair below.
+This skill produces no file. It configures in-session context and emits markers; its only mutating path is the delegated rules-file repair below.
 
 ## When to use
 
 - **Session start.** Before the first real task in a new session.
 - **Major task switch.** When moving from one feature, bug, or subsystem to another — the context that served the previous task is usually the wrong context for the next one.
-- **Output-quality drop.** When the agent starts hallucinating paths, re-asks for files already loaded, repeats the same grep, or drifts off the codebase's patterns. These are symptoms of context exhaustion or context mismatch.
+- **Output-quality drop.** When the agent starts hallucinating paths, re-asks for files already loaded, repeats the same grep, invents a function signature that does not match the loaded types, or drifts off the codebase's patterns. These are symptoms of context exhaustion or context mismatch.
 - **Before a load-bearing decision.** When about to make a non-trivial architectural or design call, confirm the relevant context is loaded before reasoning.
 
 **When not to use:** trivial single-file edits, or mid-task incremental loads where the four-file L3 pass is pure overhead. This is a session-boundary ritual, not a per-edit step.
@@ -125,6 +125,8 @@ When context is insufficient or ambiguous, emit the appropriate marker instead o
 
 Use these verbatim, so reviewers and any downstream tooling can match them; ad-hoc substitutes defeat that.
 
+A `CONFUSION` marker that recurs on the same point across turns means the gap is not closing on its own; stop and re-run this setup instead of pressing on. Before starting real work, every open `CONFUSION` or `MISSING REQUIREMENT` marker must be resolved or explicitly deferred with an owner.
+
 ## MCP integrations
 
 Useful MCP servers when loading L1–L4 context:
@@ -142,42 +144,3 @@ Load from an MCP source only when that source is the authoritative answer. Pulli
 - **Upstream of task work.** Call this skill (or perform its steps manually) before starting a real task. The tax is small; the cost of proceeding on the wrong context is large.
 - **Triggers `kramme:docs:update-agents-md`.** When L1 verification finds a missing or stale rules file, hand off to that skill for repair.
 - **Scope boundary.** This skill owns _when_ to fetch context — rules files, specs, source, errors, MCP sources. The active task workflow owns _how_ to validate external sources and cite the resulting evidence. For version migrations, `kramme:code:migrate` loads its local source-grounding contract during guide collection.
-
----
-
-## Common Rationalizations
-
-These are the lies you tell yourself to skip context setup. Each has a correct response:
-
-- _"I already know this codebase."_ → The agent doesn't, and the agent is doing the work. Load the context anyway.
-- _"Context setup takes too long."_ → It takes minutes. One wrong-direction implementation costs hours. The ratio is not close.
-- _"The model has a huge context window, I'll just paste everything."_ → Window size is not attention budget. A bloated window degrades reasoning as reliably as a sparse one does.
-- _"The previous task was in the same area, the context carries over."_ → Carry-over context is stale context. The previous task's attention pattern is tuned to the previous task, not this one.
-- _"I'll load context as I go."_ → Lazy loading during execution means decisions get made on thin context and rediscovered later. Load the core four files upfront.
-- _"There's no spec, I'll figure it out from the code."_ → Then flag `MISSING REQUIREMENT` and ask. "Figure it out from the code" is how specs get silently invented.
-
-## Red Flags
-
-Signals that context is insufficient, stale, or misaligned. If any appears, stop and re-run setup:
-
-- The agent greps for the same symbol more than twice in a session.
-- The agent proposes a file path that does not exist.
-- The agent re-asks for a file already in the conversation.
-- Output drifts from the codebase's conventions (naming, test style, commit style).
-- The agent invents a function signature that does not match the loaded types.
-- More than ~5,000 lines of context are loaded and the agent is still missing things.
-- A `CONFUSION` marker recurs on the same point across turns — the gap is not closing on its own.
-
-## Verification
-
-Before declaring setup complete and starting real work, self-check:
-
-- Are `CLAUDE.md` / `AGENTS.md` present and current? If not, did you trigger repair?
-- Do `CLAUDE.md` / `AGENTS.md` use Context Pointers for deeper docs, skills, scripts, entry points, tests, schemas, ADRs, or runbooks instead of duplicating bulky detail?
-- Are the four L3 artifacts loaded (files to modify, related tests, one similar-pattern example, type definitions)?
-- Is every loaded input tagged with a trust level?
-- Is the total loaded context under ~2,000 lines, or deliberately budgeted higher with a named strategy?
-- Are all open `CONFUSION` / `MISSING REQUIREMENT` markers resolved, or explicitly deferred with an owner?
-- If the task depends on library API shape, did you pull current docs (Context7) rather than relying on training knowledge?
-
-If any answer is no, close the gap before starting the task.

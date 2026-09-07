@@ -7,6 +7,7 @@
 - **NEVER** use local branch names like `main` or `master` directly - always use the resolved `BASE_REF` to avoid comparing against stale local branches
 - **ALWAYS** look at both commit messages and code changes - they tell different stories
 - **NEVER** skip Linear issue lookup if the branch name contains an issue ID and a Linear integration is available
+- **ALWAYS** restate the essential context from a linked Linear issue in the body instead of relying on the link; reviewers read the PR body in isolation
 - **PREFER** using available issue-tracker integration capabilities over bash commands when available for richer data
 - **NEVER** skip GitHub PR template lookup; repository templates define the body structure reviewers expect
 

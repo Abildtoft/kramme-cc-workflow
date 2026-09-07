@@ -359,6 +359,8 @@ Capture the single printed absolute path, require it to remain below the validat
 
 ### Phase 5: Pre-publish Verification
 
+Read `references/red-flags.md` once. Apply the `Red Flags — STOP` section from the already-loaded reference and regenerate when any condition matches.
+
 Run the consolidated checklist in `references/verification-checklist.md`. Phases 1–4 do not have their own checklist; that reference is the single source of truth.
 
 ## Best Practices
@@ -398,15 +400,3 @@ Use these uppercase markers when reasoning about the description generation. The
 - **NOTICED BUT NOT TOUCHING** — diff contents you deliberately left out of the description. `NOTICED BUT NOT TOUCHING: a test-only rename in an adjacent file — not part of this PR's narrative`.
 - **CONFUSION** — diff evidence that contradicts the commit log or Linear issue. `CONFUSION: commits say "add feature flag", but the diff toggles it on by default`.
 - **MISSING REQUIREMENT** — context the user must provide before a faithful description can be generated. The exact no-Linear-ID advisory is non-blocking; every other marker is blocking. Example: `MISSING REQUIREMENT: no Linear ID in branch name and no issue mentioned in commits — confirm the intended ticket or proceed without one`.
-
-## Common Rationalizations
-
-Before finalizing, read `references/red-flags.md` once. It owns both common rationalizations and red-flag stop conditions.
-
-## Red Flags
-
-Apply the `Red Flags — STOP` section from the already-loaded reference and regenerate when any condition matches.
-
-## Verification
-
-Read `references/verification-checklist.md` and complete it before presenting copy-paste output, before `gh pr edit`, and before saving to file.

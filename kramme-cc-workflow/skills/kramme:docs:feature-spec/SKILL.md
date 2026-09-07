@@ -41,7 +41,7 @@ Use this shared vocabulary when describing the output:
 - `planning-ready`: the approved spec has concrete scope, boundaries, testing strategy, testable success criteria, and relevant technical context/dependencies or planning detail, with no blocking open questions.
 - `implementation-ready`: an issue or task is scoped for execution with dependencies, affected areas, and verification. This skill never produces implementation-ready artifacts.
 
-This skill's normal output is `requirements-only` while drafting and `planning-ready` only after explicit approval and the verification checks pass.
+This skill's normal output is `requirements-only` while drafting and `planning-ready` only after explicit approval when the Phase 3 readiness conditions are met.
 
 ## Process Overview
 
@@ -170,6 +170,8 @@ Consider user experience (UX: clear, reliable task completion), developer experi
 
 Replace every angle-bracket template placeholder with concrete content and delete the author note comment block before treating the draft as reviewable.
 
+If drafting surfaces scope that the confirmed assumptions (or the grounded context in Synthesize mode) did not cover, surface it to the user before widening the spec rather than letting new scope appear silently mid-draft.
+
 When `STRATEGY.md` exists, weave its relevant facts into the existing six areas rather than adding a seventh section:
 
 - Objective: include the target problem or active track when it directly grounds the feature.
@@ -209,6 +211,7 @@ On revision:
 - Edit the spec file in place.
 - Re-emit the `PLAN:` block if structure changed.
 - Do not restart Phase 1; assumptions are already settled.
+- Re-ask for approval afterwards; approval is scoped to the current spec version, so an earlier turn's "yes" does not carry over.
 
 On approval:
 
@@ -229,39 +232,3 @@ On approval:
 | `PLAN:` | Phase 3, summary block before the approval gate. |
 
 These markers are deliberate. Keep them verbatim — tooling and downstream skills may parse them.
-
-## Common Rationalizations
-
-| Excuse | Reality |
-| --- | --- |
-| "This feature is small enough to just start coding." | Then the spec takes ten minutes. Skip the skill and write code, but don't invoke this skill and then bypass the gate. |
-| "I'll write the spec after, once I see the shape." | That's reverse-engineering, not speccing. If the code already exists, document it separately rather than retrofitting a spec to match. |
-| "The assumptions block is noise, the user knows what they want." | The block costs one turn and catches misalignment before you've drafted six areas of the wrong spec. |
-| "One ambiguous area is fine, we'll figure it out in code." | No. Emit `MISSING REQUIREMENT:` and stop. Ambiguous specs produce ambiguous code. |
-| "The user said yes in a previous turn, that's approval." | Approval is explicit and scoped to the current spec version. Re-confirm after each revision. |
-| "I should always synthesize — the user prefers fewer questions." | Synthesis is only safe when the Synthesize-mode preconditions hold. Below that threshold, synthesis produces a confidently-wrong spec, which costs more cycles than the assumptions round-trip would have. |
-
-## Red Flags — STOP
-
-- Implementation starts before the user explicitly approves the spec.
-- Scope creep mid-draft (new areas appearing without updating Phase 1 assumptions).
-- The Assumptions block is skipped or collapsed into the draft (without `--synthesize`/`--auto`/trigger phrase AND preconditions met).
-- Synthesizing when the Synthesize-mode preconditions are not met.
-- Claims inside the spec are presented as fact when they are inference — any such claim must be prefixed `UNVERIFIED:`.
-- The skill begins writing `siw/`, `LOG.md`, or issue files. That's out of scope — use `/kramme:siw:init` instead.
-- The user asks for phased breakdown — route to `/kramme:siw:init <spec-file>` after approval, then `/kramme:siw:generate-phases`; do not inline phases here.
-
-## Verification
-
-Before claiming the spec is complete:
-
-1. The file exists at the agreed path.
-2. All six areas are populated (no angle-bracket template placeholders or author note `<!-- ... -->` blocks remain).
-3. Every inferred claim is prefixed `UNVERIFIED:`.
-4. Every flagged risk inside Open Questions is prefixed `POTENTIAL CONCERNS:`.
-5. Any explicit destination path resolves inside the current repository root and stays out of `AGENTS.md`, `CLAUDE.md`, and `siw/`.
-6. If the destination already existed before this run, the user explicitly chose to overwrite or revise it — no spec was clobbered silently.
-7. The user has explicitly approved — not "sounds good" from an earlier turn, but a current-turn approval of the current spec version.
-8. The final handoff names the readiness classification and does not call a requirements-only artifact implementation-ready.
-
-If any check fails, stay in Phase 2 or Phase 3; do not hand off downstream.

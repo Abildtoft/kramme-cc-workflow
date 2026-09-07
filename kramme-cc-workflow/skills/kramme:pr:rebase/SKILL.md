@@ -89,6 +89,8 @@ If both `--auto` and `--force-push` are present, `--auto` wins because it is the
 
    > "You are on the base branch. Switch to a feature branch first."
 
+   Also stop if the current branch is `main`, `master`, or `develop` regardless of the resolved base; this skill never rewrites or force-pushes those branches.
+
 ### Step 1.5: Stack Detection
 
 A branch that belongs to a GitHub stack must not be rebased alone — every branch stacked above it would be left on the old history. Resolve local CLI state and server-side GitHub state before any rewrite:
@@ -123,6 +125,8 @@ The resolve script in Step 1 already fetched `origin/<base-branch>`. If meaningf
 git fetch origin <base-branch>
 ```
 
+Report how far the base moved (`git rev-list --count HEAD..origin/<base-branch>`) in the `REBASE PREFLIGHT` line so a large jump is visible at the Step 5 confirmation.
+
 ### Step 3: Rebase
 
 Run the rebase with `--autostash` so uncommitted changes are stashed before the rebase and popped after, covering the common case of rebasing with local modifications:
@@ -139,7 +143,7 @@ git rebase --autostash origin/<base-branch>
 
    The 10-round cap exists because each round reapplies a single commit; beyond that, conflicts almost always indicate semantic drift the auto-resolver can't handle safely. In normal and `--force-push` modes, escalate to the user instead of guessing further. In `--auto` mode, keep resolving until either the rebase completes or Git reaches a conflict the model cannot mechanically resolve.
 
-   Track all conflicts and resolutions for the summary and set `CONFLICTS_AUTO_RESOLVED=true` once any conflict marker is resolved by the model. Before resolving each file, re-read the **Red Flags** section below. In normal and `--force-push` modes, abort instead of resolving when a red flag applies. In `--auto` mode, record that the red flag was bypassed and continue.
+   Track all conflicts and resolutions for the summary and set `CONFLICTS_AUTO_RESOLVED=true` once any conflict marker is resolved by the model. Before resolving each file, check the red flags that make auto-resolution unsafe: the file is a migration file or generated artifact, the conflicting logic is not fully understood, or the only available resolution deletes a block instead of merging both sides' semantics. In normal and `--force-push` modes, abort instead of resolving when a red flag applies. In `--auto` mode, record that the red flag was bypassed and continue; every red flag bypassed in `--auto` mode is reported in the end-of-run summary under **POTENTIAL CONCERNS**.
 
    For each round:
 
@@ -210,7 +214,7 @@ git push --force-with-lease origin "$CURRENT_BRANCH"
 
 If `AUTO_MODE=true`, use the validated push procedure immediately after the rebase completes. Do this even if conflicts were auto-resolved, red flags were bypassed, or verification is unavailable/failing. Report the conflicts, bypassed red flags, and verification status after the push attempt. After this push attempt, skip the remaining confirmation gates and proceed to Step 6.
 
-Before any `FORCE_PUSH_MODE=true` push, re-read the **Red Flags** section below. If any red flag applies, stop instead of pushing automatically and report `MISSING REQUIREMENT: --force-push cannot bypass red-flag review; rerun without --force-push after addressing the concern.` This applies even when the rebase completed without conflicts.
+Before any `FORCE_PUSH_MODE=true` push, re-check the Step 3 red flags. If any red flag applies, stop instead of pushing automatically and report `MISSING REQUIREMENT: --force-push cannot bypass red-flag review; rerun without --force-push after addressing the concern.` This applies even when the rebase completed without conflicts.
 
 If `FORCE_PUSH_MODE=true` and `CONFLICTS_AUTO_RESOLVED` is not true, skip the confirmation prompt, use the validated push procedure immediately, then proceed to Step 6.
 
@@ -257,7 +261,7 @@ Preserve and report the successful rebase/push separately from the delegated wor
 
 ### Step 7: Report Results
 
-Show the commit log relative to the `BASE_BRANCH` resolved in Step 1. Quote the entire revision range so the shell passes it as one argument:
+Show the commit log relative to the `BASE_BRANCH` resolved in Step 1; it should be linear, with no merge commits. Quote the entire revision range so the shell passes it as one argument:
 
 ```bash
 git log --oneline "origin/$BASE_BRANCH..HEAD"
@@ -268,41 +272,3 @@ Confirm the rebase and push separately from optional CI stabilization:
 > "Branch rebased onto `origin/<base-branch>` and pushed."
 
 When `FIX_CI_MODE=true` and `PUSH_COMPLETED=true`, also report whether the delegated workflow reached green CI and addressed review feedback, name any later blocker separately, and include its `CI remediation JSON` line. The commit log may include fixes or consolidation produced by that workflow. When `FIX_CI_MODE=true` and `PUSH_COMPLETED=false`, report that CI stabilization was not started and do not require or fabricate a remediation handoff.
-
-## Common Rationalizations
-
-Lies you'll tell yourself mid-rebase. Each has a correct response:
-
-- _"I'll just merge `main` in instead — it's faster."_ → Faster now, harder to review later. Merges hide drift; rebases resolve it.
-- _"The auto-conflict resolution looks right — I don't need to re-run tests."_ → Conflict resolution is a code change. Re-run the verify battery or surface it as `UNVERIFIED`.
-- _"Force-push is fine; no one else is on this branch."_ → If the branch is pushed, assume someone has it. `--force-with-lease` is the floor, not the ceiling — still warn the user.
-- _"Ten rounds of auto-resolve failed — I'll just pick one side."_ → In normal and `--force-push` modes, the skill aborts after 10 rounds for a reason. Escalate to the user; don't guess. In `--auto` mode, continue only while the conflict remains mechanically resolvable.
-
-## Red Flags — STOP
-
-Pause and hand back to the user if any of these are true:
-
-- `--force-with-lease` is about to run against `main`, `master`, or `develop`.
-- The branch is part of a stack (Step 1.5) but a plain `git rebase` or single-branch `git push --force-with-lease` is about to run on it.
-- The auto-resolver merged logic from a file it doesn't fully understand.
-- The rebase touched migration files or generated artifacts; auto-resolution is unsafe there.
-- The branch hadn't been fetched recently and the base has moved significantly (>20 commits).
-- Any conflict was resolved by deleting a block instead of merging semantics.
-
-Exception: `--auto` bypasses these red-flag stops. When bypassing a red flag in `--auto` mode, record it in the end-of-run summary under **POTENTIAL CONCERNS**.
-
-## Verification
-
-Before force-pushing, self-check:
-
-- [ ] If conflicts were resolved, the Conflict Summary lists every resolved file with file + conflict + resolution. (No conflicts → this item is N/A.)
-- [ ] If `FORCE_PUSH_MODE=true` and conflicts were machine-resolved, passing verification or explicit user confirmation happened before `git push`.
-- [ ] If `FORCE_PUSH_MODE=true`, no red flags applied before the automatic push.
-- [ ] If `AUTO_MODE=true`, all bypassed red flags and verification gaps are reported under **POTENTIAL CONCERNS** after the push attempt.
-- [ ] The base branch was freshly fetched (Step 2 ran).
-- [ ] The user explicitly confirmed via `AskUserQuestion` (Step 5), or `FORCE_PUSH_MODE=true` / `AUTO_MODE=true` allowed skipping confirmation.
-- [ ] `--force-with-lease` (not `--force`) is the flag being used.
-- [ ] If the branch is in a stack (Step 1.5), `gh stack rebase` / `gh stack push` were used — never a single-branch rebase or push.
-- [ ] If `FIX_CI_MODE=true`, `PUSH_COMPLETED=true` before `kramme:pr:fix-ci` was invoked; a failed or skipped push never started CI remediation.
-- [ ] If `FIX_CI_MODE=true` and `PUSH_COMPLETED=true`, the final report distinguishes rebase/push success, the last CI and review-feedback state established by the delegated workflow, and any later blocker, and includes the delegated `CI remediation JSON` handoff. If `PUSH_COMPLETED=false`, it reports that stabilization was not started and does not require a handoff.
-- [ ] Post-push `git log --oneline origin/<base>..HEAD` shows the expected linear history.

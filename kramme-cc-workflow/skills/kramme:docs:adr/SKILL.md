@@ -178,7 +178,9 @@ If no ADR directory exists, create `docs/decisions/`, set `ADR_DIR=docs/decision
 - If a project template was detected in pre-flight, match it.
 - Otherwise, use `assets/adr-template.md` verbatim.
 
-Populate: Status (PROPOSED to start), Date (today, not the decision date — see Rationalizations), Deciders, Context, Decision, Consequences (positive / negative / neutral-or-follow-on), Alternatives considered (at least one).
+Populate: Status (PROPOSED to start), Date (today — the date of writing, not the decision date), Deciders, Context, Decision, Consequences (positive / negative / neutral-or-follow-on), Alternatives considered (at least one; implicit alternatives such as "do nothing" or "keep what we have" count).
+
+Keep the Decision no longer than the Context — a decision without problem framing is a preference, not an ADR. If you must stop before the ADR is complete, revert what you already wrote (delete the new file, undo any predecessor edit) rather than leave a half-written successor.
 
 Emit `SIMPLICITY CHECK` before expanding Consequences or Alternatives past the minimum.
 
@@ -206,46 +208,3 @@ If the predecessor was authored by someone else, emit `ASK FIRST` before proceed
 ## Inline-offer pattern (for other skills)
 
 Skills that resolve decisions during their own workflow (discovery interviews, refactor explorations, architecture critiques) can surface an ADR opportunity and hand off here rather than authoring inline. The offer contract — the three-criterion test, the canonical offer message, the handoff rule, and session de-duplication — lives in `references/inline-offer-pattern.md`. Read it only when implementing that handoff in another skill.
-
----
-
-## Common Rationalizations
-
-These are the lies you will tell yourself to skip or distort the ADR. Each has a correct response:
-
-- _"It's just a tactical choice, not worth an ADR."_ → Apply the **When to use** significance test. If any criterion there matches, it warrants an ADR.
-- _"We'll capture the reasoning in the README."_ → READMEs rot and get edited without attribution. ADRs are dated, numbered, and preserved.
-- _"I'll backdate the ADR to when we actually decided."_ → Date the writing, not the decision. Honesty beats revisionism. Backdated ADRs erode trust in the whole log.
-- _"Everyone already knows why."_ → Nobody who joins next year knows why. The ADR is for them, not you.
-- _"I'll skip Alternatives — we never really considered any."_ → Every decision rejected alternatives, even implicit ones ("do nothing", "keep what we have"). Name at least one.
-- _"I'll backfill the three prior undocumented decisions while I'm here."_ → Emit `NOTICED BUT NOT TOUCHING` for each. Backfilling decisions you weren't present for invents history.
-
-## Red Flags
-
-Rejection criteria. If any of these are true, revert the ADR (delete a newly created file, or undo the predecessor edit when superseding) and re-plan:
-
-- **Decision paragraph longer than the Context paragraph.** A decision without problem framing is a preference, not an ADR.
-- **Editing a SUPERSEDED ADR's content** instead of writing a new one. The predecessor is frozen; capture the new thinking in a new ADR.
-- **Claims in Context or Consequences with no `UNVERIFIED` marker and no source.** Build on evidence or mark the gap.
-- **Anything the Verification checklist below would reject** — deleted predecessors, missing deciders, missing alternatives, or multiple separable decisions bundled into one ADR.
-
-## Verification
-
-Before declaring the ADR done, self-check:
-
-- [ ] ADR numbered sequentially — the numeric portion is the highest existing ADR number + 1, with the project's filename prefix and padding convention.
-- [ ] Status set (PROPOSED or ACCEPTED), not blank.
-- [ ] Date filled with today's date (the date of writing, not the decision).
-- [ ] At least one decider listed.
-- [ ] Context explains the problem or constraint that forced the decision.
-- [ ] Decision stated in one clear paragraph.
-- [ ] Consequences cover positive **and** negative effects (neutral/follow-on optional).
-- [ ] At least one rejected alternative with a reason.
-- [ ] Exactly one decision covered — separable decisions split into separate ADRs.
-- [ ] If superseding: predecessor marked `SUPERSEDED by #NNNN` with forward-reference; predecessor content otherwise untouched.
-- [ ] No prior ADR deleted.
-- [ ] Every unverifiable claim carries an `UNVERIFIED` marker.
-- [ ] ADR lives in the detected ADR directory (`ADR_DIR`), or `docs/decisions/` when bootstrapping a new log.
-- [ ] If the project already uses a non-default ADR filename prefix or separator (for example `adr-001-`), the new ADR preserves that contract and increments from the highest matching entry instead of restarting at `0001`.
-
-If any box is unchecked, finish the gap or revert (delete the new file, or undo the predecessor edit) before declaring done.

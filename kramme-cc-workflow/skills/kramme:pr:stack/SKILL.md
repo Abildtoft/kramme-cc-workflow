@@ -54,7 +54,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 When `CONDUCTOR_WORKSPACE_PATH` is set, capture and validate the entry branch as `{workspace-branch}` before any stack checkout. Stack operations may check out sibling stack branches as gh stack requires; finish by returning to `{workspace-branch}` and say so in the report.
 
 - **Extension missing:** the membership resolver records that local tracking is unavailable before checking GitHub. If GitHub reports an existing remote stack, do not create a duplicate manual chain. Otherwise offer to install the extension (`gh extension install github/gh-stack`); if declined, fall back to ordered branches each rooted on the previous, PRs opened with `gh pr create --base <parent-branch>`, and a note in each PR body naming its position in the chain.
-- **Feature not enabled (exit code 9 from `submit`/`link`/`checkout`):** the repository lacks stacked-PRs preview access. Stop and tell the user (waitlist: gh.io/stacksbeta), then offer the same manual-chain fallback — `gh stack link` can adopt the chain into a native stack once the repo is enabled.
+- **Feature not enabled (exit code 9 from `submit`/`link`/`checkout`):** the repository lacks stacked-PRs preview access. Stop without retrying and tell the user (waitlist: gh.io/stacksbeta), then offer the same manual-chain fallback — `gh stack link` can adopt the chain into a native stack once the repo is enabled.
 
 One-time non-interactive setup (safe to re-run):
 
@@ -87,7 +87,7 @@ The minimum supported extension version is v0.1.0. Older versions have known uns
 
 ## Create a new stack
 
-1. Plan layers by dependency order **before** creating branches: foundational changes (schema, models, shared utilities) in lower branches; consumers (API, UI, integration tests) above. Each branch is one reviewable concern.
+1. Plan layers by dependency order **before** creating branches: foundational changes (schema, models, shared utilities) in lower branches; consumers (API, UI, integration tests) above. Each branch is one reviewable concern. Keep a stack to roughly four or five PRs; anything deeper needs explicit coordination (named chain positions, one reviewer, an agreed merge cadence).
 2. Initialize with explicit branch names (never bare — that prompts):
 
    ```bash
@@ -147,7 +147,7 @@ Sync handles squash-merged parents automatically. A local/remote stack divergenc
 
 Repeat per conflict round. `gh stack rebase --abort` restores all branches if the resolution stops being mechanical; then escalate to the user.
 
-**After any history rewrite on a stack branch** (`kramme:git:fixup`, `kramme:git:recreate-commits`, fix-ci consolidation): the branches above are orphaned until you restack:
+**After any history rewrite on a stack branch** (`kramme:git:fixup`, `kramme:git:recreate-commits`, fix-ci consolidation): the branches above are orphaned until you restack. Never push a single stack branch with plain `git push --force-with-lease`; `gh stack push` updates every branch atomically:
 
 ```bash
 gh stack rebase --upstack --no-trunk
@@ -194,21 +194,9 @@ gh stack merge "$TARGET_PR_NUMBER" "${MERGE_ARGS[@]}"
 
 `gh stack merge` atomically lands every eligible PR through the target; if any cannot merge, none do. A repository merge queue controls its own method, so gh-stack ignores the supplied method there. GitHub re-targets and rebases PRs above a partial merge. After completion, run `gh stack sync --prune`.
 
-## Red Flags — STOP
-
-- About to run `gh stack view` without `--json`, `submit` without `--auto`, bare `init`/`add`/`checkout`, `merge` without an explicit target plus `--yes` and a validated method, or `gh stack modify` — these open prompts or TUIs or leave the landing scope ambiguous.
-- About to force-push a single stack branch with plain `git push --force-with-lease` — use `gh stack push` (atomic, all branches) after restacking.
-- Stack membership resolution failed, or a remote stack exists without local tracking — stop before creating a duplicate or rewriting a single branch.
-- Stacking unrelated work into one chain because both happen to be in progress — separate stacks.
-- A stack deeper than 4–5 PRs without explicit coordination (named chain positions, one reviewer, agreed merge cadence).
-- Exit code 9 anywhere — stop and report that the repository doesn't have stacked PRs enabled; don't retry.
-
 ## Verification
 
 Before reporting done:
 
 - [ ] `gh stack view --json` shows the expected branch order, and no branch has `needsRebase: true`.
-- [ ] Every submitted PR has a real title and body (not the auto-generated placeholder), scoped to its own layer.
-- [ ] Every PR's base is the branch below it (bottom PR's base is the trunk).
-- [ ] Any history rewrite was followed by `gh stack rebase --upstack --no-trunk` + `gh stack push`.
-- [ ] A merge used the highest PR the user intended to land (the top PR for the whole stack) as the explicit `gh stack merge` target, with `--yes` and a validated method.
+- [ ] Every PR's base is the branch below it (bottom PR's base is the trunk); this is the only check that also covers the manual-chain fallback.

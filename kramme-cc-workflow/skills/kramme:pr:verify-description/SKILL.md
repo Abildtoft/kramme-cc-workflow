@@ -216,6 +216,8 @@ Classify each potential drift point against the rubric below. Severity drives th
 
 ### Phase 3: Drift Analysis
 
+If the diff is empty or near-empty (only whitespace, comments, or formatting), there is nothing to verify against — return `Accurate` and stop.
+
 Walk the description body section-by-section and the diff in parallel. Classify each potential drift point against the rubric in `## Scope and Rubric` above. For each finding, record:
 
 - **Location** — section of the PR body (e.g. `## Summary`, `### Potential concerns`, `Title`) or `PR description` if global.
@@ -290,6 +292,8 @@ Present an inline report (do not write a separate file). Use this structure:
 | Important (no Critical) | `MATERIAL_DRIFT` | `Material drift` |
 | Any Critical | `INACCURATE` | `Inaccurate — do not merge as-is` |
 
+If the `Not flagged` list is longer than `Findings`, the bar is probably set too low; re-examine whether several of the skipped items are material before settling on the verdict.
+
 ### Phase 5: Optional Fix Delegation
 
 **Skip this phase if `FIX_MODE` is not set.**
@@ -320,45 +324,6 @@ Use these uppercase markers in the report (and in conversation output around it)
 - **CONFUSION** — diff evidence that contradicts the body or the commit log. `CONFUSION: body says "flag defaults OFF" but flag definition sets default=true`.
 - **NOTICED BUT NOT TOUCHING** — drift you spotted but deliberately did not flag in loose mode (move to a `Not flagged` line in the report). `NOTICED BUT NOT TOUCHING: title says "fix" but change is small enough that "fix" is defensible`.
 - **MISSING REQUIREMENT** — context the user must supply before verification can complete. `MISSING REQUIREMENT: no open PR for current branch`.
-
-## Common Rationalizations
-
-Watch for these — each one means a finding is about to be wrongly suppressed:
-
-- _"The diff is small, the description doesn't need to cover everything."_ → Size doesn't excuse contradictions. A two-line diff that flips a default still needs that line in the body.
-- _"The reviewer can see the migration in the file tree."_ → The body's `Potential concerns` block is the contract; visible-in-diff does not equal disclosed.
-- _"The title says `fix` but it's basically a fix."_ → Conventional Commit type drives changelogs and release notes. If the dominant change is a feature, the title is wrong regardless of how the author thinks of it.
-- _"SemVer can wait until release day."_ → SemVer is the consumer promise. A PR that changes a public contract must disclose the version and migration implications while reviewers can still evaluate them.
-- _"`Things I didn't touch: None` is fine — the author probably considered it."_ → Only fine when nothing adjacent was changed. If the diff touches adjacent files, the block needs an entry.
-- _"The author will rewrite the description before merge anyway."_ → Maybe — but the point of this skill is to remove that step or to make it explicit now, not to assume future cleanup.
-
-## Red Flags — STOP
-
-Pause and re-examine the diff if any of these are true while drafting the report:
-
-- You're about to return `Accurate` but the diff contains a migration, feature-flag default, or breaking change.
-- You're about to return `Accurate` but the diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, integration contract, or schema, and the body has no release impact, SemVer, changelog, or migration story.
-- You're tempted to soften a Critical finding to Important because "the author probably knows".
-- The report has more `Not flagged` entries than `Findings` — that usually means the bar is set too low; reconsider whether several of the skipped items are actually material.
-- You're about to invoke `kramme:pr:generate-description --auto --no-update` without explicit user confirmation.
-- The diff is empty or near-empty (only whitespace, comments, or formatting) — there's nothing to verify against; return `Accurate` and stop.
-
-## Verification
-
-Before presenting the report, self-check:
-
-- [ ] `gh` CLI was confirmed installed and authenticated; missing-tool exit was clean (`MISSING REQUIREMENT`), not an opaque stderr dump.
-- [ ] PR existence was confirmed; if none, the skill exited with a `MISSING REQUIREMENT` message rather than improvising.
-- [ ] Non-open PR state was surfaced in the report header rather than ignored.
-- [ ] Base branch was detected and `origin/$BASE_BRANCH` was fetched successfully.
-- [ ] Diff scope explicitly includes local uncommitted changes if any exist, and the report header says so.
-- [ ] Every finding has a Location, Type, Severity, Evidence (with file paths), and Recommended fix.
-- [ ] Severity assignments follow the rubric in `## Scope and Rubric` — Critical is reserved for merge-blocking misinformation.
-- [ ] Loose-mode reports contain only Important and Critical findings; Suggestions appear only under `--strict`.
-- [ ] Both `VERDICT_TAG:` and the prose verdict are present and match the highest finding severity.
-- [ ] `--fix` flow asked for y/N confirmation before delegating output-only generation, validated the returned content and exact PR target, and stopped cleanly if the sibling skill is unavailable.
-- [ ] Report was emitted inline; no separate verification report file was written.
-- [ ] No code review findings (style, types, security, performance) appear in the report — that's `kramme:pr:code-review`'s job.
 
 ## Notes
 

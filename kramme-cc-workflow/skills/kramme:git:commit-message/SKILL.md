@@ -41,9 +41,11 @@ Before running `git commit`, confirm all five:
 
 - [ ] **One logical change, independently reviewable.** If the diff spans two concerns, split it now — not "in a follow-up".
 - [ ] **Verified the change.** Tests, typecheck, or lint ran against the staged state; failures were resolved or are deliberately called out in the body.
-- [ ] **Subject under 72 characters.** Plain-English, imperative mood, no trailing period, no Conventional Commit prefix.
+- [ ] **Subject under 72 characters.** Plain-English (unless the user explicitly asked for another format), imperative mood, no trailing period, no Conventional Commit prefix, and never a placeholder such as `WIP`, `temp`, `fixup`, or `misc`.
 - [ ] **Body explains the _why_** when non-obvious — motivation, previous behavior, constraint that forced the shape. Omit the body if the subject is self-explanatory.
 - [ ] **Repository left in a working state.** This commit should not break `main` if it were the tip.
+
+Two things need explicit user approval before `git commit`: passing `--no-verify` to get past failing hooks (fix the hook failure first) and amending a commit that has already been pushed to a shared branch.
 
 ## Body Guidelines
 
@@ -73,30 +75,3 @@ Use these uppercase markers when reasoning about commit decisions. One marker pe
 - **CONFUSION** — contradictory signals in the staged diff. `CONFUSION: commit subject says "fix", but the diff adds a new endpoint`.
 - **MISSING REQUIREMENT** — a decision is needed before the commit can be written. `MISSING REQUIREMENT: subject claims a bug fix, but the failing test that motivates it isn't committed yet`.
 - **PLAN** — announced sequence when splitting the staging area across multiple commits. `PLAN: commit 1 extracts the validator, commit 2 wires it into the handler, commit 3 adds the test`.
-
-## Common Rationalizations
-
-Lies you'll tell yourself at commit time. Each has a correct response:
-
-- _"It's one logical change if I squint."_ → If you had to squint, it's two. Split the staging area with `git add -p`.
-- _"I'll just add `Co-Authored-By: Claude` — it's honest."_ → No. The repo forbids AI attribution; the author of a commit is the human making the call to ship it.
-- _"A Conventional Commit prefix makes it scannable."_ → Branch commits aren't scanned by tooling — they're read by reviewers. The prefix costs signal for no gain.
-- _"I'll fix the test failure in the next commit."_ → Then this commit leaves the repo broken. Either fix the test now or don't commit the broken state.
-
-## Red Flags — STOP
-
-Pause and reshape the commit if any of these are true:
-
-- The subject line starts with `WIP`, `temp`, `fixup`, or `misc` — the commit isn't ready.
-- The diff touches more than one concern (e.g. feature + lint fix + unrelated rename).
-- You're about to use `--no-verify` because hooks fail; fix the hook failure first.
-- You're about to amend a commit that has already been pushed to a shared branch.
-- The body explains _how_ instead of _why_.
-
-## Verification
-
-Before returning a commit message, self-check:
-
-- [ ] The subject is plain English unless the user explicitly asked for another format.
-- [ ] The message describes one logical change.
-- [ ] The body explains why when the subject alone is not enough.

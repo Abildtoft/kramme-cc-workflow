@@ -94,7 +94,7 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
    - When `--agent-ready-only` or equivalent autonomous-implementation intent was requested, separately classify `agent-readiness` as `agent-ready`, `needs-refinement`, or `human-only`. Ordinary `ready` means work can begin; `agent-ready` is stricter and means an implementation agent can complete and verify the issue without obtaining a human decision, unavailable design, privileged access, or subjective sign-off. Otherwise do not perform or report the stricter autonomous classification.
    - With `--agent-ready-only`, exclude `needs-refinement` and `human-only` issues from the recommendation, parallel candidates, and ranked shortlist. Retain valuable excluded issues in `High-value but not agent-ready` with their specific gaps. If no issue passes, say so; do not weaken the filter.
    - If `--interest` was provided, add a `preference fit` assessment based on title, description, labels, project, customer needs, comments, and likely implementation area. Preference fit can break ties or surface a close alternative, but it must not outrank a materially higher-value ready issue unless the user explicitly asked for `only` that work type.
-   - Write a `plain-language summary` for every issue that will appear in the report. Use one or two concise sentences that explain the problem to solve or the outcome that will change and why it matters. Prefer familiar words and direct phrasing. Avoid unnecessary internal code names, unexplained acronyms, implementation details, and simply repeating the title.
+   - Write a `plain-language summary` for every issue that will appear in the report. Use one or two concise sentences that explain the problem to solve or the outcome that will change and why it matters. Prefer familiar words and direct phrasing. Never summarize an issue with internal jargon, unexplained acronyms, implementation details, or a restatement of its title.
 
 7. **Select the next issue.**
    - Prefer the highest-value `ready` issue that passes every hard argument constraint, including `agent-ready` when requested.
@@ -139,15 +139,3 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
    ```
 
    Every issue shown anywhere in the report must include its plain-language summary. Omit the Agent-readiness field and columns when autonomous readiness was not requested. Omit empty sections except `Parallel candidates`; when fewer than two good parallel candidates exist, preserve that section and explain the exhausted search rather than silently omitting it.
-
-## Red Flags
-
-- Recommending an issue only because it has the highest Linear priority while it is blocked or underspecified.
-- Treating all unassigned issues as available without filtering out completed/canceled/started work.
-- Presenting inferred parallelism as certain when issue descriptions do not reveal implementation overlap.
-- Stopping after the first 25 candidates without finding four good parallel candidates or enriching and assessing the entire collected candidate set.
-- Filling the parallel section with dependent, unclear, or low-value issues just to reach a target count.
-- Summarizing an issue with internal jargon, unexplained acronyms, implementation details, or a restatement of its title.
-- Treating `ready` and `agent-ready` as synonyms, or weakening `--agent-ready-only` because no candidate passes.
-- Silently broadening an explicit state request when a named workflow state cannot be resolved.
-- Starting branch setup or implementation instead of handing off to `kramme:linear:issue-implement`.

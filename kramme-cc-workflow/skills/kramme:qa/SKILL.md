@@ -148,6 +148,8 @@ Map changed UI files to routes/pages:
 - Config-based routing: search router config for imports/references to the changed files
 - If mapping is ambiguous, include the likely route with a note
 
+A changed shared component, layout, or style file maps to every route that renders it: diff-aware mode narrows scope to affected routes, it does not skip routes that depend on changed shared code. If UI-relevant files changed but none of them maps to a route, the mapping is wrong rather than the scope empty; emit `MISSING REQUIREMENT` listing the unmapped files and ask for the intended routes instead of reporting zero routes tested.
+
 For complex changed flows, sketch the user flow first as a compact flowchart before building the matrix. Include entry points, decision points, state transitions, and exit/error states so the matrix is grounded in the workflow rather than a flat file list.
 
 Create a branch-diff-to-journey matrix before building the test checklist. Read `references/diff-aware-journey-matrix.md` and populate one row per route/screen and meaningful user journey using the columns defined there.
@@ -234,7 +236,7 @@ For each tested page/route, collect:
 
 Read `references/network-triage.md` and classify every failed or anomalous request using its ladder.
 
-Store evidence per route for inclusion in the QA report.
+Store evidence per route for inclusion in the QA report. When browse ran, a route with no screenshot and no console capture is reported as `UNVERIFIED`, not as tested.
 
 ### Step 7: Assess Findings
 
@@ -254,14 +256,14 @@ Store as `HEALTH_SCORE` and `HEALTH_LABEL` (Excellent/Good/Fair/Poor/Critical).
 
 ### Step 8: Regression Comparison (conditional)
 
-**Skip if** `REGRESSION_MODE` is false.
+**Skip if** `REGRESSION_MODE` is false. If a `QA_BASELINE.json` from a prior run exists anyway, ask the user whether to compare against it before Step 10 overwrites it; if the runtime cannot ask, continue and note the skipped comparison in the summary.
 
 This runs **before** the report is written (Step 9) so the comparison can be included in it.
 
 Check if `QA_BASELINE.json` exists from a previous run:
 
 - If not found: warn `"No previous baseline found. Skipping regression comparison. This run's results will be saved as the new baseline."` and continue to Step 9.
-- If found: load and compare:
+- If found: load and compare. An old baseline is a reason to refresh the comparison, not to skip it; Step 10 re-saves it afterwards.
 
 **Comparison logic:**
 
@@ -285,7 +287,7 @@ Populate all sections:
 - Call out persona-visible paper cuts: small friction, confusing copy, awkward ordering, missing feedback, or visual inconsistencies that a realistic user persona would notice even when the route technically works
 - Include the `## Regression` section prepared in Step 8 when a regression comparison ran
 - Calculate summary counts per severity level
-- Provide overall recommendation (ready / not ready / ready with caveats)
+- Provide overall recommendation (ready / not ready / ready with caveats); any Blocker finding makes it not ready regardless of the health score
 
 **Numbering convention:** Findings are numbered `QA-001`, `QA-002`, etc.
 
@@ -318,7 +320,7 @@ After writing the report, display the inline summary using `assets/qa-summary-te
 Before producing the QA report, read `references/addy-conventions.md` and apply:
 
 - The 7-marker output vocabulary (`STACK DETECTED`, `UNVERIFIED`, `NOTICED BUT NOT TOUCHING`, `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS`, `CONFUSION`, `MISSING REQUIREMENT`, `PLAN`) to section headers, summary callouts, and inline flags.
-- The `Common Rationalizations` / `Red Flags — STOP` / `Verification` epilogue as a pre-handoff checklist against this run.
+- The trimmed `Verification` checklist as a final check on this run before the Step 11 summary.
 
 ## Error Handling Summary
 
