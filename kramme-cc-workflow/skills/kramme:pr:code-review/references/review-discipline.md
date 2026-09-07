@@ -34,11 +34,14 @@ Apply these rules before making a finding or recommending a fix:
 
 ### Overengineering check
 
-- Judge the diff and every recommended fix against the simplest solution that fully and reliably meets the specific requirements and fits the existing architecture and established patterns.
-- Flag complexity the current task does not require: premature abstractions, unnecessary layers or indirection, speculative configuration or extension points, hypothetical edge-case handling, and functionality beyond the change's scope. Name the concrete simpler alternative.
-- Do not flag handling of real and likely edge cases as overengineering. Robustness for failure paths introduced by the review scope is required work.
+Use this reasoning sequence within the requested review scope before recommending changes:
+
+1. **Establish the required outcome.** Identify the smallest outcome that fully and reliably satisfies the task, its binding constraints, the existing architecture, and established patterns. Distinguish stated requirements from implementation assumptions; existing code and tests added alongside it cannot independently justify a design choice. Name missing intent as uncertainty instead of assuming the behavior is unnecessary.
+2. **Challenge necessity.** Ask what requirement or reachable failure makes each meaningful mechanism necessary, and what would break if it disappeared entirely. Consider premature abstractions, unnecessary layers or indirection, speculative flags or extension points, hypothetical edge-case handling, dependencies, workflow steps, and functionality beyond the change's scope. Check the rationale before recommending removal; local precedent alone does not establish necessity. Name the concrete simpler alternative.
+3. **Consider deletion first.** Consider removing an unnecessary responsibility, then reusing an existing capability, then simplifying custom code. Explain which required behavior survives and cite evidence for the proposed change. Preserve security controls, compatibility obligations, data-loss protection, accepted project decisions, and handling for real, likely failure paths introduced by the review scope. A proposal that changes behavior or depends on an unresolved product decision remains a necessity question, not a behavior-preserving simplification.
+4. **Simplify what remains.** Trace what the proposed deletion would make redundant, then reassess the surviving implementation. Keep dependent cleanup conditional until deletion is accepted and verified; reviewers remain read-only. Apply the same sequence to your own recommended fixes and choose the smallest direct change supported by the evidence, without adding another abstraction, layer, or hypothetical edge case.
+
 - Overengineering findings default to Suggestion with action class `advisory`. Classify one as Important only when the unnecessary complexity has concrete present cost: it conceals or invites a bug, materially obscures the change, or creates a public surface other code must adopt.
-- Recommend the smallest direct fix supported by the evidence; never add abstractions, layers, or hypothetical edge-case handling beyond it.
 - Label every finding produced by this check with `OVERENGINEERING` on its own line so aggregation applies cleanup precedence independently of the source reviewer.
 
 ## Review speed norm
@@ -70,6 +73,7 @@ Every active finding must include these fields before it is posted:
 | Evidence | concrete trace, location, reproduction, failed expectation, or `UNVERIFIED` reason | Prevents unsupported findings from becoming gatekeeping. |
 | Relevance status | PR-caused, pre-existing/out-of-scope, previously addressed, unresolved pending validation | Preserves the validator's classification without replacing the raw finding. |
 | Resolution status | open, addressed, deferred, acknowledged, skipped | Records finding lifecycle; new active findings start as `open`. |
+| Depends on | `CR-NNN — activate after dependency is addressed` or `CR-NNN — activate if dependency is not addressed after processing` | Required only for conditional cleanup findings. Keeps fallback and follow-on cleanup independently actionable without running it before the deletion outcome is known. |
 | Manual blocker | product/UX/architecture/maintainer decision, missing/contradictory requirement, PR-description/process update, cross-team/external ownership, unresolved contradiction, incomplete trace/UNVERIFIED, or dead-code approval | Required only for manual Critical/Important findings. Names why `/kramme:pr:resolve-review` must not act automatically. |
 | Next human decision | one concrete decision, approval, clarification, access grant, or verification step | Required only for manual Critical/Important findings. Makes the manual follow-up actionable instead of a silent skip. |
 
@@ -163,6 +167,15 @@ Apply this pass before emphasis and action-class normalization:
 - Preserve the correctness/security finding unchanged. Append cleanup-collision context only when it helps the resolver avoid an unsafe cleanup path.
 - If the cleanup remains valid after the higher-priority fix, keep it as an advisory Suggestion and name the dependency. If it requires choosing a different correctness/security fix, record a `CONFUSION` manual finding instead of silently choosing the cleanup path.
 
+### Deletion dependencies
+
+After resolving correctness/security collisions, compare surviving deletion recommendations with every cleanup-dimension finding (`lean`, `refactor`, `simplify`, and any finding marked `OVERENGINEERING`):
+
+- Trace whether the proposed deletion actually removes the code or responsibility another finding would improve. A shared file or broad theme is insufficient. Never suppress an unresolved correctness/security finding on the assumption that a proposed deletion will fix it.
+- When deletion would make cleanup moot, retain the cleanup as a separate advisory finding and set `Depends on: <deletion finding identity> — activate if dependency is not addressed after processing`. The resolver processes and verifies the deletion first; it acknowledges the cleanup as unnecessary when deletion succeeds and revalidates the cleanup only after the deletion has a recorded processed non-addressed outcome such as rejected, deferred, skipped, or safely blocked. An open dependency excluded by the current severity filter is unprocessed and leaves the cleanup unchanged. When the fallback activates, the dependency itself does not count as the unresolved Critical/Important finding that blocks the advisory; unrelated unresolved Critical/Important findings still block it. Do not count the conditional cleanup as independently required work.
+- When deletion enables further cleanup, retain separate findings and set `Depends on: <deletion finding identity> — activate after dependency is addressed`. Describe the affected code and ordering in Evidence: delete first, verify required behavior, then simplify the remainder. Combine only findings with one coherent fix. Do not infer that dependent code is already dead or that deletion has been authorized.
+- Use a provisional finding identity during aggregation. After final IDs are assigned, replace it with the deletion finding's `CR-NNN` ID. If the deletion finding is dropped before posting, remove the dependency and revalidate the cleanup against the surviving code.
+
 ## Common rationalizations
 
 Watch for these excuses — they signal the review is slipping into low-value territory.
@@ -212,5 +225,6 @@ Before posting the review, confirm:
 - [ ] No recommended fix introduces abstractions, layers, or hypothetical edge-case handling beyond what its evidence requires, and overengineering findings without concrete present cost sit in Suggestions as `advisory`.
 - [ ] Cleanup-dimension findings (`lean`, `refactor`, `simplify`) that collide with unresolved correctness/security findings were suppressed or kept only as advisory suggestions blocked by the higher-priority finding.
 - [ ] Kept cleanup-collision suggestions name the final blocking `CR-XXX` ID after finding IDs are assigned.
+- [ ] Every conditional cleanup remains a separate advisory finding with a final `Depends on: CR-NNN` activation condition; no unresolved correctness/security finding was suppressed by a proposed deletion.
 - [ ] `gated_auto` appears only on code-backed findings with a concrete location and a clear fix path.
 - [ ] `advisory` appears only on Suggestions or FYI observations, never on Critical or Important findings.

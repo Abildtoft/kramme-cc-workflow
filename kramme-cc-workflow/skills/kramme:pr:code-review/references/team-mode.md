@@ -159,10 +159,10 @@ Then aggregate:
 2. Apply the relevance-validator's filtering
 3. Apply previous-review context (same logic as `/kramme:pr:code-review` Step 10): filter only `addressed` matches, carry forward still-relevant `open`, `deferred`, `acknowledged`, or `skipped` matches as active findings
 4. Apply the `Confidence and merge rules` section of `references/review-discipline.md` exactly.
-5. Apply the `Correctness and security precedence` section of `references/review-discipline.md` exactly before emphasis or action-class normalization.
+5. Apply the `Correctness and security precedence` section of `references/review-discipline.md` exactly before emphasis or action-class normalization, including its `Deletion dependencies` check.
 6. Apply emphasis using the standard `/kramme:pr:code-review` Step 11 rules.
 7. Apply the `Action classes`, `Severity and action-class compatibility`, and `Manual blocker tests` sections of `references/review-discipline.md` exactly before assigning final Finding IDs.
-8. After final IDs are assigned, reconcile cleanup-collision blocker references as required by the authoritative discipline reference.
+8. After final IDs are assigned, reconcile cleanup-collision blocker references and deletion-dependency identities as required by the authoritative discipline reference.
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
 

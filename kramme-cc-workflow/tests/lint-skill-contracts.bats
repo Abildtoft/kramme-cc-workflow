@@ -1069,6 +1069,7 @@ EOF
   local resolver_conductor_text
   local resolver_team_text
   local resolver_output_text
+  local dependency_adr_text
   local overengineering_skill_text
   local overengineering_agent_text
   local collect_review_diff_text
@@ -1084,6 +1085,7 @@ EOF
   resolver_conductor_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/conductor-source.md")"
   resolver_team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/team-mode.md")"
   resolver_output_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/resolution-output.md")"
+  dependency_adr_text="$(cat "$BATS_TEST_DIRNAME/../docs/decisions/2026-09-07-conditional-review-cleanup-dependencies.md")"
   overengineering_skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:overengineering-review/SKILL.md")"
   overengineering_agent_text="$(cat "$BATS_TEST_DIRNAME/../agents/kramme:overengineering-reviewer.md")"
   collect_review_diff_text="$(cat "$BATS_TEST_DIRNAME/../scripts/collect-review-diff.sh")"
@@ -1104,6 +1106,7 @@ EOF
   [ "$normalization_line" -gt "$emphasis_line" ]
 
   [[ "$template_text" == *"## Auto-resolution Readiness"* ]]
+  [[ "$template_text" == *'Review producer: kramme:pr:code-review'* ]]
   [[ "$template_text" == *"Manual blockers: product/UX/architecture/maintainer decision X"* ]]
   [[ "$template_text" == *"Manual blocker: product/UX/architecture/maintainer decision"* ]]
   [[ "$template_text" == *"Next human decision: concrete decision"* ]]
@@ -1115,6 +1118,11 @@ EOF
   [[ "$skill_text" == *'Immediately before launching any standard reviewer, read `references/review-discipline.md`'* ]]
   [[ "$skill_text" == *'read `references/review-discipline.md` and then `references/team-mode.md`'* ]]
   [[ "$skill_text" == *'apply the `Confidence and merge rules` and `Correctness and security precedence` sections'* ]]
+  [[ "$skill_text" == *'including its `Deletion dependencies` check, before emphasis'* ]]
+  [[ "$skill_text" == *"Replace every deletion dependency's provisional finding identity with its final \`CR-XXX\` ID"* ]]
+  [[ "$skill_text" == *'resolution status, `Depends on` when present, action taken, and evidence'* ]]
+  [[ "$skill_text" == *'Resolve a carried `Depends on` source ID to the retained current deletion finding'* ]]
+  [[ "$skill_text" == *'If the referenced deletion finding was dropped, remove the dependency and revalidate the cleanup'* ]]
   [[ "$skill_text" != *"Instruct every reviewer to return these fields for each finding"* ]]
   [[ "$skill_text" != *"Manual blocker: <one of the blocker categories above>"* ]]
 
@@ -1124,6 +1132,8 @@ EOF
   [[ "$team_text" != *'`collect-review-diff.sh` JSON flow'* ]]
   [[ "$team_text" == *'Apply the `Confidence and merge rules` section'* ]]
   [[ "$team_text" == *'Apply the `Correctness and security precedence` section'* ]]
+  [[ "$team_text" == *'including its `Deletion dependencies` check'* ]]
+  [[ "$team_text" == *'reconcile cleanup-collision blocker references and deletion-dependency identities'* ]]
   [[ "$team_text" == *'Apply the `Action classes`, `Severity and action-class compatibility`, and `Manual blocker tests` sections'* ]]
   [[ "$team_text" == *'Use `references/output-template.md` and the `Finding schema` and `Severity prefix grammar` sections'* ]]
   [[ "$team_text" != *"Each teammate must also apply this **Codebase Calibration Rule**"* ]]
@@ -1136,6 +1146,23 @@ EOF
   [[ "$relevance_validator_text" == *"Return every raw finding field and standalone marker unchanged"* ]]
 
   [[ "$resolver_text" == *"\`Manual blocker\`, and \`Next human decision\`"* ]]
+  [[ "$resolver_text" == *'`Resolution status`, `Depends on`, `Evidence`'* ]]
+  [[ "$resolver_text" == *'build and validate one dependency graph'* ]]
+  [[ "$resolver_text" == *'A missing finding, malformed condition, or dependency cycle leaves the dependent finding `open` with a blocked-implementation explanation'* ]]
+  [[ "$resolver_text" == *'Remove every valid dependent from the initial implementation candidates'* ]]
+  [[ "$resolver_text" == *'Keep valid, open, in-scope dependents selected by the severity filter in the pending dependency work set'* ]]
+  [[ "$resolver_text" == *'An earlier addressed deletion with open follow-on cleanup and a deletion newly deferred in Step 2d with open fallback cleanup both require Step 3'* ]]
+  [[ "$resolver_text" == *'If neither implementation candidates nor pending dependency work remain'* ]]
+  [[ "$resolver_text" != *'If no findings remain after scope, severity, and action-class filtering, skip this step and Step 3'* ]]
+  [[ "$resolver_text" == *'Do not decide activation from the dependency'"'"'s pre-implementation status.'* ]]
+  [[ "$resolver_text" == *'If a dependency is excluded by `SEVERITY_FILTER` and still has `open` or missing status from before this run, leave both it and its dependent unchanged.'* ]]
+  [[ "$resolver_text" == *'A recorded processed status from an earlier run may satisfy an activation condition'* ]]
+  [[ "$resolver_text" == *'Process each dependency-connected component sequentially in topological order before any of its dependents'* ]]
+  [[ "$resolver_text" == *'For `activate after dependency is addressed`, revalidate and evaluate the dependent normally only when the dependency is `addressed`.'* ]]
+  [[ "$resolver_text" == *'For `activate if dependency is not addressed after processing`, acknowledge the dependent as unnecessary when the dependency is `addressed`.'* ]]
+  [[ "$resolver_text" == *'Ignore only that processed dependency when applying the safe-advisory test'"'"'s unresolved Critical/Important gate'* ]]
+  [[ "$resolver_text" == *'A dependency that remained open because a severity filter excluded it is unprocessed and leaves the dependent unchanged.'* ]]
+  [[ "$resolver_text" == *'For a report from any non-local transport, apply Step 2b to every finding and confirm that each dependency refers to a finding in the same accepted report'* ]]
   [[ "$resolver_text" == *"manual blocker, and next human decision when available"* ]]
   [[ "$resolver_text" == *"Findings outside the filter are not processed and keep their existing \`Resolution status\` and \`Action taken\` fields unchanged"* ]]
   [[ "$resolver_text" == *"A finding skipped only because it was outside a previous severity filter remains eligible"* ]]
@@ -1194,6 +1221,10 @@ EOF
   [[ "$resolver_text" == *"treat \`Verdict: JUDGMENT CALL\` as \`Action class: manual\`"* ]]
   [[ "$resolver_text" == *"treat \`Verdict: OVERDONE\` as \`Action class: gated_auto\` only when it has a concrete file location"* ]]
   [[ "$resolver_output_text" == *"**Recommended resolution:**"* ]]
+  [[ "$resolver_output_text" == *'Preserve `Depends on` on every lifecycle update'* ]]
+  [[ "$resolver_output_text" == *'conditional cleanup is no longer needed'* ]]
+  [[ "$resolver_output_text" == *'reset each fallback dependent acknowledged by that deletion to `Resolution status: open`'* ]]
+  [[ "$resolver_output_text" == *'This narrow transition does not reopen unrelated acknowledged findings'* ]]
   [[ "$resolver_output_text" == *"every finding routed through Step 2d's manual-proposal flow"* ]]
   [[ "$resolver_output_text" == *"process-level external or legacy findings without an action class"* ]]
   [[ "$resolver_output_text" == *"**Alternatives:** (omit when no genuinely distinct option exists)"* ]]
@@ -1219,12 +1250,27 @@ EOF
   [[ "$resolver_team_text" == *"Manual findings that Step 2d keeps unresolved or deferred are never assigned to resolver agents"* ]]
   [[ "$resolver_team_text" == *"Any manual finding that Step 2d classifies as implementation payload remains resolver-eligible"* ]]
   [[ "$resolver_team_text" == *"Step 2d is the canonical eligibility contract"* ]]
-  [[ "$resolver_team_text" == *"If no resolver-eligible implementation candidates remain after the action-class gate"* ]]
+  [[ "$resolver_team_text" == *"If neither resolver-eligible implementation candidates nor pending dependency work remain after the action-class gate"* ]]
+  [[ "$resolver_team_text" == *'If only pending dependency work remains, delegate directly to the standard workflow at Step 2.5'* ]]
   [[ "$resolver_team_text" == *'Also honor explicit `REVIEW_SOURCE=conductor`; read and follow `conductor-source.md` before grouping candidates.'* ]]
   [[ "$resolver_team_text" == *'In auto mode, first check for `REVIEW_OVERVIEW.md`'* ]]
   [[ "$resolver_team_text" == *'then usable unmarked Conductor comments, then chat context'* ]]
   [[ "$resolver_team_text" == *'In auto mode, prefer a structured review in the immediately preceding assistant message when the current request refers to it within that chat-context stage.'* ]]
   [[ "$resolver_team_text" == *'if chat or payload content carries `Review producer: kramme:pr:overengineering-review`'* ]]
+  [[ "$resolver_team_text" == *'Remove every dependency-connected component from the parallel candidate set and list it under `Sequential`'* ]]
+  [[ "$resolver_team_text" == *'Never assign a dependency and its dependent to separate agents'* ]]
+  [[ "$resolver_team_text" == *'File ownership never overrides dependency order.'* ]]
+
+  [[ "$discipline_text" == *'every cleanup-dimension finding (`lean`, `refactor`, `simplify`, and any finding marked `OVERENGINEERING`)'* ]]
+  [[ "$discipline_text" == *'retain the cleanup as a separate advisory finding'* ]]
+  [[ "$discipline_text" == *'activate after dependency is addressed'* ]]
+  [[ "$discipline_text" == *'activate if dependency is not addressed after processing'* ]]
+  [[ "$discipline_text" == *'An open dependency excluded by the current severity filter is unprocessed and leaves the cleanup unchanged.'* ]]
+  [[ "$discipline_text" == *'the dependency itself does not count as the unresolved Critical/Important finding that blocks the advisory'* ]]
+  [[ "$template_text" == *'Depends on: CR-NNN — activate after dependency is addressed'* ]]
+  [[ "$template_text" == *'Depends on: CR-NNN — activate if dependency is not addressed after processing'* ]]
+  [[ "$dependency_adr_text" == *'- Status: ACCEPTED'* ]]
+  [[ "$dependency_adr_text" == *'processes each connected component sequentially in topological order after focused verification establishes the dependency outcome'* ]]
 
   [[ "$overengineering_skill_text" == *'assign temporary stable IDs `CAND-001`, `CAND-002`, ... before batching'* ]]
   [[ "$overengineering_skill_text" == *"Require the response's candidate-ID multiset to match the input batch exactly"* ]]
@@ -1260,7 +1306,7 @@ EOF
   [[ "$overengineering_agent_text" == *$'- Candidate ID:\n- Location:'* ]]
   [[ "$overengineering_agent_text" != *'Candidate ID: (leave blank; the orchestrator assigns CAND-NNN before justification)'* ]]
   [[ "$overengineering_agent_text" == *'Candidate ID: {CAND-NNN supplied by the orchestrator; echo it exactly}'* ]]
-  [[ "$resolver_team_text" == *"Do not prompt for a parallel plan or spawn resolver agents for a manual-only review."* ]]
+  [[ "$resolver_team_text" == *"Do not prompt for a parallel plan or spawn resolver agents for a manual-only or dependency-only review."* ]]
   [[ "$resolver_text" != *"Findings outside the filter are skipped with **Resolution status: skipped**"* ]]
 }
 
