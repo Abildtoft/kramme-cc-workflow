@@ -38,6 +38,7 @@
     grep -qF "Shared labels, the same project, or overlapping keywords alone make issues \`related\`, not duplicates." "$rubric"
     grep -qF "do not include file paths, line numbers, or internal helper or class names" "$rubric"
     grep -qF "Split children must each be independently shippable" "$rubric"
+    grep -qF "persist every approved prerequisite as a \`blockedBy\` relation on the dependent child" "$skill"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -81,13 +82,16 @@
 
     grep -qF "an autonomous agent (for example \`kramme:linear:issue-to-pr\`) can pick them up and deliver quality work" "$skill"
     grep -qF "\`agent-readiness\`: \`agent-ready\`, \`needs-refinement\`, or \`human-only\`" "$skill"
-    grep -qF "Agent-ready now: {a} | agent-ready after proposed actions: {b} | human-only: {c}" "$skill"
+    grep -qF "Agent-ready now (verified specifications): {a} | projected after applying validated drafts: {b} | human-only: {c}" "$skill"
     grep -qF "missing decisions are an \`ask\`, not a guess" "$skill"
     grep -qF "## Agent-Readiness" "$rubric"
     grep -qF "Acceptance criteria are verifiable by running something" "$rubric"
     grep -qF "Decisions are made" "$rubric"
     grep -qF "Done is detectable" "$rubric"
     grep -qF "do not force them toward \`agent-ready\`" "$rubric"
+    grep -qF "Never promote an issue while required evidence is unknown." "$rubric"
+    grep -qF "report startability separately: \`ready-to-start\`, \`awaiting-prerequisite\` with identifiers, or \`unknown\` with the missing evidence" "$skill"
+    grep -qF "Only \`ready-to-start\` issues are eligible for immediate implementation." "$rubric"
     grep -qF "Never invent decisions, criteria, or product intent" "$rubric"
   '
 

@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:backlog-refine
-description: "Requires Linear MCP. Grades a Linear team's open backlog for clarity, scope, agent-readiness, freshness, and resolution evidence; clusters related work; and proposes complete, cancel, merge, split, rewrite, ask, or keep. Read-only unless --apply is passed and each write batch is approved. Use for backlog grooming or pre-planning cleanup. Not for selecting, defining, or implementing an issue; use kramme:linear:select-next or kramme:linear:issue-define instead."
+description: "Requires Linear MCP. Grades a Linear team's open backlog for clarity, scope, agent-readiness, freshness, and resolution evidence, and reports startability separately; clusters related work; and proposes complete, cancel, merge, split, rewrite, ask, or keep. Read-only unless --apply is passed and each write batch is approved. Use for backlog grooming or pre-planning cleanup. Not for selecting, defining, or implementing an issue; use kramme:linear:select-next or kramme:linear:issue-define instead."
 argument-hint: "[team] [--project <name>] [--label <name>] [--stale-days <n>] [--limit <n>] [--apply]"
 disable-model-invocation: true
 user-invocable: true
@@ -53,18 +53,20 @@ Reject unknown flags and repeated flags with one short message naming the offend
    - If no backlog issues match, report that and stop.
 
 5. **Enrich issues that need it.**
-   - Issues whose title and description already meet the rubric's clarity bar and show no delivery or cancellation signal need no extra calls.
-   - For every other issue, and every issue that might have delivery or cancellation evidence, call Linear MCP `get_issue` with `includeRelations: true` so blockers, duplicates, parents, and sub-issues are visible.
-   - Call Linear MCP `list_comments` when a comment may show that the requested outcome shipped, one of the issue's explicitly permitted resolutions occurred, the work was superseded or abandoned, or the grade is borderline between `keep`, `complete`, and `cancel`.
+   - Call Linear MCP `get_issue` with `includeRelations: true` for every issue, so blockers, duplicates, parents, and sub-issues are visible.
+   - Call Linear MCP `list_comments` when the issue is a candidate for `agent-ready`, or when a comment may show that the requested outcome shipped, one of the issue's explicitly permitted resolutions occurred, the work was superseded or abandoned, or the grade is borderline between `keep`, `complete`, and `cancel`.
+   - Title and description are sufficient for preliminary triage only. Before assigning `agent-ready`, inspect required linked inputs or repository context to verify they are reachable, and check for unresolved blockers and decisions that supersede the description. Reuse evidence already fetched in this run; a clear description never exempts an issue from this promotion check.
    - When delivery evidence points to repository changes, a Pull Request, or acceptance coverage, inspect the referenced evidence rather than inferring completion from matching words or a closed relation.
-   - Keep the full issue set; never drop an issue because enrichment failed. Record the failure and grade from what is available.
+   - Keep the full issue set; never drop an issue because enrichment failed. Record the failing operation and its error as the gap; a fetch failure is unknown evidence, not a specification gap, and never justifies a `rewrite`, `complete`, `cancel`, or `merge` proposal. Grade from what is available.
+   - Record a source and a short evidence statement for each passing readiness item, and the gap for each failing or unknown item. Missing required evidence prevents promotion. Check that the proposed verification method is available and has an expected result; executing the implementation tests is not required during refinement.
 
 6. **Grade each issue.** Read `references/refinement-rubric.md` and apply it. Produce for every issue:
    - `clarity`: `clear`, `vague`, or `empty`.
    - `scope`: `pr-sized`, `oversized`, or `unknown`.
    - `freshness`: `active` or `stale` (no update within `--stale-days`). Freshness never determines whether delivered work was completed or unwanted work was canceled.
    - `resolution-evidence`: `delivered` when the requested outcome is demonstrably delivered, `cancel-supported` when the work was superseded, abandoned, or has no remaining relevance, or `none`. Record the concrete evidence, not only the label.
-   - `agent-readiness`: `agent-ready`, `needs-refinement`, or `human-only`, using the rubric's agent-readiness checklist. `agent-ready` means every checklist item passes; `human-only` means the issue depends on a judgment, design, or access an agent cannot obtain (for example an unmade product decision, unreleased designs, or credentials), and no rewrite changes that.
+   - `agent-readiness`: `agent-ready`, `needs-refinement`, or `human-only`, using the rubric's agent-readiness checklist. `agent-ready` means the specification passes every checklist item. A missing answer or input that would enable implementation is `needs-refinement`; use `human-only` when human judgment or access is itself the required work. Bounded investigations can qualify under the rubric.
+   - For each `agent-ready` issue, report startability separately: `ready-to-start`, `awaiting-prerequisite` with identifiers, or `unknown` with the missing evidence. An unresolved prerequisite does not become resolved because its identifier appears in the description.
    - `duplicate-of`: the identifier of a clearly overlapping issue, or none.
    - For every issue that is not `agent-ready`, record the specific failing checklist items; they drive the `rewrite` and `ask` drafts.
    - Before assigning `delivered` to a parent, verify that its requested outcome or acceptance criteria are delivered and every required child is complete. A child does not block completion only when the parent explicitly identifies it as optional, a follow-up, or out of scope. If requiredness is ambiguous, do not propose `complete`; use `ask` or another nonterminal action.
@@ -80,7 +82,7 @@ Reject unknown flags and repeated flags with one short message naming the offend
      - Canceling delivered work, including a parent whose requested outcome is delivered and whose only unfinished child is explicitly optional, a follow-up, or out of scope.
      - Proposing `cancel` just because an issue is old while it carries priority, a customer need, or blocks other work.
    - `merge`: duplicate of a canonical issue. Propose moving any unique detail into the canonical issue and marking this one as a duplicate.
-   - `split`: oversized. Propose 2-5 PR-sized child issues with titles and one-line scopes; each child is drafted to the agent-ready bar so an agent can take any one of them independently. The original becomes the parent.
+   - `split`: oversized. Propose 2-5 PR-sized child issues with full descriptions following the rubric's child brief contract. Give each child a stable draft key so dependencies between proposed children can be named before Linear identifiers exist. Each child must have its own verifiable outcome; state any prerequisites explicitly. The original becomes the parent.
    - `rewrite`: keep the issue but draft a clearer title and description whose goal is to make the issue `agent-ready`. Use the codebase to close gaps when it can: read the affected area to confirm the behavior, name the modules involved, and turn implied expectations into verifiable acceptance criteria. Include the draft in the report and state which checklist items it closes; hand off to `kramme:linear:issue-define` when the rewrite needs information only the user has. Never invent acceptance criteria or product decisions the issue never implied in order to reach `agent-ready`; missing decisions are an `ask`, not a guess.
    - `ask`: value or relevance cannot be judged from Linear, or the issue is `needs-refinement` and the missing information (a decision, a design, an expected behavior) exists only with a person; name the single question whose answer would make the issue `agent-ready` and the person who can answer it when the issue records an owner.
    - `keep`: clear, PR-sized, and still relevant. No change.
@@ -89,11 +91,16 @@ Reject unknown flags and repeated flags with one short message naming the offend
 
    Follow the rubric's drafting rules for every `rewrite` and `split`: lead with the problem and outcome, give acceptance criteria an agent can verify by running something, state explicit non-goals and decisions already made, and avoid file paths, line numbers, and internal helper names.
 
-9. **Report the plan.** Use this structure:
+9. **Validate drafts and report the plan.** Re-grade the exact final description of every rewrite and split child against every readiness item, retaining the evidence and any open gaps. Unsupported assumptions and unanswered questions never count as closed gaps. Compute projected readiness only from drafts that pass this final check; a proposed action alone is not evidence of readiness.
+
+   Count retained implementation issues once, replace split parents with their children, and exclude completed, canceled, merged-away, and tracking-only parent issues from projected readiness. Show the identifiers or draft keys behind each count, distinguish existing issues from new children, and keep awaiting-prerequisite and unknown startability separate from ready-to-start. Label projections as conditional on applying the drafts and persisting their relations; do not assume prerequisites will complete. Use this structure:
 
    ```text
    Backlog refinement: {team} ({n} issues graded, {m} need action)
-   Agent-ready now: {a} | agent-ready after proposed actions: {b} | human-only: {c}
+   Agent-ready now (verified specifications): {a} | projected after applying validated drafts: {b} | human-only: {c}
+   Startability now: ready-to-start {r} | awaiting-prerequisite {w} | unknown {u}
+   Projected startability: ready-to-start {pr} | awaiting-prerequisite {pw} | unknown {pu}
+   Count basis: {existing identifiers and proposed child keys, with exclusions}
 
    Summary:
    | Action | Count |
@@ -107,14 +114,17 @@ Reject unknown flags and repeated flags with one short message naming the offend
    | keep | ... |
 
    Proposed actions:
-   | Issue | Action | Clarity | Scope | Freshness | Resolution evidence | Agent-readiness | Why |
-   | --- | --- | --- | --- | --- | --- | --- | --- |
-   | ... | ... | ... | ... | ... | ... | ... | ... |
+   | Issue | Action | Clarity | Scope | Freshness | Resolution evidence | Agent-readiness | Startability | Why |
+   | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+   | ... | ... | ... | ... | ... | ... | ... | ... | ... |
 
    Drafts:
    {for each rewrite: issue, proposed title, proposed description, checklist items closed, items still open}
-   {for each split: parent issue, proposed child titles and scopes, agent-readiness per child}
+   {for each split: parent issue, child draft keys, titles, full descriptions, dependency mapping, final readiness and startability per child}
    {for each merge: duplicate -> canonical, unique detail to carry over}
+
+   Readiness evidence:
+   {for each current or projected agent-ready issue: checklist item, source, evidence; for others: failing or unknown items}
 
    Open questions:
    {for each ask: issue, question, who can answer, what becomes agent-ready once answered}
@@ -122,7 +132,7 @@ Reject unknown flags and repeated flags with one short message naming the offend
    Next: {"rerun with --apply to apply approved batches" | "handoff lines"}
    ```
 
-   Omit the `keep` rows from `Proposed actions` when more than 20 issues were graded; list their identifiers in one line instead. Omit empty sections.
+   Omit the `keep` rows from `Proposed actions` when more than 20 issues were graded; list their identifiers in one line instead. Omit empty sections. Leave `Startability` as `n/a` for any issue that is not `agent-ready`; only `agent-ready` rows contribute to the startability counts, which sum to the agent-ready count rather than the graded count. For picking autonomous implementation work, hand off to `kramme:linear:select-next {team} --agent-ready-only`; only issues that are also ready to start are candidates. Selection rechecks live evidence rather than trusting this report.
 
 10. **Apply approved changes (`--apply` only).**
     - Resolve the team's state whose type is `completed` and the state whose type is `canceled` before presenting terminal batches. If either needed state cannot be resolved unambiguously, do not apply that action; report the missing state. A `complete` action may use only the completed state, and a `cancel` action may use only the canceled state.
@@ -133,9 +143,10 @@ Reject unknown flags and repeated flags with one short message naming the offend
       - `complete`: immediately before changing state, re-fetch the issue with relations and re-fetch the comments. Re-verify the cited delivery evidence, the issue's acceptance criteria, and the status of every required child; repeat any cited repository or Pull Request check. If the evidence is missing, changed, incomplete, or ambiguous, skip the issue. Otherwise add a comment summarizing the verified completion evidence, then move the issue to the team's completed state.
       - `cancel`: add a comment stating the supersession, abandonment, or no-remaining-value reason, then move the issue to the team's canceled state. Never move an issue with verified delivery evidence to the canceled state.
       - `rewrite`: update only `title` and `description` on the existing issue.
-      - `split`: create each child with `parentId` set to the original and the team, project, and labels inherited; then update the parent's description with a one-line note that the work is tracked in sub-issues.
+      - `split`: use the approved full child descriptions. Create each child with `parentId` set to the original and the team, project, and labels inherited. Map draft keys to returned Linear identifiers, then persist every approved prerequisite as a `blockedBy` relation on the dependent child using `save_issue`'s `blockedBy` field, including dependencies on existing issues. Relation fields are append-only and this workflow never removes a relation, so a wrong-direction edge is permanent. If relation writes are unsupported, create no relation, keep the prerequisite as tracker-native description text, and report the relation as unapplied. Replace draft keys in descriptions with those identifiers. Do not report a split as fully applied until all children and dependency relations have been read back successfully and each read-back confirms the dependent child is the blocked side; if creation or linking fails, report the created identifiers and missing work, retain the drafts, and never blindly recreate a child on retry. Update the parent's description with a one-line tracking note only after the split is fully applied.
       - `merge`: append the duplicate's unique detail to the canonical issue's description, then move the duplicate to the team's `duplicate` or `canceled` state and add a comment naming the canonical issue. Never delete.
     - Before each write, re-fetch the issue and abort that write when its state, title, or description changed since grading; report the skipped issue and continue with the rest of the batch.
-    - After each batch, read back every touched issue and report `applied`, `skipped (changed since grading)`, or `failed ({error})` per issue. A failed write keeps the proposed draft in the report so nothing is lost.
+    - After each batch, read back every touched issue and report `applied`, `partially applied`, `skipped (changed since grading)`, or `failed ({error})` per issue. A failed write keeps the proposed draft in the report so nothing is lost.
+    - For split children, use each successful read-back as the snapshot for the next dependent write; expected writes in this batch must not mask unrelated concurrent changes. Before reporting confirmed readiness, re-grade persisted descriptions, relations, relevant comments, and required inputs using the same promotion check. Keep projected gains separate from confirmed results; failed or skipped writes and incomplete dependency links never count as confirmed gains.
     - The workflow does not perform a Linear archive operation. Reports and confirmations must name the actual `complete`, `cancel`, or `merge` state transition.
     - Stop after the last batch. Do not start implementing any issue.
