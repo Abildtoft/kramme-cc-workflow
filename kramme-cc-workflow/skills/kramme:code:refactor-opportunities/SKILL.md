@@ -106,7 +106,7 @@ Each agent must:
 ### Phase 3 — Synthesis
 
 1. Collect all agent findings and `NOTICED BUT NOT TOUCHING` entries.
-2. Deduplicate (same location + same issue = one finding).
+2. Deduplicate (same location + same issue = one finding). If more than ~30% of the remaining findings sit in one category, the filter for that category is too loose — re-apply the When-NOT-to-flag pre-filter to that category before continuing.
 3. **Apply the PR relevance gate when `SCOPE_MODE=pr`.** Cross-reference each candidate against `PR_CHANGE_MAP` and `PR_BASE_REF` before severity assignment:
    - Keep findings that satisfy the PR relevance gate defined in Phase 1.
    - Filter findings in files outside the PR file set, findings on unchanged lines with no PR-caused call-chain evidence, findings whose problem existed unchanged in the base tree, findings whose suggested fix is mainly broad cleanup in untouched files, and findings whose only relevance is "this file changed."
@@ -145,47 +145,3 @@ Each agent must:
 - **No false positives over completeness.** It is better to miss a low-severity issue than to report something that isn't actually a problem.
 - **Be specific.** "This function is too complex" is not a finding. "Function `processOrder` (src/orders.ts:45-120) has 8 branches and 3 levels of nesting — extract validation into a separate function" is.
 - **Do not perform the refactors.** This skill identifies opportunities. The user decides what to act on. If they want to proceed, they can use `kramme:code:refactor-pass` on specific findings.
-
----
-
-## Common Rationalizations
-
-These are how a scan turns from high-signal into noise. Each has a correct response:
-
-- _"This feels inconsistent, probably worth flagging."_ → Not a finding without evidence. A concrete inconsistency across 3+ locations is a finding; a vague feeling is not.
-- _"I'll flag it at low severity just to be safe."_ → Severity inflation in reverse. If it is not worth acting on, it is not worth recording.
-- _"This pattern looks odd; the project probably wants it fixed."_ → Check the project instruction files and existing usage first. Intentional patterns are not findings.
-- _"I can't explain why it's wrong but it feels off."_ → Not a finding. Read more, or leave it.
-- _"This category has few findings; let me dig for more."_ → No. A short category list is valid data. Padding with low-signal items degrades the whole report.
-
-## Red Flags
-
-If you notice any of these during the scan, stop and tighten the filter:
-
-- Findings without a file and line range.
-- More than ~30% of findings concentrated in one category — usually a sign the filter is too loose for that category.
-- Severity inflation (low items promoted to medium without the 3+ locations rule).
-- Themes recommended for manual refactor despite exceeding 500 lines — the Rule of 500 was missed.
-- The report recommends changes that conflict with documented project conventions.
-- `NOTICED BUT NOT TOUCHING` entries were silently folded into findings instead of surfaced separately.
-- In PR mode, a finding is in a touched file but fails the PR relevance gate defined in Phase 1.
-- In PR mode, a theme requires broad edits in untouched files but is presented as a PR-scoped finding.
-- A wrapper flagged as "unnecessary abstraction" without a deletion-test result attached — the test is what distinguishes a pass-through from a real consolidator.
-- A finding re-surfaces a refactor that was already considered and rejected in an accepted ADR, with no concrete new evidence — the ADR is decision-of-record; only re-open when the trade-off has actually shifted.
-
-## Verification
-
-Before writing the report, self-check:
-
-- [ ] Every finding has a file path and line range.
-- [ ] Every finding passed the When-NOT-to-flag pre-filter (not clean code, not uncomprehended, not hot-path-without-evidence, not about-to-be-rewritten).
-- [ ] No finding contradicts a documented project convention.
-- [ ] Themes exceeding 500 lines are marked automation candidates.
-- [ ] `NOTICED BUT NOT TOUCHING` entries are surfaced as a separate section, not mixed into findings.
-- [ ] The report has fewer findings than the raw agent output (filtering and deduplication actually happened).
-- [ ] In PR mode, every active finding has a concrete `PR relevance` line and passed the PR relevance gate.
-- [ ] In PR mode, filtered pre-existing or out-of-scope observations are not counted in severity totals, themes, or recommended order.
-- [ ] Every Structural / Coupling finding uses the architectural glossary and carries a deletion-test line; speculative-seam findings carry an adapter count.
-- [ ] No finding contradicts a `KNOWN_ADRS` entry without an explicit `contradicts ADR-NNNN` annotation backed by concrete new evidence.
-
-If any box is unchecked, fix the gap before writing the report.

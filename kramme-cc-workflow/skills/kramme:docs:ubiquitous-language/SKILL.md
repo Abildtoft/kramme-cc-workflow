@@ -148,36 +148,9 @@ When invoked again in the same conversation (or against an existing glossary):
 
 Never overwrite blindly. If the merge would drop committed terms, emit `ASK FIRST`.
 
-## Common Rationalizations
-
-These are the lies you will tell yourself to skip or distort the glossary. Each has a correct response:
-
-- _"These terms are obvious — everyone knows what 'order' means."_ → Then write the one-sentence definition. If it takes three sentences or contradicts how someone else used it, the term was not as obvious as you thought.
-- _"We can capture this in code comments / type names."_ → Code comments are read by engineers; the glossary is read by domain experts and new hires. Different audience, different artifact.
-- _"There's no real conflict — 'user' and 'customer' are basically the same."_ → Then pick one. If you cannot pick one, you have a conflict.
-- _"I'll add every noun from the conversation to be thorough."_ → Domain relevance only. Generic programming nouns rot the glossary and train readers to skim it.
-- _"Let me just overwrite the existing file with my fresher version."_ → Read-then-merge. Committed canonicals are decisions; treat them like ADRs.
-
-## Red Flags
-
-Stop and ask before writing if any of these are true:
-
-- The conversation does not contain enough domain context to distinguish terms.
-- Updating an existing glossary would rename a committed canonical without explicit confirmation.
-- The generated glossary would mix domain language with generic implementation jargon.
-
 ## Verification
 
 Before declaring the glossary done, self-check:
 
-- [ ] File written to `UBIQUITOUS_LANGUAGE.md` at the repo root (not a subdirectory).
-- [ ] Every term has a one-sentence definition.
 - [ ] Every term in "Aliases to avoid" appears nowhere else in the file as a canonical.
-- [ ] Every flagged ambiguity carries a proposed resolution (not "TBD").
-- [ ] Example dialogue uses ≥3 canonical terms and uses zero aliases-to-avoid.
-- [ ] No generic programming concepts in any term table.
-- [ ] If a previous glossary existed, its committed canonicals are preserved or changed only via `ASK FIRST`.
-- [ ] At 15+ terms, the glossary provides subdomain grouping and/or a Relationships section; a flat table is fine below that.
-- [ ] Relationships section names cardinality (e.g. `has many`, `is a kind of`), not free-form prose.
-
-If any box is unchecked, finish the gap or revert before declaring done.
+- [ ] Example dialogue uses zero aliases-to-avoid.

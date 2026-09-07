@@ -138,7 +138,7 @@ gh run list --branch "$(git branch --show-current)" --limit 5 --json databaseId,
 gh run view "$RUN_ID" --log-failed
 ```
 
-Do NOT assume what failed based on the check name alone. Always read the actual logs.
+Do NOT assume what failed based on the check name alone. Always read the actual logs. Before treating a failure as unrelated to the PR, confirm it with evidence such as `git blame` on the failing assertion or the base branch's CI history. A check that looks flaky gets one retry; if it fails again, treat it as real until the logs name the infrastructure cause.
 
 ### Step 6: Validate feedback
 
@@ -220,7 +220,7 @@ When `PLAN_SCOPE_ACTIVE=true`, apply the scoped-plan blocker or success finaliza
 
 **Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.
 
-Read and follow the consolidation flow from `references/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, choosing consolidation mode, mapping commits to targets, executing rebase, and force pushing. If `AUTO_MODE=true`, choose **Automated** without prompting; do not choose "Keep separate". On shared branches, consolidation still requires explicit coordination before any history rewrite.
+Read and follow the consolidation flow from `references/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, choosing consolidation mode, mapping commits to targets, executing rebase, and force pushing. If `AUTO_MODE=true`, choose **Automated** without prompting; do not choose "Keep separate". On shared branches, consolidation still requires explicit coordination before any history rewrite. Consolidation may fold only `[FIX PIPELINE]` commits; stop if the rebase would drop or rewrite any other commit.
 
 ### Step 12: Return the remediation handoff
 
@@ -305,43 +305,10 @@ Use these markers so the user (and downstream tooling) can skim status at a glan
 
 ---
 
-## Common rationalizations
-
-Watch for these excuses — they signal the loop is slipping into damage.
-
-| Excuse | Reality |
-| --- | --- |
-| "Just disable the lint rule to unblock the PR." | Silently disabling a gate is how quality erodes across PRs. Fix the root cause or surface `MISSING REQUIREMENT`. |
-| "The check is flaky, I'll retry it." | Retry once. If it fails again, treat it as real until you've read the logs and can name the infrastructure cause. |
-| "The failure is unrelated to my PR." | Maybe. Confirm with log evidence — git-blame the failing assertion, check main's CI history — not with assumption. |
-| "The reviewer bot is wrong." | Reviewers and bots can be wrong, but verify by reading the relevant code first. A dismissal without evidence is hand-waving. |
-| "I'll fix it in a follow-up." | Follow-ups are negotiable. A red CI blocking the merge is not. Land the fix or mark the failure `NOTICED BUT NOT TOUCHING` with a real reason. |
-| "`--no-verify` just this once." | "Just this once" is how precedents form. Ask instead. |
-
----
-
-## Red Flags — STOP
-
-Pause and escalate if any of these are true:
-
-- The same failure persists after 3 attempts — you are guessing, not reading.
-- About to commit `--no-verify`, `eslint-disable`, `# noqa`, `@ts-ignore`, or a skip-marker without explicit user approval.
-- About to force-push to a shared branch without explicit collaborator coordination, whether in `--fixup` mode or after consolidation.
-- Attempting to fix a failure whose logs you haven't read in full.
-- Consolidation rebase is about to drop or rewrite a non-`[FIX PIPELINE]` commit.
-- CI is green but review feedback is unaddressed — green is necessary, not sufficient.
-
----
-
 ## Verification
 
 Before handing off, confirm:
 
-- [ ] All required checks pass (not "most").
-- [ ] Every `[FIX PIPELINE]` commit references a concrete issue you verified: either a CI failure whose logs you read or a review finding you validated against the code.
-- [ ] No gate was silently disabled. Any disablement is accompanied by an explicit user approval.
 - [ ] No lingering `UNVERIFIED`, `CONFUSION`, or `MISSING REQUIREMENT` markers are unresolved.
-- [ ] Consolidation (if run) preserved every non-`[FIX PIPELINE]` commit.
-- [ ] If a force-push happened, it was via `--force-with-lease` and the branch either is not shared, or shared collaborators were coordinated with.
 - [ ] Human review feedback is addressed or explicitly deferred with a `NOTICED BUT NOT TOUCHING` rationale.
 - [ ] `CI remediation JSON` contains every investigated CI or feedback item with its final disposition and evidence-based rationale, and validates against the Step 12 schema.

@@ -76,10 +76,12 @@ Reject unknown flags and repeated flags with one short message naming the offend
 
 8. **Propose one action per issue.** Choose from:
    - `complete`: the requested outcome or acceptance criteria are demonstrably delivered, including when one of multiple explicitly permitted resolutions shipped. For a parent, its own requested outcome or acceptance criteria and every required child must be complete. Explicitly optional, follow-up, or out-of-scope children do not block this action. State the evidence.
-   - `cancel`: the work was superseded, abandoned, or is no longer relevant, including a stale issue with evidence that it has no remaining value. State the reason. Age alone is never enough.
+   - `cancel`: the work was superseded, abandoned, or is no longer relevant, including a stale issue with evidence that it has no remaining value. State the reason. Age alone is never enough. Two grading errors to avoid:
+     - Canceling delivered work, including a parent whose requested outcome is delivered and whose only unfinished child is explicitly optional, a follow-up, or out of scope.
+     - Proposing `cancel` just because an issue is old while it carries priority, a customer need, or blocks other work.
    - `merge`: duplicate of a canonical issue. Propose moving any unique detail into the canonical issue and marking this one as a duplicate.
    - `split`: oversized. Propose 2-5 PR-sized child issues with titles and one-line scopes; each child is drafted to the agent-ready bar so an agent can take any one of them independently. The original becomes the parent.
-   - `rewrite`: keep the issue but draft a clearer title and description whose goal is to make the issue `agent-ready`. Use the codebase to close gaps when it can: read the affected area to confirm the behavior, name the modules involved, and turn implied expectations into verifiable acceptance criteria. Include the draft in the report and state which checklist items it closes; hand off to `kramme:linear:issue-define` when the rewrite needs information only the user has.
+   - `rewrite`: keep the issue but draft a clearer title and description whose goal is to make the issue `agent-ready`. Use the codebase to close gaps when it can: read the affected area to confirm the behavior, name the modules involved, and turn implied expectations into verifiable acceptance criteria. Include the draft in the report and state which checklist items it closes; hand off to `kramme:linear:issue-define` when the rewrite needs information only the user has. Never invent acceptance criteria or product decisions the issue never implied in order to reach `agent-ready`; missing decisions are an `ask`, not a guess.
    - `ask`: value or relevance cannot be judged from Linear, or the issue is `needs-refinement` and the missing information (a decision, a design, an expected behavior) exists only with a person; name the single question whose answer would make the issue `agent-ready` and the person who can answer it when the issue records an owner.
    - `keep`: clear, PR-sized, and still relevant. No change.
 
@@ -137,14 +139,3 @@ Reject unknown flags and repeated flags with one short message naming the offend
     - After each batch, read back every touched issue and report `applied`, `skipped (changed since grading)`, or `failed ({error})` per issue. A failed write keeps the proposed draft in the report so nothing is lost.
     - The workflow does not perform a Linear archive operation. Reports and confirmations must name the actual `complete`, `cancel`, or `merge` state transition.
     - Stop after the last batch. Do not start implementing any issue.
-
-## Red Flags
-
-- Canceling delivered work, including a parent whose requested outcome is delivered and whose only unfinished child is explicitly optional, a follow-up, or out of scope.
-- Proposing `cancel` just because an issue is old while it carries priority, a customer need, or blocks other work.
-- Treating inferred overlap as a certain duplicate without explicit relation evidence or near-identical problem statements.
-- Writing to Linear without `--apply`, without the batch confirmation, or after the issue changed since it was graded.
-- Drafting rewrites that describe implementation steps instead of the problem and outcome.
-- Splitting an issue into children that are not independently shippable.
-- Marking an issue `agent-ready` while it still contains an open question, an unmade decision, or acceptance criteria that can only be judged by a person looking at the result.
-- Inventing acceptance criteria or product decisions the issue never implied in order to reach `agent-ready`; missing decisions are an `ask`, not a guess.

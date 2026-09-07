@@ -1,17 +1,4 @@
-# Common Rationalizations and Red Flags
-
-## Common Rationalizations
-
-Watch for these — they signal the description is about to under-serve the reviewer:
-
-- _"The diff is small; a one-line summary is enough."_ → Small diffs still need the _why_. A one-line summary forces the reviewer to reconstruct intent from code.
-- _"I'll leave `Things I didn't touch` blank because nothing comes to mind."_ → If nothing comes to mind, re-read the diff. `None` is a valid answer only after you've looked.
-- _"The Linear issue covers the context — no need to restate it."_ → The PR body is read in isolation during review. Restate the essentials and link the issue.
-- _"I'll fold the migration warning into the body text."_ → `Potential concerns` is a dedicated block for a reason; a buried warning is a missed warning.
-- _"The tests passed, so the Test Plan can just list the commands I ran."_ → Passing commands are evidence, not reviewer/QA instructions. Leave automated checks to CI.
-- _"I ran format and lint locally, so I should include them."_ → CI reports automated checks; listing them in the PR body adds noise.
-- _"Local tests could not run because dependencies or services were missing, so I should warn reviewers."_ → Missing `node_modules`, unavailable Postgres, absent Docker services, and similar local setup failures belong in run output only. CI is the automated verification source of truth.
-- _"A longer description is safer because it covers everything."_ → Length is not coverage. Keep the why, risks, scope boundaries, and manual reviewer/QA tests; remove repetition and filler.
+# Red Flags — STOP
 
 ## Red Flags — STOP
 

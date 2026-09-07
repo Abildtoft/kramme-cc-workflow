@@ -35,7 +35,7 @@ Measure before optimizing. Performance work without measurement is guessing — 
 | **INP** (Interaction to Next Paint) | ≤ 200 ms | ≤ 500 ms | > 500 ms |
 | **CLS** (Cumulative Layout Shift) | ≤ 0.1 | ≤ 0.25 | > 0.25 |
 
-A change that regresses any metric from Good into Needs Improvement is a regression, even if the absolute number still looks fine. Full measurement commands, what each metric measures, mobile/desktop differences, and the noise floor live in `references/core-web-vitals.md`.
+A change that regresses any metric from Good into Needs Improvement is a regression, even if the absolute number still looks fine. Interaction delays above 100 ms are perceptible to users even while INP is still inside the Good band. Full measurement commands, what each metric measures, mobile/desktop differences, and the noise floor live in `references/core-web-vitals.md`.
 
 ## The five-step workflow
 
@@ -200,53 +200,3 @@ If these siblings are installed:
 
 - **Downstream review** — the `kramme:performance-oracle` agent verifies measurements and bottleneck identification post-hoc. Following MEASURE/VERIFY discipline here makes that review mechanical.
 - **Boundary** — `kramme:code:optimize` owns repeatable harness-driven experiments across multiple variants; this skill owns one-shot review-and-fix performance passes where the bottleneck and fix are measured directly.
-
----
-
-## Common Rationalizations
-
-These are the lies you will tell yourself to justify skipping the measurement or the guard. Each one has a correct response:
-
-- _"We'll optimize later."_ → Performance debt compounds. Fix the obvious anti-pattern now; defer only the micro-optimizations.
-- _"It's fast on my machine."_ → Your machine is not the user's. Profile on representative hardware and the slowest network profile the product supports.
-- _"This optimization is obvious — no need to measure."_ → If you did not measure, you do not know. Profile first; half the time the "obvious" bottleneck is not the real one.
-- _"Users won't notice 100 ms."_ → They do. Interaction delays above 100 ms are perceptible, and RUM data consistently shows them degrading conversion.
-- _"The framework handles performance."_ → Frameworks prevent some classes of issue, but they do not fix N+1 queries, oversized bundles, or unoptimized images. Those are author-level decisions.
-- _"The fix is small enough to skip the regression test."_ → The next unrelated refactor will delete the fix by accident. A guarded fix is a fix; an unguarded fix is a fix with an expiration date.
-
-## Red Flags
-
-If you notice any of these, stop and return to step 1:
-
-- Optimization without profiling data to justify it.
-- N+1 query patterns in new or touched data-fetching code.
-- List endpoints shipped without pagination.
-- Images without dimensions, lazy loading, or responsive sizes.
-- Bundle size growing without review or budget justification.
-- No performance monitoring or regression test for a fix that claims a measurable win.
-- A change that improves one CWV metric while silently regressing another.
-- A `SIMPLICITY CHECK` that is missing at the top of the fix.
-- Repeating the same documented rejected change without new evidence or materially different measurement conditions.
-- Leaving an attempted implementation applied after its measurement failed.
-
-## Verification
-
-Before declaring a perf slice done, confirm every applicable item:
-
-- [ ] For measured attempts, before and after numbers exist with units under the same workload budget and cache state; when a durable comparison is required, both artifact IDs and their predecessor lineage are linked.
-- [ ] Every attempted optimization, including reverted code and measurement failures, is recorded using Step 4's destination fallback and complete field set.
-- [ ] The outcome is `KEEP` only for a reproducible, budget-clearing improvement with all regression and behavior checks passing; comparable worse, neutral, noise-bound, budget-missing, or test-failing results are `REVERT`.
-- [ ] `ERROR`, `TIMEOUT`, and `INCONCLUSIVE` outcomes include failure details, leave the implementation restored, and remain eligible for remeasurement.
-- [ ] The specific bottleneck is named — a concrete query, component, asset, or code path — not "general slowness".
-- [ ] Core Web Vitals are within Good thresholds (or at least moved out of Poor).
-- [ ] The improvement exceeds measurement noise on the declared primary statistic, p50, and p95; RUM Core Web Vitals use p75 as the primary statistic.
-- [ ] The evidence classes and collection conditions are comparable; synthetic-only evidence is not described as a real-user outcome.
-- [ ] No adjacent metric (bundle size, another CWV, an API endpoint's latency) regressed as a side effect.
-- [ ] For a kept fix, a budget or regression test exists that fails if the fix is undone.
-- [ ] Bundle size has not increased without justification against the budget.
-- [ ] No new N+1 queries in the data-fetching path.
-- [ ] Performance budget passes in CI (if configured).
-- [ ] A `NOTICED BUT NOT TOUCHING` entry exists for every perf smell observed outside the measured bottleneck.
-- [ ] Existing tests still pass — the optimization did not change behavior.
-
-If any item is unchecked, the slice is not done. Fix the gap or split the slice.
