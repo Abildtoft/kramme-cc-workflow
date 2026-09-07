@@ -214,6 +214,11 @@ SH
 	add_hook_control_skill_fixtures "$plugin_dir"
 }
 
+snapshot_tree() {
+	# Entries catch new or removed paths; hashes catch an in-place rewrite.
+	(set -o pipefail && cd "$1" && { find .; find . -type f -exec shasum {} +; } | LC_ALL=C sort)
+}
+
 resolve_node_package_dir() {
 	node -e '
 const fs = require("fs");
@@ -898,6 +903,183 @@ JSON
 	[[ "$output" == *'plugin_name=doctor\u001b[31m'* ]]
 	[[ "$output" == *"plugin_source=$TMP_DIR/doctor\\u000aplugin"* ]]
 	[[ "$output" != *$'\033'* ]]
+}
+
+@test "install rejects malformed option values before writing output" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/malformed-install-plugin"
+	create_fixture_plugin "$PLUGIN_DIR" "malformed-install-plugin"
+	local sentinel="$TMP_DIR/install-output"
+	mkdir -p "$sentinel/.codex/.kramme-install-manifests" "$TMP_DIR/work"
+	printf 'keep\n' >"$sentinel/.codex/keep.txt"
+	local before
+	before="$(snapshot_tree "$sentinel")"
+	cd "$TMP_DIR/work"
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home --non-interactive
+	[ "$status" -eq 1 ]
+	[ "$output" = "--codex-home requires a directory." ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home= --non-interactive
+	[ "$status" -eq 1 ]
+	[ "$output" = "--codex-home requires a directory." ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --agents-home --codex-home "$sentinel" --non-interactive
+	[ "$status" -eq 1 ]
+	[ "$output" = "--agents-home requires a directory." ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home --agents-home --non-interactive
+	[ "$status" -eq 1 ]
+	[ "$output" = "--codex-home requires a directory." ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$sentinel" --yes=maybe
+	[ "$status" -eq 1 ]
+	[ "$output" = "--yes requires a boolean value when one is provided." ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$sentinel" --non-interactive=maybe
+	[ "$status" -eq 1 ]
+	[ "$output" = "--non-interactive requires a boolean value when one is provided." ]
+
+	[ "$(snapshot_tree "$sentinel")" = "$before" ]
+	[ ! -e "$TMP_DIR/work/true" ]
+	[ ! -e "$TMP_DIR/home/.codex" ]
+	[ ! -e "$TMP_DIR/home/.agents" ]
+}
+
+@test "every command rejects malformed option values before loading converter modules" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	local isolated="$TMP_DIR/option-order"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" install fixture --codex-home --yes
+	[ "$status" -eq 1 ]
+	[ "$output" = "--codex-home requires a directory." ]
+
+	run node "$isolated/scripts/convert-plugin.js" install fixture --yes=maybe
+	[ "$status" -eq 1 ]
+	[ "$output" = "--yes requires a boolean value when one is provided." ]
+
+	run node "$isolated/scripts/convert-plugin.js" stats fixture --json=maybe
+	[ "$status" -eq 1 ]
+	[ "$output" = "--json requires a boolean value when one is provided." ]
+
+	run node "$isolated/scripts/convert-plugin.js" doctor fixture --json=maybe
+	[ "$status" -eq 1 ]
+	[ "$output" = "--json requires a boolean value when one is provided." ]
+}
+
+@test "install preserves documented option forms and defaults" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/install-forms-plugin"
+	create_fixture_plugin "$PLUGIN_DIR" "install-forms-plugin"
+	local codex_home="$TMP_DIR/spaced roots/codex home"
+	local agents_home="$TMP_DIR/spaced roots/agents home"
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$agents_home" --yes=false --non-interactive=true
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Installed install-forms-plugin to $codex_home/.codex"* ]]
+	[ -d "$codex_home/.codex" ]
+	[ ! -e "$TMP_DIR/home/.codex" ]
+
+	local valueless_home="$TMP_DIR/valueless/codex home"
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$valueless_home" --agents-home "$agents_home" --yes --non-interactive
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Installed install-forms-plugin to $valueless_home/.codex"* ]]
+	[ -d "$valueless_home/.codex" ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --non-interactive
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Installed install-forms-plugin to $TMP_DIR/home/.codex"* ]]
+	[ -d "$TMP_DIR/home/.codex" ]
+}
+
+@test "explicit --yes=false skips cleanup and --yes=true still cleans up" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/explicit-yes-plugin"
+	create_cleanup_fixture_plugin "$PLUGIN_DIR" "explicit-yes-plugin" "kramme:temp-command" "kramme:temp-agent"
+	local codex_home="$TMP_DIR/explicit-yes"
+	local skill="$codex_home/.codex/skills/kramme:temp-command/SKILL.md"
+
+	run node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$codex_home/.agents" --non-interactive
+	[ "$status" -eq 0 ]
+	[ -f "$skill" ]
+
+	rm "$PLUGIN_DIR/commands/kramme-temp-command.md"
+	run node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$codex_home/.agents" --non-interactive --yes=false
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Skipping skill cleanup."* ]]
+	[ -f "$skill" ]
+
+	run node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$codex_home/.agents" --non-interactive --yes=true
+	[ "$status" -eq 0 ]
+	[ ! -e "$skill" ]
+}
+
+@test "stats rejects malformed json values and stays read-only" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/stats-options-plugin"
+	create_cleanup_fixture_plugin "$PLUGIN_DIR" "stats-options-plugin" "kramme:temp-command" "kramme:temp-agent"
+	mkdir -p "$TMP_DIR/work"
+	cd "$TMP_DIR/work"
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR" --json=maybe
+	[ "$status" -eq 1 ]
+	[ "$output" = "--json requires a boolean value when one is provided." ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR" --json=true
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"codex_skills":1,"agent_skills":1}' ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR" --json=false
+	[ "$status" -eq 0 ]
+	[ "$output" = $'codex_skills=1\nagent_skills=1' ]
+
+	[ ! -e "$TMP_DIR/home/.codex" ]
+	[ ! -e "$TMP_DIR/home/.agents" ]
+}
+
+@test "doctor rejects malformed option values and keeps whole path values" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+
+	PLUGIN_DIR="$TMP_DIR/doctor-options-plugin"
+	create_fixture_plugin "$PLUGIN_DIR" "doctor-options-plugin"
+	mkdir -p "$TMP_DIR/work"
+	cd "$TMP_DIR/work"
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --agents-home --json
+	[ "$status" -eq 1 ]
+	[ "$output" = "--agents-home requires a directory." ]
+
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --agents-home=
+	[ "$status" -eq 1 ]
+	[ "$output" = "--agents-home requires a directory." ]
+
+	local equals_root="$TMP_DIR/roots/codex=home"
+	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --codex-home="$equals_root" --json=false
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"codex_root=$equals_root/.codex"* ]]
+
+	[ ! -e "$equals_root" ]
+	[ ! -e "$TMP_DIR/home/.codex" ]
+	[ ! -e "$TMP_DIR/home/.agents" ]
 }
 
 @test "opencode-only install options are rejected" {
