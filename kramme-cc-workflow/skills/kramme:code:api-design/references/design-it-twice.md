@@ -118,6 +118,8 @@ Score each design on three axes:
 
 The comparison should be a single block of 3–6 paragraphs, not a checklist. Show the reader the trade-off, do not just enumerate it.
 
+Within that comparison, apply Rule 0's UX/DX/AX principle: explain relevant effects on user task completion, developer maintenance, and agent discovery, execution, recovery, and verification. Prefer improvements across all three without expanding scope; unchanged or inapplicable dimensions are acceptable. Name material tradeoffs, established contracts preserved outside the intended change, any intentional contract change and its compatibility or migration effects, and the checks needed to support compatibility claims.
+
 #### Recommendation
 
 End with one of:

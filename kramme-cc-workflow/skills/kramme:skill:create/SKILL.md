@@ -190,6 +190,7 @@ If any target file already exists during scaffolding, abort and report the confl
 
 ### Writing guidelines for SKILL.md content
 
+- Design for user experience (UX: clear interaction and reliable task completion), developer experience (DX: maintainable structure and easy testing/debugging), and agent experience (AX: unambiguous context discovery, execution, recovery, and handoffs). Prefer improvements across all three within the skill's job; unchanged or inapplicable dimensions are acceptable. At relevant decision points, state intentional changes and material tradeoffs, established behavior and contracts preserved outside the intended change, and verification evidence. Keep the guidance self-contained and specific; do not add scope or boilerplate merely to mention all three.
 - Lead with the outcome contract: the goal, the constraints the run must respect, any context the agent cannot derive from the repository or prompt, and the evidence that proves success. Omit the context section when no such facts exist. Be precise about the applicable contract elements and deliberately loose about the rest.
 - Use third-person imperative: "Extract the text..." not "I will extract..."
 - State strategy as an adaptable default rather than a mandate, and leave out steps the agent already performs reliably
@@ -251,6 +252,7 @@ After scaffolding, verify the skill against these checks:
 
 ### Content
 
+- [ ] Relevant decisions consider UX/DX/AX, make intentional changes and material tradeoffs explicit, and preserve established behavior and contracts outside the intended change with appropriate verification; unchanged or inapplicable dimensions do not force extra scope
 - [ ] Instructions use third-person imperative voice
 - [ ] The skill states its goal, the constraints the run must respect, and the success evidence that proves the goal was met; it states non-derivable context only when such context exists
 - [ ] Strategy is written as an adaptable default, not as a mandated procedure

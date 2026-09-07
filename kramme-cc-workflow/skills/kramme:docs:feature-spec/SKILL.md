@@ -109,12 +109,12 @@ Synthesis is permitted only when **both** of the following hold:
 
 The six areas:
 
-1. Objective *(required for synthesis)*
+1. Objective _(required for synthesis)_
 2. Scope & Non-goals
 3. Boundaries
 4. Testing Strategy
 5. Open Questions
-6. Success Criteria *(required for synthesis)*
+6. Success Criteria _(required for synthesis)_
 
 A spec area is "grounded" when the conversation contains explicit user statements, decisions, or shared context that lets you fill the area without inventing facts. Grounding is not the same as "I can guess plausibly." If you would prefix the content `UNVERIFIED:`, the area is not grounded.
 
@@ -165,6 +165,8 @@ Copy the six-area structure from `assets/feature-spec-template.md` and fill each
 4. **Testing Strategy** — what gets covered, at which tier (unit / integration / e2e).
 5. **Open Questions** — unresolved items flagged for user input.
 6. **Success Criteria** — testable statements that let anyone confirm "done".
+
+Consider user experience (UX: clear, reliable task completion), developer experience (DX: understanding, changing, testing, and debugging), and agent experience (AX: discovering context, executing predictably, recovering, and verifying). Prefer outcomes that improve all three within scope; unchanged or inapplicable dimensions are acceptable. Put relevant measurable outcomes in Success Criteria, record established behavior and contracts outside the intended change plus the intentional changes themselves in Boundaries, and put regression coverage in Testing Strategy. Make material tradeoffs explicit without inventing requirements or adding a seventh area.
 
 Replace every angle-bracket template placeholder with concrete content and delete the author note comment block before treating the draft as reviewable.
 

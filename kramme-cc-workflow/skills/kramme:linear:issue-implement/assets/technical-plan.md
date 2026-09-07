@@ -5,6 +5,7 @@ Technical Implementation Plan for {identifier}
 
 ## Summary
 {One paragraph describing what will be built}
+{Include relevant UX/DX/AX effects, intentional changes, and material tradeoffs behind the chosen approach; unchanged or inapplicable dimensions need no invented improvement.}
 
 ## Product Requirements -> Technical Approach
 | Requirement | Technical Implementation |
@@ -35,6 +36,7 @@ Based on exploration of {similar feature}, follow these patterns:
 
 ## Testing Approach
 - {test type}: {what to test}
+- {relevant regression checks for established behavior and contracts outside the intended change, plus expectations for intentional changes}
 
 ## Open Questions (if any)
 - {any remaining uncertainties}

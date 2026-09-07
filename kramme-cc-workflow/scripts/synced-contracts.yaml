@@ -1861,8 +1861,6 @@
     "mechanical_only": [
       "kramme-cc-workflow/skills/kramme:browse/SKILL.md",
       "kramme-cc-workflow/skills/kramme:ci:design-pipeline/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:code:agent-readiness/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:code:api-design/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:audit-security/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:performance/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:refactor-opportunities/SKILL.md",
@@ -1894,7 +1892,6 @@
       "kramme-cc-workflow/skills/kramme:test:generate/SKILL.md",
       "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md",
       "kramme-cc-workflow/skills/kramme:text:humanize/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:verify:before-completion/SKILL.md",
       "kramme-cc-workflow/skills/kramme:visual:generate-image/SKILL.md",
       "kramme-cc-workflow/skills/kramme:workflow:wizard/SKILL.md"
     ]

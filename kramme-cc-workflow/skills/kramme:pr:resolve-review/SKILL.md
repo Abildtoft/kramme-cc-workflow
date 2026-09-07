@@ -324,6 +324,7 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
 ### General principles
 
+- **Choose fixes across UX/DX/AX** — For eligible in-scope findings, consider user experience (clear, reliable task completion), developer experience (understanding, maintenance, testing, and debugging), and agent experience (context discovery, predictable execution, recovery, and verification). Prefer fixes that improve all three while preserving established behavior and contracts outside the intended change; when a finding requires an intentional behavior or contract change, make it explicit. Unchanged or inapplicable dimensions are acceptable. Explain material tradeoffs and verify relevant regressions. Apply the same reasoning to manual proposals without bypassing action-class eligibility or expanding scope.
 - **Write clear, maintainable code** — prioritize readability and simplicity; prefer straightforward solutions over clever ones, but do not be lazy.
 - **Add comments where needed** — if a fix involves non-obvious logic or trade-offs, include concise comments explaining the reasoning.
 - **Ask questions if unsure** — if any aspect of the fix or the related business logic is unclear, seek clarification before proceeding.

@@ -160,11 +160,11 @@ Launch 3 Explore agents in parallel (single message, 3 Task tool calls).
 
 ### Agent Grouping
 
-| Agent | Dimensions |
-| --- | --- |
-| **A: Type & Structure** | Fully Typed, Traversable |
-| **B: Test & Feedback** | Test Coverage, Feedback Loops |
-| **C: Documentation** | Self-Documenting |
+| Agent                   | Dimensions                    |
+| ----------------------- | ----------------------------- |
+| **A: Type & Structure** | Fully Typed, Traversable      |
+| **B: Test & Feedback**  | Test Coverage, Feedback Loops |
+| **C: Documentation**    | Self-Documenting              |
 
 Sub-agents emit findings without IDs. The orchestrator assigns sequential `AN-NNN` identifiers in Step 3.3 after sorting, so cross-references inside a single agent's output should use the finding title rather than a placeholder ID.
 
@@ -253,6 +253,8 @@ Round to 1 decimal place.
 ## Step 5: Generate Refactoring Plan
 
 ### 5.1 Prioritize Actions
+
+Before ranking, consider each action's agent experience benefit (AX: context discovery, predictable execution, recovery, and verification) alongside developer experience (DX: understanding, maintenance, testing, and debugging) and user experience (UX: clear, reliable task completion). Prefer recommendations that improve all three; unchanged or inapplicable dimensions are acceptable. Preserve product behavior and contracts outside the intended change, make intentional changes and material tradeoffs explicit, name needed regression checks, and avoid speculative refactors solely to raise the AX score. Keep this read-only audit's five scoring dimensions unchanged; apply the principle to recommendations.
 
 Collect all improvement actions from all agents. Sort by:
 
