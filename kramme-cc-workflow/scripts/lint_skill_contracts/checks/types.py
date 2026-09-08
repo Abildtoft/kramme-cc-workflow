@@ -19,4 +19,19 @@ class CheckResult:
     warnings: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class TextContractInventory:
+    glob: str
+    marker: str
+
+
+@dataclass(frozen=True)
+class TextContract:
+    label: str
+    extract_regex: str
+    paths: tuple[str, ...]
+    normalizer: str | None
+    inventory: TextContractInventory | None
+
+
 CheckFunc = Callable[[LintContext], CheckResult]

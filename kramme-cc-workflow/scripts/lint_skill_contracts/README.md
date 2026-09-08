@@ -25,6 +25,17 @@ The ordered runtime boundary is `checks/registry.py`. New checks belong in a
 focused check module and must be registered there. Keep generic parsing in the
 shared helpers, and keep CLI presentation in `cli.py`.
 
+`LintContext.registry` and `.schema` remain raw ingress dictionaries, including
+for direct callers. In `checks/basic.py`, text-contract normalization yields
+immutable `TextContract` and `TextContractInventory` records from `checks/types.py`.
+Execution consumes their typed fields and tuple paths. Normalization retains
+valid members of malformed path lists and yields one group at a time to preserve
+validation and execution diagnostic order. Non-string normalizers retain the
+default whitespace behavior. Inventory discovery and text reads share one
+invocation-local cache; standalone inventory calls still accept raw objects.
+Other registry checks, schema loading, and README renderer typing remain separate
+increments.
+
 ## Investigation Paths
 
 - A skill-frontmatter diagnostic starts in `checks/mechanical.py`, then follows

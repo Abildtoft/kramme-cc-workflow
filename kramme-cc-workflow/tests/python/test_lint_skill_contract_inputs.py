@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,142 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 import json_object  # noqa: E402
 import lint_skill_contracts  # noqa: E402
 from lint_skill_contracts.checks import basic  # noqa: E402
+from lint_skill_contracts.checks.types import TextContract, TextContractInventory  # noqa: E402
+
+
+class ValidatedTextContractTest(unittest.TestCase):
+    def test_normalized_records_detach_paths_and_inventory_from_raw_input(self) -> None:
+        paths = ["a.md", "a.md"]
+        inventory = {"glob": "*.md", "marker": "marker"}
+        failures: list[str] = []
+        records = list(
+            basic._normalize_text_contracts(
+                {
+                    "text_contracts": [
+                        {
+                            "name": "copies",
+                            "extract_regex": "value: (.*)",
+                            "paths": paths,
+                            "normalizer": "linewise",
+                            "inventory": inventory,
+                        }
+                    ]
+                },
+                failures,
+            )
+        )
+        paths.append("b.md")
+        inventory["marker"] = "changed"
+        self.assertEqual(failures, [])
+        self.assertEqual(
+            records,
+            [
+                TextContract(
+                    label="copies",
+                    extract_regex="value: (.*)",
+                    paths=("a.md", "a.md"),
+                    normalizer="linewise",
+                    inventory=TextContractInventory(glob="*.md", marker="marker"),
+                )
+            ],
+        )
+        with self.assertRaises(FrozenInstanceError):
+            records[0].label = "changed"
+        with self.assertRaises(FrozenInstanceError):
+            records[0].inventory.marker = "changed"
+
+    def test_partial_paths_execute_before_next_group_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "a.md").write_text("value: one", encoding="utf-8")
+            (root / "b.md").write_text("value: two", encoding="utf-8")
+            context = basic.LintContext(
+                root=root,
+                registry={
+                    "text_contracts": [
+                        {
+                            "extract_regex": "value: (.*)",
+                            "paths": [1, "a.md", "", "b.md"],
+                            "inventory": {"glob": "", "marker": ""},
+                        },
+                        {"name": "last"},
+                    ]
+                },
+                schema={},
+            )
+            self.assertEqual(
+                basic.check_text_contracts(context).failures,
+                [
+                    "text_contracts[0]: entry missing required string key 'name'",
+                    "text_contracts[0]: 'paths' entries must be strings",
+                    "text_contracts[0]: 'paths' entries must be non-empty strings",
+                    "text_contracts[0]: inventory glob must be a non-empty string",
+                    "text_contracts[0]: b.md:1 differs from a.md:1; expected 'one', got 'two'",
+                    "last: entry missing required string key 'extract_regex'",
+                    "last: entry missing required list key 'paths'",
+                ],
+            )
+
+    def test_inventory_validation_preserves_first_failure_for_raw_callers(self) -> None:
+        context = basic.LintContext(root=Path("/unused"), registry={}, schema={})
+        for inventory, message in [
+            (None, "inventory must be an object"),
+            ([], "inventory must be an object"),
+            ({}, "inventory glob must be a non-empty string"),
+            ({"glob": 1, "marker": ""}, "inventory glob must be a non-empty string"),
+            ({"glob": "*.md"}, "inventory marker must be a non-empty string"),
+            ({"glob": "*.md", "marker": []}, "inventory marker must be a non-empty string"),
+        ]:
+            with self.subTest(inventory=inventory):
+                self.assertEqual(
+                    basic.check_text_contract_inventory(context, "copies", ["a.md", "a.md"], inventory).failures,
+                    [f"copies: {message}"],
+                )
+
+    def test_non_string_and_unknown_normalizers_keep_default_behavior(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "a.md").write_text("one   two", encoding="utf-8")
+            (root / "b.md").write_text("one two", encoding="utf-8")
+            for normalizer in [None, False, 1, [], {}, "unknown"]:
+                with self.subTest(normalizer=normalizer):
+                    context = basic.LintContext(
+                        root=root,
+                        registry={
+                            "text_contracts": [
+                                {
+                                    "name": "copies",
+                                    "extract_regex": "(.+)",
+                                    "paths": ["a.md", "b.md"],
+                                    "normalizer": normalizer,
+                                }
+                            ]
+                        },
+                        schema={},
+                    )
+                    self.assertEqual(basic.check_text_contracts(context).failures, [])
+
+    def test_non_list_groups_and_empty_valid_path_set_keep_diagnostics(self) -> None:
+        context = basic.LintContext(root=Path("/unused"), registry={"text_contracts": {}}, schema={})
+        self.assertEqual(
+            basic.check_text_contracts(context).failures, ["text_contracts: registry entry must be a list"]
+        )
+        context.registry["text_contracts"] = [
+            {
+                "name": "empty",
+                "extract_regex": "x",
+                "paths": [None, ""],
+                "inventory": [],
+            }
+        ]
+        self.assertEqual(
+            basic.check_text_contracts(context).failures,
+            [
+                "empty: 'paths' entries must be strings",
+                "empty: 'paths' entries must be non-empty strings",
+                "empty: inventory must be an object",
+            ],
+        )
 
 
 class TextContractInventoryReadsTest(unittest.TestCase):

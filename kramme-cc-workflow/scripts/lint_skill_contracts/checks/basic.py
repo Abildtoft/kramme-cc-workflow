@@ -9,7 +9,7 @@ from typing import Any
 from ..frontmatter import parse_frontmatter
 from ..io import read_text, rel, resolve, sha256, skill_paths
 from ..strings import normalize_value, strip_quotes
-from .types import CheckResult, LintContext
+from .types import CheckResult, LintContext, TextContract, TextContractInventory
 
 
 def iter_registry_entries(
@@ -101,27 +101,42 @@ class _TextContractCache:
         return self.inventories[key]
 
 
-def check_text_contracts(context: LintContext) -> CheckResult:
-    result = CheckResult()
-    root = context.root
-    cache = _TextContractCache()
-    for name, group in iter_registry_entries(context.registry, "text_contracts", result.failures):
-        regex = require_str_field(group, "extract_regex", name, result.failures)
-        paths = require_str_list_field(group, "paths", name, result.failures)
+def _normalize_text_contracts(registry: dict[str, Any], failures: list[str]) -> Iterator[TextContract]:
+    # Yield one group at a time so its execution diagnostics precede the next
+    # group's validation diagnostics, including partially valid path lists.
+    for name, group in iter_registry_entries(registry, "text_contracts", failures):
+        regex = require_str_field(group, "extract_regex", name, failures)
+        paths = require_str_list_field(group, "paths", name, failures)
         if regex is None or paths is None:
             continue
         normalizer = group.get("normalizer")
         inventory = group.get("inventory")
-        if inventory is not None:
-            inventory_result = check_text_contract_inventory(context, name, paths, inventory, _cache=cache)
+        yield TextContract(
+            label=name,
+            extract_regex=regex,
+            paths=tuple(paths),
+            # Non-string JSON values historically use default whitespace normalization.
+            normalizer=normalizer if isinstance(normalizer, str) else None,
+            inventory=_normalize_text_contract_inventory(name, inventory, failures) if inventory is not None else None,
+        )
+
+
+def check_text_contracts(context: LintContext) -> CheckResult:
+    result = CheckResult()
+    root = context.root
+    cache = _TextContractCache()
+    for contract in _normalize_text_contracts(context.registry, result.failures):
+        name = contract.label
+        if contract.inventory is not None:
+            inventory_result = _check_text_contract_inventory(context, name, contract.paths, contract.inventory, cache)
             result.failures.extend(inventory_result.failures)
         reference: tuple[str, str, int] | None = None
-        for copy in paths:
+        for copy in contract.paths:
             path = resolve(root, copy)
             if not path.exists():
                 result.failures.append(f"{name}: registered path is missing: {copy}")
                 continue
-            extracted = extract_contract_value(cache.read(path), regex, normalizer)
+            extracted = extract_contract_value(cache.read(path), contract.extract_regex, contract.normalizer)
             if extracted is None:
                 result.failures.append(f"{name}: no registered contract match in {copy}")
                 continue
@@ -146,30 +161,54 @@ def check_text_contract_inventory(
     _cache: _TextContractCache | None = None,
 ) -> CheckResult:
     result = CheckResult()
-    if not isinstance(inventory, dict):
-        result.failures.append(f"{name}: inventory must be an object")
+    normalized = _normalize_text_contract_inventory(name, inventory, result.failures)
+    if normalized is None:
         return result
+    return _check_text_contract_inventory(
+        context,
+        name,
+        tuple(registered_paths),
+        normalized,
+        _cache if _cache is not None else _TextContractCache(),
+    )
+
+
+def _normalize_text_contract_inventory(
+    name: str, inventory: object, failures: list[str]
+) -> TextContractInventory | None:
+    if not isinstance(inventory, dict):
+        failures.append(f"{name}: inventory must be an object")
+        return None
 
     pattern = inventory.get("glob")
     marker = inventory.get("marker")
     if not isinstance(pattern, str) or not pattern:
-        result.failures.append(f"{name}: inventory glob must be a non-empty string")
-        return result
+        failures.append(f"{name}: inventory glob must be a non-empty string")
+        return None
     if not isinstance(marker, str) or not marker:
-        result.failures.append(f"{name}: inventory marker must be a non-empty string")
-        return result
+        failures.append(f"{name}: inventory marker must be a non-empty string")
+        return None
+    return TextContractInventory(glob=pattern, marker=marker)
 
+
+def _check_text_contract_inventory(
+    context: LintContext,
+    name: str,
+    registered_paths: tuple[str, ...],
+    inventory: TextContractInventory,
+    cache: _TextContractCache,
+) -> CheckResult:
+    result = CheckResult()
     registered = set(registered_paths)
     if len(registered) != len(registered_paths):
         result.failures.append(f"{name}: registered inventory contains duplicate paths")
 
-    cache = _cache if _cache is not None else _TextContractCache()
     discovered: set[str] = set()
-    for path in cache.discover(context.root, pattern):
-        marker_count = cache.read(path).count(marker)
+    for discovered_path in cache.discover(context.root, inventory.glob):
+        marker_count = cache.read(discovered_path).count(inventory.marker)
         if marker_count == 0:
             continue
-        relative = rel(path, context.root)
+        relative = rel(discovered_path, context.root)
         discovered.add(relative)
         if marker_count != 1:
             result.failures.append(f"{name}: {relative} contains {marker_count} inventory markers; expected exactly 1")
