@@ -108,6 +108,11 @@ JSON
 }
 
 find_chrome() {
+  if [[ -n "${KRAMME_BROWSER_SMOKE_CHROME:-}" ]]; then
+    [[ -x "$KRAMME_BROWSER_SMOKE_CHROME" ]] || return 1
+    printf '%s\n' "$KRAMME_BROWSER_SMOKE_CHROME"
+    return 0
+  fi
   local candidate
   for candidate in \
     chromium \
@@ -122,6 +127,29 @@ find_chrome() {
     fi
   done
   return 1
+}
+
+browser_smoke_unavailable() {
+  if [[ "${KRAMME_REQUIRE_BROWSER_SMOKE:-}" == "1" ]]; then
+    printf 'Required browser smoke: %s\n' "$1" >&2
+    return 1
+  fi
+  skip "$1"
+}
+
+require_browser_smoke_prerequisites() {
+  if ! command -v python3 >/dev/null 2>&1 || ! command -v node >/dev/null 2>&1; then
+    browser_smoke_unavailable "python3 and node are required for the browser smoke"
+    return
+  fi
+  if [[ "$(node -p 'typeof WebSocket')" != "function" ]]; then
+    browser_smoke_unavailable "Node.js WebSocket support is required for the browser smoke"
+    return
+  fi
+  if ! chrome="$(find_chrome)"; then
+    browser_smoke_unavailable "Chrome or Chromium is required for the browser smoke"
+    return
+  fi
 }
 
 @test "PR walkthrough requires report mode for positional scopes" {
@@ -569,14 +597,48 @@ PY
   [ "$process_survived" -eq 1 ]
 }
 
+@test "PR walkthrough browser prerequisites fail required mode and skip optional mode" {
+  fixture="$TMP_DIR/prerequisites.bats"
+  sed '/^@test /,$d' "$BATS_TEST_FILENAME" >"$fixture"
+  cat >>"$fixture" <<'BATS'
+command() {
+  if [[ "$1" == "-v" && "$2" == "$MISSING_PREREQUISITE" ]]; then
+    return 1
+  fi
+  builtin command "$@"
+}
+node() {
+  if [[ "$MISSING_PREREQUISITE" == "WebSocket" ]]; then
+    echo undefined
+  else
+    echo function
+  fi
+}
+find_chrome() {
+  [[ "$MISSING_PREREQUISITE" != "Chrome" ]] || return 1
+  echo /fixture/chrome
+}
+@test "browser prerequisites" {
+  require_browser_smoke_prerequisites
+}
+BATS
+
+  for missing in python3 node WebSocket Chrome; do
+    run env MISSING_PREREQUISITE="$missing" KRAMME_REQUIRE_BROWSER_SMOKE=1 bats "$fixture"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"Required browser smoke:"* ]]
+    [[ "$output" == *"$missing"* ]]
+    [[ "$output" != *"# skip"* ]]
+
+    run env MISSING_PREREQUISITE="$missing" KRAMME_REQUIRE_BROWSER_SMOKE=0 bats "$fixture"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"# skip"* ]]
+    [[ "$output" == *"$missing"* ]]
+  done
+}
+
 @test "PR walkthrough supports initial render, tab switch, search, and tour navigation" {
-  if ! command -v python3 >/dev/null 2>&1 || ! command -v node >/dev/null 2>&1; then
-    skip "python3 and node are required for the browser smoke"
-  fi
-  if [[ "$(node -p 'typeof WebSocket')" != "function" ]]; then
-    skip "Node.js WebSocket support is required for the browser smoke"
-  fi
-  chrome="$(find_chrome)" || skip "Chrome or Chromium is required for the browser smoke"
+  require_browser_smoke_prerequisites
 
   graph="$TMP_DIR/graph.json"
   html="$TMP_DIR/index.html"
@@ -774,6 +836,9 @@ runWithTimeout(main(), SMOKE_TIMEOUT_MS).catch((error) => {
 });
 NODE
 
-  [ "$status" -eq 0 ]
+  if [ "$status" -ne 0 ]; then
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
   [[ "$output" == *"browser smoke passed"* ]]
 }
