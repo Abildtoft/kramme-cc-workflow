@@ -61,6 +61,11 @@ def parse_frontmatter_bool(frontmatter: dict[str, str], field: str) -> bool:
     return strip_quotes(frontmatter.get(field, "")).lower() == "true"
 
 
+def frontmatter_boolean_value(text: str, field: str) -> bool | None:
+    """Decode a source scalar with the same rules as boolean type validation."""
+    return _decode_yaml_boolean(_raw_frontmatter_values(text).get(field, ""))
+
+
 def frontmatter_string_value(text: str, field: str) -> str | None:
     """Return a scalar field's decoded value, including multiline YAML forms."""
     value = _raw_frontmatter_values(text).get(field)
@@ -243,11 +248,15 @@ def _continued_plain_scalar(lines: list[str], start: int, end: int) -> str:
 
 
 def _is_yaml_boolean(value: str | list[str]) -> bool:
+    return _decode_yaml_boolean(value) is not None
+
+
+def _decode_yaml_boolean(value: str | list[str]) -> bool | None:
     if isinstance(value, list):
-        return False
+        return None
     decoded = _decode_yaml_quoted_string(value.strip())
     normalized = (decoded if decoded is not None else strip_quotes(value)).strip().lower()
-    return normalized in _YAML_BOOLEAN_VALUES
+    return normalized == "true" if normalized in _YAML_BOOLEAN_VALUES else None
 
 
 def _is_non_empty_yaml_string(value: str | list[str]) -> bool:
