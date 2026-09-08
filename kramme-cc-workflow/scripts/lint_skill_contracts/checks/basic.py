@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterator
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from ..frontmatter import parse_frontmatter
@@ -81,9 +83,28 @@ def extract_contract_value(
     return normalize_value(value, normalizer), line
 
 
+@dataclass
+class _TextContractCache:
+    texts: dict[Path, str] = field(default_factory=dict)
+    inventories: dict[tuple[Path, str], list[Path]] = field(default_factory=dict)
+
+    def read(self, path: Path) -> str:
+        key = path.resolve()
+        if key not in self.texts:
+            self.texts[key] = read_text(path)
+        return self.texts[key]
+
+    def discover(self, root: Path, pattern: str) -> list[Path]:
+        key = (root, pattern)
+        if key not in self.inventories:
+            self.inventories[key] = skill_paths(root, pattern)
+        return self.inventories[key]
+
+
 def check_text_contracts(context: LintContext) -> CheckResult:
     result = CheckResult()
     root = context.root
+    cache = _TextContractCache()
     for name, group in iter_registry_entries(context.registry, "text_contracts", result.failures):
         regex = require_str_field(group, "extract_regex", name, result.failures)
         paths = require_str_list_field(group, "paths", name, result.failures)
@@ -92,7 +113,7 @@ def check_text_contracts(context: LintContext) -> CheckResult:
         normalizer = group.get("normalizer")
         inventory = group.get("inventory")
         if inventory is not None:
-            inventory_result = check_text_contract_inventory(context, name, paths, inventory)
+            inventory_result = check_text_contract_inventory(context, name, paths, inventory, _cache=cache)
             result.failures.extend(inventory_result.failures)
         reference: tuple[str, str, int] | None = None
         for copy in paths:
@@ -100,7 +121,7 @@ def check_text_contracts(context: LintContext) -> CheckResult:
             if not path.exists():
                 result.failures.append(f"{name}: registered path is missing: {copy}")
                 continue
-            extracted = extract_contract_value(read_text(path), regex, normalizer)
+            extracted = extract_contract_value(cache.read(path), regex, normalizer)
             if extracted is None:
                 result.failures.append(f"{name}: no registered contract match in {copy}")
                 continue
@@ -121,6 +142,8 @@ def check_text_contract_inventory(
     name: str,
     registered_paths: list[str],
     inventory: object,
+    *,
+    _cache: _TextContractCache | None = None,
 ) -> CheckResult:
     result = CheckResult()
     if not isinstance(inventory, dict):
@@ -140,9 +163,10 @@ def check_text_contract_inventory(
     if len(registered) != len(registered_paths):
         result.failures.append(f"{name}: registered inventory contains duplicate paths")
 
+    cache = _cache if _cache is not None else _TextContractCache()
     discovered: set[str] = set()
-    for path in skill_paths(context.root, pattern):
-        marker_count = read_text(path).count(marker)
+    for path in cache.discover(context.root, pattern):
+        marker_count = cache.read(path).count(marker)
         if marker_count == 0:
             continue
         relative = rel(path, context.root)
