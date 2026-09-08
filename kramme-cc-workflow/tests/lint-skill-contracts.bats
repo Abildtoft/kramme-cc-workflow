@@ -957,6 +957,42 @@ print(json.dumps(document["hooks"]))
   ! grep -qF "Runs a sample hook" "$(catalog_path)"
 }
 
+@test "component generator normalizes supported invocation scalars in README and catalog" {
+  write_component_catalog_tree
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
+    "kramme:sample" \
+    "Sample skill description" \
+    '"true" # User invocation only' \
+    'true' \
+    "[target]"
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 0 ]
+  grep -qF '| `/kramme:sample` | User | `[target]` | Sample skill description |' "$TMP_ROOT/README.md"
+  run python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["skills"][0]["invocation"])' "$(catalog_path)"
+  [ "$status" -eq 0 ]
+  [ "$output" = "User" ]
+
+  write_reference_skill \
+    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
+    "kramme:sample" \
+    "Sample skill description" \
+    $'|-\n  true' \
+    '"\x66alse" # Not in slash menu' \
+    "[target]"
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
+  [ "$status" -eq 0 ]
+  grep -qF '| `kramme:sample` | Hidden | — | Sample skill description |' "$TMP_ROOT/README.md"
+  run python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["skills"][0]["invocation"])' "$(catalog_path)"
+  [ "$status" -eq 0 ]
+  [ "$output" = "Hidden" ]
+
+  run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --check
+  [ "$status" -eq 0 ]
+}
+
 @test "component catalog generation is idempotent" {
   write_component_catalog_tree
 

@@ -9,6 +9,7 @@ from typing import Any
 from .frontmatter import (
     expected_arguments,
     expected_invocation,
+    frontmatter_boolean_value,
     parse_frontmatter,
     parse_frontmatter_bool,
 )
@@ -215,6 +216,14 @@ def load_skill_references(
                 f"does not match skill directory {name!r}"
             )
             continue
+        for loader_property, fallback in (
+            ("userInvocable", "user-invocable"),
+            ("disableModelInvocation", "disable-model-invocation"),
+        ):
+            field = skill_frontmatter_field_by_loader_property(loader_property, fallback, schema)
+            value = frontmatter_boolean_value(text, field)
+            if value is not None:
+                frontmatter[field] = "true" if value else "false"
         references[name] = skill_reference_from_frontmatter(name, frontmatter, schema)
     return references
 

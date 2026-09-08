@@ -12,7 +12,8 @@ SCRIPT_PATH = SCRIPTS_DIR / "lint-skill-contracts.py"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import lint_skill_contracts  # noqa: E402
-from lint_skill_contracts.frontmatter import frontmatter_type_errors  # noqa: E402
+from lint_skill_contracts.catalog import skill_catalog_entries  # noqa: E402
+from lint_skill_contracts.frontmatter import frontmatter_boolean_value, frontmatter_type_errors  # noqa: E402
 
 
 def load_compat_script(module_name="lint_skill_contracts_cli"):
@@ -152,6 +153,101 @@ class FrontmatterTypeContractTest(unittest.TestCase):
 
 
 class FrontmatterContractHelpersTest(unittest.TestCase):
+    def test_decoded_boolean_distinguishes_false_from_missing_or_invalid(self) -> None:
+        for value, expected in [
+            ('"true" # enabled', True),
+            ('"false" # disabled', False),
+            ("maybe", None),
+            ("[true]", None),
+        ]:
+            with self.subTest(value=value):
+                self.assertIs(frontmatter_boolean_value(f"---\nflag: {value}\n---\n", "flag"), expected)
+        self.assertIsNone(frontmatter_boolean_value("---\n---\n", "flag"))
+
+    def test_invocation_scalar_forms_reach_readme_and_catalog(self) -> None:
+        forms = [
+            ("true", "false"),
+            ('"true" # enabled', "'false' # disabled"),
+            (r'"\x74rue"', r'"\u0066alse"'),
+            ('"true\n  "', "'false\n  '"),
+            ('"tr\\\n  ue"', '"fal\\\n  se"'),
+            ("|-\n  true", ">-\n  false"),
+            ("\n  true", "\n  false"),
+            ('" TRUE "', "' FALSE '"),
+        ]
+        for true_value, false_value in forms:
+            for user, disabled, invocation in [
+                (true_value, true_value, "User"),
+                (true_value, false_value, "User, Auto"),
+                (false_value, true_value, "Hidden"),
+                (false_value, false_value, "Background"),
+            ]:
+                with self.subTest(user=user, disabled=disabled):
+                    self.assert_generated_invocation(
+                        f"user-invocable: {user}\ndisable-model-invocation: {disabled}\n",
+                        invocation,
+                        user == true_value,
+                    )
+
+    def assert_generated_invocation(self, fields, invocation, user_invocable, schema=None) -> None:
+        text = f"---\nname: kramme:test\ndescription: Test skill\nargument-hint: '[path]'\n{fields}---\nBody.\n"
+        self.assertEqual(frontmatter_type_errors(text, schema), [])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            skill_path = root / "skills/kramme:test/SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(text, encoding="utf-8")
+            failures = []
+            reference = lint_skill_contracts.load_skill_references(root, "skills", failures, schema)["kramme:test"]
+            catalog = skill_catalog_entries(root, {"readme_skill_sync": {"skills_dir": "skills"}}, schema, failures)
+        self.assertEqual(failures, [])
+        display = "/kramme:test" if user_invocable else "kramme:test"
+        arguments = "`[path]`" if user_invocable else "—"
+        self.assertEqual(
+            lint_skill_contracts.render_skill_reference_row(reference),
+            f"| `{display}` | {invocation} | {arguments} | Test skill |",
+        )
+        self.assertEqual(
+            catalog, [{"name": "kramme:test", "invocation": invocation, "path": "skills/kramme:test/SKILL.md"}]
+        )
+
+    def test_invocation_missing_fields_keep_false_defaults(self) -> None:
+        self.assert_generated_invocation("", "Background", False)
+        self.assert_generated_invocation('user-invocable: "true" # enabled\n', "User, Auto", True)
+        self.assert_generated_invocation('disable-model-invocation: "true" # disabled\n', "Hidden", False)
+
+    def test_invocation_uses_schema_selected_fields_only(self) -> None:
+        schema = {
+            "skill_frontmatter": {
+                "fields": {
+                    "manual": {"type": "boolean", "loader_property": "userInvocable"},
+                    "no-auto": {"type": "boolean", "loader_property": "disableModelInvocation"},
+                }
+            }
+        }
+        self.assert_generated_invocation(
+            'manual: "true" # enabled\nno-auto: "true" # disabled\n'
+            "user-invocable: false\ndisable-model-invocation: false\n",
+            "User",
+            True,
+            schema,
+        )
+
+    def test_raw_parser_and_dictionary_helpers_keep_their_contract(self) -> None:
+        text = '---\ndescription: "true" # prose\nuser-invocable: "true" # enabled\n---\n'
+        raw = lint_skill_contracts.parse_frontmatter(text)
+        self.assertEqual(raw, {"description": '"true" # prose', "user-invocable": '"true" # enabled'})
+        self.assertEqual(lint_skill_contracts.expected_invocation(raw), "Background")
+
+    def test_invalid_invocation_scalars_still_fail_type_validation(self) -> None:
+        for value in ['"maybe" # invalid', r'"\qtrue"', "[true]", "\n  - true", "null", '"true" trailing']:
+            with self.subTest(value=value):
+                text = f"---\nuser-invocable: {value}\ndisable-model-invocation: {value}\n---\n"
+                self.assertEqual(
+                    {field for field, _ in frontmatter_type_errors(text)},
+                    {"user-invocable", "disable-model-invocation"},
+                )
+
     def test_type_errors_strip_comments_from_quoted_block_array_items(self) -> None:
         empty_item_with_comment = """---
 name: test-skill
