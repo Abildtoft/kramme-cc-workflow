@@ -39,6 +39,8 @@ If a model-generation upgrade silently degraded behavior, these are the existing
 
 ## Decision
 
+Amended on 2026-09-08 by [review execution evidence](2026-09-08-review-execution-evidence.md): one narrow code-review execution-completion eval is permitted. The original cap below continues to govern finding-quality evaluations and SkillOpt expansion.
+
 Use **dogfooding-is-QA** as the skill-quality regime for prompt behavior.
 
 The committed `evals/` investment is explicitly capped at the current `kramme:skill:review` pilot:

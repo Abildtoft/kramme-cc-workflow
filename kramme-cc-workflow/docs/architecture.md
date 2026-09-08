@@ -20,6 +20,7 @@ This repo packages a personal workflow plugin for Claude Code and includes a Cod
 | Shared scripts | `scripts/*.sh`, `scripts/*.py`, `scripts/*.js`, `scripts/dev-server/` | Helpers shared by skills, hooks, release workflows, and browser-facing workflows. |
 | Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/` | Loads the Claude plugin, transforms components for Codex, and writes managed output under a Codex home. |
 | Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals and the local SkillOpt adapter for the `kramme:skill:review` pilot. |
+| Review completion | `skills/kramme:pr:code-review/scripts/review-execution.js`, `evals/review-completion/` | Self-attested execution ledger, scope/report validation, and independently observed completion evaluations; consumed by review convergence. |
 | Tests | `tests/*.bats`, `tests/test_helper/` | Bats coverage for shell hooks, scripts, converter behavior, eval harnesses, and skill guidance contracts. |
 
 ## Runtime Flow
