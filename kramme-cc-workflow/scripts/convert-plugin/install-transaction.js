@@ -677,17 +677,6 @@ function isSafeToken(value) {
   return typeof value === "string" && TRANSACTION_TOKEN_PATTERN.test(value);
 }
 
-/** @returns {ArtifactCollectionSummary} */
-function emptyArtifactCollectionSummary() {
-  return {
-    entry_count: 0,
-    inspected_count: 0,
-    status: "absent",
-    status_counts: {},
-    truncated: false,
-  };
-}
-
 /**
  * @param {ArtifactEntryStatus[]} entryStatuses
  * @param {number} entryCount

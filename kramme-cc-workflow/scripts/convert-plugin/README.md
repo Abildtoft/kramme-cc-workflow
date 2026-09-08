@@ -38,6 +38,21 @@ This directory contains the implementation behind `scripts/convert-plugin.js`. T
 - Preserve user-owned files unless they are tracked as managed entries from a previous converter run.
 - Keep platform filtering in the transformer so `kramme-platforms` has one conversion meaning.
 
+## Transaction responsibility map
+
+Use these entry points to read the transaction boundary without tracing the
+whole module:
+
+| Responsibility | Entry points | Closest proof |
+| --- | --- | --- |
+| Inspect locks, journals, recovery claims, conflicts, and backups without mutation | `inspectInstallTransactions`, `summarizeArtifactCollection` | `tests/node/converter-install.test.js` absent-artifact and bounded-summary cases; `diagnostics.js` doctor wiring |
+| Acquire ownership and journal a mutation | `withInstallTransaction`, `prepareTransactionMutation` | `tests/node/converter-install.test.js` lock, conflict, and rollback cases |
+| Recover stale owners and publish staged files | `recoverStaleInstall`, `publishStagedFile` | `tests/node/converter-install.test.js` recovery and publication cases |
+| Record rollback state and release the transaction | `recordInstalledTargetForRollback`, `withInstallTransaction` | `tests/node/converter-install.test.js` commit and rollback cases |
+
+Transaction state remains private to `install-transaction.js`; staging calls its
+narrow mutation API, and diagnostics only reads aggregate health.
+
 ## CLI Contract
 
 `stats <plugin-name|path>` loads and converts the plugin in memory without installing it. Its default text output is two `key=value` lines in this order:
