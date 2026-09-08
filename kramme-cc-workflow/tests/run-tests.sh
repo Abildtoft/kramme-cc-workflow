@@ -29,7 +29,27 @@ chmod +x test_helper/mocks/*
 echo "Running hook tests..."
 echo "============================================"
 
-if [ -n "$1" ]; then
+if [ "${KRAMME_BATS_TIMINGS:-}" = 1 ]; then
+  if [ -n "$1" ]; then
+    suites=("$1")
+  else
+    suites=(*.bats)
+  fi
+  result=0
+  for suite in "${suites[@]}"; do
+    started=$SECONDS
+    status=0
+    bats --tap "$suite" || status=$?
+    printf 'BATS timing: suite=%s elapsed_seconds=%s status=%s\n' \
+      "$suite" "$((SECONDS - started))" "$status" >&2
+    if [ "$result" -eq 0 ] && [ "$status" -ne 0 ]; then
+      result=$status
+    fi
+  done
+  if [ "$result" -ne 0 ]; then
+    exit "$result"
+  fi
+elif [ -n "$1" ]; then
   # Run specific test file
   bats --tap "$1"
 else

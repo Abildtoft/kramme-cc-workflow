@@ -113,6 +113,94 @@ update_fake_inventory() {
     "$MAKEFILE_CONTRACT_REPO/plugin/config/coverage-production-sources.json"
 }
 
+setup_bats_runner_repo() {
+  bats_require_minimum_version 1.5.0
+  setup_makefile_contract_repo
+  cp "$BATS_TEST_DIRNAME/run-tests.sh" "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh"
+  mkdir -p "$MAKEFILE_CONTRACT_REPO/plugin/tests/test_helper/mocks" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/tests/nested"
+  touch "$MAKEFILE_CONTRACT_REPO/plugin/tests/test_helper/mocks/git" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/tests/a suite.bats" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/tests/z.bats" \
+    "$MAKEFILE_CONTRACT_REPO/plugin/tests/nested/ignored.bats"
+  create_fake_tool "$MAKEFILE_CONTRACT_BIN/jq"
+  cat >"$MAKEFILE_CONTRACT_BIN/bats" <<'SH'
+#!/bin/sh
+printf 'argc=%s\n' "$#"
+printf 'arg=%s\n' "$@"
+if [ "$2" = "${FAIL_SUITE:-}" ]; then exit 7; fi
+SH
+  chmod +x "$MAKEFILE_CONTRACT_BIN/bats"
+}
+
+@test "Bats timing mode runs every top-level suite once and reports to stderr" {
+  setup_bats_runner_repo
+
+  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C KRAMME_BATS_TIMINGS=1 \
+    bash "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "Running hook tests...
+============================================
+argc=2
+arg=--tap
+arg=a suite.bats
+argc=2
+arg=--tap
+arg=example.bats
+argc=2
+arg=--tap
+arg=z.bats
+============================================
+All tests passed!" ]
+  [ "${#stderr_lines[@]}" -eq 3 ]
+  local i=0 suite
+  for suite in 'a suite.bats' example.bats z.bats; do
+    [[ "${stderr_lines[$i]}" =~ ^BATS\ timing:\ suite=$suite\ elapsed_seconds=[0-9]+\ status=0$ ]]
+    i=$((i + 1))
+  done
+}
+
+@test "Bats timing mode preserves focused paths with spaces and failure status" {
+  setup_bats_runner_repo
+
+  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" KRAMME_BATS_TIMINGS=1 FAIL_SUITE='a suite.bats' \
+    bash "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh" 'a suite.bats'
+
+  [ "$status" -eq 7 ]
+  [[ "$output" == *$'argc=2\narg=--tap\narg=a suite.bats' ]]
+  [[ "$output" != *'All tests passed!'* ]]
+  [ "${#stderr_lines[@]}" -eq 1 ]
+  [[ "$stderr" =~ ^BATS\ timing:\ suite=a\ suite.bats\ elapsed_seconds=[0-9]+\ status=7$ ]]
+}
+
+@test "Bats timing mode records failures and continues through remaining suites" {
+  setup_bats_runner_repo
+
+  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C KRAMME_BATS_TIMINGS=1 FAIL_SUITE=example.bats \
+    bash "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh"
+
+  [ "$status" -eq 7 ]
+  [ "${#stderr_lines[@]}" -eq 3 ]
+  [[ "${stderr_lines[1]}" =~ suite=example.bats\ elapsed_seconds=[0-9]+\ status=7$ ]]
+  [[ "${stderr_lines[2]}" =~ suite=z.bats\ elapsed_seconds=[0-9]+\ status=0$ ]]
+  [[ "$output" == *'arg=z.bats'* ]]
+  [[ "$output" != *'All tests passed!'* ]]
+}
+
+@test "Bats runner retains one default TAP invocation unless timing is exactly enabled" {
+  setup_bats_runner_repo
+  local mode
+  for mode in '' 0 true; do
+    run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C KRAMME_BATS_TIMINGS="$mode" \
+      bash "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *$'argc=4\narg=--tap\narg=a suite.bats\narg=example.bats\narg=z.bats'* ]]
+    [ -z "$stderr" ]
+  done
+}
+
 create_fake_node_coverage_tool() {
   cat >"$MAKEFILE_CONTRACT_BIN/node" <<'SH'
 #!/bin/sh
