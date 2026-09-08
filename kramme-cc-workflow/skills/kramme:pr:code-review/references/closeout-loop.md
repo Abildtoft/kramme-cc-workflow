@@ -17,6 +17,7 @@ Apply this workflow only when the caller passed `--loop`. The review this skill 
 ## Workflow
 
 1. **Read the review result**
+   - Before acting or declaring termination, run the producer execution helper's `check` against the exact latest report and normalized aspects as defined in `references/execution-contract.md`. Missing, incomplete, filtered-to-a-different-scope, or stale evidence blocks this loop, even when no findings remain. Report the incomplete run and recovery needed; do not certify termination from a partial review. Every rerun needs a fresh run directory and seal.
    - If `--inline` was used, inspect the inline review response.
    - Otherwise, read `REVIEW_OVERVIEW.md` from the project root.
    - If the review reports degraded coverage or failed reviewers, tell the user which dimensions were not covered before acting on findings.
