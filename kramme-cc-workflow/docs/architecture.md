@@ -33,6 +33,8 @@ For Codex, `scripts/convert-plugin.js` is the entry point. It loads the Claude p
 
 Browser and visual workflows use the shared dev-server detector in `scripts/dev-server/`. The detector only resolves an already running local app. A caller may own a separately documented startup lifecycle; delegated PR demo capture permits one tightly bounded local-development startup attempt and owns cleanup of the process it launched.
 
+Shared runtime helpers belong to the main `CodexBundle`, independently of whether hook packaging is eligible. The transformer builds the directory and file metadata once and projects the same arrays into eligible hook packages for their helper mirrors. Bundle output uses the top-level arrays for helper staging and Markdown path rewriting, falling back per field to hook metadata only when that top-level field is absent. Explicit empty arrays suppress that fallback. Skills therefore retain shared helpers when hooks or hook controls are absent, while legacy constructed bundles remain supported.
+
 How much independence skills and agents take at runtime is described in [agent-autonomy.md](agent-autonomy.md).
 
 ## State and Generated Output
