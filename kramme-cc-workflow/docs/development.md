@@ -106,7 +106,7 @@ The `pr-verify` target runs the repository's local pre-PR gates: the read-only d
 
 To verify prerequisites without running any gate, use `make -C kramme-cc-workflow check-deps` (or `npm run check:deps`). It is read-only: it reports missing tools and installs nothing.
 
-Runtimes measured locally on an Apple silicon laptop, for choosing the smallest useful gate:
+Historical runtimes measured locally on an Apple silicon laptop, for choosing the smallest useful gate (the original sample did not record a date or detailed host/runtime versions):
 
 | Target | Runtime | Notes |
 | --- | --- | --- |
@@ -115,7 +115,104 @@ Runtimes measured locally on an Apple silicon laptop, for choosing the smallest 
 | `coverage` | 51s | Includes its own `test-python` run |
 | `pr-verify` | 28m | Dominated by `test-bats`; coverage adds roughly 36s on top of `test` |
 
-The coverage gates are cheap relative to the suite they join: `coverage-python` reuses the `test-python` run that `pr-verify` already performs, so folding `coverage` into `pr-verify` costs about 36 seconds. Run `make -C kramme-cc-workflow coverage` on its own when only the inventory or floors are in question.
+In that historical sample, the coverage gates were cheap relative to the suite they joined: `coverage-python` reuses the `test-python` run that `pr-verify` already performs, so folding `coverage` into `pr-verify` costs about 36 seconds. Run `make -C kramme-cc-workflow coverage` on its own when only the inventory or floors are in question.
+
+#### Measuring Bats suite cost
+
+Set `KRAMME_BATS_TIMINGS=1` to run each selected top-level suite serially in its own Bats process and report `suite`, `elapsed_seconds`, and numeric exit `status` to stderr. Use `LC_ALL=C` for repeatable filename ordering:
+
+```bash
+LC_ALL=C KRAMME_BATS_TIMINGS=1 bash kramme-cc-workflow/tests/run-tests.sh
+
+# Repeat one suite; the path is relative to tests/, including paths with spaces.
+LC_ALL=C KRAMME_BATS_TIMINGS=1 bash kramme-cc-workflow/tests/run-tests.sh makefile.bats
+```
+
+The existing `test-bats` Make target also inherits the switch. Only the exact value `1` enables timing. The default runner still invokes `bats --tap` once, and `test-smoke` retains its separate representative selection. Timing mode uses the same top-level `*.bats` inventory without recursion, records failing suites, completes the remaining suites, and returns the first nonzero suite status. Focused mode preserves the selected suite's status.
+
+Elapsed values use Bash's whole-second `SECONDS` counter; zero means less than one counter tick, not no work. Each interval includes Bats startup, fixtures, tests, and teardown. Timing mode adds a process per suite and emits a separate TAP stream for each, so its stdout is diagnostic output rather than one aggregate TAP document. Compare repeated suites under the same instrumentation and host conditions; these samples do not establish a speedup, a CI threshold, or safe parallel execution.
+
+Measurement on 2026-09-08, based on commit `183f1728` plus this timing change: Apple M4 Max, 36 GiB RAM, macOS 26.4.1 arm64, Bash 5.3.9, Bats 1.14.0, Node 24.14.1, and Python 3.14.7. Locked Node dependencies were installed before measurement. One full serial run and immediate serial repeats of its three slowest suites used the commands above, with no concurrent test or scan jobs launched by this workflow. Background host activity and cache state were not controlled.
+
+All 73 selected suites passed. Their elapsed intervals sum to **1,649 seconds (27m 29s)**; this excludes runner setup/reporting outside those intervals and is not a measurement of the full `pr-verify` gate. Every repeated suite also passed. Values below are seconds; a dash means no repeat was collected.
+
+| Suite | Full run | Focused repeat | Status |
+| --- | --: | --: | --- |
+| `adversarial-review-guidance.bats` | 2 | — | Passed |
+| `adversarial-review-runner.bats` | 57 | — | Passed |
+| `audit-agent-config-guidance.bats` | 1 | — | Passed |
+| `auto-format.bats` | 39 | — | Passed |
+| `benchmark-hook-overhead.bats` | 6 | — | Passed |
+| `block-rm-rf.bats` | 55 | — | Passed |
+| `bootstrap-dev.bats` | 17 | — | Passed |
+| `check-enabled.bats` | 13 | — | Passed |
+| `check-environment.bats` | 38 | — | Passed |
+| `clean-gone-branches.bats` | 56 | — | Passed |
+| `code-deprecate-guidance.bats` | 4 | — | Passed |
+| `code-migrate-guidance.bats` | 2 | — | Passed |
+| `confirm-review-responses.bats` | 121 | 60 | Passed |
+| `context-links.bats` | 14 | — | Passed |
+| `contract-registry-helper.bats` | 3 | — | Passed |
+| `convert-plugin.bats` | 290 | 90 | Passed |
+| `demo-reel-skill.bats` | 3 | — | Passed |
+| `dev-server-scripts.bats` | 16 | — | Passed |
+| `discovery-delegation-guidance.bats` | 1 | — | Passed |
+| `docs-sync-release-guidance.bats` | 2 | — | Passed |
+| `experience-quality-guidance.bats` | 1 | — | Passed |
+| `feature-spec-guidance.bats` | 1 | — | Passed |
+| `find-sibling-bugs-guidance.bats` | 1 | — | Passed |
+| `forward-progress-guidance.bats` | 1 | — | Passed |
+| `git-fixture-helper.bats` | 8 | — | Passed |
+| `github-review-guidance.bats` | 2 | — | Passed |
+| `guidance-contract-helper.bats` | 4 | — | Passed |
+| `gut-check-guidance.bats` | 1 | — | Passed |
+| `harden-security-guidance.bats` | 1 | — | Passed |
+| `issue-and-plan-to-pr-guidance.bats` | 3 | — | Passed |
+| `linear-backlog-refine-guidance.bats` | 1 | — | Passed |
+| `linear-breakdown-findings-guidance.bats` | 1 | — | Passed |
+| `linear-issue-define-guidance.bats` | 16 | — | Passed |
+| `linear-issue-implement-guidance.bats` | 0 | — | Passed |
+| `linear-issue-to-pr-guidance.bats` | 3 | — | Passed |
+| `linear-review-pr-guidance.bats` | 4 | — | Passed |
+| `linear-select-next-guidance.bats` | 2 | — | Passed |
+| `lint-skill-contracts.bats` | 79 | — | Passed |
+| `makefile.bats` | 49 | — | Passed |
+| `noninteractive-git.bats` | 24 | — | Passed |
+| `optimize-skill.bats` | 9 | — | Passed |
+| `outside-view-guidance.bats` | 0 | — | Passed |
+| `plan-to-pr-validation.bats` | 64 | — | Passed |
+| `pr-create-guidance.bats` | 39 | — | Passed |
+| `pr-generate-description-guidance.bats` | 4 | — | Passed |
+| `pr-walkthrough.bats` | 7 | — | Passed |
+| `product-describe-behavior-guidance.bats` | 2 | — | Passed |
+| `product-pulse-guidance.bats` | 0 | — | Passed |
+| `qa-intake-guidance.bats` | 0 | — | Passed |
+| `recreate-commits-push-target.bats` | 27 | — | Passed |
+| `refactor-pass-guidance.bats` | 2 | — | Passed |
+| `release.bats` | 61 | — | Passed |
+| `repository-instructions.bats` | 0 | — | Passed |
+| `resolve-base.bats` | 85 | — | Passed |
+| `resolve-stack-membership.bats` | 16 | — | Passed |
+| `review-diff-scripts.bats` | 29 | — | Passed |
+| `review-execution-guidance.bats` | 1 | — | Passed |
+| `review-shared-tree.bats` | 11 | — | Passed |
+| `session-automate-repeats-guidance.bats` | 2 | — | Passed |
+| `session-search-scripts.bats` | 1 | — | Passed |
+| `siw-issue-reservation.bats` | 177 | 218 | Passed |
+| `skill-create-guidance.bats` | 1 | — | Passed |
+| `skill-resource-references.bats` | 7 | — | Passed |
+| `skill-review-eval.bats` | 8 | — | Passed |
+| `skill-source-audit-guidance.bats` | 0 | — | Passed |
+| `skill-usage-stats.bats` | 6 | — | Passed |
+| `skillopt-adapter.bats` | 9 | — | Passed |
+| `skillopt-candidate-review.bats` | 8 | — | Passed |
+| `skillspector-runner.bats` | 77 | — | Passed |
+| `test-audit-guidance.bats` | 1 | — | Passed |
+| `visual-check-slop.bats` | 34 | — | Passed |
+| `workflow-artifacts-cleanup.bats` | 2 | — | Passed |
+| `worktree-helper.bats` | 17 | — | Passed |
+
+The first investigation target is `convert-plugin.bats`, the largest contributor in the full run (290 seconds, about 18% of the total). Its 90-second repeat shows substantial variability; suite timing alone cannot attribute that difference to fixture setup, package installation, filesystem/cache state, or background load. Measure those phases and the individual full-plugin installation cases next before proposing a fixture change. `siw-issue-reservation.bats` (177/218 seconds) is another substantial contributor; preserve its lock-contention and recovery assertions in any follow-up. These measurements justify further attribution, not removed tests, shared mutable fixtures, or parallel Bats execution.
 
 GitHub Actions also runs the standalone skill-review eval as a separate path-filtered, scheduled, and manual workflow. That workflow uploads the aggregate JSON result as the `skill-review-eval` artifact and is meant to catch harness or fixture regressions without treating score movement as a merge gate.
 
