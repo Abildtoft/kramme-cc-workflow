@@ -1169,9 +1169,12 @@ test("hook plugin conversion requires controls and sanitizes manifest descriptio
       },
     ],
   };
-  const codexPlugin = convertClaudeToCodex(withControls).codexPlugin;
+  const bundle = convertClaudeToCodex(withControls);
+  const codexPlugin = bundle.codexPlugin;
 
   assert.ok(codexPlugin);
+  assert.equal(codexPlugin.sharedScriptDirs, bundle.sharedScriptDirs);
+  assert.equal(codexPlugin.sharedScriptFiles, bundle.sharedScriptFiles);
   assert.equal(codexPlugin.name, "hook-description-plugin");
   assert.equal(codexPlugin.manifest.hooks, "./hooks/hooks.json");
   assert.match(codexPlugin.manifest.description, /^First line second line /);
@@ -1216,6 +1219,38 @@ test("hook plugin conversion requires controls and sanitizes manifest descriptio
     ),
     "converted shared collector must include its review-artifact inventory",
   );
+
+  const withoutHooks = convertClaudeToCodex({
+    ...withControls,
+    hooks: undefined,
+  });
+  assert.equal(withoutHooks.codexPlugin, undefined);
+  assert.deepEqual(withoutHooks.sharedScriptDirs, bundle.sharedScriptDirs);
+  assert.deepEqual(withoutHooks.sharedScriptFiles, bundle.sharedScriptFiles);
+
+  for (const control of withControls.skills) {
+    for (const disposition of ["missing", "platform-filtered"]) {
+      const skills = withControls.skills.flatMap((skill) => {
+        if (skill !== control) return [skill];
+        return disposition === "missing"
+          ? []
+          : [{ ...skill, platforms: ["claude-code"] }];
+      });
+      const ineligible = convertClaudeToCodex({ ...withControls, skills });
+      const label = `${control.name} ${disposition}`;
+      assert.equal(ineligible.codexPlugin, undefined, label);
+      assert.deepEqual(
+        ineligible.sharedScriptDirs,
+        bundle.sharedScriptDirs,
+        label,
+      );
+      assert.deepEqual(
+        ineligible.sharedScriptFiles,
+        bundle.sharedScriptFiles,
+        label,
+      );
+    }
+  }
 });
 
 test("converter path checks treat only ENOENT as absence", async () => {

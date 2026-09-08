@@ -28,6 +28,7 @@ const {
  * @typedef {import("./contracts").CodexHookPlugin} CodexHookPlugin
  * @typedef {import("./contracts").CodexTransformOptions} CodexTransformOptions
  * @typedef {import("./contracts").JsonObject} JsonObject
+ * @typedef {{sharedScriptDirs: import("./contracts").SharedScriptDir[], sharedScriptFiles: import("./contracts").SharedScriptFile[]}} SharedRuntime
  */
 
 const ARGUMENT_HINT_FIELD = skillFrontmatterFieldByLoaderProperty(
@@ -116,6 +117,7 @@ function convertClaudeToCodex(plugin) {
   const skillDirs = skills.map((skill) =>
     convertExistingSkillForCodex(skill, knownCommandNames, knownAgentSkills),
   );
+  const sharedRuntime = sharedRuntimeFor(plugin);
 
   return {
     prompts: [],
@@ -125,15 +127,16 @@ function convertClaudeToCodex(plugin) {
     knownCommands: knownCommandNames,
     knownAgentSkills,
     mcpServers: plugin.mcpServers,
-    codexPlugin: codexHookPluginFor(plugin, skills),
+    ...sharedRuntime,
+    codexPlugin: codexHookPluginFor(plugin, skills, sharedRuntime),
   };
 }
 
-/** @param {ClaudePlugin} plugin @param {ClaudeSkill[]} codexSkills */
-function codexHookPluginFor(plugin, codexSkills) {
+/** @param {ClaudePlugin} plugin @param {ClaudeSkill[]} codexSkills @param {SharedRuntime} sharedRuntime */
+function codexHookPluginFor(plugin, codexSkills, sharedRuntime) {
   if (!plugin.hooks) return undefined;
   if (!hasRequiredHookControlSkills(codexSkills)) return undefined;
-  return convertCodexHookPlugin(plugin);
+  return convertCodexHookPlugin(plugin, sharedRuntime);
 }
 
 /** @param {ClaudeSkill[]} skills */
@@ -146,8 +149,8 @@ function hasRequiredHookControlSkills(skills) {
   );
 }
 
-/** @param {ClaudePlugin} plugin @returns {CodexHookPlugin} */
-function convertCodexHookPlugin(plugin) {
+/** @param {ClaudePlugin} plugin @param {SharedRuntime} sharedRuntime @returns {CodexHookPlugin} */
+function convertCodexHookPlugin(plugin, sharedRuntime) {
   const name = normalizeName(plugin.manifest.name);
   const version = String(plugin.manifest.version ?? "local").trim() || "local";
   const marketplaceName = name;
@@ -174,6 +177,13 @@ function convertCodexHookPlugin(plugin) {
     manifest,
     hooks: cloneJson(plugin.hooks ?? {}),
     hookSourceDir: path.join(plugin.root, "hooks"),
+    ...sharedRuntime,
+  };
+}
+
+/** @param {ClaudePlugin} plugin @returns {SharedRuntime} */
+function sharedRuntimeFor(plugin) {
+  return {
     sharedScriptDirs: [
       {
         executableFiles: [
