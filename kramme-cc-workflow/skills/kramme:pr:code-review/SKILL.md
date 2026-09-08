@@ -12,6 +12,8 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 **Review Aspects (optional):** "$ARGUMENTS"
 
+Before selecting any workflow, read `references/execution-contract.md` in full. Its execution ledger and fail-closed completion gate apply to every mode and rerun. Never replace specialized agents with a parent-only review, silently narrow the scope, cancel reviewers because enough findings exist, or skip stages on zero findings. Partial results are `INCOMPLETE`, never a completed or clean review.
+
 Before selecting a workflow, if `$ARGUMENTS` contains `--loop`, set `LOOP_MODE=true` and remove that flag. Otherwise set `LOOP_MODE=false`. Use the remaining arguments as the normalized review arguments throughout this run and for any review rerun.
 
 If the normalized arguments contain `--no-diff-comments`, set `DIFF_COMMENTS=false` and remove that flag. Otherwise set `DIFF_COMMENTS=true`. Preserve this value for Team Mode and every review rerun.
@@ -158,6 +160,8 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
 
    Build `ACTIVE_REVIEW_DIMENSIONS` from the agents that will actually run after aspect filtering and applicability checks. If any emphasized dimension has no active agent in this set, stop with an error telling the user which emphasized dimensions are inactive. Do not cap unrelated findings when the emphasized review never ran.
 
+   Before launching, initialize the frozen plan and execution ledger using `references/execution-contract.md`. Record every dimension's applicability or explicit exclusion; the helper derives required reviewers and downstream jobs.
+
 7. **Launch Review Agents**
 
    Pass the resolved `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, and PR context from Steps 2 and 4 to all agents so they use the correct diff scope and understand the stated intent of the change. Instruct each agent to review the same unified scope:
@@ -229,6 +233,8 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    **Agent failure handling.** If a selected reviewer agent is unavailable, times out, or returns output that cannot be parsed as findings, record the failed agent name, review dimension, and what was attempted. Continue only if at least one selected reviewer succeeded, and include a degraded-coverage banner in the final report: `Coverage degraded: <agent names> failed; findings below exclude <dimensions>.` If all selected reviewers fail, or if the relevance validator fails, stop without writing `REVIEW_OVERVIEW.md`. Do not fabricate findings or present a partial review as complete. If the slop meta-review fails after primary reviewers succeeded, continue with a degraded-coverage banner that names the failed meta-review and notes that slop warnings may be incomplete.
 
 8. **Validate Relevance**
+
+   Record the successful `integrity` job before starting `relevance`. Record every following stage's actual execution and saved output under the execution contract.
 
    After collecting findings from all agents:
    - Launch **kramme:pr-relevance-validator** with all findings, the resolved `BASE_BRANCH`, and `PR_CONTEXT_JSON` if present
@@ -321,6 +327,8 @@ The recommended fix for a `PR description` finding is always to update the title
 **Severity prefix grammar and dead-code ask shape** — label every finding within each bucket using the severity prefix grammar, and emit removal-planner findings using the verbatim dead-code ask shape; both are defined in `references/review-discipline.md`. The section headers (`## Critical Issues`, `## Important Issues`, `## Suggestions`) remain — the prefix is the finer-grained label inside each section.
 
 12. **Write Findings or Reply Inline**
+
+Complete Step 13's pre-posting checklist and record `final-check` before publishing. Draft the report outside the worktree, include the always-present coverage ledger, and run the execution helper's `seal` command. Only publish a COMPLETE report after exit zero; preserve failed runs as INCOMPLETE under the execution contract. Apply this gate even when every reviewer returned zero findings.
 
 If `INLINE_MODE=true`:
 

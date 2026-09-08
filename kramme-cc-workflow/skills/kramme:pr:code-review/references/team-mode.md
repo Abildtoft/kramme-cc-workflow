@@ -4,6 +4,8 @@ Run a comprehensive PR review using multi-agent execution. Each reviewer runs wi
 
 This reference is loaded by `/kramme:pr:code-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
+Read and apply `references/execution-contract.md` before creating the team. The same frozen plan, invocation IDs, saved outputs and completion validator govern this mode. Initialize the ledger after Step 1. Team cross-messages do not replace any required reviewer, relevance-validation or separate slop meta-review job.
+
 **Review Aspects (optional):** "$ARGUMENTS"
 
 ## Prerequisites
@@ -124,14 +126,11 @@ Create tasks in the shared task list:
 - One task per reviewer: "Review [aspect] in PR changes"
 - Assign each task to its corresponding teammate
 
-**Phase 2 task (blocked on all Phase 1 tasks):**
+**Phase 2: working-tree integrity (blocked on all Phase 1 tasks):**
 
-- "Cross-review: meta-review all findings for slop" -- assigned to deslop-reviewer
-- Pass the findings list (not a diff) and open the task prompt with `Operate in meta-review mode.` The agent's description documents both modes; the input shape and this directive together select meta-review mode.
-- Messages individual reviewers if their suggestions would introduce slop, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
-- Treat meta-review output as annotations over the original finding records. Preserve every raw field and standalone marker such as `OVERENGINEERING`.
+Run the working-tree integrity check described in Step 5 now, before either downstream reviewer consumes findings, and record the `integrity` job. The final completion helper also checks freshness before sealing.
 
-**Phase 3 task (blocked on Phase 2):**
+**Phase 3 task (blocked on successful Phase 2 integrity):**
 
 - "Validate finding relevance against full review scope" -- spawn a new **relevance-validator** teammate
 - Mission from `agents/kramme:pr-relevance-validator.md`
@@ -139,6 +138,13 @@ Create tasks in the shared task list:
 - Cross-references all findings against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
 - Filters pre-existing and out-of-scope issues
 - Treat validator output as classifications over the original finding records, not replacement findings. Preserve every raw field, source teammate, and standalone marker; add only the relevance classification and evidence.
+
+**Phase 4 task (blocked on relevance validation in Phase 3):**
+
+- "Cross-review: meta-review all findings for slop" -- assigned to a separate deslop-reviewer invocation with a distinct host invocation ID
+- Pass the validated findings list (not a diff) and open the task prompt with `Operate in meta-review mode.` The agent's description documents both modes; the input shape and this directive together select meta-review mode.
+- Messages individual reviewers if their suggestions would introduce slop, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
+- Treat meta-review output as annotations over the original finding records. Preserve every raw field and standalone marker such as `OVERENGINEERING`.
 
 ### Step 4: Monitor and Facilitate
 
@@ -165,6 +171,8 @@ Then aggregate:
 8. After final IDs are assigned, reconcile cleanup-collision blocker references and deletion-dependency identities as required by the authoritative discipline reference.
 
 ### Step 6: Write REVIEW_OVERVIEW.md or Reply Inline
+
+Record `previous-context`, `aggregation`, and `final-check` after Phase 4, in that order. Run the discipline pre-posting checklist and seal the exact temporary report under `references/execution-contract.md` before publishing. Failed or missing jobs leave the run INCOMPLETE even with zero findings; preserve partial results under the existing failure rules and never claim team completion.
 
 If `INLINE_MODE=true`, reply with the aggregated review inline using the same template and conventions as `/kramme:pr:code-review` Steps 11-13, and do **not** create or update `REVIEW_OVERVIEW.md`.
 

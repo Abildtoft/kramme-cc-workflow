@@ -550,6 +550,23 @@ The first two replacement skills preserve the existing arguments and behavior. T
 
 Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:code-review`, `/kramme:pr:ux-review`, or directly via the Task tool.
 
+`/kramme:pr:code-review` records a frozen applicability plan, actual invocation IDs,
+saved reviewer results, and every required post-processing stage. Default `all`
+runs every applicable reviewer; explicit aspect filters remain supported. All modes,
+including `--team`, `--inline`, and loop reruns, require a locally validated
+completion seal tied to the current Git scope and exact report. Missing reviewers,
+skipped stages, or stale evidence mean `INCOMPLETE`, even with zero findings.
+Review convergence and the closeout loop recheck the seal before accepting the
+review. Node.js 20+ and Git are required. Temporary evidence lives outside the
+worktree and must remain available until consumers finish; it is never committed.
+This evidence is self-attested and does not independently prove host execution.
+
+Run completion regression checks with
+`node --test kramme-cc-workflow/tests/node/review-execution.test.js kramme-cc-workflow/tests/node/review-completion-eval.test.js`.
+The [completion evaluation guide](kramme-cc-workflow/evals/review-completion/README.md)
+provides seven early-stop and control cases for live model checks. Passing fixture
+tests is not a claim that Astra passed those live cases.
+
 <!-- prettier-ignore-start -->
 <!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
 | Agent | Description |
