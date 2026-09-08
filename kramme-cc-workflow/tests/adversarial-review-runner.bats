@@ -432,9 +432,12 @@ SH
 }
 
 @test "interrupting the timeout wrapper terminates the provider process group" {
+	# Include a slow startup so readiness cannot depend on a one-second race.
+	export ADVERSARIAL_REVIEW_COMMAND_TIMEOUT_SECONDS=15
 	for signal_name in HUP INT TERM; do
 		cat >"$BIN_DIR/claude" <<'SH'
 #!/bin/sh
+sleep 1.2
 printf '%s\n' "$$" >"$FAKE_PROVIDER_PID_FILE"
 printf '%s\n' "$PPID" >"$FAKE_WRAPPER_PID_FILE"
 cat >/dev/null
@@ -452,11 +455,15 @@ SH
 			>"$TMP_DIR/signal-output" 2>&1 &
 		runner_pid=$!
 		attempt=0
-		while [ "$attempt" -lt 100 ]; do
+		while [ "$attempt" -lt 200 ]; do
 			[ -s "$FAKE_WRAPPER_PID_FILE" ] && break
+			kill -0 "$runner_pid" 2>/dev/null || break
 			attempt=$((attempt + 1))
-			sleep 0.01
+			sleep 0.05
 		done
+		if [ ! -s "$FAKE_WRAPPER_PID_FILE" ]; then
+			cat "$TMP_DIR/signal-output" >&2
+		fi
 		[ -s "$FAKE_PROVIDER_PID_FILE" ]
 		[ -s "$FAKE_WRAPPER_PID_FILE" ]
 		provider_pid=$(cat "$FAKE_PROVIDER_PID_FILE")
