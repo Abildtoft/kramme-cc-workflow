@@ -1,6 +1,6 @@
 # Output template: REVIEW_OVERVIEW.md
 
-Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting the section. The only conditional sections are `## Coverage Status`, which appears only when coverage is degraded or the working tree changed during the review (emit only the lines that apply), `## Emphasis Applied`, which appears only when emphasis was requested, and `## Dead Code`, which appears only when there are dead-code findings to summarize.
+Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting the section. Coverage Status is always required under `references/execution-contract.md`. The only conditional sections are `## Emphasis Applied`, which appears only when emphasis was requested, and `## Dead Code`, which appears only when there are dead-code findings to summarize.
 
 ```markdown
 # PR Review Summary
@@ -29,7 +29,24 @@ Review producer: kramme:pr:code-review
 - X Critical/Important findings require manual follow-up (`Action class: manual`)
 - Manual blockers: product/UX/architecture/maintainer decision X; missing/contradictory requirement X; PR-description/process update X; cross-team/external ownership X; unresolved contradiction X; incomplete trace/UNVERIFIED X; dead-code approval X
 
-## Coverage Status (omit when complete)
+## Coverage Status
+
+Review status: COMPLETE | INCOMPLETE
+
+Review execution: {absolute run directory}
+
+Review run: {run ID}
+
+Execution evidence: self-attested; validated locally
+
+- Normalized aspects: {aspects}
+- Applicability: {every dimension, active/excluded/inapplicable and concrete reason}
+
+| Job | Agent invocation ID | Status | Saved output |
+| --- | --- | --- | --- |
+| {every required reviewer and downstream stage} | {actual ID or orchestrator} | {pending/running/succeeded/failed} | {absolute output path or none} |
+
+When coverage is degraded or the working tree changed during the review, include the applicable limitation lines below. Failed seal or missing execution evidence requires INCOMPLETE; never emit the candidate COMPLETE report.
 
 Coverage degraded: {agent names} failed; findings below exclude {dimensions}.
 
