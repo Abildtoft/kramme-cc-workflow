@@ -261,19 +261,26 @@ require_owner() {
   [ "$recorded_owner" = "$expected_owner" ] || fail "reservation belongs to a different owner"
 }
 
+# Decode an already validated claim payload without reading files or changing caller
+# variables. Empty stdout denotes a legacy claim; otherwise stdout is one SHA-256
+# hash plus a newline. The second argument is used only in validation diagnostics.
+decode_publication_claim() (
+  case "$1" in
+    state:*)
+      decoded_baseline_hash=${1#state:}
+      validate_hash "$decoded_baseline_hash" "publication baseline hash"
+      printf '%s\n' "$decoded_baseline_hash"
+      ;;
+    '') ;;
+    *) fail "publication ownership claim has an invalid state record: $2" ;;
+  esac
+)
+
 require_publication_owner() {
   claim_file=$1
   expected_owner=$2
   require_owner "$claim_file" "$expected_owner"
-  publication_baseline_hash=
-  case "$recorded_request_key" in
-    state:*)
-      publication_baseline_hash=${recorded_request_key#state:}
-      validate_hash "$publication_baseline_hash" "publication baseline hash"
-      ;;
-    '') ;;
-    *) fail "publication ownership claim has an invalid state record: $claim_file" ;;
-  esac
+  publication_baseline_hash=$(decode_publication_claim "$recorded_request_key" "$claim_file")
 }
 
 unlink_temp() {
@@ -532,6 +539,63 @@ locate_issue_file() {
   done
 }
 
+# Both hash remainder and issue records use this classification. Emit source
+# lines unchanged, in source order, including repeated issue IDs in log entries.
+classify_publication_view() {
+  awk -v view="$1" -v output="$2" '
+    {
+      line = $0
+      if (view == "overview") {
+        if (line ~ /^##[[:space:]]+General([[:space:]]|$)/) in_general = 1
+        else if (line ~ /^##[[:space:]]+/) in_general = 0
+        if (output == "issues" && in_general && line ~ /^[[:space:]]*\*\*Parallelization:\*\*/) {
+          print "overview-general-parallelization\t" line
+        }
+        token = ""
+        if (line ~ /^[[:space:]]*\|/) {
+          token = line
+          sub(/^[[:space:]]*\|[[:space:]]*/, "", token)
+          sub(/[[:space:]]*\|.*/, "", token)
+          sub(/^ISSUE-/, "", token)
+        }
+        if (token ~ /^(G|P[1-9][0-9]*)-[0-9][0-9][0-9]+$/) {
+          if (output == "issues") print "overview-issue " token "\t" line
+          next
+        }
+        if (output == "issues") next
+        if (line ~ /^[[:space:]]*$/) next
+        if (line ~ /^#[[:space:]]+Open Issues([[:space:]]+Overview)?[[:space:]]*$/) next
+        if (line ~ /^##[[:space:]]+General([[:space:]]|$)/) next
+        if (line ~ /^##[[:space:]]+Phase[[:space:]]+[1-9][0-9]*([[:space:]]|:|$)/) next
+        if (line ~ /^[[:space:]]*\*\*Parallelization:\*\*/) next
+        if (token == "#" || token == "_None_" || token ~ /^[-:]+$/) next
+      } else {
+        if (line ~ /^##[[:space:]]+Current Progress([[:space:]]|$)/) {
+          in_progress = 1
+          next
+        }
+        if (line ~ /^##[[:space:]]+/) in_progress = 0
+        accepted = (line ~ /^[[:space:]]*-[[:space:]]+(Created|Updated)[[:space:]]+/)
+        if (in_progress && line ~ /^[[:space:]]*-[[:space:]]+/) accepted = 1
+        has_issue_id = 0
+        if (accepted) {
+          rest = line
+          while (match(rest, /(ISSUE-)?(G|P[1-9][0-9]*)-[0-9][0-9][0-9]+/)) {
+            token = substr(rest, RSTART, RLENGTH)
+            sub(/^ISSUE-/, "", token)
+            if (output == "issues") print "log-issue " token "\t" line
+            has_issue_id = 1
+            rest = substr(rest, RSTART + RLENGTH)
+          }
+        }
+        if (output == "issues" || has_issue_id) next
+        if (line ~ /^[[:space:]]*$/ || line ~ /^#[[:space:]]+Log[[:space:]]*$/) next
+      }
+      print line
+    }
+  ' "$3"
+}
+
 calculate_publication_state() {
   publication_siw_dir=$1
   overview_path="$publication_siw_dir/OPEN_ISSUES_OVERVIEW.md"
@@ -559,53 +623,14 @@ calculate_publication_state() {
 
   overview_remainder_temp=$(umask 077 && mktemp "${TMPDIR:-/tmp}/siw-overview-remainder.XXXXXX") \
     || fail "could not prepare normalized SIW overview"
-  awk '
-    /^[[:space:]]*$/ { next }
-    /^#[[:space:]]+Open Issues([[:space:]]+Overview)?[[:space:]]*$/ { next }
-    /^##[[:space:]]+General([[:space:]]|$)/ { next }
-    /^##[[:space:]]+Phase[[:space:]]+[1-9][0-9]*([[:space:]]|:|$)/ { next }
-    /^[[:space:]]*\*\*Parallelization:\*\*/ { next }
-    /^[[:space:]]*\|/ {
-      token = $0
-      sub(/^[[:space:]]*\|[[:space:]]*/, "", token)
-      sub(/[[:space:]]*\|.*/, "", token)
-      sub(/^ISSUE-/, "", token)
-      if (token ~ /^(G|P[1-9][0-9]*)-[0-9][0-9][0-9]+$/) next
-      if (token == "#" || token == "_None_") next
-      if (token ~ /^[-:]+$/) next
-    }
-    { print }
-  ' "$overview_path" > "$overview_remainder_temp" \
+  classify_publication_view overview remainder "$overview_path" > "$overview_remainder_temp" \
     || fail "could not normalize SIW overview"
 
   log_remainder_temp=
   if [ -z "$publication_log_missing" ]; then
     log_remainder_temp=$(umask 077 && mktemp "${TMPDIR:-/tmp}/siw-log-remainder.XXXXXX") \
       || fail "could not prepare normalized SIW log"
-    awk '
-      {
-        line = $0
-        if (line ~ /^[[:space:]]*$/) next
-        if (line ~ /^#[[:space:]]+Log[[:space:]]*$/) next
-        if (line ~ /^##[[:space:]]+Current Progress([[:space:]]|$)/) {
-          in_progress = 1
-          next
-        }
-        if (line ~ /^##[[:space:]]+/) in_progress = 0
-        accepted = (line ~ /^[[:space:]]*-[[:space:]]+(Created|Updated)[[:space:]]+/)
-        if (in_progress && line ~ /^[[:space:]]*-[[:space:]]+/) accepted = 1
-        if (accepted) {
-          rest = line
-          has_issue_id = 0
-          while (match(rest, /(ISSUE-)?(G|P[1-9][0-9]*)-[0-9][0-9][0-9]+/)) {
-            has_issue_id = 1
-            rest = substr(rest, RSTART + RLENGTH)
-          }
-          if (has_issue_id) next
-        }
-        print line
-      }
-    ' "$log_path" > "$log_remainder_temp" \
+    classify_publication_view log remainder "$log_path" > "$log_remainder_temp" \
       || fail "could not normalize SIW log"
   fi
 
@@ -714,49 +739,11 @@ calculate_publication_state() {
   cleanup_hash_temps
   cleanup_remainder_temps
 
-  awk '
-    {
-      line = $0
-      if (line ~ /^##[[:space:]]+General([[:space:]]|$)/) {
-        in_general = 1
-      } else if (line ~ /^##[[:space:]]+/) {
-        in_general = 0
-      }
-      if (in_general && line ~ /^[[:space:]]*\*\*Parallelization:\*\*/) {
-        print "overview-general-parallelization\t" line
-      }
-    }
-    /^[[:space:]]*\|/ {
-      row = $0
-      token = $0
-      sub(/^[[:space:]]*\|[[:space:]]*/, "", token)
-      sub(/[[:space:]]*\|.*/, "", token)
-      sub(/^ISSUE-/, "", token)
-      if (token ~ /^(G|P[1-9][0-9]*)-[0-9][0-9][0-9]+$/) {
-        print "overview-issue " token "\t" row
-      }
-    }
-  ' "$overview_path" >> "$state_temp" \
+  classify_publication_view overview issues "$overview_path" >> "$state_temp" \
     || fail "could not index SIW overview issue rows"
 
   if [ -z "$publication_log_missing" ]; then
-    awk '
-      /^##[[:space:]]+Current Progress([[:space:]]|$)/ { in_progress = 1; next }
-      /^##[[:space:]]+/ { in_progress = 0 }
-      {
-        line = $0
-        accepted = (line ~ /^[[:space:]]*-[[:space:]]+(Created|Updated)[[:space:]]+/)
-        if (in_progress && line ~ /^[[:space:]]*-[[:space:]]+/) accepted = 1
-        if (!accepted) next
-        rest = line
-        while (match(rest, /(ISSUE-)?(G|P[1-9][0-9]*)-[0-9][0-9][0-9]+/)) {
-          token = substr(rest, RSTART, RLENGTH)
-          sub(/^ISSUE-/, "", token)
-          print "log-issue " token "\t" line
-          rest = substr(rest, RSTART + RLENGTH)
-        }
-      }
-    ' "$log_path" >> "$state_temp" \
+    classify_publication_view log issues "$log_path" >> "$state_temp" \
       || fail "could not index SIW log issue entries"
   fi
 
@@ -768,6 +755,7 @@ write_publication_baseline() {
   baseline_siw_dir=$1
   baseline_owner=$2
   baseline_hash=$3
+  baseline_manifest_to_write=$4
   baseline_file="$baseline_siw_dir/.issue-publication.baseline"
   baseline_temp=$(umask 077 && mktemp "$baseline_siw_dir/.siw-publication-baseline.XXXXXX") \
     || fail "could not prepare publication baseline in $baseline_siw_dir"
@@ -778,7 +766,7 @@ write_publication_baseline() {
     printf 'state %s\n' "$baseline_hash"
     while IFS= read -r baseline_line || [ -n "$baseline_line" ]; do
       printf '%s\n' "$baseline_line"
-    done < "$state_temp"
+    done < "$baseline_manifest_to_write"
   } > "$baseline_temp" || fail "could not prepare publication baseline: $baseline_temp"
   mv "$baseline_temp" "$baseline_file" || fail "could not publish baseline: $baseline_file"
   baseline_temp=
@@ -819,21 +807,25 @@ read_publication_baseline() {
 }
 
 ensure_publication_baseline() {
+  [ "$#" -eq 5 ] || fail "publication baseline requires explicit current state"
   baseline_siw_dir=$1
   baseline_owner=$2
+  expected_baseline_hash=$3
+  baseline_current_hash=$4
+  baseline_current_manifest=$5
   baseline_file="$baseline_siw_dir/.issue-publication.baseline"
   if [ -e "$baseline_file" ] || [ -L "$baseline_file" ]; then
     read_publication_baseline "$baseline_file"
     if [ "$publication_baseline_owner" = "$baseline_owner" ] \
-      && [ "$publication_baseline_state_hash" = "$publication_baseline_hash" ]; then
+      && [ "$publication_baseline_state_hash" = "$expected_baseline_hash" ]; then
       return
     fi
     unlink "$baseline_file" || fail "could not remove stale publication baseline: $baseline_file"
     cleanup_baseline_temps
   fi
-  [ "$publication_state_hash" = "$publication_baseline_hash" ] \
+  [ "$baseline_current_hash" = "$expected_baseline_hash" ] \
     || fail "publication baseline is missing after SIW state changed; preserve ownership for manual recovery"
-  write_publication_baseline "$baseline_siw_dir" "$baseline_owner" "$publication_baseline_hash"
+  write_publication_baseline "$baseline_siw_dir" "$baseline_owner" "$expected_baseline_hash" "$baseline_current_manifest"
   read_publication_baseline "$baseline_file"
 }
 
@@ -932,20 +924,12 @@ acquire_publication() {
     publication_lock_present=
     if [ -f "$lock_claim" ] && [ ! -L "$lock_claim" ]; then
       read_claim "$lock_claim"
-      publication_baseline_hash=
-      case "$recorded_request_key" in
-        state:*)
-          publication_baseline_hash=${recorded_request_key#state:}
-          validate_hash "$publication_baseline_hash" "publication baseline hash"
-          ;;
-        '') ;;
-        *) fail "publication ownership claim has an invalid state record: $lock_claim" ;;
-      esac
+      publication_baseline_hash=$(decode_publication_claim "$recorded_request_key" "$lock_claim")
       if [ "$recorded_owner" = "$owner" ]; then
         clear_foreign_publication_receipt "$siw_dir" "$owner"
         if [ -n "$publication_baseline_hash" ]; then
           calculate_publication_state "$siw_dir"
-          ensure_publication_baseline "$siw_dir" "$owner"
+          ensure_publication_baseline "$siw_dir" "$owner" "$publication_baseline_hash" "$publication_state_hash" "$state_temp"
         else
           clear_stale_publication_baseline "$siw_dir"
         fi
@@ -961,27 +945,19 @@ acquire_publication() {
         clear_stale_publication_receipt "$siw_dir"
         clear_stale_publication_baseline "$siw_dir"
         publication_baseline_hash=$publication_state_hash
-        write_publication_baseline "$siw_dir" "$owner" "$publication_baseline_hash"
+        write_publication_baseline "$siw_dir" "$owner" "$publication_baseline_hash" "$state_temp"
         validate_reservation_state "$siw_dir"
         return 0
       fi
       last_claim_error=$claim_error
       if [ -f "$lock_claim" ] && [ ! -L "$lock_claim" ]; then
         read_claim "$lock_claim"
-        publication_baseline_hash=
-        case "$recorded_request_key" in
-          state:*)
-            publication_baseline_hash=${recorded_request_key#state:}
-            validate_hash "$publication_baseline_hash" "publication baseline hash"
-            ;;
-          '') ;;
-          *) fail "publication ownership claim has an invalid state record: $lock_claim" ;;
-        esac
+        publication_baseline_hash=$(decode_publication_claim "$recorded_request_key" "$lock_claim")
         if [ "$recorded_owner" = "$owner" ]; then
           clear_foreign_publication_receipt "$siw_dir" "$owner"
           if [ -n "$publication_baseline_hash" ]; then
             calculate_publication_state "$siw_dir"
-            ensure_publication_baseline "$siw_dir" "$owner"
+            ensure_publication_baseline "$siw_dir" "$owner" "$publication_baseline_hash" "$publication_state_hash" "$state_temp"
           else
             clear_stale_publication_baseline "$siw_dir"
           fi
@@ -1001,15 +977,7 @@ acquire_publication() {
 
   if [ -f "$lock_claim" ] && [ ! -L "$lock_claim" ]; then
     read_claim "$lock_claim"
-    publication_baseline_hash=
-    case "$recorded_request_key" in
-      state:*)
-        publication_baseline_hash=${recorded_request_key#state:}
-        validate_hash "$publication_baseline_hash" "publication baseline hash"
-        ;;
-      '') ;;
-      *) fail "publication ownership claim has an invalid state record: $lock_claim" ;;
-    esac
+    publication_baseline_hash=$(decode_publication_claim "$recorded_request_key" "$lock_claim")
     fail "publication is owned by another writer; preserve the lock for owner-guided recovery"
   fi
   if [ -e "$lock_claim" ] || [ -L "$lock_claim" ]; then
@@ -1434,7 +1402,7 @@ derive_changed_issue_ids() {
 
 require_changed_ids_in_receipt() {
   changed_receipt_issue_ids=$1
-  derive_changed_issue_ids "$baseline_state_temp" "$state_temp"
+  derive_changed_issue_ids "$2" "$3"
   while IFS= read -r changed_issue_id || [ -n "$changed_issue_id" ]; do
     case "$changed_issue_id" in
       __MISSING_LOG_UPDATE__:*)
@@ -1458,10 +1426,26 @@ require_changed_ids_in_receipt() {
   done < "$changed_ids_temp"
 }
 
+# All state inputs are required arguments, including an empty baseline hash for a
+# legacy claim. Never fall back to values left by a previous calculation.
 verify_publication_receipt_against_state() {
+  [ "$#" -eq 8 ] || fail "publication receipt verification requires explicit current state"
   siw_dir=$1
   owner=$2
   requested_receipt_issue_ids=$3
+  receipt_current_state_hash=$4
+  receipt_current_overview_hash=$5
+  receipt_current_log_hash=$6
+  receipt_current_manifest=$7
+  receipt_baseline_hash=$8
+  validate_hash "$receipt_current_state_hash" "current publication state hash"
+  validate_hash "$receipt_current_overview_hash" "current publication overview hash"
+  validate_hash "$receipt_current_log_hash" "current publication log hash"
+  [ -f "$receipt_current_manifest" ] && [ ! -L "$receipt_current_manifest" ] \
+    || fail "current publication state manifest is required"
+  if [ -n "$receipt_baseline_hash" ]; then
+    validate_hash "$receipt_baseline_hash" "publication baseline hash"
+  fi
   receipt_file="$siw_dir/.issue-publication.receipt"
   [ -f "$receipt_file" ] && [ ! -L "$receipt_file" ] \
     || fail "publication receipt is required before ownership can be released"
@@ -1512,13 +1496,13 @@ verify_publication_receipt_against_state() {
   done
   exec 3<&-
 
-  [ "$overview_hash" = "$receipt_overview_hash" ] \
+  [ "$receipt_current_overview_hash" = "$receipt_overview_hash" ] \
     || fail "publication receipt does not match the current overview"
-  [ "$log_hash" = "$receipt_log_hash" ] \
+  [ "$receipt_current_log_hash" = "$receipt_log_hash" ] \
     || fail "publication receipt does not match the current log"
-  [ "$publication_state_hash" = "$receipt_state_hash" ] \
+  [ "$receipt_current_state_hash" = "$receipt_state_hash" ] \
     || fail "publication receipt does not match the current SIW issue state"
-  if [ "$receipt_issue_count" -eq 0 ] && [ -n "$publication_baseline_hash" ]; then
+  if [ "$receipt_issue_count" -eq 0 ] && [ -n "$receipt_baseline_hash" ]; then
     fail "publication receipt must contain at least one issue record for non-legacy publication"
   fi
   for requested_issue_id in $requested_receipt_issue_ids; do
@@ -1528,12 +1512,15 @@ verify_publication_receipt_against_state() {
     esac
   done
   require_receipt_reservation_coverage "$siw_dir" "$owner" "$verified_receipt_issue_ids"
-  if [ -n "$publication_baseline_hash" ]; then
-    ensure_publication_baseline "$siw_dir" "$owner"
+  receipt_baseline_manifest=
+  if [ -n "$receipt_baseline_hash" ]; then
+    ensure_publication_baseline "$siw_dir" "$owner" "$receipt_baseline_hash" \
+      "$receipt_current_state_hash" "$receipt_current_manifest"
+    receipt_baseline_manifest=$baseline_state_temp
   fi
-  validate_receipt_views "$state_temp" "$verified_receipt_issue_ids" "${baseline_state_temp:-}"
-  if [ -n "$publication_baseline_hash" ]; then
-    require_changed_ids_in_receipt "$verified_receipt_issue_ids"
+  validate_receipt_views "$receipt_current_manifest" "$verified_receipt_issue_ids" "$receipt_baseline_manifest"
+  if [ -n "$receipt_baseline_hash" ]; then
+    require_changed_ids_in_receipt "$verified_receipt_issue_ids" "$receipt_baseline_manifest" "$receipt_current_manifest"
   fi
 }
 
@@ -1542,6 +1529,7 @@ publish_receipt() {
   owner=$2
   shift 2
   require_publication_owner "$siw_dir/.issue-publication.lock" "$owner"
+  cleanup_baseline_temps
   normalize_receipt_issue_ids "$@"
   if [ -z "$receipt_issue_ids" ] && [ -n "$publication_baseline_hash" ]; then
     fail "publish-receipt requires at least one issue ID for non-legacy publication"
@@ -1550,12 +1538,12 @@ publish_receipt() {
   [ -z "$publication_log_missing" ] \
     || fail "SIW log must exist before a publication receipt can be written"
   if [ -n "$publication_baseline_hash" ]; then
-    ensure_publication_baseline "$siw_dir" "$owner"
+    ensure_publication_baseline "$siw_dir" "$owner" "$publication_baseline_hash" "$publication_state_hash" "$state_temp"
   fi
   require_receipt_reservation_coverage "$siw_dir" "$owner" "$receipt_issue_ids"
   validate_receipt_views "$state_temp" "$receipt_issue_ids" "${baseline_state_temp:-}"
   if [ -n "$publication_baseline_hash" ]; then
-    require_changed_ids_in_receipt "$receipt_issue_ids"
+    require_changed_ids_in_receipt "$receipt_issue_ids" "$baseline_state_temp" "$state_temp"
   fi
 
   receipt_file="$siw_dir/.issue-publication.receipt"
@@ -1578,7 +1566,9 @@ publish_receipt() {
   } > "$receipt_temp" || fail "could not prepare publication receipt: $receipt_temp"
   mv "$receipt_temp" "$receipt_file" || fail "could not publish receipt: $receipt_file"
   receipt_temp=
-  verify_publication_receipt_against_state "$siw_dir" "$owner" "$receipt_issue_ids"
+  verify_publication_receipt_against_state "$siw_dir" "$owner" "$receipt_issue_ids" \
+    "$publication_state_hash" "$overview_hash" "$log_hash" "$state_temp" \
+    "$publication_baseline_hash"
 }
 
 verify_publication_receipt() {
@@ -1586,11 +1576,14 @@ verify_publication_receipt() {
   owner=$2
   shift 2
   require_publication_owner "$siw_dir/.issue-publication.lock" "$owner"
+  cleanup_baseline_temps
   normalize_receipt_issue_ids "$@"
   calculate_publication_state "$siw_dir"
   [ -z "$publication_log_missing" ] \
     || fail "publication receipt does not match the current log"
-  verify_publication_receipt_against_state "$siw_dir" "$owner" "$receipt_issue_ids"
+  verify_publication_receipt_against_state "$siw_dir" "$owner" "$receipt_issue_ids" \
+    "$publication_state_hash" "$overview_hash" "$log_hash" "$state_temp" \
+    "$publication_baseline_hash"
 }
 
 require_publication_evidence() {
@@ -1606,7 +1599,7 @@ require_publication_evidence() {
   [ -n "$publication_baseline_hash" ] \
     || fail "publication receipt is required before ownership can be released"
   calculate_publication_state "$siw_dir"
-  ensure_publication_baseline "$siw_dir" "$owner"
+  ensure_publication_baseline "$siw_dir" "$owner" "$publication_baseline_hash" "$publication_state_hash" "$state_temp"
   [ "$publication_state_hash" = "$publication_baseline_hash" ] \
     || fail "publication receipt is required because SIW state changed"
 }
@@ -1762,7 +1755,7 @@ case "$command" in
     [ -n "$publication_baseline_hash" ] \
       || fail "cannot abandon a legacy reservation without a trustworthy publication baseline"
     calculate_publication_state "$siw_dir"
-    ensure_publication_baseline "$siw_dir" "$owner"
+    ensure_publication_baseline "$siw_dir" "$owner" "$publication_baseline_hash" "$publication_state_hash" "$state_temp"
     [ "$publication_state_hash" = "$publication_baseline_hash" ] \
       || fail "cannot abandon $issue_id after SIW state changed; recover all three SIW views first"
     reservation_claim="$siw_dir/.issue-id-reservations/ISSUE-$issue_id"
