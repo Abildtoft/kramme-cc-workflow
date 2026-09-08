@@ -1284,7 +1284,8 @@ load_reservation_functions() {
   local valid_hash payload
   load_reservation_functions
   valid_hash="$(printf '%064d' 0)"
-  run sh -c '
+  # Pin collation for the existing hash validator's lowercase character range.
+  run env LC_ALL=C sh -c '
     . "$1"
     recorded_request_key=sentinel
     publication_baseline_hash=sentinel
@@ -1297,11 +1298,11 @@ load_reservation_functions() {
   [ "$output" = "$valid_hash" ]
 
   for payload in state: state:abc "state:${valid_hash}0" "state:A${valid_hash:1}"; do
-    run sh -c '. "$1"; decode_publication_claim "$2" claim' sh "$TMP_ROOT/reservation-functions.sh" "$payload"
+    run env LC_ALL=C sh -c '. "$1"; decode_publication_claim "$2" claim' sh "$TMP_ROOT/reservation-functions.sh" "$payload"
     [ "$status" -ne 0 ]
     [ "$output" = 'ERROR: publication baseline hash must be a lowercase SHA-256 hash' ]
   done
-  run sh -c '. "$1"; decode_publication_claim request-key claim' sh "$TMP_ROOT/reservation-functions.sh"
+  run env LC_ALL=C sh -c '. "$1"; decode_publication_claim request-key claim' sh "$TMP_ROOT/reservation-functions.sh"
   [ "$status" -ne 0 ]
   [ "$output" = 'ERROR: publication ownership claim has an invalid state record: claim' ]
 }
