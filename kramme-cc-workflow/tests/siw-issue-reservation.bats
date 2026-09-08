@@ -1272,3 +1272,157 @@ EOF
   set -- "$siw_dir"/.siw-publication-state.*
   [ ! -e "$1" ]
 }
+
+# Load only private definitions so stale-call regressions can exercise contracts
+# that the public CLI always prepares in a fresh process.
+load_reservation_functions() {
+  awk '/^\[ "\$#" -ge 1 \] \|\| usage$/ { exit } { print }' \
+    "$ISSUE_DEFINE_RESERVATION_HELPER" >"$TMP_ROOT/reservation-functions.sh"
+}
+
+@test "siw publication claim decoder preserves legacy framing and rejects invalid state hashes" {
+  local valid_hash payload
+  load_reservation_functions
+  valid_hash="$(printf '%064d' 0)"
+  run sh -c '
+    . "$1"
+    recorded_request_key=sentinel
+    publication_baseline_hash=sentinel
+    decode_publication_claim "state:$2" claim
+    decode_publication_claim "" claim
+    [ "$recorded_request_key" = sentinel ]
+    [ "$publication_baseline_hash" = sentinel ]
+  ' sh "$TMP_ROOT/reservation-functions.sh" "$valid_hash"
+  [ "$status" -eq 0 ]
+  [ "$output" = "$valid_hash" ]
+
+  for payload in state: state:abc "state:${valid_hash}0" "state:A${valid_hash:1}"; do
+    run sh -c '. "$1"; decode_publication_claim "$2" claim' sh "$TMP_ROOT/reservation-functions.sh" "$payload"
+    [ "$status" -ne 0 ]
+    [ "$output" = 'ERROR: publication baseline hash must be a lowercase SHA-256 hash' ]
+  done
+  run sh -c '. "$1"; decode_publication_claim request-key claim' sh "$TMP_ROOT/reservation-functions.sh"
+  [ "$status" -ne 0 ]
+  [ "$output" = 'ERROR: publication ownership claim has an invalid state record: claim' ]
+}
+
+@test "siw attribution matrix preserves exact remainder and per-issue bytes" {
+  load_reservation_functions
+  cat >"$TMP_ROOT/overview" <<'EOF_OVERVIEW'
+# Open Issues Overview
+
+## General Issues
+**Parallelization:** G-001 may run alongside P12-002.
+| # | Title | Status |
+| :--- | --- | --- |
+| _None_ | | |
+| G-001 | first | READY |
+  | ISSUE-P12-002 | second | READY |
+## Phase 12: other
+| P12-003 | third | READY |
+## Notes
+| G-01 | invalid ID | READY |
+Unrelated text G-001
+EOF_OVERVIEW
+  cat >"$TMP_ROOT/overview-remainder" <<'EOF_OVERVIEW'
+## Notes
+| G-01 | invalid ID | READY |
+Unrelated text G-001
+EOF_OVERVIEW
+  {
+    printf 'overview-general-parallelization\t**Parallelization:** G-001 may run alongside P12-002.\n'
+    printf 'overview-issue G-001\t| G-001 | first | READY |\n'
+    printf 'overview-issue P12-002\t  | ISSUE-P12-002 | second | READY |\n'
+    printf 'overview-issue P12-003\t| P12-003 | third | READY |\n'
+  } >"$TMP_ROOT/overview-issues"
+  cat >"$TMP_ROOT/log" <<'EOF_LOG'
+# Log
+
+- Created G-001: first
+  - Updated ISSUE-P12-002 and G-001 and G-001: mixed references
+- Created no issue here
+## Current Progress today
+- Reviewed ISSUE-P12-003: recognized progress bullet
+- Other work without an ID
+## History
+- Reviewed G-001: unrelated outside progress
+- Updated P12-002: recognized outside progress
+Plain G-001 mention
+EOF_LOG
+  cat >"$TMP_ROOT/log-remainder" <<'EOF_LOG'
+- Created no issue here
+- Other work without an ID
+## History
+- Reviewed G-001: unrelated outside progress
+Plain G-001 mention
+EOF_LOG
+  {
+    printf 'log-issue G-001\t- Created G-001: first\n'
+    printf 'log-issue P12-002\t  - Updated ISSUE-P12-002 and G-001 and G-001: mixed references\n'
+    printf 'log-issue G-001\t  - Updated ISSUE-P12-002 and G-001 and G-001: mixed references\n'
+    printf 'log-issue G-001\t  - Updated ISSUE-P12-002 and G-001 and G-001: mixed references\n'
+    printf 'log-issue P12-003\t- Reviewed ISSUE-P12-003: recognized progress bullet\n'
+    printf 'log-issue P12-002\t- Updated P12-002: recognized outside progress\n'
+  } >"$TMP_ROOT/log-issues"
+  local view mode
+  for view in overview log; do
+    for mode in remainder issues; do
+      sh -c '. "$1"; classify_publication_view "$2" "$3" "$4"' sh \
+        "$TMP_ROOT/reservation-functions.sh" "$view" "$mode" "$TMP_ROOT/$view" >"$TMP_ROOT/actual"
+      cmp "$TMP_ROOT/$view-$mode" "$TMP_ROOT/actual"
+    done
+  done
+}
+
+@test "siw receipt verifier cannot reuse prior-call hashes or manifests for missing current inputs" {
+  local siw_dir case_name
+  load_reservation_functions
+  siw_dir="$TMP_ROOT/siw"
+  mkdir -p "$siw_dir/issues"
+  printf '# Open Issues\n' >"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf '# Log\n' >"$siw_dir/LOG.md"
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" acquire "$siw_dir" owner-a 1
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" reserve-exact "$siw_dir" G-001 owner-a
+  printf '# ISSUE-G-001: fixture\n' >"$siw_dir/issues/ISSUE-G-001-fixture.md"
+  printf '| G-001 | fixture | READY |\n' >>"$siw_dir/OPEN_ISSUES_OVERVIEW.md"
+  printf -- '- Created G-001: fixture\n' >>"$siw_dir/LOG.md"
+  sh "$ISSUE_DEFINE_RESERVATION_HELPER" publish-receipt "$siw_dir" owner-a G-001
+
+  for case_name in omitted state overview log manifest baseline-hash baseline-manifest; do
+    run sh -c '
+      . "$1"
+      siw_dir=$2
+      test_case=$3
+      require_publication_owner "$siw_dir/.issue-publication.lock" owner-a
+      calculate_publication_state "$siw_dir"
+      verify_publication_receipt_against_state "$siw_dir" owner-a "" \
+        "$publication_state_hash" "$overview_hash" "$log_hash" "$state_temp" "$publication_baseline_hash"
+      # Leave valid values from both calculation and verification in the shell.
+      current_hash=$publication_state_hash
+      current_overview=$overview_hash
+      current_log=$log_hash
+      current_manifest=$state_temp
+      baseline_hash=$publication_baseline_hash
+      case "$test_case" in
+        omitted) verify_publication_receipt_against_state "$siw_dir" owner-a ""; exit ;;
+        state) current_hash= ;;
+        overview) current_overview= ;;
+        log) current_log= ;;
+        manifest) current_manifest= ;;
+        baseline-hash) baseline_hash=invalid ;;
+        baseline-manifest) unlink "$siw_dir/.issue-publication.baseline" ;;
+      esac
+      verify_publication_receipt_against_state "$siw_dir" owner-a "" \
+        "$current_hash" "$current_overview" "$current_log" "$current_manifest" \
+        "$baseline_hash"
+    ' sh "$TMP_ROOT/reservation-functions.sh" "$siw_dir" "$case_name"
+    [ "$status" -ne 0 ]
+    case "$case_name" in
+      omitted) [[ "$output" == *'requires explicit current state'* ]] ;;
+      state|overview|log) [[ "$output" == *"current publication $case_name hash must be a lowercase SHA-256 hash"* ]] ;;
+      manifest) [[ "$output" == *'current publication state manifest is required'* ]] ;;
+      baseline-hash) [[ "$output" == *'publication baseline hash must be a lowercase SHA-256 hash'* ]] ;;
+      baseline-manifest) [[ "$output" == *'publication baseline is missing after SIW state changed'*  ]] ;;
+    esac
+  done
+}
