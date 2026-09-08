@@ -52,16 +52,53 @@ jobs:
       - name: Run coverage gates
         run: make -C kramme-cc-workflow coverage
 
+  walkthrough-browser-smoke:
+    name: Run walkthrough browser smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Install BATS and locate Chrome
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+          chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
+          "$chrome" --version
+          echo "KRAMME_BROWSER_SMOKE_CHROME=$chrome" >> "$GITHUB_ENV"
+
+      - name: Run required walkthrough interactions
+        env:
+          KRAMME_REQUIRE_BROWSER_SMOKE: "1"
+        run: >-
+          bats --filter '^PR walkthrough supports initial render, tab switch, search, and tour navigation$' kramme-cc-workflow/tests/pr-walkthrough.bats
+
+
   hooks-required:
     name: Run hook tests
     runs-on: ubuntu-latest
-    needs: hooks
+    needs: [hooks, walkthrough-browser-smoke]
     if: ${{ always() }}
     steps:
       - name: Check matrix hook tests
         run: |
           if [ "${{ needs.hooks.result }}" != "success" ]; then
             echo "Hook test matrix did not pass: ${{ needs.hooks.result }}"
+            exit 1
+          fi
+          if [ "${{ needs.walkthrough-browser-smoke.result }}" != "success" ]; then
+            echo "Walkthrough browser smoke did not pass: ${{ needs.walkthrough-browser-smoke.result }}"
             exit 1
           fi
 
