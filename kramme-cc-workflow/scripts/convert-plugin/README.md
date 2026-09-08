@@ -37,6 +37,24 @@ This directory contains the implementation behind `scripts/convert-plugin.js`. T
   remove artifacts, or expose owners, tokens, paths, records, or artifact data.
 - Preserve user-owned files unless they are tracked as managed entries from a previous converter run.
 - Keep platform filtering in the transformer so `kramme-platforms` has one conversion meaning.
+- Build shared runtime metadata independently of hook eligibility. The main
+  `CodexBundle` owns `sharedScriptDirs` and `sharedScriptFiles`; eligible hook
+  packages receive the same arrays as a compatibility projection for mirrors.
+
+## Shared runtime ownership
+
+`sharedRuntimeFor` in `codex-transformer.js` builds the helper inventory once
+per conversion, including when hooks or a required hook control skill are
+absent. `codex-bundle-output.js` uses the top-level bundle arrays for staging
+helpers and rewriting skill Markdown references. Each absent top-level field
+falls back to its legacy `codexPlugin` field; an explicit empty array remains
+empty. `codex-hook-plugin-writer.js` consumes the hook projection to mirror
+helpers into eligible hook packages. This does not change install-state
+ownership or prune obsolete helpers.
+
+The no-hooks, missing-control, full-hooks, and legacy-bundle cases are covered
+by `tests/node/converter-core.test.js` and
+`tests/node/converter-output.test.js`.
 
 ## Transaction responsibility map
 

@@ -23,6 +23,10 @@ const {
 } = require("../../scripts/convert-plugin/codex-writer");
 
 const {
+  convertClaudeToCodex,
+} = require("../../scripts/convert-plugin/codex-transformer");
+
+const {
   emptyCodexBundle,
   emptyPreviousEntries,
   withTempDir,
@@ -775,6 +779,244 @@ test("writer adopts byte-identical unowned prompt and shared-script files", asyn
       'module.exports = "v1";\n',
     );
   });
+});
+
+test("converted skills install executable shared helpers and rewrite resources regardless of hook eligibility", async () => {
+  for (const eligibility of [
+    "no-hooks",
+    "missing-toggle",
+    "missing-configure",
+    "full-hooks",
+  ]) {
+    await withTempDir(async (root) => {
+      const pluginRoot = path.join(root, "plugin");
+      const sourceSkillDir = path.join(pluginRoot, "skills", "review");
+      const body = [
+        '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh"',
+        '"${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh"',
+      ].join("\n");
+      await writeSourceSkill(sourceSkillDir, {
+        "SKILL.md": body,
+        "references/usage.md": body,
+      });
+      for (const relativePath of [
+        "scripts/collect-review-diff.sh",
+        "scripts/dev-server/detect-url.sh",
+      ]) {
+        const sourcePath = path.join(pluginRoot, relativePath);
+        await writeFile(sourcePath, "#!/bin/sh\nprintf 'helper ran\\n'\n");
+        await fs.chmod(sourcePath, 0o644);
+      }
+      const controls = [
+        { name: "kramme:hooks:toggle", excluded: "missing-toggle" },
+        { name: "kramme:hooks:configure-links", excluded: "missing-configure" },
+      ].filter((control) => control.excluded !== eligibility);
+      const controlSkills = [];
+      for (const { name } of controls) {
+        const sourceDir = path.join(pluginRoot, "skills", name);
+        await writeSourceSkill(sourceDir, { "SKILL.md": "Hook control." });
+        controlSkills.push({
+          name,
+          sourceDir,
+          body: "Hook control.",
+          description: "Hook control.",
+        });
+      }
+      const bundle = convertClaudeToCodex({
+        agents: [],
+        commands: [],
+        root: pluginRoot,
+        manifest: { name: "runtime-fixture", version: "1.0.0" },
+        hooks: eligibility === "no-hooks" ? undefined : { PreToolUse: [] },
+        skills: [
+          {
+            name: "review",
+            sourceDir: sourceSkillDir,
+            body,
+            description: "Review.",
+          },
+          ...controlSkills,
+        ],
+      });
+      assert.equal(Boolean(bundle.codexPlugin), eligibility === "full-hooks");
+      await writeCodexBundle(root, bundle, {
+        agentsHome: path.join(root, "agents-home"),
+        confirm: { yes: true },
+        pluginName: "runtime-fixture",
+      });
+      const codexRoot = path.join(root, ".codex");
+      const outputRoots = [codexRoot];
+      if (eligibility === "full-hooks") {
+        outputRoots.push(
+          path.join(
+            codexRoot,
+            ".kramme-plugin-marketplaces",
+            "runtime-fixture",
+            "plugins",
+            "runtime-fixture",
+          ),
+          path.join(
+            codexRoot,
+            "plugins",
+            "cache",
+            "runtime-fixture",
+            "runtime-fixture",
+            "1.0.0",
+          ),
+        );
+      } else {
+        assert.equal(
+          await pathExists(
+            path.join(
+              codexRoot,
+              ".kramme-plugin-marketplaces",
+              "runtime-fixture",
+            ),
+          ),
+          false,
+        );
+        assert.equal(
+          await pathExists(
+            path.join(codexRoot, "plugins", "cache", "runtime-fixture"),
+          ),
+          false,
+        );
+        if (await pathExists(path.join(codexRoot, "config.toml"))) {
+          assert.doesNotMatch(
+            await readText(path.join(codexRoot, "config.toml")),
+            /runtime-fixture/,
+          );
+        }
+      }
+      for (const outputRoot of outputRoots) {
+        for (const relativePath of [
+          "scripts/collect-review-diff.sh",
+          "scripts/dev-server/detect-url.sh",
+        ]) {
+          const helper = path.join(outputRoot, relativePath);
+          assert.equal((await fs.stat(helper)).mode & 0o777, 0o755);
+          const result = spawnSync(helper, [], { encoding: "utf8" });
+          assert.equal(result.error, undefined);
+          assert.equal(result.status, 0);
+          assert.equal(result.stdout, "helper ran\n");
+        }
+      }
+      for (const resource of ["SKILL.md", "references/usage.md"]) {
+        const text = await readText(
+          path.join(codexRoot, "skills", "review", resource),
+        );
+        assert.equal(
+          text.includes(
+            path.join(codexRoot, "scripts", "collect-review-diff.sh"),
+          ),
+          true,
+        );
+        assert.equal(
+          text.includes(
+            path.join(codexRoot, "scripts", "dev-server", "detect-url.sh"),
+          ),
+          true,
+        );
+        assert.doesNotMatch(text, /CLAUDE_PLUGIN_ROOT/);
+      }
+    });
+  }
+});
+
+test("bundle output resolves shared metadata per field with authoritative empty arrays and legacy fallback", async () => {
+  for (const fields of [
+    "legacy",
+    "empty",
+    "empty-dirs",
+    "empty-files",
+    "top-level",
+  ]) {
+    await withTempDir(async (root) => {
+      const bundle = await createTransactionalBundle(root, "v1");
+      assert.ok(bundle.codexPlugin);
+      const sourceDir = path.join(root, "directory-source");
+      await writeFile(path.join(sourceDir, "helper.sh"), "directory helper\n");
+      bundle.codexPlugin.sharedScriptDirs = [
+        { sourceDir, targetDir: "scripts/legacy-dir" },
+      ];
+      if (fields === "empty" || fields === "empty-dirs")
+        bundle.sharedScriptDirs = [];
+      if (fields === "empty" || fields === "empty-files")
+        bundle.sharedScriptFiles = [];
+      if (fields === "top-level") {
+        bundle.sharedScriptDirs = [
+          { sourceDir, targetDir: "scripts/current-dir" },
+        ];
+        bundle.sharedScriptFiles = [
+          {
+            sourceFile: path.join(sourceDir, "helper.sh"),
+            targetPath: "scripts/current.sh",
+          },
+        ];
+      }
+      bundle.generatedSkills = [
+        {
+          name: "references",
+          content: [
+            "scripts/legacy-dir/helper.sh",
+            "scripts/shared.js",
+            "scripts/current-dir/helper.sh",
+            "scripts/current.sh",
+          ]
+            .map((file) => `"\${CLAUDE_PLUGIN_ROOT}/${file}"`)
+            .join("\n"),
+        },
+      ];
+      const codexRoot = path.join(root, "codex-home");
+      const stagingRoot = path.join(root, "codex-staging");
+      await stageCodexBundleOutput(
+        codexRoot,
+        stagingRoot,
+        bundle,
+        emptyPreviousEntries(),
+        "runtime-fixture",
+        {
+          agentsHome: path.join(root, "agents-home"),
+          confirm: { yes: true },
+        },
+      );
+      const content = await readText(
+        path.join(stagingRoot, "skills", "references", "SKILL.md"),
+      );
+      const expectations = [
+        {
+          file: "scripts/legacy-dir/helper.sh",
+          installed: fields === "legacy" || fields === "empty-files",
+        },
+        {
+          file: "scripts/shared.js",
+          installed: fields === "legacy" || fields === "empty-dirs",
+        },
+        {
+          file: "scripts/current-dir/helper.sh",
+          installed: fields === "top-level",
+        },
+        { file: "scripts/current.sh", installed: fields === "top-level" },
+      ];
+      for (const { file, installed } of expectations) {
+        assert.equal(
+          await pathExists(path.join(stagingRoot, file)),
+          installed,
+          `${fields}: ${file}`,
+        );
+        assert.equal(
+          content.includes(path.join(codexRoot, file)),
+          installed,
+          `${fields}: rewrite ${file}`,
+        );
+        assert.equal(
+          content.includes(`\${CLAUDE_PLUGIN_ROOT}/${file}`),
+          !installed,
+          `${fields}: source reference ${file}`,
+        );
+      }
+    });
+  }
 });
 
 test("writer normalizes declared executable shared scripts from non-executable sources", async () => {

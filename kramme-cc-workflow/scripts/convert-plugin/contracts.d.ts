@@ -158,6 +158,8 @@ export type SharedScriptReplacement =
     };
 
 export interface CodexBundle {
+  sharedScriptDirs?: SharedScriptDir[];
+  sharedScriptFiles?: SharedScriptFile[];
   prompts: CodexPrompt[];
   skillDirs: CodexSourceSkillFile[];
   generatedSkills: CodexSkillFile[];

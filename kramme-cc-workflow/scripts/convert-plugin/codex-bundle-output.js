@@ -262,8 +262,10 @@ async function stageCodexBundleOutput(
 ) {
   let agentStagingRoot = null;
   try {
-    const sharedScriptDirs = bundle.codexPlugin?.sharedScriptDirs ?? [];
-    const sharedScriptFiles = bundle.codexPlugin?.sharedScriptFiles ?? [];
+    const sharedScriptDirs =
+      bundle.sharedScriptDirs ?? bundle.codexPlugin?.sharedScriptDirs ?? [];
+    const sharedScriptFiles =
+      bundle.sharedScriptFiles ?? bundle.codexPlugin?.sharedScriptFiles ?? [];
     for (const sharedScriptDir of sharedScriptDirs) {
       if (await pathExists(sharedScriptDir.sourceDir)) {
         await copyDir(
