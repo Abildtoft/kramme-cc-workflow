@@ -618,10 +618,10 @@ find_chrome() {
   [[ "$MISSING_PREREQUISITE" != "Chrome" ]] || return 1
   echo /fixture/chrome
 }
-@test "browser prerequisites" {
-  require_browser_smoke_prerequisites
-}
 BATS
+  # Older Bats versions preprocess test declarations even inside heredocs.
+  printf '%s\n' '@test "browser prerequisites" {' \
+    '  require_browser_smoke_prerequisites' '}' >>"$fixture"
 
   for missing in python3 node WebSocket Chrome; do
     run env MISSING_PREREQUISITE="$missing" KRAMME_REQUIRE_BROWSER_SMOKE=1 bats "$fixture"
