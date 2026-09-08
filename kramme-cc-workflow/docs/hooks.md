@@ -89,6 +89,8 @@ Reports and scans tolerate degraded input by default. They retain valid totals, 
 
 Scan treats JSONL as its canonical streaming format. Whole-document JSON and plaintext use a compatibility fallback limited to 1 MiB per file. Larger non-JSONL files are skipped with diagnostics; `--strict` makes that condition fail the command after rendering the degraded result.
 
+Each scan tracks physical directory and file identities across all supplied roots. Symlink aliases, directory cycles, hardlinks, and overlapping roots do not count the same transcript twice. Device/inode identity is used when available, with a resolved-path fallback when the filesystem supplies no inode. Distinct files with identical content and repeated events within a file still count separately. Identities reset for every scan invocation. Roots retain their supplied order, directory entries retain their sorted order, and directory pruning still applies to the encountered path before it is marked visited. The first encountered unpruned path supplies the transcript and any read diagnostics; later aliases do not retry it within that scan.
+
 The hook is silent and fail-open. If Node.js is unavailable, if the payload cannot be parsed, or if recording fails, the hook returns `{}` and does not block the session.
 
 ## context-links Configuration

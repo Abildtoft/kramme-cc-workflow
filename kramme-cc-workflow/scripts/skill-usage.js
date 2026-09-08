@@ -543,8 +543,13 @@ async function scan(args) {
 
   const diagnostics = createDiagnostics();
   const accumulator = createUsageAccumulator();
+  const visited = { directories: new Set(), files: new Set() };
   for (const entry of parsed._) {
-    for await (const file of scanPath(path.resolve(entry), diagnostics)) {
+    for await (const file of scanPath(
+      path.resolve(entry),
+      diagnostics,
+      visited,
+    )) {
       await scanFile(file, diagnostics, (record) => {
         if (since) {
           const recordedAt = Date.parse(record.recordedAt);
@@ -572,19 +577,39 @@ async function scan(args) {
 /**
  * @param {string} entry
  * @param {UsageDiagnostics} diagnostics
+ * @param {{ directories: Set<string>, files: Set<string> }} visited
  * @returns {AsyncGenerator<string, void, void>}
  */
-async function* scanPath(entry, diagnostics) {
+async function* scanPath(entry, diagnostics, visited) {
   let stat;
   try {
-    stat = await fs.promises.stat(entry);
+    stat = await fs.promises.stat(entry, { bigint: true });
   } catch (error) {
     recordReadFailure(diagnostics, entry, error);
     return;
   }
 
-  if (stat.isDirectory()) {
-    if (shouldPruneScanDirectory(entry)) return;
+  const isDirectory = stat.isDirectory();
+  if (!isDirectory && !stat.isFile()) return;
+  if (isDirectory && shouldPruneScanDirectory(entry)) return;
+
+  let identity;
+  try {
+    // Device/inode also joins hardlinks; realpath covers aliases when no inode is supplied.
+    identity =
+      stat.ino !== 0n
+        ? `inode:${stat.dev}:${stat.ino}`
+        : `path:${await fs.promises.realpath(entry)}`;
+  } catch (error) {
+    recordReadFailure(diagnostics, entry, error);
+    return;
+  }
+  const seen = isDirectory ? visited.directories : visited.files;
+  if (seen.has(identity)) return;
+  // Mark before recursion or consumption, including attempts that report a read failure.
+  seen.add(identity);
+
+  if (isDirectory) {
     let children;
     try {
       children = await fs.promises.readdir(entry);
@@ -594,12 +619,12 @@ async function* scanPath(entry, diagnostics) {
     }
     children.sort((left, right) => left.localeCompare(right));
     for (const child of children) {
-      yield* scanPath(path.join(entry, child), diagnostics);
+      yield* scanPath(path.join(entry, child), diagnostics, visited);
     }
     return;
   }
 
-  if (stat.isFile()) yield entry;
+  yield entry;
 }
 
 /** @param {string} entry */

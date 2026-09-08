@@ -495,6 +495,164 @@ test("scan tolerates corrupt lines and unreadable inputs without losing valid to
   );
 });
 
+test("scan counts physical files once across aliases, cycles and overlapping roots", async (t) => {
+  const root = await tempDir(t);
+  const transcripts = path.join(root, "transcripts");
+  await fs.mkdir(transcripts);
+  const transcript = path.join(transcripts, "original.jsonl");
+  const line = `${JSON.stringify({
+    type: "user",
+    message: { content: "Use /kramme:qa" },
+    session_id: "session-1",
+  })}\n`;
+  await fs.writeFile(transcript, line.repeat(2));
+  await fs.writeFile(path.join(transcripts, "identical.jsonl"), line.repeat(2));
+  await fs.link(transcript, path.join(transcripts, "hardlink.jsonl"));
+  const alias = path.join(root, "alias");
+  await fs.symlink(transcripts, alias, "dir");
+  await fs.symlink(transcripts, path.join(root, "another-alias"), "dir");
+  await fs.symlink(root, path.join(transcripts, "parent-cycle"), "dir");
+  const fileAlias = path.join(root, "file-alias.jsonl");
+  await fs.symlink(transcript, fileAlias);
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT, "scan", alias, root, transcript, fileAlias, "--json", "--strict"],
+    { encoding: "utf8", timeout: 5_000, maxBuffer: 5 * MIB },
+  );
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  assert.deepEqual(JSON.parse(result.stdout), [
+    {
+      skill: "kramme:qa",
+      total: 4,
+      explicit: 4,
+      tool: 0,
+      firstUsedAt: null,
+      lastUsedAt: null,
+      sessions: 1,
+    },
+  ]);
+});
+
+test("scan preserves pruning, traversal order and since/limit with aliases", async (t) => {
+  const root = await tempDir(t);
+  const transcripts = path.join(root, "z-transcripts");
+  await fs.mkdir(transcripts);
+  const transcript = path.join(transcripts, "events.jsonl");
+  const entries = [
+    ["kramme:old", "2026-06-01T00:00:00.000Z"],
+    ["kramme:qa", "2026-07-01T00:00:00.000Z"],
+    ["kramme:qa", "2026-07-02T00:00:00.000Z"],
+    ["kramme:other", "2026-07-03T00:00:00.000Z"],
+  ].map(([skill, timestamp]) =>
+    JSON.stringify({
+      type: "user",
+      message: { content: `Use /${skill}` },
+      timestamp,
+    }),
+  );
+  await fs.writeFile(transcript, [...entries, "{malformed", ""].join("\n"));
+  const alias = path.join(root, "a-alias");
+  await fs.symlink(transcripts, alias, "dir");
+  const pruned = path.join(root, "node_modules");
+  await fs.symlink(transcripts, pruned, "dir");
+  await fs.mkdir(path.join(root, "dist"));
+  await fs.writeFile(path.join(root, "dist", "ignored.jsonl"), "{malformed\n");
+
+  const result = runUsage([
+    "scan",
+    pruned,
+    root,
+    transcript,
+    "--since",
+    "2026-07-01",
+    "--limit",
+    "1",
+    "--json",
+    "--strict",
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    summary: [
+      {
+        skill: "kramme:qa",
+        total: 2,
+        explicit: 2,
+        tool: 0,
+        firstUsedAt: "2026-07-01T00:00:00.000Z",
+        lastUsedAt: "2026-07-02T00:00:00.000Z",
+        sessions: 0,
+      },
+    ],
+    diagnostics: { skippedLines: 1, readFailures: 0 },
+  });
+  assert.equal(
+    result.stderr,
+    `skill-usage: skipped 1 malformed JSONL line file=${path.join(alias, "events.jsonl")}\n`,
+  );
+});
+
+test("scan recreates visited identities for each invocation in one process", async (t) => {
+  const root = await tempDir(t);
+  const transcript = path.join(root, "events.jsonl");
+  const line = `${JSON.stringify({ type: "user", message: { content: "Use /kramme:qa" } })}\n`;
+  await fs.writeFile(transcript, line);
+  const wrapper = [
+    `const { runCli } = require(${JSON.stringify(SCRIPT)});`,
+    `process.argv = [process.execPath, ${JSON.stringify(SCRIPT)}, "scan", ${JSON.stringify(root)}, ${JSON.stringify(transcript)}, "--json", "--strict"];`,
+    "(async () => {",
+    "  await runCli();",
+    '  process.stdout.write("---NEXT---\\n");',
+    `  require("node:fs").appendFileSync(${JSON.stringify(transcript)}, ${JSON.stringify(line)});`,
+    "  await runCli();",
+    "})();",
+  ].join("\n");
+  const result = spawnSync(process.execPath, ["-e", wrapper], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stderr, "");
+  assert.deepEqual(
+    result.stdout
+      .split("---NEXT---\n")
+      .map((part) => JSON.parse(part)[0].total),
+    [1, 2],
+  );
+});
+
+test("scan retains one strict read failure for an unreadable file with aliases", async (t) => {
+  const root = await tempDir(t);
+  const transcript = path.join(root, "unreadable.jsonl");
+  const alias = path.join(root, "alias.jsonl");
+  await fs.writeFile(transcript, "Use /kramme:qa\n");
+  await fs.link(transcript, alias);
+  await fs.chmod(transcript, 0o000);
+  let result;
+  try {
+    if (!(await readIsDenied(transcript))) {
+      t.skip("filesystem permissions do not deny reads in this environment");
+      return;
+    }
+    result = runUsage(["scan", transcript, alias, root, "--json", "--strict"]);
+  } finally {
+    await fs.chmod(transcript, 0o600);
+  }
+
+  assert.equal(result.status, 1);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    summary: [],
+    diagnostics: { skippedLines: 0, readFailures: 1 },
+  });
+  assert.equal(
+    result.stderr,
+    `skill-usage: read failure file=${transcript} reason=EACCES\n`,
+  );
+});
+
 test("scan keeps the bounded non-JSONL compatibility fallback", async (t) => {
   const root = await tempDir(t);
   const notes = path.join(root, "notes.txt");
