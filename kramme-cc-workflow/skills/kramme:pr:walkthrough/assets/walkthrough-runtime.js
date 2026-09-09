@@ -1,6 +1,90 @@
-const data = JSON.parse(
-  document.getElementById("pr-walkthrough-data").textContent,
+/** @typedef {import("./walkthrough-types").Graph} Graph */
+/** @typedef {import("./walkthrough-types").GraphNode} GraphNode */
+
+/**
+ * @template {Element} E
+ * @param {string} id
+ * @param {{new (...args: never[]): E}} elementType
+ * @returns {E}
+ */
+function requiredElement(id, elementType) {
+  const element = document.getElementById(id);
+  if (!(element instanceof elementType)) {
+    throw new Error(`Missing or invalid walkthrough element: ${id}`);
+  }
+  return element;
+}
+
+/** @param {unknown} value @returns {value is Record<string, unknown>} */
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** @param {unknown} value @param {(entry: unknown) => boolean} check */
+function optionalArray(value, check) {
+  return value === undefined || (Array.isArray(value) && value.every(check));
+}
+
+/** @param {unknown} value @returns {value is GraphNode} */
+function isGraphNode(value) {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    ["x", "y"].every(
+      (key) => value[key] === undefined || typeof value[key] === "number",
+    ) &&
+    (value.details === undefined || Array.isArray(value.details)) &&
+    optionalArray(value.files, isRecord) &&
+    optionalArray(value.comments, isRecord) &&
+    optionalArray(value.links, isRecord) &&
+    optionalArray(
+      value.media,
+      (item) => typeof item === "string" || isRecord(item),
+    )
+  );
+}
+
+/** @param {unknown} value @returns {value is Graph} */
+function isGraph(value) {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    optionalArray(value.nodes, isGraphNode) &&
+    optionalArray(
+      value.edges,
+      (edge) =>
+        isRecord(edge) &&
+        typeof edge.source === "string" &&
+        typeof edge.target === "string",
+    ) &&
+    optionalArray(
+      value.tour,
+      (step) =>
+        isRecord(step) &&
+        (step.nodeId === undefined || typeof step.nodeId === "string"),
+    )
+  );
+}
+
+/** @param {unknown} value @returns {value is import("./walkthrough-types").WalkthroughData} */
+function isWalkthroughData(value) {
+  return (
+    isRecord(value) &&
+    (value.meta === undefined || value.meta === null || isRecord(value.meta)) &&
+    optionalArray(value.graphs, isGraph)
+  );
+}
+
+/** @type {unknown} */
+const parsedData = JSON.parse(
+  requiredElement("pr-walkthrough-data", HTMLScriptElement).textContent || "",
 );
+if (!isWalkthroughData(parsedData)) {
+  throw new Error("Invalid walkthrough data");
+}
+const data = parsedData;
+const search = requiredElement("search", HTMLInputElement);
+const canvas = requiredElement("canvas", SVGSVGElement);
 const requiredGraphIds = [
   "system-overview",
   "data-flow",
@@ -11,9 +95,10 @@ const graphs = data.graphs || [];
 const graphById = new Map(graphs.map((graph) => [graph.id, graph]));
 let activeGraphId =
   requiredGraphIds.find((id) => graphById.has(id)) || graphs[0]?.id;
+/** @type {string | null} */
 let selectedNodeId = null;
 let tourIndex = 0;
-const svg = d3.select("#canvas");
+const svg = d3.select(canvas);
 const root = svg.append("g").attr("class", "viewport");
 const edgeLayer = root.append("g").attr("class", "edges");
 const nodeLayer = root.append("g").attr("class", "nodes");
@@ -39,6 +124,7 @@ svg
   .attr("d", "M0,-5L10,0L0,5")
   .attr("fill", "#77736b");
 
+/** @param {unknown} value */
 function esc(value) {
   return String(value ?? "").replace(
     /[&<>"']/g,
@@ -49,14 +135,16 @@ function esc(value) {
         ">": "&gt;",
         '"': "&quot;",
         "'": "&#39;",
-      })[char],
+      })[char] || char,
   );
 }
 
+/** @param {string} value */
 function hasExplicitScheme(value) {
   return /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(value);
 }
 
+/** @param {unknown} value */
 function isSafeHref(value) {
   const text = String(value ?? "").trim();
   if (!text || /[\u0000-\u001F\u007F]/.test(text) || text.startsWith("//")) {
@@ -72,12 +160,14 @@ function isSafeHref(value) {
   }
 }
 
+/** @param {string} value */
 function isSafeDataMediaUrl(value) {
   return /^data:(image\/(?:avif|gif|jpe?g|png|webp)|video\/(?:mp4|webm));base64,[a-z0-9+/=\s]+$/i.test(
     value,
   );
 }
 
+/** @param {unknown} value */
 function isSafeAssetPath(value) {
   const text = String(value ?? "").trim();
   if (
@@ -98,6 +188,7 @@ function isSafeAssetPath(value) {
   return !text.split("/").includes("..");
 }
 
+/** @param {unknown} value */
 function isSafeMediaSource(value) {
   const text = String(value ?? "").trim();
   if (text.toLowerCase().startsWith("data:")) {
@@ -106,6 +197,7 @@ function isSafeMediaSource(value) {
   return isSafeAssetPath(text);
 }
 
+/** @param {unknown} url @param {unknown} label */
 function renderHref(url, label) {
   const text = esc(label || url || "link");
   if (!isSafeHref(url)) {
@@ -114,17 +206,20 @@ function renderHref(url, label) {
   return `<a href="${esc(String(url).trim())}" rel="noreferrer noopener">${text}</a>`;
 }
 
+/** @returns {Graph} */
 function activeGraph() {
   return (
-    graphById.get(activeGraphId) ||
-    graphs[0] || { nodes: [], edges: [], tour: [] }
+    graphById.get(activeGraphId || "") ||
+    graphs[0] || { id: "", nodes: [], edges: [], tour: [] }
   );
 }
 
+/** @param {Graph} graph */
 function nodeMap(graph) {
   return new Map((graph.nodes || []).map((node) => [node.id, node]));
 }
 
+/** @param {GraphNode} node @param {Graph} graph */
 function nodeSize(node, graph) {
   const overview = graph.id === "system-overview";
   return {
@@ -133,20 +228,21 @@ function nodeSize(node, graph) {
   };
 }
 
+/** @param {GraphNode} source @param {GraphNode} target @param {Graph} graph */
 function clippedEndpoint(source, target, graph) {
   const size = nodeSize(target, graph);
-  const dx = target.x - source.x;
-  const dy = target.y - source.y;
+  const dx = (target.x || 0) - (source.x || 0);
+  const dy = (target.y || 0) - (source.y || 0);
   const halfWidth = size.width / 2;
   const halfHeight = size.height / 2;
   if (dx === 0 && dy === 0) {
-    return { x: target.x, y: target.y };
+    return { x: target.x || 0, y: target.y || 0 };
   }
   const scale = Math.min(
     Math.abs(halfWidth / dx) || Infinity,
     Math.abs(halfHeight / dy) || Infinity,
   );
-  return { x: target.x - dx * scale, y: target.y - dy * scale };
+  return { x: (target.x || 0) - dx * scale, y: (target.y || 0) - dy * scale };
 }
 
 function updateMeta() {
@@ -160,16 +256,16 @@ function updateMeta() {
   if (meta.prUrl) {
     parts.push(renderHref(meta.prUrl, meta.prUrl));
   }
-  document.getElementById("meta").innerHTML = parts.join("");
+  requiredElement("meta", HTMLElement).innerHTML = parts.join("");
 }
 
 function renderTabs() {
-  const tabs = document.getElementById("tabs");
+  const tabs = requiredElement("tabs", HTMLElement);
   tabs.innerHTML = "";
   for (const graph of graphs) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = graph.label || graph.id;
+    button.textContent = String(graph.label || graph.id);
     button.dataset.graphId = graph.id;
     button.className = graph.id === activeGraphId ? "active" : "";
     button.addEventListener("click", () => switchGraph(graph.id));
@@ -181,7 +277,8 @@ function render() {
   const graph = activeGraph();
   const nodes = graph.nodes || [];
   const byId = nodeMap(graph);
-  const query = document.getElementById("search").value.trim().toLowerCase();
+  const query = search.value.trim().toLowerCase();
+  /** @param {GraphNode} node */
   const matches = (node) => {
     if (!query) return true;
     const haystack = [
@@ -205,7 +302,7 @@ function render() {
   edgeLayer.selectAll("*").remove();
   nodeLayer.selectAll("*").remove();
   if (!nodes.length) {
-    document.getElementById("detail").innerHTML =
+    requiredElement("detail", HTMLElement).innerHTML =
       '<div class="empty">No nodes defined for this view.</div>';
     return;
   }
@@ -219,9 +316,8 @@ function render() {
     .join("g")
     .attr("class", "edge")
     .attr("data-graph-id", graph.id)
-    .attr(
-      "data-edge-id",
-      (edge, index) => edge.id || `${edge.source}-${edge.target}-${index}`,
+    .attr("data-edge-id", (edge, index) =>
+      String(edge.id || `${edge.source}-${edge.target}-${index}`),
     );
 
   edges.each(function (edge) {
@@ -243,7 +339,7 @@ function render() {
       .attr("x", (start.x + end.x) / 2)
       .attr("y", (start.y + end.y) / 2 - 8)
       .attr("text-anchor", "middle")
-      .text(edge.label || "");
+      .text(String(edge.label || ""));
   });
 
   const cards = nodeLayer
@@ -270,7 +366,7 @@ function render() {
       .attr("y", -size.height / 2)
       .attr("width", size.width)
       .attr("height", size.height)
-      .attr("stroke", node.color || graph.color || "#77736b");
+      .attr("stroke", String(node.color || graph.color || "#77736b"));
     const htmlBlock = group
       .append("foreignObject")
       .attr("x", -size.width / 2)
@@ -296,8 +392,8 @@ function render() {
 
 function renderDetail() {
   const graph = activeGraph();
-  const node = nodeMap(graph).get(selectedNodeId);
-  const detail = document.getElementById("detail");
+  const node = nodeMap(graph).get(selectedNodeId || "");
+  const detail = requiredElement("detail", HTMLElement);
   if (!node) {
     detail.innerHTML = '<div class="empty">Select a node.</div>';
     return;
@@ -370,14 +466,15 @@ function renderDetail() {
 function renderTourStatus() {
   const graph = activeGraph();
   const total = (graph.tour || []).length;
-  const status = document.getElementById("tour-status");
-  const copy = document.getElementById("tour-copy");
+  const status = requiredElement("tour-status", HTMLElement);
+  const copy = requiredElement("tour-copy", HTMLElement);
   const step = activeTourStep();
   status.dataset.tourIndex = String(tourIndex);
   status.textContent = total ? `Step ${tourIndex + 1} / ${total}` : "No tour";
-  copy.textContent = total ? step?.body || step?.summary || "" : "";
+  copy.textContent = String(total ? step?.body || step?.summary || "" : "");
 }
 
+/** @param {string} nodeId */
 function selectNode(nodeId) {
   selectedNodeId = nodeId;
   const graph = activeGraph();
@@ -390,6 +487,7 @@ function selectNode(nodeId) {
   render();
 }
 
+/** @param {string} graphId */
 function switchGraph(graphId) {
   activeGraphId = graphId;
   selectedNodeId = null;
@@ -404,6 +502,7 @@ function activeTourStep() {
   return (graph.tour || [])[tourIndex];
 }
 
+/** @param {number} delta */
 function goTour(delta) {
   const graph = activeGraph();
   const total = (graph.tour || []).length;
@@ -429,7 +528,7 @@ function fitToView() {
   const graph = activeGraph();
   const nodes = graph.nodes || [];
   if (!nodes.length) return;
-  const box = svg.node().getBoundingClientRect();
+  const box = canvas.getBoundingClientRect();
   const xs = nodes.map((node) => node.x || 0);
   const ys = nodes.map((node) => node.y || 0);
   const minX = Math.min(...xs) - 260;
@@ -453,16 +552,23 @@ function resetZoom() {
   svg.transition().duration(180).call(zoom.transform, d3.zoomIdentity);
 }
 
-document.getElementById("fit").addEventListener("click", fitToView);
-document.getElementById("reset").addEventListener("click", resetZoom);
-document
-  .getElementById("previous-tour")
-  .addEventListener("click", () => goTour(-1));
-document.getElementById("next-tour").addEventListener("click", () => goTour(1));
-document.getElementById("restart-tour").addEventListener("click", restartTour);
-document.getElementById("search").addEventListener("input", render);
+requiredElement("fit", HTMLElement).addEventListener("click", fitToView);
+requiredElement("reset", HTMLElement).addEventListener("click", resetZoom);
+requiredElement("previous-tour", HTMLButtonElement).addEventListener(
+  "click",
+  () => goTour(-1),
+);
+requiredElement("next-tour", HTMLElement).addEventListener("click", () =>
+  goTour(1),
+);
+requiredElement("restart-tour", HTMLElement).addEventListener(
+  "click",
+  restartTour,
+);
+search.addEventListener("input", render);
 document.addEventListener("keydown", (event) => {
-  if (event.target?.tagName === "INPUT" && event.key !== "Escape") return;
+  if (event.target instanceof HTMLInputElement && event.key !== "Escape")
+    return;
   if (event.key === "ArrowRight" || event.key === "n") goTour(1);
   if (event.key === "ArrowLeft" || event.key === "p") goTour(-1);
   if (event.key >= "1" && event.key <= "4")
@@ -474,10 +580,10 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "f") fitToView();
   if (event.key === "/") {
     event.preventDefault();
-    document.getElementById("search").focus();
+    search.focus();
   }
   if (event.key === "Escape") {
-    document.getElementById("search").value = "";
+    search.value = "";
     render();
   }
 });

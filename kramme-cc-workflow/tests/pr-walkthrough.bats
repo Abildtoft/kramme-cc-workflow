@@ -531,6 +531,64 @@ PY
   [ "$status" -eq 0 ]
 }
 
+@test "PR walkthrough browser checking accepts valid DOM and D3 callbacks" {
+  cat >"$TMP_DIR/valid.js" <<'JS'
+const input = document.getElementById("search");
+if (input instanceof HTMLInputElement) input.value = "query";
+const fixtureCanvas = document.querySelector("svg");
+if (fixtureCanvas) {
+  const cards = d3.select(fixtureCanvas).selectAll("g").data([{ id: "node" }], (node) => node.id).join("g");
+  cards.each(function (node) {
+    this.getBoundingClientRect();
+    d3.select(this).attr("data-node-id", node.id);
+  });
+  d3.select(fixtureCanvas).call(d3.zoom().on("zoom", (event) => {
+    cards.attr("transform", event.transform);
+  }));
+}
+requestAnimationFrame((time) => Math.round(time));
+JS
+
+  run make -C "$ROOT" lint-js "JAVASCRIPT_BROWSER_ASSETS=$RUNTIME $TMP_DIR/valid.js"
+
+  if [ "$status" -ne 0 ]; then
+    printf '%s\n' "$output" >&2
+    return 1
+  fi
+}
+
+@test "PR walkthrough browser checking rejects DOM, nullable and untyped mistakes" {
+  cat >"$TMP_DIR/invalid.js" <<'JS'
+document.getElementByID("search");
+document.getElementById("missing").textContent = "unchecked";
+function untyped(value) { return value; }
+function unbound() { return this.value; }
+const fixtureCanvas = document.querySelector("svg");
+if (fixtureCanvas) {
+  d3.select(fixtureCanvas).selectAll("g").data([{ id: "node" }], (node) => node.id).join("g").each(function (node) {
+    this.getBoundingClientRectangle();
+    node.missingField;
+  });
+  d3.zoom().on("zoom", (event) => event.missingTransform);
+  d3.zoom().scaleExtent(["small", 3]);
+}
+requestAnimationFrame("later");
+JS
+
+  run make -C "$ROOT" lint-js "JAVASCRIPT_BROWSER_ASSETS=$TMP_DIR/invalid.js"
+
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"getElementByID"* ]]
+  [[ "$output" == *"Object is possibly 'null'"* ]]
+  [[ "$output" == *"Parameter 'value' implicitly has an 'any' type"* ]]
+  [[ "$output" == *"'this' implicitly has type 'any'"* ]]
+  [[ "$output" == *"getBoundingClientRectangle"* ]]
+  [[ "$output" == *"missingField"* ]]
+  [[ "$output" == *"missingTransform"* ]]
+  [[ "$output" == *"Type 'string' is not assignable to type 'number'"* ]]
+  [[ "$output" == *"FrameRequestCallback"* ]]
+}
+
 @test "PR walkthrough renderer preserves runtime placeholder text in graph data" {
   if ! command -v python3 >/dev/null 2>&1; then
     skip "python3 is required for PR walkthrough tests"
@@ -808,6 +866,55 @@ async function main() {
   })()`);
   if (toured.index !== "1" || toured.activeNode !== "output" || toured.copy !== "Inspect the output.") {
     throw new Error(`Tour navigation failed: ${JSON.stringify(toured)}`);
+  }
+
+  const coerced = await evaluate(`(() => {
+    const graph = activeGraph();
+    const node = graph.nodes[0];
+    node.title = 42;
+    node.summary = null;
+    node.width = "240";
+    node.height = "140";
+    node.details = [7, null];
+    node.files = [{path: 123, url: null}];
+    node.comments = [{author: 9, body: null}];
+    node.links = [{url: 456, label: null}];
+    node.media = [{src: null, label: 8}];
+    graph.label = 99;
+    graph.edges[0].label = 17;
+    graph.tour[0].body = 23;
+    if (!isWalkthroughData(data)) throw new Error("Coercible display data rejected");
+    selectNode(node.id);
+    renderTabs();
+    return {
+      title: document.querySelector("#detail h2").textContent,
+      width: document.querySelector('.node-card[data-node-id="input"] rect').getAttribute("width"),
+      edge: document.querySelector(".edge text").textContent,
+      tab: document.querySelector("#tabs button.active").textContent,
+      tour: document.getElementById("tour-copy").textContent
+    };
+  })()`);
+  if (coerced.title !== "42" || coerced.width !== "240" || coerced.edge !== "17" || coerced.tab !== "99" || coerced.tour !== "23") {
+    throw new Error(`Display coercion failed: ${JSON.stringify(coerced)}`);
+  }
+
+  const guards = await evaluate(`(() => {
+    const rejects = (operation) => {
+      try { operation(); return false; } catch { return true; }
+    };
+    return {
+      missing: rejects(() => requiredElement("missing-control", HTMLElement)),
+      wrongKind: rejects(() => requiredElement("tabs", HTMLInputElement)),
+      invalidData: !isWalkthroughData({graphs: [{id: "bad", nodes: [{id: "bad", files: [null]}]}]}),
+      unsafeLink: !renderHref("javascript:alert(1)", "bad").includes("<a "),
+      unsafeMedia: !isSafeMediaSource("data:image/svg+xml;base64,PHN2Zz4=") &&
+        !isSafeMediaSource("assets/../secret.png"),
+      safeMedia: isSafeMediaSource("data:image/png;base64,aGVsbG8=") &&
+        isSafeMediaSource("assets/diagram.png")
+    };
+  })()`);
+  if (!Object.values(guards).every((passed) => passed === true)) {
+    throw new Error(`Runtime guards failed: ${JSON.stringify(guards)}`);
   }
 
   await send("Browser.close");

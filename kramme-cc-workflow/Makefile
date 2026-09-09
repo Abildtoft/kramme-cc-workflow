@@ -110,17 +110,11 @@ check-python-static-inventory: check-python-deps
 		echo "Python static inventory: $$file_count production $$file_noun registered."
 
 lint-js: check-js-deps
-	@tmpdir=$$(mktemp -d); trap 'rm -rf "$$tmpdir"' EXIT; \
-		printf '%s\n' \
-			'declare const d3: any;' \
-			'declare const document: any;' \
-			'declare const requestAnimationFrame: any;' \
-			>"$$tmpdir/browser-globals.d.ts"; \
-		"$(TSC)" -p jsconfig.json && \
+	@"$(TSC)" -p jsconfig.json && \
 		"$(TSC)" --allowJs --checkJs --noEmit --skipLibCheck --strict true \
-			--noImplicitAny false --noImplicitThis false --strictNullChecks false \
 			--ignoreDeprecations 6.0 --target ES2022 --module commonjs --moduleResolution node10 \
-			--lib ES2022 --types node "$$tmpdir/browser-globals.d.ts" $(JAVASCRIPT_BROWSER_ASSETS)
+			--lib ES2022,DOM --types node \
+			skills/kramme:pr:walkthrough/assets/walkthrough-types.d.ts $(JAVASCRIPT_BROWSER_ASSETS)
 
 format-check: check-format-deps check-ruff-deps
 	@cd "$(ROOT_DIR)" && \
