@@ -57,8 +57,11 @@ function sanitizeSharedHelperFiles(value) {
   for (const [relativePath, digest] of Object.entries(value)) {
     if (
       /[\\:\u0000-\u001f\u007f]/.test(relativePath) ||
-      relativePath.split("/").some((part) => !part || part === "." || part === "..")
-    ) continue;
+      relativePath
+        .split("/")
+        .some((part) => !part || part === "." || part === "..")
+    )
+      continue;
     if (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest)) continue;
     entries.push([relativePath, digest]);
   }
