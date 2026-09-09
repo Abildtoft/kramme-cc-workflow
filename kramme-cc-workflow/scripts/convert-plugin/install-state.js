@@ -35,6 +35,7 @@ function sanitizeInstallTimestamp(value) {
 /** @param {unknown} record @returns {InstallEntries} */
 function sanitizeInstallRecord(record) {
   const value = isJsonObject(record) ? record : {};
+  const sharedHelperFiles = sanitizeSharedHelperFiles(value.sharedHelperFiles);
   return {
     hookMarketplaces: sanitizeEntryList(value.hookMarketplaces),
     prompts: sanitizeEntryList(value.prompts),
@@ -43,8 +44,28 @@ function sanitizeInstallRecord(record) {
     skillFiles: sanitizeManagedFileMap(value.skillFiles),
     agentSkills: sanitizeEntryList(value.agentSkills),
     agentSkillFiles: sanitizeManagedFileMap(value.agentSkillFiles),
+    ...(sharedHelperFiles === undefined ? {} : { sharedHelperFiles }),
     updatedAtMs: sanitizeInstallTimestamp(value.updatedAtMs),
   };
+}
+
+/** @param {unknown} value @returns {Record<string, string> | undefined} */
+function sanitizeSharedHelperFiles(value) {
+  if (!isJsonObject(value)) return undefined;
+  /** @type {Array<[string, string]>} */
+  const entries = [];
+  for (const [relativePath, digest] of Object.entries(value)) {
+    if (
+      /[\\:\u0000-\u001f\u007f]/.test(relativePath) ||
+      relativePath
+        .split("/")
+        .some((part) => !part || part === "." || part === "..")
+    )
+      continue;
+    if (typeof digest !== "string" || !/^[a-f0-9]{64}$/.test(digest)) continue;
+    entries.push([relativePath, digest]);
+  }
+  return Object.fromEntries(entries);
 }
 
 /** @param {string} filename */

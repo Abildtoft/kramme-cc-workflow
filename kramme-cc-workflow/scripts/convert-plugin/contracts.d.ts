@@ -122,6 +122,8 @@ export interface InstallEntries {
   skillFiles: ManagedFileMap;
   agentSkills: string[];
   agentSkillFiles: ManagedFileMap;
+  /** Shared helper paths owned by this install, keyed by safe relative path. */
+  sharedHelperFiles?: Record<string, string>;
   updatedAtMs?: number;
 }
 

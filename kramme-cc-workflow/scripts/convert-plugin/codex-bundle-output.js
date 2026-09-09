@@ -1,6 +1,8 @@
 "use strict";
 
 const os = require("os");
+const fs = require("fs/promises");
+const { createHash } = require("crypto");
 const path = require("path");
 const { stageCodexConfig } = require("./codex-config");
 const {
@@ -53,6 +55,7 @@ const {
  * @property {string[]} pluginCaches
  * @property {SharedScriptDir[]} sharedScriptDirs
  * @property {SharedScriptFile[]} sharedScriptFiles
+ * @property {Record<string, string>} sharedHelperFiles
  * @property {string | null | undefined} stagedConfigTargetContent
  * @property {string | null} stagedAgentSkillsRoot
  * @property {Record<string, string[]>} stagedAgentSkillFiles
@@ -396,6 +399,28 @@ async function stageCodexBundleOutput(
       { confirmOptions: extraOpts.confirm },
     );
 
+    /** @type {Record<string, string>} */
+    const sharedHelperFiles = {};
+    const sharedPaths = [];
+    for (const directory of sharedScriptDirs) {
+      const stagedDirectory = path.join(codexStagingRoot, directory.targetDir);
+      if (await pathExists(stagedDirectory)) {
+        for (const file of await listRelativeFiles(stagedDirectory)) {
+          sharedPaths.push(path.posix.join(directory.targetDir, file));
+        }
+      }
+    }
+    for (const file of sharedScriptFiles) {
+      if (await pathExists(path.join(codexStagingRoot, file.targetPath))) {
+        sharedPaths.push(file.targetPath);
+      }
+    }
+    for (const relativePath of sharedPaths) {
+      sharedHelperFiles[relativePath] = createHash("sha256")
+        .update(await fs.readFile(path.join(codexStagingRoot, relativePath)))
+        .digest("hex");
+    }
+
     const stagedConfig = await stageCodexConfig(
       codexRoot,
       codexStagingRoot,
@@ -412,6 +437,7 @@ async function stageCodexBundleOutput(
       pluginCaches: hookPluginResult.pluginCaches,
       sharedScriptDirs,
       sharedScriptFiles,
+      sharedHelperFiles,
       stagedAgentSkillsRoot,
       stagedAgentSkillFiles,
       stagedConfigPath: stagedConfig?.stagedPath ?? null,

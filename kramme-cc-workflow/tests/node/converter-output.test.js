@@ -5,6 +5,11 @@ const { spawnSync } = require("node:child_process");
 const fs = require("fs/promises");
 const path = require("path");
 const test = require("node:test");
+const { createHash } = require("node:crypto");
+const {
+  loadInstallState,
+  setInstallEntries,
+} = require("../../scripts/convert-plugin/install-state");
 
 const {
   stageCodexBundleOutput,
@@ -41,9 +46,145 @@ const {
  * @typedef {import("../../scripts/convert-plugin/contracts").CodexBundle} CodexBundle
  * @typedef {import("../../scripts/convert-plugin/contracts").CodexSkillFile} CodexSkillFile
  * @typedef {import("../../scripts/convert-plugin/contracts").JsonObject} JsonObject
- * @typedef {{ skills: string[], skillFiles: Record<string, string[]>, agentSkills: string[], agentSkillFiles: Record<string, string[]> }} InstallManifestFixture
+ * @typedef {{ skills: string[], skillFiles: Record<string, string[]>, agentSkills: string[], agentSkillFiles: Record<string, string[]>, sharedHelperFiles?: Record<string, string> }} InstallManifestFixture
  * @typedef {{ plugins: Record<string, { codex: InstallManifestFixture }> }} InstallStateFixture
  */
+
+test("shared helper ownership sanitizes paths and preserves unknown legacy ownership", () => {
+  /** @type {import("../../scripts/convert-plugin/contracts").InstallState} */
+  const state = { version: 1, plugins: {} };
+  setInstallEntries(state, "fixture", "codex", {});
+  assert.equal(
+    Object.hasOwn(state.plugins.fixture.codex, "sharedHelperFiles"),
+    false,
+  );
+  const digest = "a".repeat(64);
+  const unsafe = [
+    "/absolute",
+    "../escape",
+    "scripts/../escape",
+    "./helper",
+    "scripts//helper",
+    "scripts/",
+    "C:/helper",
+    "scripts\\helper",
+    "bad\u0000path",
+  ];
+  setInstallEntries(state, "fixture", "codex", {
+    sharedHelperFiles: Object.fromEntries([
+      ...unsafe.map((name) => [name, digest]),
+      ["scripts/valid helper..js", digest],
+      ["scripts/bad.js", "not-a-digest"],
+      ["scripts/uppercase.js", "A".repeat(64)],
+    ]),
+  });
+  assert.deepEqual(state.plugins.fixture.codex.sharedHelperFiles, {
+    "scripts/valid helper..js": digest,
+  });
+  setInstallEntries(state, "fixture", "codex", { sharedHelperFiles: {} });
+  assert.deepEqual(state.plugins.fixture.codex.sharedHelperFiles, {});
+});
+
+test("shared helper ownership survives rebuild, upgrade and transactional rollback without adopting siblings", async () => {
+  await withTempDir(async (root) => {
+    const codexRoot = path.join(root, ".codex");
+    const sourceDir = path.join(root, "source-dir");
+    const sourceFile = path.join(root, "source-file.js");
+    await writeFile(path.join(sourceDir, "nested/helper.js"), "directory-v1");
+    await writeFile(sourceFile, "file-v1");
+    await writeFile(
+      path.join(codexRoot, "scripts/runtime/user.js"),
+      "user content",
+    );
+    const bundle = emptyCodexBundle({
+      sharedScriptDirs: [{ sourceDir, targetDir: "scripts/runtime" }],
+      sharedScriptFiles: [{ sourceFile, targetPath: "scripts/standalone.js" }],
+    });
+    const options = {
+      agentsHome: path.join(root, "agents-home"),
+      confirm: { yes: true },
+      pluginName: "ownership",
+    };
+    await writeCodexBundle(root, bundle, options);
+    const statePath = path.join(codexRoot, ".kramme-install-state.json");
+    const manifestPath = path.join(
+      codexRoot,
+      ".kramme-install-manifests/ownership-codex.json",
+    );
+    const expected = {
+      "scripts/runtime/nested/helper.js": createHash("sha256")
+        .update("directory-v1")
+        .digest("hex"),
+      "scripts/standalone.js": createHash("sha256")
+        .update("file-v1")
+        .digest("hex"),
+    };
+    const stateOnDisk = /** @type {InstallStateFixture} */ (
+      await readJson(statePath)
+    );
+    const manifestOnDisk = /** @type {InstallManifestFixture} */ (
+      await readJson(manifestPath)
+    );
+    assert.deepEqual(
+      stateOnDisk.plugins.ownership.codex.sharedHelperFiles,
+      expected,
+    );
+    assert.deepEqual(manifestOnDisk.sharedHelperFiles, expected);
+    for (const corruption of ["missing", "invalid-json"]) {
+      if (corruption === "missing") await fs.unlink(statePath);
+      else await writeFile(statePath, "invalid json");
+      const rebuilt = /** @type {InstallStateFixture} */ (
+        /** @type {unknown} */ ((await loadInstallState(codexRoot)).state)
+      );
+      assert.deepEqual(
+        rebuilt.plugins.ownership.codex.sharedHelperFiles,
+        expected,
+      );
+    }
+    const priorState = await readText(statePath);
+    const priorManifest = await readText(manifestPath);
+    await assert.rejects(
+      writeCodexBundle(root, bundle, {
+        ...options,
+        onInstallPhase(phase) {
+          if (phase === "shared-scripts") throw new Error("ownership rollback");
+        },
+      }),
+      Error,
+    );
+    assert.equal(
+      await readText(path.join(codexRoot, "scripts/standalone.js")),
+      "file-v1",
+    );
+    assert.equal(await readText(statePath), priorState);
+    assert.equal(await readText(manifestPath), priorManifest);
+    await writeFile(sourceFile, "file-v2");
+    await fs.unlink(path.join(codexRoot, "scripts/standalone.js"));
+    bundle.sharedScriptDirs = [];
+    await writeCodexBundle(root, bundle, options);
+    expected["scripts/standalone.js"] = createHash("sha256")
+      .update("file-v2")
+      .digest("hex");
+    assert.deepEqual(
+      /** @type {InstallStateFixture} */ (await readJson(statePath)).plugins
+        .ownership.codex.sharedHelperFiles,
+      expected,
+    );
+    assert.deepEqual(
+      /** @type {InstallManifestFixture} */ (await readJson(manifestPath))
+        .sharedHelperFiles,
+      expected,
+    );
+    assert.equal(
+      await readText(path.join(codexRoot, "scripts/runtime/nested/helper.js")),
+      "directory-v1",
+    );
+    assert.equal(
+      await readText(path.join(codexRoot, "scripts/runtime/user.js")),
+      "user content",
+    );
+  });
+});
 
 test("empty Codex bundle includes the complete bundle shape", () => {
   assert.deepEqual(emptyCodexBundle(), {
