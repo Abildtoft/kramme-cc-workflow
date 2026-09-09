@@ -18,12 +18,14 @@ bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
 
 ### Running Tests
 
-```bash
-# Run all tests
-make -C kramme-cc-workflow test
+Start with the closest single-file target in [code-map.md](code-map.md#source-to-test-map). Use smoke for representative feedback and the complete gates below for Pull Request and release validation; focused and smoke checks do not replace those gates. The [dated Bats measurements](#measuring-bats-suite-cost) record host conditions and suite costs separately from the older aggregate timings.
 
-# Run the measured cross-language smoke loop (8.9 seconds locally; budget: under 30 seconds)
+```bash
+# Run the representative cross-language smoke loop (budget: under 30 seconds)
 make -C kramme-cc-workflow test-smoke
+
+# Run the complete Node, Python, and Bats suite
+make -C kramme-cc-workflow test
 
 # Run only Bats integration tests
 make -C kramme-cc-workflow test-bats
@@ -96,7 +98,7 @@ The `NODE_TEST_FILE`, `PYTHON_TEST_FILE`, and `BATS_TEST_FILE` values are paths 
 
 ### Pre-PR Verification
 
-Run the closest focused target first when iterating on a change. `make -C kramme-cc-workflow test-smoke` provides representative cross-language feedback; `make -C kramme-cc-workflow test` is the fast default suite. It runs the Node unit tests, Python unit tests, and Bats integration tests. For ordinary Pull Request verification, run:
+Run the closest focused target first when iterating on a change. `make -C kramme-cc-workflow test-smoke` provides representative cross-language feedback; `make -C kramme-cc-workflow test` is the complete default suite. It runs the Node unit tests, Python unit tests, and Bats integration tests. For ordinary Pull Request verification, run:
 
 ```bash
 make -C kramme-cc-workflow pr-verify

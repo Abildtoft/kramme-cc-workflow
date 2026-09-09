@@ -52,7 +52,7 @@ The smallest useful check is the focused test closest to the changed source, sel
 make -C kramme-cc-workflow test-smoke
 ```
 
-The fast default check is:
+The complete default suite runs Node, Python, and Bats tests:
 
 ```bash
 make -C kramme-cc-workflow test
