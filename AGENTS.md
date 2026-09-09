@@ -139,7 +139,7 @@ exit_if_hook_disabled "hook-name" "json" # PostToolUse or Stop
 
 ## Verification
 
-- **ALWAYS** run the smallest meaningful check first and broaden in proportion to the change:
+- **ALWAYS** run the smallest meaningful focused check first, use smoke for representative feedback, and broaden in proportion to the change:
 
 ```bash
 make -C kramme-cc-workflow test      # Fast default suite

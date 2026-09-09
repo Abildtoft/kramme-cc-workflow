@@ -169,6 +169,14 @@ Restart Claude Code after updating for changes to take effect.
 
 ## Getting Started
 
+After installation, start with the smallest useful workflow:
+
+```bash
+/kramme:setup
+```
+
+For contributor changes, run the closest focused check first, use `test-smoke` for representative feedback, and reserve `pr-verify` or `verify` for complete gates.
+
 These skills cover the full lifecycle of a change. Most work runs through the middle phases; only the situational **Chart** phase up front is reached for when a task is too big or foggy to plan in one pass.
 
 Feature specification, API design, Linear implementation planning, review resolution, agent-readiness recommendations, skill authoring/review, and completion verification consider user experience (UX), developer experience (DX), and agent experience (AX) together. Prefer improvements across all three within scope, preserve established behavior and contracts outside the intended change, make intentional changes and material tradeoffs explicit, and support regression claims with relevant checks. Unchanged or inapplicable dimensions are acceptable; the principle does not require extra scope.

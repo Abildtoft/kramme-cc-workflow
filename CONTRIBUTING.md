@@ -53,7 +53,7 @@ The repository-root `package.json` versions the npm installer entrypoint. `kramm
 
 ## Verification
 
-Choose the smallest meaningful check first, then broaden when the change has shared behavior or release impact.
+Choose the smallest meaningful focused check first. Use the smoke target for representative cross-language feedback, then broaden to the complete PR or release gate when the change warrants it.
 
 ```bash
 # Fast default suite

@@ -96,7 +96,7 @@ The `NODE_TEST_FILE`, `PYTHON_TEST_FILE`, and `BATS_TEST_FILE` values are paths 
 
 ### Pre-PR Verification
 
-`make -C kramme-cc-workflow test` is the fast default suite. It runs the Node unit tests, Python unit tests, and Bats integration tests. For ordinary Pull Request verification, run:
+Run the closest focused target first when iterating on a change. `make -C kramme-cc-workflow test-smoke` provides representative cross-language feedback; `make -C kramme-cc-workflow test` is the fast default suite. It runs the Node unit tests, Python unit tests, and Bats integration tests. For ordinary Pull Request verification, run:
 
 ```bash
 make -C kramme-cc-workflow pr-verify
