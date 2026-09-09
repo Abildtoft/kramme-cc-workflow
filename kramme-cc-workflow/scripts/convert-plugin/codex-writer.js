@@ -379,7 +379,9 @@ function buildNextInstallEntries(
       finalizedBundle.cleanedAgentSkills,
     ),
     sharedHelperFiles: {
-      ...(previousEntries.sharedHelperFiles ?? {}),
+      ...(finalizedBundle.cleanedHookMarketplaces || finalizedBundle.cleanedPluginCaches
+        ? {}
+        : previousEntries.sharedHelperFiles ?? {}),
       ...(stagedBundle.sharedHelperFiles ?? {}),
     },
     updatedAtMs: Date.now(),
