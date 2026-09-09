@@ -58,6 +58,7 @@ const {
  *
  * @typedef {Object} PruneStaleManagedFilesOptions
  * @property {string} [label]
+ * @property {Record<string, string>} [expectedDigests]
  *
  * @typedef {Object} CleanupKrammeComponentsOptions
  * @property {string} [label]
