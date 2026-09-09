@@ -378,6 +378,10 @@ function buildNextInstallEntries(
       nextAgentSkills,
       finalizedBundle.cleanedAgentSkills,
     ),
+    sharedHelperFiles: {
+      ...(previousEntries.sharedHelperFiles ?? {}),
+      ...(stagedBundle.sharedHelperFiles ?? {}),
+    },
     updatedAtMs: Date.now(),
   };
 }
