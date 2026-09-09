@@ -263,9 +263,13 @@ async function pruneStaleManagedFiles(
 
     if (!stats.isFile() && !stats.isSymbolicLink()) continue;
     if (stats.isFile() && expectedDigests[relativeFile]) {
-      const digest = createHash("sha256").update(await fs.readFile(targetPath)).digest("hex");
+      const digest = createHash("sha256")
+        .update(await fs.readFile(targetPath))
+        .digest("hex");
       if (digest !== expectedDigests[relativeFile]) {
-        throw new Error(`Cannot remove ${label} ${relativeFile} because it was modified after installation.`);
+        throw new Error(
+          `Cannot remove ${label} ${relativeFile} because it was modified after installation.`,
+        );
       }
     }
     await prepareTransactionMutation(targetPath, { preserveExisting: true });
