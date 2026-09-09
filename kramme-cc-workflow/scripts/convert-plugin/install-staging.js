@@ -1,6 +1,7 @@
 "use strict";
 
 const fs = require("fs/promises");
+const { createHash } = require("crypto");
 const path = require("path");
 const { normalizeName } = require("./frontmatter");
 const { confirm } = require("./confirm");
@@ -57,6 +58,7 @@ const {
  *
  * @typedef {Object} PruneStaleManagedFilesOptions
  * @property {string} [label]
+ * @property {Record<string, string>} [expectedDigests]
  *
  * @typedef {Object} CleanupKrammeComponentsOptions
  * @property {string} [label]
@@ -239,9 +241,10 @@ async function pruneStaleManagedFiles(
   targetDir,
   previousFiles,
   currentFiles,
-  { label = "directory" } = {},
+  { label = "directory", expectedDigests = {} } = {},
 ) {
   await prepareTransactionMutation(targetDir, { preserveExisting: true });
+  const removed = [];
   for (const relativeFile of staleManagedFileSet(previousFiles, currentFiles)) {
     const targetPath = resolveManagedChild(
       targetDir,
@@ -259,9 +262,22 @@ async function pruneStaleManagedFiles(
     }
 
     if (!stats.isFile() && !stats.isSymbolicLink()) continue;
+    if (stats.isFile() && expectedDigests[relativeFile]) {
+      const digest = createHash("sha256")
+        .update(await fs.readFile(targetPath))
+        .digest("hex");
+      if (digest !== expectedDigests[relativeFile]) {
+        throw new Error(
+          `Cannot remove ${label} ${relativeFile} because it was modified after installation.`,
+        );
+      }
+    }
+    await prepareTransactionMutation(targetPath, { preserveExisting: true });
     await fs.rm(targetPath, { force: true });
+    removed.push(relativeFile);
     await removeEmptyAncestorDirs(path.dirname(targetPath), targetDir);
   }
+  return removed;
 }
 
 /** @param {unknown} previousFiles @param {unknown} currentFiles @returns {Set<string>} */

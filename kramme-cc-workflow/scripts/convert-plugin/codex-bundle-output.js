@@ -482,6 +482,35 @@ async function finalizeCodexBundleOutput(
     previousEntries,
   );
 
+  // Remove only helpers this plugin previously recorded and whose bytes still
+  // match the recorded digest. Unknown legacy files remain untouched.
+  const owned = previousEntries.sharedHelperFiles ?? {};
+  const current = stagedBundle.sharedHelperFiles ?? {};
+  const stale = Object.keys(owned).filter(
+    (file) => !Object.hasOwn(current, file),
+  );
+  for (const root of preflight.previousSharedScriptRoots) {
+    const byDir = new Map();
+    for (const file of stale) {
+      const slash = file.lastIndexOf("/");
+      const dir = slash < 0 ? "" : file.slice(0, slash);
+      const rel = slash < 0 ? file : file.slice(slash + 1);
+      if (!byDir.has(dir)) byDir.set(dir, {});
+      byDir.get(dir)[rel] = owned[file];
+    }
+    for (const [dir, digests] of byDir) {
+      await pruneStaleManagedFiles(
+        path.join(root, dir),
+        Object.keys(digests),
+        [],
+        {
+          label: `shared helper ${dir || "."}`,
+          expectedDigests: digests,
+        },
+      );
+    }
+  }
+
   await installSharedScripts(
     codexRoot,
     codexStagingRoot,
