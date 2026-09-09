@@ -53,16 +53,25 @@ The repository-root `package.json` versions the npm installer entrypoint. `kramm
 
 ## Verification
 
-Choose the smallest meaningful check first, then broaden when the change has shared behavior or release impact.
+Choose the smallest meaningful focused check first. Use the smoke target for representative cross-language feedback, then broaden to the complete PR or release gate when the change warrants it.
 
 ```bash
-# Fast default suite
+# Closest focused test for a documentation change (use the code map for other changes)
+make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats
+
+# Representative cross-language feedback
+make -C kramme-cc-workflow test-smoke
+
+# Complete default suite
 make -C kramme-cc-workflow test
 
-# Shell and Python linting
+# Shell, Python, and JavaScript linting
 make -C kramme-cc-workflow lint
 
-# Stronger pre-PR or release gate
+# Normal Pull Request gate
+make -C kramme-cc-workflow pr-verify
+
+# Release-candidate gate
 make -C kramme-cc-workflow verify
 ```
 

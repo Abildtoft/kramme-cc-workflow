@@ -34,6 +34,7 @@ Using the plugin:
 
 Reference:
 
+- [Codex Diagnostics](#codex-diagnostics)
 - [Plugin Structure](#plugin-structure)
 - [Documentation](#documentation)
 - [Related Plugins](#related-plugins)
@@ -130,18 +131,7 @@ node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow --jso
 
 The default output contains `codex_skills=<integer>` followed by `agent_skills=<integer>`. JSON output contains the same two integer fields in an object. `codex_skills` counts converted skill directories plus generated command skills; `agent_skills` counts generated Codex agent skills.
 
-Inspect the resolved plugin and managed install state without changing either output root:
-
-```bash
-node kramme-cc-workflow/scripts/convert-plugin.js doctor kramme-cc-workflow
-node kramme-cc-workflow/scripts/convert-plugin.js doctor kramme-cc-workflow --json
-```
-
-Doctor output is a stable schema-versioned record with `plugin_name`, `plugin_version`, and `plugin_source`; `codex_root` and `agents_root`; `install_state_path`, `install_state_status`, `install_state_from_disk`, and `install_state_recovery_reason`; and a nested `transaction_health` summary. The install-state status is `loaded` when valid state came from disk and `reconstructed` when manifests were inspected after a `missing`, `malformed-json`, or `invalid-shape` state file. Human output uses one `key=value` field per line, renders `transaction_health` as compact JSON, and escapes control characters as `\uNNNN`; `--json` returns the same fields with a JSON `null` recovery reason for healthy state.
-
-`transaction_health` is an advisory point-in-time view of `lock`, `journals`, `recovery_claims`, `recovery_conflicts`, and `backups`. Each collection reports `status`, bounded `entry_count` and `inspected_count` values, `truncated`, and nonzero `status_counts`; the lock aggregates the known install roots and reports only its status. Backup and conflict inspection follows the target-parent locations recorded by structurally valid journals. `absent`, `active`, `stale`, `present`, `suspicious`, `malformed`, `unreadable`, and `unsupported` distinguish the aggregate evidence the inspector can establish without exposing owner metadata or artifact contents. Entry counts can additionally identify a leftover `committed` journal or an artifact that `disappeared` during inspection; either makes the aggregate status `suspicious`. `entry_limit` is the maximum number of entries or discovered roots inspected per collection; `truncated` means one of those bounds was reached, and an entry count that exceeds the limit is a bounded observation of at most one additional entry rather than a total. `metadata_byte_limit` is the maximum accepted owner or journal payload; the bounded reader may probe one additional byte to detect concurrent growth. Races are diagnostic evidence rather than command failures.
-
-The command is read-only: it does not install, repair, clean up, claim recovery, acquire or release locks, or create output directories. It never prints environment values, owner PIDs or tokens, journal records, state-file contents, conflicts, or backed-up data. Paths below the current home directory use `~` to avoid exposing the local username. Other resolved paths remain absolute, so review them before pasting diagnostics into a public issue.
+For read-only install troubleshooting, see [Codex Diagnostics](#codex-diagnostics).
 
 ### Updating
 
@@ -168,6 +158,20 @@ Restart Claude Code after updating for changes to take effect.
 **Auto-update:** Since Claude Code v2.0.70, auto-update can be enabled per-marketplace from the `/plugin` marketplace settings.
 
 ## Getting Started
+
+After installation, start with the smallest useful workflow:
+
+```bash
+/kramme:setup
+```
+
+For an existing code change, run `/kramme:pr:code-review`. Contributors can start with the [closest focused test](kramme-cc-workflow/docs/code-map.md#source-to-test-map); for a documentation edit, run:
+
+```bash
+make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats
+```
+
+Use `test-smoke` for representative feedback. The complete [PR and release gates](#development) remain required at their respective workflow stages.
 
 These skills cover the full lifecycle of a change. Most work runs through the middle phases; only the situational **Chart** phase up front is reached for when a task is too big or foggy to plan in one pass.
 
@@ -678,6 +682,21 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | `skillspector` | Optional security scanning for local skill directories | [NVIDIA/SkillSpector](https://github.com/NVIDIA/SkillSpector) |
 | `surf` | AI-generated illustrations in visual diagrams (optional) | [surf-cli](https://github.com/nicobailon/surf-cli) |
 
+## Codex Diagnostics
+
+Inspect the resolved plugin and managed install state without changing either output root:
+
+```bash
+node kramme-cc-workflow/scripts/convert-plugin.js doctor kramme-cc-workflow
+node kramme-cc-workflow/scripts/convert-plugin.js doctor kramme-cc-workflow --json
+```
+
+Doctor output is a stable schema-versioned record with `plugin_name`, `plugin_version`, and `plugin_source`; `codex_root` and `agents_root`; `install_state_path`, `install_state_status`, `install_state_from_disk`, and `install_state_recovery_reason`; and a nested `transaction_health` summary. The install-state status is `loaded` when valid state came from disk and `reconstructed` when manifests were inspected after a `missing`, `malformed-json`, or `invalid-shape` state file. Human output uses one `key=value` field per line, renders `transaction_health` as compact JSON, and escapes control characters as `\uNNNN`; `--json` returns the same fields with a JSON `null` recovery reason for healthy state.
+
+`transaction_health` is an advisory point-in-time view of `lock`, `journals`, `recovery_claims`, `recovery_conflicts`, and `backups`. Each collection reports `status`, bounded `entry_count` and `inspected_count` values, `truncated`, and nonzero `status_counts`; the lock aggregates the known install roots and reports only its status. Backup and conflict inspection follows the target-parent locations recorded by structurally valid journals. `absent`, `active`, `stale`, `present`, `suspicious`, `malformed`, `unreadable`, and `unsupported` distinguish the aggregate evidence the inspector can establish without exposing owner metadata or artifact contents. Entry counts can additionally identify a leftover `committed` journal or an artifact that `disappeared` during inspection; either makes the aggregate status `suspicious`. `entry_limit` is the maximum number of entries or discovered roots inspected per collection; `truncated` means one of those bounds was reached, and an entry count that exceeds the limit is a bounded observation of at most one additional entry rather than a total. `metadata_byte_limit` is the maximum accepted owner or journal payload; the bounded reader may probe one additional byte to detect concurrent growth. Races are diagnostic evidence rather than command failures.
+
+The command is read-only: it does not install, repair, clean up, claim recovery, acquire or release locks, or create output directories. It never prints environment values, owner PIDs or tokens, journal records, state-file contents, conflicts, or backed-up data. Paths below the current home directory use `~` to avoid exposing the local username. Other resolved paths remain absolute, so review them before pasting diagnostics into a public issue.
+
 ## Plugin Structure
 
 The plugin source lives in `kramme-cc-workflow/`; this root README is the canonical project documentation.
@@ -763,7 +782,13 @@ bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check
 # Explicit macOS, Debian 12+, or Ubuntu 22.04+ setup
 bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
 
-# Fast default suite (Node + Python + Bats)
+# Closest focused test for a documentation change
+make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats
+
+# Representative cross-language feedback
+make -C kramme-cc-workflow test-smoke
+
+# Complete default suite (Node + Python + Bats)
 make -C kramme-cc-workflow test
 
 # Ordinary Pull Request gate

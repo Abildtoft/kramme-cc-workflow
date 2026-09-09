@@ -21,7 +21,7 @@ This repo packages a personal workflow plugin for Claude Code and includes a Cod
 | Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/` | Loads the Claude plugin, transforms components for Codex, and writes managed output under a Codex home. |
 | Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals and the local SkillOpt adapter for the `kramme:skill:review` pilot. |
 | Review completion | `skills/kramme:pr:code-review/scripts/review-execution.js`, `evals/review-completion/` | Self-attested execution ledger, scope/report validation, and independently observed completion evaluations; consumed by review convergence. |
-| Tests | `tests/*.bats`, `tests/test_helper/` | Bats coverage for shell hooks, scripts, converter behavior, eval harnesses, and skill guidance contracts. |
+| Tests | `tests/*.bats`, `tests/node/`, `tests/python/`, `tests/test_helper/` | Bats integration suites plus focused Node and Python unit suites, converter contracts, eval harnesses, and skill guidance contracts. |
 
 ## Runtime Flow
 
@@ -46,10 +46,16 @@ How much independence skills and agents take at runtime is described in [agent-a
 
 ## Verification Model
 
-The fast default check is:
+The smallest useful check is the focused test closest to the changed source, selected from [code-map.md](code-map.md). The representative cross-language smoke loop is:
+
+```bash
+make -C kramme-cc-workflow test-smoke
+```
+
+The complete default suite runs Node, Python, and Bats tests:
 
 ```bash
 make -C kramme-cc-workflow test
 ```
 
-Use `make -C kramme-cc-workflow lint` for shell and Python linting, and `make -C kramme-cc-workflow verify` before larger PRs or release candidates. For focused source-to-test mapping, see [code-map.md](code-map.md).
+Use `make -C kramme-cc-workflow lint` for shell, Python, and JavaScript linting. Use `make -C kramme-cc-workflow pr-verify` for Pull Request gates and `make -C kramme-cc-workflow verify` for release candidates. For focused source-to-test mapping, see [code-map.md](code-map.md).

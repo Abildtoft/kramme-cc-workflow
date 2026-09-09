@@ -1,6 +1,6 @@
 # Code Map
 
-Use this map to choose the first files to read and the closest tests to run. The full command list lives in [development.md](development.md#running-the-tests) and the [Makefile](../Makefile).
+Use this map to choose the first files to read and the closest focused test to run. After the focused check, use `make -C kramme-cc-workflow test-smoke` for representative feedback, `pr-verify` for Pull Request gates, or `verify` for release candidates. The full command list lives in [development.md](development.md#running-the-tests) and the [Makefile](../Makefile).
 
 ## Test Entry Points
 
