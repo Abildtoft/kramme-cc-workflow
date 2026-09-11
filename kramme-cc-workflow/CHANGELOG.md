@@ -22,6 +22,46 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 - **Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`. Existing prompts and automation must remove `--auto`; no-argument calls use the canonical branch review scope, while former base-branch arguments must become explicit file or directory scopes. The replacement verifies and checkpoints scoped uncommitted input, then commits each simplification separately. Ship this command removal only in the next major release.
 
+## [0.79.0] - 2026-09-11
+
+### Added
+
+- Record shared helper ownership (#916)
+- Separate backlog readiness from startability (#902)
+- Attach visual evidence during PR creation (#890)
+- Append dirty work to safe remote branches (#889)
+- Separate product and spec audit responsibilities (#888)
+
+### Changed
+
+- Clarify onboarding and verification guidance (#914)
+- Type validated text contracts (#910)
+- Make publication state explicit (#908)
+- Reuse inventory discovery and reads (#904)
+- Map transaction responsibilities (#903)
+- Remove redundant epilogue sections (#900)
+- Add UX, DX, and AX guidance (#899)
+- **BREAKING:** Retire standalone TDD skill (#887)
+
+### Fixed
+
+- Safely prune stale managed helper files (#917)
+- Normalize structured question policy (#915)
+- Restore strict browser asset type checking (#913)
+- Count physical transcripts once (#911)
+- Install shared helpers without hooks (#909)
+- Require evidence for review completion (#907)
+- Normalize invocation metadata booleans (#905)
+- Sequence cleanup after deletion outcomes (#901)
+- Protect current workflow report and plan names (#896)
+- Invalidate findings after commit drift (#897)
+- Enforce production-only Node thresholds (#898)
+- Validate options before plugin loading (#895)
+- Protect aliased Conductor workspaces (#894)
+- Stop deleting refs and absorbing staged work (#891)
+- Preserve formatter selection and diagnostics (#892)
+- Accept exact checkpoint scope subsets (#893)
+
 ## [0.78.0] - 2026-08-31
 
 ### Added
@@ -960,6 +1000,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.79.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.78.0...v0.79.0
 [0.78.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.77.0...v0.78.0
 [0.77.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.76.0...v0.77.0
 [0.76.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.75.0...v0.76.0
