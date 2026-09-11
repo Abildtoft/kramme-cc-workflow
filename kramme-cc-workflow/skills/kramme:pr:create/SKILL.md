@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:create
 description: Create a PR from the current branch with a generated description. UI-facing changes trigger best-effort local environment startup and screenshot/video capture when straightforward, and successful evidence is attached. Rewrites unpublished work into narrative commits, recovers an exact-tip remote, or safely appends committed and auto-included local work when the existing remote is at or behind local HEAD.
-argument-hint: "[--auto] [--draft] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
+argument-hint: "[--auto] [--draft] [--rebase-first] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -71,11 +71,12 @@ Parse `$ARGUMENTS` for optional flags before starting:
 
 - `--auto` -> set `AUTO_MODE=true` and `REQUIRE_GENERATED_DESCRIPTION=true`, then remove the flag from the remaining arguments. Auto mode authorizes the nested unstacked rewrite but does not synthesize the separate stack-wide authorization capability.
 - `--draft` -> set `DRAFT_MODE=true` and remove the flag from the remaining arguments.
+- `--rebase-first` -> set `REBASE_FIRST=true` and remove the flag from the remaining arguments. The delegated rebase runs before feature-branch selection and the workflow restarts after it completes.
 - `--linear-issue <ISSUE-ID>` -> validate the value against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, store it as `LINEAR_ISSUE_OVERRIDE`, and remove the flag and value. Reject a missing or invalid value before pre-validation. This caller-supplied identifier is authoritative and takes precedence over branch-name extraction.
 - `--require-generated-description` -> set `REQUIRE_GENERATED_DESCRIPTION=true` and remove the flag. This orchestration-only safety mode forbids placeholder fallback when `kramme:pr:generate-description` returns no usable output.
 - `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a non-auto invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, existing-PR, or path-specific remote-state checks. Backup and remote absence apply to the fresh-remote rewrite path; exact-tip recovery never pushes; clean remote fast-forward mode preserves local history; remote append rewrites only the unpublished tail after its captured remote OID. Every existing-remote publication uses a lease tied to that OID.
 
-Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant.
+Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REBASE_FIRST=false`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant.
 
 `--auto` means:
 
@@ -107,6 +108,10 @@ Read the pre-validation checks from `references/pre-validation-checks.md`. Run a
 ## Steps 2-3: Branch Handling
 
 Read the branch and base selection instructions from `references/branch-and-platform-handling.md`. Capture `{entry-branch}` / `{entry-commit}`, resolve one validated remote `{base-source-ref}`, pin its full commit OID as immutable `{base-ref}`, retain `{base-branch}` as metadata, select a validated `{feature-branch}`, capture `{observed-origin-oid}`, and record `{branch-action}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
+
+### Optional rebase-first
+
+When `REBASE_FIRST=true`, after Step 2 resolves `{base-branch}` and before Step 3 selects or validates the feature branch, invoke `kramme:pr:rebase` with `--force-push --base {base-branch}` through the Skill tool. The delegated skill owns conflict handling and the lease-protected push. Require a successful completion, then restart this workflow at Step 1 to capture the rebased entry state; do not reuse pre-rebase OIDs or remote classification. Any conflict, lease failure, or incomplete rebase is a hard blocker.
 
 ### Conductor workspaces
 
