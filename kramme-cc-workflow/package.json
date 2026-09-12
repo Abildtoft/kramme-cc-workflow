@@ -22,7 +22,6 @@
     "verify:pr": "make pr-verify"
   },
   "dependencies": {
-    "smol-toml": "^1.7.0",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

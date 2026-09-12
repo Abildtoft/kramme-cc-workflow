@@ -37,6 +37,8 @@ const MARKETPLACE_MANIFEST = path.join(
   "plugins",
   "marketplace.json",
 );
+const OWNERSHIP_MARKER = ".kramme-plugin-marketplace.json";
+const OWNERSHIP_MARKER_VERSION = 1;
 
 /**
  * Write a Codex marketplace containing one native plugin built from the bundle.
@@ -78,6 +80,13 @@ async function buildCodexMarketplace(outputRoot, bundle) {
     path.join(outputRoot, MARKETPLACE_MANIFEST),
     marketplaceManifest(codexPlugin),
   );
+  await writeJson(path.join(outputRoot, OWNERSHIP_MARKER), {
+    generatedBy: "kramme-cc-workflow",
+    markerVersion: OWNERSHIP_MARKER_VERSION,
+    marketplaceName: codexPlugin.marketplaceName,
+    pluginName: codexPlugin.name,
+    pluginVersion: codexPlugin.version,
+  });
 
   return { marketplaceRoot: outputRoot, pluginRoot, skillCount };
 }
@@ -257,5 +266,6 @@ function marketplaceManifest(codexPlugin) {
 
 module.exports = {
   MARKETPLACE_MANIFEST,
+  OWNERSHIP_MARKER,
   buildCodexMarketplace,
 };

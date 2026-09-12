@@ -23,6 +23,15 @@ plugin) ;;
 esac
 
 case "${2:-} ${3:-}" in
+"marketplace list")
+	if [ -f "$source_marker" ]; then
+		src="$(cat "$source_marker")"
+		marketplace_name="$(sed -n 's/.*"name": *"\([^"]*\)".*/\1/p' "$src/.agents/plugins/marketplace.json" | head -n1)"
+		printf '{"marketplaces":[{"name":"%s","root":"%s","marketplaceSource":{"sourceType":"local","source":"%s"}}]}\n' "$marketplace_name" "$src" "$src"
+	else
+		printf '{"marketplaces":[]}\n'
+	fi
+	;;
 "marketplace add")
 	src="${4:?marketplace source}"
 	if [ -f "$source_marker" ] && [ "$(cat "$source_marker")" != "$src" ]; then

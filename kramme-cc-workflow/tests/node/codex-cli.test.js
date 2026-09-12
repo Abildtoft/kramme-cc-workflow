@@ -64,6 +64,9 @@ async function createMarketplace(root, codexPlugin) {
     ),
     "demo\n",
   );
+  await writeJson(path.join(marketplaceRoot, ".agents", "plugins", "marketplace.json"), {
+    name: codexPlugin.marketplaceName,
+  });
   return marketplaceRoot;
 }
 
@@ -97,7 +100,7 @@ test("register adds the marketplace, installs the plugin, and verifies the cache
   });
 });
 
-test("register replaces a marketplace registered from a different source", async () => {
+test("register refuses to replace a marketplace registered from a different source", async () => {
   await withTempDir(async (root) => {
     const codexHome = path.join(root, "codex-home");
     const codexPlugin = fixtureCodexPluginPackage({ name: "demo-plugin" });
@@ -106,21 +109,26 @@ test("register replaces a marketplace registered from a different source", async
       path.join(codexHome, ".fake-marketplace-source"),
       path.join(root, "previous-marketplace"),
     );
+    await writeJson(
+      path.join(root, "previous-marketplace", ".agents", "plugins", "marketplace.json"),
+      { name: "demo-plugin" },
+    );
     const log = path.join(root, "codex.log");
 
-    await withEnv(
-      {
-        FAKE_CODEX_LOG: log,
-        PATH: `${FAKE_CODEX_BIN}${path.delimiter}${process.env.PATH}`,
-      },
-      () => registerCodexPlugin({ codexHome, codexPlugin, marketplaceRoot }),
+    await assert.rejects(
+      withEnv(
+        {
+          FAKE_CODEX_LOG: log,
+          PATH: `${FAKE_CODEX_BIN}${path.delimiter}${process.env.PATH}`,
+        },
+        () => registerCodexPlugin({ codexHome, codexPlugin, marketplaceRoot }),
+      ),
+      /Refusing to replace marketplace demo-plugin/,
     );
 
     assert.deepEqual((await readText(log)).trim().split("\n"), [
       `plugin marketplace add ${marketplaceRoot}`,
-      "plugin marketplace remove demo-plugin",
-      `plugin marketplace add ${marketplaceRoot}`,
-      "plugin add demo-plugin@demo-plugin --json",
+      "plugin marketplace list --json",
     ]);
   });
 });
@@ -158,31 +166,36 @@ test("register fails clearly when Codex is missing, refuses the install, or inst
   });
 });
 
-test("unregister removes the plugin and marketplace and only warns on failures", async () => {
+test("unregister removes the plugin and marketplace and propagates failures", async () => {
   await withTempDir(async (root) => {
     const codexHome = path.join(root, "codex-home");
     const codexPlugin = fixtureCodexPluginPackage({ name: "demo-plugin" });
+    const marketplaceRoot = await createMarketplace(root, codexPlugin);
     const cached = path.join(codexHome, codexPlugin.cacheRelativePath, "x");
     await writeFile(cached, "x\n");
-    await writeFile(path.join(codexHome, ".fake-marketplace-source"), "/src");
+    await writeFile(
+      path.join(codexHome, ".fake-marketplace-source"),
+      marketplaceRoot,
+    );
     const fakePath = `${FAKE_CODEX_BIN}${path.delimiter}${process.env.PATH}`;
-    const warnings = /** @type {string[]} */ ([]);
-
     await withEnv({ PATH: fakePath }, () =>
       unregisterCodexPlugin({
         codexHome,
         codexPlugin,
-        warn: (message) => warnings.push(message),
+        marketplaceRoot,
       }),
     );
-    assert.equal(warnings.length, 0);
     assert.equal(await pathExists(cached), false);
     assert.equal(
       await pathExists(path.join(codexHome, ".fake-marketplace-source")),
       false,
     );
 
-    await withEnv(
+    await writeFile(
+      path.join(codexHome, ".fake-marketplace-source"),
+      marketplaceRoot,
+    );
+    await assert.rejects(withEnv(
       {
         FAKE_CODEX_FAIL_MARKETPLACE_REMOVE: "1",
         FAKE_CODEX_FAIL_REMOVE: "1",
@@ -192,13 +205,9 @@ test("unregister removes the plugin and marketplace and only warns on failures",
         unregisterCodexPlugin({
           codexHome,
           codexPlugin,
-          warn: (message) => warnings.push(message),
+          marketplaceRoot,
         }),
-    );
-    assert.deepEqual(warnings, [
-      "codex plugin remove failed (exit 1): Error: plugin removal refused by fixture",
-      "codex plugin marketplace remove failed (exit 1): Error: marketplace removal refused by fixture",
-    ]);
+    ), /codex plugin remove failed/);
   });
 });
 

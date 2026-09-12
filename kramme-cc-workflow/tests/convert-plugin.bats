@@ -132,7 +132,7 @@ module.exports = {
   },
 };
 JS
-	for poisoned in codex-plugin-builder legacy-install-cleanup; do
+	for poisoned in codex-cli codex-plugin-builder legacy-install-cleanup; do
 		cat >"$module_root/$poisoned.js" <<'JS'
 "use strict";
 
@@ -325,6 +325,7 @@ plugin add kramme-cc-workflow@kramme-cc-workflow --json" ]
 
 	# Reinstalling replaces the generated marketplace in place.
 	printf 'stale\n' >"$MARKETPLACE_ROOT/stale.txt"
+	node -e 'const fs = require("fs"); const file = process.argv[1]; const marker = JSON.parse(fs.readFileSync(file)); marker.pluginVersion = "0.0.1"; fs.writeFileSync(file, JSON.stringify(marker));' "$MARKETPLACE_ROOT/.kramme-plugin-marketplace.json"
 	install_repo_plugin
 	[ "$status" -eq 0 ]
 	[ ! -e "$MARKETPLACE_ROOT/stale.txt" ]
@@ -361,6 +362,29 @@ plugin add kramme-cc-workflow@kramme-cc-workflow --json" ]
 	[ ! -e "$FAKE_LOG" ]
 }
 
+@test "install refuses a same-name marketplace without the ownership marker" {
+	require_node
+	mkdir -p "$TMP_DIR/foreign/.agents/plugins"
+	cat >"$TMP_DIR/foreign/.agents/plugins/marketplace.json" <<JSON
+{"name":"kramme-cc-workflow"}
+JSON
+	printf 'mine\n' >"$TMP_DIR/foreign/notes.txt"
+	install_repo_plugin --marketplace-dir "$TMP_DIR/foreign"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"ownership could not be verified"* ]]
+	[ "$(cat "$TMP_DIR/foreign/notes.txt")" = "mine" ]
+	[ ! -e "$FAKE_LOG" ]
+}
+
+@test "install keeps legacy output when native registration fails" {
+	require_node
+	create_legacy_install
+	run env PATH="$MOCK_BIN:$PATH" FAKE_CODEX_LOG="$FAKE_LOG" FAKE_CODEX_FAIL_ADD=1 node "$SCRIPT" install "$REPO_ROOT" --codex-home "$CODEX_HOME_DIR" --agents-home "$AGENTS_HOME_DIR" --yes
+	[ "$status" -eq 1 ]
+	[ -f "$CODEX_HOME_DIR/skills/kramme:legacy:skill/SKILL.md" ]
+	[ -f "$CODEX_HOME_DIR/.kramme-install-state.json" ]
+}
+
 @test "install reports a missing Codex CLI after building the marketplace" {
 	require_node
 	# A PATH with node but no codex, regardless of what the host has installed.
@@ -382,7 +406,8 @@ plugin add kramme-cc-workflow@kramme-cc-workflow --json" ]
 	run_with_fake_codex node "$SCRIPT" uninstall "$REPO_ROOT" --codex-home "$CODEX_HOME_DIR" --agents-home "$AGENTS_HOME_DIR" --yes
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Uninstalled kramme-cc-workflow from $CODEX_HOME_DIR"* ]]
-	[ "$(cat "$FAKE_LOG")" = "plugin remove kramme-cc-workflow@kramme-cc-workflow
+	[ "$(cat "$FAKE_LOG")" = "plugin marketplace list --json
+plugin remove kramme-cc-workflow@kramme-cc-workflow
 plugin marketplace remove kramme-cc-workflow" ]
 	[ ! -e "$MARKETPLACE_ROOT" ]
 	[ ! -e "$CACHE_ROOT" ]

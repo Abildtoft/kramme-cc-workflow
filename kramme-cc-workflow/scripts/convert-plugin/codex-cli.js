@@ -65,12 +65,55 @@ function codexCommandError(command, result) {
   );
 }
 
+/** @param {CodexCommandResult} result */
+function isMissingRegistration(result) {
+  return /not (configured|installed|found)|no plugin/i.test(
+    `${result.stderr}\n${result.stdout}`,
+  );
+}
+
+/** @param {string} codexHome @returns {Promise<Array<{name: string, root: string}>>} */
+async function listCodexMarketplaces(codexHome) {
+  const result = await runCodex(
+    ["plugin", "marketplace", "list", "--json"],
+    { codexHome },
+  );
+  if (result.status !== 0) {
+    throw codexCommandError("plugin marketplace list", result);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(result.stdout);
+  } catch (error) {
+    throw new Error("codex plugin marketplace list returned invalid JSON.", {
+      cause: error,
+    });
+  }
+  if (!parsed || !Array.isArray(parsed.marketplaces)) {
+    throw new Error("codex plugin marketplace list returned no marketplaces.");
+  }
+  /** @type {Array<{name?: unknown, root?: unknown}>} */
+  const marketplaces = parsed.marketplaces;
+  return marketplaces
+    .filter(
+      /** @returns {marketplace is {name: string, root: string}} */
+      (marketplace) =>
+        marketplace &&
+        typeof marketplace.name === "string" &&
+        typeof marketplace.root === "string",
+    )
+    .map((marketplace) => ({
+      name: marketplace.name,
+      root: marketplace.root,
+    }));
+}
+
 /**
  * Register the built marketplace with Codex and install the plugin from it.
  *
- * Codex refuses to re-add a marketplace name from a different source, so an
- * existing registration is removed first. Codex copies the plugin into its own
- * cache; the converted skills reference that cache directory, so the reported
+ * Codex refuses to re-add a marketplace name from a different source. A
+ * replacement is never forced through an existing registration. Codex copies
+ * the plugin into its own cache; the converted skills reference that cache directory, so the reported
  * install path must match the one baked into the build.
  *
  * @param {{ codexHome: string, marketplaceRoot: string, codexPlugin: CodexPluginPackage }} options
@@ -83,19 +126,18 @@ async function registerCodexPlugin({
 }) {
   const { marketplaceName, name, cacheRelativePath } = codexPlugin;
   const addArgs = ["plugin", "marketplace", "add", marketplaceRoot];
-  let added = await runCodex(addArgs, { codexHome });
+  const added = await runCodex(addArgs, { codexHome });
   if (
     added.status !== 0 &&
     /already added from a different source/.test(added.stderr + added.stdout)
   ) {
-    const removed = await runCodex(
-      ["plugin", "marketplace", "remove", marketplaceName],
-      { codexHome },
+    const existing = (await listCodexMarketplaces(codexHome)).find(
+      (marketplace) => marketplace.name === marketplaceName,
     );
-    if (removed.status !== 0) {
-      throw codexCommandError("plugin marketplace remove", removed);
-    }
-    added = await runCodex(addArgs, { codexHome });
+    const source = existing?.root ?? "an unknown source";
+    throw new Error(
+      `Refusing to replace marketplace ${marketplaceName} from ${source}; expected ${marketplaceRoot}. Remove the existing registration explicitly before retrying.`,
+    );
   }
   if (added.status !== 0) {
     throw codexCommandError("plugin marketplace add", added);
@@ -119,29 +161,38 @@ async function registerCodexPlugin({
 }
 
 /**
- * Remove the plugin and marketplace registration. Missing registrations are
- * reported but do not fail the removal.
+ * Remove the plugin and marketplace registration. Missing registrations do
+ * not fail the removal.
  *
- * @param {{ codexHome: string, codexPlugin: CodexPluginPackage, warn?: (message: string) => void }} options
+ * @param {{ codexHome: string, codexPlugin: CodexPluginPackage, marketplaceRoot: string }} options
  */
-async function unregisterCodexPlugin({ codexHome, codexPlugin, warn }) {
-  const report = warn ?? console.warn;
+async function unregisterCodexPlugin({
+  codexHome,
+  codexPlugin,
+  marketplaceRoot,
+}) {
+  const existing = (await listCodexMarketplaces(codexHome)).find(
+    (marketplace) => marketplace.name === codexPlugin.marketplaceName,
+  );
+  if (!existing) return;
+  if (!(await samePath(existing.root, marketplaceRoot))) {
+    throw new Error(
+      `Refusing to remove marketplace ${codexPlugin.marketplaceName} from ${existing.root}; expected ${marketplaceRoot}.`,
+    );
+  }
   const removed = await runCodex(
     ["plugin", "remove", `${codexPlugin.name}@${codexPlugin.marketplaceName}`],
     { codexHome },
   );
-  if (removed.status !== 0) {
-    report(codexCommandError("plugin remove", removed).message);
+  if (removed.status !== 0 && !isMissingRegistration(removed)) {
+    throw codexCommandError("plugin remove", removed);
   }
   const marketplaceRemoved = await runCodex(
     ["plugin", "marketplace", "remove", codexPlugin.marketplaceName],
     { codexHome },
   );
-  if (marketplaceRemoved.status !== 0) {
-    report(
-      codexCommandError("plugin marketplace remove", marketplaceRemoved)
-        .message,
-    );
+  if (marketplaceRemoved.status !== 0 && !isMissingRegistration(marketplaceRemoved)) {
+    throw codexCommandError("plugin marketplace remove", marketplaceRemoved);
   }
 }
 
@@ -183,6 +234,7 @@ async function samePath(left, right) {
 
 module.exports = {
   defaultCodexHome,
+  listCodexMarketplaces,
   registerCodexPlugin,
   runCodex,
   unregisterCodexPlugin,

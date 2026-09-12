@@ -82,17 +82,18 @@ async function runInstall(parsed) {
   } = require("./convert-plugin/codex-plugin-builder");
   const { registerCodexPlugin } = require("./convert-plugin/codex-cli");
 
-  await cleanupLegacyInstall({
-    agentsHome,
-    codexHome,
-    confirmOptions,
-    pluginName,
-  });
   await replaceMarketplace(marketplaceRoot, bundle, buildCodexMarketplace);
   const installed = await registerCodexPlugin({
     codexHome,
     codexPlugin: bundle.codexPlugin,
     marketplaceRoot,
+  });
+  await cleanupLegacyInstall({
+    agentsHome,
+    codexHome,
+    confirmOptions,
+    pluginName,
+    preservePaths: [marketplaceRoot, installed.installedPath],
   });
   console.log(
     `Installed ${bundle.codexPlugin.name} ${bundle.codexPlugin.version} to ${installed.installedPath}`,
@@ -110,8 +111,12 @@ async function runUninstall(parsed) {
     cleanupLegacyInstall,
   } = require("./convert-plugin/legacy-install-cleanup");
 
-  await unregisterCodexPlugin({ codexHome, codexPlugin: bundle.codexPlugin });
   await assertReplaceableMarketplaceRoot(marketplaceRoot, bundle);
+  await unregisterCodexPlugin({
+    codexHome,
+    codexPlugin: bundle.codexPlugin,
+    marketplaceRoot,
+  });
   await fs.rm(marketplaceRoot, { force: true, recursive: true });
   await fs.rmdir(path.dirname(marketplaceRoot)).catch(() => {});
   await cleanupLegacyInstall({
@@ -206,8 +211,10 @@ async function assertReplaceableMarketplaceRoot(marketplaceRoot, bundle) {
   if (entries.length === 0) return;
   const {
     MARKETPLACE_MANIFEST,
+    OWNERSHIP_MARKER,
   } = require("./convert-plugin/codex-plugin-builder");
   let manifest;
+  let ownership;
   try {
     manifest = JSON.parse(
       await fs.readFile(
@@ -215,12 +222,22 @@ async function assertReplaceableMarketplaceRoot(marketplaceRoot, bundle) {
         "utf8",
       ),
     );
+    ownership = JSON.parse(
+      await fs.readFile(path.join(marketplaceRoot, OWNERSHIP_MARKER), "utf8"),
+    );
   } catch {
     manifest = null;
+    ownership = null;
   }
-  if (manifest?.name !== bundle.codexPlugin.marketplaceName) {
+  const owned =
+    ownership?.generatedBy === "kramme-cc-workflow" &&
+    ownership?.markerVersion === 1 &&
+    ownership?.marketplaceName === bundle.codexPlugin.marketplaceName &&
+    ownership?.pluginName === bundle.codexPlugin.name &&
+    typeof ownership?.pluginVersion === "string";
+  if (!owned || manifest?.name !== bundle.codexPlugin.marketplaceName) {
     throw new Error(
-      `Refusing to replace ${marketplaceRoot}: it is not a marketplace generated for ${bundle.codexPlugin.marketplaceName}.`,
+      `Refusing to replace ${marketplaceRoot}: ownership could not be verified for ${bundle.codexPlugin.marketplaceName}.`,
     );
   }
 }
@@ -255,12 +272,13 @@ function validateOptions(command, parsed, allowed) {
   if (parsed._.length > 1) {
     throw new Error(`${command} accepts at most one plugin name or path.`);
   }
-  // Read every option eagerly so malformed values fail before any module or
-  // plugin loading happens.
+  // Read path values eagerly so malformed options fail before plugin loading.
   readPathOption(parsed, "out");
   readPathOption(parsed, "marketplace-dir");
-  resolveHomeRoots(parsed);
-  readConfirmOptions(parsed);
+  if (command === "install" || command === "uninstall") {
+    resolveHomeRoots(parsed);
+    readConfirmOptions(parsed);
+  }
   readBooleanOption(parsed, "json");
 }
 
