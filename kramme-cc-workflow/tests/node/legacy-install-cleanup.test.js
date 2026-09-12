@@ -212,18 +212,34 @@ test("legacy cleanup deletes an AGENTS.md that only held the tool map", async ()
 test("legacy cleanup preserves paths used by the new native install", async () => {
   await withTempDir(async (root) => {
     const { agentsHome, codexHome } = await createLegacyInstall(root);
-    const marketplace = path.join(codexHome, ".kramme-plugin-marketplaces", "legacy-plugin");
-    const cache = path.join(codexHome, "plugins", "cache", "legacy-plugin", "legacy-plugin", "0.1.0");
-    await withMutedConsole(() => cleanupLegacyInstall({
-      agentsHome,
+    const marketplace = path.join(
       codexHome,
-      confirmOptions: { yes: true },
-      pluginName: "legacy-plugin",
-      preservePaths: [marketplace, cache],
-    }));
+      ".kramme-plugin-marketplaces",
+      "legacy-plugin",
+    );
+    const cache = path.join(
+      codexHome,
+      "plugins",
+      "cache",
+      "legacy-plugin",
+      "legacy-plugin",
+      "0.1.0",
+    );
+    await withMutedConsole(() =>
+      cleanupLegacyInstall({
+        agentsHome,
+        codexHome,
+        confirmOptions: { yes: true },
+        pluginName: "legacy-plugin",
+        preservePaths: [marketplace, cache],
+      }),
+    );
     assert.equal(await pathExists(path.join(marketplace, "x")), true);
     assert.equal(await pathExists(path.join(cache, "x")), true);
-    assert.equal(await pathExists(path.join(codexHome, "skills", "kramme:demo:run")), false);
+    assert.equal(
+      await pathExists(path.join(codexHome, "skills", "kramme:demo:run")),
+      false,
+    );
   });
 });
 
@@ -300,7 +316,11 @@ test("legacy cleanup recovers a manifest-only install", async () => {
     const codexHome = path.join(root, "codex-home");
     const agentsHome = path.join(root, "agents-home");
     await writeJson(
-      path.join(codexHome, ".kramme-install-manifests", "legacy-plugin-codex.json"),
+      path.join(
+        codexHome,
+        ".kramme-install-manifests",
+        "legacy-plugin-codex.json",
+      ),
       { skills: ["kramme:legacy:skill"] },
     );
     await writeFile(
@@ -316,8 +336,14 @@ test("legacy cleanup recovers a manifest-only install", async () => {
       }),
     );
     assert.equal(result.status, "removed");
-    assert.equal(await pathExists(path.join(codexHome, "skills", "kramme:legacy:skill")), false);
-    assert.equal(await pathExists(path.join(codexHome, ".kramme-install-manifests")), false);
+    assert.equal(
+      await pathExists(path.join(codexHome, "skills", "kramme:legacy:skill")),
+      false,
+    );
+    assert.equal(
+      await pathExists(path.join(codexHome, ".kramme-install-manifests")),
+      false,
+    );
   });
 });
 
@@ -331,8 +357,14 @@ test("legacy cleanup preserves other plugin records", async () => {
         second: { codex: { skills: ["kramme:second"] } },
       },
     });
-    await writeFile(path.join(codexHome, "skills", "kramme:first", "SKILL.md"), "1\n");
-    await writeFile(path.join(codexHome, "skills", "kramme:second", "SKILL.md"), "2\n");
+    await writeFile(
+      path.join(codexHome, "skills", "kramme:first", "SKILL.md"),
+      "1\n",
+    );
+    await writeFile(
+      path.join(codexHome, "skills", "kramme:second", "SKILL.md"),
+      "2\n",
+    );
     await withMutedConsole(() =>
       cleanupLegacyInstall({
         agentsHome,
@@ -341,9 +373,17 @@ test("legacy cleanup preserves other plugin records", async () => {
         pluginName: "first",
       }),
     );
-    assert.equal(await pathExists(path.join(codexHome, "skills", "kramme:first")), false);
-    assert.equal(await pathExists(path.join(codexHome, "skills", "kramme:second")), true);
-    const state = JSON.parse(await readText(path.join(codexHome, ".kramme-install-state.json")));
+    assert.equal(
+      await pathExists(path.join(codexHome, "skills", "kramme:first")),
+      false,
+    );
+    assert.equal(
+      await pathExists(path.join(codexHome, "skills", "kramme:second")),
+      true,
+    );
+    const state = JSON.parse(
+      await readText(path.join(codexHome, ".kramme-install-state.json")),
+    );
     assert.deepEqual(Object.keys(state.plugins), ["second"]);
   });
 });
@@ -351,7 +391,10 @@ test("legacy cleanup preserves other plugin records", async () => {
 test("legacy cleanup fails closed on unreadable ownership metadata", async () => {
   await withTempDir(async (root) => {
     const codexHome = path.join(root, "codex-home");
-    await writeFile(path.join(codexHome, ".kramme-install-state.json"), "{not json");
+    await writeFile(
+      path.join(codexHome, ".kramme-install-state.json"),
+      "{not json",
+    );
     await assert.rejects(
       cleanupLegacyInstall({
         agentsHome: path.join(root, "agents-home"),
@@ -361,6 +404,9 @@ test("legacy cleanup fails closed on unreadable ownership metadata", async () =>
       }),
       /Cannot safely clean legacy Codex output/,
     );
-    assert.equal(await pathExists(path.join(codexHome, ".kramme-install-state.json")), true);
+    assert.equal(
+      await pathExists(path.join(codexHome, ".kramme-install-state.json")),
+      true,
+    );
   });
 });

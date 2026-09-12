@@ -64,9 +64,12 @@ async function createMarketplace(root, codexPlugin) {
     ),
     "demo\n",
   );
-  await writeJson(path.join(marketplaceRoot, ".agents", "plugins", "marketplace.json"), {
-    name: codexPlugin.marketplaceName,
-  });
+  await writeJson(
+    path.join(marketplaceRoot, ".agents", "plugins", "marketplace.json"),
+    {
+      name: codexPlugin.marketplaceName,
+    },
+  );
   return marketplaceRoot;
 }
 
@@ -110,7 +113,13 @@ test("register refuses to replace a marketplace registered from a different sour
       path.join(root, "previous-marketplace"),
     );
     await writeJson(
-      path.join(root, "previous-marketplace", ".agents", "plugins", "marketplace.json"),
+      path.join(
+        root,
+        "previous-marketplace",
+        ".agents",
+        "plugins",
+        "marketplace.json",
+      ),
       { name: "demo-plugin" },
     );
     const log = path.join(root, "codex.log");
@@ -195,19 +204,22 @@ test("unregister removes the plugin and marketplace and propagates failures", as
       path.join(codexHome, ".fake-marketplace-source"),
       marketplaceRoot,
     );
-    await assert.rejects(withEnv(
-      {
-        FAKE_CODEX_FAIL_MARKETPLACE_REMOVE: "1",
-        FAKE_CODEX_FAIL_REMOVE: "1",
-        PATH: fakePath,
-      },
-      () =>
-        unregisterCodexPlugin({
-          codexHome,
-          codexPlugin,
-          marketplaceRoot,
-        }),
-    ), /codex plugin remove failed/);
+    await assert.rejects(
+      withEnv(
+        {
+          FAKE_CODEX_FAIL_MARKETPLACE_REMOVE: "1",
+          FAKE_CODEX_FAIL_REMOVE: "1",
+          PATH: fakePath,
+        },
+        () =>
+          unregisterCodexPlugin({
+            codexHome,
+            codexPlugin,
+            marketplaceRoot,
+          }),
+      ),
+      /codex plugin remove failed/,
+    );
   });
 });
 

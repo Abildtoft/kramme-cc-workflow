@@ -74,10 +74,9 @@ function isMissingRegistration(result) {
 
 /** @param {string} codexHome @returns {Promise<Array<{name: string, root: string}>>} */
 async function listCodexMarketplaces(codexHome) {
-  const result = await runCodex(
-    ["plugin", "marketplace", "list", "--json"],
-    { codexHome },
-  );
+  const result = await runCodex(["plugin", "marketplace", "list", "--json"], {
+    codexHome,
+  });
   if (result.status !== 0) {
     throw codexCommandError("plugin marketplace list", result);
   }
@@ -191,7 +190,10 @@ async function unregisterCodexPlugin({
     ["plugin", "marketplace", "remove", codexPlugin.marketplaceName],
     { codexHome },
   );
-  if (marketplaceRemoved.status !== 0 && !isMissingRegistration(marketplaceRemoved)) {
+  if (
+    marketplaceRemoved.status !== 0 &&
+    !isMissingRegistration(marketplaceRemoved)
+  ) {
     throw codexCommandError("plugin marketplace remove", marketplaceRemoved);
   }
 }
