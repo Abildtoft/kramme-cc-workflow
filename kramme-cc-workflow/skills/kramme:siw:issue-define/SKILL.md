@@ -99,7 +99,7 @@ Check if input matches an existing issue:
 
 **If file paths provided:**
 
-1. Read each file using the `Read` tool
+1. Read each file
 2. Extract relevant context:
    - What functionality does this code provide?
    - What patterns or conventions does it follow?
@@ -168,8 +168,8 @@ Before creating a new issue, check for existing similar issues:
 **For all other issue types:** Proactively search the repository:
 
 1. **Find Related Implementations**
-   - Use `Grep` to search for keywords from the description
-   - Use `Glob` to find files in related areas
+   - Search the codebase for keywords from the description
+   - List files in related areas
    - Identify existing code that does something similar
 
 2. **Identify Patterns & Conventions**

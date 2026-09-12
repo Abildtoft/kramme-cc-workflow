@@ -46,7 +46,6 @@ case "$1" in
 		"prettier" \
 		"prettier-plugin-packagejson" \
 		"prettier-plugin-sh" \
-		"smol-toml" \
 		"typescript" \
 		"yaml"; do
 		case "$script" in

@@ -2,38 +2,33 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
-const fs = require("fs/promises");
 const path = require("path");
 const test = require("node:test");
 
 const {
-  stageCodexBundleOutput,
-} = require("../../scripts/convert-plugin/codex-bundle-output");
-
+  buildCodexMarketplace,
+} = require("../../scripts/convert-plugin/codex-plugin-builder");
 const {
   convertClaudeToCodex,
   transformContentForCodex,
 } = require("../../scripts/convert-plugin/codex-transformer");
-
 const {
   parseFrontmatter,
 } = require("../../scripts/convert-plugin/frontmatter");
 const { loadClaudePlugin } = require("../../scripts/convert-plugin/loader");
 
 const {
-  emptyPreviousEntries,
-  withTempDir,
-  createFixturePlugin,
-  writeSourceSkill,
-  readText,
   pathExists,
+  readMarkdownTree,
+  readText,
+  withTempDir,
+  writeFile,
+  writeSourceSkill,
 } = require("./converter-test-helpers");
 
 test("converted skill roots contain no executable Claude controls and honor instruction files", async () => {
   await withTempDir(async (root) => {
-    const agentsHome = path.join(root, "agents-home");
-    const codexRoot = path.join(root, "codex-home");
-    const codexStagingRoot = path.join(root, "codex-staging");
+    const outputRoot = path.join(root, "marketplace");
     const sourceDir = path.join(root, "plugin", "skills", "fixture-skill");
     const canonicalResource = [
       "Message teammates using SendMessage.",
@@ -84,20 +79,14 @@ test("converted skill roots contain no executable Claude controls and honor inst
       ],
     });
 
-    const staged = await stageCodexBundleOutput(
-      codexRoot,
-      codexStagingRoot,
-      bundle,
-      emptyPreviousEntries(),
-      "fixture-plugin",
-      { agentsHome, confirm: { yes: true } },
+    const built = await buildCodexMarketplace(outputRoot, bundle);
+    const skillsRoot = path.join(built.pluginRoot, "skills");
+    assert.equal(
+      await pathExists(path.join(skillsRoot, "fixture-reviewer", "SKILL.md")),
+      true,
+      "agent skills are packaged beside converted skills",
     );
-    assert.ok(staged.stagedAgentSkillsRoot);
 
-    const generatedMarkdown = [
-      ...(await readMarkdownTree(staged.stagedSkillsRoot)),
-      ...(await readMarkdownTree(staged.stagedAgentSkillsRoot)),
-    ];
     const forbiddenControls = [
       /AskUserQuestion/,
       /\bTask tool\b/,
@@ -112,7 +101,7 @@ test("converted skill roots contain no executable Claude controls and honor inst
       /\bSendMessage\b/,
       /\bMonitor (?:task progress via )?TaskList\b/,
     ];
-    for (const { file, text } of generatedMarkdown) {
+    for (const { file, text } of await readMarkdownTree(skillsRoot)) {
       for (const pattern of forbiddenControls) {
         assert.doesNotMatch(text, pattern, `${file} retained ${pattern}`);
       }
@@ -159,100 +148,84 @@ test("converted skill roots contain no executable Claude controls and honor inst
   });
 });
 
-test("canonical Codex staging preserves runtime path dependency closure", async () => {
+test("canonical plugin build preserves runtime path dependency closure", async () => {
   await withTempDir(async (root) => {
     const pluginRoot = path.resolve(__dirname, "../..");
-    const codexRoot = path.join(root, "codex-home");
-    const codexStagingRoot = path.join(root, "codex-staging");
     const plugin = await loadClaudePlugin(pluginRoot);
     const bundle = convertClaudeToCodex(plugin);
-    const pluginName = plugin.manifest.name;
-    if (typeof pluginName !== "string") {
-      throw new TypeError("canonical plugin manifest name must be a string");
-    }
-
-    const staged = await stageCodexBundleOutput(
-      codexRoot,
-      codexStagingRoot,
+    const built = await buildCodexMarketplace(
+      path.join(root, "marketplace"),
       bundle,
-      emptyPreviousEntries(),
-      pluginName,
-      {
-        agentsHome: path.join(root, "agents-home"),
-        confirm: { yes: true },
-      },
     );
 
     assert.equal(
       await pathExists(
-        path.join(codexStagingRoot, "hooks", "confirm-review-artifacts.txt"),
+        path.join(built.pluginRoot, "hooks", "confirm-review-artifacts.txt"),
       ),
       true,
       "shared review collector must retain its artifact inventory",
     );
+    assert.equal(
+      await pathExists(path.join(built.pluginRoot, "hooks", "hooks.json")),
+      true,
+      "canonical plugin ships its hook controls, so hooks are packaged",
+    );
+    assert.equal(
+      built.skillCount,
+      bundle.skillDirs.length +
+        bundle.generatedSkills.length +
+        bundle.agentSkills.length,
+    );
 
-    const unresolvedRuntimePaths = (
-      await readMarkdownTree(staged.stagedSkillsRoot)
-    )
-      .filter(({ text }) =>
-        /\$\{CLAUDE_PLUGIN_ROOT(?::-)?\}\/(?:scripts|skills)\//.test(text),
-      )
-      .map(({ file }) => path.relative(staged.stagedSkillsRoot, file));
+    const skillsRoot = path.join(built.pluginRoot, "skills");
+    const unresolvedRuntimePaths = (await readMarkdownTree(skillsRoot))
+      .filter(({ text }) => /\$\{?CLAUDE_PLUGIN_ROOT\b/.test(text))
+      .map(({ file }) => path.relative(skillsRoot, file));
     assert.deepEqual(
       unresolvedRuntimePaths,
       [],
-      "converted skills must not retain Claude-only script or skill paths",
+      "converted skills must not retain Claude-only plugin root references",
+    );
+    const codeReview = await readText(
+      path.join(skillsRoot, "kramme:pr:code-review", "SKILL.md"),
+    );
+    assert.match(
+      codeReview,
+      /"\$\{CODEX_HOME:-\$HOME\/\.codex\}\/plugins\/cache\/kramme-cc-workflow\/kramme-cc-workflow\/[^/]+\/scripts\/collect-review-diff\.sh"/,
+      "shared helpers resolve through the Codex plugin cache directory",
     );
   });
 });
 
-test("CLI emits no success line when transactional AGENTS.md publication fails", async () => {
+test("CLI build refuses a non-empty output directory without reporting success", async () => {
   await withTempDir(async (root) => {
     const pluginRoot = path.join(root, "plugin");
     const outputRoot = path.join(root, "output");
-    await createFixturePlugin(pluginRoot, "agents-cli-plugin");
-    await fs.mkdir(path.join(outputRoot, ".codex", "AGENTS.md"), {
-      recursive: true,
-    });
+    await writeFile(
+      path.join(pluginRoot, ".claude-plugin", "plugin.json"),
+      JSON.stringify({ name: "cli-plugin", version: "1.0.0" }),
+    );
+    await writeFile(path.join(outputRoot, "keep.txt"), "user file\n");
 
     const result = spawnSync(
       process.execPath,
       [
         path.resolve(__dirname, "../../scripts/convert-plugin.js"),
-        "install",
+        "build",
         pluginRoot,
-        "--codex-home",
+        "--out",
         outputRoot,
-        "--agents-home",
-        path.join(root, "agents-home"),
-        "--yes",
       ],
       { encoding: "utf8" },
     );
 
     assert.notEqual(result.status, 0);
-    assert.doesNotMatch(result.stdout, /^Installed .+ to .+$/m);
+    assert.match(result.stderr, /is not empty/);
+    assert.doesNotMatch(result.stdout, /^Built /m);
     assert.equal(
-      await pathExists(
-        path.join(outputRoot, ".codex", ".kramme-install-state.json"),
-      ),
-      false,
+      await readText(path.join(outputRoot, "keep.txt")),
+      "user file\n",
     );
+    assert.equal(await pathExists(path.join(outputRoot, "plugins")), false);
   });
 });
-
-/** @param {string} root @returns {Promise<Array<{ file: string, text: string }>>} */
-async function readMarkdownTree(root) {
-  /** @type {Array<{ file: string, text: string }>} */
-  const markdown = [];
-  const entries = await fs.readdir(root, { withFileTypes: true });
-  for (const entry of entries) {
-    const file = path.join(root, entry.name);
-    if (entry.isDirectory()) {
-      markdown.push(...(await readMarkdownTree(file)));
-    } else if (entry.isFile() && path.extname(entry.name) === ".md") {
-      markdown.push({ file, text: await readText(file) });
-    }
-  }
-  return markdown;
-}

@@ -11,7 +11,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Node | `make -C kramme-cc-workflow test-node` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/<file>.test.js` |
 | Python | `make -C kramme-cc-workflow test-python` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_<name>.py` |
 | Bats | `make -C kramme-cc-workflow test-bats` | `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/<name>.bats` |
-| Converter | `make -C kramme-cc-workflow test-convert` (Node converter contracts plus Bats CLI smoke) | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/converter-core.test.js` (also `converter-install.test.js`, `converter-output.test.js`, or `converter-integration.test.js`) or `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/convert-plugin.bats` |
+| Converter | `make -C kramme-cc-workflow test-convert` (Node converter contracts plus Bats CLI smoke) | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/converter-core.test.js` (also `converter-build.test.js`, `converter-integration.test.js`, `codex-cli.test.js`, `codex-hook-compat.test.js`, or `legacy-install-cleanup.test.js`) or `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/convert-plugin.bats` |
 
 ## Source to Test Map
 
@@ -72,6 +72,6 @@ When a hook blocks or misses a command, inspect the hook script, then the shared
 
 For skill usage report and scan output, degraded-input diagnostics, and strict mode, see [hooks.md](hooks.md#skill-usage-stats).
 
-When Codex output is wrong, read `scripts/convert-plugin.js` first, then follow the boundary in `scripts/convert-plugin/README.md`: loader, transformer, writer, config, staging, and install state.
+When Codex output is wrong, read `scripts/convert-plugin.js` first, then follow the boundary in `scripts/convert-plugin/README.md`: loader, transformer, plugin builder, Codex CLI registration, and legacy cleanup.
 
 When browser or visual skills cannot find an app, read `scripts/dev-server/README.md`, the relevant shell detector, and the skill-local reference that calls it.

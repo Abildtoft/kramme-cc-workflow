@@ -286,12 +286,13 @@ This is a representative inventory by test language, not an exhaustive list of t
 kramme-cc-workflow/tests/
 ├── run-tests.sh                      # Complete top-level Bats runner
 ├── node/
-│   ├── codex-hook-compat.test.js     # Codex hook conversion contracts
+│   ├── codex-cli.test.js             # Codex CLI registration through the fake codex
+│   ├── codex-hook-compat.test.js     # Codex hook packaging contracts
+│   ├── converter-build.test.js       # Plugin package and marketplace build
 │   ├── converter-core.test.js        # Converter loading and transforms
-│   ├── converter-install.test.js     # Converter install transactions
 │   ├── converter-integration.test.js # Cross-module converter flows
-│   ├── converter-output.test.js      # Converter writers and config
 │   ├── frontmatter.test.js           # Frontmatter unit contracts
+│   ├── legacy-install-cleanup.test.js # Removal of pre-plugin converter output
 │   └── scorer.test.js                # Skill-review scorer contracts
 ├── python/
 │   ├── test_changelog.py

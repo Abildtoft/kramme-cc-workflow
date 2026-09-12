@@ -220,7 +220,7 @@ check_node_dependencies() {
 
   if (
     cd "$ROOT_DIR"
-    "$CHECKED_NODE_BIN" -e 'for (const dependency of ["@ianvs/prettier-plugin-sort-imports", "@types/node", "prettier", "prettier-plugin-packagejson", "prettier-plugin-sh", "smol-toml", "typescript", "yaml"]) require.resolve(dependency)'
+    "$CHECKED_NODE_BIN" -e 'for (const dependency of ["@ianvs/prettier-plugin-sort-imports", "@types/node", "prettier", "prettier-plugin-packagejson", "prettier-plugin-sh", "typescript", "yaml"]) require.resolve(dependency)'
   ) > /dev/null 2>&1; then
     printf 'ok: %-20s %s\n' "Node dependencies" "$ROOT_DIR/node_modules"
   else

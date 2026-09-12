@@ -17,9 +17,11 @@ SKILLSPECTOR_BASE ?= $(if $(BASE_REF),$(BASE_REF),origin/main)
 NODE_TEST_FILES = tests/node/*.test.js
 CONVERTER_NODE_TEST_FILES = \
 	tests/node/converter-core.test.js \
-	tests/node/converter-install.test.js \
-	tests/node/converter-output.test.js \
-	tests/node/converter-integration.test.js
+	tests/node/converter-build.test.js \
+	tests/node/converter-integration.test.js \
+	tests/node/codex-cli.test.js \
+	tests/node/codex-hook-compat.test.js \
+	tests/node/legacy-install-cleanup.test.js
 CONVERTER_BATS_TEST_FILE = tests/convert-plugin.bats
 SMOKE_NODE_TEST_FILES = tests/node/frontmatter.test.js tests/node/scorer.test.js
 SMOKE_PYTHON_TEST_FILE = tests/python/test_git_command_parser.py

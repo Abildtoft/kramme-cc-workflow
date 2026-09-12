@@ -19,57 +19,67 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Validate installer
+      - name: Install converter dependencies
+        run: npm ci --omit=dev --no-audit --no-fund
+
+      - name: Install Codex CLI
+        # Pinned to the release the plugin cache layout was verified against.
+        run: npm install -g @openai/codex@0.154.0 --no-audit --no-fund
+
+      - name: Validate build output
         run: |
           set -euo pipefail
 
-          plugins=(kramme-cc-workflow)
+          plugin=kramme-cc-workflow
+          OUT_DIR="$RUNNER_TEMP/${plugin}-marketplace"
+          rm -rf "$OUT_DIR"
 
-          for plugin in "${plugins[@]}"; do
-            echo "::group::${plugin} -> codex"
+          node ./kramme-cc-workflow/scripts/convert-plugin.js build "$plugin" --out "$OUT_DIR"
+          eval "$(node ./kramme-cc-workflow/scripts/convert-plugin.js stats "$plugin" | sed 's/^/EXPECTED_/')"
 
-            WORK_DIR="$RUNNER_TEMP/${plugin}-codex"
-            CODEX_HOME="$WORK_DIR/.codex"
-            AGENTS_HOME="$WORK_DIR/.agents"
-            rm -rf "$WORK_DIR"
-            mkdir -p "$CODEX_HOME" "$AGENTS_HOME"
+          PLUGIN_ROOT="$OUT_DIR/plugins/$plugin"
+          test -f "$OUT_DIR/.agents/plugins/marketplace.json"
+          test -f "$PLUGIN_ROOT/.codex-plugin/plugin.json"
+          test -f "$PLUGIN_ROOT/hooks/hooks.json"
+          test -x "$PLUGIN_ROOT/scripts/collect-review-diff.sh"
 
-            ./$plugin/scripts/install-codex.sh \
-              --non-interactive \
-              --codex-home "$CODEX_HOME" \
-              --agents-home "$AGENTS_HOME"
+          SKILLS=$(find "$PLUGIN_ROOT/skills" -name SKILL.md | wc -l | tr -d '[:space:]')
+          echo "Expected skills: $((EXPECTED_codex_skills + EXPECTED_agent_skills))"
+          echo "Built skills: $SKILLS"
+          test "$SKILLS" -eq $((EXPECTED_codex_skills + EXPECTED_agent_skills))
 
-            eval "$(node ./kramme-cc-workflow/scripts/convert-plugin.js stats "$plugin" | sed 's/^/EXPECTED_/')"
+          if grep -rl '\${CLAUDE_PLUGIN_ROOT' "$PLUGIN_ROOT/skills" --include='*.md'; then
+            echo "Converted skills still reference CLAUDE_PLUGIN_ROOT" >&2
+            exit 1
+          fi
 
-            if [ -d "$CODEX_HOME/skills" ]; then
-              CODEX_SKILLS=$(find "$CODEX_HOME/skills" -name "SKILL.md" | wc -l)
-            else
-              CODEX_SKILLS=0
-            fi
+      - name: Install through the Codex CLI
+        run: |
+          set -euo pipefail
 
-            if [ -d "$AGENTS_HOME/skills" ]; then
-              AGENT_SKILLS=$(find "$AGENTS_HOME/skills" -name "SKILL.md" | wc -l)
-            else
-              AGENT_SKILLS=0
-            fi
+          plugin=kramme-cc-workflow
+          WORK_DIR="$RUNNER_TEMP/${plugin}-codex"
+          CODEX_HOME="$WORK_DIR/.codex"
+          AGENTS_HOME="$WORK_DIR/.agents"
+          rm -rf "$WORK_DIR"
+          mkdir -p "$CODEX_HOME" "$AGENTS_HOME"
 
-            CODEX_SKILLS=$(echo "$CODEX_SKILLS" | tr -d '[:space:]')
-            AGENT_SKILLS=$(echo "$AGENT_SKILLS" | tr -d '[:space:]')
+          ./$plugin/scripts/install-codex.sh \
+            --non-interactive \
+            --codex-home "$CODEX_HOME" \
+            --agents-home "$AGENTS_HOME"
 
-            echo "Expected codex skills: $EXPECTED_codex_skills"
-            echo "Installed codex skills: $CODEX_SKILLS"
-            test "$CODEX_SKILLS" -eq "$EXPECTED_codex_skills"
+          VERSION=$(node -e "console.log(require('./kramme-cc-workflow/.claude-plugin/plugin.json').version)")
+          CACHE_ROOT="$CODEX_HOME/plugins/cache/$plugin/$plugin/$VERSION"
+          test -f "$CACHE_ROOT/.codex-plugin/plugin.json"
+          test -f "$CACHE_ROOT/skills/kramme:pr:create/SKILL.md"
+          test -f "$CACHE_ROOT/hooks/hooks.json"
+          test ! -e "$CODEX_HOME/skills"
+          test ! -e "$CODEX_HOME/AGENTS.md"
 
-            echo "Expected agent skills: $EXPECTED_agent_skills"
-            echo "Installed agent skills: $AGENT_SKILLS"
-            test "$AGENT_SKILLS" -eq "$EXPECTED_agent_skills"
+          echo "--- codex plugin list ---"
+          CODEX_HOME="$CODEX_HOME" codex plugin list
+          CODEX_HOME="$CODEX_HOME" codex plugin list | grep -E "^${plugin}@${plugin} +installed, enabled +${VERSION}"
 
-            test -f "$CODEX_HOME/AGENTS.md"
-
-            echo "--- Codex tree ---"
-            find "$CODEX_HOME" -type f | sort
-            echo "--- Agents tree ---"
-            find "$AGENTS_HOME" -type f 2>/dev/null | sort
-
-            echo "::endgroup::"
-          done
+          echo "--- Codex config ---"
+          cat "$CODEX_HOME/config.toml"

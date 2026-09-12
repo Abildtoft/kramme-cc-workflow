@@ -29,11 +29,11 @@ Claude Code installs the plugin from `kramme-cc-workflow/`. Skills and agents ar
 
 Command-safety hooks share a fail-closed parser boundary: the shell wrappers in `hooks/` validate input and parser output through `hooks/lib/safety-hook-parser.sh`, while `hooks/lib/command_safety/` owns syntax analysis and policy modes. The `rm-rf` mode analyzes supported destructive shapes through depth 5 and blocks with its generic deletion reason when deeper analysis would be required. See the [hook helper library](../hooks/lib/README.md#git-command-parser-mode-contracts) for mode contracts and focused verification.
 
-For Codex, `scripts/convert-plugin.js` is the entry point. It loads the Claude plugin, filters platform-specific skills, converts skills and agents, rewrites shared script references, stages output, updates managed install state, and writes Codex config tables when hooks or MCP servers are present. Installation mutations flow from staging through `install-transaction.js`, which owns locks, journals, backups, commit/rollback, and recovery. The `doctor` path is separate and read-only: `diagnostics.js` uses the transaction inspector for a bounded advisory snapshot without acquiring locks or repairing artifacts. See the [converter module map](../scripts/convert-plugin/README.md#module-map) for ownership and focused verification; the root [README](../../README.md#codex) remains the public command reference.
+For Codex, `scripts/convert-plugin.js` is the entry point. It loads the Claude plugin, filters platform-specific skills, converts skills, commands, and agents, and describes one native Codex plugin package. `codex-plugin-builder.js` writes that package into a marketplace tree, rewriting `CLAUDE_PLUGIN_ROOT` references to the Codex plugin cache directory. `install` removes output recorded by earlier converter releases (`legacy-install-cleanup.js`), builds the marketplace under the Codex home, and registers and installs it through the Codex CLI (`codex-cli.js`); Codex owns the plugin cache, config tables, updates, and removal. See the [converter module map](../scripts/convert-plugin/README.md#module-map) for ownership and focused verification; the root [README](../../README.md#codex) remains the public command reference.
 
 Browser and visual workflows use the shared dev-server detector in `scripts/dev-server/`. The detector only resolves an already running local app. A caller may own a separately documented startup lifecycle; delegated PR demo capture permits one tightly bounded local-development startup attempt and owns cleanup of the process it launched.
 
-Shared runtime helpers belong to the main `CodexBundle`, independently of whether hook packaging is eligible. The transformer builds the directory and file metadata once and projects the same arrays into eligible hook packages for their helper mirrors. Bundle output uses the top-level arrays for helper staging and Markdown path rewriting, falling back per field to hook metadata only when that top-level field is absent. Explicit empty arrays suppress that fallback. Skills therefore retain shared helpers when hooks or hook controls are absent, while legacy constructed bundles remain supported.
+Shared runtime helpers belong to the main `CodexBundle`, independently of whether hook packaging is eligible. The transformer builds the directory and file metadata once, and the builder copies them into the plugin's `scripts/` and `hooks/` directories, so skills retain their helpers when hooks or hook controls are absent.
 
 How much independence skills and agents take at runtime is described in [agent-autonomy.md](agent-autonomy.md).
 
@@ -41,7 +41,7 @@ How much independence skills and agents take at runtime is described in [agent-a
 
 - Hook toggle state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json`.
 - Skill usage events default to `~/.local/state/kramme-cc-workflow/skill-usage.jsonl`.
-- Codex conversion writes managed entries under the selected Codex root, defaulting to `~/.codex`.
+- Codex conversion writes a generated marketplace under `<codex-home>/.kramme-plugin-marketplaces/`; Codex copies the plugin into `<codex-home>/plugins/cache/`. The Codex home defaults to `$CODEX_HOME` or `~/.codex`.
 - SkillOpt and other local run artifacts belong under `.context/` and must not be committed.
 
 ## Verification Model
