@@ -22,6 +22,12 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 - **Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`. Existing prompts and automation must remove `--auto`; no-argument calls use the canonical branch review scope, while former base-branch arguments must become explicit file or directory scopes. The replacement verifies and checkpoints scoped uncommitted input, then commits each simplification separately. Ship this command removal only in the next major release.
 
+## [0.80.0] - 2026-09-12
+
+### Added
+
+- Ship Codex support as one native Codex plugin (#920)
+
 ## [0.79.0] - 2026-09-11
 
 ### Added
@@ -1000,6 +1006,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.80.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.79.0...v0.80.0
 [0.79.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.78.0...v0.79.0
 [0.78.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.77.0...v0.78.0
 [0.77.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.76.0...v0.77.0
