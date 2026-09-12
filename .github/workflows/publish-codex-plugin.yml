@@ -1,0 +1,50 @@
+name: Publish Codex Plugin
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Build and publish the codex-plugin branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install converter dependencies
+        run: npm ci --omit=dev --no-audit --no-fund
+
+      - name: Build the Codex marketplace
+        run: |
+          set -euo pipefail
+          OUT_DIR="$RUNNER_TEMP/codex-plugin"
+          rm -rf "$OUT_DIR"
+          node ./kramme-cc-workflow/scripts/convert-plugin.js build kramme-cc-workflow --out "$OUT_DIR"
+          echo "OUT_DIR=$OUT_DIR" >>"$GITHUB_ENV"
+
+      - name: Publish to the codex-plugin branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd "$OUT_DIR"
+          git init -q -b codex-plugin
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Build Codex plugin from ${GITHUB_REF_NAME} (${GITHUB_SHA})"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" codex-plugin

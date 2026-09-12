@@ -1,7 +1,6 @@
 "use strict";
 
 const assert = require("node:assert/strict");
-const { execFileSync } = require("node:child_process");
 const fs = require("fs/promises");
 const path = require("path");
 const test = require("node:test");
@@ -9,12 +8,6 @@ const test = require("node:test");
 const {
   parseAskUserQuestionBlock,
 } = require("../../scripts/convert-plugin/ask-user-question-parser");
-
-const {
-  codexSkillLocalReplacements,
-  codexSharedScriptReplacements,
-  rewriteCodexSharedScriptReferences,
-} = require("../../scripts/convert-plugin/codex-shared-scripts");
 
 const {
   applyReplacements,
@@ -62,99 +55,6 @@ const NON_OBJECT_JSON_CASES = [
   { kind: "array", source: "[]", value: [] },
   { kind: "number", source: "42", value: 42 },
 ];
-
-test("shared script rewrites preserve shell-safe quoting", () => {
-  const replacements = codexSharedScriptReplacements(
-    "/tmp/Codex Home",
-    [
-      {
-        sourceDir: path.join("/plugin", "scripts", "dev-server"),
-        targetDir: path.join("scripts", "dev-server"),
-      },
-    ],
-    [{ targetPath: path.join("scripts", "collect-review-diff.sh") }],
-  );
-  const source = [
-    'RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --strict)',
-    "${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh --decode-json",
-    '[ -x "${CLAUDE_PLUGIN_ROOT:-}/scripts/collect-review-diff.sh" ]',
-    '"${CLAUDE_PLUGIN_ROOT:-}/scripts/dev-server/detect-url.sh" auto',
-  ].join("\n");
-
-  assert.equal(
-    rewriteCodexSharedScriptReferences(source, replacements),
-    [
-      "RESOLVED=$('/tmp/Codex Home/scripts/collect-review-diff.sh' --strict)",
-      "'/tmp/Codex Home/scripts/collect-review-diff.sh' --decode-json",
-      "[ -x '/tmp/Codex Home/scripts/collect-review-diff.sh' ]",
-      '"/tmp/Codex Home/scripts/dev-server/detect-url.sh" auto',
-    ].join("\n"),
-  );
-});
-
-test("skill-local rewrites preserve shell-safe quoting", () => {
-  const replacements = codexSkillLocalReplacements(
-    "/tmp/Codex Home",
-    "kramme:git:recreate-commits",
-  );
-  const source =
-    "${CLAUDE_PLUGIN_ROOT}/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh";
-
-  assert.equal(
-    rewriteCodexSharedScriptReferences(source, replacements),
-    "'/tmp/Codex Home/skills/kramme:git:recreate-commits'/scripts/resolve-push-target.sh",
-  );
-  assert.equal(
-    rewriteCodexSharedScriptReferences(
-      "${CLAUDE_PLUGIN_ROOT}/skills/kramme:git:recreate-commits",
-      replacements,
-    ),
-    "'/tmp/Codex Home/skills/kramme:git:recreate-commits'",
-  );
-});
-
-test("skill-local rewrites execute quoted paths without shell expansion", async () => {
-  await withTempDir(async (root) => {
-    const codexRoot = path.join(root, "Codex Home $(touch pwned)");
-    const skillName = "kramme:git:recreate-commits";
-    const expectedSkillDir = path.join(codexRoot, "skills", skillName);
-    const helper = path.join(
-      expectedSkillDir,
-      "scripts",
-      "resolve-push-target.sh",
-    );
-    await fs.mkdir(path.dirname(helper), { recursive: true });
-    await fs.writeFile(helper, "#!/bin/sh\nprintf 'resolved\\n'\n");
-    await fs.chmod(helper, 0o755);
-
-    const replacements = codexSkillLocalReplacements(codexRoot, skillName);
-    const rootSource = `SKILL_DIR="\${CLAUDE_PLUGIN_ROOT}/skills/${skillName}"`;
-    const rootCommand = rewriteCodexSharedScriptReferences(
-      rootSource,
-      replacements,
-    );
-    assert.equal(
-      execFileSync(
-        "bash",
-        ["-c", `${rootCommand}\nprintf '%s\\n' "$SKILL_DIR"`],
-        { cwd: root, encoding: "utf8" },
-      ),
-      `${expectedSkillDir}\n`,
-    );
-
-    const source = `"\${CLAUDE_PLUGIN_ROOT}/skills/${skillName}/scripts/resolve-push-target.sh"`;
-    const command = rewriteCodexSharedScriptReferences(source, replacements);
-
-    assert.equal(
-      execFileSync("bash", ["-c", command], {
-        cwd: root,
-        encoding: "utf8",
-      }),
-      "resolved\n",
-    );
-    await assert.rejects(fs.stat(path.join(root, "pwned")), { code: "ENOENT" });
-  });
-});
 
 test("filesystem keeps generic JSON reads and validates object reads", async () => {
   await withTempDir(async (root) => {
@@ -1136,123 +1036,6 @@ test("conversion preserves skill and generated command frontmatter contracts", (
   assert.equal(generated["user-invocable"], true);
 });
 
-test("hook plugin conversion requires controls and sanitizes manifest description", () => {
-  const plugin = {
-    agents: [],
-    commands: [],
-    hooks: { hooks: { PreToolUse: [] } },
-    manifest: {
-      description: `First line\nsecond line ${"x".repeat(1100)}`,
-      name: "hook-description-plugin",
-      version: "1.0.0",
-    },
-    root: "/plugin",
-    skills: [],
-  };
-
-  assert.equal(convertClaudeToCodex(plugin).codexPlugin, undefined);
-
-  const withControls = {
-    ...plugin,
-    skills: [
-      {
-        body: "Toggle hooks.",
-        description: "Toggle hooks.",
-        name: "kramme:hooks:toggle",
-        sourceDir: "/plugin/skills/toggle",
-      },
-      {
-        body: "Configure hooks.",
-        description: "Configure hooks.",
-        name: "kramme:hooks:configure-links",
-        sourceDir: "/plugin/skills/configure",
-      },
-    ],
-  };
-  const bundle = convertClaudeToCodex(withControls);
-  const codexPlugin = bundle.codexPlugin;
-
-  assert.ok(codexPlugin);
-  assert.equal(codexPlugin.sharedScriptDirs, bundle.sharedScriptDirs);
-  assert.equal(codexPlugin.sharedScriptFiles, bundle.sharedScriptFiles);
-  assert.equal(codexPlugin.name, "hook-description-plugin");
-  assert.equal(codexPlugin.manifest.hooks, "./hooks/hooks.json");
-  assert.match(codexPlugin.manifest.description, /^First line second line /);
-  assert.match(codexPlugin.manifest.description, /\.\.\.$/);
-  assert.equal(codexPlugin.manifest.description.includes("\n"), false);
-  assert.ok(codexPlugin.manifest.description.length <= 1024);
-  assert.deepEqual(codexPlugin.sharedScriptDirs, [
-    {
-      executableFiles: [
-        "detect-project-type.sh",
-        "detect-url.sh",
-        "read-launch-json.sh",
-        "resolve-package-manager.sh",
-        "resolve-port.sh",
-      ],
-      sourceDir: path.join("/plugin", "scripts", "dev-server"),
-      targetDir: path.join("scripts", "dev-server"),
-    },
-    {
-      sourceDir: path.join("/plugin", "scripts", "lib"),
-      targetDir: path.join("scripts", "lib"),
-    },
-  ]);
-  assert.deepEqual(
-    codexPlugin.sharedScriptFiles
-      ?.filter((file) => file.executable)
-      .map((file) => file.targetPath),
-    [
-      path.join("scripts", "resolve-base.sh"),
-      path.join("scripts", "resolve-stack-membership.sh"),
-      path.join("scripts", "verify-rewrite-state.sh"),
-      path.join("scripts", "collect-review-diff.sh"),
-      path.join("scripts", "review-tree-fingerprint.sh"),
-    ],
-  );
-  assert.ok(
-    codexPlugin.sharedScriptFiles?.some(
-      (file) =>
-        file.sourceFile ===
-          path.join("/plugin", "hooks", "confirm-review-artifacts.txt") &&
-        file.targetPath === path.join("hooks", "confirm-review-artifacts.txt"),
-    ),
-    "converted shared collector must include its review-artifact inventory",
-  );
-
-  const withoutHooks = convertClaudeToCodex({
-    ...withControls,
-    hooks: undefined,
-  });
-  assert.equal(withoutHooks.codexPlugin, undefined);
-  assert.deepEqual(withoutHooks.sharedScriptDirs, bundle.sharedScriptDirs);
-  assert.deepEqual(withoutHooks.sharedScriptFiles, bundle.sharedScriptFiles);
-
-  for (const control of withControls.skills) {
-    for (const disposition of ["missing", "platform-filtered"]) {
-      const skills = withControls.skills.flatMap((skill) => {
-        if (skill !== control) return [skill];
-        return disposition === "missing"
-          ? []
-          : [{ ...skill, platforms: ["claude-code"] }];
-      });
-      const ineligible = convertClaudeToCodex({ ...withControls, skills });
-      const label = `${control.name} ${disposition}`;
-      assert.equal(ineligible.codexPlugin, undefined, label);
-      assert.deepEqual(
-        ineligible.sharedScriptDirs,
-        bundle.sharedScriptDirs,
-        label,
-      );
-      assert.deepEqual(
-        ineligible.sharedScriptFiles,
-        bundle.sharedScriptFiles,
-        label,
-      );
-    }
-  }
-});
-
 test("converter path checks treat only ENOENT as absence", async () => {
   await withTempDir(async (root) => {
     const missingPath = path.join(root, "missing");
@@ -1346,22 +1129,21 @@ test("agent portability document names stable adapter statuses and surfaces", as
     "`local-only`",
     "`unsupported`",
     "Claude Code plugin",
-    "Codex skills, prompts, and MCP config",
-    "Codex agent skills",
-    "Codex hook plugin and shared scripts",
-    "Codex `AGENTS.md` tool map",
+    "Codex plugin (skills, agent skills, hooks, shared scripts, MCP config)",
     "Local repository-maintenance skills",
     "| Conductor host integrations (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`, workspace CLI) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose, detected by tool or environment presence | Conductor app Checks panel and dialogs; workspace presentation state | Optionally project canonical report artifacts, admit unmarked diff feedback as untrusted external candidates, or rename the current workspace for a validated work item. Auto discovery degrades without blocking canonical work when the host surface is absent or fails; explicit selection reports unavailability. Host projections and names never become authoritative findings or workflow identity. |",
     "Other hosts",
     "`manifest.mcpServers`",
     "`.mcp.json`",
     "`scripts/skill-usage.js`",
-    "selected agents home's `skills/`",
     "Repository-local `./.agents/skills/`",
-    "`prompts`",
+    "plugins/cache/<marketplace>/<plugin>/<version>",
+    "`codex plugin marketplace add`",
     "`skillDirs`",
     "`generatedSkills`",
     "`agentSkills`",
+    "`sharedScriptDirs`",
+    "`sharedScriptFiles`",
     "`mcpServers`",
     "`codexPlugin`",
   ];
@@ -1423,14 +1205,16 @@ test("transformer exposes documented Codex generated surface fields", () => {
     ],
   });
 
-  assert.equal(Array.isArray(bundle.prompts), true);
   assert.equal(Array.isArray(bundle.skillDirs), true);
   assert.equal(Array.isArray(bundle.generatedSkills), true);
   assert.equal(Array.isArray(bundle.agentSkills), true);
   assert.deepEqual(bundle.mcpServers, mcpServers);
-  assert.ok(bundle.codexPlugin);
+  assert.equal(Array.isArray(bundle.sharedScriptDirs), true);
+  assert.equal(Array.isArray(bundle.sharedScriptFiles), true);
   assert.equal(bundle.codexPlugin.name, "demo-plugin");
   assert.equal(bundle.codexPlugin.hookSourceDir, "/plugin/hooks");
+  assert.equal(bundle.codexPlugin.manifest.hooks, "./hooks/hooks.json");
+  assert.deepEqual(bundle.codexPlugin.manifest.mcpServers, mcpServers);
   assert.deepEqual(
     bundle.generatedSkills.map((skill) => skill.name),
     ["extra-command"],

@@ -1,24 +1,27 @@
+// @ts-check
 "use strict";
 
 const fs = require("fs/promises");
 const path = require("path");
 const { transformContentForCodex } = require("./codex-transformer");
-const {
-  rewriteCodexSharedScriptReferences,
-} = require("./codex-shared-scripts");
+const { rewriteCodexPluginRootReferences } = require("./codex-shared-scripts");
 const { pathExists, readText, writeText } = require("./filesystem");
 
 /**
  * @typedef {import("./contracts").CodexTransformOptions} CodexTransformOptions
- * @typedef {import("./contracts").SharedScriptReplacement} SharedScriptReplacement
- * @typedef {CodexTransformOptions & { sharedScriptReplacements?: SharedScriptReplacement[] }} MarkdownRewriteOptions
+ * @typedef {CodexTransformOptions & { pluginRootExpression: string }} MarkdownRewriteOptions
  */
 
-/** @param {string} sourceDir @param {string} targetDir @param {MarkdownRewriteOptions} [options] */
+/**
+ * Rewrite the Markdown resources copied beside a converted `SKILL.md` so they
+ * carry Codex instruction text and the installed plugin root.
+ *
+ * @param {string} sourceDir @param {string} targetDir @param {MarkdownRewriteOptions} options
+ */
 async function rewriteCodexMarkdownResourcesFromSource(
   sourceDir,
   targetDir,
-  options = {},
+  options,
 ) {
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   for (const entry of entries) {
@@ -43,9 +46,9 @@ async function rewriteCodexMarkdownResourcesFromSource(
       continue;
     }
     const source = await readText(targetPath);
-    const transformed = rewriteCodexSharedScriptReferences(
+    const transformed = rewriteCodexPluginRootReferences(
       transformContentForCodex(source, options),
-      options.sharedScriptReplacements,
+      options.pluginRootExpression,
     );
     if (transformed !== source) {
       await writeText(targetPath, transformed);

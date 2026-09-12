@@ -2,24 +2,30 @@
 
 const assert = require("node:assert/strict");
 const { spawn } = require("node:child_process");
-const fs = require("fs/promises");
-const os = require("os");
 const path = require("path");
 const test = require("node:test");
 
 const {
-  finalizeCodexHookPluginBundle,
-  stageCodexHookPluginBundle,
-} = require("../../scripts/convert-plugin/codex-hook-plugin-writer");
+  buildCodexMarketplace,
+} = require("../../scripts/convert-plugin/codex-plugin-builder");
 const {
   convertClaudeToCodex,
 } = require("../../scripts/convert-plugin/codex-transformer");
+
+const {
+  emptyCodexBundle,
+  fixtureCodexPluginPackage,
+  pathExists,
+  readText,
+  withTempDir,
+  writeFile,
+} = require("./converter-test-helpers");
 
 const REPO_ROOT = path.join(__dirname, "..", "..");
 
 /**
  * @typedef {import("../../scripts/convert-plugin/contracts").ClaudeSkill} ClaudeSkill
- * @typedef {import("../../scripts/convert-plugin/contracts").CodexHookPlugin} CodexHookPlugin
+ * @typedef {import("../../scripts/convert-plugin/contracts").CodexBundle} CodexBundle
  * @typedef {import("../../scripts/convert-plugin/contracts").JsonObject} JsonObject
  * @typedef {JsonObject & { command: string }} CommandHook
  * @typedef {{ code: number | null, signal: NodeJS.Signals | null, stdout: string, stderr: string }} ProcessResult
@@ -62,12 +68,10 @@ test("source hook commands resolve to bundled POSIX shell scripts", async () => 
   }
 });
 
-test("generated hook scripts execute from the plugin cache without source checkout state", async () => {
+test("generated hook scripts execute from the built plugin without a plugin root variable", async () => {
   await withTempDir(async (root) => {
-    const codexRoot = path.join(root, "codex-home");
-    const codexStagingRoot = path.join(root, "codex-staging");
     const hookSourceDir = path.join(root, "source-plugin", "hooks");
-    const codexPlugin = fixtureCodexHookPlugin({
+    const bundle = fixtureHookBundle({
       hookSourceDir,
       hooks: {
         PreToolUse: [
@@ -102,35 +106,28 @@ test("generated hook scripts execute from the plugin cache without source checko
       ].join("\n"),
     );
 
-    await stageCodexHookPluginBundle(
-      codexRoot,
-      codexStagingRoot,
-      codexPlugin,
-      emptyPreviousEntries(),
-      { confirmOptions: { yes: true } },
-    );
-
-    const pluginCacheRoot = stagedPluginCacheRoot(
-      codexStagingRoot,
-      codexPlugin,
+    const built = await buildCodexMarketplace(
+      path.join(root, "marketplace"),
+      bundle,
     );
     const result = await runHookScript(
-      path.join(pluginCacheRoot, "hooks", "cache-probe.sh"),
-      {
-        env: isolatedHookEnv(root),
-      },
+      path.join(built.pluginRoot, "hooks", "cache-probe.sh"),
+      { env: isolatedHookEnv(root) },
     );
 
     assert.equal(result.code, 0, result.stderr);
-    assert.equal(result.stdout, `root=${pluginCacheRoot}\ncache-ok\n`);
+    assert.equal(result.stdout, `root=${built.pluginRoot}\ncache-ok\n`);
+    assert.equal(
+      await pathExists(path.join(built.pluginRoot, "hooks", "hooks.json")),
+      true,
+    );
   });
 });
 
-test("local hook state and config files are excluded and removed on reinstall", async () => {
+test("local hook state and config files never ship in the built plugin", async () => {
   await withTempDir(async (root) => {
-    const codexRoot = path.join(root, "codex-home");
     const hookSourceDir = path.join(root, "source-plugin", "hooks");
-    const codexPlugin = fixtureCodexHookPlugin({
+    const bundle = fixtureHookBundle({
       hookSourceDir,
       hooks: { PreToolUse: [] },
     });
@@ -146,76 +143,24 @@ test("local hook state and config files are excluded and removed on reinstall", 
       'CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="example"\n',
     );
 
-    const firstStagingRoot = path.join(root, "codex-staging-first");
-    const firstStage = await stageCodexHookPluginBundle(
-      codexRoot,
-      firstStagingRoot,
-      codexPlugin,
-      emptyPreviousEntries(),
-      { confirmOptions: { yes: true } },
+    const built = await buildCodexMarketplace(
+      path.join(root, "marketplace"),
+      bundle,
     );
-    await withMutedConsole(() =>
-      finalizeCodexHookPluginBundle(
-        codexRoot,
-        firstStagingRoot,
-        codexPlugin,
-        emptyPreviousEntries(),
-        firstStage.targets,
-        { confirmOptions: { yes: true } },
-      ),
+    const hooksRoot = path.join(built.pluginRoot, "hooks");
+    assert.equal(await pathExists(path.join(hooksRoot, "alpha-hook.sh")), true);
+    assert.equal(
+      await pathExists(path.join(hooksRoot, "context-links.config.example")),
+      true,
     );
-
-    const finalHooksRoots = [
-      finalMarketplaceHooksRoot(codexRoot, codexPlugin),
-      finalPluginCacheHooksRoot(codexRoot, codexPlugin),
-    ];
-    for (const hooksRoot of finalHooksRoots) {
-      await writeFile(path.join(hooksRoot, "hook-state.json"), "stale\n");
-      await writeFile(path.join(hooksRoot, "context-links.config"), "stale\n");
-    }
-
-    const previousEntries = {
-      ...emptyPreviousEntries(),
-      hookMarketplaces: firstStage.hookMarketplaces,
-      pluginCaches: firstStage.pluginCaches,
-    };
-    const secondStagingRoot = path.join(root, "codex-staging-second");
-    const secondStage = await stageCodexHookPluginBundle(
-      codexRoot,
-      secondStagingRoot,
-      codexPlugin,
-      previousEntries,
-      { confirmOptions: { yes: true } },
+    assert.equal(
+      await pathExists(path.join(hooksRoot, "hook-state.json")),
+      false,
     );
-    await withMutedConsole(() =>
-      finalizeCodexHookPluginBundle(
-        codexRoot,
-        secondStagingRoot,
-        codexPlugin,
-        previousEntries,
-        secondStage.targets,
-        { confirmOptions: { yes: true } },
-      ),
+    assert.equal(
+      await pathExists(path.join(hooksRoot, "context-links.config")),
+      false,
     );
-
-    for (const hooksRoot of finalHooksRoots) {
-      assert.equal(
-        await pathExists(path.join(hooksRoot, "alpha-hook.sh")),
-        true,
-      );
-      assert.equal(
-        await pathExists(path.join(hooksRoot, "context-links.config.example")),
-        true,
-      );
-      assert.equal(
-        await pathExists(path.join(hooksRoot, "hook-state.json")),
-        false,
-      );
-      assert.equal(
-        await pathExists(path.join(hooksRoot, "context-links.config")),
-        false,
-      );
-    }
   });
 });
 
@@ -234,7 +179,15 @@ test("fixture SubagentStart hook events are preserved in generated hook config",
         },
       ],
     };
-    const bundle = convertClaudeToCodex({
+    const sourceRoot = path.join(root, "source-plugin");
+    const controlSkills = [
+      hookControlSkill(sourceRoot, "kramme:hooks:toggle"),
+      hookControlSkill(sourceRoot, "kramme:hooks:configure-links"),
+    ];
+    for (const skill of controlSkills) {
+      await writeFile(path.join(skill.sourceDir, "SKILL.md"), "control\n");
+    }
+    const plugin = {
       agents: [],
       commands: [],
       hooks: sourceHookConfig,
@@ -243,50 +196,45 @@ test("fixture SubagentStart hook events are preserved in generated hook config",
         name: "demo-hooks",
         version: "1.0.0",
       },
-      root: path.join(root, "source-plugin"),
-      skills: [
-        hookControlSkill("kramme:hooks:toggle"),
-        hookControlSkill("kramme:hooks:configure-links"),
-      ],
-    });
-
-    assert.ok(bundle.codexPlugin);
+      root: sourceRoot,
+      skills: controlSkills,
+    };
+    const bundle = convertClaudeToCodex(plugin);
     assert.deepEqual(bundle.codexPlugin.hooks, sourceHookConfig);
 
-    const codexRoot = path.join(root, "codex-home");
-    const codexStagingRoot = path.join(root, "codex-staging");
     await writeFile(
       path.join(root, "source-plugin", "hooks", "subagent-start.sh"),
       "echo subagent\n",
     );
-    await stageCodexHookPluginBundle(
-      codexRoot,
-      codexStagingRoot,
-      bundle.codexPlugin,
-      emptyPreviousEntries(),
-      { confirmOptions: { yes: true } },
+    const built = await buildCodexMarketplace(
+      path.join(root, "marketplace"),
+      bundle,
     );
-
     const generatedHookConfig = await readJson(
-      path.join(
-        stagedPluginCacheRoot(codexStagingRoot, bundle.codexPlugin),
-        "hooks",
-        "hooks.json",
-      ),
+      path.join(built.pluginRoot, "hooks", "hooks.json"),
     );
     assert.deepEqual(
       generatedHookConfig.SubagentStart,
       sourceHookConfig.SubagentStart,
+    );
+
+    const withoutControls = convertClaudeToCodex({ ...plugin, skills: [] });
+    const unhooked = await buildCodexMarketplace(
+      path.join(root, "marketplace-without-hooks"),
+      withoutControls,
+    );
+    assert.equal(
+      await pathExists(path.join(unhooked.pluginRoot, "hooks")),
+      false,
+      "hook packaging requires the hook control skills",
     );
   });
 });
 
 test("generated bootstrap does not wait for open stdin when the hook does not read it", async () => {
   await withTempDir(async (root) => {
-    const codexRoot = path.join(root, "codex-home");
-    const codexStagingRoot = path.join(root, "codex-staging");
     const hookSourceDir = path.join(root, "source-plugin", "hooks");
-    const codexPlugin = fixtureCodexHookPlugin({
+    const bundle = fixtureHookBundle({
       hookSourceDir,
       hooks: {
         PreToolUse: [
@@ -319,24 +267,13 @@ test("generated bootstrap does not wait for open stdin when the hook does not re
       ].join("\n"),
     );
 
-    await stageCodexHookPluginBundle(
-      codexRoot,
-      codexStagingRoot,
-      codexPlugin,
-      emptyPreviousEntries(),
-      { confirmOptions: { yes: true } },
+    const built = await buildCodexMarketplace(
+      path.join(root, "marketplace"),
+      bundle,
     );
-
     const result = await runHookScriptWithOpenStdin(
-      path.join(
-        stagedPluginCacheRoot(codexStagingRoot, codexPlugin),
-        "hooks",
-        "open-stdin-probe.sh",
-      ),
-      {
-        env: isolatedHookEnv(root),
-        timeoutMs: 1000,
-      },
+      path.join(built.pluginRoot, "hooks", "open-stdin-probe.sh"),
+      { env: isolatedHookEnv(root), timeoutMs: 1000 },
     );
 
     assert.equal(result.code, 0, result.stderr);
@@ -361,23 +298,17 @@ function collectCommandHooks(value, found = []) {
   return found;
 }
 
-/** @param {{ hookSourceDir: string, hooks: JsonObject }} fixture @returns {CodexHookPlugin} */
-function fixtureCodexHookPlugin({ hookSourceDir, hooks }) {
-  return {
-    hookSourceDir,
-    hooks,
-    manifest: {
-      description: "Converted hooks.",
-      hooks: "./hooks/hooks.json",
-      name: "demo-hooks",
-      version: "1.0.0",
+/** @param {{ hookSourceDir: string, hooks: JsonObject }} fixture @returns {CodexBundle} */
+function fixtureHookBundle({ hookSourceDir, hooks }) {
+  const codexPlugin = fixtureCodexPluginPackage({ name: "demo-hooks" });
+  return emptyCodexBundle({
+    codexPlugin: {
+      ...codexPlugin,
+      hookSourceDir,
+      hooks,
+      manifest: { ...codexPlugin.manifest, hooks: "./hooks/hooks.json" },
     },
-    marketplaceName: "demo-hooks",
-    name: "demo-hooks",
-    sharedScriptDirs: [],
-    sharedScriptFiles: [],
-    version: "1.0.0",
-  };
+  });
 }
 
 function minimalCheckEnabledScript() {
@@ -393,64 +324,14 @@ function minimalCheckEnabledScript() {
   ].join("\n");
 }
 
-/** @param {string} name @returns {ClaudeSkill} */
-function hookControlSkill(name) {
+/** @param {string} sourceRoot @param {string} name @returns {ClaudeSkill} */
+function hookControlSkill(sourceRoot, name) {
   return {
     body: "Hook control.",
     description: "Hook control.",
     name,
-    sourceDir: `/plugin/skills/${name}`,
+    sourceDir: path.join(sourceRoot, "skills", name),
   };
-}
-
-/** @returns {{ agentSkillFiles: Record<string, string[]>, agentSkills: string[], hookMarketplaces: string[], pluginCaches: string[], prompts: string[], skillFiles: Record<string, string[]>, skills: string[] }} */
-function emptyPreviousEntries() {
-  return {
-    agentSkillFiles: {},
-    agentSkills: [],
-    hookMarketplaces: [],
-    pluginCaches: [],
-    prompts: [],
-    skillFiles: {},
-    skills: [],
-  };
-}
-
-/** @param {string} codexStagingRoot @param {CodexHookPlugin} codexPlugin */
-function stagedPluginCacheRoot(codexStagingRoot, codexPlugin) {
-  return path.join(
-    codexStagingRoot,
-    "plugins",
-    "cache",
-    codexPlugin.marketplaceName,
-    codexPlugin.name,
-    codexPlugin.version,
-  );
-}
-
-/** @param {string} codexRoot @param {CodexHookPlugin} codexPlugin */
-function finalMarketplaceHooksRoot(codexRoot, codexPlugin) {
-  return path.join(
-    codexRoot,
-    ".kramme-plugin-marketplaces",
-    codexPlugin.marketplaceName,
-    "plugins",
-    codexPlugin.name,
-    "hooks",
-  );
-}
-
-/** @param {string} codexRoot @param {CodexHookPlugin} codexPlugin */
-function finalPluginCacheHooksRoot(codexRoot, codexPlugin) {
-  return path.join(
-    codexRoot,
-    "plugins",
-    "cache",
-    codexPlugin.marketplaceName,
-    codexPlugin.name,
-    codexPlugin.version,
-    "hooks",
-  );
 }
 
 /** @param {string} root */
@@ -537,49 +418,7 @@ function runProcess(
   });
 }
 
-/** @template T @param {(root: string) => Promise<T>} fn @returns {Promise<T>} */
-async function withTempDir(fn) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), "codex-hook-compat-"));
-  try {
-    return await fn(root);
-  } finally {
-    await fs.rm(root, { force: true, recursive: true });
-  }
-}
-
-/** @template T @param {() => Promise<T>} fn @returns {Promise<T>} */
-async function withMutedConsole(fn) {
-  const log = console.log;
-  console.log = () => {};
-  try {
-    return await fn();
-  } finally {
-    console.log = log;
-  }
-}
-
-/** @param {string} file @param {string} content */
-async function writeFile(file, content) {
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, content, "utf8");
-}
-
-/** @param {string} file */
-async function readText(file) {
-  return fs.readFile(file, "utf8");
-}
-
 /** @param {string} file @returns {Promise<JsonObject>} */
 async function readJson(file) {
   return /** @type {JsonObject} */ (JSON.parse(await readText(file)));
-}
-
-/** @param {string} file */
-async function pathExists(file) {
-  try {
-    await fs.access(file);
-    return true;
-  } catch {
-    return false;
-  }
 }

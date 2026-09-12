@@ -1,17 +1,40 @@
 #!/usr/bin/env bats
 # CLI smoke tests for scripts/convert-plugin.js. Converter logic lives in
-# tests/node/converter-*.test.js.
+# tests/node/converter-*.test.js; Codex CLI calls go through the fake `codex`
+# in tests/test_helper/mocks.
 
 setup() {
 	SCRIPT="$BATS_TEST_DIRNAME/../scripts/convert-plugin.js"
 	REPO_ROOT="$BATS_TEST_DIRNAME/.."
+	MOCK_BIN="$BATS_TEST_DIRNAME/test_helper/mocks"
 	TMP_DIR="$(mktemp -d)"
+	CODEX_HOME_DIR="$TMP_DIR/codex-home"
+	AGENTS_HOME_DIR="$TMP_DIR/agents-home"
+	FAKE_LOG="$TMP_DIR/codex.log"
+	PLUGIN_VERSION="$(jq -r '.version' "$REPO_ROOT/.claude-plugin/plugin.json")"
+	CACHE_ROOT="$CODEX_HOME_DIR/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/$PLUGIN_VERSION"
+	MARKETPLACE_ROOT="$CODEX_HOME_DIR/.kramme-plugin-marketplaces/kramme-cc-workflow"
+	chmod +x "$MOCK_BIN/codex"
 }
 
 teardown() {
 	if [ -n "$TMP_DIR" ] && [ -d "$TMP_DIR" ]; then
 		rm -r "$TMP_DIR"
 	fi
+}
+
+require_node() {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for converter tests"
+	fi
+}
+
+run_with_fake_codex() {
+	run env PATH="$MOCK_BIN:$PATH" FAKE_CODEX_LOG="$FAKE_LOG" "$@"
+}
+
+install_repo_plugin() {
+	run_with_fake_codex node "$SCRIPT" install "$REPO_ROOT" --codex-home "$CODEX_HOME_DIR" --agents-home "$AGENTS_HOME_DIR" --yes "$@"
 }
 
 create_isolated_converter() {
@@ -29,6 +52,15 @@ add_failing_converter_modules() {
 "use strict";
 
 module.exports = {};
+JS
+	cat >"$module_root/codex-cli.js" <<'JS'
+"use strict";
+
+module.exports = {
+  defaultCodexHome() {
+    return "/tmp/fixture-codex-home";
+  },
+};
 JS
 	cat >"$module_root/loader.js" <<'JS'
 "use strict";
@@ -63,11 +95,6 @@ module.exports = {
   },
 };
 JS
-	cat >"$module_root/codex-writer.js" <<'JS'
-"use strict";
-
-module.exports = {};
-JS
 }
 
 add_stats_converter_modules() {
@@ -80,7 +107,7 @@ add_stats_converter_modules() {
 
 module.exports = {
   convertClaudeToCodex() {
-    return { skillDirs: [], generatedSkills: [], agentSkills: [] };
+    return { skillDirs: [{}, {}], generatedSkills: [{}], agentSkills: [{}] };
   },
 };
 JS
@@ -89,165 +116,287 @@ JS
 
 module.exports = {
   async loadClaudePlugin() {
-    return {};
+    return { manifest: {} };
   },
   async resolvePluginInput(pluginInput) {
     return pluginInput;
   },
 };
 JS
+	cat >"$module_root/codex-cli.js" <<'JS'
+"use strict";
+
+module.exports = {
+  defaultCodexHome() {
+    return "/tmp/fixture-codex-home";
+  },
+};
+JS
+	for poisoned in codex-plugin-builder legacy-install-cleanup; do
+		cat >"$module_root/$poisoned.js" <<'JS'
+"use strict";
+
+throw new Error("install-only module loaded by a read-only command");
+JS
+	done
 }
 
-create_fixture_plugin() {
-	local plugin_dir="$1"
-	local plugin_name="${2:-fixture-plugin}"
-	mkdir -p "$plugin_dir/.claude-plugin"
-	cat >"$plugin_dir/.claude-plugin/plugin.json" <<JSON
+create_legacy_install() {
+	mkdir -p "$CODEX_HOME_DIR/skills/kramme:legacy:skill" "$AGENTS_HOME_DIR/skills/kramme:legacy-agent" "$CODEX_HOME_DIR/.kramme-install-manifests"
+	printf 'legacy\n' >"$CODEX_HOME_DIR/skills/kramme:legacy:skill/SKILL.md"
+	printf 'legacy\n' >"$AGENTS_HOME_DIR/skills/kramme:legacy-agent/SKILL.md"
+	cat >"$CODEX_HOME_DIR/.kramme-install-state.json" <<'JSON'
 {
-  "name": "$plugin_name",
-  "version": "1.0.0",
-  "agents": [],
-  "commands": [],
-  "skills": []
+  "version": 1,
+  "plugins": {
+    "kramme-cc-workflow": {
+      "codex": {
+        "skills": ["kramme:legacy:skill"],
+        "agentSkills": ["kramme:legacy-agent"],
+        "prompts": [],
+        "hookMarketplaces": [],
+        "pluginCaches": []
+      }
+    }
+  }
 }
 JSON
-}
+	cat >"$CODEX_HOME_DIR/AGENTS.md" <<'MD'
+# Keep me
 
-create_command_fixture_plugin() {
-	local plugin_dir="$1"
-	local plugin_name="$2"
-	local command_name="$3"
-
-	create_fixture_plugin "$plugin_dir" "$plugin_name"
-	mkdir -p "$plugin_dir/commands"
-	cat >"$plugin_dir/commands/${command_name//:/-}.md" <<MD
----
-name: $command_name
-description: Temporary command for converter CLI smoke tests
----
-
-Execute temporary command.
+<!-- BEGIN KRAMME CODEX TOOL MAP -->
+tool map
+<!-- END KRAMME CODEX TOOL MAP -->
 MD
 }
 
-create_cleanup_fixture_plugin() {
-	local plugin_dir="$1"
-	local plugin_name="$2"
-	local command_name="$3"
-	local agent_name="$4"
-
-	create_command_fixture_plugin "$plugin_dir" "$plugin_name" "$command_name"
-	mkdir -p "$plugin_dir/agents"
-	cat >"$plugin_dir/agents/${agent_name//:/-}.md" <<MD
----
-name: $agent_name
-description: Temporary agent for converter CLI cleanup tests
----
-
-Review temporary command behavior.
-MD
+@test "help documents every command and the stats field names" {
+	require_node
+	run node "$SCRIPT" --help
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"build <plugin-name|path> --out <dir>"* ]]
+	[[ "$output" == *"install <plugin-name|path> [options]"* ]]
+	[[ "$output" == *"uninstall <plugin-name|path> [options]"* ]]
+	[[ "$output" == *"stats <plugin-name|path> [--json]"* ]]
+	[[ "$output" == *"codex plugin marketplace add"* ]]
+	[[ "$output" == *"codex_skills"* ]]
+	[[ "$output" == *"agent_skills"* ]]
+	[[ "$output" != *"doctor"* ]]
 }
 
-add_hook_control_skill_fixtures() {
-	local plugin_dir="$1"
+@test "help and unknown commands work without converter modules" {
+	require_node
+	local isolated="$TMP_DIR/isolated"
+	create_isolated_converter "$isolated"
 
-	mkdir -p "$plugin_dir/skills/kramme:hooks:toggle" "$plugin_dir/skills/kramme:hooks:configure-links"
-	cat >"$plugin_dir/skills/kramme:hooks:toggle/SKILL.md" <<'MD'
----
-name: kramme:hooks:toggle
-description: Toggle fixture hooks.
-disable-model-invocation: true
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
-Toggle fixture hooks.
-MD
-	cat >"$plugin_dir/skills/kramme:hooks:configure-links/SKILL.md" <<'MD'
----
-name: kramme:hooks:configure-links
-description: Configure fixture hook links.
-disable-model-invocation: true
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
-Configure fixture hook links.
-MD
+	run node "$isolated/scripts/convert-plugin.js" --help
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Usage:"* ]]
+
+	run node "$isolated/scripts/convert-plugin.js" bogus
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Unknown command: bogus"* ]]
 }
 
-create_hook_fixture_plugin() {
-	local plugin_dir="$1"
-	local plugin_name="$2"
-	local script_name="$3"
-	local hook_command="${4:-}"
-	local script_body="${5:-#!/bin/bash
-exit 0}"
+@test "missing converter modules render single-line command errors" {
+	require_node
+	local isolated="$TMP_DIR/isolated"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
 
-	if [ -z "$hook_command" ]; then
-		hook_command='bash ${CLAUDE_PLUGIN_ROOT}/hooks/'"$script_name"'.sh'
-	fi
+	run node "$isolated/scripts/convert-plugin.js" build fixture --out "$TMP_DIR/out"
+	[ "$status" -eq 1 ]
+	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
 
-	create_fixture_plugin "$plugin_dir" "$plugin_name"
-	mkdir -p "$plugin_dir/hooks/lib"
-
-	jq -n --arg cmd "$hook_command" '{
-    hooks: {
-      PreToolUse: [
-        {
-          matcher: "Bash",
-          hooks: [
-            {type: "command", command: $cmd}
-          ]
-        }
-      ]
-    }
-  }' >"$plugin_dir/hooks/hooks.json"
-
-	printf '%s\n' "$script_body" >"$plugin_dir/hooks/${script_name}.sh"
-
-	cat >"$plugin_dir/hooks/lib/check-enabled.sh" <<'SH'
-#!/bin/bash
-exit_if_hook_disabled() {
-  return 0
-}
-SH
-
-	add_hook_control_skill_fixtures "$plugin_dir"
+	run node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 1 ]
+	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
 }
 
-snapshot_tree() {
-	# Entries catch new or removed paths; hashes catch an in-place rewrite.
-	(set -o pipefail && cd "$1" && { find .; find . -type f -exec shasum {} +; } | LC_ALL=C sort)
+@test "converter failures render a bounded cause chain without a stack" {
+	require_node
+	local isolated="$TMP_DIR/isolated"
+	create_isolated_converter "$isolated"
+	add_failing_converter_modules "$isolated"
+
+	run env FIXTURE_FAILURE=duplicate node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 1 ]
+	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
+
+	run env FIXTURE_FAILURE=duplicate-prefix node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 1 ]
+	[ "$output" = "primary conversion failure Rollback failed: cleanup failure" ]
+
+	run env FIXTURE_FAILURE=deep node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 1 ]
+	[ "$output" = "cause-1: cause-2: cause-3: cause-4: cause-5" ]
+
+	run env FIXTURE_FAILURE=plain-object node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"plain object failure"* ]]
 }
 
-resolve_node_package_dir() {
-	node -e '
-const fs = require("fs");
-const path = require("path");
-let current = path.dirname(require.resolve(process.argv[1]));
-while (current !== path.dirname(current)) {
-  if (fs.existsSync(path.join(current, "package.json"))) {
-    console.log(current);
-    process.exit(0);
-  }
-  current = path.dirname(current);
+@test "stats reports skill counts as text and JSON without loading install modules" {
+	require_node
+	local isolated="$TMP_DIR/isolated"
+	create_isolated_converter "$isolated"
+	add_stats_converter_modules "$isolated"
+
+	run node "$isolated/scripts/convert-plugin.js" stats fixture
+	[ "$status" -eq 0 ]
+	[ "${lines[0]}" = "codex_skills=3" ]
+	[ "${lines[1]}" = "agent_skills=1" ]
+
+	run node "$isolated/scripts/convert-plugin.js" stats fixture --json
+	[ "$status" -eq 0 ]
+	[ "$output" = '{"codex_skills":3,"agent_skills":1}' ]
 }
-process.exit(1);
-' "$1"
+
+@test "stats resolves the marketplace slug from the repository root" {
+	require_node
+	run bash -c 'cd "$1" && node "$2" stats kramme-cc-workflow --json' _ "$REPO_ROOT/.." "$SCRIPT"
+	[ "$status" -eq 0 ]
+	[ "$(printf '%s' "$output" | jq -r '.codex_skills > 0 and .agent_skills > 0')" = "true" ]
+}
+
+@test "build writes a Codex marketplace for the repository plugin" {
+	require_node
+	local out="$TMP_DIR/marketplace"
+	run node "$SCRIPT" build "$REPO_ROOT" --out "$out"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "Built kramme-cc-workflow $PLUGIN_VERSION ("*" skills) to $out" ]]
+
+	local plugin_root="$out/plugins/kramme-cc-workflow"
+	[ "$(jq -r '.name' "$out/.agents/plugins/marketplace.json")" = "kramme-cc-workflow" ]
+	[ "$(jq -r '.plugins[0].source.path' "$out/.agents/plugins/marketplace.json")" = "./plugins/kramme-cc-workflow" ]
+	[ "$(jq -r '.version' "$plugin_root/.codex-plugin/plugin.json")" = "$PLUGIN_VERSION" ]
+	[ "$(jq -r '.skills' "$plugin_root/.codex-plugin/plugin.json")" = "./skills/" ]
+	[ "$(jq -r '.hooks' "$plugin_root/.codex-plugin/plugin.json")" = "./hooks/hooks.json" ]
+	[ -f "$plugin_root/hooks/hooks.json" ]
+	[ ! -e "$plugin_root/hooks/hook-state.json" ]
+	[ ! -e "$plugin_root/hooks/context-links.config" ]
+	[ -x "$plugin_root/scripts/collect-review-diff.sh" ]
+	[ -f "$plugin_root/skills/kramme:pr:create/SKILL.md" ]
+	[ -x "$plugin_root/skills/kramme:pr:adversarial-review/scripts/run-adversarial-review.sh" ]
+	[ -f "$plugin_root/skills/kramme:a11y-auditor/SKILL.md" ]
+
+	eval "$(node "$SCRIPT" stats "$REPO_ROOT" | sed 's/^/EXPECTED_/')"
+	local skill_count
+	skill_count="$(find "$plugin_root/skills" -name SKILL.md | wc -l | tr -d '[:space:]')"
+	[ "$skill_count" -eq $((EXPECTED_codex_skills + EXPECTED_agent_skills)) ]
+
+	run grep -rl '\${CLAUDE_PLUGIN_ROOT' "$plugin_root/skills" --include='*.md'
+	[ "$status" -eq 1 ]
+	run grep -c 'plugins/cache/kramme-cc-workflow/kramme-cc-workflow/'"$PLUGIN_VERSION"'/scripts/collect-review-diff.sh' "$plugin_root/skills/kramme:pr:code-review/SKILL.md"
+	[ "$status" -eq 0 ]
+	[ ! -e "$out/AGENTS.md" ]
+}
+
+@test "build requires --out and refuses a non-empty output directory" {
+	require_node
+	run node "$SCRIPT" build "$REPO_ROOT"
+	[ "$status" -eq 1 ]
+	[ "$output" = "build requires --out <dir>." ]
+
+	mkdir -p "$TMP_DIR/occupied"
+	printf 'mine\n' >"$TMP_DIR/occupied/keep.txt"
+	run node "$SCRIPT" build "$REPO_ROOT" --out "$TMP_DIR/occupied"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"is not empty"* ]]
+	[ "$(cat "$TMP_DIR/occupied/keep.txt")" = "mine" ]
+	[ ! -e "$TMP_DIR/occupied/plugins" ]
+}
+
+@test "install builds the marketplace and registers it through the Codex CLI" {
+	require_node
+	install_repo_plugin
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Installed kramme-cc-workflow $PLUGIN_VERSION to $CACHE_ROOT"* ]]
+
+	[ -f "$MARKETPLACE_ROOT/.agents/plugins/marketplace.json" ]
+	[ -f "$MARKETPLACE_ROOT/plugins/kramme-cc-workflow/.codex-plugin/plugin.json" ]
+	[ -f "$CACHE_ROOT/skills/kramme:pr:create/SKILL.md" ]
+	[ ! -e "$CODEX_HOME_DIR/skills" ]
+	[ ! -e "$AGENTS_HOME_DIR/skills" ]
+	[ ! -e "$CODEX_HOME_DIR/AGENTS.md" ]
+	[ ! -e "$MARKETPLACE_ROOT.build-"* ]
+	[ "$(cat "$FAKE_LOG")" = "plugin marketplace add $MARKETPLACE_ROOT
+plugin add kramme-cc-workflow@kramme-cc-workflow --json" ]
+
+	# Reinstalling replaces the generated marketplace in place.
+	printf 'stale\n' >"$MARKETPLACE_ROOT/stale.txt"
+	install_repo_plugin
+	[ "$status" -eq 0 ]
+	[ ! -e "$MARKETPLACE_ROOT/stale.txt" ]
+	[ -f "$MARKETPLACE_ROOT/.agents/plugins/marketplace.json" ]
+}
+
+@test "install removes legacy converter output only with confirmation" {
+	require_node
+	create_legacy_install
+	run_with_fake_codex node "$SCRIPT" install "$REPO_ROOT" --codex-home "$CODEX_HOME_DIR" --agents-home "$AGENTS_HOME_DIR" --non-interactive
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"defaulting to No"* ]]
+	[ -f "$CODEX_HOME_DIR/skills/kramme:legacy:skill/SKILL.md" ]
+	[ -f "$CODEX_HOME_DIR/.kramme-install-state.json" ]
+
+	install_repo_plugin
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Removed "*" legacy Codex install paths."* ]]
+	[ ! -e "$CODEX_HOME_DIR/skills/kramme:legacy:skill" ]
+	[ ! -e "$AGENTS_HOME_DIR/skills/kramme:legacy-agent" ]
+	[ ! -e "$CODEX_HOME_DIR/.kramme-install-state.json" ]
+	[ ! -e "$CODEX_HOME_DIR/.kramme-install-manifests" ]
+	[ "$(cat "$CODEX_HOME_DIR/AGENTS.md")" = "# Keep me" ]
+}
+
+@test "install refuses to replace a marketplace directory it did not generate" {
+	require_node
+	mkdir -p "$TMP_DIR/foreign"
+	printf 'mine\n' >"$TMP_DIR/foreign/notes.txt"
+	install_repo_plugin --marketplace-dir "$TMP_DIR/foreign"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Refusing to replace $TMP_DIR/foreign"* ]]
+	[ "$(cat "$TMP_DIR/foreign/notes.txt")" = "mine" ]
+	[ ! -e "$FAKE_LOG" ]
+}
+
+@test "install reports a missing Codex CLI after building the marketplace" {
+	require_node
+	# A PATH with node but no codex, regardless of what the host has installed.
+	mkdir -p "$TMP_DIR/node-only-bin"
+	ln -s "$(command -v node)" "$TMP_DIR/node-only-bin/node"
+	run env PATH="$TMP_DIR/node-only-bin:/usr/bin:/bin" node "$SCRIPT" install "$REPO_ROOT" --codex-home "$CODEX_HOME_DIR" --yes
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"codex CLI was not found on PATH"* ]]
+	[ -f "$MARKETPLACE_ROOT/.agents/plugins/marketplace.json" ]
+}
+
+@test "uninstall removes the registration, marketplace, and legacy output" {
+	require_node
+	install_repo_plugin
+	[ "$status" -eq 0 ]
+	create_legacy_install
+	: >"$FAKE_LOG"
+
+	run_with_fake_codex node "$SCRIPT" uninstall "$REPO_ROOT" --codex-home "$CODEX_HOME_DIR" --agents-home "$AGENTS_HOME_DIR" --yes
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Uninstalled kramme-cc-workflow from $CODEX_HOME_DIR"* ]]
+	[ "$(cat "$FAKE_LOG")" = "plugin remove kramme-cc-workflow@kramme-cc-workflow
+plugin marketplace remove kramme-cc-workflow" ]
+	[ ! -e "$MARKETPLACE_ROOT" ]
+	[ ! -e "$CACHE_ROOT" ]
+	[ ! -e "$CODEX_HOME_DIR/skills/kramme:legacy:skill" ]
+	[ ! -e "$CODEX_HOME_DIR/.kramme-install-state.json" ]
 }
 
 @test "install-codex helper bootstraps missing converter dependencies" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local yaml_dir smol_toml_dir
+	require_node
+	local yaml_dir
 	yaml_dir="$(resolve_node_package_dir yaml)"
-	smol_toml_dir="$(resolve_node_package_dir smol-toml)"
 
 	local isolated="$TMP_DIR/isolated"
-	mkdir -p "$isolated/.claude-plugin"
-	mkdir -p "$isolated/kramme-cc-workflow/.claude-plugin"
-	mkdir -p "$isolated/kramme-cc-workflow/scripts"
+	mkdir -p "$isolated/.claude-plugin" "$isolated/kramme-cc-workflow/.claude-plugin" "$isolated/kramme-cc-workflow/scripts"
 	cp "$REPO_ROOT/scripts/install-codex.sh" "$isolated/kramme-cc-workflow/scripts/install-codex.sh"
 	cp "$REPO_ROOT/scripts/convert-plugin.js" "$isolated/kramme-cc-workflow/scripts/convert-plugin.js"
 	cp -R "$REPO_ROOT/scripts/convert-plugin" "$isolated/kramme-cc-workflow/scripts/convert-plugin"
@@ -256,7 +405,6 @@ process.exit(1);
 	cat >"$isolated/package.json" <<'JSON'
 {
   "dependencies": {
-    "smol-toml": "^1.7.0",
     "yaml": "^2.9.0"
   }
 }
@@ -283,682 +431,31 @@ JSON
 
 	local fakebin="$TMP_DIR/fakebin"
 	mkdir -p "$fakebin"
+	cp "$MOCK_BIN/codex" "$fakebin/codex"
 	cat >"$fakebin/npm" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 printf '%s\n' "$*" >"$NPM_CALLED"
 mkdir -p node_modules
 ln -s "$YAML_MODULE_DIR" node_modules/yaml
-ln -s "$SMOL_TOML_MODULE_DIR" node_modules/smol-toml
 SH
-	chmod +x "$fakebin/npm"
+	chmod +x "$fakebin/npm" "$fakebin/codex"
 
-	run bash -c 'cd "$1" && PATH="$2:$PATH" NPM_CALLED="$3" YAML_MODULE_DIR="$4" SMOL_TOML_MODULE_DIR="$5" "$1/kramme-cc-workflow/scripts/install-codex.sh" --codex-home "$1/output" --agents-home "$1/.agents" --yes' _ "$isolated" "$fakebin" "$TMP_DIR/npm-called" "$yaml_dir" "$smol_toml_dir"
+	run bash -c 'cd "$1" && PATH="$2:$PATH" NPM_CALLED="$3" YAML_MODULE_DIR="$4" FAKE_CODEX_LOG="$5" "$1/kramme-cc-workflow/scripts/install-codex.sh" --codex-home "$6" --yes' _ "$isolated" "$fakebin" "$TMP_DIR/npm-called" "$yaml_dir" "$FAKE_LOG" "$CODEX_HOME_DIR"
 	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/npm-called" ]
-	run cat "$TMP_DIR/npm-called"
-	[ "$status" -eq 0 ]
-	[ "$output" = "install --omit=dev --no-audit --no-fund" ]
-	[ -d "$isolated/output/.codex" ]
+	[ "$(cat "$TMP_DIR/npm-called")" = "install --omit=dev --no-audit --no-fund" ]
+	[ -f "$MARKETPLACE_ROOT/.agents/plugins/marketplace.json" ]
+	[ -f "$CODEX_HOME_DIR/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/1.0.0/.codex-plugin/plugin.json" ]
+	[[ "$output" == *"Installed kramme-cc-workflow 1.0.0 to"* ]]
 }
 
-@test "codex conversion installs repository plugin to Codex and agents homes" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	run node "$SCRIPT" install "$REPO_ROOT" --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
-	[ "$status" -eq 0 ]
-
-	local plugin_version
-	plugin_version="$(jq -r '.version' "$REPO_ROOT/.claude-plugin/plugin.json")"
-	local marketplace_root="$TMP_DIR/.codex/.kramme-plugin-marketplaces/kramme-cc-workflow"
-	local cache_root="$TMP_DIR/.codex/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/$plugin_version"
-
-	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:pr:adversarial-review/SKILL.md" ]
-	[ -x "$TMP_DIR/.codex/skills/kramme:pr:adversarial-review/scripts/run-adversarial-review.sh" ]
-	[ -x "$TMP_DIR/.codex/skills/kramme:pr:create/scripts/validate-branch-name.sh" ]
-	[ -x "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh" ]
-	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
-	[ -f "$TMP_DIR/.codex/AGENTS.md" ]
-	[ -x "$marketplace_root/plugins/kramme-cc-workflow/scripts/dev-server/detect-url.sh" ]
-	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/lib/shell-helpers.sh" ]
-	[ -x "$marketplace_root/plugins/kramme-cc-workflow/scripts/resolve-base.sh" ]
-	[ -x "$marketplace_root/plugins/kramme-cc-workflow/scripts/resolve-stack-membership.sh" ]
-	[ -x "$marketplace_root/plugins/kramme-cc-workflow/scripts/verify-rewrite-state.sh" ]
-	[ -x "$marketplace_root/plugins/kramme-cc-workflow/scripts/collect-review-diff.sh" ]
-	[ -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/skill-usage.js" ]
-	[ ! -f "$marketplace_root/plugins/kramme-cc-workflow/scripts/install-codex.sh" ]
-	[ -x "$cache_root/scripts/dev-server/detect-url.sh" ]
-	[ -f "$cache_root/scripts/lib/shell-helpers.sh" ]
-	[ -x "$cache_root/scripts/resolve-base.sh" ]
-	[ -x "$cache_root/scripts/resolve-stack-membership.sh" ]
-	[ -x "$cache_root/scripts/verify-rewrite-state.sh" ]
-	[ -x "$cache_root/scripts/collect-review-diff.sh" ]
-	[ -f "$cache_root/scripts/skill-usage.js" ]
-	[ ! -f "$cache_root/scripts/install-codex.sh" ]
-	[ -x "$TMP_DIR/.codex/scripts/dev-server/detect-url.sh" ]
-	[ -f "$TMP_DIR/.codex/scripts/lib/shell-helpers.sh" ]
-	[ -x "$TMP_DIR/.codex/scripts/resolve-base.sh" ]
-	[ -x "$TMP_DIR/.codex/scripts/resolve-stack-membership.sh" ]
-	[ -x "$TMP_DIR/.codex/scripts/verify-rewrite-state.sh" ]
-	[ -x "$TMP_DIR/.codex/scripts/collect-review-diff.sh" ]
-	[ -x "$TMP_DIR/.codex/scripts/review-tree-fingerprint.sh" ]
-	[ -f "$TMP_DIR/.codex/scripts/skill-usage.js" ]
-
-	run "$TMP_DIR/.codex/scripts/collect-review-diff.sh" --help
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Usage: collect-review-diff.sh"* ]]
-
-	run grep -n 'TodoWrite/TodoRead: use update_plan' "$TMP_DIR/.codex/AGENTS.md"
-	[ "$status" -eq 0 ]
-	run grep -RFn '${CLAUDE_PLUGIN_ROOT}/scripts/dev-server' "$TMP_DIR/.codex/skills"
-	[ "$status" -eq 1 ]
-	run grep -nF "'$TMP_DIR/.codex/scripts/collect-review-diff.sh' \"\${COLLECT_ARGS[@]}\" \\" "$TMP_DIR/.codex/skills/kramme:pr:code-review/SKILL.md"
-	[ "$status" -eq 0 ]
-	run grep -nF "RESOLVED=\$('$TMP_DIR/.codex/scripts/resolve-base.sh' \"\${ARGS[@]}\")" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
-	[ "$status" -eq 0 ]
-	run grep -nF "STACK_RESOLVED=\$('$TMP_DIR/.codex/scripts/resolve-stack-membership.sh')" "$TMP_DIR/.codex/skills/kramme:pr:rebase/SKILL.md"
-	[ "$status" -eq 0 ]
-	run grep -nF "'$TMP_DIR/.codex/scripts/verify-rewrite-state.sh'" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
-	[ "$status" -eq 0 ]
-	run grep -nF "PUSH_RESOLVED=\$(\"$TMP_DIR/.codex/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh\" \\" "$TMP_DIR/.codex/skills/kramme:git:recreate-commits/SKILL.md"
-	[ "$status" -eq 0 ]
-	run grep -nF "DETECTED_PROJECT_TYPE=\$('$TMP_DIR/.codex/scripts/dev-server'/detect-project-type.sh 2> /dev/null)" "$TMP_DIR/.codex/skills/kramme:qa/SKILL.md"
-	[ "$status" -eq 0 ]
-	run grep -REn '(\$CLAUDE_PLUGIN_ROOT|\$\{CLAUDE_PLUGIN_ROOT[^}]*\})/scripts/' "$TMP_DIR/.codex/skills" "$TMP_DIR/.agents/skills"
-	[ "$status" -eq 1 ]
-	run grep -REn '\bAskUserQuestion\b|\bTask (tool|subagent|sub-agent|agent)\b|\bSkill tool\b|\bTodoWrite\b|\bTodoRead\b|\bsubagent_type\b|\bmodel=opus\b|\bmodel=sonnet\b' "$TMP_DIR/.codex/skills"
-	if [ "$status" -ne 1 ]; then
-		printf 'Unexpected Claude-only references (status=%s):\n%s\n' "$status" "$output" >&2
-	fi
-	[ "$status" -eq 1 ]
-	run grep -REn 'direct chat questions`|direct chat question`' "$TMP_DIR/.codex/skills"
-	if [ "$status" -ne 1 ]; then
-		printf 'Unexpected malformed direct-chat references (status=%s):\n%s\n' "$status" "$output" >&2
-	fi
-	[ "$status" -eq 1 ]
-	run grep -REn 'direct chat question tool' "$TMP_DIR/.codex/skills"
-	if [ "$status" -ne 1 ]; then
-		printf 'Unexpected direct-chat tool references (status=%s):\n%s\n' "$status" "$output" >&2
-	fi
-	[ "$status" -eq 1 ]
-}
-
-@test "codex conversion installs hooks as an enabled plugin bundle" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	FIXTURE_PLUGIN="$TMP_DIR/hook-plugin"
-	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hook-plugin" "alpha-hook"
-
-	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
-	[ "$status" -eq 0 ]
-
-	local marketplace_root="$TMP_DIR/.codex/.kramme-plugin-marketplaces/hook-plugin"
-	local cache_root="$TMP_DIR/.codex/plugins/cache/hook-plugin/hook-plugin/1.0.0"
-
-	[ -f "$marketplace_root/.agents/plugins/marketplace.json" ]
-	[ -f "$marketplace_root/plugins/hook-plugin/.codex-plugin/plugin.json" ]
-	[ -f "$cache_root/.codex-plugin/plugin.json" ]
-	[ -f "$cache_root/hooks/alpha-hook.sh" ]
-	[ -f "$cache_root/hooks/lib/check-enabled.sh" ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:hooks:toggle/SKILL.md" ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:hooks:configure-links/SKILL.md" ]
-
-	run jq -r '.hooks' "$cache_root/.codex-plugin/plugin.json"
-	[ "$status" -eq 0 ]
-	[ "$output" = "./hooks/hooks.json" ]
-
-	run jq -r '.hooks.PreToolUse[0].hooks[0].command' "$cache_root/hooks/hooks.json"
-	[ "$status" -eq 0 ]
-	[ "$output" = 'bash ${CLAUDE_PLUGIN_ROOT}/hooks/alpha-hook.sh' ]
-
-	local hook_command
-	hook_command="$(jq -r '.hooks.PreToolUse[0].hooks[0].command' "$cache_root/hooks/hooks.json")"
-	run bash -c 'printf "%s\n" "{\"tool_input\":{\"command\":\"echo ok\"}}" | CLAUDE_PLUGIN_ROOT="$1" bash -lc "$2"' _ "$cache_root" "$hook_command"
-	[ "$status" -eq 0 ]
-
-	run grep -nF '[plugins."hook-plugin@hook-plugin"]' "$TMP_DIR/.codex/config.toml"
-	[ "$status" -eq 0 ]
-	run awk '
-		$0 == "[plugins.\"hook-plugin@hook-plugin\"]" { in_table = 1; next }
-		in_table && /^\[/ { exit }
-		in_table && $0 == "enabled = true" { found = 1 }
-		END { exit found ? 0 : 1 }
-	' "$TMP_DIR/.codex/config.toml"
-	[ "$status" -eq 0 ]
-	run jq -r '.pluginCaches[0]' "$TMP_DIR/.codex/.kramme-install-manifests/hook-plugin-codex.json"
-	[ "$status" -eq 0 ]
-	[ "$output" = "cache/hook-plugin/hook-plugin/1.0.0" ]
-	run jq -r '.hookMarketplaces[0]' "$TMP_DIR/.codex/.kramme-install-manifests/hook-plugin-codex.json"
-	[ "$status" -eq 0 ]
-	[ "$output" = ".kramme-plugin-marketplaces/hook-plugin" ]
-}
-
-@test "codex conversion asks before replacing an untracked hook marketplace" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	FIXTURE_PLUGIN="$TMP_DIR/untracked-hook-marketplace-plugin"
-	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "untracked-hook-marketplace-plugin" "alpha-hook"
-	mkdir -p "$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin"
-	printf 'keep\n' >"$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin/sentinel.txt"
-
-	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
-	[ "$status" -eq 1 ]
-	[[ "$output" == *"Refusing to overwrite existing untracked Codex hook marketplace."* ]]
-	[ -f "$TMP_DIR/.codex/.kramme-plugin-marketplaces/untracked-hook-marketplace-plugin/sentinel.txt" ]
-}
-
-@test "codex conversion removes managed hook plugin output when hooks are removed" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	FIXTURE_PLUGIN="$TMP_DIR/hookless-upgrade-plugin"
-	create_hook_fixture_plugin "$FIXTURE_PLUGIN" "hookless-upgrade-plugin" "alpha-hook"
-
-	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
-	[ "$status" -eq 0 ]
-	[ -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hookless-upgrade-plugin" ]
-	[ -d "$TMP_DIR/.codex/plugins/cache/hookless-upgrade-plugin/hookless-upgrade-plugin/1.0.0" ]
-
-	rm -r "$FIXTURE_PLUGIN/hooks"
-	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
-	[ "$status" -eq 0 ]
-	[ ! -d "$TMP_DIR/.codex/.kramme-plugin-marketplaces/hookless-upgrade-plugin" ]
-	[ ! -d "$TMP_DIR/.codex/plugins/cache/hookless-upgrade-plugin/hookless-upgrade-plugin/1.0.0" ]
-
-	run grep -nF '[plugins."hookless-upgrade-plugin@hookless-upgrade-plugin"]' "$TMP_DIR/.codex/config.toml"
-	[ "$status" -eq 1 ]
-
-	run jq -r '.hookMarketplaces | length' "$TMP_DIR/.codex/.kramme-install-manifests/hookless-upgrade-plugin-codex.json"
-	[ "$status" -eq 0 ]
-	[ "$output" = "0" ]
-
-	run jq -r '.pluginCaches | length' "$TMP_DIR/.codex/.kramme-install-manifests/hookless-upgrade-plugin-codex.json"
-	[ "$status" -eq 0 ]
-	[ "$output" = "0" ]
-}
-
-@test "codex conversion skips cleanup in non-interactive mode without --yes" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/skill-plugin"
-	create_cleanup_fixture_plugin "$PLUGIN_DIR" "skill-plugin" "kramme:temp-command" "kramme:temp-agent"
-
-	run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
-	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:temp-command/SKILL.md" ]
-	[ -f "$TMP_DIR/.agents/skills/kramme:temp-agent/SKILL.md" ]
-
-	rm "$PLUGIN_DIR/commands/kramme-temp-command.md"
-	rm "$PLUGIN_DIR/agents/kramme-temp-agent.md"
-	run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --non-interactive
-	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:temp-command/SKILL.md" ]
-	[ -f "$TMP_DIR/.agents/skills/kramme:temp-agent/SKILL.md" ]
-	[[ "$output" == *"non-interactive mode"* ]]
-	[[ "$output" == *"Skipping skill cleanup."* ]]
-}
-
-@test "codex conversion preserves other plugin outputs after install state is rebuilt" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	FIXTURE_PLUGIN="$TMP_DIR/fixture-plugin"
-	create_cleanup_fixture_plugin "$FIXTURE_PLUGIN" "fixture-plugin" "kramme:fixture:review" "kramme:fixture-agent"
-
-	run node "$SCRIPT" install "$REPO_ROOT" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
-	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
-	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
-
-	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
-	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:fixture:review/SKILL.md" ]
-	[ -f "$TMP_DIR/.agents/skills/kramme:fixture-agent/SKILL.md" ]
-
-	rm "$TMP_DIR/.codex/.kramme-install-state.json"
-	run node "$SCRIPT" install "$FIXTURE_PLUGIN" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
-	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:pr:create/SKILL.md" ]
-	[ -f "$TMP_DIR/.agents/skills/kramme:architecture-strategist/SKILL.md" ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:fixture:review/SKILL.md" ]
-	[ -f "$TMP_DIR/.agents/skills/kramme:fixture-agent/SKILL.md" ]
-}
-
-@test "codex conversion cleans stale same-plugin skills after install state is rebuilt" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/state-loss-plugin"
-	create_command_fixture_plugin "$PLUGIN_DIR" "state-loss-plugin" "kramme:old-skill"
-
-	run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
-	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:old-skill/SKILL.md" ]
-
-	rm "$TMP_DIR/.codex/.kramme-install-state.json"
-	rm "$PLUGIN_DIR/commands/kramme-old-skill.md"
-	cat >"$PLUGIN_DIR/commands/kramme-new-skill.md" <<'MD'
----
-name: kramme:new-skill
-description: New skill
----
-
-New skill.
-MD
-
-	run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
-	[ "$status" -eq 0 ]
-	[ ! -f "$TMP_DIR/.codex/skills/kramme:old-skill/SKILL.md" ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:new-skill/SKILL.md" ]
-}
-
-@test "converter resolves marketplace slug from parent repo root" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	run bash -c "cd \"$TMP_DIR\" && node \"$SCRIPT\" install kramme-cc-workflow --to codex --codex-home \"$TMP_DIR/output\" --agents-home \"$TMP_DIR/.agents\" --non-interactive"
-	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/output/.codex/skills/kramme:pr:create/SKILL.md" ]
-}
-
-@test "codex conversion accepts streaming yes input for cleanup confirmations" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-	if ! command -v yes >/dev/null 2>&1; then
-		skip "yes is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/yes-plugin"
-	create_cleanup_fixture_plugin "$PLUGIN_DIR" "yes-plugin" "kramme:temp-command" "kramme:temp-agent"
-
-	run node "$SCRIPT" install "$PLUGIN_DIR" --to codex --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents"
-	[ "$status" -eq 0 ]
-	[ -f "$TMP_DIR/.codex/skills/kramme:temp-command/SKILL.md" ]
-	[ -f "$TMP_DIR/.agents/skills/kramme:temp-agent/SKILL.md" ]
-
-	rm "$PLUGIN_DIR/commands/kramme-temp-command.md"
-	rm "$PLUGIN_DIR/agents/kramme-temp-agent.md"
-	run bash -c "set +e; set +o pipefail; yes | node \"$SCRIPT\" install \"$PLUGIN_DIR\" --to codex --codex-home \"$TMP_DIR\" --agents-home \"$TMP_DIR/.agents\"; exit \${PIPESTATUS[1]}"
-	[ "$status" -eq 0 ]
-	[ ! -f "$TMP_DIR/.codex/skills/kramme:temp-command/SKILL.md" ]
-	[ ! -d "$TMP_DIR/.agents/skills/kramme:temp-agent" ]
-}
-
-@test "help documents stats and doctor field names" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	run node "$SCRIPT" --help
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Stats fields:"* ]]
-	[[ "$output" == *"codex_skills"* ]]
-	[[ "$output" == *"agent_skills"* ]]
-	[[ "$output" == *"Doctor fields:"* ]]
-	[[ "$output" == *"plugin_source"* ]]
-	[[ "$output" == *"install_state_recovery_reason"* ]]
-	[[ "$output" == *"transaction_health"* ]]
-}
-
-@test "help and unknown commands work without converter modules" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local isolated="$TMP_DIR/dependency-free"
-	create_isolated_converter "$isolated"
-
-	run node "$isolated/scripts/convert-plugin.js" --help
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Usage:"* ]]
-	[[ "$output" != *"Cannot find module"* ]]
-
-	run node "$isolated/scripts/convert-plugin.js" unknown
-	[ "$status" -eq 1 ]
-	[[ "$output" == *"Unknown command: unknown"* ]]
-	[[ "$output" == *"Usage:"* ]]
-	[[ "$output" != *"Cannot find module"* ]]
-}
-
-@test "missing converter modules render single-line command errors" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local isolated="$TMP_DIR/missing-modules"
-	create_isolated_converter "$isolated"
-
-	run node "$isolated/scripts/convert-plugin.js" install fixture --yes
-	[ "$status" -eq 1 ]
-	[[ "$output" == *"Cannot find module"* ]]
-	[[ "$output" == *"codex-transformer"* ]]
-	[[ "$output" != *$'\n'* ]]
-	[[ "$output" != *"Require stack:"* ]]
-
-	run node "$isolated/scripts/convert-plugin.js" stats fixture
-	[ "$status" -eq 1 ]
-	[[ "$output" == *"Cannot find module"* ]]
-	[[ "$output" == *"codex-transformer"* ]]
-	[[ "$output" != *$'\n'* ]]
-	[[ "$output" != *"Require stack:"* ]]
-
-	run node "$isolated/scripts/convert-plugin.js" doctor fixture
-	[ "$status" -eq 1 ]
-	[[ "$output" == *"Cannot find module"* ]]
-	[[ "$output" == *"diagnostics"* ]]
-	[[ "$output" != *$'\n'* ]]
-	[[ "$output" != *"Require stack:"* ]]
-}
-
-@test "converter failures render a bounded cause chain without a stack" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local isolated="$TMP_DIR/causal-error"
+@test "every command rejects malformed or unsupported options before loading converter modules" {
+	require_node
+	local isolated="$TMP_DIR/isolated"
 	create_isolated_converter "$isolated"
 	add_failing_converter_modules "$isolated"
 
-	run node "$isolated/scripts/convert-plugin.js" install fixture --yes
-	[ "$status" -eq 1 ]
-	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
-
-	run env FIXTURE_FAILURE=duplicate node "$isolated/scripts/convert-plugin.js" install fixture --yes
-	[ "$status" -eq 1 ]
-	[ "$output" = "Unable to resolve fixture plugin: yaml package unavailable" ]
-
-	run env FIXTURE_FAILURE=duplicate-prefix node "$isolated/scripts/convert-plugin.js" install fixture --yes
-	[ "$status" -eq 1 ]
-	[ "$output" = "primary conversion failure Rollback failed: cleanup failure" ]
-}
-
-@test "converter failures bound deep cause chains" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local isolated="$TMP_DIR/bounded-causal-error"
-	create_isolated_converter "$isolated"
-	add_failing_converter_modules "$isolated"
-
-	run env FIXTURE_FAILURE=deep node "$isolated/scripts/convert-plugin.js" install fixture --yes
-	[ "$status" -eq 1 ]
-	[ "$output" = "cause-1: cause-2: cause-3: cause-4: cause-5" ]
-}
-
-@test "converter failures preserve non-Error rejection details" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local isolated="$TMP_DIR/non-error"
-	create_isolated_converter "$isolated"
-	add_failing_converter_modules "$isolated"
-
-	run env FIXTURE_FAILURE=plain-object node "$isolated/scripts/convert-plugin.js" install fixture --yes
-	[ "$status" -eq 1 ]
-	[[ "$output" == *"message"* ]]
-	[[ "$output" == *"plain object failure"* ]]
-	[[ "$output" == *"code"* ]]
-	[[ "$output" == *"EPLAIN"* ]]
-	[[ "$output" != *"[object Object]"* ]]
-}
-
-@test "stats does not load install-only writer modules" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local isolated="$TMP_DIR/stats-without-writer"
-	create_isolated_converter "$isolated"
-	add_stats_converter_modules "$isolated"
-
-	run node "$isolated/scripts/convert-plugin.js" stats fixture
-	[ "$status" -eq 0 ]
-	[ "$output" = $'codex_skills=0\nagent_skills=0' ]
-}
-
-@test "stats reports source, generated, and agent skills as text" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/stats-text-plugin"
-	create_cleanup_fixture_plugin "$PLUGIN_DIR" "stats-text-plugin" "kramme:temp-command" "kramme:temp-agent"
-	mkdir -p "$PLUGIN_DIR/skills/kramme:temp-source"
-	cat >"$PLUGIN_DIR/skills/kramme:temp-source/SKILL.md" <<'MD'
----
-name: kramme:temp-source
-description: Temporary source skill for converter CLI stats tests
-disable-model-invocation: false
-user-invocable: true
----
-
-Exercise source-skill counting.
-MD
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR"
-	[ "$status" -eq 0 ]
-	[ "$output" = $'codex_skills=2\nagent_skills=1' ]
-	[ ! -d "$TMP_DIR/home/.codex" ]
-	[ ! -d "$TMP_DIR/home/.agents" ]
-}
-
-@test "stats reports the exact integer schema as JSON" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/stats-json-plugin"
-	create_cleanup_fixture_plugin "$PLUGIN_DIR" "stats-json-plugin" "kramme:temp-command" "kramme:temp-agent"
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR" --json
-	[ "$status" -eq 0 ]
-	[ "$output" = '{"codex_skills":1,"agent_skills":1}' ]
-	[ ! -d "$TMP_DIR/home/.codex" ]
-	[ ! -d "$TMP_DIR/home/.agents" ]
-}
-
-@test "doctor reports stable human and JSON diagnostics" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/doctor-plugin"
-	local codex_home="$TMP_DIR/output"
-	local codex_root="$codex_home/.codex"
-	local agents_root="$TMP_DIR/agents"
-	create_fixture_plugin "$PLUGIN_DIR" "doctor-plugin"
-	mkdir -p "$codex_root"
-	cat >"$codex_root/.kramme-install-state.json" <<'JSON'
-{"version":1,"plugins":{}}
-JSON
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$agents_root"
-	[ "$status" -eq 0 ]
-	local empty_collection
-	empty_collection='{"entry_count":0,"inspected_count":0,"status":"absent","status_counts":{},"truncated":false}'
-	local transaction_health
-	transaction_health="{\"advisory\":true,\"backups\":$empty_collection,\"entry_limit\":50,\"journals\":$empty_collection,\"lock\":{\"status\":\"absent\"},\"metadata_byte_limit\":65536,\"recovery_claims\":$empty_collection,\"recovery_conflicts\":$empty_collection}"
-	local expected_text
-	expected_text="$(printf '%s\n' \
-		'schema_version=1' \
-		'plugin_name=doctor-plugin' \
-		'plugin_version=1.0.0' \
-		"plugin_source=$PLUGIN_DIR" \
-		"codex_root=$codex_root" \
-		"agents_root=$agents_root" \
-		"install_state_path=$codex_root/.kramme-install-state.json" \
-		'install_state_status=loaded' \
-		'install_state_from_disk=true' \
-		'install_state_recovery_reason=none' \
-		"transaction_health=$transaction_health")"
-	[ "$output" = "$expected_text" ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$agents_root" --json
-	[ "$status" -eq 0 ]
-	local expected_json
-	expected_json="$(jq -cn \
-		--arg plugin_source "$PLUGIN_DIR" \
-		--arg codex_root "$codex_root" \
-		--arg agents_root "$agents_root" \
-		--argjson transaction_health "$transaction_health" \
-		'{schema_version:1,plugin_name:"doctor-plugin",plugin_version:"1.0.0",plugin_source:$plugin_source,codex_root:$codex_root,agents_root:$agents_root,install_state_path:($codex_root+"/.kramme-install-state.json"),install_state_status:"loaded",install_state_from_disk:true,install_state_recovery_reason:null,transaction_health:$transaction_health}')"
-	[ "$output" = "$expected_json" ]
-}
-
-@test "doctor rejects unusable input and unsupported options" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	run node "$SCRIPT" doctor
-	[ "$status" -eq 1 ]
-	[ "$output" = "doctor requires exactly one plugin name or path." ]
-
-	run node "$SCRIPT" doctor "$TMP_DIR/not-a-plugin"
-	[ "$status" -eq 1 ]
-	[ "$output" = "Could not resolve plugin \"$TMP_DIR/not-a-plugin\"." ]
-
-	run node "$SCRIPT" doctor "$REPO_ROOT" --yes
-	[ "$status" -eq 1 ]
-	[ "$output" = "doctor does not support --yes." ]
-
-	run node "$SCRIPT" doctor "$REPO_ROOT" --codex-home
-	[ "$status" -eq 1 ]
-	[ "$output" = "--codex-home requires a directory." ]
-
-	run node "$SCRIPT" doctor "$REPO_ROOT" --json=maybe
-	[ "$status" -eq 1 ]
-	[ "$output" = "--json requires a boolean value when one is provided." ]
-}
-
-@test "doctor redacts home paths without creating output roots" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local home="$TMP_DIR/home"
-	local plugin_dir="$home/doctor-plugin"
-	create_fixture_plugin "$plugin_dir" "doctor-plugin"
-
-	run env HOME="$home" node "$SCRIPT" doctor "$plugin_dir" --json
-	[ "$status" -eq 0 ]
-	run jq -er '
-		.plugin_source == "~/doctor-plugin" and
-		.codex_root == "~/.codex" and
-		.agents_root == "~/.agents" and
-		.install_state_path == "~/.codex/.kramme-install-state.json" and
-		.install_state_status == "reconstructed" and
-		.install_state_recovery_reason == "missing"
-	' <<<"$output"
-	[ "$status" -eq 0 ]
-	[ ! -e "$home/.codex" ]
-	[ ! -e "$home/.agents" ]
-
-	run env HOME="$home" node "$SCRIPT" doctor "$home/missing-plugin"
-	[ "$status" -eq 1 ]
-	[ "$output" = 'Could not resolve plugin "~/missing-plugin".' ]
-
-	run env HOME="$home" node "$SCRIPT" doctor "$home"
-	[ "$status" -eq 1 ]
-	[ "$output" = 'Could not find .claude-plugin/plugin.json under ~' ]
-
-	local embedded_path="$TMP_DIR/backup$home/missing-plugin"
-	run env HOME="$home" node "$SCRIPT" doctor "$embedded_path"
-	[ "$status" -eq 1 ]
-	[ "$output" = "Could not resolve plugin \"$embedded_path\"." ]
-
-	local sibling_path="$home copy/missing-plugin"
-	run env HOME="$home" node "$SCRIPT" doctor "$sibling_path"
-	[ "$status" -eq 1 ]
-	[ "$output" = "Could not resolve plugin \"$sibling_path\"." ]
-}
-
-@test "doctor escapes control characters in human diagnostics" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local plugin_dir="$TMP_DIR/"$'doctor\nplugin'
-	create_fixture_plugin "$plugin_dir" 'doctor\u001b[31m'
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$plugin_dir"
-	[ "$status" -eq 0 ]
-	[ "${#lines[@]}" -eq 11 ]
-	[[ "$output" == *'plugin_name=doctor\u001b[31m'* ]]
-	[[ "$output" == *"plugin_source=$TMP_DIR/doctor\\u000aplugin"* ]]
-	[[ "$output" != *$'\033'* ]]
-}
-
-@test "install rejects malformed option values before writing output" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/malformed-install-plugin"
-	create_fixture_plugin "$PLUGIN_DIR" "malformed-install-plugin"
-	local sentinel="$TMP_DIR/install-output"
-	mkdir -p "$sentinel/.codex/.kramme-install-manifests" "$TMP_DIR/work"
-	printf 'keep\n' >"$sentinel/.codex/keep.txt"
-	local before
-	before="$(snapshot_tree "$sentinel")"
-	cd "$TMP_DIR/work"
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home --non-interactive
-	[ "$status" -eq 1 ]
-	[ "$output" = "--codex-home requires a directory." ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home= --non-interactive
-	[ "$status" -eq 1 ]
-	[ "$output" = "--codex-home requires a directory." ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --agents-home --codex-home "$sentinel" --non-interactive
-	[ "$status" -eq 1 ]
-	[ "$output" = "--agents-home requires a directory." ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home --agents-home --non-interactive
-	[ "$status" -eq 1 ]
-	[ "$output" = "--codex-home requires a directory." ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$sentinel" --yes=maybe
-	[ "$status" -eq 1 ]
-	[ "$output" = "--yes requires a boolean value when one is provided." ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$sentinel" --non-interactive=maybe
-	[ "$status" -eq 1 ]
-	[ "$output" = "--non-interactive requires a boolean value when one is provided." ]
-
-	[ "$(snapshot_tree "$sentinel")" = "$before" ]
-	[ ! -e "$TMP_DIR/work/true" ]
-	[ ! -e "$TMP_DIR/home/.codex" ]
-	[ ! -e "$TMP_DIR/home/.agents" ]
-}
-
-@test "every command rejects malformed option values before loading converter modules" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	local isolated="$TMP_DIR/option-order"
-	create_isolated_converter "$isolated"
-	add_failing_converter_modules "$isolated"
-
-	run node "$isolated/scripts/convert-plugin.js" install fixture --codex-home --yes
+	run node "$isolated/scripts/convert-plugin.js" install fixture --codex-home
 	[ "$status" -eq 1 ]
 	[ "$output" = "--codex-home requires a directory." ]
 
@@ -970,155 +467,31 @@ JSON
 	[ "$status" -eq 1 ]
 	[ "$output" = "--json requires a boolean value when one is provided." ]
 
-	run node "$isolated/scripts/convert-plugin.js" doctor fixture --json=maybe
+	run node "$isolated/scripts/convert-plugin.js" build fixture --out "$TMP_DIR/out" --agents-home "$TMP_DIR/a"
 	[ "$status" -eq 1 ]
-	[ "$output" = "--json requires a boolean value when one is provided." ]
-}
+	[ "$output" = "build does not support --agents-home." ]
 
-@test "install preserves documented option forms and defaults" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/install-forms-plugin"
-	create_fixture_plugin "$PLUGIN_DIR" "install-forms-plugin"
-	local codex_home="$TMP_DIR/spaced roots/codex home"
-	local agents_home="$TMP_DIR/spaced roots/agents home"
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$agents_home" --yes=false --non-interactive=true
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Installed install-forms-plugin to $codex_home/.codex"* ]]
-	[ -d "$codex_home/.codex" ]
-	[ ! -e "$TMP_DIR/home/.codex" ]
-
-	local valueless_home="$TMP_DIR/valueless/codex home"
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$valueless_home" --agents-home "$agents_home" --yes --non-interactive
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Installed install-forms-plugin to $valueless_home/.codex"* ]]
-	[ -d "$valueless_home/.codex" ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$PLUGIN_DIR" --non-interactive
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Installed install-forms-plugin to $TMP_DIR/home/.codex"* ]]
-	[ -d "$TMP_DIR/home/.codex" ]
-}
-
-@test "explicit --yes=false skips cleanup and --yes=true still cleans up" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/explicit-yes-plugin"
-	create_cleanup_fixture_plugin "$PLUGIN_DIR" "explicit-yes-plugin" "kramme:temp-command" "kramme:temp-agent"
-	local codex_home="$TMP_DIR/explicit-yes"
-	local skill="$codex_home/.codex/skills/kramme:temp-command/SKILL.md"
-
-	run node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$codex_home/.agents" --non-interactive
-	[ "$status" -eq 0 ]
-	[ -f "$skill" ]
-
-	rm "$PLUGIN_DIR/commands/kramme-temp-command.md"
-	run node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$codex_home/.agents" --non-interactive --yes=false
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"Skipping skill cleanup."* ]]
-	[ -f "$skill" ]
-
-	run node "$SCRIPT" install "$PLUGIN_DIR" --codex-home "$codex_home" --agents-home "$codex_home/.agents" --non-interactive --yes=true
-	[ "$status" -eq 0 ]
-	[ ! -e "$skill" ]
-}
-
-@test "stats rejects malformed json values and stays read-only" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/stats-options-plugin"
-	create_cleanup_fixture_plugin "$PLUGIN_DIR" "stats-options-plugin" "kramme:temp-command" "kramme:temp-agent"
-	mkdir -p "$TMP_DIR/work"
-	cd "$TMP_DIR/work"
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR" --json=maybe
+	run node "$isolated/scripts/convert-plugin.js" stats fixture --to opencode
 	[ "$status" -eq 1 ]
-	[ "$output" = "--json requires a boolean value when one is provided." ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR" --json=true
-	[ "$status" -eq 0 ]
-	[ "$output" = '{"codex_skills":1,"agent_skills":1}' ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" stats "$PLUGIN_DIR" --json=false
-	[ "$status" -eq 0 ]
-	[ "$output" = $'codex_skills=1\nagent_skills=1' ]
-
-	[ ! -e "$TMP_DIR/home/.codex" ]
-	[ ! -e "$TMP_DIR/home/.agents" ]
-}
-
-@test "doctor rejects malformed option values and keeps whole path values" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	PLUGIN_DIR="$TMP_DIR/doctor-options-plugin"
-	create_fixture_plugin "$PLUGIN_DIR" "doctor-options-plugin"
-	mkdir -p "$TMP_DIR/work"
-	cd "$TMP_DIR/work"
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --agents-home --json
-	[ "$status" -eq 1 ]
-	[ "$output" = "--agents-home requires a directory." ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --agents-home=
-	[ "$status" -eq 1 ]
-	[ "$output" = "--agents-home requires a directory." ]
-
-	local equals_root="$TMP_DIR/roots/codex=home"
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" doctor "$PLUGIN_DIR" --codex-home="$equals_root" --json=false
-	[ "$status" -eq 0 ]
-	[[ "$output" == *"codex_root=$equals_root/.codex"* ]]
-
-	[ ! -e "$equals_root" ]
-	[ ! -e "$TMP_DIR/home/.codex" ]
-	[ ! -e "$TMP_DIR/home/.agents" ]
-}
-
-@test "opencode-only install options are rejected" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$REPO_ROOT" --output "$TMP_DIR/opencode" --non-interactive
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"--output/-o is no longer supported"* ]]
-	[ ! -d "$TMP_DIR/home/.codex" ]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$REPO_ROOT" -o "$TMP_DIR/opencode" --non-interactive
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"--output/-o is no longer supported"* ]]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$REPO_ROOT" --permissions from-commands --non-interactive
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"--permissions is no longer supported"* ]]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$REPO_ROOT" --agent-mode primary --non-interactive
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"--agent-mode is no longer supported"* ]]
-
-	run env HOME="$TMP_DIR/home" node "$SCRIPT" install "$REPO_ROOT" --infer-temperature false --non-interactive
-	[ "$status" -ne 0 ]
-	[[ "$output" == *"--infer-temperature is no longer supported"* ]]
-}
-
-@test "opencode target is no longer supported for install and stats" {
-	if ! command -v node >/dev/null 2>&1; then
-		skip "node is required for converter tests"
-	fi
-
-	run node "$SCRIPT" install "$REPO_ROOT" --to opencode --codex-home "$TMP_DIR" --agents-home "$TMP_DIR/.agents" --yes
-	[ "$status" -ne 0 ]
 	[ "$output" = "Unknown target: opencode" ]
 
-	run node "$SCRIPT" stats "$REPO_ROOT" --to opencode
-	[ "$status" -ne 0 ]
-	[ "$output" = "Unknown target: opencode" ]
+	run node "$isolated/scripts/convert-plugin.js" uninstall one two
+	[ "$status" -eq 1 ]
+	[ "$output" = "uninstall accepts at most one plugin name or path." ]
+}
+
+resolve_node_package_dir() {
+	node -e '
+const fs = require("fs");
+const path = require("path");
+let current = path.dirname(require.resolve(process.argv[1]));
+while (current !== path.dirname(current)) {
+  if (fs.existsSync(path.join(current, "package.json"))) {
+    console.log(current);
+    process.exit(0);
+  }
+  current = path.dirname(current);
+}
+process.exit(1);
+' "$1"
 }

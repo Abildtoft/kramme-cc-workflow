@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Fake Codex CLI for converter tests. Records every invocation to
+# FAKE_CODEX_LOG and mimics the plugin subcommands the converter drives.
+set -euo pipefail
+
+if [ -n "${FAKE_CODEX_LOG:-}" ]; then
+	printf '%s\n' "$*" >>"$FAKE_CODEX_LOG"
+fi
+
+home="${CODEX_HOME:-$HOME/.codex}"
+source_marker="$home/.fake-marketplace-source"
+
+case "${1:-}" in
+--version)
+	echo "codex-cli fake"
+	exit 0
+	;;
+plugin) ;;
+*)
+	echo "fake codex: unsupported command: $*" >&2
+	exit 2
+	;;
+esac
+
+case "${2:-} ${3:-}" in
+"marketplace add")
+	src="${4:?marketplace source}"
+	if [ -f "$source_marker" ] && [ "$(cat "$source_marker")" != "$src" ]; then
+		echo "Error: marketplace 'fake' is already added from a different source; remove it before adding this source" >&2
+		exit 1
+	fi
+	mkdir -p "$home"
+	printf '%s' "$src" >"$source_marker"
+	echo "Installed marketplace root: $src"
+	;;
+"marketplace remove")
+	if [ "${FAKE_CODEX_FAIL_MARKETPLACE_REMOVE:-0}" = "1" ]; then
+		echo "Error: marketplace removal refused by fixture" >&2
+		exit 1
+	fi
+	rm -f "$source_marker"
+	echo "Removed marketplace \`${4:-}\`."
+	;;
+"add "*)
+	if [ "${FAKE_CODEX_FAIL_ADD:-0}" = "1" ]; then
+		echo "Error: plugin install refused by fixture" >&2
+		exit 1
+	fi
+	selector="${3:?plugin selector}"
+	name="${selector%%@*}"
+	marketplace="${selector#*@}"
+	src="$(cat "$source_marker" 2>/dev/null || true)"
+	manifest="$src/plugins/$name/.codex-plugin/plugin.json"
+	version="$(sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' "$manifest" 2>/dev/null | head -n1)"
+	version="${version:-0.0.0}"
+	installed="${FAKE_CODEX_INSTALL_PATH:-$home/plugins/cache/$marketplace/$name/$version}"
+	rm -rf "$installed"
+	mkdir -p "$installed"
+	if [ -d "$src/plugins/$name" ]; then
+		cp -R "$src/plugins/$name/." "$installed/"
+	fi
+	printf '{\n  "pluginId": "%s",\n  "name": "%s",\n  "marketplaceName": "%s",\n  "version": "%s",\n  "installedPath": "%s"\n}\n' "$selector" "$name" "$marketplace" "$version" "$installed"
+	;;
+"remove "*)
+	if [ "${FAKE_CODEX_FAIL_REMOVE:-0}" = "1" ]; then
+		echo "Error: plugin removal refused by fixture" >&2
+		exit 1
+	fi
+	selector="${3:?plugin selector}"
+	name="${selector%%@*}"
+	marketplace="${selector#*@}"
+	rm -rf "$home/plugins/cache/$marketplace/$name"
+	echo "Removed plugin \`$name\` from marketplace \`$marketplace\`."
+	;;
+*)
+	echo "fake codex: unsupported plugin command: $*" >&2
+	exit 2
+	;;
+esac

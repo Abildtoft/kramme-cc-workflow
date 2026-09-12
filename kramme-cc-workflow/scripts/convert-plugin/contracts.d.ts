@@ -56,11 +56,6 @@ export interface ClaudePlugin {
   mcpServers?: CodexMcpServers;
 }
 
-export interface CodexPrompt {
-  name: string;
-  content: string;
-}
-
 export interface CodexSkillFile {
   name: string;
   content: string;
@@ -71,23 +66,33 @@ export interface CodexSourceSkillFile extends CodexSkillFile {
   sourceDir: string;
 }
 
-export interface CodexHookManifest extends JsonObject {
+/** The `.codex-plugin/plugin.json` manifest Codex reads from the built plugin. */
+export interface CodexPluginManifest extends JsonObject {
   name: string;
   version: string;
   description: string;
-  hooks: string;
+  skills: string;
+  hooks?: string;
+  mcpServers?: CodexMcpServers;
   author?: unknown;
 }
 
-export interface CodexHookPlugin {
+/**
+ * The native Codex plugin package produced from one Claude plugin. Codex
+ * installs it from the generated marketplace into
+ * `<codex-home>/<cacheRelativePath>`; `rootExpression` is the shell expression
+ * converted skills use to reach that directory.
+ */
+export interface CodexPluginPackage {
   name: string;
   marketplaceName: string;
   version: string;
-  manifest: CodexHookManifest;
-  hooks: JsonObject;
+  manifest: CodexPluginManifest;
+  /** Present only when hook packaging is eligible. */
+  hooks?: JsonObject;
   hookSourceDir: string;
-  sharedScriptDirs?: SharedScriptDir[];
-  sharedScriptFiles?: SharedScriptFile[];
+  cacheRelativePath: string;
+  rootExpression: string;
 }
 
 export interface SharedScriptDir {
@@ -112,64 +117,16 @@ export interface CodexMcpServer extends JsonObject {
 
 export type CodexMcpServers = Record<string, CodexMcpServer>;
 
-export type ManagedFileMap = Record<string, string[]>;
-
-export interface InstallEntries {
-  hookMarketplaces: string[];
-  prompts: string[];
-  pluginCaches: string[];
-  skills: string[];
-  skillFiles: ManagedFileMap;
-  agentSkills: string[];
-  agentSkillFiles: ManagedFileMap;
-  /** Shared helper paths owned by this install, keyed by safe relative path. */
-  sharedHelperFiles?: Record<string, string>;
-  updatedAtMs?: number;
-}
-
-export interface InstallState {
-  version: 1;
-  plugins: Record<string, Record<string, InstallEntries>>;
-}
-
-export interface HookTarget {
-  finalRoot: string;
-  overwriteExisting: boolean;
-  stagedRoot: string;
-}
-
-export interface HookTargets {
-  marketplace?: HookTarget;
-  pluginCache?: HookTarget;
-}
-
-export type SharedScriptReplacement =
-  | {
-      sourcePrefix: string;
-      targetPrefix: string;
-      doubleQuotedTargetPrefix?: string;
-      sourceText?: never;
-      targetText?: never;
-    }
-  | {
-      sourceText: string;
-      targetText: string;
-      sourcePrefix?: never;
-      targetPrefix?: never;
-      doubleQuotedTargetPrefix?: never;
-    };
-
 export interface CodexBundle {
-  sharedScriptDirs?: SharedScriptDir[];
-  sharedScriptFiles?: SharedScriptFile[];
-  prompts: CodexPrompt[];
+  sharedScriptDirs: SharedScriptDir[];
+  sharedScriptFiles: SharedScriptFile[];
   skillDirs: CodexSourceSkillFile[];
   generatedSkills: CodexSkillFile[];
   agentSkills: CodexSkillFile[];
   knownCommands: Set<string>;
   knownAgentSkills: Map<string, string>;
   mcpServers?: CodexMcpServers;
-  codexPlugin?: CodexHookPlugin;
+  codexPlugin: CodexPluginPackage;
 }
 
 export interface CodexTransformOptions {
@@ -177,11 +134,7 @@ export interface CodexTransformOptions {
   knownAgentSkills?: Map<string, string>;
 }
 
-export interface WriteCodexOptions {
-  pluginName?: string;
-  agentsHome?: string;
-  confirm?: {
-    yes?: boolean;
-    nonInteractive?: boolean;
-  };
+export interface ConfirmOptions {
+  yes?: boolean;
+  nonInteractive?: boolean;
 }

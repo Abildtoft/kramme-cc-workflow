@@ -1,35 +1,24 @@
 #!/usr/bin/env node
 "use strict";
 
-const path = require("path");
+const fs = require("fs/promises");
 const os = require("os");
+const path = require("path");
 
 const ERROR_CAUSE_DEPTH_LIMIT = 5;
-
-const REMOVED_OPENCODE_INSTALL_OPTIONS = [
-  {
-    keys: ["output", "o"],
-    label: "--output/-o",
-    hint: "use --codex-home to choose the Codex install root.",
-  },
-  {
-    keys: ["permissions"],
-    label: "--permissions",
-    hint: "Codex installs preserve allowed-tools in skill frontmatter.",
-  },
-  {
-    keys: ["agent-mode", "agentMode"],
-    label: "--agent-mode",
-    hint: "Claude agents are now installed as Codex agent skills.",
-  },
-  {
-    keys: ["infer-temperature", "inferTemperature"],
-    label: "--infer-temperature",
-    hint: "Codex skills do not support converted temperature settings.",
-  },
-];
+const MARKETPLACE_DIR_NAME = ".kramme-plugin-marketplaces";
+const COMMON_OPTIONS = ["to"];
+const HOME_OPTIONS = ["codex-home", "codexHome", "agents-home", "agentsHome"];
+const CONFIRM_OPTIONS = ["yes", "y", "non-interactive", "nonInteractive"];
+const COMMAND_OPTIONS = {
+  build: ["out"],
+  install: [...HOME_OPTIONS, ...CONFIRM_OPTIONS, "marketplace-dir"],
+  stats: ["json"],
+  uninstall: [...HOME_OPTIONS, ...CONFIRM_OPTIONS, "marketplace-dir"],
+};
 
 /** @typedef {Record<string, string | boolean | string[]> & { _: string[] }} ParsedArgs */
+/** @typedef {import("./convert-plugin/contracts").CodexBundle} CodexBundle */
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -39,124 +28,108 @@ async function main() {
   }
 
   const command = argv[0];
-  if (command === "install") {
-    const parsed = parseArgs(argv.slice(1));
-    await runInstall(parsed);
+  const handlers = {
+    build: runBuild,
+    install: runInstall,
+    stats: runStats,
+    uninstall: runUninstall,
+  };
+  const handler = handlers[/** @type {keyof typeof handlers} */ (command)];
+  if (!handler) {
+    console.error(`Unknown command: ${command}`);
+    printHelp(1);
     return;
   }
+  const parsed = parseArgs(argv.slice(1));
+  validateOptions(
+    command,
+    parsed,
+    COMMAND_OPTIONS[/** @type {keyof typeof COMMAND_OPTIONS} */ (command)],
+  );
+  await handler(parsed);
+}
 
-  if (command === "stats") {
-    const parsed = parseArgs(argv.slice(1));
-    await runStats(parsed);
-    return;
+/** @param {ParsedArgs} parsed */
+async function runBuild(parsed) {
+  const outputRoot = readPathOption(parsed, "out");
+  if (!outputRoot) {
+    throw new Error("build requires --out <dir>.");
   }
-
-  if (command === "doctor") {
-    const parsed = parseArgs(argv.slice(1));
-    await runDoctor(parsed);
-    return;
-  }
-
-  console.error(`Unknown command: ${command}`);
-  printHelp(1);
+  const { bundle } = await loadCodexBundle(parsed);
+  const {
+    buildCodexMarketplace,
+  } = require("./convert-plugin/codex-plugin-builder");
+  const built = await buildCodexMarketplace(
+    path.resolve(expandHome(outputRoot)),
+    bundle,
+  );
+  console.log(
+    `Built ${bundle.codexPlugin.name} ${bundle.codexPlugin.version} (${built.skillCount} skills) to ${built.marketplaceRoot}`,
+  );
 }
 
 /** @param {ParsedArgs} parsed */
 async function runInstall(parsed) {
-  const pluginInput = parsed._[0] ?? process.cwd();
-  const targetName = resolveTargetName(parsed);
-
-  rejectRemovedOpenCodeInstallOptions(parsed);
-
-  if (parsed.also) {
-    throw new Error(
-      "--also is no longer supported; install the Codex target directly.",
-    );
-  }
-
-  // Option errors must surface before plugin resolution errors, so read every
-  // option before requiring the converter modules below.
-  const { codexHome, agentsHome } = resolveHomeRoots(parsed);
-  const confirmOptions = {
-    yes: readBooleanOption(parsed, "yes", ["y"]),
-    nonInteractive: readBooleanOption(parsed, "non-interactive", [
-      "nonInteractive",
-    ]),
-  };
-
+  const { agentsHome, codexHome } = resolveHomeRoots(parsed);
+  const confirmOptions = readConfirmOptions(parsed);
+  const { bundle, pluginName } = await loadCodexBundle(parsed);
+  const marketplaceRoot = resolveMarketplaceRoot(parsed, codexHome, bundle);
   const {
-    convertClaudeToCodex,
-  } = require("./convert-plugin/codex-transformer");
+    cleanupLegacyInstall,
+  } = require("./convert-plugin/legacy-install-cleanup");
   const {
-    loadClaudePlugin,
-    resolvePluginInput,
-  } = require("./convert-plugin/loader");
-  const {
-    resolveCodexOutputRoot,
-    writeCodexBundle,
-  } = require("./convert-plugin/codex-writer");
+    buildCodexMarketplace,
+  } = require("./convert-plugin/codex-plugin-builder");
+  const { registerCodexPlugin } = require("./convert-plugin/codex-cli");
 
-  const resolvedPluginPath = await resolvePluginInput(pluginInput);
-  const plugin = await loadClaudePlugin(resolvedPluginPath);
-  const codexRoot = resolveCodexOutputRoot(codexHome);
-
-  const bundle = convertClaudeToCodex(plugin);
-  if (!bundle) {
-    throw new Error(`Target ${targetName} did not return a bundle.`);
-  }
-
-  const pluginName = String(plugin.manifest.name ?? "plugin");
-  const writeOptions = {
+  await cleanupLegacyInstall({
     agentsHome,
+    codexHome,
+    confirmOptions,
     pluginName,
-    confirm: {
-      yes: confirmOptions.yes,
-      nonInteractive: confirmOptions.nonInteractive,
-    },
-  };
-
-  await writeCodexBundle(codexRoot, bundle, writeOptions);
-  console.log(`Installed ${pluginName} to ${codexRoot}`);
+  });
+  await replaceMarketplace(marketplaceRoot, bundle, buildCodexMarketplace);
+  const installed = await registerCodexPlugin({
+    codexHome,
+    codexPlugin: bundle.codexPlugin,
+    marketplaceRoot,
+  });
+  console.log(
+    `Installed ${bundle.codexPlugin.name} ${bundle.codexPlugin.version} to ${installed.installedPath}`,
+  );
 }
 
 /** @param {ParsedArgs} parsed */
-function resolveTargetName(parsed) {
-  const targetName = String(parsed.to ?? "codex");
-  if (targetName !== "codex") {
-    throw new Error(`Unknown target: ${targetName}`);
-  }
-  return targetName;
-}
+async function runUninstall(parsed) {
+  const { agentsHome, codexHome } = resolveHomeRoots(parsed);
+  const confirmOptions = readConfirmOptions(parsed);
+  const { bundle, pluginName } = await loadCodexBundle(parsed);
+  const marketplaceRoot = resolveMarketplaceRoot(parsed, codexHome, bundle);
+  const { unregisterCodexPlugin } = require("./convert-plugin/codex-cli");
+  const {
+    cleanupLegacyInstall,
+  } = require("./convert-plugin/legacy-install-cleanup");
 
-/** @param {ParsedArgs} parsed */
-function rejectRemovedOpenCodeInstallOptions(parsed) {
-  for (const option of REMOVED_OPENCODE_INSTALL_OPTIONS) {
-    if (option.keys.some((key) => Object.hasOwn(parsed, key))) {
-      throw new Error(`${option.label} is no longer supported; ${option.hint}`);
-    }
-  }
+  await unregisterCodexPlugin({ codexHome, codexPlugin: bundle.codexPlugin });
+  await assertReplaceableMarketplaceRoot(marketplaceRoot, bundle);
+  await fs.rm(marketplaceRoot, { force: true, recursive: true });
+  await fs.rmdir(path.dirname(marketplaceRoot)).catch(() => {});
+  await cleanupLegacyInstall({
+    agentsHome,
+    codexHome,
+    confirmOptions,
+    pluginName,
+  });
+  console.log(`Uninstalled ${bundle.codexPlugin.name} from ${codexHome}`);
 }
 
 /** @param {ParsedArgs} parsed */
 async function runStats(parsed) {
-  const pluginInput = parsed._[0] ?? process.cwd();
-  resolveTargetName(parsed);
   const outputAsJson = readBooleanOption(parsed, "json");
-  const {
-    convertClaudeToCodex,
-  } = require("./convert-plugin/codex-transformer");
-  const {
-    loadClaudePlugin,
-    resolvePluginInput,
-  } = require("./convert-plugin/loader");
-  const resolvedPluginPath = await resolvePluginInput(pluginInput);
-  const plugin = await loadClaudePlugin(resolvedPluginPath);
-
-  const codexBundle = convertClaudeToCodex(plugin);
+  const { bundle } = await loadCodexBundle(parsed);
   const stats = {
-    codex_skills:
-      codexBundle.skillDirs.length + codexBundle.generatedSkills.length,
-    agent_skills: codexBundle.agentSkills?.length ?? 0,
+    codex_skills: bundle.skillDirs.length + bundle.generatedSkills.length,
+    agent_skills: bundle.agentSkills.length,
   };
 
   if (outputAsJson) {
@@ -169,63 +142,126 @@ async function runStats(parsed) {
   }
 }
 
-/** @param {ParsedArgs} parsed */
-async function runDoctor(parsed) {
-  validateDoctorArgs(parsed);
+/**
+ * @param {ParsedArgs} parsed
+ * @returns {Promise<{ bundle: CodexBundle, pluginName: string }>}
+ */
+async function loadCodexBundle(parsed) {
   resolveTargetName(parsed);
-  const outputAsJson = readBooleanOption(parsed, "json");
-  const { codexHome, agentsHome: agentsRoot } = resolveHomeRoots(parsed);
+  const pluginInput = parsed._[0] ?? process.cwd();
   const {
-    collectConverterDiagnostics,
-  } = require("./convert-plugin/diagnostics");
-  const diagnostic = await collectConverterDiagnostics({
-    agentsRoot,
-    codexHome,
-    pluginInput: parsed._[0],
-  });
-  const output = sanitizeDiagnosticPaths(diagnostic);
+    convertClaudeToCodex,
+  } = require("./convert-plugin/codex-transformer");
+  const {
+    loadClaudePlugin,
+    resolvePluginInput,
+  } = require("./convert-plugin/loader");
+  const plugin = await loadClaudePlugin(await resolvePluginInput(pluginInput));
+  return {
+    bundle: convertClaudeToCodex(plugin),
+    pluginName: String(plugin.manifest.name ?? "plugin"),
+  };
+}
 
-  if (outputAsJson) {
-    console.log(JSON.stringify(output));
-    return;
-  }
-
-  for (const [key, value] of Object.entries(output)) {
-    console.log(`${key}=${formatDoctorHumanValue(value)}`);
+/**
+ * Build into a sibling temporary directory and swap it into place so a failed
+ * build never leaves a half-written marketplace behind.
+ *
+ * @param {string} marketplaceRoot
+ * @param {CodexBundle} bundle
+ * @param {typeof import("./convert-plugin/codex-plugin-builder").buildCodexMarketplace} buildCodexMarketplace
+ */
+async function replaceMarketplace(
+  marketplaceRoot,
+  bundle,
+  buildCodexMarketplace,
+) {
+  await assertReplaceableMarketplaceRoot(marketplaceRoot, bundle);
+  await fs.mkdir(path.dirname(marketplaceRoot), { recursive: true });
+  const stagingRoot = `${marketplaceRoot}.build-${process.pid}`;
+  await fs.rm(stagingRoot, { force: true, recursive: true });
+  try {
+    await buildCodexMarketplace(stagingRoot, bundle);
+    await fs.rm(marketplaceRoot, { force: true, recursive: true });
+    await fs.rename(stagingRoot, marketplaceRoot);
+  } finally {
+    await fs.rm(stagingRoot, { force: true, recursive: true });
   }
 }
 
-/** @param {unknown} value */
-function formatDoctorHumanValue(value) {
-  if (value === null || value === undefined) return "none";
-  const rendered =
-    typeof value === "object" ? JSON.stringify(value) : String(value);
-  return rendered.replace(
-    /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g,
-    (character) =>
-      `\\u${character.charCodeAt(0).toString(16).padStart(4, "0")}`,
+/**
+ * Only replace a directory this converter generated for the same marketplace,
+ * or one that is empty or absent.
+ *
+ * @param {string} marketplaceRoot @param {CodexBundle} bundle
+ */
+async function assertReplaceableMarketplaceRoot(marketplaceRoot, bundle) {
+  let entries;
+  try {
+    entries = await fs.readdir(marketplaceRoot);
+  } catch (error) {
+    if (/** @type {NodeJS.ErrnoException} */ (error).code === "ENOENT") return;
+    throw error;
+  }
+  if (entries.length === 0) return;
+  const {
+    MARKETPLACE_MANIFEST,
+  } = require("./convert-plugin/codex-plugin-builder");
+  let manifest;
+  try {
+    manifest = JSON.parse(
+      await fs.readFile(
+        path.join(marketplaceRoot, MARKETPLACE_MANIFEST),
+        "utf8",
+      ),
+    );
+  } catch {
+    manifest = null;
+  }
+  if (manifest?.name !== bundle.codexPlugin.marketplaceName) {
+    throw new Error(
+      `Refusing to replace ${marketplaceRoot}: it is not a marketplace generated for ${bundle.codexPlugin.marketplaceName}.`,
+    );
+  }
+}
+
+/** @param {ParsedArgs} parsed @param {string} codexHome @param {CodexBundle} bundle */
+function resolveMarketplaceRoot(parsed, codexHome, bundle) {
+  const explicit = readPathOption(parsed, "marketplace-dir");
+  if (explicit) return path.resolve(expandHome(explicit));
+  return path.join(
+    codexHome,
+    MARKETPLACE_DIR_NAME,
+    bundle.codexPlugin.marketplaceName,
   );
 }
 
 /** @param {ParsedArgs} parsed */
-function validateDoctorArgs(parsed) {
-  if (parsed._.length !== 1) {
-    throw new Error("doctor requires exactly one plugin name or path.");
+function resolveTargetName(parsed) {
+  const targetName = String(parsed.to ?? "codex");
+  if (targetName !== "codex") {
+    throw new Error(`Unknown target: ${targetName}`);
   }
+  return targetName;
+}
 
-  const allowed = new Set([
-    "_",
-    "agents-home",
-    "agentsHome",
-    "codex-home",
-    "codexHome",
-    "json",
-    "to",
-  ]);
-  const unsupported = Object.keys(parsed).find((key) => !allowed.has(key));
+/** @param {string} command @param {ParsedArgs} parsed @param {string[]} allowed */
+function validateOptions(command, parsed, allowed) {
+  const allowedKeys = new Set(["_", ...COMMON_OPTIONS, ...allowed]);
+  const unsupported = Object.keys(parsed).find((key) => !allowedKeys.has(key));
   if (unsupported) {
-    throw new Error(`doctor does not support --${unsupported}.`);
+    throw new Error(`${command} does not support --${unsupported}.`);
   }
+  if (parsed._.length > 1) {
+    throw new Error(`${command} accepts at most one plugin name or path.`);
+  }
+  // Read every option eagerly so malformed values fail before any module or
+  // plugin loading happens.
+  readPathOption(parsed, "out");
+  readPathOption(parsed, "marketplace-dir");
+  resolveHomeRoots(parsed);
+  readConfirmOptions(parsed);
+  readBooleanOption(parsed, "json");
 }
 
 /**
@@ -243,9 +279,9 @@ function readOptionValue(parsed, kebabKey, aliasKeys = []) {
 /**
  * @param {ParsedArgs} parsed
  * @param {string} kebabKey
- * @param {string[]} aliasKeys
+ * @param {string[]} [aliasKeys]
  */
-function readPathOption(parsed, kebabKey, aliasKeys) {
+function readPathOption(parsed, kebabKey, aliasKeys = []) {
   const value = readOptionValue(parsed, kebabKey, aliasKeys);
   if (value === undefined) return undefined;
   if (typeof value !== "string" || !value.trim()) {
@@ -273,71 +309,56 @@ function readBooleanOption(parsed, kebabKey, aliasKeys = []) {
 }
 
 /** @param {ParsedArgs} parsed */
+function readConfirmOptions(parsed) {
+  return {
+    yes: readBooleanOption(parsed, "yes", ["y"]),
+    nonInteractive: readBooleanOption(parsed, "non-interactive", [
+      "nonInteractive",
+    ]),
+  };
+}
+
+/** @param {ParsedArgs} parsed */
 function resolveHomeRoots(parsed) {
+  const { defaultCodexHome } = require("./convert-plugin/codex-cli");
+  const codexHome = readPathOption(parsed, "codex-home", ["codexHome"]);
+  const agentsHome = readPathOption(parsed, "agents-home", ["agentsHome"]);
   return {
-    codexHome: resolveRoot(
-      readPathOption(parsed, "codex-home", ["codexHome"]),
-      ".codex",
-    ),
-    agentsHome: resolveRoot(
-      readPathOption(parsed, "agents-home", ["agentsHome"]),
-      ".agents",
-    ),
+    codexHome: codexHome
+      ? path.resolve(expandHome(codexHome))
+      : defaultCodexHome(),
+    agentsHome: agentsHome
+      ? path.resolve(expandHome(agentsHome))
+      : path.join(os.homedir(), ".agents"),
   };
-}
-
-/** @param {Record<string, unknown>} diagnostic */
-function sanitizeDiagnosticPaths(diagnostic) {
-  return {
-    ...diagnostic,
-    plugin_source: sanitizeHomePath(diagnostic.plugin_source),
-    codex_root: sanitizeHomePath(diagnostic.codex_root),
-    agents_root: sanitizeHomePath(diagnostic.agents_root),
-    install_state_path: sanitizeHomePath(diagnostic.install_state_path),
-  };
-}
-
-/** @param {unknown} value */
-function sanitizeHomePath(value) {
-  const resolved = path.resolve(String(value));
-  const home = path.resolve(os.homedir());
-  if (resolved === home) return "~";
-  if (resolved.startsWith(`${home}${path.sep}`)) {
-    return `~${path.sep}${path.relative(home, resolved)}`;
-  }
-  return resolved;
-}
-
-/** @param {unknown} value */
-function sanitizeDoctorError(value) {
-  const home = path.resolve(os.homedir());
-  const homeBoundary = new RegExp(
-    `(^|[\\s"'(=,:])${escapeRegExp(home)}(?=$|${escapeRegExp(path.sep)}|["'\\)\\],:;])`,
-    "g",
-  );
-  const redacted = String(value).replace(homeBoundary, "$1~");
-  return formatDoctorHumanValue(redacted);
-}
-
-/** @param {string} value */
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** @param {number} exitCode */
 function printHelp(exitCode) {
   const help = `Usage:
+  scripts/convert-plugin.js build <plugin-name|path> --out <dir>
   scripts/convert-plugin.js install <plugin-name|path> [options]
-  scripts/convert-plugin.js stats <plugin-name|path> [options]
-  scripts/convert-plugin.js doctor <plugin-name|path> [options]
+  scripts/convert-plugin.js uninstall <plugin-name|path> [options]
+  scripts/convert-plugin.js stats <plugin-name|path> [--json]
+
+build writes a Codex plugin marketplace to --out (which must be empty or
+absent). Register it with \`codex plugin marketplace add <dir>\` and install
+with \`codex plugin add <plugin>@<plugin>\`.
+
+install builds the marketplace under the Codex home and runs those two Codex
+CLI commands. uninstall removes the plugin and marketplace registration, the
+generated marketplace, and any legacy converter output.
 
 Options:
-  --to <target>           Target format: codex (default: codex)
-  --codex-home <dir>      Codex root (default: ~/.codex)
-  --agents-home <dir>     Agents root (default: ~/.agents)
-  --yes, -y               Assume "yes" for all cleanup confirmations
-  --non-interactive       Never prompt; use default answers for confirmations
-  --json                  (stats and doctor) print JSON instead of key=value lines
+  --out <dir>             (build) Marketplace output directory
+  --codex-home <dir>      Codex home (default: $CODEX_HOME or ~/.codex)
+  --agents-home <dir>     Agents home holding legacy agent skills (default: ~/.agents)
+  --marketplace-dir <dir> Generated marketplace location
+                          (default: <codex-home>/${MARKETPLACE_DIR_NAME}/<plugin>)
+  --yes, -y               Assume "yes" when asked to remove legacy converter output
+  --non-interactive       Never prompt; keep legacy output unless --yes is given
+  --json                  (stats) print JSON instead of key=value lines
+  --to codex              Accepted for compatibility; codex is the only target
 
 Long boolean options (--yes, --non-interactive, --json) also accept an explicit
 =true or =false value (or 1/0, yes/no); any other value is rejected.
@@ -345,12 +366,6 @@ Long boolean options (--yes, --non-interactive, --json) also accept an explicit
 Stats fields:
   codex_skills            Number of Codex skills (skill directories plus generated command skills)
   agent_skills            Number of generated Codex agent skills
-
-Doctor fields:
-  schema_version, plugin_name, plugin_version, plugin_source
-  codex_root, agents_root, install_state_path
-  install_state_status, install_state_from_disk, install_state_recovery_reason
-  transaction_health
 `;
   console.log(help);
   if (exitCode) process.exit(exitCode);
@@ -384,30 +399,12 @@ function parseArgs(argv) {
       continue;
     }
     if (arg.startsWith("-")) {
-      if (arg === "-o") {
-        const next = argv[i + 1];
-        if (next && !next.startsWith("-")) {
-          result.o = next;
-          i += 1;
-        } else {
-          result.o = true;
-        }
-        continue;
-      }
       result[arg.slice(1)] = true;
       continue;
     }
     result._.push(arg);
   }
   return result;
-}
-
-/** @param {string | undefined} value @param {...string} defaultSegments */
-function resolveRoot(value, ...defaultSegments) {
-  if (value === undefined) {
-    return path.join(os.homedir(), ...defaultSegments);
-  }
-  return path.resolve(expandHome(value));
 }
 
 /** @param {string} value */
@@ -450,9 +447,6 @@ function formatError(error) {
 }
 
 main().catch((error) => {
-  const formatted = formatError(error);
-  console.error(
-    process.argv[2] === "doctor" ? sanitizeDoctorError(formatted) : formatted,
-  );
+  console.error(formatError(error));
   process.exit(1);
 });

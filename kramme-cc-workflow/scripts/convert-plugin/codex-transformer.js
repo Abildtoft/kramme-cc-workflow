@@ -15,6 +15,7 @@ const {
 const {
   skillFrontmatterFieldByLoaderProperty,
 } = require("../schemas/skill-contracts");
+const { codexPluginRootExpression } = require("./codex-shared-scripts");
 
 /**
  * @typedef {import("./contracts").ClaudeAgent} ClaudeAgent
@@ -24,8 +25,8 @@ const {
  * @typedef {import("./contracts").CodexSkillFile} CodexSkillFile
  * @typedef {import("./contracts").CodexSourceSkillFile} CodexSourceSkillFile
  * @typedef {import("./contracts").CodexBundle} CodexBundle
- * @typedef {import("./contracts").CodexHookManifest} CodexHookManifest
- * @typedef {import("./contracts").CodexHookPlugin} CodexHookPlugin
+ * @typedef {import("./contracts").CodexPluginManifest} CodexPluginManifest
+ * @typedef {import("./contracts").CodexPluginPackage} CodexPluginPackage
  * @typedef {import("./contracts").CodexTransformOptions} CodexTransformOptions
  * @typedef {import("./contracts").JsonObject} JsonObject
  * @typedef {{sharedScriptDirs: import("./contracts").SharedScriptDir[], sharedScriptFiles: import("./contracts").SharedScriptFile[]}} SharedRuntime
@@ -120,7 +121,6 @@ function convertClaudeToCodex(plugin) {
   const sharedRuntime = sharedRuntimeFor(plugin);
 
   return {
-    prompts: [],
     skillDirs,
     generatedSkills: commandSkills,
     agentSkills,
@@ -128,15 +128,71 @@ function convertClaudeToCodex(plugin) {
     knownAgentSkills,
     mcpServers: plugin.mcpServers,
     ...sharedRuntime,
-    codexPlugin: codexHookPluginFor(plugin, skills, sharedRuntime),
+    codexPlugin: codexPluginPackageFor(plugin, skills),
   };
 }
 
-/** @param {ClaudePlugin} plugin @param {ClaudeSkill[]} codexSkills @param {SharedRuntime} sharedRuntime */
-function codexHookPluginFor(plugin, codexSkills, sharedRuntime) {
-  if (!plugin.hooks) return undefined;
-  if (!hasRequiredHookControlSkills(codexSkills)) return undefined;
-  return convertCodexHookPlugin(plugin, sharedRuntime);
+const CODEX_PLUGIN_VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/**
+ * Describe the native Codex plugin that packages the converted skills. Hook
+ * packaging is included only when the plugin declares hooks and ships the
+ * skills that let a user control them.
+ *
+ * @param {ClaudePlugin} plugin
+ * @param {ClaudeSkill[]} codexSkills
+ * @returns {CodexPluginPackage}
+ */
+function codexPluginPackageFor(plugin, codexSkills) {
+  const name = normalizeName(plugin.manifest.name);
+  const version = String(plugin.manifest.version ?? "local").trim() || "local";
+  if (!CODEX_PLUGIN_VERSION_PATTERN.test(version)) {
+    throw new Error(
+      `Plugin version "${version}" cannot name a Codex plugin cache directory.`,
+    );
+  }
+  const marketplaceName = name;
+  /** @type {CodexPluginManifest} */
+  const manifest = {
+    name,
+    version,
+    description: sanitizeDescription(
+      plugin.manifest.description ??
+        `Converted from the ${plugin.manifest.name} Claude Code plugin.`,
+    ),
+    skills: "./skills/",
+  };
+  const hooksEligible =
+    Boolean(plugin.hooks) && hasRequiredHookControlSkills(codexSkills);
+  if (hooksEligible) {
+    manifest.hooks = "./hooks/hooks.json";
+  }
+  if (plugin.mcpServers && Object.keys(plugin.mcpServers).length > 0) {
+    manifest.mcpServers = /** @type {import("./contracts").CodexMcpServers} */ (
+      cloneJson(plugin.mcpServers)
+    );
+  }
+  if (plugin.manifest.author) {
+    manifest.author = plugin.manifest.author;
+  }
+  const cacheRelativePath = path.posix.join(
+    "plugins",
+    "cache",
+    marketplaceName,
+    name,
+    version,
+  );
+
+  return {
+    name,
+    marketplaceName,
+    version,
+    manifest,
+    ...(hooksEligible ? { hooks: cloneJson(plugin.hooks ?? {}) } : {}),
+    hookSourceDir: path.join(plugin.root, "hooks"),
+    cacheRelativePath,
+    rootExpression: codexPluginRootExpression(cacheRelativePath),
+  };
 }
 
 /** @param {ClaudeSkill[]} skills */
@@ -147,38 +203,6 @@ function hasRequiredHookControlSkills(skills) {
   return REQUIRED_HOOK_CONTROL_SKILLS.every((skillName) =>
     installedSkillNames.has(normalizeName(skillName)),
   );
-}
-
-/** @param {ClaudePlugin} plugin @param {SharedRuntime} sharedRuntime @returns {CodexHookPlugin} */
-function convertCodexHookPlugin(plugin, sharedRuntime) {
-  const name = normalizeName(plugin.manifest.name);
-  const version = String(plugin.manifest.version ?? "local").trim() || "local";
-  const marketplaceName = name;
-  const description = sanitizeDescription(
-    plugin.manifest.description ??
-      `Lifecycle hooks converted from ${plugin.manifest.name}.`,
-  );
-  /** @type {CodexHookManifest} */
-  const manifest = {
-    name,
-    version,
-    description,
-    hooks: "./hooks/hooks.json",
-  };
-
-  if (plugin.manifest.author) {
-    manifest.author = plugin.manifest.author;
-  }
-
-  return {
-    name,
-    marketplaceName,
-    version,
-    manifest,
-    hooks: cloneJson(plugin.hooks ?? {}),
-    hookSourceDir: path.join(plugin.root, "hooks"),
-    ...sharedRuntime,
-  };
 }
 
 /** @param {ClaudePlugin} plugin @returns {SharedRuntime} */

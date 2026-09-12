@@ -8,7 +8,7 @@ A Claude Code plugin that automates the daily development lifecycle:
 - **Test & verify** — browser-driven QA with evidence capture and project-aware verification runs
 - **Explain** — self-contained HTML diagrams, PR walkthroughs, and codebase onboarding guides
 
-The plugin also runs on Codex: a converter CLI installs the same skills, hooks, and agents there (see [Codex](#codex)).
+The plugin also runs on Codex as a native Codex plugin generated from the same source (see [Codex](#codex)).
 
 <!-- prettier-ignore-start -->
 > [!IMPORTANT]
@@ -34,7 +34,7 @@ Using the plugin:
 
 Reference:
 
-- [Codex Diagnostics](#codex-diagnostics)
+- [Codex Plugin Status](#codex-plugin-status)
 - [Plugin Structure](#plugin-structure)
 - [Documentation](#documentation)
 - [Related Plugins](#related-plugins)
@@ -67,7 +67,7 @@ Additional dependencies are capability-specific:
 | Document conversion | `uv`/`uvx`; MarkItDown dependencies are downloaded on demand |
 | Image generation | `uv`, network access, and `GEMINI_API_KEY` |
 | Recoverable cleanup in autonomous workflows | `trash` on macOS or `trash-cli` on Linux |
-| Codex conversion | Node.js 18+ and npm |
+| Codex conversion | Node.js 18+, npm, and the Codex CLI (`npm install -g @openai/codex`) |
 | Project verification and formatting | The target project's own build, test, type-check, and formatter tools |
 
 Node.js is not required to install the Claude Code plugin from its marketplace. Context7, Nx, Magic Patterns, Granola, and other MCP integrations are optional enhancements unless a selected skill says otherwise. After installation, run `/kramme:setup` for a read-only environment check. Contributors need the broader toolchain described in [Development](#development).
@@ -97,7 +97,18 @@ claude /plugin install /path/to/kramme-cc-workflow/kramme-cc-workflow
 
 ### Codex
 
-This repo includes a converter CLI (Node.js) that installs the plugin into Codex. Requires Node.js 18+. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
+The plugin ships to Codex as a native Codex plugin. A converter CLI (Node.js 18+) builds a Codex marketplace from the Claude plugin source, and Codex installs the plugin from that marketplace into its own plugin cache, where it also owns updates and removal. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
+
+Install the published plugin without a clone (requires the Codex CLI):
+
+```bash
+codex plugin marketplace add Abildtoft/kramme-cc-workflow --ref codex-plugin
+codex plugin add kramme-cc-workflow@kramme-cc-workflow
+```
+
+CI regenerates the `codex-plugin` branch on every release tag.
+
+Build and install from a checkout:
 
 ```bash
 npm install
@@ -116,22 +127,34 @@ Local dev from this repo:
 ./kramme-cc-workflow/scripts/install-codex.sh
 ```
 
-Helper scripts install missing converter runtime dependencies and forward additional args to the converter (e.g., `--codex-home`, `--agents-home`).
+`install` builds the marketplace under `<codex-home>/.kramme-plugin-marketplaces/kramme-cc-workflow`, registers it with `codex plugin marketplace add`, installs it with `codex plugin add`, and fails if Codex places the plugin anywhere other than `plugins/cache/kramme-cc-workflow/kramme-cc-workflow/<version>` under the Codex home, because the converted skills reference that directory. The Codex home defaults to `$CODEX_HOME` or `~/.codex`; override it with `--codex-home`. The helper script installs missing converter runtime dependencies and forwards additional args to the converter.
 
-Codex output defaults to `~/.codex`. Beyond `prompts/` and `skills/`, the converter also generates agent skills (under the agents home, set with `--agents-home`), a converted hook plugin, and a managed tool-map block in the Codex `AGENTS.md`. For plugins that declare MCP servers, it also writes managed MCP config tables. See the [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md) for the exact source-to-output mapping.
+Installs from an earlier converter release (skills copied into `~/.codex/skills`, agent skills in `~/.agents/skills`, shared helpers under `~/.codex/scripts`, and the managed `AGENTS.md` tool map) are detected through `.kramme-install-state.json` and removed after confirmation. Pass `--yes` to confirm automatically or `--non-interactive` to keep them; `--agents-home` selects the agents home that held the legacy agent skills.
 
-When `.kramme-install-state.json` is unavailable or invalid, installation continues by rebuilding it from managed manifests and prints one stderr warning with the reason: `missing`, `malformed-json`, or `invalid-shape`. The `missing` reason is expected on a first install, and the warning never includes state-file contents.
+Build the marketplace without installing, for inspection or publishing:
 
-Inspect the generated skill counts without installing:
+```bash
+node kramme-cc-workflow/scripts/convert-plugin.js build kramme-cc-workflow --out /tmp/kramme-codex
+```
+
+The output root holds `.agents/plugins/marketplace.json` and `plugins/kramme-cc-workflow/` with `.codex-plugin/plugin.json`, `skills/` (converted skills, generated command skills, and agent skills), `scripts/` (shared helpers), and `hooks/` when the hook control skills are present. See the [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md) for the exact source-to-output mapping.
+
+Inspect the generated skill counts without building:
 
 ```bash
 node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow
 node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow --json
 ```
 
-The default output contains `codex_skills=<integer>` followed by `agent_skills=<integer>`. JSON output contains the same two integer fields in an object. `codex_skills` counts converted skill directories plus generated command skills; `agent_skills` counts generated Codex agent skills.
+The default output contains `codex_skills=<integer>` followed by `agent_skills=<integer>`. JSON output contains the same two integer fields in an object. `codex_skills` counts converted skill directories plus generated command skills; `agent_skills` counts generated Codex agent skills. Both groups are packaged in the plugin's `skills/` directory.
 
-For read-only install troubleshooting, see [Codex Diagnostics](#codex-diagnostics).
+Remove a checkout install, including the marketplace and any legacy output:
+
+```bash
+node kramme-cc-workflow/scripts/convert-plugin.js uninstall kramme-cc-workflow
+```
+
+For published installs, `codex plugin remove kramme-cc-workflow@kramme-cc-workflow` and `codex plugin marketplace remove kramme-cc-workflow` do the same through Codex. For install status, see [Codex Plugin Status](#codex-plugin-status).
 
 ### Updating
 
@@ -151,7 +174,14 @@ claude /plugin install git+https://github.com/Abildtoft/kramme-cc-workflow
 claude /plugin install /path/to/kramme-cc-workflow/kramme-cc-workflow
 ```
 
-For Codex installs, updating is the same as installing: re-run the converter to regenerate the output (use the commands in the Codex section). This overwrites the generated files in `~/.codex`.
+For published Codex installs, refresh the marketplace snapshot and reinstall:
+
+```bash
+codex plugin marketplace upgrade kramme-cc-workflow
+codex plugin add kramme-cc-workflow@kramme-cc-workflow
+```
+
+For checkout Codex installs, re-run the install command; it rebuilds the marketplace and reinstalls the plugin into the Codex cache.
 
 Restart Claude Code after updating for changes to take effect.
 
@@ -660,7 +690,7 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | `git` | Version control | Pre-installed on most systems |
 | `jq` | Safety-hook JSON parsing | `brew install jq` (macOS) / `apt install jq` (Linux) |
 | `python3` | Safety-hook command parsing | Install Python 3.10+ |
-| `node` | Local skill-usage recording and Codex conversion | Install Node.js 18+; Codex conversion also requires npm |
+| `node` | Local skill-usage recording and Codex conversion | Install Node.js 18+; Codex conversion also requires npm and the Codex CLI |
 | `gh` | GitHub Pull Request workflows | `brew install gh` or follow [cli.github.com](https://cli.github.com/) |
 
 ### Verification & Build
@@ -682,20 +712,17 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | `skillspector` | Optional security scanning for local skill directories | [NVIDIA/SkillSpector](https://github.com/NVIDIA/SkillSpector) |
 | `surf` | AI-generated illustrations in visual diagrams (optional) | [surf-cli](https://github.com/nicobailon/surf-cli) |
 
-## Codex Diagnostics
+## Codex Plugin Status
 
-Inspect the resolved plugin and managed install state without changing either output root:
+Codex owns the installed plugin, so its own CLI reports the state:
 
 ```bash
-node kramme-cc-workflow/scripts/convert-plugin.js doctor kramme-cc-workflow
-node kramme-cc-workflow/scripts/convert-plugin.js doctor kramme-cc-workflow --json
+codex plugin list
 ```
 
-Doctor output is a stable schema-versioned record with `plugin_name`, `plugin_version`, and `plugin_source`; `codex_root` and `agents_root`; `install_state_path`, `install_state_status`, `install_state_from_disk`, and `install_state_recovery_reason`; and a nested `transaction_health` summary. The install-state status is `loaded` when valid state came from disk and `reconstructed` when manifests were inspected after a `missing`, `malformed-json`, or `invalid-shape` state file. Human output uses one `key=value` field per line, renders `transaction_health` as compact JSON, and escapes control characters as `\uNNNN`; `--json` returns the same fields with a JSON `null` recovery reason for healthy state.
+The plugin appears as `kramme-cc-workflow@kramme-cc-workflow` with its status, version, and marketplace source. The registration lives in the Codex `config.toml` as `[marketplaces.kramme-cc-workflow]` and `[plugins."kramme-cc-workflow@kramme-cc-workflow"]`, and the installed files live under `plugins/cache/kramme-cc-workflow/kramme-cc-workflow/<version>` in the Codex home. Converted skills reference that directory through `${CODEX_HOME:-$HOME/.codex}`, so keep `CODEX_HOME` exported in shells Codex runs when you use a non-default Codex home.
 
-`transaction_health` is an advisory point-in-time view of `lock`, `journals`, `recovery_claims`, `recovery_conflicts`, and `backups`. Each collection reports `status`, bounded `entry_count` and `inspected_count` values, `truncated`, and nonzero `status_counts`; the lock aggregates the known install roots and reports only its status. Backup and conflict inspection follows the target-parent locations recorded by structurally valid journals. `absent`, `active`, `stale`, `present`, `suspicious`, `malformed`, `unreadable`, and `unsupported` distinguish the aggregate evidence the inspector can establish without exposing owner metadata or artifact contents. Entry counts can additionally identify a leftover `committed` journal or an artifact that `disappeared` during inspection; either makes the aggregate status `suspicious`. `entry_limit` is the maximum number of entries or discovered roots inspected per collection; `truncated` means one of those bounds was reached, and an entry count that exceeds the limit is a bounded observation of at most one additional entry rather than a total. `metadata_byte_limit` is the maximum accepted owner or journal payload; the bounded reader may probe one additional byte to detect concurrent growth. Races are diagnostic evidence rather than command failures.
-
-The command is read-only: it does not install, repair, clean up, claim recovery, acquire or release locks, or create output directories. It never prints environment values, owner PIDs or tokens, journal records, state-file contents, conflicts, or backed-up data. Paths below the current home directory use `~` to avoid exposing the local username. Other resolved paths remain absolute, so review them before pasting diagnostics into a public issue.
+If skills from an earlier converter release still appear twice, a legacy copy remains under `~/.codex/skills` or `~/.agents/skills`; run the install command again with `--yes` to remove it.
 
 ## Plugin Structure
 
