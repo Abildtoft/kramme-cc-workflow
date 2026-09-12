@@ -1,123 +1,222 @@
 # PR Review Summary
 
+Review producer: kramme:pr:code-review
+
+Review status: COMPLETE Review execution: /tmp/kramme-pr-review-run.524xUB Review run: 82b6fe08-a703-44fd-88da-dc8f3011b90a Execution evidence: self-attested; validated locally
+
+## Coverage Status
+
+- Normalized aspects: `all`
+- Base: `refs/remotes/origin/main` (merge base `b09c6d2a7df4f20d3d0b8a0482341e85b2d15e4d`)
+- Unified scope: 48 changed paths; committed, staged, unstaged, and untracked scope reviewed.
+- Working-tree integrity: PASS; `@head` stayed `b525e14243a86e962264146b98d5d617f1623a3c`, path-record diff empty.
+- Reviewer jobs: code-reviewer succeeded; silent-failure-hunter succeeded; deslop-reviewer succeeded; pr-test-analyzer succeeded; comment-analyzer succeeded; type-design-analyzer succeeded; removal-planner succeeded; lean-reviewer succeeded; code-simplifier succeeded; performance-oracle succeeded; injection-reviewer succeeded; auth-reviewer succeeded; data-reviewer succeeded; logic-reviewer succeeded.
+- Post-processing: integrity succeeded; relevance succeeded; slop-meta succeeded; previous-context succeeded; aggregation succeeded; final-check succeeded.
+- Applicability: comments, tests, errors, types, code, slop, security, performance, removal, lean, refactor, and simplify were applicable and executed. No dimension was excluded.
+- Focused verification: converter Node contracts, the 17-case converter Bats suite, and `make -C kramme-cc-workflow test-smoke` passed (68 Python tests, 12 bootstrap Bats cases, and 8 Node tests).
+
 ## Relevance Filter
 
-- 6 findings validated as PR-caused
-- 7 findings filtered (pre-existing or out-of-scope)
-- 0 findings filtered (previously addressed in previous-review source)
-- 0 findings carried forward from a previous review
+- 12 findings retained as PR-caused after deduplication.
+- 0 findings filtered as pre-existing or out-of-scope.
+- 0 findings filtered as previously addressed.
+- 0 findings carried forward from the previous review.
 
 ## Previous Review Context
 
-- Source: none
-- Parseable previous findings: 0
+- Source: `REVIEW_OVERVIEW.md`
+- Parseable prior findings: 6
 - Previously addressed filtered: 0
 - Open/deferred/acknowledged/skipped carried forward: 0
-- Open/deferred/acknowledged/skipped not carried forward: 0
-- Ignored or unparseable previous entries: 0
+- Open/deferred/acknowledged/skipped not carried forward: 6 (different files and root causes)
+- All six prior findings concern the earlier PR-creation attachment workflow and are absent from this converter/plugin scope.
 
 ## Auto-resolution Readiness
 
-- 0 Critical/Important findings remain eligible for `$kramme:pr:resolve-review` (`Action class: gated_auto`); 5 were addressed
-- 0 Critical/Important findings remain deferred for manual follow-up; 1 was completed by maintainer decision
-- Manual blockers: product/UX/architecture/maintainer decision 1; missing/contradictory requirement 0; PR-description/process update 0; cross-team/external ownership 0; unresolved contradiction 0; incomplete trace/UNVERIFIED 0; dead-code approval 0
+- 0 Critical findings remain eligible for `$kramme:pr:resolve-review`.
+- 0 Important findings remain eligible for `$kramme:pr:resolve-review`.
+- 1 Important finding is deferred and requires maintainer/release-policy follow-up.
+- Manual blockers: release publication provenance and branch/tag protection (1).
+- Promoted findings: 0.
 
 ## Critical Issues (0 found)
 
-## Important Issues (6 found)
+None.
 
-- [kramme:injection-reviewer]: Model-produced media can be published without an independent trust gate [`kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md:337`]
+## Important Issues (8 found)
+
+- **Important: marketplace ownership is inferred from a mutable name.**
   - Finding ID: CR-001
-  - Location: `kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md:337`
-  - Confidence: 72
-  - Action class: manual
-  - Owner: maintainer
-  - Resolution status: addressed
-  - Action taken: Addressed by maintainer decisions and follow-up implementation — retained attachments under `--auto`, made UI-facing diffs presumptively relevant for screenshot or video capture, and added guarded best-effort startup for straightforward local environments.
-  - Evidence: Repository-derived diff and context drive the model-invoked capture child, the same model performs the semantic secret scan, and `--auto` passes any path-valid image/video to `gh pr create --attach` without an independent artifact preview or content/provenance check. A prompt-injected or mistaken capture can therefore publish credentials or private data in a syntactically valid media file.
-  - Selected resolution: Keep attachments enabled under `--auto`; when a diff touches UI-facing behavior, require the agent to attempt screenshot or video capture and, when no app is running, make a best-effort attempt to start a straightforward safe local environment.
-  - Decision outcome: Commits `Require visual evidence attempts for UI changes` and `Start simple environments for UI evidence` update `kramme:pr:create`, description generation, demo capture, focused tests, public documentation, and the accepted ADRs. Automatic startup is guarded by an internal capability, limited to an unambiguous entrypoint unchanged from the pinned base, excludes setup and external mutation, waits at most 60 seconds, and cleans up the exact launched process. Auto mode may still publish captured evidence without an independent preview gate; the maintainer accepts reliance on the agent's relevance and semantic safety assessment.
-
-- [kramme:code-reviewer, kramme:auth-reviewer, kramme:logic-reviewer]: The local help check does not prove remote attachment capability [`kramme-cc-workflow/skills/kramme:pr:create/SKILL.md:301`]
-  - Finding ID: CR-002
-  - Location: `kramme-cc-workflow/skills/kramme:pr:create/SKILL.md:301`
-  - Confidence: 98
-  - Action class: gated_auto
-  - Owner: resolver
-  - Resolution status: addressed
-  - Action taken: Added an exact allowlist for GitHub CLI attachment failures that occur before Pull Request submission, then retry once without evidence; clarified that the local help check proves syntax only and added executable remote-capability regression coverage.
-  - Evidence: GitHub CLI v2.100 advertises `--attach` locally, but `attachments.NewUploader` rejects GitHub Enterprise Server, unsupported token types, and insufficient repository permission before `submitPR`. Those errors omit the later `no pull request was created` sentinel required by the retry at `confirmation-and-creation.md:344`, so best-effort evidence blocks otherwise-valid PR creation after branch publication.
-
-- [kramme:code-reviewer]: Visual delegation passes an undefined base-commit token [`kramme-cc-workflow/skills/kramme:pr:generate-description/references/visual-capture.md:28`]
-  - Finding ID: CR-003
-  - Location: `kramme-cc-workflow/skills/kramme:pr:generate-description/references/visual-capture.md:28`
+  - Location: `kramme-cc-workflow/scripts/convert-plugin.js:198-225`, `kramme-cc-workflow/scripts/convert-plugin/codex-cli.js:127-145`
   - Confidence: 95
-  - Action class: gated_auto
+  - Action class: `gated_auto`
   - Owner: resolver
+  - Relevance status: PR-caused
   - Resolution status: addressed
-  - Action taken: Changed visual delegation to pass the Phase 1 `MERGE_BASE` full OID, and updated the synced contract and focused guidance tests.
-  - Evidence: The new child invocation requires `{BASE_COMMIT}`, but Phase 1 exports only `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`; direct `--visual` invocations also need not provide `BASE_COMMIT_OVERRIDE`. The delegated child consequently has no defined full OID and must reject or skip capture.
+  - Action taken: Added a converter-owned marketplace marker, validated marker identity before local replacement/uninstall, and validated the registered marketplace source before remote removal. Added foreign same-name coverage.
+  - Evidence: `assertReplaceableMarketplaceRoot` accepts any non-empty root whose marketplace manifest has the expected name, then replacement/uninstall recursively removes it. `unregisterCodexPlugin` also removes registrations by name before local ownership is validated. A same-name foreign marketplace or `--marketplace-dir` can lose unrelated plugins/files or a trusted remote registration.
+  - Recommended fix: require a converter-owned marker and expected one-plugin shape/source before any local deletion or remote unregister; validate ownership before unregistering and refuse mismatches.
 
-- [kramme:silent-failure-hunter]: A failed attachment-free retry can be reported as a partial attachment success [`kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md:353`]
-  - Finding ID: CR-004
-  - Location: `kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md:353`
+- **Important: marketplace conflict replacement has no rollback.**
+  - Finding ID: CR-002
+  - Location: `kramme-cc-workflow/scripts/convert-plugin/codex-cli.js:80-103`
+  - Confidence: 94
+  - Action class: `gated_auto`
+  - Owner: resolver
+  - Relevance status: PR-caused
+  - Resolution status: addressed
+  - Action taken: Removed destructive conflict replacement entirely. A marketplace name conflict is now reported with the registered source and leaves the existing registration untouched.
+  - Evidence: on `already added from a different source`, the code removes the existing marketplace and retries. If the retry fails, the previous registration and its installed plugins are already gone.
+  - Recommended fix: inspect and validate the existing source, require explicit replacement where appropriate, and preserve/restore the old registration if re-add fails.
+
+- **Important: legacy cleanup deletes global multi-plugin and recovery artifacts.**
+  - Finding ID: CR-003
+  - Location: `kramme-cc-workflow/scripts/convert-plugin/legacy-install-cleanup.js:168-171`
   - Confidence: 96
-  - Action class: gated_auto
+  - Action class: `gated_auto`
   - Owner: resolver
+  - Relevance status: PR-caused
   - Resolution status: addressed
-  - Action taken: Reset effective attachment state before every attachment-free retry, kept first-attempt diagnostics separate from final-attempt output, and extended non-zero result verification to attachment-free retries that may have created the Pull Request.
-  - Evidence: If the zero-upload first attempt triggers an attachment-free retry and that retry creates the PR but exits nonzero for another post-creation warning, the code concatenates the first attachment diagnostic into `PR_CREATE_OUTPUT` while retaining a positive effective attachment count. The later classifier then sees the retry URL plus the stale attachment error and falsely reports `partially attached`, although the creating invocation received no attachments.
+  - Action taken: Legacy cleanup now edits only the requested plugin record, preserves other plugin state, and leaves shared lock, staging, transaction, and active native paths intact.
+  - Evidence: cleanup for one plugin removes the global state/manifests plus `.kramme-install-lock`, `.kramme-install-staging`, and `.kramme-install-transactions` in both homes. The old state supports multiple plugins and the old transaction layer owns lock/recovery semantics, so unrelated outputs or an active recovery journal can be orphaned or destroyed.
+  - Recommended fix: update only the requested plugin record, remove shared state/artifacts only when no records remain, and preserve active or unverified transaction artifacts through the old ownership/staleness checks.
 
-- [kramme:type-design-analyzer]: Lexical deduplication misses attachment aliases that GitHub CLI rejects [`kramme-cc-workflow/skills/kramme:pr:create/scripts/prepare-demo-attachments.py:92`]
+- **Important: manifest-only legacy installs are skipped.**
+  - Finding ID: CR-004
+  - Location: `kramme-cc-workflow/scripts/convert-plugin/legacy-install-cleanup.js:31-34,48-50,119`
+  - Confidence: 93
+  - Action class: `gated_auto`
+  - Owner: resolver
+  - Relevance status: PR-caused
+  - Resolution status: addressed
+  - Action taken: Legacy detection now recognizes the target per-plugin manifest even when the shared state file is absent; manifest-only cleanup is covered by a regression test.
+  - Evidence: `hasLegacyInstall` checks only `.kramme-install-state.json`, while the reader and documentation support per-plugin manifests. After an interrupted install leaves only a manifest and copied skills, cleanup returns `absent` and leaves duplicate legacy output.
+  - Recommended fix: detect the target manifest (or read entries before the early return) and add a state-missing/manifest-present regression test.
+
+- **Important: malformed legacy metadata is deleted after a zero-entry cleanup.**
   - Finding ID: CR-005
-  - Location: `kramme-cc-workflow/skills/kramme:pr:create/scripts/prepare-demo-attachments.py:92`
-  - Confidence: 98
-  - Action class: gated_auto
+  - Location: `kramme-cc-workflow/scripts/convert-plugin/legacy-install-cleanup.js:90-103,112-174`
+  - Confidence: 95
+  - Action class: `gated_auto`
   - Owner: resolver
+  - Relevance status: PR-caused
   - Resolution status: addressed
-  - Action taken: Deduplicated artifacts by filesystem device/inode identity after regular-file validation, with a hardlink-alias regression test.
-  - Evidence: The helper's `set[Path]` treats hard links and case aliases as distinct, while GitHub CLI v2.100 uses `os.SameFile` and rejects duplicate file identities during flag validation, before PR submission and without the retry sentinel. A manifest accepted as safe can therefore block best-effort PR creation.
+  - Action taken: Cleanup fails closed when ownership metadata is unreadable without recoverable entries, preserves malformed records, and removes only validated records.
+  - Evidence: unreadable or invalid records are logged and treated as null; after confirmation, cleanup removes the record/artifact directories and reports success even when no legacy paths were recovered. Copied skills/helpers remain with no ownership metadata.
+  - Recommended fix: fail closed when records cannot be parsed, preserve metadata for recovery, and never report successful cleanup with unrecovered entries.
 
-- [kramme:pr-test-analyzer]: The attachment publication state machine is tested only as prose [`kramme-cc-workflow/tests/pr-create-guidance.bats:5`]
+- **Important: uninstall reports success after Codex removal failures.**
   - Finding ID: CR-006
-  - Location: `kramme-cc-workflow/tests/pr-create-guidance.bats:5`
-  - Confidence: 92
-  - Action class: gated_auto
+  - Location: `kramme-cc-workflow/scripts/convert-plugin/codex-cli.js:127-145`, `kramme-cc-workflow/scripts/convert-plugin.js:113-123`
+  - Confidence: 96
+  - Action class: `gated_auto`
   - Owner: resolver
+  - Relevance status: PR-caused
   - Resolution status: addressed
-  - Action taken: Added an executable harness for the documented creation block covering remote pre-submit fallback, non-zero post-create retry state, stale-diagnostic separation, and no retry for unrelated failures.
-  - Evidence: The new tests grep for tokens in `confirmation-and-creation.md` but never execute the shell block that assembles attachment pairs, retries a proven zero-upload failure, and classifies partial/post-creation failures. CR-002 and CR-004 are concrete defects that all focused and broad tests currently pass without detecting.
+  - Action taken: Uninstall validates the registered source, suppresses only explicit missing-registration responses, and propagates other Codex removal failures before deleting local output.
+  - Evidence: every nonzero `codex plugin remove` or marketplace-remove status is only warned; uninstall then deletes the local marketplace and prints `Uninstalled`. Permission/configuration failures can leave the plugin registered and cached while the user is told it is gone.
+  - Recommended fix: suppress only explicit not-found statuses, propagate other failures, and remove local files/claim success only after remote removal succeeds.
 
-## Suggestions (0 found)
+- **Important: install deletes the legacy install before native install succeeds.**
+  - Finding ID: CR-007
+  - Location: `kramme-cc-workflow/scripts/convert-plugin.js:85-96`
+  - Confidence: 95
+  - Action class: `gated_auto`
+  - Owner: resolver
+  - Relevance status: PR-caused
+  - Resolution status: addressed
+  - Action taken: Native marketplace build and Codex registration now complete before legacy cleanup; registration-failure coverage confirms legacy output remains recoverable.
+  - Evidence: `runInstall` confirms and runs legacy cleanup before marketplace build/registration. A build failure, missing Codex CLI, or plugin-add failure leaves no working native install and no recoverable legacy copy.
+  - Recommended fix: preflight/build/register before destructive cleanup, or retain a recoverable legacy record and roll back on failure; add failure-path tests with seeded legacy output.
 
-## Slop Warnings (2 found)
+- **Important: the publication workflow can publish arbitrary refs with write access.**
+  - Finding ID: CR-008
+  - Location: `.github/workflows/publish-codex-plugin.yml:3-10,31-50`
+  - Confidence: 86
+  - Action class: `manual`
+  - Owner: maintainer
+  - Relevance status: PR-caused
+  - Resolution status: deferred
+  - Action taken: Deferred pending the maintainer decision on restricting manual publication to main and requiring v\* tags to reference commits reachable from main.
+  - Evidence: any `v*` tag or `workflow_dispatch` run checks out its selected ref, builds executable hooks/skills, and force-pushes `codex-plugin` with `contents: write`. A write-capable collaborator can publish unreviewed source unless repository protections constrain the trigger.
+  - Recommended fix: require tag commits to be reachable from protected `main`, restrict manual dispatch to `main`/protected release refs, and use an environment or equivalent approval gate for publication.
+  - Manual blocker: Release publication currently accepts arbitrary v\* tags and workflow_dispatch refs with contents:write.
+  - Next human decision: Choose whether manual publication must be restricted to main and whether v\* tags must point to commits reachable from main.
+  - Recommended resolution: Restrict workflow_dispatch to main, fetch the protected main ref, and reject v\* tags whose commit is not an ancestor of main before publishing.
+  - Alternatives:
+    - Defer policy: Keep the current workflow and track publication provenance as a separate release-hardening change.
+  - To proceed: Reply naming CR-008 and the chosen option, then rerun `$kramme:pr:resolve-review`.
 
-- CR-002: A broad parallel host/auth/permission preflight would duplicate GitHub CLI policy and introduce time-of-check/time-of-use drift. Prefer narrowly recognizing only known errors that prove no PR was created, then retry without attachments.
-- CR-001: A new independent scanner/provenance subsystem would be speculative without an existing trusted facility. Prefer explicit preview/approval or omit attachments from `--auto`.
+## Suggestions (4 found)
+
+- **Suggestion: update the stale Codex output path in the portability matrix.**
+  - Finding ID: CR-009
+  - Location: `kramme-cc-workflow/docs/agent-portability.md:25`
+  - Confidence: 95
+  - Action class: `advisory`
+  - Owner: author
+  - Relevance status: PR-caused
+  - Resolution status: addressed
+  - Action taken: Updated the portability matrix to describe the temporary review snapshot or provider-specific cloud artifact rather than the obsolete ~/.codex/skills path.
+  - Evidence: the row still says the adversarial review output is a converted directory under `~/.codex/skills`, while this diff makes native plugin cache output the active Codex surface and calls the old directory legacy.
+  - Recommended fix: describe the native cache path or the current alternative-provider artifact precisely.
+
+- **Suggestion: remove the stale `smol-toml` dependency.**
+  - Finding ID: CR-010
+  - Location: `kramme-cc-workflow/package.json:25`
+  - Confidence: 98
+  - Action class: `advisory`
+  - Owner: author/maintainer
+  - Relevance status: PR-caused
+  - Resolution status: addressed
+  - Action taken: Removed the unused smol-toml dependency from the converter package manifest.
+  - Evidence: `smol-toml` is the only remaining dependency for deleted TOML/config/transaction code; repository search finds no source/test import, while the root package and lockfile already removed it.
+  - Recommended fix: DEAD CODE IDENTIFIED: kramme-cc-workflow/package.json dependency "smol-toml". Safe to remove these? Remove it from the nested manifest and verify converter metadata/tests.
+
+- **Suggestion: keep `stats` independent of install-only Codex CLI loading.**
+  - Finding ID: CR-011
+  - Location: `kramme-cc-workflow/scripts/convert-plugin.js:248-264,323`
+  - Confidence: 90
+  - Action class: `advisory`
+  - Owner: resolver
+  - Relevance status: PR-caused
+  - Resolution status: addressed
+  - Action taken: Made home and confirmation option resolution install/uninstall-only so build and stats remain independent of install-only Codex modules.
+  - Evidence: `validateOptions` calls `resolveHomeRoots` for every command, which requires `codex-cli` even for `stats` and `build`; the module README promises `stats` never loads Codex CLI.
+  - Recommended fix: resolve home/confirmation options only for install/uninstall or make validation command-specific.
+
+- **Suggestion: confirm the version contract before relying on path-safe tokens.**
+  - Finding ID: CR-012
+  - Location: `kramme-cc-workflow/scripts/convert-plugin/codex-transformer.js:135-153`
+  - Confidence: 60
+  - Action class: `advisory`
+  - Owner: resolver
+  - Relevance status: PR-caused, unresolved pending validation
+  - Resolution status: acknowledged
+  - Action taken: Kept the path-safe local fallback because the pinned runtime accepts it and the converter needs a non-semver local build identity; strict semver remains the authoring contract for published plugin manifests.
+  - Evidence: the converter defaults missing versions to `local` and validates only a path-safe token. The official [Codex plugin manifest specification](https://github.com/openai/codex/blob/main/codex-rs/skills/src/assets/samples/plugin-creator/references/plugin-json-spec.md) says versions use strict semver, while the pinned runtime source appears to validate path-safe segments. UNVERIFIED: the pinned `@openai/codex@0.154.0` install path may accept these values despite the authoring specification.
+  - Recommended fix: confirm the pinned CLI contract; then enforce strict semver or synthesize a valid fallback and add missing/non-semver fixtures if required.
+
+## Slop Warnings (3 found)
+
+- CR-012 remains explicitly `UNVERIFIED` and advisory pending confirmation of the pinned Codex runtime contract.
+- The proposed content-hash/no-op install optimization was dropped as `OVERENGINEERING` because no measured bottleneck or requirement justified a new cache/invalidation path.
+- The optional same-name marketplace marker suggestion was folded into CR-001 rather than retained as duplicate cleanup advice.
 
 ## Filtered (Pre-existing/Out-of-scope)
 
-<collapsed>
-- NOTICED BUT NOT TOUCHING: `kramme-cc-workflow/skills/kramme:pr:generate-description/references/visual-capture.md:73`: Direct output-only descriptions already included local paths before this branch; the changed condition preserves that pre-existing behavior.
-- NOTICED BUT NOT TOUCHING: `kramme-cc-workflow/tests/pr-create-guidance.bats:68`: Exact NUL-record assertions would strengthen coverage, but the JSON-mode test already checks the same computed values and no defect was demonstrated.
-- NOTICED BUT NOT TOUCHING: `kramme-cc-workflow/tests/pr-create-guidance.bats:71`: Consumer-side symlink tests would strengthen coverage, but no failing boundary case was demonstrated.
-- NOTICED BUT NOT TOUCHING: `kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md:268`: The lower-case braced token is an agent-substituted placeholder, not a shell variable; no literal execution path was established.
-- NOTICED BUT NOT TOUCHING: `kramme-cc-workflow/skills/kramme:pr:create/scripts/prepare-demo-attachments.py:95`: Rejecting all hard-linked content would not prove provenance because an actor able to copy the source can bypass that rule; the meaningful media-trust risk is CR-001.
-- NOTICED BUT NOT TOUCHING: `kramme-cc-workflow/skills/kramme:pr:create/scripts/prepare-demo-attachments.py:112`: Removing the manifest's explicit media kind is a preference; the current field provides coherent consistency validation.
-- NOTICED BUT NOT TOUCHING: `kramme-cc-workflow/skills/kramme:pr:create/scripts/prepare-demo-attachments.py:121`: Shrinking JSON output is optional; the current validated record shape has no demonstrated present cost.
-</collapsed>
+0 findings.
 
 ## Filtered (Previously Addressed)
 
-<collapsed>
-(0 found)
-</collapsed>
+0 findings.
 
 ## Strengths
 
-- **FYI** The attachment helper centralizes path containment, symlink, file type, size, and shell-argument validation, and publication revalidates the manifest immediately before building a quoted argument array.
-- **FYI** Partial-upload handling intentionally avoids blind retries after any successful upload, preserving the at-most-once PR creation boundary.
-- **FYI** Focused Bats suites, the full default test suite, the 113-test skill-contract suite, changed-skill static security scanning, and repository lint all completed successfully; the retained findings are behavioral gaps those prose-oriented checks do not exercise.
+- Marketplace replacement stages output before swapping, reducing half-written generated trees.
+- Codex CLI arguments use spawn arrays, and path helpers enforce managed-root containment.
+- The converter centralizes plugin-root rewriting and tests assert no `CLAUDE_PLUGIN_ROOT` remains in converted skills.
+- Workflows pin action/tool versions and the focused smoke suite passed in this run.
 
 ## Approval Standard
 
@@ -125,16 +224,45 @@ Approve if the change definitely improves overall code health.
 
 ## Recommended Action
 
-1. Fix critical issues first
-2. Address important issues
-3. Consider suggestions
-4. Re-run review after fixes
+1. Decide the deferred release-publication policy in CR-008 before merging.
+2. Re-run the full review after the policy decision and any workflow change.
 
 **To automatically resolve eligible `gated_auto` code-backed findings, run:** `$kramme:pr:resolve-review`
 
 ## Resolution Summary
 
-- Changes made: fixed all 5 gated-auto findings in commit `Resolve PR demo evidence review findings`; added behavioral tests for attachment fallback/state classification and filesystem-identity deduplication; implemented the maintainer's UI-evidence policy in `Require visual evidence attempts for UI changes`; then added capability-gated, bounded startup and exact-process cleanup for straightforward local environments in `Start simple environments for UI evidence`.
-- Findings: 6 addressed, 0 deferred as out-of-scope, 0 open selected-resolution retries or blocked implementations, 0 manual findings awaiting a user decision, 0 accepted process handoffs awaiting completion, and 0 manual findings waiting on an external owner, approval, or access.
-- Breaking API/config changes: none. Automatic UI evidence changes from discretionary relevance judgment to a presumptive best-effort capture attempt that may start one qualifying local development process when needed.
-- Manual verification/risk: The selected CR-001 policy intentionally relies on the agent's relevance and semantic safety assessment rather than an independent artifact preview gate. It also permits one trusted-baseline local development command behind the internal `--start-if-easy` capability; setup, stateful infrastructure, new or modified branch commands, and external mutations remain excluded. The initial full suite had one unrelated interrupt-fixture timing failure; that exact test passed on isolated rerun. The latest 37 focused tests, 113 skill-contract tests, formatting, lint, component-reference sync, and changed-skill static scanning passed; the strict security wrapper remains blocked by three expired accepted-finding records in unrelated skills.
+- 10 findings addressed.
+- 1 finding deferred as a manual release-policy decision (CR-008).
+- 0 findings open for selected-resolution retry or blocked implementation.
+- 1 manual finding awaits the maintainer decision (CR-008).
+- 0 accepted process handoffs await completion.
+- 0 findings wait on an external owner, approval, or access.
+
+Implementation commit: `ece3cb1a` (`Fix native Codex install cleanup safety`).
+
+## Diff comments
+
+Diff comments posted: 0 (skipped 0 already present)
+
+## Execution Ledger
+
+- `code-reviewer`: succeeded — /tmp/kramme-pr-review-run.524xUB/code-reviewer.txt
+- `silent-failure-hunter`: succeeded — /tmp/kramme-pr-review-run.524xUB/silent-failure-hunter.txt
+- `deslop-reviewer`: succeeded — /tmp/kramme-pr-review-run.524xUB/deslop-reviewer.txt
+- `pr-test-analyzer`: succeeded — /tmp/kramme-pr-review-run.524xUB/pr-test-analyzer.txt
+- `comment-analyzer`: succeeded — /tmp/kramme-pr-review-run.524xUB/comment-analyzer.txt
+- `type-design-analyzer`: succeeded — /tmp/kramme-pr-review-run.524xUB/type-design-analyzer.txt
+- `removal-planner`: succeeded — /tmp/kramme-pr-review-run.524xUB/removal-planner.txt
+- `lean-reviewer`: succeeded — /tmp/kramme-pr-review-run.524xUB/lean-reviewer.txt
+- `code-simplifier`: succeeded — /tmp/kramme-pr-review-run.524xUB/code-simplifier.txt
+- `performance-oracle`: succeeded — /tmp/kramme-pr-review-run.524xUB/performance-oracle.txt
+- `injection-reviewer`: succeeded — /tmp/kramme-pr-review-run.524xUB/injection-reviewer.txt
+- `auth-reviewer`: succeeded — /tmp/kramme-pr-review-run.524xUB/auth-reviewer.txt
+- `data-reviewer`: succeeded — /tmp/kramme-pr-review-run.524xUB/data-reviewer.txt
+- `logic-reviewer`: succeeded — /tmp/kramme-pr-review-run.524xUB/logic-reviewer.txt
+- `integrity`: succeeded — /tmp/kramme-pr-review-run.524xUB/integrity.txt
+- `relevance`: succeeded — /tmp/kramme-pr-review-run.524xUB/relevance.txt
+- `slop-meta`: succeeded — /tmp/kramme-pr-review-run.524xUB/slop-meta.txt
+- `previous-context`: succeeded — /tmp/kramme-pr-review-run.524xUB/previous-context.txt
+- `aggregation`: succeeded — /tmp/kramme-pr-review-run.524xUB/aggregation.txt
+- `final-check`: succeeded — /tmp/kramme-pr-review-run.524xUB/final-check.txt
