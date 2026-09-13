@@ -138,3 +138,75 @@ Approve if the change definitely improves overall code health.
 - Findings: 6 addressed, 0 deferred as out-of-scope, 0 open selected-resolution retries or blocked implementations, 0 manual findings awaiting a user decision, 0 accepted process handoffs awaiting completion, and 0 manual findings waiting on an external owner, approval, or access.
 - Breaking API/config changes: none. Automatic UI evidence changes from discretionary relevance judgment to a presumptive best-effort capture attempt that may start one qualifying local development process when needed.
 - Manual verification/risk: The selected CR-001 policy intentionally relies on the agent's relevance and semantic safety assessment rather than an independent artifact preview gate. It also permits one trusted-baseline local development command behind the internal `--start-if-easy` capability; setup, stateful infrastructure, new or modified branch commands, and external mutations remain excluded. The initial full suite had one unrelated interrupt-fixture timing failure; that exact test passed on isolated rerun. The latest 37 focused tests, 113 skill-contract tests, formatting, lint, component-reference sync, and changed-skill static scanning passed; the strict security wrapper remains blocked by three expired accepted-finding records in unrelated skills.
+
+## Conductor Review Resolution (Current Run)
+
+#### Comment #1: Shipping-only children were preflighted for non-shipping runs
+
+**Location:** `kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md:63`
+
+**Reviewer's comment:**
+
+> Important: this preflight is unconditional, but `workflow-artifacts:cleanup`, `pr:create`, and `pr:fix-ci` are only used when `SHIP_MODE=true`.
+
+**Assessment:** Agree
+
+**Rationale:** Non-shipping runs must not depend on publication-only children.
+
+**Resolution status:** addressed
+
+**Action taken:** Split the delegated preflight into implementation/review children and shipping-only publication children, and made the parent check the latter only when `SHIP_MODE=true`. Updated the guidance test.
+
+#### Comment #2: Review-producer contract test still required model-disabled skills
+
+**Location:** `kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md:5`
+
+**Reviewer's comment:**
+
+> Important: `make -C kramme-cc-workflow test-skill-contracts` now fails because its shared review-producer contract still asserts `disable-model-invocation: true`.
+
+**Assessment:** Agree
+
+**Rationale:** The test encoded the old policy for convention and overengineering review.
+
+**Resolution status:** addressed
+
+**Action taken:** Made the shared contract test expect `false` for convention and overengineering review and retain `true` for product and UX review.
+
+#### Comment #3: Review descriptions were too similar for model routing
+
+**Location:** `kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md:3`
+
+**Reviewer's comment:**
+
+> Suggestion: this shortened description now closely overlaps `pr:overengineering-review` and can route natural-language requests to the wrong review child.
+
+**Assessment:** Agree
+
+**Rationale:** The two descriptions need distinct trigger vocabulary for reliable automatic selection.
+
+**Resolution status:** addressed
+
+**Action taken:** Restored convention-specific triggers for patterns, dependencies, abstractions, and peer practice, while retaining overengineering-specific triggers for speculative generality and unlikely edge cases. Regenerated README and component catalog rows.
+
+#### Comment #4: Additional parent handoff assertions were requested
+
+**Location:** `kramme-cc-workflow/tests/linear-issue-to-pr-guidance.bats:50`
+
+**Reviewer's comment:**
+
+> Suggestion: add assertions for `code:plan-to-pr` and `pr:rebase` parent paths.
+
+**Assessment:** Disagree
+
+**Rationale:** Existing `issue-and-plan-to-pr-guidance.bats` and `resolve-stack-membership.bats` already pin the plan-to-PR and rebase handoffs named in the comment. Adding duplicate assertions here would not increase coverage.
+
+**Resolution status:** acknowledged
+
+**Action taken:** Acknowledged — no change; existing focused suites cover these parent paths.
+
+## Current Run Summary
+
+- Changes made: corrected conditional delegated-skill preflight, aligned review-producer contract expectations, and restored distinct review-routing descriptions; regenerated public component references.
+- Findings: 3 addressed, 1 acknowledged, 0 open.
+- Validation: Linear issue-to-PR guidance (16/16), plan-to-PR guidance (8/8), review-producer contract test, full skill-contract suite (115/115), component-reference check, and diff whitespace check passed.
