@@ -41,7 +41,7 @@ load 'test_helper/common'
     grep -qF "Do not retry attachments automatically" "$confirmation"
     grep -qF "github-cli-pr-create-attachments" "$sources"
     grep -qF "github-cli-attachment-validation" "$sources"
-    grep -qF "UI-facing changes trigger best-effort local environment startup and screenshot/video capture" ../README.md
+    grep -qF "UI changes get best-effort local startup and screenshot/video evidence." ../README.md
   '
 
 	assert_required_contracts_registered \
