@@ -1,10 +1,15 @@
 ---
 name: kramme:pr:overengineering-review
-description: "Single-lens review that asks whether branch and local changes are overdoing things: needless complexity, speculative generality, or hedging against very unlikely edge cases. Judges necessity against the task's actual requirements, not codebase baseline practice; a loose full-recall finder is followed by an adversarial justify pass, and surviving judgment calls are reported instead of dropped. Use --requirements when PR and commit context cannot supply task intent. Supports --inline. Not for baseline-relative drift or overcaution (use kramme:pr:convention-review) or general code quality (use kramme:pr:code-review)."
+description: Review branch and local changes for unnecessary complexity, speculative generality, or unlikely edge-case handling when requested or delegated by kramme:pr:review-convergence. Judge necessity against actual requirements using a finder and adversarial justification pass; retain surviving judgment calls. Supports --requirements and --inline; produces review output without editing source. Not for baseline convention drift or general code quality.
 argument-hint: "[--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
+
+### Model Invocation Contract
+
+- Invoke automatically only as a delegated read-only gate of `kramme:pr:review-convergence`, with its frozen sentinel-last `--requirements` block and the caller-selected file-backed or `--inline` output mode.
+- No other parent workflow is authorized by this model-invocation exception. Preserve requirement authority, report lifecycle, justification, and output contracts; never edit source or invent a disposition.
 
 # Overengineering Review for Pull Request and Local Changes
 

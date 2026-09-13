@@ -244,7 +244,7 @@
     },
     {
       "name": "kramme:linear:issue-implement",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md"
     },
     {
@@ -279,17 +279,17 @@
     },
     {
       "name": "kramme:pr:convention-review",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md"
     },
     {
       "name": "kramme:pr:create",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md"
     },
     {
       "name": "kramme:pr:fix-ci",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md"
     },
     {
@@ -314,7 +314,7 @@
     },
     {
       "name": "kramme:pr:overengineering-review",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md"
     },
     {
@@ -339,7 +339,7 @@
     },
     {
       "name": "kramme:pr:review-convergence",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md"
     },
     {
@@ -559,7 +559,7 @@
     },
     {
       "name": "kramme:workflow-artifacts:cleanup",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
     },
     {

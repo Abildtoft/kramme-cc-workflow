@@ -1,10 +1,15 @@
 ---
 name: kramme:pr:convention-review
-description: Reviews PR and local changes for convention drift and overcaution against documented rules and mined peer-file practice. Use for new patterns, dependencies, abstractions, or defensive complexity that departs from established practice; every finding cites evidence. Supports --inline. Not for general code quality (use kramme:pr:code-review) or spec review (use kramme:siw:spec-audit --team).
+description: Review PR and local changes for convention drift and overcaution around new patterns, dependencies, abstractions, or defensive complexity when requested or delegated by kramme:pr:review-convergence. Compare documented rules and mined peer-file practice; every finding cites evidence. Supports --inline and produces review output without editing source. Not for general code quality or spec review.
 argument-hint: "[--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
+
+### Model Invocation Contract
+
+- Invoke automatically only as a delegated read-only gate of `kramme:pr:review-convergence`, with its requested `--inline` and optional `--no-diff-comments` flags.
+- No other parent workflow is authorized by this model-invocation exception. Preserve documented-rule evidence, refutation, relevance, and output contracts; never edit source or invent a remediation decision.
 
 # Convention Review for Pull Request and Local Changes
 

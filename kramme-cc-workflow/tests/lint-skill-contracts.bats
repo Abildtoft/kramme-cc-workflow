@@ -4208,6 +4208,7 @@ EOF
     'kramme:pr:ux-review'
   )
   local finding_ids=('CONV-NNN' 'OE-NNN' 'PROD-NNN' 'UX-NNN')
+  local model_invocations=('false' 'false' 'true' 'true')
   local location_fields=(
     'Location: path/to/file.ext:line'
     'Location: path/to/file.ext:line`; `scope:` locations are unanchored and ineligible'
@@ -4246,7 +4247,7 @@ EOF
     [[ "$reference_text" == *'Require `mcp__conductor__GetDiffComments` for projection'* ]]
 
     [[ "$skill_text" == *'[--no-diff-comments]'* ]]
-    [[ "$skill_text" == *'disable-model-invocation: true'* ]]
+    [[ "$skill_text" == *"disable-model-invocation: ${model_invocations[$index]}"* ]]
     [[ "$skill_text" == *'`DIFF_COMMENTS=false`'* ]]
     [[ "$skill_text" == *'`CONDUCTOR_WORKSPACE_ID` is set'* ]]
     [[ "$skill_text" == *'`mcp__conductor__DiffComment`'* ]]

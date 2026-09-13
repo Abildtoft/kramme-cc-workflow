@@ -251,10 +251,12 @@ file_mode() {
     recreate="skills/kramme:git:recreate-commits/SKILL.md"
     description="skills/kramme:pr:generate-description/SKILL.md"
 
-    grep -qF "disable-model-invocation: true" "$create"
+    grep -qF "disable-model-invocation: false" "$create"
     grep -qF "disable-model-invocation: false" "$recreate"
     grep -qF "disable-model-invocation: false" "$description"
     grep -qF "### Model Invocation Contract" "$recreate"
+    grep -qF "### Model Invocation Contract" "$create"
+    grep -qF "No other parent workflow is authorized by this model-invocation exception" "$create"
     grep -qF "No other parent workflow is authorized by the model-invocation exception" "$recreate"
     grep -qF "Outside that exact \`kramme:pr:create\` delegation, never invent \`--auto\` or \`--authorize-history-rewrite\`" "$recreate"
     grep -qF "The model must never invent \`--force-backup\`" "$recreate"

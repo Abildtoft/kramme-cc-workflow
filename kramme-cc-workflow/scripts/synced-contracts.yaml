@@ -662,7 +662,7 @@
       "frontmatter": {
         "name": "kramme:pr:convention-review",
         "argument-hint": "[--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]",
-        "disable-model-invocation": "true",
+        "disable-model-invocation": "false",
         "user-invocable": "true"
       },
       "contains": [
@@ -1728,7 +1728,7 @@
       "frontmatter": {
         "name": "kramme:workflow-artifacts:cleanup",
         "argument-hint": "[--auto]",
-        "disable-model-invocation": "true",
+        "disable-model-invocation": "false",
         "user-invocable": "true"
       },
       "contains": [

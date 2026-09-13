@@ -1,14 +1,19 @@
 ---
 name: kramme:pr:fix-ci
-description: Iterate on a PR until CI passes. When an unscoped PR branch is behind its base, offers a safe automatic rebase or an explicit skip before watching and fixing CI. Also addresses review feedback, continuously pushes fixes until checks are green, and accepts a validated archived plan for scope-bound shipping or recovery.
+description: Fix PR CI and review feedback when explicitly requested or delegated by kramme:linear:issue-to-pr, kramme:code:plan-to-pr, or kramme:pr:rebase. Pushes targeted fixes until checks pass, with bounded retries. Offers rebase or skip for an unscoped branch behind its base and accepts a validated archived plan for scoped shipping or recovery.
 argument-hint: "[--fixup] [--auto] [--no-consolidate] [--scope-plan <archived-plan>]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 # Iterate on PR Until CI Passes
 
 Continuously iterate on the current branch until all CI checks pass and review feedback is addressed.
+
+### Model Invocation Contract
+
+- Invoke automatically only as a delegated child of `kramme:linear:issue-to-pr`, `kramme:code:plan-to-pr`, or `kramme:pr:rebase`, with the parent's exact bounded flags: `--no-consolidate` for issue/plan shipping (plus a validated scope plan when supplied), or the rebase caller's explicit `--auto`/normal mode.
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain the Pull Request identity, CI, review-feedback, scope, retry, and publication gates, and never invent `--auto`, a scope plan, or a push destination.
 
 **Requires**: GitHub CLI (`gh`) authenticated and available.
 
