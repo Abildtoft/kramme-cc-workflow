@@ -2,7 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-29
-- Amended: 2026-09-05
+- Amended: 2026-09-13
 - Deciders: repository maintainers
 - First safety review: 2026-11-29
 
@@ -17,6 +17,12 @@ Permit a narrow exception to the default rule that side-effecting skills are mod
 - `kramme:git:recreate-commits` is model-invocable only for direct user requests and delegation from `pr:create`. The parent always supplies `--require-unstacked`, `--no-push`, a pinned base commit, and a retry-safe backup ref. The child revalidates unstacked membership at the reset boundary, and the parent repeats that check at publication. The directly invoked parent owns the authorization represented by its `--auto` or `--authorize-history-rewrite` mode and remains the sole remote publisher. Model callers cannot invent `--force-backup`; only `pr:create` may automatically supply its exact derived `--backup-ref`.
 - `kramme:pr:generate-description` is model-invocable, but every model caller must supply `--no-update`. Only a direct user invocation may omit that guard and update an existing Pull Request.
 - `kramme:visual:demo-reel` is model-invocable for direct evidence-capture requests and as a child of `kramme:pr:generate-description`. The parent must pass `--for-pr-description`, the full pinned base commit used for its diff, and an option separator before the opaque capture target. Delegated mode is non-interactive and best-effort, stores its own evidence and logs only below an ignored, non-symlink `.context/demo-reels/`, never uploads evidence, and returns a skipped result when safe capture is unavailable. `kramme:pr:create --auto` may additionally grant `--start-if-easy` through the description generator for UI-facing diffs. That capability permits one bounded local-development process only when its entrypoint is unambiguous, existed unchanged at the pinned base, requires no setup or external mutation, and can be stopped by its exact process handle. The child owns cleanup. `kramme:pr:create` remains the sole owner of validating evidence and passing repeatable `gh pr create --attach` flags under its existing user-authorized publication boundary.
+- `kramme:linear:issue-implement` is model-invocable only as the child of `kramme:linear:issue-to-pr`, which must pass `--auto` and, for continuation, its validated `--resume-current-branch` handoff. The child keeps all Linear, branch, planning, scope, and verification gates.
+- `kramme:pr:review-convergence` is model-invocable only as a child of `kramme:linear:issue-to-pr` or `kramme:code:plan-to-pr`, which must pass their exact internal work ID, allowlisted archive key, and sentinel-last requirements handoff. Validation-only and plan-scope flags remain caller-owned and validated by the child.
+- `kramme:workflow-artifacts:cleanup` is model-invocable only as the child of `kramme:linear:issue-to-pr --ship`, with `--auto`; its destructive inventory, Trash requirement, dirty-artifact checks, and permanent-specification protections remain mandatory.
+- `kramme:pr:create` is model-invocable only as a child of `kramme:linear:issue-to-pr` or `kramme:code:plan-to-pr`, with the caller's `--auto` authorization and required generated-description and issue/scope flags. It remains the sole owner of Pull Request publication and its existing backup and lease gates.
+- `kramme:pr:fix-ci` is model-invocable only as a child of `kramme:linear:issue-to-pr`, `kramme:code:plan-to-pr`, or `kramme:pr:rebase`, with the parent's bounded `--no-consolidate`/scope or explicit rebase-mode arguments. It retains all CI, review-feedback, retry, and publication checks.
+- `kramme:pr:convention-review` and `kramme:pr:overengineering-review` are model-invocable only as read-only gates of `kramme:pr:review-convergence`, with that parent's inline, requirements, and report-lifecycle arguments. They never edit source or choose dispositions.
 
 Each child must narrowly route model use, document its least-side-effect model contract, and retain its existing confirmation and validation gates. Focused tests must pin the parent arguments.
 

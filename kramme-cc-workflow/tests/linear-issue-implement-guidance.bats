@@ -12,7 +12,7 @@ load 'test_helper/common'
     test -f "$skill/references/display-templates.md"
     test -f "$skill/assets/technical-plan.md"
 
-	    grep -qF "Local SIW work must be transferred to Linear before using this skill." "$skill/SKILL.md"
+	    grep -qF "Local SIW work must be transferred to Linear first." "$skill/SKILL.md"
 	    grep -qF "run \`kramme:siw:transfer-to-linear\` first" "$skill/SKILL.md"
 	    ! grep -qF "kramme:siw:issue-implement" "$skill/SKILL.md"
 	    grep -qF "Reject direct, incomplete, mismatched, or duplicate use" "$skill/SKILL.md"

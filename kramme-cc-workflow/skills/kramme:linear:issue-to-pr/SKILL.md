@@ -60,6 +60,8 @@ Continue: $kramme:linear:issue-to-pr DISC-202 --continue --ship
 
 ## Step 2: Invoke Linear Implementation
 
+Before any repository or Linear mutation, read `references/delegated-skills.md` and complete its installed-skill preflight. Confirm the implementation/review children and convergence gate dependencies are present and model-callable in the installed plugin. When `SHIP_MODE=true`, also confirm the publication children. If any selected check fails, stop before the Linear state gate and report the exact missing or model-disabled skill.
+
 Before allowing the implementation workflow to mutate a branch, perform a read-only new-PR preflight, then apply the Linear state gate:
 
 1. Run `git status --porcelain=v1 -z`, `git branch --show-current`, and the read-only checks for an in-progress merge, rebase, cherry-pick, revert, bisect, or unmerged path. Capture the exact entry branch, `HEAD`, and status path set. When `CONTINUE_MODE=false`, continue only when the status is empty. When `CONTINUE_MODE=true`, require a named current branch and no in-progress Git operation or unmerged path; preserve the worktree exactly while the remaining read-only preflight proves its identity.
@@ -167,7 +169,7 @@ If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:creat
 If `SHIP_MODE=true`, read the shipping contract from `references/shipping-contract.md` and follow it completely. That reference owns the complete order; in summary:
 
 1. Recheck that no Pull Request appeared for the issue branch.
-2. Retire current-project disposable workflow artifacts with `kramme:workflow-artifacts:cleanup --auto`.
+2. Invoke `kramme:workflow-artifacts:cleanup --auto` to retire current-project disposable workflow artifacts.
 3. Require a clean, unambiguous worktree.
 4. Record the verified tree identity.
 5. Invoke `kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description`.

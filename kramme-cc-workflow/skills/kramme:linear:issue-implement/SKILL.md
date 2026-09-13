@@ -1,14 +1,19 @@
 ---
 name: kramme:linear:issue-implement
-description: Requires Linear MCP. Start implementing a Linear issue with branch setup, planning, and guided or --auto workflows. Local SIW work must be transferred to Linear before using this skill.
+description: Requires Linear MCP. Implement a Linear issue when explicitly requested or when kramme:linear:issue-to-pr delegates its guarded --auto phase. Includes branch setup, reference mapping, planning, and verification. Local SIW work must be transferred to Linear first.
 argument-hint: "<ISSUE-ID> [--auto]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 # Implement Linear Issue
 
 Start implementing a Linear issue through an extensive planning phase before any code changes.
+
+### Model Invocation Contract
+
+- Invoke automatically only as the exact child of `kramme:linear:issue-to-pr` when that parent has completed its read-only branch, Pull Request, remote-absence, and Linear-state gates and passes `{issue-id} --auto` (or `{issue-id} --auto --resume-current-branch` with its validated resume handoff).
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain the issue lookup, reference mapping, planning, ambiguity, branch, scope, and verification gates, and never invent the parent-owned resume handoff.
 
 **IMPORTANT:** Linear issues are typically written for product teams and may be light on technical implementation details. This command emphasizes thorough planning and codebase exploration to translate product requirements into a concrete technical approach before starting implementation.
 

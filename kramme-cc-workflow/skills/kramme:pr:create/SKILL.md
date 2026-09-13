@@ -1,14 +1,19 @@
 ---
 name: kramme:pr:create
-description: Create a PR from the current branch with a generated description. UI-facing changes trigger best-effort local environment startup and screenshot/video capture when straightforward, and successful evidence is attached. Rewrites unpublished work into narrative commits, recovers an exact-tip remote, or safely appends committed and auto-included local work when the existing remote is at or behind local HEAD.
+description: Create a PR when explicitly requested or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr --ship. Generates the description, rewrites unpublished work into narrative commits, and publishes with lease protection; safely reuses or appends to an existing remote at or behind local HEAD. UI changes get best-effort local startup and screenshot/video evidence.
 argument-hint: "[--auto] [--draft] [--rebase-first] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 # Create Pull Request
 
 Orchestrate the creation of a clean, well-documented PR by validating git state, preparing unpublished commits when applicable, generating a description, safely publishing or reusing the remote branch, and creating the PR via `gh`.
+
+### Model Invocation Contract
+
+- Invoke automatically only as a delegated child of `kramme:linear:issue-to-pr` or `kramme:code:plan-to-pr`, with the caller's `--auto` authorization and its required generated-description flags (`--linear-issue` where supplied, `--require-generated-description`, and any caller-owned history-rewrite guard).
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; preserve every branch, backup, remote-absence or lease, description, self-assignment, and Pull Request proof, and never publish outside the current caller-prepared work.
 
 ## When NOT to use this skill
 

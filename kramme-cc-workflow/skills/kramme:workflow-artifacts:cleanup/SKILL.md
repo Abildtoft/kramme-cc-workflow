@@ -1,14 +1,19 @@
 ---
 name: kramme:workflow-artifacts:cleanup
-description: Delete workflow artifacts — review and audit overviews, QA reports, generated PR plans, SIW tracking files, visual diagram HTML, and local context evidence — from the working directory and shared artifact folders. Confirms before deleting; SIW specification files are kept unless you explicitly include them. Recoverable via Trash when `trash` is installed, otherwise permanent.
+description: Delete workflow artifacts when explicitly requested or delegated by kramme:linear:issue-to-pr --ship. Covers review/audit/QA reports, generated plans, SIW tracking, diagrams, and context evidence. Direct mode confirms deletion; guarded --auto keeps permanent specs and shared diagrams and requires Trash, with no permanent-deletion fallback.
 argument-hint: "[--auto]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 # Clean Up Artifacts
 
 Delete workflow artifacts from the current working directory, local context evidence under `.context/`, and generated diagram files under `~/.kramme-cc-workflow/diagrams/`. This is a destructive command: deletion is recoverable from the system Trash only when `trash` is installed (see Step 4), so it always confirms first.
+
+### Model Invocation Contract
+
+- Invoke automatically only as the exact child of `kramme:linear:issue-to-pr --ship`, with the parent-supplied `--auto` flag after review convergence has completed and immediately before Pull Request creation.
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain the `trash` requirement, dirty-artifact checks, safe candidate inventory, and permanent-specification protections. Never invent broader cleanup targets or permanent-deletion fallbacks.
 
 Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true`. `--auto` deletes only current-project always-candidate artifacts from Step 1, keeps permanent SIW specs, and excludes shared diagram files under `~/.kramme-cc-workflow/diagrams/`. It requires `trash` to be available and aborts on dirty tracked artifact files; it never falls back to permanent deletion.
 
