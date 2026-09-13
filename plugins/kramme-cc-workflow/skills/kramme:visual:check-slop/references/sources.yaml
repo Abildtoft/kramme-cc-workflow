@@ -1,0 +1,133 @@
+sources:
+  - id: gesso-anti-slop
+    url: https://github.com/Gesso-Build/skills
+    title: "Gesso Build anti-slop skill and detector"
+    rationale: "The local skill, TypeScript detector, 73-rule registry, rule catalog, and retained tests are copied and adapted from the upstream anti-slop project."
+    usage: copied
+    license: MIT
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "skills/anti-slop/SKILL.md; skills/anti-slop/references/rules.md; src/cli.ts; src/engine.ts; src/index.ts; src/rules.ts; src/types.ts; src/__tests__/*.test.ts except install-and-plugin.test.ts"
+    upstream_commit: ab68f1878dd5f19ac8dee9d55d2f4313060cac83
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: node-html-parser-runtime
+    url: https://github.com/taoqf/node-fast-html-parser
+    title: "node-html-parser"
+    rationale: "scripts/anti-slop.mjs bundles the published parser distribution used by the copied structural detectors so the installed skill runs without network access."
+    usage: copied
+    license: MIT
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "dist/back.js; dist/index.js; dist/matcher.js; dist/nodes/comment.js; dist/nodes/html.js; dist/nodes/node.js; dist/nodes/text.js; dist/nodes/type.js; dist/parse.js; dist/valid.js; dist/void-tag.js from the node-html-parser npm package"
+    version: 7.0.1
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: css-select-runtime
+    url: https://github.com/fb55/css-select
+    title: "css-select"
+    rationale: "scripts/anti-slop.mjs bundles this node-html-parser selector dependency."
+    usage: copied
+    license: BSD-2-Clause
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "lib/attributes.js; lib/compile.js; lib/general.js; lib/index.js; lib/pseudo-selectors/aliases.js; lib/pseudo-selectors/filters.js; lib/pseudo-selectors/index.js; lib/pseudo-selectors/pseudos.js; lib/pseudo-selectors/subselects.js; lib/sort.js from the css-select npm package"
+    version: 5.2.2
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: boolbase-runtime
+    url: https://github.com/fb55/boolbase
+    title: "boolbase"
+    rationale: "scripts/anti-slop.mjs bundles this css-select and nth-check dependency."
+    usage: copied
+    license: ISC
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "index.js from the boolbase npm package"
+    version: 1.0.0
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: css-what-runtime
+    url: https://github.com/fb55/css-what
+    title: "css-what"
+    rationale: "scripts/anti-slop.mjs bundles this css-select parser dependency."
+    usage: copied
+    license: BSD-2-Clause
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "lib/commonjs/index.js; lib/commonjs/parse.js; lib/commonjs/stringify.js; lib/commonjs/types.js from the css-what npm package"
+    version: 6.2.2
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: domhandler-runtime
+    url: https://github.com/fb55/domhandler
+    title: "domhandler"
+    rationale: "scripts/anti-slop.mjs bundles this node-html-parser selector dependency."
+    usage: copied
+    license: BSD-2-Clause
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "lib/index.js; lib/node.js from the domhandler npm package"
+    version: 5.0.3
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: domutils-runtime
+    url: https://github.com/fb55/domutils
+    title: "domutils"
+    rationale: "scripts/anti-slop.mjs bundles this css-select DOM utility dependency."
+    usage: copied
+    license: BSD-2-Clause
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "lib/feeds.js; lib/helpers.js; lib/index.js; lib/legacy.js; lib/manipulation.js; lib/querying.js; lib/stringify.js; lib/traversal.js from the domutils npm package"
+    version: 3.2.2
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: domelementtype-runtime
+    url: https://github.com/fb55/domelementtype
+    title: "domelementtype"
+    rationale: "scripts/anti-slop.mjs bundles this DOM type dependency."
+    usage: copied
+    license: BSD-2-Clause
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "lib/index.js from the domelementtype npm package"
+    version: 2.3.0
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: dom-serializer-runtime
+    url: https://github.com/cheeriojs/dom-serializer
+    title: "dom-serializer"
+    rationale: "scripts/anti-slop.mjs bundles this domutils serialization dependency."
+    usage: copied
+    license: MIT
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "lib/foreignNames.js; lib/index.js from the dom-serializer npm package"
+    version: 2.0.0
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: entities-runtime
+    url: https://github.com/fb55/entities
+    title: "entities"
+    rationale: "scripts/anti-slop.mjs bundles this dom-serializer entity codec dependency."
+    usage: copied
+    license: BSD-2-Clause
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "lib/decode.js; lib/decode_codepoint.js; lib/encode.js; lib/escape.js; lib/generated/decode-data-html.js; lib/generated/decode-data-xml.js; lib/generated/encode-html.js; lib/index.js from the entities npm package"
+    version: 4.5.0
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: nth-check-runtime
+    url: https://github.com/fb55/nth-check
+    title: "nth-check"
+    rationale: "scripts/anti-slop.mjs bundles this css-select nth-selector dependency."
+    usage: copied
+    license: BSD-2-Clause
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "lib/compile.js; lib/index.js; lib/parse.js from the nth-check npm package"
+    version: 2.1.1
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""
+  - id: he-runtime
+    url: https://github.com/mathiasbynens/he
+    title: "he"
+    rationale: "scripts/anti-slop.mjs bundles this node-html-parser entity codec dependency."
+    usage: copied
+    license: MIT
+    notice: references/THIRD_PARTY_NOTICES.md
+    upstream_path: "he.js from the he npm package"
+    version: 1.2.0
+    last_reviewed_at: 2026-08-26
+    baseline_hash: ""

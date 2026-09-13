@@ -1,0 +1,342 @@
+---
+name: kramme:skill:create
+description: Guide the creation of a new Claude Code plugin skill with best-practice structure, optimized frontmatter, and progressive disclosure. Use when creating a new skill from scratch or scaffolding a skill directory. Not for editing or refactoring existing skills.
+argument-hint: "[skill-name or description]"
+disable-model-invocation: true
+user-invocable: true
+---
+
+# Create Skill
+
+Guide the creation of a new plugin skill with best-practice structure, frontmatter, progressive disclosure, and validation. External attribution lives in `references/sources.yaml`; copied external files also keep source and license notes in the copied file.
+
+---
+
+## Phase 1: Parse Arguments
+
+1. Inspect `$ARGUMENTS` and classify it:
+   - Contains `kramme:` followed by colon-separated segments → treat as a candidate skill name.
+   - Other non-empty input → treat as free-text context for the design interview.
+   - Empty → proceed to Phase 2 with no preset.
+2. Defer strict name validation to Phase 3, where `references/naming-conventions.md` is loaded.
+
+## Phase 2: Design Interview
+
+Batch Q2, Q3, and Q5 into a single multi-choice prompt (they are independent multi-choice questions). Ask Q1, Q4, Q6, and Q7 separately because they require free-form or conditional follow-up.
+
+### Question 1: Purpose
+
+> What should this skill do? Describe the task it automates or the workflow it guides.
+
+Skip if `$ARGUMENTS` already provides a clear description.
+
+### Question 2: Invocation and Side Effects
+
+> How should this skill be triggered, and does it have side effects?
+>
+> A) **User-only with side effects** — creates/modifies/deletes files, runs git commands, calls APIs (`user-invocable: true`, `disable-model-invocation: true`) B) **User or auto-triggered** — read-only analysis, formatting, text processing (`user-invocable: true`, `disable-model-invocation: false`) C) **Background convention** — auto-applies rules like commit style or verification (`user-invocable: false`, `disable-model-invocation: false`)
+
+### Question 3: Complexity
+
+> What complexity tier fits this skill?
+>
+> A) **Simple** — single SKILL.md, no supporting files (~20-80 lines) B) **Medium** — SKILL.md + resource files for reference content (~80-300 lines) C) **Complex** — SKILL.md + resources + scripts for deterministic operations (~200-500 lines)
+
+### Question 4: Arguments
+
+> Does this skill accept arguments? If yes, describe the expected input.
+>
+> Examples: `[file-path]`, `[topic description]`, `<name> [--flag value]`
+>
+> Answer "no" if the skill gathers all input interactively.
+
+### Question 5: Platform
+
+> Should this skill be available on all platforms, or restricted?
+>
+> A) **All platforms** (default — omit `kramme-platforms`) B) **Claude Code only** (uses Agent Teams or other Claude Code features) C) **Specific combination** (specify which)
+
+Default to harness-neutral phrasing with a declared fallback. Add `kramme-platforms` only when the skill depends on a true platform feature with no sensible fallback, such as a platform-specific agent runtime, MCP provider surface, hook system, or environment variable.
+
+### Question 6: External inspiration
+
+> Is this skill derived from external inspiration — another agent-skills repository, a script, a paper, a book, a blog post, official framework docs?
+>
+> A) **Yes** — capture each source. Used to scaffold `references/sources.yaml` so the `kramme:skill:audit-sources` skill can track upstream changes worth absorbing later. B) **No** — the skill is original to this repo or composed of patterns the repo already established.
+
+If A, ask the user for each source:
+
+- title + URL (or library identifier resolvable via a docs MCP),
+- one-sentence rationale stating what in this skill is derived from the source,
+- whether `usage` is `inspiration` (ideas, facts, methods, or workflow influence rewritten in original language) or `copied` (source expression remains),
+- for `usage: copied`: a verified compatible upstream license, the skill-relative complete notice path, exact upstream path, and immutable upstream commit, revision, release, or version.
+
+Capture as `external_sources` for use in Phase 5. Capture copied files separately as `copied_external_assets`.
+
+A public URL or public repository is not a license. If permission is absent, unclear, incompatible, or forbids online reproduction, do not copy the source body. Use `usage: inspiration`, retain the URL, and write an original local summary instead.
+
+If the user is unsure whether something qualifies, default to including it — extra entries are easy to remove; missing entries silently skip upstream-change detection.
+
+### Question 7: Artifact Lifecycle
+
+> Will this skill create, update, refresh, or retire a durable artifact — for example a markdown report, issue file, generated code file, copied asset, or config?
+>
+> A) **No durable artifact** — it only returns an inline answer or performs stateless analysis. B) **Yes** — document how the artifact is produced, consumed, refreshed, and retired.
+
+If B, ask:
+
+- What exact artifact path, naming pattern, or location will the skill produce or update?
+- Which later user action, workflow, skill, script, or reviewer consumes it?
+- What event or command refreshes it?
+- What event or command retires, archives, or deletes it?
+
+Capture as `artifact_lifecycle` for use in Phase 5.
+
+## Phase 3: Name Generation and Validation
+
+1. Read the naming conventions from `references/naming-conventions.md`.
+
+2. If Phase 1 produced a candidate skill name, validate it against the rules:
+   - Format: `kramme:{domain}:{action}` with optional qualifier segments when they represent separate concepts. Prefer flags such as `--team` for execution modes.
+   - 1-64 characters total
+   - Each segment uses lowercase letters, numbers, and hyphens only (no consecutive hyphens)
+   - On any format violation, stop and ask for a corrected name (see the Error Handling section).
+   - Check for collision: list the skills directory (e.g., `ls skills/` or a glob over `skills/*/SKILL.md`) to verify the name is not taken.
+   - On collision, stop and ask for a different name. Do not overwrite.
+
+3. If no name was provided, generate 2-3 suggestions:
+   - Choose an existing domain namespace from the reference, or propose a new one if none fits
+   - Apply the correct word-order pattern (verb-first by default)
+   - Present suggestions and let the user choose or enter a custom name
+
+4. If proposing a new domain namespace, confirm with the user that it doesn't overlap with existing ones.
+
+## Phase 4: Generate Frontmatter
+
+1. Read the frontmatter field reference from `references/frontmatter-guide.md`.
+
+2. Draft the frontmatter using the interview answers:
+
+   ```yaml
+   ---
+   name: { skill-name }
+   description: "{trigger-optimized description with negative trigger}"
+   argument-hint: "{if applicable}"
+   disable-model-invocation: { true|false }
+   user-invocable: { true|false }
+   kramme-platforms: { if applicable }
+   ---
+   ```
+
+3. For the description:
+
+   The description is the only metadata the agent sees when deciding whether to load this skill. Treat it as a trigger spec, not a marketing summary. See `references/best-practices.md` for the rationale.
+   - Write in third person ("Creates...", "Guides...", "Runs...")
+   - Include what the skill does AND when to use it
+   - Add a negative trigger ("Not for...", "Don't use for...")
+   - Name the concrete keywords, file types, or contexts that should trigger it (e.g., "when the file imports `anthropic`/`@anthropic-ai/sdk`")
+   - No time-sensitive content — descriptions ship to downstream installations and may be cached
+   - Stay under 1,024 characters
+
+4. Present the draft frontmatter to the user for review. Adjust based on feedback.
+
+## Phase 5: Scaffold Directory and Files
+
+Before writing any file, verify the working directory contains a `skills/` parent (or whatever path the consumer plugin uses). If it does not, stop — see the Error Handling section.
+
+If any target file already exists during scaffolding, abort and report the conflicting path. Do not silently overwrite. To regenerate, the user must remove the existing skill directory first.
+
+### Simple tier
+
+1. Create the skill directory: `skills/{skill-name}/`
+2. Read the template from `assets/skill-md-simple.md`.
+3. Write `SKILL.md` with:
+   - The finalized frontmatter (replacing template placeholders)
+   - A heading matching the skill's purpose
+   - Goal, constraints, strategy, and verification sections as TODO placeholders
+   - A context section only when the skill needs facts the agent cannot derive from the repository or prompt
+   - An ordered-steps section only when correctness or safety depends on a specific sequence, such as a destructive, security-sensitive, prerequisite-dependent, stateful, or resumable workflow
+   - An artifact lifecycle section only when `artifact_lifecycle` was captured
+   - A source-tracking section only when `external_sources` were captured
+
+### Medium tier
+
+1. Create the skill directory: `skills/{skill-name}/`
+2. Create supporting directories based on what the skill needs:
+   - `references/` — for domain docs, cheatsheets, rules, agent prompts, examples
+   - `assets/` — for output format templates, code templates, static resources
+3. Read the template from `assets/skill-md-with-resources.md`.
+4. Write `SKILL.md` with:
+   - The finalized frontmatter
+   - Goal, constraints, strategy, and verification sections
+   - A context section only when the skill needs facts the agent cannot derive from the repository or prompt
+   - JiT loading instructions beside the strategy or ordered step that consumes each resource, including the condition that makes the resource worth loading
+   - An ordered-steps section only when correctness or safety depends on a specific sequence, such as a destructive, security-sensitive, prerequisite-dependent, stateful, or resumable workflow
+   - TODO placeholders for the user to fill in
+   - An artifact lifecycle section only when `artifact_lifecycle` was captured
+   - A source-tracking section only when `external_sources` were captured
+5. Create placeholder resource files with clear TODO headers describing their purpose.
+
+### Complex tier
+
+1. Follow the Medium tier steps above.
+2. Additionally create `scripts/` directory.
+3. Create placeholder script files with:
+   - A shebang line (`#!/usr/bin/env bash` or `#!/usr/bin/env python3`)
+   - Usage comment describing expected arguments
+   - Source URL, original path, upstream commit or release, and license note when the script copies external code
+   - Descriptive error messages for common failure modes
+   - TODO markers for the implementation
+
+### Writing guidelines for SKILL.md content
+
+- Design for user experience (UX: clear interaction and reliable task completion), developer experience (DX: maintainable structure and easy testing/debugging), and agent experience (AX: unambiguous context discovery, execution, recovery, and handoffs). Prefer improvements across all three within the skill's job; unchanged or inapplicable dimensions are acceptable. At relevant decision points, state intentional changes and material tradeoffs, established behavior and contracts preserved outside the intended change, and verification evidence. Keep the guidance self-contained and specific; do not add scope or boilerplate merely to mention all three.
+- Lead with the outcome contract: the goal, the constraints the run must respect, any context the agent cannot derive from the repository or prompt, and the evidence that proves success. Omit the context section when no such facts exist. Be precise about the applicable contract elements and deliberately loose about the rest.
+- Use third-person imperative: "Extract the text..." not "I will extract..."
+- State strategy as an adaptable default rather than a mandate, and leave out steps the agent already performs reliably
+- Require a mandatory ordered sequence only when correctness or safety depends on order. Common cases include destructive, irreversible, security-sensitive, prerequisite-dependent, stateful, or resumable workflows. There, number the steps, name preconditions when later steps depend on them, and map decision branches or failure paths where they actually exist
+- Reference resource files with explicit point-of-use Read instructions and a load condition:
+  ```
+  Read the {reference name} from `references/{file}.md` when {the condition that makes this resource useful}.
+  ```
+- Keep SKILL.md under 500 lines — if approaching the limit, move content to resources
+- For workflow skills that write durable artifacts, document how each artifact is produced, consumed, refreshed, and retired.
+- When adapting external work as `usage: inspiration`, rewrite prose and workflow steps in local vocabulary. Do not directly port long monolithic upstream skills; split them into smaller skills or original references.
+- For `usage: copied`, verify permission first, preserve the upstream source header, ship the complete required notice inside the skill, and record the exact upstream path plus immutable commit, revision, release, or version in `references/sources.yaml`.
+- Never write fetched upstream bodies or `references/sources-snapshot/` directories. Store only URLs, original notes, review dates, and normalized hashes.
+
+### Scaffold `sources.yaml` (if external inspiration was identified in Phase 2)
+
+If Question 6 identified external inspiration, write `<skill-dir>/references/sources.yaml` (creating `references/` first if necessary, even for Simple-tier skills). Skip this step entirely if no inspiration was identified — do not create an empty manifest. If the user identifies inspiration later during drafting, return here before declaring the skill complete.
+
+Use moving upstream URLs for sources that should be checked for drift, such as a default-branch GitHub URL or canonical docs page. Preserve exact commits or releases in copied-file source notes and in the rationale when they matter for attribution; only pin the audit URL itself when the source is intentionally immutable. For copied external files, make the rationale name the copied local file and verify the copied file itself carries the upstream source and license note.
+
+```yaml
+sources:
+  - id: { kebab-case slug — stable across audits, do not rename }
+    url: { fully-qualified https URL }
+    # OR: context7_library: {<owner>/<name> — for libraries resolvable via a docs MCP}
+    title: "{human-readable title shown in audit reports}"
+    rationale: "{one sentence: exactly what in this skill is derived from this source}"
+    usage: "{inspiration | copied}"
+    # Required only when usage is copied:
+    # license: "{verified upstream license}"
+    # notice: "{skill-relative path to complete license/notice file}"
+    # upstream_path: "{exact upstream path, page title, or artifact name}"
+    # upstream_commit: "{immutable commit; alternatively use baseline_commit, upstream_revision, upstream_release, or version}"
+    last_reviewed_at: { today, ISO YYYY-MM-DD }
+    baseline_hash: ""
+```
+
+Set `baseline_hash: ""` on every entry — the first run of `kramme:skill:audit-sources` populates it after the initial fetch.
+
+## Phase 6: Validation Checklist
+
+After scaffolding, verify the skill against these checks:
+
+### Structure
+
+- [ ] SKILL.md exists and is under 500 lines
+- [ ] Supporting files are in `references/`, `assets/`, or `scripts/` (flat, no nesting)
+- [ ] All file paths in SKILL.md use forward slashes and relative paths
+- [ ] Directory name matches the `name` field in frontmatter exactly
+
+### Frontmatter
+
+- [ ] All required fields declared: `name`, `description`, `disable-model-invocation`, `user-invocable`
+- [ ] `description` is under 1,024 characters
+- [ ] `description` includes a negative trigger
+- [ ] `argument-hint` present only if the skill accepts arguments
+- [ ] `kramme-platforms` present only if platform-restricted
+- [ ] Platform-specific tool names, environment variables, MCP prefixes, hook systems, or agent runtimes are either written with a declared fallback or gated with `kramme-platforms` when no sensible fallback exists
+
+### Content
+
+- [ ] Relevant decisions consider UX/DX/AX, make intentional changes and material tradeoffs explicit, and preserve established behavior and contracts outside the intended change with appropriate verification; unchanged or inapplicable dimensions do not force extra scope
+- [ ] Instructions use third-person imperative voice
+- [ ] The skill states its goal, the constraints the run must respect, and the success evidence that proves the goal was met; it states non-derivable context only when such context exists
+- [ ] Strategy is written as an adaptable default, not as a mandated procedure
+- [ ] A mandatory ordered sequence appears only when correctness or safety depends on order; where present, it names required preconditions and maps decision branches or failure paths where they actually exist
+- [ ] Resource files are referenced with explicit JiT Read instructions
+- [ ] No references to repo-root CLAUDE.md or README.md (skills must be self-contained per installation)
+- [ ] No extra documentation files inside the skill directory (for example release notes or status docs)
+- [ ] No redundant logic the agent already handles
+- [ ] No time-sensitive info (skill instructions may be cached or shipped to downstream installations; today's URL or this-week's library version goes stale)
+- [ ] References are one level deep (SKILL.md → reference; references do not chain to other references)
+- [ ] If the skill is derived from external inspiration, `references/sources.yaml` exists with one entry per source (`id`, `url` or `context7_library`, `title`, `rationale`, `usage`, `last_reviewed_at`, `baseline_hash`); copied entries also have `license` and a valid skill-relative `notice`.
+- [ ] No fetched source body or `references/sources-snapshot/` directory is present.
+- [ ] If external scripts or assets were copied, each copied file preserves the upstream source, exact commit or release when known, and license note.
+- [ ] If the skill writes durable artifacts, the artifact path, producer, consumer, refresh trigger, and retirement path are documented.
+- [ ] If the skill adapts a long upstream workflow, it is decomposed into local skills or direct references instead of copied as one monolithic SKILL.md.
+
+### Security scanning
+
+- [ ] Run a static-only SkillSpector scan for the new skill when the scanner is available, using a repository wrapper such as `make skill-security-changed` when present or `skillspector scan skills/{skill-name} --no-llm`.
+- [ ] Triage high and critical findings before declaring the skill ready. Treat the scan as complementary to this checklist, not as a replacement for manual review.
+- [ ] Apply extra scrutiny when the skill includes scripts, network access, file access, package installation, MCP/tool instructions, or agent-control behavior.
+- [ ] Use semantic scanning only when the user intentionally configured provider credentials and confirms the skill contents may be sent to that provider.
+
+Report any failing checks to the user with specific remediation steps.
+
+## Phase 7: Documentation Reminder (optional)
+
+If the consumer plugin maintains a published skills index:
+
+1. Generate a skill-index table row:
+
+   ```
+   | `/{skill-name}` | {User[, Auto]} | {argument-hint or —} | {One-sentence description} |
+   ```
+
+2. Suggest the best-fitting section based on the skill's domain (e.g., SIW skills under a SIW heading, PR skills under a Pull Requests heading, code skills under a code-quality heading).
+
+3. Display the row and section suggestion. Remind the user to add them to their skills index.
+
+If the consumer plugin does not maintain such an index, skip this phase.
+
+## Phase 8: Success Output
+
+Display the summary:
+
+```
+Skill created: {skill-name}
+
+Files:
+  skills/{skill-name}/SKILL.md          ({n} lines)
+  skills/{skill-name}/references/...    ({n} files)  [if applicable]
+  skills/{skill-name}/assets/...        ({n} files)  [if applicable]
+  skills/{skill-name}/scripts/...       ({n} files)  [if applicable]
+
+Next steps:
+  1. Fill in TODO markers in SKILL.md and resource files
+  2. Test locally: claude /plugin install /path/to/plugin
+  3. Run a static-only SkillSpector scan or report why it was skipped
+  4. Validate with LLM-assisted review (see references/best-practices.md)
+  5. Add the row to the plugin's skills index documentation (if applicable)
+  6. Commit the new skill files using your project's commit-message convention
+```
+
+---
+
+## Error Handling
+
+- **Invalid skill name** (segments contain uppercase letters, `--`, exceed 64 chars, or omit the `kramme:` prefix) — stop, display the rules from `references/naming-conventions.md`, and ask for a corrected name.
+- **Name collision** (`skills/{skill-name}/` already exists) — stop and ask for a different name. Do not overwrite.
+- **Pre-existing target files** during Phase 5 — abort and report the conflicting path. To regenerate, the user must remove the existing skill directory first. Do not partially overwrite.
+- **Missing `skills/` parent** — the working directory does not look like a plugin repo. Stop and ask the user to confirm the target plugin root before retrying.
+- **Filesystem write failure** (permissions, full disk, read-only mount) — stop, report the failing path and the underlying error, and ask the user to resolve before re-running. Do not attempt cleanup of partially-written files; surface them so the user can decide.
+- **Unrecognised argument format** — if `$ARGUMENTS` is neither a candidate skill name nor parseable free text, treat as empty and proceed to Phase 2.
+- **User abandons mid-interview (before Phase 5)** — no files have been written; re-running the skill starts fresh.
+- **User abandons mid-scaffold (during Phase 5)** — the skill directory may contain partial files. Surface the directory path so the user can inspect or remove it before re-running.
+
+---
+
+## Reference
+
+For detailed best practices, validation prompts, and examples, read these resources on demand:
+
+- `references/best-practices.md` — full best practices guide with LLM validation framework
+- `references/frontmatter-guide.md` — frontmatter field rules, decision trees, examples
+- `references/naming-conventions.md` — domain namespaces, word-order patterns, validation rules
+- `assets/skill-md-simple.md` — template for simple skills
+- `assets/skill-md-with-resources.md` — template for skills with supporting files

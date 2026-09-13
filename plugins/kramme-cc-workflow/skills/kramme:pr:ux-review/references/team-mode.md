@@ -1,0 +1,229 @@
+# Team-Based UX Audit
+
+Run a UX audit using multi-agent execution. Each reviewer runs with its own context window and can cross-validate findings with other reviewers.
+
+This reference is loaded by `$kramme:pr:ux-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.
+
+**Arguments:** "$ARGUMENTS"
+
+## Prerequisites
+
+This skill requires multi-agent execution.
+
+- **Claude Code:** Agent Teams must be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`).
+- **Codex:** run in a Codex runtime with `multi_agent` enabled.
+
+If multi-agent execution is not available, print:
+
+```
+Multi-agent execution is not enabled. Run $kramme:pr:ux-review instead.
+Claude Code: add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json.
+Codex: use a runtime with `multi_agent` enabled (for example, Conductor Codex runtime).
+```
+
+Then stop.
+
+## Workflow
+
+### Step 1: Determine Review Scope
+
+Same as `$kramme:pr:ux-review` Steps 1-6:
+
+1. Parse arguments: `app_url` (starts with `http`), `--categories` filter, `--threshold N`, `--base <ref>` override, and optional `--inline` output mode
+   - No `parallel` argument — team version is inherently parallel
+2. Load project review conventions from the project's instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) and the UI code
+3. Resolve base branch using 3-tier strategy (explicit `--base` → PR target branch → default branch fallback). See `$kramme:pr:ux-review` Step 3 for full logic.
+4. Identify UI-relevant changed files via git diff (committed using resolved base, staged, unstaged, untracked)
+5. Check for previous `UX_REVIEW_OVERVIEW.md` and extract previously addressed findings
+6. Determine which agents to launch (same logic: always ux/product/visual, conditionally a11y)
+7. Detect browser automation capability if `app_url` provided
+
+If no UI-relevant files found, stop with the same message as the base skill.
+
+### Step 2: Spawn UX Review Agents
+
+Create a multi-agent UX review session named `pr-ux-review` and use **delegate mode** (coordination only, no implementation).
+
+- **Claude Code:** create an Agent Team.
+- **Codex:** launch equivalent parallel UX review agents via multi-agent mode.
+
+Every teammate is **read-only**, under `references/shared-working-tree.md`. Team mode is the highest-risk shape for this: teammates work concurrently in one working tree that usually holds uncommitted work, so a file one teammate edits becomes false evidence for every other teammate, and the resulting fabricated findings cite real files and real lines. Give each teammate the constraint verbatim: no creating, editing, deleting, moving, or renaming files; no staging, committing, stashing, resetting, or checking out; no commands that rewrite files as a side effect; and in visual mode, no screenshots, recordings, or traces saved into the repository working tree. Recommended code changes go in the finding text, not into the tree.
+
+Capture the pre-spawn working-tree manifest before creating the session, using the same command as `$kramme:pr:ux-review` Step 7:
+
+```bash
+TREE_MANIFEST_BEFORE=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || exit 1
+"${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.81.0/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE" || exit 1
+```
+
+Spawn teammates based on applicable review categories. Each teammate receives:
+
+- The resolved base branch and git diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, using the base resolved in Step 1)
+- Untracked files list: `git ls-files --others --exclude-standard`
+- The list of UI-relevant changed files
+- Project conventions extracted from the project instruction files (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
+- If `app_url` provided: the URL and browser MCP type
+- If `custom_threshold` provided: instruct the agent to use this threshold
+- Instructions to **message other teammates** when they find cross-cutting UX issues
+
+Use the same agent-selection logic as `$kramme:pr:ux-review` Step 5 (always-launch set, conditional a11y detection, and `--categories` filter) — substitute "spawn the teammate" for "launch the agent". Mission files: $kramme:ux-reviewer skill, $kramme:product-reviewer skill, $kramme:visual-reviewer skill, and $kramme:a11y-auditor skill.
+
+### Step 3: Create and Assign Tasks
+
+Create tasks in the shared task list:
+
+**Phase 1 tasks (parallel):**
+
+- One task per reviewer: "Audit [category] in PR changes"
+- Assign each task to its corresponding teammate
+
+**Phase 2 task (blocked on all Phase 1 tasks):**
+
+- "Validate finding relevance against full audit scope" -- spawn a new **relevance-validator** teammate
+- Mission from $kramme:pr-relevance-validator skill
+- Pass the resolved `BASE_BRANCH` from Step 1 so relevance validation uses the same PR base
+- Cross-references all findings against the full audit scope (PR diff + staged/unstaged/untracked local changes)
+- Filters pre-existing and out-of-scope issues
+
+### Step 4: Monitor and Facilitate
+
+While teammates work:
+
+- Monitor task progress via the platform's task-listing primitive
+- Relay any questions teammates have about the codebase or PR context
+- If a teammate gets stuck, provide additional context or redirect
+- If a selected reviewer teammate is unavailable, times out, or returns output that cannot be parsed as findings, record the teammate name, category, and what was attempted. Continue only if at least one selected reviewer succeeded, and include the `## Coverage Status` degraded-coverage banner in the final report. If all selected reviewers fail, or if the relevance validator fails, stop without writing `UX_REVIEW_OVERVIEW.md`. Do not fabricate findings or present a partial team audit as complete.
+
+### Step 5: Collect and Aggregate Results
+
+After all tasks complete, gather the findings from every teammate, then run the **working-tree integrity check** before anything downstream consumes them. Re-capture the manifest into `TREE_MANIFEST_AFTER` with `"${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.81.0/scripts/review-tree-fingerprint.sh"` and compare it with `TREE_MANIFEST_BEFORE` from Step 2. Under the record contract in `references/shared-working-tree.md`, compare the `@head` metadata records before interpreting path differences. If the captured commits differ, discard every finding from the stale batch, abandon the audit without writing `UX_REVIEW_OVERVIEW.md`, and require a fresh scope capture and complete team audit; do not derive mutated paths or attribute an unknown concurrent commit to a teammate. Only with equal commits may you remove the metadata and diff the path records. An empty path-record diff means the tree is intact. Otherwise apply the mutation handling in `references/shared-working-tree.md`: re-read the differing paths from disk, re-verify every finding citing them, drop the findings that no longer reproduce, name the mutated paths in `## Coverage Status`, never revert them, and abandon the audit without writing `UX_REVIEW_OVERVIEW.md` if the mutated paths cover most of the UI-relevant scope. In team mode, also name the teammate whose task window contains the path mutation when the task log makes that attributable.
+
+Then aggregate:
+
+1. Apply the relevance-validator's filtering
+2. Filter previously addressed findings (same logic as `$kramme:pr:ux-review` Step 9)
+
+### Step 6: Write UX_REVIEW_OVERVIEW.md or Reply Inline
+
+If `INLINE_MODE=true`, reply with the aggregated audit inline using the same format as `$kramme:pr:ux-review` Step 11, with team metadata, and do **not** create or update `UX_REVIEW_OVERVIEW.md`.
+
+Otherwise, write the aggregated audit to `UX_REVIEW_OVERVIEW.md` using the same format as `$kramme:pr:ux-review` Step 11, with team metadata:
+
+```markdown
+# UX Audit Summary (Team Review)
+
+**Mode:** {Code-only | Visual + Code} **Agents Run:** {list of agents that ran} **Categories:** {list of categories audited}
+
+## Team
+
+- X reviewers participated
+- Relevance validation: X findings validated, X filtered
+
+## Relevance Filter
+
+- X findings validated as in-scope (PR/local)
+- X findings filtered (pre-existing or out-of-scope)
+- X findings filtered (previously addressed)
+
+## Coverage Status (omit when complete)
+
+Coverage degraded: {agent names} failed; findings below exclude {categories}.
+
+Working tree mutated during audit: {paths}; findings citing them were re-verified against disk and {count} were dropped.
+
+## Critical UX Issues (X found)
+
+### UX-NNN: {Brief title}
+
+**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** {High | Medium | Low}
+
+All UX audit findings use the artifact-scoped `UX` prefix (`UX-001`, `UX-002`, ...), numbered sequentially across the report regardless of source agent. Older per-agent IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) in `UX_REVIEW_OVERVIEW.md` remain valid only for previously-addressed matching during the transition.
+
+**Issue:** {Description}
+
+**Recommendation:** {Specific fix}
+
+---
+
+## Important UX Issues (X found)
+
+{Same format}
+
+## UX Suggestions (X found)
+
+{Same format}
+
+## Cross-Review Notes
+
+- [Any disputes or cross-validation results between reviewers]
+
+## Filtered (Pre-existing/Out-of-scope)
+
+<collapsed>
+- [file:line]: Brief description - Reason filtered
+</collapsed>
+
+## Filtered (Previously Addressed)
+
+<collapsed>
+- [file:line]: Brief description
+  Matched: UX_REVIEW_OVERVIEW.md - [action taken summary]
+</collapsed>
+
+## UX Strengths
+
+- {What's well-done from a UX perspective}
+
+## Recommended Action
+
+1. Fix critical issues first
+2. Address important issues
+3. Consider suggestions
+4. Re-run audit after fixes
+
+**To resolve findings, run:** `$kramme:pr:resolve-review`
+```
+
+When file output is used, `UX_REVIEW_OVERVIEW.md` is a working artifact -- it should NOT be committed. It is intended to be cleaned up by `$kramme:workflow-artifacts:cleanup` when that skill is installed.
+
+### Step 7: Cleanup
+
+1. Shut down all review agents
+2. Clean up the multi-agent session
+
+## Usage Examples
+
+```
+$kramme:pr:ux-review --team
+# Full team UX audit with all applicable reviewers
+
+$kramme:pr:ux-review --team http://localhost:3000
+# Team UX audit with visual review
+
+$kramme:pr:ux-review --team --categories ux,product
+# Team audit focused on specific categories
+
+$kramme:pr:ux-review --team --categories a11y
+# Accessibility only (runs regardless of project detection)
+
+$kramme:pr:ux-review --team http://localhost:4200 --categories ux,visual --threshold 85
+# Combined: visual mode, specific categories, custom threshold
+
+$kramme:pr:ux-review --team --inline
+# Team audit that replies inline instead of writing UX_REVIEW_OVERVIEW.md
+```
+
+## When to Use This vs `$kramme:pr:ux-review`
+
+Use **this mode** when:
+
+- The PR is large or touches many UI areas
+- You want reviewers to cross-validate each other's UX findings
+- You want higher-quality findings with fewer false positives
+- The PR has both UX and accessibility concerns benefiting from multiple perspectives
+
+Use **standard `$kramme:pr:ux-review`** when:
+
+- The PR is small or focused
+- You want faster, lower-cost review
+- You only need one or two review categories

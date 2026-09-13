@@ -1,0 +1,262 @@
+---
+name: kramme:debug:triage-to-issue
+description: (experimental) Turn a bug into an implementation-ready Linear or local SIW issue with root-cause evidence and a RED-GREEN TDD fix plan. Not for full interactive investigation with multiple confidence gates (kramme:debug:investigate), multi-bug QA intake (kramme:qa:intake), or fix implementation (use kramme:linear:issue-implement after transferring local SIW tickets).
+argument-hint: "[bug description, error message, or Linear/SIW issue ref] [--yes | --auto]"
+disable-model-invocation: true
+user-invocable: true
+---
+
+# Triage a Bug to an Implementation-Ready Issue
+
+One command, one ticket. Take a bug description, run a root-cause investigation, design a TDD fix plan, and file a refactor-durable issue an autonomous (AUTO-mode) agent can pick up and implement. The workflow combines `kramme:debug:investigate`, an inline RED-GREEN plan, and the issue conventions from `kramme:linear:issue-define`.
+
+## When to use
+
+- A user reports a bug and you want a single ticket containing root-cause + TDD plan + acceptance criteria.
+- The bug needs to be parked for an autonomous agent or another contributor to implement later.
+- The repo uses Linear, SIW, or both — this skill auto-detects sinks.
+
+## When to skip
+
+- The bug needs interactive investigation with multiple confidence gates → use `kramme:debug:investigate` directly.
+- You want to discuss the bug conversationally, or log several bugs from one QA pass → use `kramme:qa:intake` (conversational multi-bug intake).
+- You're going to implement the fix yourself in the same session → run `kramme:debug:investigate`, reproduce the bug with a failing public-interface test, then make the minimum fix; skip the ticket overhead.
+- The "bug" is actually a feature request, scope question, or design proposal → use `kramme:linear:issue-define` directly.
+
+---
+
+## Process
+
+### Phase 1 — Capture
+
+1. Read `$ARGUMENTS`. Strip any trailing `--yes` or `--auto` flag — both bypass the approval gate.
+2. If the description is empty, ask exactly ONE question:
+
+Ask the user directly in chat:
+Question label: Bug Description
+Question: What's the problem you're seeing?
+Suggested options:
+- Describe the bug, paste an error message, or provide a Linear/SIW issue ref
+3. Otherwise, do not ask. Proceed silently.
+
+Emit `PLAN: triage to issue — investigate, design TDD plan, draft, gate, file`.
+
+### Phase 2 — Detect sinks
+
+Probe in order:
+
+1. Check for an available Linear issue creation operation: `save_issue` without `id` (Claude Code `mcp__linear__save_issue`; Codex `save_issue`).
+2. Check for `siw/OPEN_ISSUES_OVERVIEW.md` in the repo root.
+
+Decision table:
+
+| Linear create operation | SIW present | Action |
+| --- | --- | --- |
+| Yes | Yes | Ask the user once which sink (Linear / SIW / Markdown at repo root). |
+| Yes | No | Use Linear, no question. |
+| No | Yes | Use SIW, no question. |
+| No | No | Use a markdown file at the project root, no question. |
+
+The runtime question (when it fires):
+
+Ask the user directly in chat:
+Question label: Issue Sink
+Question: Both Linear and SIW are available. Where should the issue land?
+Suggested options:
+- Linear — create via the available Linear create operation and return the URL
+- SIW — write to siw/issues/ and update OPEN_ISSUES_OVERVIEW.md + LOG.md
+- Markdown — write a standalone file at the repo root and surface the path
+If Linear is the selected sink, resolve required Linear metadata before continuing:
+
+1. List available Linear teams.
+2. If exactly one team is available, store it as `LINEAR_TEAM`.
+3. If the current branch, existing Linear reference, or workspace context clearly identifies a team, store that team as `LINEAR_TEAM`.
+4. If multiple teams are available and no team is obvious, ask exactly one `Linear Team` question. This required metadata question still fires when `--yes` or `--auto` was passed; those flags skip only the approval gate, not required create inputs.
+5. If no Linear team can be resolved, fall back to the markdown sink and note the reason in `POTENTIAL CONCERNS`.
+
+### Phase 3 — Investigation
+
+Invoke `kramme:debug:investigate` using the corresponding Codex skill with the captured bug description as `$ARGUMENTS`. If Skill invocation is unavailable or blocked (the sub-skill is not model-invocable on this platform), locate and Read the sub-skill's `SKILL.md` from the installed skills directory and follow its steps inline.
+
+**Report-only contract.** Triage instructs investigate to stop after root-cause identification and never apply a fix. Do **not** pass `--auto` to investigate — its AUTO mode implements fixes at High confidence, which would violate this skill's "No fix was applied" invariant.
+
+Answer investigate's intermediate gates with these defaults (always under `--yes`/`--auto`; interactively, you may surface them to the user instead):
+
+- **Step 2 (Reproduction method):** attempt reproduction from local evidence (existing tests, grep). If no reproduction path is found, do not block on the user — continue with static investigation and mark reproduction unconfirmed.
+- **Step 3 (Multiple candidate areas):** choose **"Investigate all candidates"**.
+- **Step 4 (Git bisect):** run bisect only when a known-good commit and an automated failing command are available without user input; otherwise continue the manual trace.
+- **Step 6 — Propose Fix:** always choose **"Report findings only, do not change code"**. This stops investigate at Step 8 (Summary) and returns the investigation log without applying any fix.
+
+Capture from the returned log:
+
+- The `[ROOT CAUSE]` line — the mechanism description.
+- The `Root Cause Analysis` block — `What / Where / Why / When introduced`.
+- The `Evidence` block.
+- The confidence rating (`High / Medium / Low`).
+- Any `[REPRODUCE]` line and whether reproduction succeeded.
+
+If the investigation could not reproduce the bug, mark this in the draft body as `UNVERIFIED: bug could not be reproduced from the report; implementer must verify the failure scenario before merging`.
+
+If the confidence rating is `Low`, ask one clarifying question before drafting — do not file a low-confidence root cause silently.
+
+### Phase 4 — TDD plan
+
+Build the TDD plan directly from the investigation evidence. Do **not** write or run tests in this session — the goal is the plan that will live in the issue body.
+
+The plan must contain:
+
+- An ordered, vertical list of RED-GREEN cycles: one failing test followed by the minimum change to pass before the next cycle begins.
+- A RED assertion through a public interface using the reproduction inputs captured in Phase 3 and an independently derived expected result.
+- A GREEN step stated as the smallest contract-level behavior change that makes that assertion pass.
+- One explicit Prove-It cycle whose regression test should **FAIL before the fix and PASS after**.
+
+If reproduction is `UNVERIFIED`, make the first RED step the implementer's reproduction gate and preserve the marker in the issue body. If the draft contains implementation details (private function names, internal class names), strip them in Phase 6.
+
+### Phase 5 — Acceptance criteria
+
+Compose 3–6 acceptance criteria as checkboxes. Each criterion is a behavior statement, not an implementation step. Examples:
+
+- `[ ] Expired tokens are rejected at the auth boundary with a 401 response.`
+- `[ ] The Prove-It regression test passes after the fix and would have failed before.`
+- `[ ] No existing test in the auth-middleware suite regresses.`
+
+If reproduction was `UNVERIFIED`, add: `[ ] Fix is verified by reproducing the original failure scenario before merging.`
+
+### Phase 6 — Strip implementation specifics (durability rule)
+
+Take the merged context from Phases 3–5 and rewrite it for the issue body. The body must remain useful after a major refactor. If the body reads as too vague once internals are stripped, the investigation is not done — a contract-level statement should exist, so return to Phase 3 rather than reinserting internals.
+
+**Forbidden in the body:**
+
+- File paths (`src/`, any directory + filename).
+- Line numbers and `:\d+` patterns.
+- File extensions in prose (for example `.ts`, `.js`, `.py`, `.go`, `.rs`, `.sh`, `.bats`, `.md`, `.json`, `.yml`).
+- Internal helper, class, or private-function names.
+- Module-internal symbol references.
+
+**Allowed:**
+
+- Module names by their public role ("the auth middleware", "the rate limiter").
+- Public API surfaces ("the `/api/login` endpoint", "the `validateToken` exported function").
+- Behaviors and contracts ("the middleware should reject expired tokens").
+- Test commands and CLI invocations inside fenced code blocks (these are repro instructions, not implementation references).
+
+> See `references/durability-examples.md` for good-vs-bad rewrites of common patterns.
+
+**Redact secrets before publishing externally.** Bug descriptions, error messages, stack traces, and repro logs routinely carry bearer tokens, API keys, connection strings, passwords, and personal data. Scan the body and replace any such value with `[REDACTED]` before filing to Linear or any shared sink — the durability grep below catches paths, not secrets.
+
+This is the canonical **durability grep**, reused by the pre-create (Phase 8.5) and post-create (Phase 10) checks. The draft is not on disk until Phase 9, so pipe the body string into `rg`:
+
+```
+printf '%s' "$BODY" | rg ':\d+|([[:alnum:]_.-]+/)+[[:alnum:]_.-]+\.[[:alnum:]]{1,8}|[[:alnum:]_-]+\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|kt|rb|php|swift|cs|cpp|c|h|hpp|sh|bash|zsh|fish|bats|md|mdx|json|ya?ml)\b'
+```
+
+Classify each match before treating it as a problem:
+
+- **Allowed:** matches inside fenced code blocks that are runnable repro/CLI commands; well-known framework identifiers used as nouns (`Next.js`, `Node.js`, `Vue.js`, `Nuxt.js`); public package names (`@company/auth`).
+- **RED FLAG:** any other prose match — a bare path, line number, filename, or internal symbol.
+
+### Phase 7 — Draft
+
+Read `assets/issue-body-template.md` and populate it. The structure is:
+
+1. **Title** — `Fix [observable behavior] in [public surface]` (action verb + behavior + surface). No file paths.
+2. **Problem** — 1–3 sentences of durable behavior description + reproduction steps if known.
+3. **Root Cause Analysis** — 2–4 sentences. Module / behavior / contract language only. Confidence rating.
+4. **TDD Fix Plan** — numbered RED-GREEN cycles from Phase 4.
+5. **Acceptance Criteria** — checkboxes from Phase 5.
+6. **Out of Scope** — what this ticket is **not** trying to fix.
+
+Show the drafted body to the user.
+
+### Phase 8 — Approval gate
+
+Skip if the user passed `--yes` or `--auto`. Otherwise:
+
+Ask the user directly in chat:
+Question label: Approval
+Question: Create this issue?
+Suggested options:
+- Create — file as-is at the chosen sink
+- Edit — let me revise specific sections
+- Cancel — abort without creating anything
+If the user picks **Edit**, ask which section, take their changes, re-render the draft, and re-ask.
+
+### Phase 8.5 — Pre-create durability verification
+
+Run the durability grep from Phase 6 against the final drafted body (pipe the body string into `rg`) before writing anything to Linear, SIW, or markdown. Classify matches using the allowed / `RED FLAG` rules from Phase 6.
+
+If the grep finds prose matches:
+
+1. Show the matches and the section they came from.
+2. Prompt the user to edit the draft.
+3. Do not proceed to Phase 9 until the prose matches are removed, or until the user explicitly approves the specific matches after seeing the `RED FLAG`.
+
+If the user passed `--yes` or `--auto` and the grep finds prose matches, halt and require explicit approval before creation. Do not let the bypass flag file a leaky issue.
+
+### Phase 9 — Create
+
+Branch on the sink chosen in Phase 2.
+
+**Linear:** before creating, search the team for an open issue with the same title. If one exists, surface it and ask before filing a duplicate; under `--yes` / `--auto`, skip creation and report the existing issue instead of duplicating. Otherwise call the available Linear create operation: `save_issue` without `id` (Claude Code `mcp__linear__save_issue`; Codex `save_issue`). Pass title, description (the drafted body), required `team: LINEAR_TEAM`, and any auto-detectable labels/project. Return the issue URL.
+
+**SIW:** follow the SIW-owned issue creation/update protocol from `kramme:siw:issue-define`. Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
+
+Create `siw/issues/ISSUE-{prefix}-{NNN}-{slug}.md` as a `kramme:siw:issue-define`-compatible issue, not as a raw paste of the drafted Linear body. Use the prefix and number scheme already in use in `siw/issues/` (typically `G` for general or `P{N}` for phased; pad to 3 digits), and use the `kramme:siw:issue-define` title sanitization for the slug. Pick the next unused number for the prefix so a re-run never overwrites an existing issue file. The issue file must include the standard SIW header and status line:
+
+```markdown
+# ISSUE-{prefix}-{NNN}: {title}
+
+**Status:** READY | **Priority:** {High|Medium|Low} | **Size:** {XS|S|M|L} | **Phase:** {N or General} | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** AUTO | **Related:** Debug triage
+```
+
+Then place the drafted triage body below that metadata. Add the overview row with status `READY` and the log entry required by the SIW-owned protocol. If any write fails, surface the error and offer the user a chance to roll back the partial create.
+
+**Markdown fallback:** write `BUG-{slug}-{YYYY-MM-DD}.md` to the project root with the full body. If that file already exists (same-day re-run), append a numeric suffix (`-2`, `-3`, …) rather than overwriting. Surface the absolute path.
+
+### Phase 10 — Post-create verification
+
+Repeat the durability grep from Phase 6 against the created body. For the SIW or markdown sink, grep the written file; for the Linear sink there is no local file, so grep the body string you submitted. Classify matches using the Phase 6 rules — matches in prose are a `RED FLAG`; surface them and prompt the user to edit. Do not silently rewrite.
+
+Emit a final block:
+
+```
+CHANGES MADE
+- Created issue at {sink}: {URL or path}
+- Body length: {chars}; durability grep: {clean | <count> matches in code blocks only}
+
+THINGS I DIDN'T TOUCH
+- The fix itself — implementation belongs to kramme:linear:issue-implement; local SIW tickets must be transferred first.
+- Any related issues or follow-ups noticed during investigation (logged below).
+
+POTENTIAL CONCERNS
+- {confidence rating from Phase 3 if Medium or Low}
+- {entries from investigate's epilogue (NOTICED BUT NOT TOUCHING / POTENTIAL CONCERNS sections), if present}
+```
+
+---
+
+## Output markers
+
+Adopt the kramme plugin-wide vocabulary verbatim, one per line, uppercase, no decoration:
+
+- `STACK DETECTED` — language / framework / test runner identified during investigation.
+- `UNVERIFIED` — assumption flagged in the issue body or in this skill's reasoning that has not been confirmed.
+- `NOTICED BUT NOT TOUCHING` — out-of-scope observation surfaced in the final summary, not in the issue body.
+- `CONFUSION` — clarification needed before proceeding.
+- `MISSING REQUIREMENT` — decision/input needed from the user.
+- `PLAN` — announce next phases before acting.
+- `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` — end-of-turn triplet.
+- `RED FLAG` — used in Phase 10 when the durability grep finds matches in prose.
+
+Reuse from `kramme:debug:investigate`:
+
+- `[REPRODUCE]`, `[ISOLATE]`, `[ROOT CAUSE]`, `[VERIFY]` — these markers may appear in the captured investigate output. Keep them in working notes but do **not** include `:\d+` content from these markers in the issue body.
+
+---
+
+## Integration points
+
+- **`kramme:debug:investigate`** — source of the investigation phase (Steps 1–6 + Step 8 reporting). The orchestrator stops it at the propose-fix gate via the "Report only" option.
+- **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly through the available Linear create operation (Claude Code `mcp__linear__create_issue`; Codex `save_issue` without `id`) for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
+- **`kramme:linear:issue-implement`** — downstream implementation consumer. A local SIW ticket reaches it through `kramme:siw:transfer-to-linear` without re-investigation.

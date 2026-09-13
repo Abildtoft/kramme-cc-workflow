@@ -1,0 +1,295 @@
+---
+name: kramme:pr:github-review
+description: Review a GitHub PR where you are the assigned reviewer, not the author. Produces a local Markdown report, deduplicates existing conversations, and drafts inline comments, replies, and a verdict recommendation. With confirmation—or --draft-review—creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), responding on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review).
+argument-hint: "[pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
+disable-model-invocation: true
+user-invocable: true
+---
+
+# Review a GitHub PR
+
+Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, and produces a reviewer-facing assessment that can optionally become one pending GitHub review.
+
+This skill does not write to GitHub until the user authorizes it. It always materializes the Markdown review report before offering or attempting the GitHub write. After the report and draft comments are ready, it offers to create one pending GitHub review containing only the eligible proposed inline comments. The local report keeps the recommended verdict, rationale, strengths, and other summary context; none of that material is posted as the review body. The explicit `--draft-review` flag supplies authorization up front and skips the confirmation, but the report still comes first. Either path only creates the draft: the skill never submits the review or chooses a verdict on the user's behalf.
+
+## Step 0: Parse Arguments
+
+Parse `$ARGUMENTS` before any network or git call.
+
+- First positional token that is a PR number (`123`, `#123`) or a GitHub PR URL → `PR_SELECTOR`. Otherwise leave `PR_SELECTOR` empty.
+- `--draft-review` → `CREATE_DRAFT_REVIEW=true`. After drafting and humanizing the findings, create one unsubmitted pending GitHub review containing every eligible proposed inline comment without asking again. This flag authorizes only that pending-review write; it never authorizes submitting the review, replying to existing threads, resolving threads, approving, or requesting changes.
+- `--base <ref>` → `BASE_OVERRIDE` (use when the PR targets a non-default base and detection is wrong).
+- `--categories <list>` → `UI_CATEGORIES` (comma-separated subset of `a11y,ux,product,visual`), passed through to the UI review pass.
+- `--code-only` → `CODE_ONLY=true`. Skip the UI review pass even when UI files changed.
+- `--fresh` → `SKIP_THREADS=true`. Ignore the existing review conversation and produce a clean first-pass assessment only.
+- `--include-bots` → `INCLUDE_BOTS=true`. Include bot/app comments when mapping the conversation (default: human only).
+- `--all-threads` → `INCLUDE_RESOLVED=true`. Include already-resolved threads in the map (default: unresolved and awaiting-you threads only).
+- `--inline` → `INLINE_MODE=true`. Return the report in chat instead of writing the artifact file.
+- `--keep-worktree` → `KEEP_WORKTREE=true`. Leave the fetched worktree on disk for manual inspection and report its path.
+
+Defaults: `CREATE_DRAFT_REVIEW=false`, `CODE_ONLY=false`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
+
+## Step 1: Preflight
+
+Confirm tooling before any GitHub call.
+
+```bash
+command -v gh > /dev/null || {
+  echo "gh CLI required. Install from https://cli.github.com and run 'gh auth login'." >&2
+  exit 1
+}
+command -v jq > /dev/null || {
+  echo "jq required. Install it first (e.g. 'brew install jq' or 'apt-get install jq')." >&2
+  exit 1
+}
+gh auth status > /dev/null 2>&1 || {
+  echo "Authenticate first with 'gh auth login'." >&2
+  exit 1
+}
+
+ORIG_ROOT=$(git rev-parse --show-toplevel) || {
+  echo "Run this from inside a git clone of the PR's repository." >&2
+  exit 1
+}
+LOCAL_NWO=$(gh repo view --json nameWithOwner -q .nameWithOwner 2> /dev/null)
+SELF=$(gh api user -q .login)
+```
+
+`ORIG_ROOT` is the original checkout root. Capture it now; later steps change directory into the worktree and must return here to write the report and clean up.
+
+## Step 2: Identify the PR
+
+If `PR_SELECTOR` is empty, first assume the current branch may be the PR to review. Use GitHub's branch-aware PR lookup and continue without asking only when the current branch has an open PR authored by someone else and directly review-requested from you.
+
+```bash
+PR_JSON=""
+CURRENT_BRANCH=$(git branch --show-current 2> /dev/null || true)
+
+if [ -z "${PR_SELECTOR:-}" ] && [ -n "$CURRENT_BRANCH" ]; then
+  BRANCH_PR_JSON=$(gh pr view \
+    --json number,url,title,author,state,baseRefName,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision,reviewRequests \
+    2> /dev/null || true)
+
+  if [ -n "$BRANCH_PR_JSON" ]; then
+    BRANCH_AUTHOR=$(printf '%s' "$BRANCH_PR_JSON" | jq -r '.author.login')
+    BRANCH_STATE=$(printf '%s' "$BRANCH_PR_JSON" | jq -r '.state')
+    BRANCH_REVIEW_REQUESTED=$(printf '%s' "$BRANCH_PR_JSON" | jq --arg self "$SELF" -r 'any(.reviewRequests[]?; .__typename == "User" and .login == $self)')
+    if [ "$BRANCH_STATE" = "OPEN" ] && [ "$BRANCH_AUTHOR" != "$SELF" ] && [ "$BRANCH_REVIEW_REQUESTED" = "true" ]; then
+      PR_JSON="$BRANCH_PR_JSON"
+      PR_SELECTOR=$(printf '%s' "$PR_JSON" | jq -r '.number')
+    elif [ "$BRANCH_STATE" = "OPEN" ]; then
+      echo "The current branch's open PR is not directly review-requested from you, so it is not the default target for this reviewer workflow." >&2
+    fi
+  fi
+fi
+```
+
+Only ask which PR to review when no qualifying review-requested PR was found for the current branch. Show the open PRs awaiting your review first:
+
+```bash
+if [ -z "$PR_JSON" ] && [ -z "${PR_SELECTOR:-}" ]; then
+  gh pr list --search "user-review-requested:@me" --state open \
+    --json number,title,author,url,updatedAt \
+    --template '{{range .}}#{{.number}}  {{.title}}  (@{{.author.login}})  {{.url}}{{"\n"}}{{end}}'
+fi
+```
+
+If the list is empty, say that no PRs are currently requesting your review and ask the user for a PR number or URL. Otherwise stop and wait for the user's choice. Do not run the next block until `PR_SELECTOR` is set to the PR they name.
+
+Fetch the PR context unless it was already resolved from the current branch:
+
+```bash
+if [ -z "$PR_JSON" ]; then
+  PR_JSON=$(gh pr view ${PR_SELECTOR:+"$PR_SELECTOR"} \
+    --json number,url,title,author,baseRefName,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision) \
+    || {
+      echo "PR not found. Pass a PR number or URL." >&2
+      exit 1
+    }
+fi
+
+PR_NUMBER=$(printf '%s' "$PR_JSON" | jq -r '.number')
+PR_URL=$(printf '%s' "$PR_JSON" | jq -r '.url')
+PR_TITLE=$(printf '%s' "$PR_JSON" | jq -r '.title')
+AUTHOR=$(printf '%s' "$PR_JSON" | jq -r '.author.login')
+PR_BASE_BRANCH=$(printf '%s' "$PR_JSON" | jq -r '.baseRefName')
+BASE_REF_ARG=${BASE_OVERRIDE:-$PR_BASE_BRANCH}
+HEAD_REF=$(printf '%s' "$PR_JSON" | jq -r '.headRefName')
+HEAD_OID=$(printf '%s' "$PR_JSON" | jq -r '.headRefOid')
+ADDITIONS=$(printf '%s' "$PR_JSON" | jq -r '.additions')
+DELETIONS=$(printf '%s' "$PR_JSON" | jq -r '.deletions')
+CHANGED_COUNT=$(printf '%s' "$PR_JSON" | jq -r '.changedFiles')
+REVIEW_DECISION=$(printf '%s' "$PR_JSON" | jq -r '.reviewDecision // "none"')
+```
+
+`ADDITIONS`, `DELETIONS`, `CHANGED_COUNT`, and `REVIEW_DECISION` populate the report header in Step 11.
+
+Derive the PR's repository from the URL so a URL for another repository does not silently target the local checkout:
+
+```bash
+PR_NWO=$(printf '%s' "$PR_URL" | sed -E 's#^https://github.com/([^/]+/[^/]+)/pull/[0-9]+.*#\1#')
+```
+
+**Repository guard.** The PR head must be fetchable from the local `origin`. This works for forks too, because the base repository always exposes a `pull/<N>/head` ref. If `PR_NWO` differs from `LOCAL_NWO`, stop: this skill must run from a clone of the PR's base repository. Tell the user the PR belongs to `PR_NWO` but the current clone is `LOCAL_NWO`.
+
+**Author guard.** If `AUTHOR` equals `SELF`, this PR is yours. Warn the user and ask whether to continue. Point them to `kramme:pr:code-review` for reviewing your own branch and `kramme:pr:github-review-reply` for responding to reviewers on your own PR. Only continue if the user confirms.
+
+## Step 3: Fetch the PR Into an Isolated Worktree
+
+Fetch the PR head, then add a detached worktree. Nothing in the user's current checkout changes. Step 4 resolves and fetches the base ref inside the worktree so `--base main`, `--base origin/main`, and `--base refs/remotes/origin/main` all follow the shared resolver contract.
+
+```bash
+git worktree prune # sweep any orphaned registrations from a prior interrupted run
+git fetch --quiet origin "pull/${PR_NUMBER}/head" || {
+  echo "Could not fetch pull/${PR_NUMBER}/head from origin." >&2
+  exit 1
+}
+
+TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
+WORKTREE_DIR="$TMP_PARENT/wt"
+if ! git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD; then
+  echo "Failed to create review worktree." >&2
+  if ! rmdir "$TMP_PARENT"; then
+    echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
+  fi
+  exit 1
+fi
+cd "$WORKTREE_DIR"
+```
+
+The worktree is a working artifact. **Once it exists, any failure or stop before Step 8 must first run the Step 8 cleanup block** (return to `ORIG_ROOT`, remove the worktree, delete `TMP_PARENT`) so a partial run never leaks a registered worktree or temp directory. Step 8 removes it on the normal path unless `KEEP_WORKTREE=true`.
+
+## Step 4: Resolve Base and Collect Scope
+
+From inside the worktree, build the unified change scope with the shared plugin script. Because the worktree is a clean checkout of the PR head, the scope is exactly the PR's committed diff against its base.
+
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+
+```bash
+if ! RESOLVED=$("${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.81.0/scripts/collect-review-diff.sh" --base "$BASE_REF_ARG" --strict); then
+  echo "Base/diff collection failed; see the message above." >&2
+  cd "$ORIG_ROOT"
+  if git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+    if ! rmdir "$TMP_PARENT"; then
+      echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
+    fi
+  else
+    echo "Could not remove worktree automatically: $WORKTREE_DIR" >&2
+    echo "Temporary parent retained for inspection: $TMP_PARENT" >&2
+  fi
+  exit 1
+fi
+eval "$RESOLVED"
+```
+
+The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. If `CHANGED_FILES` is empty, the PR has no diff against its base: note there are no code changes to review (no fresh findings), skip Steps 5–6, but still run Step 7 to surface the existing conversation unless `--fresh` is set, then clean up.
+
+## Step 5: Classify Scope
+
+If `CODE_ONLY=true`, set `RUN_UI=false` and skip the rest of this step without loading another resource. Otherwise read `references/ui-relevance.md` and follow its `ui-relevance-path-contract-v1` classifier against `CHANGED_FILES` to set `RUN_UI`.
+
+## Step 6: Run the Reviews
+
+Run all review commands **with the worktree as the working directory** (you are already `cd`'d there). If you delegate via slash command, the sibling skill resolves git state against the PR head only while the session's working directory is the worktree — keep it there until the worktree is removed in Step 8. If slash invocation is unavailable, read the sibling skill's `SKILL.md` from the installed skills directory and follow it, running every git command inside the worktree.
+
+1. **Code quality — always.** Delegate to `$kramme:pr:code-review --base "$BASE_REF" --inline`. `--inline` keeps the findings in chat instead of writing `REVIEW_OVERVIEW.md` into the throwaway worktree. Capture the structured findings (severity, location, confidence, evidence).
+
+2. **UI/UX/visual/accessibility/product — when `RUN_UI=true`.** Delegate to `$kramme:pr:ux-review --base "$BASE_REF" --inline`, appending `--categories <UI_CATEGORIES>` when the user supplied that flag. There is normally no running app for someone else's PR, so the UI pass runs as static, diff-based analysis. Capture its findings.
+
+Do not auto-run the heavier `kramme:pr:product-review` or `kramme:code:copy-review --pr`. Mention them in the final report as optional deeper passes the user can request.
+
+**Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded.
+
+## Step 7: Map the Existing Review Conversation
+
+If `SKIP_THREADS=true`, skip this step entirely and continue to cleanup.
+
+Do this step **while you are still inside the worktree** — the PR head checkout is what makes per-thread verification possible, and the next step removes it. Read `references/conversation-fetch.md` and follow it to pull the PR's existing review activity: inline review threads, general comments, and prior review verdicts. Build a thread map, filter it (human-only and unresolved by default, widened by `--include-bots` and `--all-threads`), and classify each thread from the reviewer's seat as `awaiting-you`, `author-responded`, `peer-comment`, `your-open`, `new-from-others`, or `resolved`.
+
+**Re-check every anchored thread against the live tree.** For each thread tied to a `path:line`, read the actual file at that location in the worktree (e.g. `git show HEAD:<path>`, or open the file directly) and judge whether the concern still holds in the current code — do not infer it only from whether a fresh finding overlaps. Record a per-thread verification:
+
+- `addressed` — the current code resolves the concern (for example, the guard the author says they added is present at that line).
+- `still-open` — the concern still holds; capture the specific line or behavior that shows it.
+- `cant-tell` — the thread is not anchored to a line (a general comment), or the current code is genuinely ambiguous. Say so rather than guessing.
+
+Threads whose anchor is outdated (the line moved or the hunk changed) are exactly why this is a live read and not a line-number lookup — find the concern's current location in the file and verify there.
+
+Also record the matching fresh finding's location (`path:line`, or none). The verification and the cross-reference drive the next step: drafting informed replies and suppressing fresh findings the conversation already raises.
+
+If there is no prior activity (or `--fresh` was set), this is a clean first-pass review and the report's conversation sections are simply empty.
+
+## Step 8: Clean Up the Worktree
+
+Build the conversation map in Step 7 first — once the worktree is gone, per-thread verification is no longer possible. Return to the original checkout before removing the worktree (you cannot remove the worktree you are standing in).
+
+```bash
+cd "$ORIG_ROOT"
+if [ "${KEEP_WORKTREE:-false}" = "true" ]; then
+  echo "Worktree kept at: $WORKTREE_DIR"
+else
+  if git worktree remove "$WORKTREE_DIR" 2> /dev/null; then
+    if ! rmdir "$TMP_PARENT"; then
+      echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
+    fi
+  else
+    echo "Could not remove worktree automatically: $WORKTREE_DIR" >&2
+    echo "Temporary parent retained for inspection: $TMP_PARENT" >&2
+  fi
+  git worktree prune
+fi
+```
+
+If `--keep-worktree` was passed, report the path so the user can inspect or remove it later.
+
+## Step 9: Draft the Review Comments
+
+Read `references/report-template.md` and `references/comment-drafting.md`. Follow the latter's finding categories, evidence/comment separation, conversation deduplication, reply rules, and verdict criteria to complete the report fields.
+
+## Step 10: Humanize the Draft Comments
+
+Follow the humanization section of `references/comment-drafting.md`. Humanization is best-effort; preserve the original bodies and mark `Humanized: no` when the sibling skill is unavailable or its output cannot be mapped safely.
+
+## Step 11: Materialize the Markdown Report
+
+Read `references/draft-review.md` and complete Section 1 to identify the eligible proposed inline comments and every omission. Do this after humanization so the count and bodies are final.
+
+Set the pre-write status according to the eligible inline-comment count and authorization state:
+
+- zero eligible inline comments → `DRAFT_REVIEW_STATUS="not created — no eligible inline comments"`.
+- otherwise, `CREATE_DRAFT_REVIEW=false` → `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`.
+- otherwise, `CREATE_DRAFT_REVIEW=true` → `DRAFT_REVIEW_STATUS="not created — authorized; creation not attempted yet"`.
+
+Use `references/report-template.md` to render the full report with that exact status. If `INLINE_MODE=true`, present the report in chat and do not write a file. Otherwise write it to `GITHUB_PR_REVIEW_OVERVIEW.md` at `ORIG_ROOT` (never inside the worktree, which is gone by now). Include the PR number and title in the header so an overwritten file is unambiguous. Treat the file as a working artifact that should not be committed.
+
+**Ordering gate:** the report must have been successfully written, or fully presented inline, before showing the pending-review offer or running any GitHub mutation. Do not merely say the comments are ready. If the report cannot be materialized, stop with the error and do not offer or attempt the GitHub write.
+
+## Step 12: Offer or Create a Pending Draft Review
+
+If there are zero eligible inline comments, tell the user the report is ready, make no GitHub write, and continue to Step 13. Do not offer or create an empty pending review.
+
+Otherwise, if `CREATE_DRAFT_REVIEW=false`, tell the user the report is ready, including its path when written to disk. Then show a compact offer with the exact eligible comment count, severity breakdown, omission count and reasons, existing-thread reply count, and recommended verdict. Ask:
+
+> `GITHUB_PR_REVIEW_OVERVIEW.md` is ready. Draft comments are ready: <N> eligible inline comments (<severity counts>), <M> omitted, and <R> existing-thread replies kept separate. Would you like me to create one unsubmitted pending GitHub review containing only those inline comments now?
+
+For `--inline`, replace the filename in the offer with "The inline Markdown report is ready."
+
+Stop and wait for the user's answer. A clear affirmative answer sets `CREATE_DRAFT_REVIEW=true` and authorizes this one pending-review write. If the user declines, set `DRAFT_REVIEW_STATUS="declined"`, make no GitHub write, refresh the report, and continue to Step 13. If the user asks to change any draft comments, apply those edits, re-humanize changed bodies when appropriate, recompute the counts, refresh the report first with `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`, and only then make the offer again. Silence or an ambiguous answer is not authorization.
+
+If at least one eligible inline comment exists and `CREATE_DRAFT_REVIEW=true`—whether from `--draft-review` or the user's confirmation—clear the temporary pre-write sentinel with `DRAFT_REVIEW_STATUS=""`, then follow Sections 2–4 of `references/draft-review.md` exactly. Those sections use a nonempty `DRAFT_REVIEW_STATUS` to signal a guard failure or final outcome, so never enter them with either pre-write status still set. They check for head drift and an existing pending review, build and validate an inline-comments-only payload with no top-level review body or `event` field, and create the review so GitHub leaves it in `PENDING` state. Never call the submit-review endpoint.
+
+After Sections 2–4 finish, record the resulting draft-review status, review ID/URL, confirmed or unknown included-comment state, run-unique payload path, and any omitted proposed items, then refresh the already-materialized report with the final outcome. The initial report must not remain stale.
+
+## Step 13: Final Handoff
+
+If `INLINE_MODE=true`, return the refreshed full report in chat after the user answers or the pre-authorized creation attempt finishes. Otherwise, the report at `ORIG_ROOT/GITHUB_PR_REVIEW_OVERVIEW.md` is already current from Step 12.
+
+End by telling the user: the recommended verdict, the count of findings per severity, the count of threads awaiting your reply, the report path (or that it was returned inline), and the exact draft-review outcome. If a pending review was created, give its URL and say it remains unsubmitted for inspection. Say that GitHub was not changed only for statuses that confirm no write occurred (`declined` or `not created — ...`). For `write outcome unknown — ...` or `unexpected state — ...`, say a write may have occurred, surface every available review ID/URL, and tell the user to inspect GitHub without retrying.
+
+## Artifact Lifecycle
+
+- **Produces first:** `GITHUB_PR_REVIEW_OVERVIEW.md` at the project root (or an inline reply with `--inline`) before any pending-review offer or GitHub write. A fixed name, overwritten on each run; the header records which PR it covers. It is refreshed after the user declines or an authorized creation attempt finishes.
+- **Optional payload:** one run-unique `.context/github-review-drafts/pr-<number>.<suffix>` file when pending-review creation is authorized by either `--draft-review` or the user's confirmation and the payload directory is verified as Git-ignored. It is the exact pending-review payload, retained as a disposable audit artifact when payload construction begins.
+- **Consumed by:** you, when posting the review to GitHub — via the GitHub UI or the report's optional `gh` appendix.
+- **Refreshed by:** re-running this skill on the same or a different PR (overwrites the file).
+- **Retired by:** `$kramme:workflow-artifacts:cleanup`, or manual deletion.
+- **Temporary worktree:** created under a `mktemp` directory during the run and removed in Step 8 unless `--keep-worktree` is set.

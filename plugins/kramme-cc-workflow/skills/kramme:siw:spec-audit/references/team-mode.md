@@ -1,0 +1,361 @@
+# Team-Based Spec Quality Audit
+
+Evaluate specification documents for quality across 8 dimensions using multi-agent execution. Each dimension auditor runs with its own context window and can cross-validate findings with other auditors. A codebase pattern reviewer checks whether the spec introduces new implementation patterns without rationale. A cross-reviewer meta-reviews all findings for completeness.
+
+This reference is loaded by `$kramme:siw:spec-audit --team`; assume `--team` has already been removed from `$ARGUMENTS`.
+
+**Arguments:** "$ARGUMENTS"
+
+## Prerequisites
+
+This skill requires multi-agent execution.
+
+- **Claude Code:** Agent Teams must be enabled (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`).
+- **Codex:** run in a Codex runtime with `multi_agent` enabled.
+
+If multi-agent execution is not available, print:
+
+```
+Multi-agent execution is not enabled. Run $kramme:siw:spec-audit instead.
+Claude Code: add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json.
+Codex: use a runtime with `multi_agent` enabled (for example, Conductor Codex runtime).
+```
+
+Then stop.
+
+## Workflow
+
+### Step 1: Resolve Spec Files and Extract Structure
+
+Same as `$kramme:siw:spec-audit` Steps 1-2:
+
+1. Parse `$ARGUMENTS` — extract `--auto`, optional `--apply` / `--apply-now` auto-fix mode, `--model` flag (default: `opus`), optional `--inline` output mode, abort before reading specs if `INLINE_MODE=true` and `APPLY_MODE=true`, then resolve spec file paths or auto-detect from `siw/`
+2. Read every spec file end-to-end
+3. Extract structural elements (overview, scope, success criteria, requirements, design decisions, tasks, testing, edge cases, out of scope, technical architecture)
+4. Present extraction summary
+
+### Step 2: Spawn Dimension Auditors
+
+Create a multi-agent session named `siw-spec-audit`.
+
+- **Claude Code:** create an Agent Team.
+- **Codex:** launch equivalent parallel agents via multi-agent mode.
+
+Spawn **4 dimension auditors**, **1 codebase pattern reviewer**, and **1 cross-reviewer** (6 agents total):
+
+| Agent Name | Dimensions | Rationale |
+| --- | --- | --- |
+| `structure-auditor` | Coherence, Completeness | Contradictions and gaps are deeply intertwined — contradictions often manifest as completeness gaps |
+| `clarity-auditor` | Clarity, Actionability | Vague requirements are also non-actionable; a single agent can flag both the ambiguity and its implementation impact |
+| `validation-auditor` | Testability, Scope | Untestable criteria often stem from scope problems (implicit inclusions, missing boundaries) |
+| `design-auditor` | Rationale Documentation, Technical Design | Checks that product intent is recorded clearly enough to guide technical choices, then audits those choices without re-deciding product strategy |
+| `codebase-pattern-reviewer` | Technical Design support | Checks whether proposed implementation choices follow existing codebase patterns or introduce new ones without rationale |
+| `cross-reviewer` | Meta-review | Cross-dimension pattern detection, suspiciously-clean challenge, duplicate detection |
+
+### Step 3: Create and Assign Tasks
+
+**Phase 1 tasks (parallel):**
+
+- Task 1: "Audit Coherence + Completeness" — assigned to `structure-auditor`
+- Task 2: "Audit Clarity + Actionability" — assigned to `clarity-auditor`
+- Task 3: "Audit Testability + Scope" — assigned to `validation-auditor`
+- Task 4: "Audit Rationale Documentation + Technical Design" — assigned to `design-auditor`
+- Task 5: "Review codebase pattern fit" — assigned to `codebase-pattern-reviewer`
+
+**Phase 2 task (blocked on all Phase 1 tasks):**
+
+- Task 6: "Cross-review all findings" — assigned to `cross-reviewer`
+
+### Step 4: Dimension Auditor Prompts
+
+Each dimension auditor receives the full spec text and analysis instructions for its assigned dimensions.
+
+Read `references/dimension-instructions.md` in this skill folder and paste the relevant blocks (Coherence, Completeness, Clarity, Scope, Actionability, Testability, Rationale Documentation, Technical Design) into each agent's prompt.
+
+**Base prompt for each auditor:**
+
+```
+You are auditing a specification document for quality. Do NOT look at any
+implementation code. Do NOT use Grep or Glob against the codebase. Analyze the
+spec text ONLY using the shell reads or rg on the provided spec files.
+
+## Spec Files
+
+Read these files completely:
+{list of spec file paths}
+
+## Your Assigned Dimensions
+
+{Paste the relevant blocks from references/dimension-instructions.md}
+
+## Finding Format
+
+For each finding, report:
+- **Finding ID**: SPEC-{NNN} (sequential from {start_number})
+- **Dimension**: Which dimension
+- **Title**: Brief description
+- **Location**: Source file > section heading
+- **Details**: What the issue is, with quotes from the spec
+- **Severity**: Critical | Major | Minor
+- **Recommendation**: Specific action to fix
+- **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
+
+## Rules
+
+- Report on every dimension. Even if no findings, confirm the dimension was analyzed.
+- Do not return early. Continue until every section is checked against every assigned dimension.
+- Quote the spec. When flagging an issue, include the relevant text.
+- Be specific in recommendations. "Add more detail" is not enough — say what detail is missing.
+- Score provisional fix confidence on every finding using `references/fix-confidence-rubric.md`. Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`.
+
+## Work Context Adjustments
+
+This spec has Work Type: {work_context.work_type}
+
+Priority dimensions (flag even minor issues): {work_context.priority_dimensions}
+Deprioritized dimensions (cap at Minor severity): {work_context.deprioritized}
+
+When evaluating **deprioritized dimensions**:
+- Assess severity normally and keep that original severity in the finding data
+- Tag each finding with: **[Deprioritized — cap to Minor during aggregation]**
+- Do NOT downgrade the severity yourself; the lead applies the Minor cap during aggregation after recording `original_severity`
+
+When evaluating **priority dimensions**:
+- Apply strict scrutiny. Even small gaps should be flagged.
+- Tag priority findings with: **[Priority dimension]**
+
+{If work_context is Production Feature or not specified, omit this entire section from the agent prompt.}
+
+## Cross-Validation Protocol
+
+While analyzing, if you discover findings that may affect another agent's dimensions,
+message them using send_message:
+
+- **Contradictions or structural issues** -> message structure-auditor
+- **Ambiguity or unclear wording** -> message clarity-auditor
+- **Untestable criteria or scope issues** -> message validation-auditor
+- **Rationale Documentation or Technical Design gaps** -> message design-auditor
+
+Message content:
+"[CROSS-REF] In {spec_file} > {section}, I found {brief finding}.
+This may affect your {dimension} analysis because {reason}.
+Please check {specific aspect}."
+
+When you RECEIVE a cross-ref message:
+1. Check the referenced section against your dimension criteria
+2. If it produces a finding, note: "Cross-ref from {sender}: {context}"
+3. If no finding, note that too — the cross-reviewer will use this
+
+When done, message the lead with your complete findings and mark your task complete.
+```
+
+### Step 5: Codebase Pattern Reviewer Prompt
+
+The `codebase-pattern-reviewer` runs in parallel with the dimension auditors. Use the mission from $kramme:codebase-pattern-reviewer skill.
+
+**Prompt wrapper:**
+
+```
+You are reviewing a specification before implementation to identify whether it
+introduces new codebase patterns without rationale.
+
+## Spec Files
+
+Read these files completely:
+{list of spec file paths}
+
+## Codebase Context Boundaries
+
+You may read bounded codebase context only for pattern comparison:
+- repo instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents)
+- README and architecture/design docs relevant to named areas
+- package manifests, framework configs, route maps, schema files, and test config
+- files or directories named by the spec
+- nearby examples found with narrow `rg` searches for names, imports, modules,
+  components, services, and concepts from the spec
+
+Do not perform an implementation conformance audit. Use codebase evidence only
+to determine whether the spec follows established patterns, intentionally
+introduces a new pattern, or accidentally invents one.
+
+## Output Requirements
+
+Use the output format from $kramme:codebase-pattern-reviewer skill.
+For any issue that should become a spec-audit finding, add this mapping:
+- **Finding ID**: SPEC-{NNN}
+- **Dimension**: Technical Design
+- **Source**: Codebase Pattern Review
+- **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
+
+Score provisional `Fix Confidence` using `references/fix-confidence-rubric.md`.
+Most pattern-fit findings are REQUIRES_DECISION unless the fix is simply "reuse
+the clearly established pattern at {path}".
+
+When done, message the lead with your complete findings and pattern summary.
+Mark your task complete.
+```
+
+### Step 6: Monitor and Facilitate
+
+While Phase 1 agents work:
+
+- Monitor task progress with list_agents
+- Relay any questions auditors have about spec structure or context
+- If an auditor gets stuck, provide additional context or redirect
+
+### Step 7: Cross-Review
+
+After all Phase 1 tasks complete, the `cross-reviewer` runs with this prompt:
+
+```
+You are the cross-reviewer for a spec quality audit. Your job is NOT to re-audit
+the spec or redo the codebase pattern review. Your job is to review the findings
+from 4 dimension-specialist agents and the codebase pattern reviewer, then ensure
+the audit is complete and internally consistent.
+
+## All Phase 1 Findings
+
+{Collected findings from all 4 dimension auditors and the codebase pattern reviewer}
+
+## Spec Files
+
+{List of spec file paths — read them for context when challenging findings}
+
+## Work Context Adjustments
+
+This spec has Work Type: {work_context.work_type}
+
+Priority dimensions (flag even minor issues): {work_context.priority_dimensions}
+Deprioritized dimensions (cap at Minor severity): {work_context.deprioritized}
+
+When evaluating **deprioritized dimensions**:
+- Assess severity normally and keep that original severity in the finding data
+- Tag each finding with: **[Deprioritized — cap to Minor during aggregation]**
+- Do NOT downgrade the severity yourself; the lead applies the Minor cap during aggregation after recording `original_severity`
+
+When evaluating **priority dimensions**:
+- Apply strict scrutiny. Even small gaps should be flagged.
+- Tag priority findings with: **[Priority dimension]**
+
+{If work_context is Production Feature or not specified, omit this entire section from the agent prompt.}
+
+## Mission 1: Cross-Dimension Pattern Detection
+
+Read all findings from all agents. Identify findings that share a root cause.
+When two findings from different dimensions point to the same spec deficiency,
+link them and recommend the lead merge them.
+
+Output: Root-cause links
+  [{finding-a}, {finding-b}] -> "Same root cause: {description}"
+
+## Mission 2: Suspiciously Clean Challenge
+
+For any dimension with 0 findings (or very few given spec size):
+- Read the spec sections that agent analyzed
+- Identify at least 2 specific aspects that SHOULD have been flagged
+- If you find gaps: report them as additional findings with the same format, including `Fix Confidence`
+- If the dimension is genuinely strong: confirm it explicitly with evidence
+
+Threshold: For specs over 200 lines, a dimension with 0 findings requires
+justification.
+
+Output: Challenge findings or clean confirmations
+  For each new finding, use the full format below:
+  - **Finding ID**: SPEC-{NNN}
+  - **Dimension**: Which dimension
+  - **Title**: Brief description
+  - **Location**: Source file > section heading
+  - **Details**: What the issue is, with quotes from the spec
+  - **Severity**: Critical | Major | Minor
+  - **Recommendation**: Specific action to fix
+  - **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
+  Compute `Fix Confidence` exactly like the dimension auditors using `references/fix-confidence-rubric.md`.
+  OR: "{dimension}: Confirmed no findings — {evidence}"
+
+## Mission 3: Duplicate Detection
+
+Flag findings from different agents that describe the same spec issue from
+different angles. Recommend which to keep as primary and which to merge.
+
+Output: Duplicate flags
+  [{finding-a}, {finding-b}] -> "Merge into {finding-a}"
+
+## Mission 4: Pattern Review Integration
+
+Review the codebase pattern reviewer output for report fit:
+- Keep findings that identify a spec-level technical design decision needing
+  reuse guidance, rationale, migration guidance, or an explicit decision.
+- Mark findings as FYI, not SPEC findings, if they only express a coding
+  preference or would require inspecting implementation that does not exist yet.
+- Recommend merges when a design-auditor Technical Design finding and a pattern
+  reviewer finding share the same root cause.
+- Preserve pattern evidence in the merged finding's Details or Recommendation.
+
+When done, message the lead with your complete cross-review results and mark
+your task complete.
+```
+
+### Step 8: Aggregate Findings and Write Report
+
+After the cross-reviewer completes:
+
+1. Collect all findings from dimension auditors, the codebase pattern reviewer, and the cross-reviewer
+2. Apply cross-reviewer annotations:
+   - Merge root-cause-linked findings
+   - Add cross-reviewer challenge findings
+   - Add codebase pattern findings as Technical Design findings unless the cross-reviewer marked them FYI
+   - Remove duplicates per cross-reviewer recommendations
+3. Follow `$kramme:siw:spec-audit` Steps 4-5 for:
+   - Assigning global finding IDs (SPEC-001, SPEC-002, etc.)
+   - Assigning severity
+   - After final severity assignment and any Work Context caps, re-scoring every finding (including cross-reviewer challenge findings) per `references/fix-confidence-rubric.md` so the final `Fix Confidence` uses the shared tier boundaries, sub-score guardrail, and safety caps, preserving any pre-downgrade Critical safety cap via recorded `original_severity` and the matching report `Severity Note`
+   - Computing dimension scores (Strong/Adequate/Weak/Missing)
+   - Cross-referencing existing SIW issues
+   - Writing the report to `siw/AUDIT_SPEC_REPORT.md` (or project root), or replying inline if `INLINE_MODE=true`
+
+**Additional report sections** (insert after Summary):
+
+```markdown
+## Team
+
+- 4 dimension auditors + 1 codebase pattern reviewer + 1 cross-reviewer participated
+- Cross-validation messages: {N} sent, {M} produced additional findings
+- Cross-reviewer challenges: {N} dimensions challenged, {M} additional findings
+- Codebase pattern review: {N} established patterns confirmed, {M} intentional new patterns acknowledged, {K} unacknowledged pattern findings
+- Duplicates merged: {N}
+
+## Cross-Review Notes
+
+- {Root cause links, disputes, cross-validation results}
+```
+
+Tag findings discovered via cross-validation with `[Cross-validated]`.
+
+### Step 9: Optionally Apply Findings or Create SIW Issues
+
+Same as `$kramme:siw:spec-audit` Step 6. Inline runs are read-only and skip this step; `INLINE_MODE=true` with `APPLY_MODE=true` must already have aborted in Step 1. If `APPLY_MODE=true` or the user chooses **Apply now**, follow `references/apply-now.md` to run the canonical auto-fix procedure, and create no `G-*` issues. Otherwise, create SIW issues for actionable findings if SIW workflow is active. If `AUTO_MODE=true`, use the standard auto-mode issue creation behavior.
+
+### Step 10: Report Summary
+
+Same as `$kramme:siw:spec-audit` Step 7 — display quality scores, findings counts, and next steps.
+
+### Step 11: Cleanup
+
+1. Shut down all auditor agents
+2. Clean up the multi-agent session
+
+## When to Use This vs `$kramme:siw:spec-audit`
+
+Use **this mode** when:
+
+- The spec is large (200+ lines or multiple files)
+- You want cross-validation between dimension analyses
+- You want a cross-reviewer to challenge low-finding dimensions
+- You want a bounded check that the spec does not invent unacknowledged codebase patterns
+- You want higher-quality findings with fewer blind spots
+
+Use **standard `$kramme:siw:spec-audit`** when:
+
+- The spec is small or focused
+- You want faster, lower-cost audit
+- You're running a quick check before implementation

@@ -1,0 +1,319 @@
+---
+name: kramme:pr:fix-ci
+description: Fix PR CI and review feedback when explicitly requested or delegated by kramme:linear:issue-to-pr, kramme:code:plan-to-pr, or kramme:pr:rebase. Pushes targeted fixes until checks pass, with bounded retries. Offers rebase or skip for an unscoped branch behind its base and accepts a validated archived plan for scoped shipping or recovery.
+argument-hint: "[--fixup] [--auto] [--no-consolidate] [--scope-plan <archived-plan>]"
+disable-model-invocation: false
+user-invocable: true
+---
+
+# Iterate on PR Until CI Passes
+
+Continuously iterate on the current branch until all CI checks pass and review feedback is addressed.
+
+### Model Invocation Contract
+
+- Invoke automatically only as a delegated child of `kramme:linear:issue-to-pr`, `kramme:code:plan-to-pr`, or `kramme:pr:rebase`, with the parent's exact bounded flags: `--no-consolidate` for issue/plan shipping (plus a validated scope plan when supplied), or the rebase caller's explicit `--auto`/normal mode.
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain the Pull Request identity, CI, review-feedback, scope, retry, and publication gates, and never invent `--auto`, a scope plan, or a push destination.
+
+**Requires**: GitHub CLI (`gh`) authenticated and available.
+
+## Why this loop exists
+
+> "A bug caught in linting costs minutes; the same bug caught in production costs hours."
+
+> "Smaller batches and more frequent releases reduce risk, not increase it."
+
+The fix-CI loop is the **CI Failure Feedback Loop** pattern: read the failure, make a minimal fix, push, wait, repeat. This skill automates that loop so failures are surfaced and corrected in minutes instead of accumulating across a days-long review cycle.
+
+## Options
+
+**Flags:**
+
+- `--fixup` - Use fixup commits to amend existing branch commits instead of creating new commits. Requires force push. Orphan files (not touched by any branch commit, including files last modified on the base branch) are committed as new.
+- `--no-consolidate` - Skip the consolidation prompt after CI passes. Use for scripting or when you want to keep `[FIX PIPELINE]` commits separate.
+- `--auto` - Run the CI fix loop unattended where possible. After CI passes, automatically consolidate `[FIX PIPELINE]` commits using the automated consolidation flow instead of prompting. If consolidation cannot be completed safely, stop with `MISSING REQUIREMENT` rather than leaving fix commits separate.
+- `--scope-plan <archived-plan>` - Reconstruct and enforce a plan-to-PR mutation boundary from a validated archive. This mode requires `--no-consolidate`, rejects `--fixup` and `--auto`, and persists a scoped recovery checkpoint after every pushed fix.
+
+When an unscoped Pull Request is behind its base, the workflow asks whether to rebase and push automatically before fixing CI or to skip rebasing for this run. `--auto` does not answer this history-rewrite question on the user's behalf.
+
+Before Step 1, parse `$ARGUMENTS`. If `--fixup` is present, set `FIXUP_MODE=true`; if `--auto` is present, set `AUTO_MODE=true`; if `--no-consolidate` is present, set `NO_CONSOLIDATE=true`. Parse `--scope-plan <path>` at most once and store its raw value without using it in a command. Reject unknown flags, duplicate valued flags, missing values, and positional arguments. If both `--auto` and `--no-consolidate` are present, stop with `MISSING REQUIREMENT: choose either --auto to consolidate fix commits or --no-consolidate to keep them separate`.
+
+When `--scope-plan` is present, reject `--fixup` and `--auto`, require `--no-consolidate`, read `references/scoped-plan.md` completely, and follow it before Step 1 and at every edit, staging, commit, push, wait, blocker, and success boundary below. It validates the archive and sets `PLAN_SCOPE_ACTIVE=true`, `PLAN_SCOPE_MODE`, `VALIDATED_SCOPE_PATHS`, `{scope-base-commit}`, `{validated-scope-plan}`, `{validated-plan-branch}`, and `SCOPED_PLAN_LIFECYCLE=initial|post-create|recovery`. Otherwise set `PLAN_SCOPE_ACTIVE=false`.
+
+Initialize a producer-owned `CI_REMEDIATION_LEDGER` in run state. For every CI failure or review-feedback item investigated in Steps 5–8, record `source` (`ci`, `human_review`, or `bot_review`), `summary`, `disposition` (`fixed`, `rejected`, `deferred`, or `blocked`), and the evidence-based `rationale`. Update the same entry when a later loop iteration changes its disposition. Do not reconstruct this ledger from commit subjects at handoff time.
+
+---
+
+## Flow
+
+### Step 1: Identify the PR
+
+```bash
+gh pr view --json number,url,headRefName,baseRefName
+PR_NUMBER=$(gh pr view --json number --jq .number)
+```
+
+If no PR exists for the current branch, stop and inform the user. Keep `PR_NUMBER` for Step 4.
+
+Resolve stack membership before the loop can create or rewrite commits:
+
+```bash
+STACK_RESOLVED=$("${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.81.0/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be determined; stop before changing the branch." >&2
+  exit 1
+}
+eval "$STACK_RESOLVED"
+```
+
+Set `IN_STACK=true` only for `STACK_MEMBERSHIP=local`; set it false for `none`. If membership is `remote`, stop: the PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry. Authentication, API, parsing, and unexpected CLI failures must not fall through to the single-branch push flow.
+
+### Step 2: Confirm the branch is in sync with the base
+
+A stale branch can produce CI failures unrelated to the PR, wasting iteration cycles. Catch this before iterating.
+
+```bash
+BASE=$(gh pr view --json baseRefName --jq .baseRefName)
+git fetch origin "$BASE"
+git rev-list --left-right --count "origin/$BASE"...HEAD
+```
+
+If the left count is non-zero (the base has commits not in the branch), inspect what moved (`git log --name-only HEAD.."origin/$BASE"`) and whether it plausibly affects CI for this PR — it touches the same files or directories the branch changes, CI workflow/config files, lockfiles, or shared build tooling.
+
+When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `$kramme:pr:rebase` or changing history if that movement plausibly affects CI: the recorded base and checkpoint remain part of the scoped provenance contract, so require a refreshed or explicitly re-authorized scoped plan before continuing. Otherwise note the drift and continue iterating.
+
+When `PLAN_SCOPE_ACTIVE=false`, ask the user directly in chat even when `AUTO_MODE=true` and present exactly these choices:
+
+1. **Rebase then fix CI (Recommended)** - Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism.
+
+   This selection authorizes its safe unattended push mode, which preserves conflict, red-flag, and verification gates. If it proves that the rebase and push succeeded, return to Step 1 with the original parsed `fix-ci` modes still active, recheck base synchronization, then watch and fix CI. If it stops or cannot prove the push succeeded, stop this workflow with its blocker; do not watch the stale remote branch or silently choose the skip path.
+
+2. **Skip rebase and fix CI** - Record that the user accepted the reported base drift for this run and continue to Step 3 without changing history. Do not ask again during this invocation unless the Pull Request's base branch changes.
+
+Do not run `git rebase` or force-push inline from this skill; the delegated rebase workflow owns stack handling and all history-rewrite safety gates.
+
+Before starting the fix loop, snapshot the pre-existing working-tree state so Step 8 can keep it out of fix commits:
+
+```bash
+git status --porcelain
+```
+
+Record this output as the **pre-existing dirty state**. Any file already modified or untracked here was not produced by the fix loop and must never be swept into a `[FIX PIPELINE]` commit.
+
+When `PLAN_SCOPE_ACTIVE=true`, require this snapshot to be empty and require the scoped-plan entry proof to pass before investigating or editing feedback.
+
+### Step 3: Check CI status first
+
+```bash
+gh pr checks --json name,state,bucket,link,workflow
+```
+
+The `bucket` field categorizes state into: `pass`, `fail`, `pending`, `skipping`, or `cancel`.
+
+**Important:** If any **post-hoc review-commenting bots** still have `pending` checks, wait before proceeding. These are services that post additional feedback comments to the PR once their checks complete — error trackers, coverage reporters, AI review bots, and hosted linter/code-analysis services (e.g. Sentry, Codecov, Cursor Bugbot, Seer). Key the wait on the category — does this check belong to a service that comments after completion? — not on any specific bot name. Waiting avoids duplicate work.
+
+### Step 4: Gather review feedback
+
+`gh api` auto-expands `{owner}` and `{repo}` from the current repo context. Substitute `$PR_NUMBER` (captured in Step 1) where the PR number is needed.
+
+**Review comments and status:**
+
+```bash
+gh pr view --json reviews,comments,reviewDecision
+```
+
+**Inline code review comments:**
+
+```bash
+gh api "repos/{owner}/{repo}/pulls/$PR_NUMBER/comments"
+```
+
+**PR conversation comments (includes bot comments):**
+
+```bash
+gh api "repos/{owner}/{repo}/issues/$PR_NUMBER/comments"
+```
+
+### Step 5: Investigate failures
+
+```bash
+# List recent runs for this branch
+gh run list --branch "$(git branch --show-current)" --limit 5 --json databaseId,name,status,conclusion
+
+# View failed logs for a specific run (substitute the databaseId from above)
+gh run view "$RUN_ID" --log-failed
+```
+
+Do NOT assume what failed based on the check name alone. Always read the actual logs. Before treating a failure as unrelated to the PR, confirm it with evidence such as `git blame` on the failing assertion or the base branch's CI history. A check that looks flaky gets one retry; if it fails again, treat it as real until the logs name the infrastructure cause.
+
+### Step 6: Validate feedback
+
+For each piece of feedback (CI failure or review comment):
+
+1. **Read the relevant code** - Understand the context before making changes
+2. **Verify the issue is real** - Not all feedback is correct; reviewers and bots can be wrong
+3. **Check if already addressed** - The issue may have been fixed in a subsequent commit
+4. **Skip invalid feedback** - If the concern is not legitimate, move on
+
+### Step 7: Address valid issues
+
+Make minimal, targeted code changes. Only fix what is actually broken.
+
+When `PLAN_SCOPE_ACTIVE=true`, identify every file the fix requires and apply the scoped-plan membership rule before editing. If valid feedback needs any path outside `VALIDATED_SCOPE_PATHS`, stop before the first edit and return the scoped blocker; never widen scope from CI or review feedback.
+
+### Step 8: Commit and push
+
+**If `--fixup` mode is enabled:** See Step 8b below.
+
+**Default (no flag):**
+
+When `PLAN_SCOPE_ACTIVE=true`, run the scoped-plan pre-staging proof first. It requires every dirty and staged path to satisfy the active exact-or-containment rule, reruns standalone eligibility for exact-file mode, and supplies the only path array that may be staged.
+
+Stage only the files the fix loop actually edited in Step 7 — never `git add -A`, which would sweep pre-existing uncommitted work (including untracked `.env`-style files) into pushed commits:
+
+```bash
+git add <file1> <file2> ...
+git commit -m "[FIX PIPELINE] <descriptive message of what was fixed>"
+```
+
+Compare `git status --porcelain` against the pre-existing dirty state snapshot from Step 2: files that were already modified or untracked before the loop started stay uncommitted. If such pre-existing state exists, warn the user (once) that it is being left untouched.
+
+The `[FIX PIPELINE]` prefix marks commits as iteration fixes from CI or review feedback, making them easy to identify and consolidate later (see Step 11).
+
+Push only after the branch chain is ready. When `PLAN_SCOPE_ACTIVE=true`, require non-stack membership, revalidate every committed path in `{scope-base-commit}..HEAD`, capture the full current `HEAD` as `{validated-push-head}`, and require the current branch to equal `{validated-plan-branch}` immediately before invoking `git push`. The validated head, not a branch ref that can move after the scope proof, is the only authorized push source:
+
+```bash
+if [ "$IN_STACK" = true ]; then
+  gh stack rebase --upstack --no-trunk
+  gh stack push
+elif [ "$PLAN_SCOPE_ACTIVE" = true ]; then
+  git push origin "{validated-push-head}:refs/heads/{validated-plan-branch}"
+else
+  git push origin "$(git branch --show-current)"
+fi
+```
+
+For a stack, restacking must succeed before `gh stack push`; never push the changed parent branch first.
+
+When `PLAN_SCOPE_ACTIVE=true`, immediately require the local branch tip to remain `{validated-push-head}` and require the remote and Pull Request heads to equal that captured OID, then run the scoped-plan post-push checkpoint rule using the captured head and its tree. A moved local branch, failed push, or identity mismatch is a blocker, not permission to checkpoint an unvalidated tip or continue waiting.
+
+### Step 8b: Fixup commit flow (when `--fixup` is enabled)
+
+Read and follow the fixup commit flow from `references/fixup-flow.md`. This covers base branch detection, file-to-commit mapping, fixup commit creation, autosquash rebase, and force push with lease. Shared branches still require explicit collaborator coordination before any history rewrite or force push.
+
+### Step 9: Wait for CI
+
+```bash
+gh pr checks --watch --interval 30
+```
+
+This waits until all checks complete. Exit code 0 means all passed, exit code 1 means failures.
+
+If the watch hangs well past expected runtimes (rule of thumb: >30 minutes for a typical PR pipeline), a check is likely stuck pending — runner outage, missing webhook, or an external bot that never reported back. Cancel the watch, name the stuck check, and surface `CONFUSION` so the user can decide whether to retry, ignore, or escalate.
+
+### Step 10: Repeat
+
+Return to Step 3 if:
+
+- Any CI checks failed
+- New review feedback appeared
+
+Continue until all checks pass and no unaddressed feedback remains.
+
+When `PLAN_SCOPE_ACTIVE=true`, apply the scoped-plan blocker or success finalization before returning. Initial shipping mode returns the exact head/tree and scoped recovery payload to its caller; recovery mode also refreshes the archived lifecycle record so a later retry validates the new head rather than the stale pre-recovery checkpoint.
+
+### Step 11: Consolidation phase
+
+**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.
+
+Read and follow the consolidation flow from `references/consolidation-flow.md`. This covers detecting `[FIX PIPELINE]` commits, choosing consolidation mode, mapping commits to targets, executing rebase, and force pushing. If `AUTO_MODE=true`, choose **Automated** without prompting; do not choose "Keep separate". On shared branches, consolidation still requires explicit coordination before any history rewrite. Consolidation may fold only `[FIX PIPELINE]` commits; stop if the rebase would drop or rewrite any other commit.
+
+### Step 12: Return the remediation handoff
+
+This return contract applies before every success or blocker exit, including exits reached before Step 11. Serialize the current producer-owned ledger as exactly one RFC 8259 JSON array and return it on one line:
+
+```text
+CI remediation JSON: [{"source":"ci|human_review|bot_review","summary":"...","disposition":"fixed|rejected|deferred|blocked","rationale":"..."}]
+```
+
+Emit `CI remediation JSON: []` when no CI failure or review-feedback item required investigation. Escape control characters, quotes, and backslashes per RFC 8259. Before returning, require every object to contain only the four documented keys and every enum value to be allowlisted. The handoff is the caller contract for explaining post-publication changes and review decisions; generated prose and commit subjects are not substitutes.
+
+---
+
+## Quality gate discipline
+
+> "No gate can be skipped. If lint fails, fix lint — don't disable the rule."
+
+A failing gate is signalling a real problem until proven otherwise. The fix is to fix the gate, not to silence it.
+
+Do not silently:
+
+- Skip a hook with `--no-verify` or equivalent flags.
+- Add `eslint-disable`, `# noqa`, `@ts-ignore`, or a similar suppression comment to silence the specific failure.
+- Delete, comment out, or mark-as-skipped a failing test.
+- Lower a gate's threshold (coverage, complexity, bundle size) to make it pass.
+- Remove the gate from the pipeline.
+
+If disablement is genuinely warranted — a confirmed false positive, a test that asserts old behavior the PR intentionally changes, a rule the team agrees to retire — stop and surface a `MISSING REQUIREMENT` marker with the rationale. Get explicit user approval before committing the disablement. The user may approve, redirect, or provide a different fix. Silent disablement is never the answer.
+
+---
+
+## Exit Conditions
+
+**Success:**
+
+- All CI checks are green
+- No unaddressed human review feedback
+- (Default mode) Consolidation completed or user chose to keep separate commits
+- In scoped mode, the final committed path set, Pull Request head, remote head, and archived recovery lifecycle all pass `references/scoped-plan.md`
+
+**Ask for Help:**
+
+- Same failure persists after 3 attempts (likely a flaky test or deeper issue)
+- Review feedback requires clarification or decision from the user
+- CI failure is unrelated to branch changes (infrastructure issue)
+- Consolidation rebase failed due to conflicts (user must resolve manually)
+
+**Stop Immediately:**
+
+- No PR exists for the current branch
+- A delegated rebase did not prove that its rewritten branch was pushed (surface its blocker; do not fall back to the skip path)
+- A scoped branch's base moved in a way that plausibly affects CI (fail closed without rebasing and require a refreshed or explicitly re-authorized scoped plan)
+
+---
+
+## Tips
+
+**GitHub:**
+
+- Use `gh pr checks --required` to focus only on required checks
+- Use `gh run view <run-id> --verbose` to see all job steps, not just failures
+- If a check is from an external service, the `link` field provides the URL
+
+**Choosing a mode:**
+
+- **Default**: Working with others, want visible iteration history, prefer to consolidate at the end
+- **`--auto`**: Working unattended, want `[FIX PIPELINE]` commits automatically consolidated once CI and review feedback are clear
+- **`--fixup`**: Working alone, want clean history throughout, comfortable with force push
+- **`--no-consolidate`**: Working in a context where history rewrite is undesirable and `[FIX PIPELINE]` commits should remain visible
+- **Behind the base**: In an unscoped run, choose the safe automatic rebase-and-push path or explicitly skip rebasing and continue with CI
+
+---
+
+## Output markers
+
+Use these markers so the user (and downstream tooling) can skim status at a glance. They are a **plugin-wide convention** for Addy-ported skills. Use them verbatim (uppercase, no decoration), one marker per line.
+
+- **UNVERIFIED** — a claim not directly confirmed against the logs or code. `UNVERIFIED: log output was truncated at 500 lines; couldn't confirm the full failure trace`.
+- **NOTICED BUT NOT TOUCHING** — a pre-existing failure or unrelated issue surfaced while investigating. `NOTICED BUT NOT TOUCHING: the flaky integration test on macOS has been red on main for a week, but it's outside this PR`.
+- **CONFUSION** — can't decide whether a failure is real or infrastructure. `CONFUSION: the job timed out after 10 minutes; is this a test regression or a runner issue?`
+- **MISSING REQUIREMENT** — a decision is needed before proceeding. `MISSING REQUIREMENT: the lint rule looks like a false positive, but disabling it requires your approval — proceed or redirect?`
+
+---
+
+## Verification
+
+Before handing off, confirm:
+
+- [ ] No lingering `UNVERIFIED`, `CONFUSION`, or `MISSING REQUIREMENT` markers are unresolved.
+- [ ] Human review feedback is addressed or explicitly deferred with a `NOTICED BUT NOT TOUCHING` rationale.
+- [ ] `CI remediation JSON` contains every investigated CI or feedback item with its final disposition and evidence-based rationale, and validates against the Step 12 schema.

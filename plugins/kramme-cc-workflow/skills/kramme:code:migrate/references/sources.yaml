@@ -1,0 +1,8 @@
+sources:
+  - id: addy-source-driven-development
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/source-driven-development/SKILL.md
+    title: "Addy Osmani agent-skills - source-driven development"
+    rationale: "The migration-specific detect-fetch-implement-cite workflow, source hierarchy, citation discipline, and retrieval-safety boundary are adapted from this source."
+    usage: inspiration
+    last_reviewed_at: 2026-08-30
+    baseline_hash: "sha256:3ac95b5c852740047f3572aafc24c41f7f732990e63bfd22d43330ecaba1c9b6"

@@ -1,0 +1,9 @@
+sources:
+  - id: vuk97-forward-implementation-first
+    url: https://raw.githubusercontent.com/Vuk97/forward-implementation-first/main/SKILL.md
+    title: "Forward implementation first"
+    rationale: "The distinction between implementation, correctness evidence, and advisory bookkeeping, together with smallest-dependency-cone replay, inspired this repository-specific forward-progress convention."
+    usage: inspiration
+    last_reviewed_at: 2026-08-30
+    baseline_commit: 91fa46a0108ecfc612a55cf587a2086621a31161
+    baseline_hash: "sha256:411a6de1df78dc0bf27572ddd1f88aeca8b1da23537152316e7a581e5e9e5b67"
