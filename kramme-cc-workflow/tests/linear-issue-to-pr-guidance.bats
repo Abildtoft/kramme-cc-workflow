@@ -5,11 +5,13 @@
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    preflight="skills/kramme:linear:issue-to-pr/references/delegated-skills.md"
     convergence="skills/kramme:pr:review-convergence/SKILL.md"
     policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
     readme="../README.md"
 
     test -f "$parent"
+    test -f "$preflight"
     test -f "$convergence"
     test -f "$policy"
     grep -qF "including one transferred from SIW" "$parent"
@@ -18,15 +20,45 @@
     grep -qF "kramme:linear:issue-implement" "$parent"
     grep -qF "## Step 3: Freeze Linear Intent and Invoke Review Convergence" "$parent"
     grep -qF "Compose \`{issue-requirements}\` once" "$parent"
+    grep -qF "read \`references/delegated-skills.md\` and complete its installed-skill preflight" "$parent"
+    grep -qF "When \`SHIP_MODE=true\`, also confirm the publication children" "$parent"
+    grep -qF "Do not tell the user to start the child manually after the parent has already changed Linear" "$preflight"
     grep -qF -- "--archive-key linear-issue-to-pr" "$parent"
     grep -qF -- "--requirements {issue-requirements}" "$parent"
     grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$parent"
     grep -qF "equal \`{issue-requirements}\` byte-for-byte" "$parent"
     grep -qF "name: kramme:pr:review-convergence" "$convergence"
     grep -qF "user-invocable: true" "$convergence"
-    grep -qF "disable-model-invocation: true" "$convergence"
+    grep -qF "disable-model-invocation: false" "$convergence"
     grep -qF "The same phase is also used by \`kramme:code:plan-to-pr\`" "$readme"
     ! grep -qF "kramme:linear:issue-review" "$parent" "$convergence" "$readme"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear issue to PR can invoke its guarded workflow children" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    implement="skills/kramme:linear:issue-implement/SKILL.md"
+    convergence="skills/kramme:pr:review-convergence/SKILL.md"
+    cleanup="skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+    create="skills/kramme:pr:create/SKILL.md"
+    fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
+
+    for skill in "$implement" "$convergence" "$cleanup" "$create" "$fix_ci"; do
+      grep -qF "disable-model-invocation: false" "$skill"
+      grep -qF "### Model Invocation Contract" "$skill"
+      grep -qF "No other parent workflow is authorized by this model-invocation exception" "$skill"
+    done
+    grep -qF "Invoke \`kramme:linear:issue-implement\` with \`{issue-id} --auto\`" "$parent"
+    grep -qF "Invoke \`kramme:workflow-artifacts:cleanup --auto\`" "$parent"
+    grep -qF "Invoke \`kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description\`" "$parent"
+    grep -qF "Invoke \`kramme:pr:fix-ci --no-consolidate\`" "$parent"
+    grep -qF "Invoke automatically only as the exact child of \`kramme:linear:issue-to-pr\`" "$implement"
+    grep -qF "the exact child of \`kramme:linear:issue-to-pr --ship\`" "$cleanup"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
