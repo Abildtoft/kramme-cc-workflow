@@ -1,6 +1,6 @@
 # kramme-cc-workflow
 
-A Claude Code plugin that automates the daily development lifecycle:
+A cross-host agent workflow plugin for Claude Code and Codex that automates the daily development lifecycle:
 
 - **Plan** — requirements discovery, feature specs, and initial issue definition with SIW (Structured Implementation Workflow)
 - **Build** — guided implementation of Linear issues, up to a full issue-to-PR pipeline
@@ -8,7 +8,7 @@ A Claude Code plugin that automates the daily development lifecycle:
 - **Test & verify** — browser-driven QA with evidence capture and project-aware verification runs
 - **Explain** — self-contained HTML diagrams, PR walkthroughs, and codebase onboarding guides
 
-The plugin also runs on Codex as a native Codex plugin generated from the same source (see [Codex](#codex)).
+Claude Code is the canonical source, and Codex is a first-class native plugin generated from that same source. Install the host you use, or install both when you want to move between them.
 
 <!-- prettier-ignore-start -->
 > [!IMPORTANT]
@@ -34,7 +34,7 @@ Using the plugin:
 
 Reference:
 
-- [Codex Plugin Status](#codex-plugin-status)
+- [Plugin Status](#plugin-status)
 - [Plugin Structure](#plugin-structure)
 - [Documentation](#documentation)
 - [Related Plugins](#related-plugins)
@@ -51,9 +51,12 @@ Contributing & maintenance:
 
 ## System Requirements & Dependencies
 
-The plugin does not declare dependencies on other Claude Code plugins, and no MCP server is required for basic use. For the full default experience:
+The plugin does not depend on another plugin, and no MCP server is required for basic use. It runs from the same source on Claude Code and Codex.
 
-- Use a current Claude Code release on a [supported platform](https://code.claude.com/docs/en/installation#system-requirements). The plugin does not pin a minimum Claude Code version.
+For the full default experience, use a current release of your host:
+
+- **Claude Code** — use a current release on a [supported platform](https://code.claude.com/docs/en/installation#system-requirements). The plugin does not pin a minimum Claude Code version.
+- **Codex** — use a current Codex CLI release. The published native plugin installs through the Codex marketplace; checkout installs also need the converter toolchain described below.
 - Install Bash, Git, `jq`, Python 3.10+, and Node.js 18+. The bundled hooks invoke Bash directly, and the enabled safety hooks fail closed when `jq` or Python is unavailable. Node powers the enabled local skill-usage recording hook; without it, that hook records a diagnostic and otherwise remains silent. Disable hooks explicitly with `/kramme:hooks:toggle` if they cannot run in your environment.
 - Prefer macOS, Linux, or WSL. On native Windows, install Git Bash and make the required tools available in that shell; PowerShell-only use does not support the plugin's Bash hooks.
 
@@ -67,14 +70,21 @@ Additional dependencies are capability-specific:
 | Document conversion | `uv`/`uvx`; MarkItDown dependencies are downloaded on demand |
 | Image generation | `uv`, network access, and `GEMINI_API_KEY` |
 | Recoverable cleanup in autonomous workflows | `trash` on macOS or `trash-cli` on Linux |
-| Codex conversion | Node.js 18+, npm, and the Codex CLI (`npm install -g @openai/codex`) |
+| Codex checkout conversion | Node.js 18+, npm, and the Codex CLI (`npm install -g @openai/codex`) |
 | Project verification and formatting | The target project's own build, test, type-check, and formatter tools |
 
-Node.js is not required to install the Claude Code plugin from its marketplace. Context7, Nx, Magic Patterns, Granola, and other MCP integrations are optional enhancements unless a selected skill says otherwise. After installation, run `/kramme:setup` for a read-only environment check. Contributors need the broader toolchain described in [Development](#development).
+The Claude Code marketplace install does not need Node.js. Codex marketplace installs do not need a checkout; Node.js is needed when building or installing from a checkout. Context7, Nx, Magic Patterns, Granola, and other MCP integrations are optional enhancements unless a selected skill says otherwise. After installing on either host, run `/kramme:setup` for a read-only environment check. Contributors need the broader toolchain described in [Development](#development).
 
 ## Installation & Updating
 
-### Installation
+Both hosts expose the same skills and workflows. Choose the install and update commands for the host where you work:
+
+| Host | Install | Update |
+| --- | --- | --- |
+| Claude Code | `/plugin marketplace add` then `/plugin install` | `/plugin marketplace update` or rerun the Git/local install |
+| Codex | `codex plugin marketplace add` then `codex plugin add` | `codex plugin marketplace upgrade` then `codex plugin add` |
+
+### Claude Code
 
 Marketplace install (recommended) — run inside a Claude Code session:
 
@@ -154,7 +164,7 @@ Remove a checkout install, including the marketplace and any legacy output:
 node kramme-cc-workflow/scripts/convert-plugin.js uninstall kramme-cc-workflow
 ```
 
-For published installs, `codex plugin remove kramme-cc-workflow@kramme-cc-workflow` and `codex plugin marketplace remove kramme-cc-workflow` do the same through Codex. For install status, see [Codex Plugin Status](#codex-plugin-status).
+For published installs, `codex plugin remove kramme-cc-workflow@kramme-cc-workflow` and `codex plugin marketplace remove kramme-cc-workflow` do the same through Codex. For install status, see [Plugin Status](#plugin-status).
 
 ### Updating
 
@@ -183,13 +193,13 @@ codex plugin add kramme-cc-workflow@kramme-cc-workflow
 
 For checkout Codex installs, re-run the install command; it rebuilds the marketplace and reinstalls the plugin into the Codex cache.
 
-Restart Claude Code after updating for changes to take effect.
+Restart the host you updated after updating for changes to take effect.
 
-**Auto-update:** Since Claude Code v2.0.70, auto-update can be enabled per-marketplace from the `/plugin` marketplace settings.
+**Auto-update:** Since Claude Code v2.0.70, auto-update can be enabled per-marketplace from the `/plugin` marketplace settings. Codex marketplace updates are explicit: run `codex plugin marketplace upgrade` and then `codex plugin add` as shown above.
 
 ## Getting Started
 
-After installation, start with the smallest useful workflow:
+After installation in either Claude Code or Codex, start with the smallest useful workflow:
 
 ```bash
 /kramme:setup
@@ -296,10 +306,10 @@ All skills are listed in the reference below. Background skills (commit messages
 
 ## Skills
 
-All plugin functionality is delivered through skills. Skills can be user-invoked via the `/` menu, auto-triggered by Claude based on context, or both.
+All plugin functionality is delivered through skills. Skills can be user-invoked via the host's `/` menu, auto-triggered by the host based on context, or both.
 
 - **User-invocable**: Trigger with `/kramme:skill-name`. Skills that should never auto-run set `disable-model-invocation: true`.
-- **Auto-triggered**: Claude invokes automatically when context matches the skill description.
+- **Auto-triggered**: The host invokes automatically when context matches the skill description.
 - **Background**: Skills with `user-invocable: false` are auto-triggered only and don't appear in the `/` menu.
 
 The tables below are the canonical component reference. For a compact lookup by name, invocation mode, and source path, see the generated [component catalog](kramme-cc-workflow/docs/component-catalog.json).
@@ -559,7 +569,7 @@ Nx workspace tooling and configuration.
 
 ### Background Skills
 
-Auto-triggered by Claude based on context. These don't appear in the `/` menu.
+Auto-triggered by the host based on context. These don't appear in the `/` menu.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
@@ -635,7 +645,7 @@ tests is not a claim that Astra passed those live cases.
 
 ## Hooks
 
-Event handlers that run automatically at specific points in the Claude Code lifecycle. For detailed configuration, pattern lists, and formatter tables, see [docs/hooks.md](kramme-cc-workflow/docs/hooks.md).
+Event handlers defined once in the plugin source and packaged for both hosts. Each host maps them to its own lifecycle events; for detailed configuration, pattern lists, and formatter tables, see [docs/hooks.md](kramme-cc-workflow/docs/hooks.md).
 
 <!-- prettier-ignore-start -->
 <!-- BEGIN SOURCE-SYNCED HOOK ROWS -->
@@ -712,9 +722,23 @@ CLI tools that enhance the plugin experience. Some are required for specific com
 | `skillspector` | Optional security scanning for local skill directories | [NVIDIA/SkillSpector](https://github.com/NVIDIA/SkillSpector) |
 | `surf` | AI-generated illustrations in visual diagrams (optional) | [surf-cli](https://github.com/nicobailon/surf-cli) |
 
-## Codex Plugin Status
+## Plugin Status
 
-Codex owns the installed plugin, so its own CLI reports the state:
+Each host owns its installed plugin and provides a way to inspect that state.
+
+### Claude Code
+
+Open the plugin manager inside Claude Code:
+
+```text
+/plugin
+```
+
+Use it to view the marketplace registration and installed version.
+
+### Codex
+
+Codex reports the installed plugin through its own CLI:
 
 ```bash
 codex plugin list
@@ -726,7 +750,7 @@ If skills from an earlier converter release still appear twice, a legacy copy re
 
 ## Plugin Structure
 
-The plugin source lives in `kramme-cc-workflow/`; this root README is the canonical project documentation.
+The shared plugin source lives in `kramme-cc-workflow/`; this root README is the canonical project documentation for both Claude Code and Codex. Claude Code source files are canonical, and Codex output is generated from them at build time.
 
 ```
 .
@@ -746,12 +770,12 @@ The plugin source lives in `kramme-cc-workflow/`; this root README is the canoni
 └── README.md                # Canonical documentation
 ```
 
+The source tree above feeds both host packages. Claude Code reads the plugin metadata, skills, agents, and hooks directly; the converter packages the same behavior as the native Codex plugin described in [the portability matrix](kramme-cc-workflow/docs/agent-portability.md).
+
 ## Documentation
 
-- [Plugin Documentation](https://code.claude.com/docs/en/plugins)
-- [Plugins Reference](https://code.claude.com/docs/en/plugins-reference)
-- [Hooks Reference](https://code.claude.com/docs/en/hooks)
-- [Skills Documentation](https://code.claude.com/docs/en/skills)
+- Claude Code: [Plugin Documentation](https://code.claude.com/docs/en/plugins), [Plugins Reference](https://code.claude.com/docs/en/plugins-reference), [Hooks Reference](https://code.claude.com/docs/en/hooks), and [Skills Documentation](https://code.claude.com/docs/en/skills)
+- Codex: [Plugins](https://developers.openai.com/codex/plugins), [CLI Reference](https://developers.openai.com/codex/cli), and [Skills](https://developers.openai.com/codex/skills)
 - [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
 - [Agent Autonomy Model](kramme-cc-workflow/docs/agent-autonomy.md)
 - [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
