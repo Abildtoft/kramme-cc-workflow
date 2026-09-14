@@ -59,6 +59,7 @@ The workflow will:
 - Push that branch to `origin` (the only automated push of the release branch)
 - Create a Pull Request to main
 - After PR merge, automatically create git tag and GitHub Release
+- Publish the generated Codex marketplace for that exact release tag
 
 ### Option 2: Local Script
 
