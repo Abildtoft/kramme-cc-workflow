@@ -329,7 +329,7 @@
     },
     {
       "name": "kramme:pr:rebase",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md"
     },
     {
