@@ -856,3 +856,25 @@ SH
   [[ "$dry_run_verification" == *'PATH="$RUNNER_TEMP/skillspector-bin:$PATH"'* ]]
   [[ "$scanner_run" == *'PATH="$RUNNER_TEMP/skillspector-bin:$PATH"'* ]]
 }
+
+@test "release tag workflow calls Codex publication for the exact release tag" {
+  WORKFLOW="$BATS_TEST_DIRNAME/../../.github/workflows/release-tag.yml"
+
+  grep -q '^  publish-codex:$' "$WORKFLOW"
+  grep -q '    needs: tag' "$WORKFLOW"
+  grep -q '      tag: \${{ steps.release.outputs.tag }}' "$WORKFLOW"
+  grep -q '    uses: ./.github/workflows/publish-codex-plugin.yml' "$WORKFLOW"
+  grep -q '      source_ref: \${{ needs.tag.outputs.tag }}' "$WORKFLOW"
+  grep -q 'echo "tag=v\${VERSION}" >>"\$GITHUB_OUTPUT"' "$WORKFLOW"
+}
+
+@test "Codex publication workflow accepts a release ref and remains tag-triggered" {
+  WORKFLOW="$BATS_TEST_DIRNAME/../../.github/workflows/publish-codex-plugin.yml"
+
+  grep -q '^  workflow_call:$' "$WORKFLOW"
+  grep -q '^  push:$' "$WORKFLOW"
+  grep -q '      - "v\*"' "$WORKFLOW"
+  grep -q '      source_ref:' "$WORKFLOW"
+  grep -q '          ref: \${{ inputs.source_ref || github.ref }}' "$WORKFLOW"
+  grep -q 'git commit -q -m "Build Codex plugin from \${SOURCE_SHA}"' "$WORKFLOW"
+}

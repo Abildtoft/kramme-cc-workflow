@@ -116,7 +116,10 @@ codex plugin marketplace add Abildtoft/kramme-cc-workflow --ref codex-plugin
 codex plugin add kramme-cc-workflow@kramme-cc-workflow
 ```
 
-CI regenerates the `codex-plugin` branch on every release tag.
+CI regenerates the `codex-plugin` branch on every release tag. The release-tag workflow
+calls the publisher with that exact tag, so tags created by GitHub Actions still publish
+the marketplace. If the branch is ever missing, maintainers can rebuild it from the
+Actions tab by running **Publish Codex Plugin** against `main`.
 
 Build and install from a checkout:
 

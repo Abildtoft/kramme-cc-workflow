@@ -9,6 +9,8 @@ jobs:
   tag:
     name: Create tag and release
     if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -22,6 +24,7 @@ jobs:
           python-version: "3.11"
 
       - name: Create tag and GitHub Release
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -31,3 +34,13 @@ jobs:
           git tag -a "v${VERSION}" -m "Release v${VERSION}"
           git push origin "v${VERSION}"
           gh release create "v${VERSION}" --title "v${VERSION}" --generate-notes
+          echo "tag=v${VERSION}" >>"$GITHUB_OUTPUT"
+
+  publish-codex:
+    name: Publish Codex plugin
+    needs: tag
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-codex-plugin.yml
+    with:
+      source_ref: ${{ needs.tag.outputs.tag }}
