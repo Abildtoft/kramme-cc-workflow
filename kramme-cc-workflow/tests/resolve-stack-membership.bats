@@ -419,3 +419,12 @@ load_assignments() {
 	grep -F 'When `FIX_CI_MODE=true` and `PUSH_COMPLETED=false`' "$rebase_skill"
 	grep -F 'do not require or fabricate a remediation handoff.' "$rebase_skill"
 }
+
+@test "rebase model invocation is limited to the guarded fix-ci child call" {
+	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+
+	grep -qF 'disable-model-invocation: false' "$rebase_skill"
+	grep -F 'Invoke automatically only as a delegated child of `kramme:pr:fix-ci`, with the exact `--force-push` argument selected by that parent.' "$rebase_skill"
+	grep -F 'Do not add `--auto`, `--fix-ci`, or an invented `--base` override.' "$rebase_skill"
+	grep -F 'No other parent workflow is authorized by this model-invocation exception.' "$rebase_skill"
+}

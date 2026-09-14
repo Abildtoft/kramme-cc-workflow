@@ -2,7 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-29
-- Amended: 2026-09-13
+- Amended: 2026-09-14
 - Deciders: repository maintainers
 - First safety review: 2026-11-29
 
@@ -22,6 +22,7 @@ Permit a narrow exception to the default rule that side-effecting skills are mod
 - `kramme:workflow-artifacts:cleanup` is model-invocable only as the child of `kramme:linear:issue-to-pr --ship`, with `--auto`; its destructive inventory, Trash requirement, dirty-artifact checks, and permanent-specification protections remain mandatory.
 - `kramme:pr:create` is model-invocable only as a child of `kramme:linear:issue-to-pr` or `kramme:code:plan-to-pr`, with the caller's `--auto` authorization and required generated-description and issue/scope flags. It remains the sole owner of Pull Request publication and its existing backup and lease gates.
 - `kramme:pr:fix-ci` is model-invocable only as a child of `kramme:linear:issue-to-pr`, `kramme:code:plan-to-pr`, or `kramme:pr:rebase`, with the parent's bounded `--no-consolidate`/scope or explicit rebase-mode arguments. It retains all CI, review-feedback, retry, and publication checks.
+- `kramme:pr:rebase` is model-invocable only as a child of `kramme:pr:fix-ci`, which must pass the exact `--force-push` argument and must not invent `--auto`, `--fix-ci`, or a base override. It retains all branch, stack, conflict, red-flag, verification, lease, and publication gates and remains the sole owner of the validated rebase push.
 - `kramme:pr:convention-review` and `kramme:pr:overengineering-review` are model-invocable only as read-only gates of `kramme:pr:review-convergence`, with that parent's inline, requirements, and report-lifecycle arguments. They never edit source or choose dispositions.
 
 Each child must narrowly route model use, document its least-side-effect model contract, and retain its existing confirmation and validation gates. Focused tests must pin the parent arguments.

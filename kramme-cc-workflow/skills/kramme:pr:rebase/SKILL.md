@@ -1,14 +1,19 @@
 ---
 name: kramme:pr:rebase
-description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Optionally delegates post-push CI stabilization to kramme:pr:fix-ci. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch. Use when your PR is behind the base branch.
+description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch or when delegated by kramme:pr:fix-ci with --force-push. Optionally delegates post-push CI stabilization to kramme:pr:fix-ci. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch.
 argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 # Rebase PR
 
 Rebase the current branch onto the latest base branch and force push.
+
+### Model Invocation Contract
+
+- Invoke automatically only as a delegated child of `kramme:pr:fix-ci`, with the exact `--force-push` argument selected by that parent. Do not add `--auto`, `--fix-ci`, or an invented `--base` override.
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain every branch, stack, conflict, red-flag, verification, lease, and publication gate, and never push outside the validated current branch or its resolved local stack.
 
 ## Why rebase — dev branches are costs
 
