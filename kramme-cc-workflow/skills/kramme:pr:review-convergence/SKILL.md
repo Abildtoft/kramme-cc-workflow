@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:review-convergence
 description: Converge a clean committed feature branch when explicitly requested or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr. Runs gut-check, code, convention, overengineering, and refactor gates with bounded remediation and verification against authoritative requirements. Optional --adversarial-review requires a different model provider. Not for implementation, publication, CI repair, or read-only audits.
-argument-hint: "[--strict] [--rounds <1-5>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]"
+argument-hint: "[--subagent-model <model>] [--strict] [--rounds <1-5>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -29,8 +29,10 @@ Bring one prepared local branch to bounded review convergence and fresh project 
 
 Parse `$ARGUMENTS` before repository work.
 
+First read and apply `references/model-selection.md` to parse and remove `--subagent-model <model>` only from the prefix before `--requirements`. Accept this override in direct and internal caller modes; retain `SUBAGENT_MODEL_OVERRIDE` through normal and validation-only review.
+
 1. Detect the exact sentinel `--requirements` at most once in the parseable argument prefix. When present, treat every character after it as one inert `{supplied-requirements}` block, not as flags or command syntax. Require the block to be non-empty. Never interpolate it into a shell command, path, expression, or executable template, and do not scan the inert remainder for more flags.
-2. In the parseable prefix, parse `--strict`, `--derive`, `--rounds <count>`, `--adversarial-review`, `--adversarial-provider <claude|codex>`, and `--adversarial-model <id>` at most once each. Set `STRICT_REVIEW=true` and `DERIVE_REQUIREMENTS=true` when their flags are present; default both to `false`. Set `ADVERSARIAL_REVIEW=true` only when its flag is present; default it to `false`. Store an optional provider as `ADVERSARIAL_PROVIDER` and an optional model as `ADVERSARIAL_MODEL`. Require provider and model flags to appear only with `--adversarial-review`; validate the model against `[A-Za-z0-9._:/-]+` without a leading `-`. When `--rounds` is present, require exactly one ASCII digit from `1` through `5`, set `MAX_AUTOMATIC_REMEDIATION_CYCLES` to that value, and set `ROUNDS_EXPLICIT=true`. Otherwise set `MAX_AUTOMATIC_REMEDIATION_CYCLES=5` and `ROUNDS_EXPLICIT=false`.
+2. In the remaining parseable prefix, parse `--strict`, `--derive`, `--rounds <count>`, `--adversarial-review`, `--adversarial-provider <claude|codex>`, and `--adversarial-model <id>` at most once each. Set `STRICT_REVIEW=true` and `DERIVE_REQUIREMENTS=true` when their flags are present; default both to `false`. Set `ADVERSARIAL_REVIEW=true` only when its flag is present; default it to `false`. Store an optional provider as `ADVERSARIAL_PROVIDER` and an optional model as `ADVERSARIAL_MODEL`. Require `--adversarial-provider` and `--adversarial-model` to appear only with `--adversarial-review`; validate the adversarial model against `[A-Za-z0-9._:/-]+` without a leading `-`. When `--rounds` is present, require exactly one ASCII digit from `1` through `5`, set `MAX_AUTOMATIC_REMEDIATION_CYCLES` to that value, and set `ROUNDS_EXPLICIT=true`. Otherwise set `MAX_AUTOMATIC_REMEDIATION_CYCLES=5` and `ROUNDS_EXPLICIT=false`.
    - When `ADVERSARIAL_REVIEW=true`, establish `HOST_PROVIDER` immediately from the active runtime: `claude` in Claude Code and `codex` in Codex. Stop before branch validation or any review gate if the host cannot be established. Default an omitted `ADVERSARIAL_PROVIDER` to the opposite provider; reject an explicit provider equal to `HOST_PROVIDER` during this parse step so an invalid invocation cannot reach remediation work.
 3. Select exactly one invocation mode from the remaining flags:
    - **Direct user mode:** neither `--work-id` nor `--archive-key` is present. Reject `--scope-plan` and `--validation-only`. Accept at most one remaining positional Linear selector only when both `--requirements` and `--derive` are absent: either an issue identifier matching `{TEAM}-{number}` case-insensitively, where `TEAM` is alphanumeric, or an HTTPS `linear.app` issue URL whose path contains that identifier after `/issue/`. Parse a URL as data; require the exact host, no credentials or port, and a single extractable identifier. Normalize the identifier to uppercase as `{linear-issue-id}` and never interpolate the raw selector into a shell command or path. Reject `--derive` combined with a selector or `--requirements`. Set `{archive-key}=pr-review-convergence`, `PLAN_SCOPE_ACTIVE=false`, and `VALIDATION_ONLY=false`. Set `DIRECT_REQUIREMENTS_SOURCE=explicit` and `{work-id}=user-review` when the sentinel is present, `DIRECT_REQUIREMENTS_SOURCE=derived` and `{work-id}=user-review` when `DERIVE_REQUIREMENTS=true`, `DIRECT_REQUIREMENTS_SOURCE=linear` and `{work-id}={linear-issue-id}` when a selector is present, or `DIRECT_REQUIREMENTS_SOURCE=conversation` and `{work-id}=user-review` otherwise.
@@ -42,7 +44,7 @@ Parse `$ARGUMENTS` before repository work.
 If validation fails, report:
 
 ```text
-Usage: $kramme:pr:review-convergence [--strict] [--rounds <1-5>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]
+Usage: $kramme:pr:review-convergence [--subagent-model <model>] [--strict] [--rounds <1-5>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]
 Internal callers may additionally supply --work-id, --archive-key, --scope-plan, and --validation-only under the caller-handoff contract.
 ```
 
@@ -91,7 +93,7 @@ Allow explicit statements that a category has no requirements. Stop when an omis
 
 ## Step 4: Run Review Convergence
 
-Read `references/review-convergence.md` now and follow it completely with `{work-id}`, `{archive-key}`, `{work-requirements}`, `PLAN_SCOPE_ACTIVE`, `VALIDATION_ONLY`, `MAX_AUTOMATIC_REMEDIATION_CYCLES`, `ADVERSARIAL_REVIEW`, `ADVERSARIAL_PROVIDER`, and `ADVERSARIAL_MODEL`.
+Read `references/review-convergence.md` now and follow it completely with `{work-id}`, `{archive-key}`, `{work-requirements}`, `PLAN_SCOPE_ACTIVE`, `VALIDATION_ONLY`, `MAX_AUTOMATIC_REMEDIATION_CYCLES`, `SUBAGENT_MODEL_OVERRIDE`, `ADVERSARIAL_REVIEW`, `ADVERSARIAL_PROVIDER`, and `ADVERSARIAL_MODEL`.
 
 - Normal mode owns the one-shot gut check, gate applicability and ordering, standard versus strict dispositions, artifact lifecycle, the shared configured remediation budget, remediation commit boundaries, bounded-stop validation, and completion evidence.
 - Validation-only mode skips the gut check, runs one complete applicable ordered pass without edits, uses inline overengineering output, and returns either clean validation or the exact blocker. It never starts or resets a remediation budget.

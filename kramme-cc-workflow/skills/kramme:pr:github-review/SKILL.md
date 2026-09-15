@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:github-review
 description: "Review a GitHub PR where you are the assigned reviewer, not the author. Produces a local Markdown report, deduplicates existing conversations, and drafts inline comments, replies, and a verdict recommendation. With confirmation—or --draft-review—creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), responding on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
-argument-hint: "[pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
+argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -15,6 +15,8 @@ This skill does not write to GitHub until the user authorizes it. It always mate
 ## Step 0: Parse Arguments
 
 Parse `$ARGUMENTS` before any network or git call.
+
+First read and apply `references/model-selection.md` to parse and remove `--subagent-model <model>` before the PR selector and other flags. Keep `SUBAGENT_MODEL_OVERRIDE` for both delegated review passes.
 
 - First positional token that is a PR number (`123`, `#123`) or a GitHub PR URL → `PR_SELECTOR`. Otherwise leave `PR_SELECTOR` empty.
 - `--draft-review` → `CREATE_DRAFT_REVIEW=true`. After drafting and humanizing the findings, create one unsubmitted pending GitHub review containing every eligible proposed inline comment without asking again. This flag authorizes only that pending-review write; it never authorizes submitting the review, replying to existing threads, resolving threads, approving, or requesting changes.
@@ -189,6 +191,10 @@ The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimite
 If `CODE_ONLY=true`, set `RUN_UI=false` and skip the rest of this step without loading another resource. Otherwise read `references/ui-relevance.md` and follow its `ui-relevance-path-contract-v1` classifier against `CHANGED_FILES` to set `RUN_UI`.
 
 ## Step 6: Run the Reviews
+
+Keep delegated review orchestrators on this session's model unless the user explicitly chooses otherwise. Each review skill applies its own model-selection policy to its reviewers; do not lower the orchestrator first and cause a second step-down. Forward any explicit user reviewer-model choice with the review handoff.
+
+When `SUBAGENT_MODEL_OVERRIDE` is non-empty, include `--subagent-model <model>` in both the code-review and ux-review invocations below; otherwise omit it.
 
 Run all review commands **with the worktree as the working directory** (you are already `cd`'d there). If you delegate via slash command, the sibling skill resolves git state against the PR head only while the session's working directory is the worktree — keep it there until the worktree is removed in Step 8. If slash invocation is unavailable, read the sibling skill's `SKILL.md` from the installed skills directory and follow it, running every git command inside the worktree.
 

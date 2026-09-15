@@ -2,6 +2,10 @@
 
 Use this policy after the skill has frozen the caller's requirements and validated the committed local branch plus any plan scope. In normal mode, a one-shot gut check opens the loop; every quality round then selects applicable gates and runs regular code review, convention review, overengineering review, and PR-scoped refactor discovery in that order. When explicitly enabled, a required different-provider review runs as Gate 5 after the ordinary gates have reached a no-change candidate. Validation-only mode skips the gut check and runs that ordered gate pass once without edits. Preserve each delegated skill's scope, evidence, relevance, and reporting rules.
 
+Keep delegated review orchestrators on this session's model unless the user explicitly chooses otherwise. Each review skill applies its own model-selection policy to its reviewers; do not lower the orchestrator first and cause a second step-down. Forward any explicit user reviewer-model choice with the review handoff. Implementation/resolver agents and the explicit different-provider adversarial gate retain their existing model policies.
+
+When `SUBAGENT_MODEL_OVERRIDE` is non-empty, forward `--subagent-model <model>` to every code-review, convention-review, and overengineering-review invocation, including reruns, validation-only mode, and bounded-stop validation. Insert this optional pair before any `--requirements` sentinel in the gate invocations below; keep the requirements remainder byte-for-byte unchanged. Do not forward it to gut-check, refactor discovery, implementation/resolver agents, or the different-provider adversarial gate; `--adversarial-model` controls that gate independently.
+
 ## Finding Terms
 
 - **Emitted finding** — every finding returned by a quality gate in the latest round, before this workflow triages or dispositions it.

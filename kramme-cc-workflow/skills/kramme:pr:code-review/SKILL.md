@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
 description: "Review branch changes for tests, errors, types, security, performance, slop, lean deletion, refactor fit, and simplification. Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. --team cross-validates; --loop applies fixes and verifies convergence. Not for UX, visual, or accessibility; use kramme:pr:ux-review."
-argument-hint: "[aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]"
+argument-hint: "[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -11,6 +11,8 @@ user-invocable: true
 Run a comprehensive pull request review using multiple specialized agents, each focusing on a different aspect of code quality.
 
 **Review Aspects (optional):** "$ARGUMENTS"
+
+Before selecting a workflow, read and apply `references/model-selection.md`. It parses and removes `--subagent-model <model>` before aspect parsing or Team Mode routing. Preserve the original invocation's flag boundaries for `--emphasize`; removing the model pair must not merge later positional aspects into an emphasis span. Its model selection applies to every review subagent in standard, parallel, Team Mode, and loop verification passes.
 
 Before selecting any workflow, read `references/execution-contract.md` in full. Its execution ledger and fail-closed completion gate apply to every mode and rerun. Never replace specialized agents with a parent-only review, silently narrow the scope, cancel reviewers because enough findings exist, or skip stages on zero findings. Partial results are `INCOMPLETE`, never a completed or clean review.
 

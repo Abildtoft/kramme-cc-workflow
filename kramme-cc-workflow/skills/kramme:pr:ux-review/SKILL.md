@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:ux-review
 description: Audit UI, UX, and product experience of PR and local changes using specialized agents for usability heuristics, product thinking, visual consistency, and accessibility. Supports inline report output with --inline. Use --team for multi-agent cross-validation.
-argument-hint: "[app-url|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline] [--no-diff-comments]"
+argument-hint: "[--subagent-model <model>] [app-url|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline] [--no-diff-comments]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -11,6 +11,8 @@ user-invocable: true
 Audit the UI, UX, and product experience of a PR's changes, including local staged/unstaged/untracked work, using specialized agents.
 
 **Arguments:** "$ARGUMENTS"
+
+Before selecting a workflow, read and apply `references/model-selection.md`. It parses and removes `--subagent-model <model>` before category parsing or Team Mode routing. Its model selection applies to every review subagent in standard, parallel, and Team Mode, including relevance validation.
 
 If `$ARGUMENTS` contains `--no-diff-comments`, set `DIFF_COMMENTS=false` and remove that flag. Otherwise set `DIFF_COMMENTS=true`. Preserve this value for Team Mode and standard review output.
 

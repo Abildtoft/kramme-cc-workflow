@@ -178,6 +178,49 @@ test("canonical plugin build preserves runtime path dependency closure", async (
     );
 
     const skillsRoot = path.join(built.pluginRoot, "skills");
+    for (const name of [
+      "code-review",
+      "convention-review",
+      "github-review",
+      "overengineering-review",
+      "product-review",
+      "review-convergence",
+      "ux-review",
+    ]) {
+      const skillDir = path.join(skillsRoot, `kramme:pr:${name}`);
+      assert.match(
+        await readText(path.join(skillDir, "SKILL.md")),
+        /read and apply `references\/model-selection\.md`/,
+      );
+      const { data: frontmatter } = parseFrontmatter(
+        await readText(path.join(skillDir, "SKILL.md")),
+      );
+      const argumentHint = frontmatter["argument-hint"];
+      assert.ok(typeof argumentHint === "string");
+      assert.ok(argumentHint.includes("[--subagent-model <model>]"));
+      const policy = await readText(
+        path.join(skillDir, "references", "model-selection.md"),
+      );
+      for (const [orchestrator, reviewer] of [
+        ["Astra", "Sol"],
+        ["Sol", "Terra"],
+        ["Terra", "Luna"],
+        ["Luna", "Luna"],
+      ]) {
+        assert.match(
+          policy,
+          new RegExp(
+            String.raw`\| Codex\s*\| ${orchestrator}\s*\| ${reviewer}\s*\|`,
+          ),
+        );
+      }
+      assert.match(policy, /pass the selected model to `spawn_agent`/);
+      assert.match(policy, /fork_turns="none"/);
+      assert.match(policy, /Set the actual agent-launch `model` parameter/);
+      assert.match(policy, /parse `--subagent-model <model>` at most once/);
+      assert.match(policy, /`--subagent-model inherit` uses the orchestrator/);
+      assert.match(policy, /Insert it before `--requirements`/);
+    }
     const unresolvedRuntimePaths = (await readMarkdownTree(skillsRoot))
       .filter(({ text }) => /\$\{?CLAUDE_PLUGIN_ROOT\b/.test(text))
       .map(({ file }) => path.relative(skillsRoot, file));
