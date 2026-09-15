@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:convention-review
 description: Review PR and local changes for convention drift and overcaution around new patterns, dependencies, abstractions, or defensive complexity when requested or delegated by kramme:pr:review-convergence. Compare documented rules and mined peer-file practice; every finding cites evidence. Supports --inline and produces review output without editing source. Not for general code quality or spec review.
-argument-hint: "[--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]"
+argument-hint: "[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -22,19 +22,21 @@ Both are relative measurements: the baseline is mined from the repository itself
 
 **Arguments:** "$ARGUMENTS"
 
+Before parsing other arguments, read and apply `references/model-selection.md` to every reviewer cluster, refutation pass, and relevance validator. It parses and removes `--subagent-model <model>` first.
+
 **Shared protocol:** Read `references/baseline-mining.md` before launching reviewers. It defines the evidence tiers, peer-file sampling, quorum rule, lens checklists, classification taxonomy, and finding format.
 
 ## Review Workflow
 
 ### Step 1: Parse Arguments
 
-Accept only `--base <branch>`, `--threshold N`, `--inline`, and `--no-diff-comments`:
+Accept `--subagent-model <model>` through the startup model-selection contract above. Accept only `--base <branch>`, `--threshold N`, `--inline`, and `--no-diff-comments` in the remaining arguments:
 
 1. `--base` and `--threshold` may each appear at most once and must be followed by a non-flag value. Store the base as `BASE_BRANCH_OVERRIDE`.
 2. Require `--threshold` to be a decimal integer from 0 through 100. Store it as `custom_threshold`; default to `80`.
 3. `--inline` may appear at most once. Set `INLINE_MODE=true` when present and `false` otherwise.
 4. `--no-diff-comments` may appear at most once. Set `DIFF_COMMENTS=false` when present and `true` otherwise.
-5. Reject duplicate flags, unknown flags, positional arguments, missing values, and invalid thresholds before reading project files, fetching, or launching reviewers. Show: `Usage: /kramme:pr:convention-review [--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]` and stop.
+5. Reject duplicate flags, unknown flags, positional arguments, missing values, and invalid thresholds before reading project files, fetching, or launching reviewers. Show: `Usage: /kramme:pr:convention-review [--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]` and stop.
 
 Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is already present in the current tool set, read and follow `references/conductor-diff-comments.md` while building the canonical finding set. Preserve its projection identities through ordinal ID assignment for the post-report projection. Detect tools by presence; never call one merely to probe availability.
 

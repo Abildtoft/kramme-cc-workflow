@@ -4,6 +4,7 @@ Apply this workflow only when the caller passed `--loop`. The review this skill 
 
 ## Contract
 
+- Reuse the reviewer model selected under `references/model-selection.md` for review reruns and the independent termination verifier. Do not step down again or apply this policy to implementation/resolver agents.
 - Treat review output as advisory. Never apply a finding blindly.
 - Verify every accepted finding against the real code path and adjacent files before changing code.
 - Reject speculative risks, unrealistic edge cases, broad rewrites, and fixes that do not fit the local codebase.
@@ -36,7 +37,7 @@ Apply this workflow only when the caller passed `--loop`. The review this skill 
 
 4. **Verify, rerun, and gate termination**
    - Run focused tests, type checks, lint, or build commands that cover the code changed while resolving review findings.
-   - After review-triggered code changes, rerun this skill's review phase with the same normalized review arguments. Do not add `--loop` to the nested review invocation; return to this workflow after the new result is ready.
+   - After review-triggered code changes, rerun this skill's review phase with the same normalized review arguments. Restore `--subagent-model <model>` from a non-empty `SUBAGENT_MODEL_OVERRIDE` in every nested review invocation; preserve explicit `inherit` as well. Do not add `--loop` to the nested review invocation; return to this workflow after the new result is ready.
    - Before stopping the loop, delegate the accept/terminate assessment to an independent verifier with its own context window. This gate runs on every termination path, including when step 2 rejected every finding and no rerun happened. Skip it only when the latest review reported no Critical or Important findings at all, since there is no accept/reject judgment to check.
      - **Claude Code:** run the assessment in a subagent.
      - **Codex:** run the assessment in an equivalent task sub-agent.

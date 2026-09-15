@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:product-review
 description: Deep product review of branch and local changes. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, adjacent-flow regressions, and prioritization quality. Infers likely user goals and non-goals when rationale is missing. Not for UX heuristics, accessibility, or visual consistency -- use pr:ux-review for those. Supports inline report output with --inline.
-argument-hint: "[--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]"
+argument-hint: "[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -12,6 +12,8 @@ kramme-platforms: [claude-code, codex]
 Deep product review of branch changes and local work. Evaluates user-value alignment, flow completeness, missing states, copy/defaults, permission behavior, and adjacent-flow regressions.
 
 **Arguments:** "$ARGUMENTS"
+
+Before parsing other arguments, read and apply `references/model-selection.md` to the product reviewer and relevance validator. It parses and removes `--subagent-model <model>` first.
 
 ## Review Workflow
 

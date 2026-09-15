@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:overengineering-review
 description: Review branch and local changes for unnecessary complexity, speculative generality, or unlikely edge-case handling when requested or delegated by kramme:pr:review-convergence. Judge necessity against actual requirements using a finder and adversarial justification pass; retain surviving judgment calls. Supports --requirements and --inline; produces review output without editing source. Not for baseline convention drift or general code quality.
-argument-hint: "[--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]"
+argument-hint: "[--subagent-model <model>] [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -25,17 +25,19 @@ This skill is deliberately shaped differently from the other review skills:
 
 **Arguments:** "$ARGUMENTS"
 
+Before parsing other arguments, read and apply `references/model-selection.md` to the finder and every justification pass. It parses and removes `--subagent-model <model>` only before the `--requirements` sentinel.
+
 ## Review Workflow
 
 ### Step 1: Parse Arguments
 
-Accept only `--base <branch>`, `--inline`, `--no-diff-comments`, and the optional sentinel `--requirements <text>`:
+Accept `--subagent-model <model>` through the startup model-selection contract above. Accept only `--base <branch>`, `--inline`, `--no-diff-comments`, and the optional sentinel `--requirements <text>` in the remaining arguments:
 
 1. Before the sentinel, `--base` may appear at most once and must be followed by a non-flag value. Store it as `BASE_BRANCH_OVERRIDE`.
 2. Before the sentinel, `--inline` may appear at most once. Set `INLINE_MODE=true` when present and `false` otherwise.
 3. Before the sentinel, `--no-diff-comments` may appear at most once. Set `DIFF_COMMENTS=false` when present and `true` otherwise.
 4. `--requirements` may appear at most once. When present, it is the final control token: treat every character after it as one non-empty inert `TASK_REQUIREMENTS` block, including whitespace, quotes, newlines, and flag-shaped text. Do not parse quoting inside the block or reinterpret any later text as flags.
-5. On duplicate flags, unknown flags, positional arguments before the sentinel, or a missing requirements block, show `Usage: /kramme:pr:overengineering-review [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]` and stop.
+5. On duplicate flags, unknown flags, positional arguments before the sentinel, or a missing requirements block, show `Usage: /kramme:pr:overengineering-review [--subagent-model <model>] [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]` and stop.
 
 Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is already present in the current tool set, read and follow `references/conductor-diff-comments.md` while building the canonical finding set. Preserve its projection identities through ordinal ID assignment for the post-report projection. Detect tools by presence; never call one merely to probe availability.
 

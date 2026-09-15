@@ -1,5 +1,7 @@
 # Team-Based UX Audit
 
+Read and apply `references/model-selection.md` before creating the team. Reuse the standard workflow's selected reviewer model for every teammate and later validation spawn. Preserve `SUBAGENT_MODEL_OVERRIDE` from startup parsing; do not reset it because `--subagent-model` was already removed from the team arguments.
+
 Run a UX audit using multi-agent execution. Each reviewer runs with its own context window and can cross-validate findings with other reviewers.
 
 This reference is loaded by `/kramme:pr:ux-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.

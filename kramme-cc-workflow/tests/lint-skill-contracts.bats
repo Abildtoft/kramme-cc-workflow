@@ -1377,7 +1377,7 @@ EOF
   local skill_text
   skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:ux-review/SKILL.md")"
 
-  [[ "$skill_text" == *'argument-hint: "[app-url|auto] [--categories a11y,ux,product,visual]'* ]]
+  [[ "$skill_text" == *'argument-hint: "[--subagent-model <model>] [app-url|auto] [--categories a11y,ux,product,visual]'* ]]
   [[ "$skill_text" == *'If `--categories` flag → parse comma-separated list.'* ]]
   [[ "$skill_text" == *'If `--categories product,visual` → launch kramme:product-reviewer and kramme:visual-reviewer'* ]]
   [[ "$skill_text" == *'If `--categories all` → launch all 4 agents'* ]]
@@ -4266,7 +4266,7 @@ EOF
   [[ "$skill_text" == *'After its final aggregated audit succeeds, run `Post Conductor Diff Comments` below and then stop.'* ]]
 
   skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:overengineering-review/SKILL.md")"
-  [[ "$skill_text" == *'argument-hint: "[--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]"'* ]]
+  [[ "$skill_text" == *'argument-hint: "[--subagent-model <model>] [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]"'* ]]
 
   run grep -rlF 'Synced Conductor diff-comment contract (keep aligned across review producers):' \
     "$BATS_TEST_DIRNAME/../skills"
