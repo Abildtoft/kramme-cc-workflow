@@ -1527,6 +1527,21 @@
       ]
     },
     {
+      "name": "linear-issue-implement-status-transition",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/references/status-transition.md",
+      "contains": [
+        "Follow this reference only when `SET_IN_PROGRESS=true`",
+        "Reject direct, incomplete, mismatched, or duplicate use of the handoff",
+        "Do not treat `unstarted` as backlog",
+        "prefer the case-insensitive exact name `In Progress`",
+        "Proceed with implementation and move the issue to {target-status-name}?",
+        "Immediately before the Linear write, close the confirmation race",
+        "pass `id: {issue-update-id}` and `state: {target-status-id}` and no other mutable field",
+        "After a successful write, read the issue back",
+        "stop before branch setup"
+      ]
+    },
+    {
       "name": "linear-issue-implement-display-template",
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/references/display-templates.md",
       "contains": [
