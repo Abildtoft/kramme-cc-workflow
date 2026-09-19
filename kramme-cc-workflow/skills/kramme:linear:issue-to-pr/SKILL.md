@@ -1,7 +1,7 @@
 ---
 name: kramme:linear:issue-to-pr
 description: Requires Linear MCP and the GitHub gh CLI. Takes one Linear issue, including one transferred from SIW, through implementation, frozen requirements, review convergence, verification, and optional PR/CI stabilization. `--continue` resumes validated dirty work only on the exact unpublished Linear branch for an already-started issue. Fresh runs may rename the Conductor workspace. Not for implementation/review only, untransferred local SIW issues, stacked or existing PRs, or post-merge rollout.
-argument-hint: "<ISSUE-ID> [--continue] [--strict] [--rounds <1-5>] [--ship]"
+argument-hint: "<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -29,22 +29,22 @@ Parse `$ARGUMENTS` before doing any repository or Linear work.
 1. Remove recognized flags in any order, each at most once:
    - `--continue` sets `CONTINUE_MODE=true`.
    - `--strict` sets `STRICT_REVIEW=true`.
-   - `--rounds <count>` requires exactly one ASCII digit from `1` through `5` as its value; store it as `{rounds}` and set `ROUNDS_EXPLICIT=true`.
+   - `--cycles <count>` requires exactly one ASCII digit from `1` through `5` as its value; store it as `{cycles}` and set `CYCLES_EXPLICIT=true`.
    - `--ship` sets `SHIP_MODE=true`.
-2. Reject every unknown `--flag`, every duplicate flag, and a `--rounds` value outside `1`–`5`, listing the supported flags.
+2. Reject every unknown `--flag`, every duplicate flag, and a `--cycles` value outside `1`–`5`, listing the supported flags.
 3. Require exactly one remaining positional argument matching `{TEAM}-{number}`, case-insensitively, where `TEAM` is alphanumeric.
 4. Normalize the issue identifier to uppercase and store it as `{issue-id}`.
 
 Defaults:
 
 - `STRICT_REVIEW=false`: require no accepted unresolved Critical or Important findings. Report remaining manual or advisory findings.
-- `ROUNDS_EXPLICIT=false`: let `kramme:pr:review-convergence` use its own default remediation-cycle budget.
+- `CYCLES_EXPLICIT=false`: set `{cycles}` to `3`. This workflow always forwards an explicit remediation-cycle budget rather than letting `kramme:pr:review-convergence` apply its own higher default.
 - `SHIP_MODE=false`: stop after clean review and final verification without rewriting history, pushing, or creating a Pull Request.
 - `CONTINUE_MODE=false`: require the ordinary clean-tree branch setup and start implementation from the delegated workflow's fresh preflight.
 
 `--strict` changes review disposition, not product authority. It does not permit inventing a missing requirement or bypassing a genuine manual blocker.
 
-`--rounds` only tightens the delegated remediation-cycle budget in Step 3. It is never forwarded to the shipping contract's post-CI validation-only pass, which always runs one read-only pass without a remediation budget.
+`--cycles` overrules the default remediation-cycle budget in Step 3, either tightening it below `3` or raising it up to `5`. It changes only that budget: it is never forwarded to the shipping contract's post-CI validation-only pass, which always runs one read-only pass without a remediation budget, and a larger budget never permits shipping an unconverged branch.
 
 `--continue` is explicit authorization to preserve and resume local work from an interrupted invocation. It does not accept arbitrary dirty state: Step 2 still requires the exact unpublished Linear branch, the issue already in the resolved target `started` status, no in-progress Git operation, a local change relative to the fetched base, and issue-related committed and dirty paths. It never authorizes a Linear transition, stashing, discarding, resetting, switching away from, or silently absorbing unrelated work.
 
@@ -53,7 +53,7 @@ Defaults:
 If validation fails, stop with:
 
 ```text
-Usage: $kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--rounds <1-5>] [--ship]
+Usage: $kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]
 Example: $kramme:linear:issue-to-pr DISC-202 --strict --ship
 Continue: $kramme:linear:issue-to-pr DISC-202 --continue --ship
 ```
@@ -146,10 +146,10 @@ Compose `{issue-requirements}` once from the issue title and requested behavior;
 Invoke `kramme:pr:review-convergence` with:
 
 ```text
---work-id {issue-id} --archive-key linear-issue-to-pr [--strict] [--rounds {rounds}] --requirements {issue-requirements}
+--work-id {issue-id} --archive-key linear-issue-to-pr [--strict] --rounds {cycles} --requirements {issue-requirements}
 ```
 
-Append `--strict` only when `STRICT_REVIEW=true` and `--rounds {rounds}` only when `ROUNDS_EXPLICIT=true`, keeping the `--requirements` sentinel last. The delegated skill independently validates the prepared local branch, runs the gut check and applicable quality gates to one shared bounded convergence budget, owns every review-triggered edit and remediation commit, and runs fresh final verification.
+Append `--strict` only when `STRICT_REVIEW=true`. Always pass `--rounds {cycles}`, which carries this workflow's default budget of `3` unless `--cycles` overruled it. Keep the `--requirements` sentinel last. The delegated skill independently validates the prepared local branch, runs the gut check and applicable quality gates to one shared bounded convergence budget, owns every review-triggered edit and remediation commit, and runs fresh final verification.
 
 Continue only when its structured handoff proves all of the following:
 
