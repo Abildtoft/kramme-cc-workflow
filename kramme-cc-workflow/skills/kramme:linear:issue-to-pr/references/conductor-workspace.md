@@ -1,6 +1,6 @@
 # Conductor Workspace Naming
 
-Apply this adapter once after the Step 2 Linear state gate succeeds and before delegated branch setup. It is optional host presentation behavior; Linear, Git, and Pull Request state remain authoritative.
+Apply this adapter once after the Step 2 Linear state gate succeeds and before delegated implementation, which applies the gated status transition and then branch setup. It is optional host presentation behavior; Linear, Git, and Pull Request state remain authoritative.
 
 1. Initialize `{conductor-rename-outcome}` to `not detected`.
 2. Detect Conductor only when `CONDUCTOR_WORKSPACE_ID` is set and non-empty. When it is absent, do not probe for the CLI or any Conductor tool; keep the default outcome and return to the parent workflow.
