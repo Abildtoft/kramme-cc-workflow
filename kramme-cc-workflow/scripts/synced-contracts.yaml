@@ -638,7 +638,7 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
       "frontmatter": {
         "name": "kramme:pr:code-review",
-        "argument-hint": "[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]",
+        "argument-hint": "[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--no-cleanup] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]",
         "disable-model-invocation": "false",
         "user-invocable": "true"
       },
@@ -674,7 +674,7 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md",
       "frontmatter": {
         "name": "kramme:pr:convention-review",
-        "argument-hint": "[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]",
+        "argument-hint": "[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--baseline <path>] [--inline] [--no-diff-comments]",
         "disable-model-invocation": "false",
         "user-invocable": "true"
       },

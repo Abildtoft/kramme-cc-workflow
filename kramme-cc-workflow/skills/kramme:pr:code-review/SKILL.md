@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:code-review
 description: "Review branch changes for tests, errors, types, security, performance, slop, lean deletion, refactor fit, and simplification. Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. --team cross-validates; --loop applies fixes and verifies convergence. Not for UX, visual, or accessibility; use kramme:pr:ux-review."
-argument-hint: "[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]"
+argument-hint: "[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--no-cleanup] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -32,13 +32,14 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    - If `--base <branch>` flag → store as `BASE_BRANCH_OVERRIDE`
    - If `--previous-review <path>` flag → store as `PREVIOUS_REVIEW_PATH` and remove it and its value from the aspect list. Reject the flag if the path is missing, points to a directory, or cannot be read. Do not silently fall back to `REVIEW_OVERVIEW.md` when an explicit previous-review path is invalid.
    - If `--inline` flag → set `INLINE_MODE=true` and remove it from the aspect list
+   - If `--no-cleanup` flag → set `NO_CLEANUP=true` and remove it from the aspect list. It drops the advisory cleanup dimensions `lean`, `refactor`, and `simplify` from the default `all` set so a follow-up pass over a small fix pays only for correctness reviewers. Reject it when an explicit aspect list or `--emphasize` names any of those three dimensions; the flag never removes a dimension the user asked for by name.
    - If `--team` flag → use Team Mode and remove it from the aspect list
    - If `--parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
    - If the bare token `parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel`, remove it from the aspect list, and treat it as a deprecated alias for `--parallel`.
    - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `--parallel`, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `lean`, `refactor`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op). Cleanup emphasis (`lean`, `refactor`, `simplify`) never overrides the precedence pass or the action-class normalization rule that optional cleanup stays advisory.
    - Validate remaining positional tokens as aspect names against the same list plus `all`. If any token is not a recognized aspect, stop with an error naming the unrecognized token and listing valid aspects. Do not silently fall through to "run all applicable reviews."
    - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
-   - Default (no aspect tokens, or `all`): Run all applicable reviews, including the cleanup dimensions `lean`, `refactor`, and `simplify`. These cleanup dimensions are lower-priority than unresolved correctness, security, error-handling, and test findings when recommendations collide; the precedence pass in Step 11 suppresses or demotes cleanup advice that would undermine an open higher-priority finding.
+   - Default (no aspect tokens, or `all`): Run all applicable reviews, including the cleanup dimensions `lean`, `refactor`, and `simplify`. These cleanup dimensions are lower-priority than unresolved correctness, security, error-handling, and test findings when recommendations collide; the precedence pass in Step 11 suppresses or demotes cleanup advice that would undermine an open higher-priority finding. When `NO_CLEANUP=true`, exclude `lean`, `refactor`, and `simplify` from this default set and record `Cleanup dimensions: skipped (--no-cleanup)` in the report metadata.
 
 2. **Resolve Base Branch and Collect Review Diff**
 
@@ -246,7 +247,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
 
 9. **Slop Meta-Review**
 
-   After relevance validation, review agent suggestions for slop:
+   After relevance validation, review agent suggestions for slop. If no validated finding or suggestion remains, skip this step, record `Slop meta-review: skipped (no findings)`, and do not launch the agent — there is nothing to annotate. Otherwise:
    - Launch a second invocation of **kramme:deslop-reviewer**. Open the prompt with `Operate in meta-review mode.` and pass the list of validated findings/suggestions as the only input -- do not pass a diff. The agent's description documents both modes; the input shape and this directive together select meta-review mode.
    - Flags suggestions that would introduce slop if implemented, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
    - Adds slop warnings to flagged suggestions (does not remove them)
@@ -350,7 +351,7 @@ Run this step after standard output and after Team Mode returns its final aggreg
 
 Project only from the canonical aggregated summary. Conductor comments are never a findings source of truth, and this step must never post to GitHub. Missing optional tools or an incompatible host schema leave the report/inline result valid and unchanged.
 
-Always end the run with `Diff comments posted: N (skipped M already present)`, using zeroes when projection is disabled or unavailable; add one concise projection-limitation line when eligible findings were not projected.
+Always end the run with `Reviewers launched: N` — the exact number of agent launches this run made, counting every primary reviewer, the relevance validator, and the slop meta-review, or `0` when the review ran in the main thread — followed by `Diff comments posted: N (skipped M already present)`, using zeroes when projection is disabled or unavailable; add one concise projection-limitation line when eligible findings were not projected.
 
 13. **Provide Action Plan**
 

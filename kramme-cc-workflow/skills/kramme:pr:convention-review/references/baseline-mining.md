@@ -36,6 +36,27 @@ Below quorum, the verdict for that dimension is **no precedent** (nothing compar
 - **No precedent** → the diff is establishing the first pattern; at most, note that the choice is new and worth a sentence of rationale in the PR description.
 - **Split practice** → report a Split Practice Observation recommending the team pick one convention explicitly; never pick the winner yourself.
 
+## Baseline Ledger
+
+Mining is the expensive half of this review, and peer files rarely change between rounds of the same branch. When the orchestrator supplies prior baseline entries, reuse them under one rule: an entry may be reused only when every peer file it records still has the same blob at `HEAD` (`git rev-parse HEAD:<path>` equals the recorded `oid`). Any changed, deleted, or newly excluded peer invalidates the entry for that file and dimension; re-mine it. Reuse never lowers the quorum bar and never substitutes for a Tier 1 rule check.
+
+End every reviewer response with one fenced block so the orchestrator can persist the ledger:
+
+```json mined-baseline
+[
+  {
+    "file": "src/api/users.ts",
+    "dimension": "error-handling",
+    "practice": "throw typed AppError; never return null",
+    "quorum": "4/4",
+    "peers": [{ "path": "src/api/orders.ts", "oid": "3f2a…" }],
+    "status": "mined"
+  }
+]
+```
+
+Emit one entry per changed file and dimension actually examined, with `status` `mined` or `reused`, `quorum` as `matching/examined`, and the exact peer blob IDs read. Do not include findings in this block; it records evidence, not verdicts.
+
 ## Lens A — Convention-Drift Dimensions
 
 For each changed file, compare the diff against the baseline on the dimensions that apply:

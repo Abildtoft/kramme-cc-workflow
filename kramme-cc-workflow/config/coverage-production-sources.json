@@ -75,6 +75,7 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/schema.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/strings.py",
+      "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
       "kramme-cc-workflow/skills/kramme:visual:generate-image/scripts/generate_image.py"
     ],
     "contract_only": {
