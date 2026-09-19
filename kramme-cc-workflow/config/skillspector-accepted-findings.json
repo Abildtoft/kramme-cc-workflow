@@ -223,6 +223,30 @@
       "owner": "kramme",
       "accepted_at": "2026-08-26",
       "review_after": "2026-09-26"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
+      "rule_id": "AST4",
+      "reason": "Reviewed false-positive AST4 finding: subprocess.run executes the fixed git binary with an explicit argument vector and shell=False; callers supply fixed Git subcommands, an allowlisted archive key, and paths normalized by _normalize_path, stdout and stderr are captured, and no user text reaches a shell.",
+      "owner": "kramme",
+      "accepted_at": "2026-09-19",
+      "review_after": "2026-10-19"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
+      "rule_id": "OH1",
+      "reason": "Reviewed false-positive OH1 finding: the git() wrapper never builds a shell string. Every argument is a fixed subcommand, an allowlisted archive key, a validated repository path (no absolute, `..`, leading `-`, or control characters), or a commit message passed as one argv element after `-m`; nothing is interpolated into command text.",
+      "owner": "kramme",
+      "accepted_at": "2026-09-19",
+      "review_after": "2026-10-19"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",
+      "rule_id": "LP3",
+      "reason": "Reviewed intentional LP3 finding: the run-state helper writes only inside the validated, git-ignored `.context/<archive-key>/reviews/` directory and commits only paths the convergence policy already classified; the skill body documents those side effects and the frontmatter schema has no permissions field.",
+      "owner": "kramme",
+      "accepted_at": "2026-09-19",
+      "review_after": "2026-10-19"
     }
   ]
 }
