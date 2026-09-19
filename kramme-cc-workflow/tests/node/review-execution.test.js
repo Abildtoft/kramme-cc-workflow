@@ -140,7 +140,7 @@ function fixture(t, aspects = ["all"], active = []) {
   };
 }
 
-test("default inventory cannot omit always-on and cleanup reviewers; security is a bundle", () => {
+test("default inventory cannot omit always-on and cleanup reviewers; one job per merged reviewer", () => {
   /** @type {{aspects: string[], applicability: Record<string, {applicable: boolean, reason: string}>}} */
   const plan = { aspects: ["all"], applicability: {} };
   assert.throws(() => jobsFor(plan), /applicability/);
@@ -161,22 +161,21 @@ test("default inventory cannot omit always-on and cleanup reviewers; security is
     "code-reviewer",
     "silent-failure-hunter",
     "deslop-reviewer",
-    "lean-reviewer",
-    "code-simplifier",
-    "injection-reviewer",
-    "auth-reviewer",
-    "data-reviewer",
-    "logic-reviewer",
+    "cleanup-reviewer",
+    "security-reviewer",
     "relevance",
     "slop-meta",
   ])
     assert.ok(jobs[id]);
   assert.throws(() => jobsFor({ aspects: ["quick"] }), /Unknown/);
   assert.deepEqual(
-    Object.keys(jobsFor({ aspects: ["refactor", "simplify"] }).jobs).filter(
-      (id) => id === "code-simplifier",
-    ),
-    ["code-simplifier"],
+    Object.keys(
+      jobsFor({
+        aspects: ["lean", "refactor", "simplify", "removal"],
+        applicability: { removal: { applicable: true, reason: "deletion" } },
+      }).jobs,
+    ).filter((id) => id === "cleanup-reviewer"),
+    ["cleanup-reviewer"],
   );
 });
 

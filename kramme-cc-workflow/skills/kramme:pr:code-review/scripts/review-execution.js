@@ -13,17 +13,12 @@ const REVIEWERS = {
   tests: ["pr-test-analyzer"],
   comments: ["comment-analyzer"],
   types: ["type-design-analyzer"],
-  removal: ["removal-planner"],
-  lean: ["lean-reviewer"],
-  refactor: ["code-simplifier"],
-  simplify: ["code-simplifier"],
+  removal: ["cleanup-reviewer"],
+  lean: ["cleanup-reviewer"],
+  refactor: ["cleanup-reviewer"],
+  simplify: ["cleanup-reviewer"],
   performance: ["performance-oracle"],
-  security: [
-    "injection-reviewer",
-    "auth-reviewer",
-    "data-reviewer",
-    "logic-reviewer",
-  ],
+  security: ["security-reviewer"],
 };
 const CONDITIONAL = [
   "tests",

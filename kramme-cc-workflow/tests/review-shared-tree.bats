@@ -285,19 +285,14 @@ EOF
 @test "every reviewer agent launched by code review is read-only" {
   local agents=(
     code-reviewer
-    code-simplifier
+    cleanup-reviewer
     silent-failure-hunter
     deslop-reviewer
     pr-test-analyzer
     comment-analyzer
     type-design-analyzer
-    removal-planner
     performance-oracle
-    injection-reviewer
-    auth-reviewer
-    data-reviewer
-    logic-reviewer
-    lean-reviewer
+    security-reviewer
     pr-relevance-validator
   )
   local agent path

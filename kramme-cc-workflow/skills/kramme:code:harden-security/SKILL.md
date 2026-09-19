@@ -1,6 +1,6 @@
 ---
 name: kramme:code:harden-security
-description: Apply security-by-default to code handling user input, authentication, dependency or lockfile changes, installer/build inputs, personal-data lifecycles, external integrations, or personal-data sharing with LLM providers. Use when accepting untrusted data, managing sessions, adding, upgrading, or remediating packages, or designing sensitive-data collection, retention, deletion, or third-party sharing. Complements the review-time auth-reviewer / data-reviewer / injection-reviewer agents.
+description: Apply security-by-default to code handling user input, authentication, dependency or lockfile changes, installer/build inputs, personal-data lifecycles, external integrations, or personal-data sharing with LLM providers. Use when accepting untrusted data, managing sessions, adding, upgrading, or remediating packages, or designing sensitive-data collection, retention, deletion, or third-party sharing. Complements the review-time kramme:security-reviewer agent.
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -9,7 +9,7 @@ user-invocable: true
 
 Apply security-by-default at author time. This is the procedural counterpart to the review-time security agents: instead of catching vulnerabilities after they're written, bake the guardrails in while the code is being authored. Retrofitting security is roughly an order of magnitude more expensive than writing it in the first place — the goal here is that common classes of vulnerability never reach the review stage at all.
 
-Code examples in this skill use TypeScript/Node idioms (Zod, `npm audit`, `crypto.timingSafeEqual`). The underlying rules are stack-agnostic — translate to the equivalent in your ecosystem (Pydantic, `go-playground/validator`, Rails strong params, Go's `crypto/subtle`, etc.). Calls to `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:injection-reviewer` assume the Claude Code agent runtime.
+Code examples in this skill use TypeScript/Node idioms (Zod, `npm audit`, `crypto.timingSafeEqual`). The underlying rules are stack-agnostic — translate to the equivalent in your ecosystem (Pydantic, `go-playground/validator`, Rails strong params, Go's `crypto/subtle`, etc.). Calls to `kramme:security-reviewer` assume the Claude Code agent runtime.
 
 ## When to use
 
@@ -164,7 +164,7 @@ When personal or sensitive data is in scope, use the complete privacy lifecycle 
 
 ## Injection and XSS defense
 
-The review-time `kramme:injection-reviewer` agent catches these at PR stage; this section prevents them in the first draft.
+The injection lens of the review-time `kramme:security-reviewer` agent catches these at PR stage; this section prevents them in the first draft.
 
 Read `references/owasp-top-10.md` when a slice touches injection, XSS, parser, authentication, access-control, dependency, supply-chain, integrity, logging, exceptional-condition, or security-misconfiguration risk; it maps the OWASP Top 10:2025 categories to author-time prevention patterns.
 
@@ -218,12 +218,9 @@ Noisy on purpose — false positives are preferable to a real key landing in git
 ## Integration with other skills
 
 - **Sibling authoring**: `kramme:code:api-design` owns where the trust boundary lives for a given surface — this skill owns what happens at that boundary. When adding a new endpoint, design the contract with `kramme:code:api-design`, then harden it here.
-- **Downstream review agents** (Claude Code only):
-  - `kramme:auth-reviewer` — verifies auth/authz/CSRF/session checks this skill was supposed to put in place.
-  - `kramme:data-reviewer` — verifies crypto usage, info-disclosure, and DoS bounds.
-  - `kramme:injection-reviewer` — verifies injection/XSS defenses at input→sink paths.
+- **Downstream review agent** (Claude Code only): `kramme:security-reviewer` verifies, in one pass, the auth/authz/CSRF/session checks this skill was supposed to put in place, crypto usage, info-disclosure, and DoS bounds, and injection/XSS defenses at input→sink paths.
 
-A finding from any of the three agents that traces back to code authored with this skill applied is a signal that a rule above was skipped or misapplied — close the loop by updating this skill.
+A finding from that agent that traces back to code authored with this skill applied is a signal that a rule above was skipped or misapplied — close the loop by updating this skill.
 
 ## Verification
 
@@ -231,6 +228,6 @@ Before declaring a security-sensitive slice done, review every relevant area in 
 
 - `SIMPLICITY CHECK` was emitted, every `ASK FIRST` boundary was confirmed before implementation, and every `NOTICED BUT NOT TOUCHING` observation was logged.
 - Every `UNVERIFIED` assumption was either verified or explicitly left open with an owner.
-- The relevant `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:injection-reviewer` agents ran against the diff before the PR.
+- The `kramme:security-reviewer` agent ran against the diff before the PR.
 
 An unsatisfied item introduced, modified, or required by the slice blocks completion; fix the gap or split the slice.

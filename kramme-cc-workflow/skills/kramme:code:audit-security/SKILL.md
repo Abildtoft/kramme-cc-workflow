@@ -28,7 +28,7 @@ Use this skill when the question is, “What security surfaces and evidenced ris
 
 - Use `kramme:code:harden-security` while writing or changing security-relevant code.
 - Use `kramme:deps:audit` for a dependency-only vulnerability, staleness, or upgrade-plan audit.
-- Use `kramme:auth-reviewer`, `kramme:data-reviewer`, `kramme:injection-reviewer`, and `kramme:logic-reviewer` for review-time analysis of a change.
+- Use `kramme:security-reviewer` for review-time analysis of a change.
 - Use a repository issue workflow to track accepted remediation work.
 
 Do not apply a finding. A useful audit identifies ownership and the next route without turning observation into an unreviewed fix.

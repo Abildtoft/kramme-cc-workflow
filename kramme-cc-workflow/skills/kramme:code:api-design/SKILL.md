@@ -136,4 +136,4 @@ The first interface that comes to mind is rarely the best. Design It Twice draft
 ## Integration with other skills
 
 - **Upstream**: `kramme:siw:generate-phases` — when a planned phase introduces a new interface, run this skill first to lock the contract before slicing begins.
-- **Downstream review**: the `kramme:injection-reviewer` and `kramme:auth-reviewer` agents verify the validation and authorization boundaries set here. A contract that declares its validation boundary makes these reviews mechanical.
+- **Downstream review**: the injection and access lenses of the `kramme:security-reviewer` agent verify the validation and authorization boundaries set here. A contract that declares its validation boundary makes these reviews mechanical.

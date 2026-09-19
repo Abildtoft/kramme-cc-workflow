@@ -2,7 +2,7 @@
 
 Purpose: the OWASP Top 10 is the canonical awareness document for web-app vulnerability classes. Most write-ups describe them at review or incident time. This file maps the 2025 categories to author-time patterns so the category does not materialize in the first place.
 
-Not a review checklist. Review coverage lives in the three reviewer agents (`kramme:auth-reviewer`, `kramme:data-reviewer`, `kramme:injection-reviewer`).
+Not a review checklist. Review coverage lives in `kramme:security-reviewer`; each category below names the lens that covers it.
 
 ---
 
@@ -16,7 +16,7 @@ Not a review checklist. Review coverage lives in the three reviewer agents (`kra
 - Object-level access: never trust a client-supplied ID without mapping it through ownership or permission checks.
 - SSRF risk belongs here in 2025: user-controlled URLs, redirects, callbacks, and fetch targets need allow-listed schemes, hosts, and network ranges.
 
-Downstream review: `kramme:auth-reviewer`.
+Downstream review: `kramme:security-reviewer`, access lens.
 
 ## A02: Security Misconfiguration
 
@@ -45,7 +45,7 @@ Downstream review: `kramme:auth-reviewer`.
 - CI actions, container base images, and installer scripts are pinned to trusted versions or digests where practical.
 - Transitive dependencies are scanned too; most interesting CVEs live below the direct dependency layer.
 
-Downstream review: `kramme:data-reviewer`.
+Downstream review: `kramme:security-reviewer`, data lens.
 
 ## A04: Cryptographic Failures
 
@@ -58,7 +58,7 @@ Downstream review: `kramme:data-reviewer`.
 - Keys come from a secret manager or equivalent, never hardcoded. Rotation path is defined before launch.
 - API responses filter fields before serialization; never spread an entire database row into the response.
 
-Downstream review: `kramme:data-reviewer`.
+Downstream review: `kramme:security-reviewer`, data lens.
 
 ## A05: Injection
 
@@ -71,7 +71,7 @@ Downstream review: `kramme:data-reviewer`.
 - User-supplied URLs need protocol allow-lists before rendering, redirecting, or linking.
 - Input validation is defense in depth, not a substitute for safe sinks.
 
-Downstream review: `kramme:injection-reviewer`.
+Downstream review: `kramme:security-reviewer`, injection lens.
 
 ## A06: Insecure Design
 
@@ -83,7 +83,7 @@ Downstream review: `kramme:injection-reviewer`.
 - Model failure modes: duplicate submissions, partial writes, stale permissions, expired tokens, and retries.
 - New auth flows, CORS changes, upload endpoints, elevated-permission additions, and third-party integrations stay in `ASK FIRST` territory.
 
-Downstream review: choose `kramme:auth-reviewer`, `kramme:data-reviewer`, or `kramme:injection-reviewer` based on the boundary.
+Downstream review: `kramme:security-reviewer`, access, data, or injection lens depending on the boundary.
 
 ## A07: Authentication Failures
 
@@ -97,7 +97,7 @@ Downstream review: choose `kramme:auth-reviewer`, `kramme:data-reviewer`, or `kr
 
 Any new auth flow is an `ASK FIRST` situation.
 
-Downstream review: `kramme:auth-reviewer`.
+Downstream review: `kramme:security-reviewer`, access lens.
 
 ## A08: Software or Data Integrity Failures
 
@@ -109,7 +109,7 @@ Downstream review: `kramme:auth-reviewer`.
 - Do not deserialize untrusted data into rich object graphs. Parse to plain data, validate shape, then convert to domain types.
 - CI/CD paths require protected branches, scoped tokens, and review gates before production-affecting changes.
 
-Downstream review: `kramme:data-reviewer`.
+Downstream review: `kramme:security-reviewer`, data lens.
 
 ## A09: Security Logging and Alerting Failures
 
@@ -121,7 +121,7 @@ Downstream review: `kramme:data-reviewer`.
 - Alerts exist for repeated auth failures, sudden privilege escalation, secret-scanner hits in CI, and suspicious admin actions.
 - Retention balances forensic needs against the blast radius of log-store compromise.
 
-Downstream review: `kramme:data-reviewer`.
+Downstream review: `kramme:security-reviewer`, data lens.
 
 ## A10: Mishandling of Exceptional Conditions
 
