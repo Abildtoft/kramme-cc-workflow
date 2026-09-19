@@ -1,7 +1,7 @@
 ---
 name: kramme:linear:issue-implement
-description: Requires Linear MCP. Implement a Linear issue when explicitly requested or when kramme:linear:issue-to-pr delegates its guarded --auto phase. Includes branch setup, reference mapping, planning, and verification. Local SIW work must be transferred to Linear first.
-argument-hint: "<ISSUE-ID> [--auto]"
+description: Requires Linear MCP. Implement a Linear issue when explicitly requested or when kramme:linear:issue-to-pr delegates its guarded --auto phase. Includes branch setup, reference mapping, planning, and verification. Pass --set-in-progress to move the issue to its team's started status, preferring In Progress, before any branch or code work. Local SIW work must be transferred to Linear first.
+argument-hint: "<ISSUE-ID> [--auto] [--set-in-progress]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -12,14 +12,17 @@ Start implementing a Linear issue through an extensive planning phase before any
 
 ### Model Invocation Contract
 
-- Invoke automatically only as the exact child of `kramme:linear:issue-to-pr` when that parent has completed its read-only branch, Pull Request, remote-absence, and Linear-state gates and passes `{issue-id} --auto` (or `{issue-id} --auto --resume-current-branch` with its validated resume handoff).
-- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain the issue lookup, reference mapping, planning, ambiguity, branch, scope, and verification gates, and never invent the parent-owned resume handoff.
+- Invoke automatically only as the exact child of `kramme:linear:issue-to-pr` when that parent has completed its read-only branch, Pull Request, remote-absence, and Linear-state gates and passes `{issue-id} --auto --set-in-progress` with its validated status handoff (or `{issue-id} --auto --resume-current-branch` with its validated resume handoff, which never transitions Linear).
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain the issue lookup, status-transition, reference mapping, planning, ambiguity, branch, scope, and verification gates, and never invent the parent-owned resume or status handoff.
+- A model caller may pass `--set-in-progress` only as that exact gated parent, only with the complete status handoff it resolved, and never alongside `--resume-current-branch`. Only a direct user invocation may supply `--set-in-progress` without a handoff, and it then answers this skill's own confirmation for a non-backlog issue.
 
 **IMPORTANT:** Linear issues are typically written for product teams and may be light on technical implementation details. This command emphasizes thorough planning and codebase exploration to translate product requirements into a concrete technical approach before starting implementation.
 
 **Prerequisite:** Requires the Linear MCP server. For work prepared through SIW, run `kramme:siw:transfer-to-linear` first and invoke this skill with the resulting Linear issue identifier.
 
 Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` and remove the flag before extracting the Linear issue id. `--auto` skips plan and approach confirmation when the technical path is clear, then chooses Autonomous Implementation. It does not bypass dirty-worktree handling, branch verification, missing Linear metadata, or genuinely blocking product/technical ambiguities. Accept the internal `--resume-current-branch` flag only when `AUTO_MODE=true` and the invoking `kramme:linear:issue-to-pr --continue` workflow supplies its validated issue ID, exact branch, base commit, entry `HEAD`, remote-absence proof, committed paths, and dirty paths as a parent-owned resume handoff. Set `RESUME_CURRENT_BRANCH=true` and remove the flag before issue-ID extraction. Reject direct, incomplete, mismatched, or duplicate use; this internal adapter is not a standalone dirty-tree bypass.
+
+If `--set-in-progress` is present, set `SET_IN_PROGRESS=true` and remove the flag before issue-ID extraction. It is explicit authorization to move the issue to its team's resolved `started` status in Step 1.4 before any branch or code work, and it authorizes no other Linear write. Reject a duplicate `--set-in-progress`, and reject it together with `--resume-current-branch` because a resumed issue is already started. Default `SET_IN_PROGRESS=false`, which leaves every Linear workflow status untouched.
 
 ## Process Overview
 
@@ -28,6 +31,9 @@ Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` a
     |
     v
 [Validate & Fetch Issue] -> Not found? -> Show error, abort
+    |
+    v
+[Status Transition] -> ONLY with --set-in-progress -> move to started status
     |
     v
 [Branch Setup] -> IMMEDIATELY create/switch to Linear's branchName
@@ -65,7 +71,7 @@ Parse `$ARGUMENTS` before Step 1. If `--auto` is present, set `AUTO_MODE=true` a
 
 ---
 
-## Step 1: Parse Arguments and Fetch Issue
+## Step 1: Parse Arguments, Fetch Issue, and Apply the Authorized Status Transition
 
 ### 1.1 Extract Issue ID from Arguments
 
@@ -133,9 +139,17 @@ Try again with /kramme:linear:issue-implement <correct-issue-id>
 
 **Action:** Abort.
 
+### 1.4 Apply the Authorized Status Transition
+
+When `SET_IN_PROGRESS=false`, skip this section entirely: set `{transition-outcome}` to `not requested (--set-in-progress was not supplied)`, make no Linear write, never read or resolve a workflow status, and proceed to Step 2.
+
+When `SET_IN_PROGRESS=true`, read `references/status-transition.md` and follow it completely before Step 2. It owns authorization, immutable-ID-first state resolution, target `started` status resolution, the non-backlog confirmation, the pre-write race close, the status-only write, and the read-back verification. No other step in this skill writes to Linear.
+
+Complete it here, before branch setup, so a declined confirmation or failed write stops the run without having created a branch or touched the worktree. Record `{transition-outcome}` for Step 8's output and for a delegating parent's report.
+
 ## Step 2: Branch Setup (MANDATORY - DO IMMEDIATELY)
 
-**CRITICAL:** This step MUST be completed before any other actions. Do NOT proceed to issue parsing, planning, or any other step until you are on the correct branch.
+**CRITICAL:** This step MUST be completed before any other actions. Do NOT proceed to issue parsing, planning, or any other step until you are on the correct branch. Only the Step 1.4 status transition may precede it, and only because it touches Linear rather than the repository; a declined or failed transition stops the run before this step rather than creating a branch.
 
 Read `references/branch-setup.md` and follow it completely: extract or generate `branchName`, handle dirty-worktree state, create or switch to the branch, verify `git branch --show-current` matches, and display the branch confirmation. Only after this confirmation may you proceed to Step 3.
 
@@ -370,6 +384,10 @@ Read the Success Output template from `references/display-templates.md`.
 ### No AI Attribution
 
 Never add AI/Claude attribution to commits or code.
+
+### Linear Writes
+
+The Step 1.4 status transition is the only Linear write in this skill, and it runs only under `--set-in-progress`. Never change an issue's title, description, labels, assignee, project, or comments, and never transition an issue this invocation was not given.
 
 ### Linear Issue Linking
 

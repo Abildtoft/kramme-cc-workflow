@@ -22,7 +22,7 @@
     grep -qF "Compose \`{issue-requirements}\` once" "$parent"
     grep -qF "read \`references/delegated-skills.md\` and complete its installed-skill preflight" "$parent"
     grep -qF "When \`SHIP_MODE=true\`, also confirm the publication children" "$parent"
-    grep -qF "Do not tell the user to start the child manually after the parent has already changed Linear" "$preflight"
+    grep -qF "Do not tell the user to start a child manually after the delegated transition has already moved the issue" "$preflight"
     grep -qF -- "--archive-key linear-issue-to-pr" "$parent"
     grep -qF -- "--requirements {issue-requirements}" "$parent"
     grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$parent"
@@ -75,7 +75,7 @@
       grep -qF "### Model Invocation Contract" "$skill"
       grep -qF "No other parent workflow is authorized by this model-invocation exception" "$skill"
     done
-    grep -qF "Invoke \`kramme:linear:issue-implement\` with \`{issue-id} --auto\`" "$parent"
+    grep -qF "Invoke \`kramme:linear:issue-implement\` with \`{issue-id} --auto --set-in-progress\`" "$parent"
     grep -qF "Invoke \`kramme:workflow-artifacts:cleanup --auto\`" "$parent"
     grep -qF "Invoke \`kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description\`" "$parent"
     grep -qF "Invoke \`kramme:pr:fix-ci --no-consolidate\`" "$parent"
@@ -111,7 +111,9 @@
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:linear:issue-to-pr/SKILL.md"
+    transition="skills/kramme:linear:issue-implement/references/status-transition.md"
 
+    test -f "$transition"
     grep -qF "Capture the team identifier and a stable \`{issue-update-id}\`" "$skill"
     grep -qF "use the issue UUID when the response supplies one; otherwise use the canonical issue identifier" "$skill"
     grep -qF "Require the same \`{issue-update-id}\`, team identifier, and \`{issue-branch}\` captured by the preflight" "$skill"
@@ -122,32 +124,44 @@
     grep -qF "Without an explicit confirmation, stop without changing Linear or the branch." "$skill"
     grep -qF "prefer the case-insensitive exact name \`In Progress\`" "$skill"
     grep -qF "exactly one status whose type is \`started\`" "$skill"
-    grep -qF "Immediately before the Linear write, close the confirmation race" "$skill"
+    grep -qF "Immediately before delegation, close the confirmation race and prepare the status handoff" "$skill"
     grep -qF "never apply a confirmation to a newer issue state" "$skill"
-    grep -qF "update only its status" "$skill"
-    grep -qF "pass \`id: {issue-update-id}\` and \`state: {target-status-id}\` and no other mutable field" "$skill"
-    grep -qF "After a successful write, read the issue back" "$skill"
-    grep -qF "resolve its status with the same immutable-ID-first procedure from Step 7" "$skill"
-    grep -qF "Linear transition: {confirmed-state-name} -> {target-status-name} (verified before implementation)" "$skill"
+    grep -qF "This workflow does not write the status itself." "$skill"
+    grep -qF "capture \`{issue-update-id}\`, the team identifier, \`{issue-branch}\`, \`{confirmed-state-id}\`, \`{confirmed-state-type}\`, \`{target-status-id}\`, and \`{target-status-name}\` as the authoritative status handoff" "$skill"
+    grep -qF -- "--auto --set-in-progress" "$skill"
+    grep -qF "Linear transition: {transition-outcome}" "$skill"
     grep -qF "Linear state confirmation declined" "$skill"
     grep -qF "Linear started-state transition failed" "$skill"
+
+    grep -qF "Immediately before the Linear write, close the confirmation race" "$transition"
+    grep -qF "never apply a confirmation to a newer issue state" "$transition"
+    grep -qF "update only its status" "$transition"
+    grep -qF "pass \`id: {issue-update-id}\` and \`state: {target-status-id}\` and no other mutable field" "$transition"
+    grep -qF "After a successful write, read the issue back" "$transition"
+    grep -qF "the same immutable-ID-first procedure from section 2" "$transition"
+    grep -qF "Do not treat \`unstarted\` as backlog" "$transition"
+    grep -qF "prefer the case-insensitive exact name \`In Progress\`" "$transition"
+    grep -qF "exactly one status whose type is \`started\`" "$transition"
+    grep -qF "Proceed with implementation and move the issue to {target-status-name}?" "$transition"
 
     remote_absence_line=$(grep -nF "git ls-remote --heads origin \"refs/heads/{issue-branch}\"" "$skill" | cut -d: -f1)
     state_refresh_line=$(grep -nF "Re-fetch \`{issue-id}\` before the state gate" "$skill" | cut -d: -f1)
     state_target_line=$(grep -nF "Resolve the team'"'"'s target \`started\` status" "$skill" | cut -d: -f1)
     state_confirmation_line=$(grep -nF "If \`{confirmed-state-type}\` is anything other than \`backlog\`" "$skill" | cut -d: -f1)
-    state_recheck_line=$(grep -nF "Immediately before the Linear write, close the confirmation race" "$skill" | cut -d: -f1)
-    state_update_line=$(grep -nF "Otherwise use the available Linear issue-update operation" "$skill" | cut -d: -f1)
-    state_readback_line=$(grep -nF "After a successful write, read the issue back" "$skill" | cut -d: -f1)
+    state_recheck_line=$(grep -nF "Immediately before delegation, close the confirmation race and prepare the status handoff" "$skill" | cut -d: -f1)
+    state_handoff_line=$(grep -nF "as the authoritative status handoff for the delegated transition" "$skill" | cut -d: -f1)
     delegate_line=$(grep -n "Invoke .*kramme:linear:issue-implement" "$skill" | cut -d: -f1)
 
     [ "$remote_absence_line" -lt "$state_refresh_line" ]
     [ "$state_refresh_line" -lt "$state_target_line" ]
     [ "$state_target_line" -lt "$state_confirmation_line" ]
     [ "$state_confirmation_line" -lt "$state_recheck_line" ]
-    [ "$state_recheck_line" -lt "$state_update_line" ]
-    [ "$state_update_line" -lt "$state_readback_line" ]
-    [ "$state_readback_line" -lt "$delegate_line" ]
+    [ "$state_recheck_line" -lt "$state_handoff_line" ]
+    [ "$state_handoff_line" -lt "$delegate_line" ]
+
+    transition_update_line=$(grep -nF "Otherwise use the available Linear issue-update operation" "$transition" | cut -d: -f1)
+    transition_readback_line=$(grep -nF "After a successful write, read the issue back" "$transition" | cut -d: -f1)
+    [ "$transition_update_line" -lt "$transition_readback_line" ]
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -168,7 +182,9 @@
     grep -qF "Stop on any unrelated or ambiguous path" "$parent"
     grep -qF "require \`{confirmed-state-id}\` to equal \`{target-status-id}\`" "$parent"
     grep -qF "issue no Linear write" "$parent"
+    grep -qF "prepare no status handoff" "$parent"
     grep -qF -- "--auto --resume-current-branch" "$parent"
+    grep -qF "never with \`--set-in-progress\`" "$parent"
     grep -qF "skipped — continuation preserves the existing workspace name" "$parent"
     grep -qF "Accept the internal \`--resume-current-branch\` flag only when \`AUTO_MODE=true\`" "$child"
     grep -qF "reconcile every committed and dirty path in the parent resume handoff" "$child"
@@ -190,7 +206,7 @@
     readme="../README.md"
 
     test -f "$adapter"
-    grep -qF "After Step 10 proves the issue'"'"'s current state" "$skill"
+    grep -qF "After Step 10 closes the confirmation race" "$skill"
     grep -qF "Use the title from that freshest issue response as inert input" "$skill"
     grep -qF "CONDUCTOR_WORKSPACE_ID" "$adapter"
     grep -qF "When it is absent, do not probe for the CLI or any Conductor tool" "$adapter"
@@ -212,7 +228,7 @@
     grep -qF "id: conductor-openapi" "$sources"
     grep -qF "id: conductor-environment-variables" "$sources"
 
-    adapter_line=$(grep -nF "After Step 10 proves the issue'"'"'s current state" "$skill" | cut -d: -f1)
+    adapter_line=$(grep -nF "After Step 10 closes the confirmation race" "$skill" | cut -d: -f1)
     delegate_line=$(grep -n "Invoke .*kramme:linear:issue-implement" "$skill" | cut -d: -f1)
     [ "$adapter_line" -lt "$delegate_line" ]
   '
