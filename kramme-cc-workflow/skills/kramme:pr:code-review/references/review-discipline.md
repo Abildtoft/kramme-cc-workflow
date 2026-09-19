@@ -102,7 +102,7 @@ The report section headers (`## Critical Issues`, `## Important Issues`, `## Sug
 
 ## Dead-code ask shape
 
-When `kramme:removal-planner` flags removable code, emit Addy's ask-shape verbatim so removals are never presented as silent deletions:
+When `kramme:cleanup-reviewer` flags removable code under its `removal` or `lean` `delete` findings, emit Addy's ask-shape verbatim so removals are never presented as silent deletions:
 
 > `DEAD CODE IDENTIFIED: [comma-separated list]. Safe to remove these?`
 
@@ -113,7 +113,7 @@ This applies whether the finding lands in Critical, Important, or Suggestions �
 Only **low-confidence** dead-code findings require the author's or maintainer's answer before deletion. A dead-code finding is **high-confidence** when all of these hold:
 
 - `Confidence` is at least 70.
-- The reviewer traced every reference and callsite (including dynamic imports, reflection, string-based config references, and external/public-API consumers) and found none remaining — the `kramme:removal-planner` **Safe to Remove Now** tier, not **Requires Investigation**.
+- The reviewer traced every reference and callsite (including dynamic imports, reflection, string-based config references, and external/public-API consumers) and found none remaining — the `kramme:cleanup-reviewer` **Safe to Remove Now** tier, not **Requires Investigation**.
 - The finding carries no `UNVERIFIED` marker, and removal is a mechanical deletion with an obvious, local fix path.
 
 A high-confidence dead-code finding is `gated_auto` (or, in Suggestions, passes the safe-advisory test): `/kramme:pr:resolve-review` may delete it without a separate approval. A dead-code finding that misses any bar above is **low-confidence** and stays `manual` with the `dead-code approval` blocker until the ask is answered.
@@ -167,8 +167,8 @@ Keep a Critical or Important finding as `manual` only when at least one blocker 
 
 Apply this pass before emphasis and action-class normalization:
 
-- Treat findings from `kramme:lean-reviewer` and cleanup-mode `kramme:code-simplifier` as cleanup-dimension findings (`lean`, `refactor`, `simplify`). Treat findings labeled `OVERENGINEERING` by any reviewer the same way.
-- Treat unresolved Critical or Important findings from `kramme:code-reviewer`, `kramme:silent-failure-hunter`, `kramme:pr-test-analyzer`, `kramme:type-design-analyzer`, `kramme:injection-reviewer`, `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:logic-reviewer` as higher-priority correctness/security findings while active.
+- Treat findings from `kramme:cleanup-reviewer` as cleanup-dimension findings (`lean`, `removal`, `refactor`, `simplify`). Treat findings labeled `OVERENGINEERING` by any reviewer the same way.
+- Treat unresolved Critical or Important findings from `kramme:code-reviewer`, `kramme:silent-failure-hunter`, `kramme:pr-test-analyzer`, `kramme:type-design-analyzer`, and `kramme:security-reviewer` as higher-priority correctness/security findings while active.
 - A cleanup finding collides when its recommendation would remove or weaken validation, auth, authorization, injection protection, data protection, error propagation, test coverage, type invariants, or the concrete fix path of an unresolved correctness/security finding.
 - Do not promote a colliding cleanup finding, classify it as Critical or Important, or assign it `gated_auto`. Either drop it as redundant or unsafe, or keep it as an advisory Suggestion with evidence: `Blocked by the matching correctness/security finding; revisit after that finding is resolved.` After final IDs are assigned, replace the provisional blocker with the blocking `CR-XXX` ID.
 - Preserve the correctness/security finding unchanged. Append cleanup-collision context only when it helps the resolver avoid an unsafe cleanup path.

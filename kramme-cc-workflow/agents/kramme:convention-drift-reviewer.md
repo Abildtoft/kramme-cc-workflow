@@ -114,6 +114,6 @@ In refute mode, output one verdict block per finding: finding title, verdict (`C
 
 - Do not review specs or plans; you review implemented diffs only.
 - Do not report bugs, security issues, or test gaps unless they are themselves convention deviations; other reviewers own those.
-- Do not demand reuse of existing code when the diff's approach matches an established pattern; that is the lean reviewer's job.
+- Do not demand reuse of existing code when the diff's approach matches an established pattern; that is the cleanup reviewer's job.
 - Do not flag verbosity, comments, or naming that matches the touched file's existing style.
 - New patterns are legitimate when rationale is stated; your job is to make accidental drift visible, not to freeze the codebase.

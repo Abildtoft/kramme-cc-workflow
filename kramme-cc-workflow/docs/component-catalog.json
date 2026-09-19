@@ -578,16 +578,12 @@
       "path": "kramme-cc-workflow/agents/kramme:architecture-strategist.md"
     },
     {
-      "name": "kramme:auth-reviewer",
-      "path": "kramme-cc-workflow/agents/kramme:auth-reviewer.md"
+      "name": "kramme:cleanup-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:cleanup-reviewer.md"
     },
     {
       "name": "kramme:code-reviewer",
       "path": "kramme-cc-workflow/agents/kramme:code-reviewer.md"
-    },
-    {
-      "name": "kramme:code-simplifier",
-      "path": "kramme-cc-workflow/agents/kramme:code-simplifier.md"
     },
     {
       "name": "kramme:codebase-pattern-reviewer",
@@ -606,28 +602,12 @@
       "path": "kramme-cc-workflow/agents/kramme:copy-reviewer.md"
     },
     {
-      "name": "kramme:data-reviewer",
-      "path": "kramme-cc-workflow/agents/kramme:data-reviewer.md"
-    },
-    {
       "name": "kramme:design-iterator",
       "path": "kramme-cc-workflow/agents/kramme:design-iterator.md"
     },
     {
       "name": "kramme:deslop-reviewer",
       "path": "kramme-cc-workflow/agents/kramme:deslop-reviewer.md"
-    },
-    {
-      "name": "kramme:injection-reviewer",
-      "path": "kramme-cc-workflow/agents/kramme:injection-reviewer.md"
-    },
-    {
-      "name": "kramme:lean-reviewer",
-      "path": "kramme-cc-workflow/agents/kramme:lean-reviewer.md"
-    },
-    {
-      "name": "kramme:logic-reviewer",
-      "path": "kramme-cc-workflow/agents/kramme:logic-reviewer.md"
     },
     {
       "name": "kramme:overengineering-reviewer",
@@ -650,8 +630,8 @@
       "path": "kramme-cc-workflow/agents/kramme:product-reviewer.md"
     },
     {
-      "name": "kramme:removal-planner",
-      "path": "kramme-cc-workflow/agents/kramme:removal-planner.md"
+      "name": "kramme:security-reviewer",
+      "path": "kramme-cc-workflow/agents/kramme:security-reviewer.md"
     },
     {
       "name": "kramme:silent-failure-hunter",

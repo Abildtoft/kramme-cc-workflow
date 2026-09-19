@@ -153,13 +153,11 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    - `kramme:pr-test-analyzer` — if test files changed, new behavior was added, or coverage claims appear in the PR description
    - `kramme:comment-analyzer` — if comments, docstrings, docs, or explanation-heavy inline text changed
    - `kramme:type-design-analyzer` — if types, schemas, interfaces, data models, or invariants changed
-   - `kramme:removal-planner` — if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification
-   - `kramme:lean-reviewer` — for default `all` reviews or when `lean` is explicitly listed. It finds code the PR can avoid owning: deletions, existing-helper reuse, stdlib/native replacements, avoidable dependencies, and YAGNI abstractions.
-   - `kramme:code-simplifier` — for default `all` reviews or when `refactor` or `simplify` is explicitly listed. Record the active dimension as `refactor`, `simplify`, or both based on the requested tokens; for default `all`, record both. Use `refactor` for review-only reuse/composition/codebase-fit findings; use `simplify` for broader clarity and maintainability simplification suggestions.
+   - `kramme:cleanup-reviewer` — one invocation covers the four cleanup dimensions. `lean` (code the PR can avoid owning: deletions, existing-helper reuse, stdlib/native replacements, avoidable dependencies, YAGNI abstractions), `refactor` (review-only reuse, composition, and codebase-fit findings), and `simplify` (clarity and maintainability suggestions) are active for default `all` reviews or when explicitly listed; `removal` (safe-removal verification) is active only if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification, or when explicitly listed. Record each active dimension separately; the agent runs whenever at least one is active and labels every finding with its dimension.
 
    **Stack-specific conditional reviewers** (activate only when the touched stack has the relevant risk surface):
    - `kramme:performance-oracle` — data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles
-   - Security reviewer bundle — API routes, auth logic, authorization checks, DB queries, external calls, user input handling, crypto, secrets, session state, or business-rule enforcement. Launch `kramme:injection-reviewer`, `kramme:auth-reviewer`, `kramme:data-reviewer`, and `kramme:logic-reviewer` together.
+   - `kramme:security-reviewer` — API routes, auth logic, authorization checks, DB queries, external calls, user input handling, crypto, secrets, session state, or business-rule enforcement. One invocation runs its four lenses (injection, access control, data protection, logic); never split it into parent-run checks.
 
    Build `ACTIVE_REVIEW_DIMENSIONS` from the agents that will actually run after aspect filtering and applicability checks. If any emphasized dimension has no active agent in this set, stop with an error telling the user which emphasized dimensions are inactive. Do not cap unrelated findings when the emphasized review never ran.
 
@@ -180,23 +178,15 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    - As context for intent, scope, risk, tests, and rollout assumptions while reviewing the code.
    - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction.
 
-   If any of `code`, `refactor`, or `simplify` is active, read `references/fowler-smell-baseline.md` once and pass it only to the corresponding `kramme:code-reviewer` and/or `kramme:code-simplifier` reviewers as advisory vocabulary after documented repo standards, the discipline reference's reviewer calibration, and concrete diff evidence. Each smell finding must name the smell, cite the changed location, explain why it matters in this diff, and recommend the smallest local fix; do not report smells as hard violations, duplicate tooling-enforced issues, or promote optional cleanup unless it creates concrete blocking impact under the action-class rules.
+   If any of `code`, `refactor`, or `simplify` is active, read `references/fowler-smell-baseline.md` once and pass it only to the corresponding `kramme:code-reviewer` and/or `kramme:cleanup-reviewer` reviewers as advisory vocabulary after documented repo standards, the discipline reference's reviewer calibration, and concrete diff evidence. Each smell finding must name the smell, cite the changed location, explain why it matters in this diff, and recommend the smallest local fix; do not report smells as hard violations, duplicate tooling-enforced issues, or promote optional cleanup unless it creates concrete blocking impact under the action-class rules.
 
-   If `lean` activated `kramme:lean-reviewer`, instruct it to operate as a deletion-focused reviewer:
+   If any cleanup dimension activated `kramme:cleanup-reviewer`, instruct it to operate as a review-only cleanup reviewer:
    - Do not edit files.
-   - Search for existing helpers, components, hooks, scripts, framework features, standard-library APIs, native platform features, and installed dependencies before recommending newly owned code.
-   - Prioritize `delete`, `stdlib`, `native`, `existing`, `dependency`, `yagni`, and `shrink` findings.
+   - Name the active cleanup dimensions (`lean`, `removal`, `refactor`, `simplify`); it reports only under those and labels every finding with its dimension.
+   - Search for existing helpers, components, hooks, scripts, framework features, standard-library APIs, native platform features, and installed dependencies before recommending newly owned code, and trace the relevant call stack or data flow before line-level findings when the behavior is non-trivial.
+   - For `lean`, prioritize `delete`, `stdlib`, `native`, `existing`, `dependency`, `yagni`, and `shrink` findings. For `removal`, trace every reference and state the tier (Safe to Remove Now, Requires Investigation, Defer). For `refactor` and `simplify`, prioritize reuse, composition, codebase consistency, and proportional cleanup, name the existing pattern to reuse, and use the smell baseline only when it sharpens a concrete changed-code concern instead of expanding the review into a broad cleanup mandate.
    - Do not recommend removing trust-boundary validation, auth/security controls, error handling that prevents silent failure or data loss, accessibility behavior, or tests that protect non-trivial behavior.
-   - If a lean finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
-
-   If `refactor` or `simplify` activated `kramme:code-simplifier`, instruct it to operate as a review-only cleanup reviewer:
-   - Do not edit files.
-   - Trace the relevant call stack or data flow before making line-level findings when the behavior is non-trivial.
-   - Search nearby and sibling code before judging new helpers, components, hooks, file placement, naming, result/error/loading patterns, styling primitives, or copy patterns.
-   - Use the smell baseline as a shared vocabulary for refactor/simplify findings, but only when it sharpens a concrete changed-code concern instead of expanding the review into a broad cleanup mandate.
-   - Prioritize reuse, composition, codebase consistency, and proportional cleanup: duplicated existing flows, grab-bag modules, parameter sprawl, callback/prop plumbing, one-off helpers or exported types, product concepts leaking backing-entity distinctions through intermediate components, and unrelated diff churn.
-   - For each finding, include the existing pattern or code that should be reused when found, why the current change does not fit, and the minimal recommended fix.
-   - If a refactor/simplify finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
+   - If a cleanup finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
 
    Capture the pre-launch working-tree manifest before any reviewer starts:
 
@@ -289,7 +279,7 @@ After validation, slop meta-review, and previous-review processing, apply the `C
 
 After validation, slop meta-review, and previous-review processing, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
-**Dimension-to-agent mapping:** `security` → injection-reviewer, auth-reviewer, data-reviewer, logic-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal` → removal-planner | `lean` → lean-reviewer | `refactor` → code-simplifier in review-only refactor-fit mode | `simplify` → code-simplifier
+**Dimension-to-agent mapping:** `security` → security-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal`, `lean`, `refactor`, `simplify` → cleanup-reviewer, which labels each finding with its dimension; emphasis on one cleanup dimension applies only to findings carrying that label
 
 **Promotion rules (per finding, based on source agent):**
 
@@ -327,7 +317,7 @@ For diffs that change a versioned artifact surface or durable public contract, a
 
 The recommended fix for a `PR description` finding is always to update the title/body to match the diff. The diff is the source of truth; the description is the suspect (PR descriptions drift, get written ahead of the final code, or are copied from earlier iterations). If a reviewer believes the code itself is wrong because it does not match the description's stated intent, raise that as a separate code-level finding with a `file:line` location.
 
-**Severity prefix grammar and dead-code ask shape** — label every finding within each bucket using the severity prefix grammar, and emit removal-planner findings using the verbatim dead-code ask shape; both are defined in `references/review-discipline.md`. The section headers (`## Critical Issues`, `## Important Issues`, `## Suggestions`) remain — the prefix is the finer-grained label inside each section.
+**Severity prefix grammar and dead-code ask shape** — label every finding within each bucket using the severity prefix grammar, and emit `removal` dead-code findings using the verbatim dead-code ask shape; both are defined in `references/review-discipline.md`. The section headers (`## Critical Issues`, `## Important Issues`, `## Suggestions`) remain — the prefix is the finer-grained label inside each section.
 
 12. **Write Findings or Reply Inline**
 

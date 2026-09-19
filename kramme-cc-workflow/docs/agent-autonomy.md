@@ -62,19 +62,18 @@ The principle predates the rule. `skills/kramme:pr:code-review/references/team-m
 
 ## Roster Composition
 
-Maker/checker separation needs two populations. Measured at commit `c621b223`, `agents/` contains 25 agent definitions, classified by what each one's frontmatter `description` and body say it produces:
+Maker/checker separation needs two populations. Measured after the September 2026 reviewer merge (which folded the four security reviewers into `kramme:security-reviewer` and the lean, simplifier, and removal-planner agents into `kramme:cleanup-reviewer`), `agents/` contains 20 agent definitions, classified by what each one's frontmatter `description` and body say it produces:
 
 | Output | Count |
 | --- | --- |
-| Findings, audits, or validation | 22 |
-| Code changes | 2 — `kramme:code-simplifier`, `kramme:design-iterator` |
-| Plans | 1 — `kramme:removal-planner` |
+| Findings, audits, or validation | 18 |
+| Code changes | 2 — `kramme:cleanup-reviewer` (sole-agent mode only), `kramme:design-iterator` |
 
 Reproduce the total with `ls agents/*.md | wc -l`; the full roster is in the generated agent table in the root `README.md` and in `docs/component-catalog.json`. Both signals are needed for the classification: `kramme:copy-reviewer`'s frontmatter says it will "remove labels, helper copy, tooltips, and instructions," but its body produces findings against a rubric rather than edits, so it counts as a checker.
 
 The separation rule generalizes better than the roster does. `closeout-loop.md:40-42` names no agent — it asks for "a subagent" on Claude Code, "an equivalent task sub-agent" on Codex, and falls back to disclosed self-certification when neither mechanism is available. So the closeout rule depends on a subagent mechanism, which any workflow can reach, rather than on a checker persona being free.
 
-What the roster limits is narrower. When a workflow wants a checker with specific competence — auth, types, test coverage, accessibility — 22 personas exist to delegate to. When it wants work done rather than judged, there are two, and it falls back to the orchestrating agent, which is the agent whose output most needs independent checking. Whether that asymmetry is a gap or a deliberate design choice is not settled here.
+What the roster limits is narrower. When a workflow wants a checker with specific competence — auth, types, test coverage, accessibility — 18 personas exist to delegate to. When it wants work done rather than judged, there are two, and it falls back to the orchestrating agent, which is the agent whose output most needs independent checking. Whether that asymmetry is a gap or a deliberate design choice is not settled here.
 
 Adding a maker-side persona would have to clear an evidence bar. The nearest recorded standard is `docs/decisions/2026-07-29-skill-catalog-shape.md:85-95`, which requires a Pull Request creating a skill or domain to record usage data, the nearest existing components, the routing boundary, and the input/output/side-effect differences — with the qualifier at line 95 that "Usage informs the decision but is never the sole merge, retention, or removal criterion." No equivalent record governs agent creation, so that standard is the closest analogy rather than a binding rule, and no such evidence currently exists for a maker-side persona.
 

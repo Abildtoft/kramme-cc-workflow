@@ -88,36 +88,23 @@ Use the same reviewer taxonomy as the standard workflow:
 - **pr-test-analyzer** -- If test files changed or new functionality added (mission from `agents/kramme:pr-test-analyzer.md`)
 - **type-design-analyzer** -- If new types added or modified (mission from `agents/kramme:type-design-analyzer.md`)
 - **comment-analyzer** -- If significant comments or docs added (mission from `agents/kramme:comment-analyzer.md`)
-- **removal-planner** -- If code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification (mission from `agents/kramme:removal-planner.md`)
-- **lean-reviewer** -- For default `all` reviews or when `lean` is explicitly listed; finds code the PR can avoid owning through deletion, existing-code reuse, stdlib/native replacement, installed dependency reuse, or YAGNI removal (mission from `agents/kramme:lean-reviewer.md`)
-- **code-simplifier** -- For default `all` reviews or when `refactor` or `simplify` is explicitly listed; review-only reuse, composition, codebase-fit, clarity, and maintainability cleanup (mission from `agents/kramme:code-simplifier.md`)
+- **cleanup-reviewer** -- One teammate for the cleanup dimensions. `lean`, `refactor`, and `simplify` are active for default `all` reviews or when explicitly listed; `removal` is active only if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification. Pass the active dimensions; it labels every finding with one (mission from `agents/kramme:cleanup-reviewer.md`)
 
 **Stack-specific conditional reviewers:**
 
 - **performance-oracle** -- If performance-relevant changes detected: data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles (mission from `agents/kramme:performance-oracle.md`)
-- **injection-reviewer** -- If security-relevant changes detected (API routes, auth logic, DB queries, external calls, user input handling, crypto) (mission from `agents/kramme:injection-reviewer.md`)
-- **auth-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:auth-reviewer.md`)
-- **data-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:data-reviewer.md`)
-- **logic-reviewer** -- If security-relevant changes detected (mission from `agents/kramme:logic-reviewer.md`)
+- **security-reviewer** -- If security-relevant changes detected (API routes, auth logic, DB queries, external calls, user input handling, crypto, secrets, session state, business-rule enforcement); one teammate runs all four lenses (mission from `agents/kramme:security-reviewer.md`)
 
-When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. Without an explicit aspect filter, default `all` includes **lean-reviewer** and **code-simplifier** in addition to the other applicable reviewers.
+When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. Without an explicit aspect filter, default `all` includes **cleanup-reviewer** in addition to the other applicable reviewers.
 
-For lean review, instruct lean-reviewer to:
+For cleanup review, instruct cleanup-reviewer to:
 
 - Do not edit files.
-- Search for existing helpers, components, hooks, scripts, framework features, standard-library APIs, native platform features, and installed dependencies before recommending newly owned code.
-- Prioritize `delete`, `stdlib`, `native`, `existing`, `dependency`, `yagni`, and `shrink` findings.
+- Report only under the active cleanup dimensions and label every finding with its dimension.
+- Search for existing helpers, components, hooks, scripts, framework features, standard-library APIs, native platform features, and installed dependencies before recommending newly owned code, and trace the relevant call stack or data flow before line-level findings when the behavior is non-trivial.
+- For `lean`, prioritize `delete`, `stdlib`, `native`, `existing`, `dependency`, `yagni`, and `shrink` findings. For `removal`, trace every reference and state the tier. For `refactor` and `simplify`, prioritize reuse, composition, codebase consistency, and proportional cleanup, and name the existing pattern to reuse.
 - Do not recommend removing trust-boundary validation, auth/security controls, error handling that prevents silent failure or data loss, accessibility behavior, or tests that protect non-trivial behavior.
-- If a lean finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
-
-For review-only refactor/simplify cleanup mode, instruct code-simplifier to:
-
-- Do not edit files.
-- Trace the relevant call stack or data flow before making line-level findings when the behavior is non-trivial.
-- Search nearby and sibling code before judging new helpers, components, hooks, file placement, naming, result/error/loading patterns, styling primitives, or copy patterns.
-- Prioritize reuse, composition, codebase consistency, and proportional cleanup: duplicated existing flows, grab-bag modules, parameter sprawl, callback/prop plumbing, one-off helpers or exported types, product concepts leaking backing-entity distinctions through intermediate components, and unrelated diff churn.
-- For each finding, include the existing pattern or code that should be reused when found, why the current change does not fit, and the minimal recommended fix.
-- If a refactor/simplify finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
+- If a cleanup finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
 
 ### Step 3: Create and Assign Tasks
 
