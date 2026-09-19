@@ -50,10 +50,10 @@ load 'test_helper/common'
     grep -qF "A model caller may pass \`--set-in-progress\` only as that exact gated parent" "$skill"
     grep -qF "### 1.4 Apply the Authorized Status Transition" "$skill"
     grep -qF "read \`references/status-transition.md\` and follow it completely before Step 2" "$skill"
-    grep -qF "The Step 1.4 status transition is the only Linear write this skill performs" "$skill"
+    grep -qF "The Step 1.4 status transition is the only Linear write in this skill" "$skill"
     grep -qF "Linear transition: {transition-outcome}" "$templates"
 
-    grep -qF "It is the only Linear write this skill performs." "$transition"
+    grep -qF "It is the only Linear write in this skill." "$transition"
     grep -qF "never edit the title, description, labels, assignee, project, estimate, or any other mutable field" "$transition"
     grep -qF "In delegated mode, skip this section" "$transition"
     grep -qF "\`AUTO_MODE=true\` does not remove this confirmation." "$transition"

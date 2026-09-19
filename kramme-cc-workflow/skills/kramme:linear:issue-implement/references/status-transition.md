@@ -1,6 +1,6 @@
 # Authorized Linear Status Transition
 
-Follow this reference only when `SET_IN_PROGRESS=true`. It is the only Linear write this skill performs. Complete it during Step 1.4, before Step 2 branch setup and before any other repository or planning action, so a failed transition never leaves a created branch or partial implementation behind.
+Follow this reference only when `SET_IN_PROGRESS=true`. It is the only Linear write in this skill. Complete it during Step 1.4, before Step 2 branch setup and before any other repository or planning action, so a failed transition never leaves a created branch or partial implementation behind.
 
 ## 1. Establish the authorization source
 

@@ -143,7 +143,7 @@ Try again with /kramme:linear:issue-implement <correct-issue-id>
 
 When `SET_IN_PROGRESS=false`, skip this section entirely: set `{transition-outcome}` to `not requested (--set-in-progress was not supplied)`, make no Linear write, never read or resolve a workflow status, and proceed to Step 2.
 
-When `SET_IN_PROGRESS=true`, read `references/status-transition.md` and follow it completely before Step 2. It owns authorization, immutable-ID-first state resolution, target `started` status resolution, the non-backlog confirmation, the pre-write race close, the status-only write, and the read-back verification. This is the only Linear write this skill performs.
+When `SET_IN_PROGRESS=true`, read `references/status-transition.md` and follow it completely before Step 2. It owns authorization, immutable-ID-first state resolution, target `started` status resolution, the non-backlog confirmation, the pre-write race close, the status-only write, and the read-back verification. No other step in this skill writes to Linear.
 
 Complete it here, before branch setup, so a declined confirmation or failed write stops the run without having created a branch or touched the worktree. Record `{transition-outcome}` for Step 8's output and for a delegating parent's report.
 
@@ -387,7 +387,7 @@ Never add AI/Claude attribution to commits or code.
 
 ### Linear Writes
 
-The Step 1.4 status transition is the only Linear write this skill performs, and it runs only under `--set-in-progress`. Never change an issue's title, description, labels, assignee, project, or comments, and never transition an issue this invocation was not given.
+The Step 1.4 status transition is the only Linear write in this skill, and it runs only under `--set-in-progress`. Never change an issue's title, description, labels, assignee, project, or comments, and never transition an issue this invocation was not given.
 
 ### Linear Issue Linking
 
