@@ -31,6 +31,7 @@ Suggested Approach:
 Linear Issue Implementation Started
 
 Issue: {identifier} - {title}
+Linear transition: {transition-outcome}
 Branch: {branchName} (already active)
 Approach: {selected approach}
 
