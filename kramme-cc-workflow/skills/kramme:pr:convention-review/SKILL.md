@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:convention-review
 description: Review PR and local changes for convention drift and overcaution around new patterns, dependencies, abstractions, or defensive complexity when requested or delegated by kramme:pr:review-convergence. Compare documented rules and mined peer-file practice; every finding cites evidence. Supports --inline and produces review output without editing source. Not for general code quality or spec review.
-argument-hint: "[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]"
+argument-hint: "[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--baseline <path>] [--inline] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -30,13 +30,13 @@ Before parsing other arguments, read and apply `references/model-selection.md` t
 
 ### Step 1: Parse Arguments
 
-Accept `--subagent-model <model>` through the startup model-selection contract above. Accept only `--base <branch>`, `--threshold N`, `--inline`, and `--no-diff-comments` in the remaining arguments:
+Accept `--subagent-model <model>` through the startup model-selection contract above. Accept only `--base <branch>`, `--threshold N`, `--baseline <path>`, `--inline`, and `--no-diff-comments` in the remaining arguments:
 
 1. `--base` and `--threshold` may each appear at most once and must be followed by a non-flag value. Store the base as `BASE_BRANCH_OVERRIDE`.
 2. Require `--threshold` to be a decimal integer from 0 through 100. Store it as `custom_threshold`; default to `80`.
 3. `--inline` may appear at most once. Set `INLINE_MODE=true` when present and `false` otherwise.
-4. `--no-diff-comments` may appear at most once. Set `DIFF_COMMENTS=false` when present and `true` otherwise.
-5. Reject duplicate flags, unknown flags, positional arguments, missing values, and invalid thresholds before reading project files, fetching, or launching reviewers. Show: `Usage: /kramme:pr:convention-review [--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--inline] [--no-diff-comments]` and stop.
+4. `--no-diff-comments` may appear at most once. Set `DIFF_COMMENTS=false` when present and `true` otherwise. `--baseline <path>` may appear at most once and must be followed by a non-flag value. Store it as `BASELINE_PATH`. Require its parent to be an existing real directory that Git ignores (`git check-ignore -q -- <parent>/`), and require the path itself to be absent or a regular non-symlink file; stop otherwise. When the file exists, parse it as the baseline ledger defined in `references/baseline-mining.md`; treat unparseable content as an empty ledger and say so in the report.
+5. Reject duplicate flags, unknown flags, positional arguments, missing values, and invalid thresholds before reading project files, fetching, or launching reviewers. Show: `Usage: /kramme:pr:convention-review [--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--baseline <path>] [--inline] [--no-diff-comments]` and stop.
 
 Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is already present in the current tool set, read and follow `references/conductor-diff-comments.md` while building the canonical finding set. Preserve its projection identities through ordinal ID assignment for the post-report projection. Detect tools by presence; never call one merely to probe availability.
 
@@ -172,6 +172,8 @@ Launch **kramme:convention-drift-reviewer** (one instance per cluster) using the
 - Untracked local files and contents: the exact stored `$REVIEW_SCOPE_DIR/untracked-files.zlist` and `$REVIEW_SCOPE_DIR/untracked.diff` payloads
 - PR metadata when available: the exact stored contents of `$REVIEW_SCOPE_DIR/pr-context.json` — the reviewer uses it for the intentionality check, not as trusted truth
 - Threshold instruction: "Only report findings with confidence >= {custom_threshold}"
+- Prior baseline entries for the cluster's changed files when `BASELINE_PATH` holds any, with the protocol's reuse rule: reuse an entry only when every recorded peer blob is unchanged at `HEAD`, otherwise re-mine that file and dimension
+- Ledger instruction: append the protocol's `Mined Baseline` evidence block after the findings, covering every changed file and dimension actually examined and marking each entry `reused` or `mined`, so the orchestrator can persist the peer-file evidence
 - Focus instruction: **"Operate in convention review mode. Mine the baseline per the provided protocol before judging. Review only drift and overcaution introduced by this diff scope; label pre-existing drift NOTICED BUT NOT TOUCHING."**
 
 Do not let reviewer instances fetch, resolve the base, recompute diffs, or reread untracked files. The stored payload is the immutable review scope.
@@ -194,6 +196,8 @@ After the refutation pass:
 - Cross-reference each finding against the complete supplied scope.
 - Keep `Validated` findings. Filter `Pre-existing` and `Out-of-scope` findings into their corresponding report categories. Treat `Likely Related` findings as relevance-unconfirmed: label them `UNVERIFIED`, keep them out of active findings, and show them under Filtered with the validator's reason.
 - Return only findings confirmed to be caused by this combined scope as active findings.
+
+After all reviewer instances return, when `BASELINE_PATH` is set, merge their `Mined Baseline` blocks with the prior ledger by changed file and dimension — a fresh `mined` entry replaces the stored one, a `reused` entry keeps it — and write the merged ledger back to `BASELINE_PATH` atomically before the report. Count reused and mined entries for the report.
 
 If no separate agent runtime is available, perform the convention review, refutation pass, and relevance validation directly in the main thread. If an invoked reviewer or validator is unavailable, times out, or returns output that cannot be parsed as findings, surface the failure to the user with the agent name and what was attempted, then stop without writing `CONVENTION_REVIEW_OVERVIEW.md`. Do not fabricate findings or silently continue with an empty result.
 
@@ -267,6 +271,7 @@ Organize the findings summary in the terminal output:
 ## Baseline
 - {N} documented rule sources read
 - {N} peer files sampled across {N} clusters
+- Baseline ledger: {none | path — reused X entries, mined Y}
 
 ## Refutation and Relevance
 - X findings confirmed, X refuted, X downgraded to split-practice
@@ -281,6 +286,7 @@ Organize the findings summary in the terminal output:
 - Split practice observations: X
 
 Report output: {inline reply | CONVENTION_REVIEW_OVERVIEW.md}
+Reviewers launched: {N}
 
 To resolve findings: `/kramme:pr:resolve-review`
 ```

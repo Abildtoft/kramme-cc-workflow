@@ -132,11 +132,12 @@ Each agent must:
 4. **Depth/seam findings carry extra fields.** Any finding whose category is Structural or Coupling and whose vocabulary comes from `references/architecture-language.md` must include a one-line **deletion test** result (e.g., "inlining at the 1 call site removes 4 lines, no caller becomes harder to read") and an **adapter count** when claiming a seam is speculative. Findings missing these fields are not yet ready and should be dropped at this point, not paper-clipped together.
 5. **Names follow the project glossary.** When `UBIQUITOUS_LANGUAGE.md` was read in Phase 1, use the canonical domain terms in finding titles and descriptions. Default helper-class language is a tell that the scan didn't read the project's own vocabulary.
 6. Write the report to `REFACTOR_OPPORTUNITIES_OVERVIEW.md` in the project root. Overwrite any prior report — the file represents the latest scan only.
-7. Present a summary to the user with:
+7. End the run with `Agents launched: N` — the exact number of scan agents launched in Phase 2, or `0` when the scan ran in the main thread — so an orchestrator can account for review cost.
+8. Present a summary to the user with:
    - Total findings by severity
    - Top 3 themes (with automation-candidate flag if applicable)
    - Recommended first refactor to tackle
-8. **Close the rejection loop.** If the user declines a recommended candidate with a load-bearing reason, offer to record the rejection — `/kramme:docs:track-rejected-enhancements` for scoped enhancements, or `/kramme:docs:adr` when the rejection is an architectural decision a future maintainer might re-propose. Recorded rejections are what the Phase 3 `KNOWN_OUT_OF_SCOPE` and `KNOWN_ADRS` filters read, so future scans skip the candidate automatically.
+9. **Close the rejection loop.** If the user declines a recommended candidate with a load-bearing reason, offer to record the rejection — `/kramme:docs:track-rejected-enhancements` for scoped enhancements, or `/kramme:docs:adr` when the rejection is an architectural decision a future maintainer might re-propose. Recorded rejections are what the Phase 3 `KNOWN_OUT_OF_SCOPE` and `KNOWN_ADRS` filters read, so future scans skip the candidate automatically.
 
 ## Guidelines
 

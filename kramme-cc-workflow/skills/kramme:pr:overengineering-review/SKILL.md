@@ -138,11 +138,12 @@ Reconcile current active findings against the previous report before assigning I
 
 - Match only when the location or scope and underlying root cause are the same; do not match by title or line distance alone.
 - Preserve the prior `OE-NNN` ID for a matching finding. Preserve its existing lifecycle status and fields unless the current review proves that an addressed fix failed; in that case reopen the same ID with `Resolution status: open` and evidence describing the failed fix.
+- Before any supplemental justify work, check each prior finding's `Region fingerprint`. When every `path@oid` pair it records still equals `git rev-parse HEAD:<path>` at the current `HEAD`, the cited region is byte-identical to the one the verdict was rendered on: carry the finding forward verbatim with its ID, verdict, basis, and lifecycle, count it under `carried forward (unchanged region)`, and do not spend a justify batch on it. This applies to `Confirmed Overdoing`, `Judgment Calls`, and `Justified` entries alike — a current finder candidate that matches a prior `Justified` entry with an unchanged region inherits `JUSTIFIED` and its basis without a new justify pass. A missing, malformed, or mismatched fingerprint falls through to the rules below.
 - Never carry a previous non-addressed finding forward on lightweight code revalidation alone. For each prior `open`, `deferred`, `acknowledged`, or `skipped` finding not matched by a current candidate, first verify that the old root cause still exists; when it does, reconstruct it as a canonical candidate and run it through a supplemental current justify batch using the same validation contract as Step 4. Carry forward `OVERDONE` and `JUDGMENT CALL` verdicts with the existing ID and lifecycle. When the supplemental verdict is `JUSTIFIED`, retain the cited basis under `Justified` and move the prior entry to `Previously Processed` with `Resolution status: acknowledged` and `Action taken: Acknowledged — current requirements justify this complexity.` If the root cause is gone, retain it under `Previously Processed` with `Resolution status: addressed` and an action noting that the current code no longer contains the root cause.
 - Keep unmatched previously processed findings (`addressed`, `deferred`, `acknowledged`, or `skipped`) that were not already matched or carried forward verbatim in **Previously Processed** so resolver decisions and lifecycle history survive reruns.
 - Assign new findings the next unused `OE-NNN` value above the highest ID in the previous report. Never recycle an old ID for a different root cause.
 
-Use this format for every new active finding so `/kramme:pr:resolve-review` can parse it; reconciled findings retain their existing lifecycle fields:
+Use this format for every new active finding so `/kramme:pr:resolve-review` can parse it; reconciled findings retain their existing lifecycle fields. `Region fingerprint` lists every file the finding cites with that file's blob ID at the reviewed `HEAD` (`git rev-parse HEAD:<path>`); design-scope findings list every file in their scope. Refresh it whenever a finding is re-justified, and record it on `Justified` entries too so a later run can skip re-justifying an unchanged candidate:
 
 ```
 ### {Title}
@@ -151,6 +152,7 @@ Use this format for every new active finding so `/kramme:pr:resolve-review` can 
 - Location: path/to/file.ext:line (or scope: {description})
 - Altitude: line | function | file | design
 - Verdict: OVERDONE | JUDGMENT CALL
+- Region fingerprint: path/to/file.ext@{blob-oid}[, path/to/other.ext@{blob-oid}]
 - Resolution status: open
 
 **Issue:** {the complexity, what it hedges against, and why that is unlikely or unneeded}
@@ -160,9 +162,9 @@ Use this format for every new active finding so `/kramme:pr:resolve-review` can 
 
 Organize the report:
 
-- **Report metadata** — include the structured line `Review producer: kramme:pr:overengineering-review` so filename-free transports retain producer identity
+- **Report metadata** — include the structured line `Review producer: kramme:pr:overengineering-review` so filename-free transports retain producer identity, and `Agents launched: N` counting the finder plus every justify instance actually launched (`0` when the review ran in the main thread)
 - **Summary** — the inferred task requirement (one sentence), candidate/confirmed/judgment-call/justified counts
-- **Previous Review Context** — whether a previous report was read, how many IDs were preserved, how many non-addressed findings were carried forward, and how many processed entries were retained
+- **Previous Review Context** — whether a previous report was read, how many IDs were preserved, how many findings were carried forward on an unchanged region without a justify batch, how many non-addressed findings were carried forward, and how many processed entries were retained
 - **Confirmed Overdoing** — `OVERDONE` findings; this is the headline section
 - **Judgment Calls** — likely overdoing that can be argued either way, each with its trade note
 - **Justified** — dropped candidates with the cited basis; this doubles as the record of why the remaining complexity stays
