@@ -37,6 +37,28 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "Linear issue to PR defaults remediation to three cycles and honors --cycles" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    readme="../README.md"
+
+    grep -qF "\`--cycles <count>\` requires exactly one ASCII digit from \`1\` through \`5\` as its value; store it as \`{cycles}\` and set \`CYCLES_EXPLICIT=true\`" "$parent"
+    grep -qF "a \`--cycles\` value outside \`1\`–\`5\`" "$parent"
+    grep -qF "\`CYCLES_EXPLICIT=false\`: set \`{cycles}\` to \`3\`" "$parent"
+    grep -qF "always forwards an explicit remediation-cycle budget" "$parent"
+    grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]" "$parent"
+    grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} --requirements {issue-requirements}" "$parent"
+    grep -qF "Always pass \`--rounds {cycles}\`, which carries this workflow'"'"'s default budget of \`3\` unless \`--cycles\` overruled it" "$parent"
+    grep -qF "neither this workflow'"'"'s default remediation-cycle budget nor a \`--cycles\` override" "$shipping"
+    grep -qF "\`issue-to-pr\` instead always forwards a budget of three, which its own \`--cycles <1-5>\` flag overrules" "$readme"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "Linear issue to PR can invoke its guarded workflow children" {
 	run bash -c '
     set -e
@@ -139,7 +161,7 @@
     child="skills/kramme:linear:issue-implement/SKILL.md"
     branch_setup="skills/kramme:linear:issue-implement/references/branch-setup.md"
 
-    grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--rounds <1-5>] [--ship]\"" "$parent"
+    grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]\"" "$parent"
     grep -qF "\`--continue\` sets \`CONTINUE_MODE=true\`" "$parent"
     grep -qF "require the captured entry branch to equal \`{issue-branch}\` exactly" "$parent"
     grep -qF "Require at least one such path" "$parent"

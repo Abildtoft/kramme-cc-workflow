@@ -27,10 +27,10 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:linear:review-pr/references/pr-inspection.md",
       "rule_id": "TM1",
-      "reason": "Reviewed false-positive TM1 findings in the static-only PR inspection procedure: --no-checkout prevents Git from materializing attacker-controlled content or invoking checkout-time hooks and filters, while rmdir is limited to workflow-owned temporary directories after exact worktree registration and empty-directory checks; neither construct bypasses a safety gate.",
+      "reason": "Reviewed false-positive TM1 findings in the static-only PR inspection procedure: --no-checkout prevents Git from materializing attacker-controlled content or invoking checkout-time hooks and filters, while rmdir is limited to workflow-owned temporary directories after exact worktree registration and empty-directory checks; neither construct bypasses a safety gate. Re-reviewed on 2026-09-19 against content unchanged since acceptance: the mandatory --no-checkout and core.hooksPath=/dev/null guards, the exact `git worktree list --porcelain` registration match, the find-based emptiness proof before any forced removal, and the rmdir-only parent cleanup are all still present.",
       "owner": "kramme",
-      "accepted_at": "2026-08-16",
-      "review_after": "2026-09-16"
+      "accepted_at": "2026-09-19",
+      "review_after": "2026-10-19"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md",
