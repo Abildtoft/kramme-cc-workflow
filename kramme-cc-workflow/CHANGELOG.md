@@ -23,6 +23,16 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 - **Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`. Existing prompts and automation must remove `--auto`; no-argument calls use the canonical branch review scope, while former base-branch arguments must become explicit file or directory scopes. The replacement verifies and checkpoints scoped uncommitted input, then commits each simplification separately. Ship this command removal only in the next major release.
 
+## [0.84.0] - 2026-09-20
+
+### Added
+
+- Delegate the started-state write to issue-implement (#933)
+
+### Changed
+
+- **BREAKING:** Merge code-review security and cleanup reviewers into two agents (#934)
+
 ## [0.83.0] - 2026-09-19
 
 ### Added
@@ -1024,6 +1034,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.84.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.83.0...v0.84.0
 [0.83.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.82.0...v0.83.0
 [0.82.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.80.0...v0.82.0
 [0.80.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.79.0...v0.80.0
