@@ -261,14 +261,22 @@ Before implementation, `issue-to-pr` validates Linear's target branch and verifi
 
 ### Review and ship a PR
 
-PR review subagents default to one model class below the orchestrator. This applies to `pr:code-review`, `pr:ux-review`, `pr:product-review`, `pr:convention-review`, and `pr:overengineering-review`, including their validation passes, team modes, and review reruns.
+PR review subagents default to the orchestrator's own model. This applies to `pr:code-review`, `pr:ux-review`, `pr:product-review`, `pr:convention-review`, and `pr:overengineering-review`, including their validation passes, team modes, and review reruns.
+
+With `KRAMME_REVIEW_SUBAGENT_LEVEL=lower`, reviewers instead step down one model class:
 
 | Host | Orchestrator → reviewer |
 | --- | --- |
 | Claude | Fable → Opus; Opus → Sonnet; Sonnet → Haiku |
 | Codex | Astra → Sol; Sol → Luna |
 
-Haiku and Luna stay at their own class. Override the default with `--subagent-model <model>` on any of these five skills, `pr:github-review`, or `pr:review-convergence`. The value can be a model class, a runtime-supported model ID, or `inherit` to use the orchestrator's model. The flag takes precedence over conversational reviewer-model preferences, persists through team passes and reruns, and must precede `--requirements` when that sentinel is used. Unsupported explicit choices stop with an error; unknown or unavailable automatic defaults retain host defaults with a reported limitation. GitHub review and review convergence preserve the orchestrator class when delegating these skills, so the step-down happens once. Implementation agents and different-provider adversarial reviews retain their own model policies; `--adversarial-model` controls the latter separately.
+Haiku and Luna stay at their own class. `KRAMME_REVIEW_SUBAGENT_LEVEL` accepts `same` (the default when unset) or `lower`; any other value stops the review with an error. In Claude Code, put it in the `env` block of `~/.claude/settings.json` (or a project `.claude/settings.json`); in Codex, export it in the shell environment Codex inherits. An explicit `--subagent-model` flag or conversational reviewer-model choice still wins over the setting.
+
+```json
+{ "env": { "KRAMME_REVIEW_SUBAGENT_LEVEL": "lower" } }
+```
+
+Override the default for a single run with `--subagent-model <model>` on any of these five skills, `pr:github-review`, or `pr:review-convergence`. The value can be a model class, a runtime-supported model ID, or `inherit` to use the orchestrator's model. The flag takes precedence over conversational reviewer-model preferences and the level setting, persists through team passes and reruns, and must precede `--requirements` when that sentinel is used. Unsupported explicit choices stop with an error; unknown or unavailable automatic defaults retain host defaults with a reported limitation. GitHub review and review convergence preserve the orchestrator class when delegating these skills, so any step-down happens once. Implementation agents and different-provider adversarial reviews retain their own model policies; `--adversarial-model` controls the latter separately.
 
 ```text
 /kramme:pr:code-review --subagent-model opus      # Claude reviewers use Opus
