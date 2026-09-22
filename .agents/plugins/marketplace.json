@@ -1,0 +1,20 @@
+{
+  "name": "kramme-cc-workflow",
+  "interface": {
+    "displayName": "kramme-cc-workflow"
+  },
+  "plugins": [
+    {
+      "name": "kramme-cc-workflow",
+      "source": {
+        "source": "local",
+        "path": "./plugins/kramme-cc-workflow"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

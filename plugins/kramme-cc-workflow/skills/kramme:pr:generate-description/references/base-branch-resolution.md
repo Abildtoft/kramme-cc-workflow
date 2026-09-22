@@ -1,0 +1,29 @@
+# Base Branch Resolution
+
+Use this in Phase 1 to confirm the current branch and compute `BASE_BRANCH`.
+
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+
+1. **ALWAYS** confirm the current branch:
+
+   ```bash
+   git branch --show-current
+   ```
+
+2. **ALWAYS** resolve the base/target branch with the shared plugin script. It uses a 3-tier strategy: explicit `BASE_BRANCH_OVERRIDE` from `--base`, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. When `BASE_COMMIT_OVERRIDE` is present, it retains the branch metadata but pins all diff calculations to that exact commit. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
+
+   ```bash
+   RESOLVE_ARGS=(--strict)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+   [ -n "${BASE_COMMIT_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base-commit "$BASE_COMMIT_OVERRIDE")
+   RESOLVED=$(${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.85.0/scripts/resolve-base.sh "${RESOLVE_ARGS[@]}") || {
+     echo "Base resolution failed; see the message above and stop." >&2
+     exit 1
+   }
+   eval "$RESOLVED"
+   echo "Base branch: $BASE_BRANCH"
+   ```
+
+   The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE` for later context gathering.
+   - **NOTE**: PR target branch detection ensures correct scope when the PR targets a non-default branch (e.g., a feature branch stacked on another PR)
+   - **CAN** ask user if unclear or override needed

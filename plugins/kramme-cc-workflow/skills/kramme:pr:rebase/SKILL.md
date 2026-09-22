@@ -1,0 +1,279 @@
+---
+name: kramme:pr:rebase
+description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch or when delegated by kramme:pr:fix-ci with --force-push. Optionally delegates post-push CI stabilization to kramme:pr:fix-ci. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch.
+argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>]"
+disable-model-invocation: false
+user-invocable: true
+---
+
+# Rebase PR
+
+Rebase the current branch onto the latest base branch and force push.
+
+### Model Invocation Contract
+
+- Invoke automatically only as a delegated child of `kramme:pr:fix-ci`, with the exact `--force-push` argument selected by that parent. Do not add `--auto`, `--fix-ci`, or an invented `--base` override.
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain every branch, stack, conflict, red-flag, verification, lease, and publication gate, and never push outside the validated current branch or its resolved local stack.
+
+## Why rebase — dev branches are costs
+
+A feature branch is a cost that compounds every day it stays open. It drifts from the base branch, it accumulates irrelevant diff when other PRs land, and it forces every reviewer to re-learn a stale context. Rebasing is how you pay down that cost: the branch stays in sync with `main`, the diff stays scoped to the change, and the reviewer's mental model of the base is still valid when they open the PR. Merge commits defer the cost — they hide drift behind a merge marker instead of resolving it — which is why this skill rebases and force-pushes rather than merging `main` in. If the rebase fights you, that is evidence the branch is already too old: finish it or split it, don't patch it with more merges.
+
+## Options
+
+**Flags:**
+
+- `--auto` - Dangerous unattended mode. Continue through risky cases, bypass verification and confirmation gates, and push immediately with `--force-with-lease` after any completed rebase.
+- `--force-push` - Safe unattended push mode. Skip only the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase, while keeping all conflict, red-flag, and verification gates.
+- `--fix-ci` - After a successful rebase push, delegate to `kramme:pr:fix-ci` to watch CI, address failures and review feedback, push fixes, and repeat until the Pull Request is green. This does not bypass any rebase push gate.
+- `--base <branch>` - Override auto-detected base branch (e.g., `--base develop`)
+
+`--force-push` is the safe replacement for the old `--auto` behavior. It only bypasses the final confirmation prompt when the rebase completes without unresolved risk.
+
+`--auto` is intentionally dangerous. It means: keep going through risky conflict resolution cases, do not stop for red-flag review, do not require verification before pushing, and push at the end once the rebase has completed. It still uses `--force-with-lease`; if the lease is rejected or the rebase cannot be completed mechanically, report that failure instead of inventing a new history.
+
+## Output markers
+
+Use these uppercase markers when reasoning about the rebase and reporting progress. One marker per line, no decoration:
+
+- **REBASE PREFLIGHT** — base branch, conflict method, and autostash state at the start. `REBASE PREFLIGHT: origin/main, --autostash enabled, 3 uncommitted changes stashed`.
+- **UNVERIFIED** — claims about resolved conflicts that haven't been runtime-checked. `UNVERIFIED: conflict auto-resolved in handler.ts but I didn't run the tests after`.
+- **NOTICED BUT NOT TOUCHING** — issues visible during rebase that are outside scope. `NOTICED BUT NOT TOUCHING: origin/main has an unrelated lint failure — not this rebase's problem`.
+- **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — end-of-run summary when the rebase completes.
+- **CONFUSION** — ambiguous conflict evidence. `CONFUSION: both sides of the conflict add the same function but with different signatures — unclear which is authoritative`.
+- **MISSING REQUIREMENT** — a decision is needed before the rebase can proceed. `MISSING REQUIREMENT: origin/main has force-pushed since last fetch — confirm the target is correct before I continue`.
+- **PLAN** — announced sequence when conflicts span multiple rounds. `PLAN: resolve handler.ts first, then re-run the rebase; 2 more files likely to conflict afterward`.
+
+## Workflow
+
+### Conductor workspaces
+
+Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills): when `CONDUCTOR_WORKSPACE_PATH` is set: stay on the current branch absent explicit approval; use another Conductor workspace—not raw worktrees or throwaway branches—for isolation. Never remove, reset, or re-point a Conductor workspace path; archive workspaces through Conductor. Conductor changes defaults, not permissions or safety gates.
+
+### Step 0: Parse Arguments
+
+If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--force-push`, set `FORCE_PUSH_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--fix-ci`, set `FIX_CI_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
+
+If both `--auto` and `--force-push` are present, `--auto` wins because it is the broader dangerous mode. Continue with `AUTO_MODE=true` and ignore `FORCE_PUSH_MODE`.
+
+### Step 1: Validate Prerequisites
+
+1. **Check for rebase/merge in progress:**
+
+   ```bash
+   ls -d .git/rebase-merge .git/rebase-apply .git/MERGE_HEAD 2> /dev/null
+   ```
+
+   If any exist, stop with error:
+
+   > "A rebase or merge is already in progress. Complete or abort it first with `git rebase --abort` or `git merge --abort`."
+
+2. **Resolve base branch:**
+
+   Use the shared plugin script to resolve the base branch. It uses the same 3-tier strategy as the sibling review skills: explicit `--base`, PR target branch (via `gh`), then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode and fetches the resolved base, so fetch failures stop the workflow with the script's stderr message.
+
+   ```bash
+   RESOLVE_ARGS=(--strict)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+   RESOLVED=$("${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.85.0/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
+     echo "Base resolution failed; see the message above. Re-run with --base <branch>." >&2
+     exit 1
+   }
+   eval "$RESOLVED"
+   ```
+
+   The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`. Use `BASE_BRANCH` wherever `<base-branch>` appears below.
+
+3. **Verify current branch is not the base branch:**
+
+   ```bash
+   git branch --show-current
+   ```
+
+   If current branch equals base branch, stop with error:
+
+   > "You are on the base branch. Switch to a feature branch first."
+
+   Also stop if the current branch is `main`, `master`, or `develop` regardless of the resolved base; this skill never rewrites or force-pushes those branches.
+
+### Step 1.5: Stack Detection
+
+A branch that belongs to a GitHub stack must not be rebased alone — every branch stacked above it would be left on the old history. Resolve local CLI state and server-side GitHub state before any rewrite:
+
+```bash
+STACK_RESOLVED=$("${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.85.0/scripts/resolve-stack-membership.sh") || {
+  echo "Stack membership could not be determined; stop before rebasing." >&2
+  exit 1
+}
+eval "$STACK_RESOLVED"
+```
+
+Route the result explicitly:
+
+- `STACK_MEMBERSHIP=local`: set `IN_STACK=true` and use the stack replacements below.
+- `STACK_MEMBERSHIP=none`: set `IN_STACK=false` and use the single-branch flow.
+- `STACK_MEMBERSHIP=remote`: stop before rewriting. The PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry.
+
+Any resolver failure is an operational failure, not evidence that the branch is unstacked. Stop rather than falling through to a single-branch rebase.
+
+When `IN_STACK=true`, swap the git commands but keep every gate:
+
+- **Steps 2–3 replacement:** run `gh stack rebase` instead of `git rebase --autostash origin/<base-branch>`. It fetches, fast-forwards the trunk, and cascade-rebases every stack branch onto its updated parent. It has no autostash — if the working tree is dirty, `git stash` first and `git stash pop` after. On conflict (exit code 3), resolve each conflicted file under the same rules, round cap, and red flags as Step 3, then `gh stack rebase --continue`; abort with `gh stack rebase --abort` (restores all branches).
+- **Step 5 replacement:** the validated push procedure becomes `gh stack push` — it pushes all stack branches with `--force-with-lease --atomic`. All Step 5 gates and modes apply unchanged.
+- **Step 7 addition:** report every branch the rebase touched, not just the current one (`gh stack view --json` shows the updated heads and PR states).
+
+### Step 2: Fetch Latest
+
+The resolve script in Step 1 already fetched `origin/<base-branch>`. If meaningful time has passed since Step 1 (e.g., after a long conflict round or user pause), refresh it before rebasing:
+
+```bash
+git fetch origin <base-branch>
+```
+
+Report how far the base moved (`git rev-list --count HEAD..origin/<base-branch>`) in the `REBASE PREFLIGHT` line so a large jump is visible at the Step 5 confirmation.
+
+### Step 3: Rebase
+
+Run the rebase with `--autostash` so uncommitted changes are stashed before the rebase and popped after, covering the common case of rebasing with local modifications:
+
+```bash
+git rebase --autostash origin/<base-branch>
+```
+
+**If rebase succeeds:** Proceed to Step 4.
+
+**If rebase fails (conflicts):**
+
+1. **Attempt automatic resolution:**
+
+   The 10-round cap exists because each round reapplies a single commit; beyond that, conflicts almost always indicate semantic drift the auto-resolver can't handle safely. In normal and `--force-push` modes, escalate to the user instead of guessing further. In `--auto` mode, keep resolving until either the rebase completes or Git reaches a conflict the model cannot mechanically resolve.
+
+   Track all conflicts and resolutions for the summary and set `CONFLICTS_AUTO_RESOLVED=true` once any conflict marker is resolved by the model. Before resolving each file, check the red flags that make auto-resolution unsafe: the file is a migration file or generated artifact, the conflicting logic is not fully understood, or the only available resolution deletes a block instead of merging both sides' semantics. In normal and `--force-push` modes, abort instead of resolving when a red flag applies. In `--auto` mode, record that the red flag was bypassed and continue; every red flag bypassed in `--auto` mode is reported in the end-of-run summary under **POTENTIAL CONCERNS**.
+
+   For each round:
+
+   a. Get list of conflicting files:
+
+   ```bash
+   git diff --name-only --diff-filter=U
+   ```
+
+   b. For each conflicting file:
+   - Read the file content
+   - Resolve conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) by analyzing both versions and choosing the best resolution
+   - **Record the conflict and resolution** (file path, what conflicted, how it was resolved)
+   - Write the resolved content back
+   - Stage the file: `git add <file>`
+
+   c. Continue the rebase (`GIT_EDITOR=true` prevents `git rebase --continue` from opening an editor on commit-message prompts):
+
+   ```bash
+   GIT_EDITOR=true git rebase --continue
+   ```
+
+   d. If rebase completes, proceed to **Step 4: Conflict Summary**
+
+   e. If new conflicts arise, repeat from (a)
+
+2. **If resolution fails** (after 10 rounds in normal or `--force-push` mode, or after an unresolvable conflict in any mode):
+
+   Abort the rebase:
+
+   ```bash
+   git rebase --abort
+   ```
+
+   Inform user:
+
+   > "Automatic conflict resolution failed after X attempts. The branch has been restored to its pre-rebase state."
+   >
+   > "Conflicting files that could not be resolved: `<list files>`"
+   >
+   > "To resolve manually, run `git rebase origin/<base-branch>`, fix conflicts, then `git rebase --continue`."
+
+### Step 4: Conflict Summary (only if conflicts were resolved)
+
+If the rebase completed without conflicts, skip to Step 5.
+
+Otherwise, present a summary of what was auto-resolved. In normal and `--force-push` modes, this is review context before force pushing. In `--auto` mode, this is informational and does not block the push.
+
+> **Conflicts resolved during rebase:**
+>
+> For each resolved conflict, show:
+>
+> - **File:** `<file path>`
+> - **Conflict:** Brief description of what conflicted (e.g., "Both branches modified the `calculateTotal` function")
+> - **Resolution:** How it was resolved (e.g., "Combined changes: kept the new parameter from base branch and the validation logic from feature branch")
+
+### Step 5: Force Push
+
+Initialize `PUSH_COMPLETED=false`. Set it to true only after the applicable validated push command returns success. A rejected lease, failed stack push, declined confirmation, or any stop before pushing must leave it false.
+
+All force-push paths in this step must use this validated push procedure:
+
+```bash
+CURRENT_BRANCH=$(git branch --show-current)
+git check-ref-format --branch "$CURRENT_BRANCH" > /dev/null
+git push --force-with-lease origin "$CURRENT_BRANCH"
+```
+
+If `AUTO_MODE=true`, use the validated push procedure immediately after the rebase completes. Do this even if conflicts were auto-resolved, red flags were bypassed, or verification is unavailable/failing. Report the conflicts, bypassed red flags, and verification status after the push attempt. After this push attempt, skip the remaining confirmation gates and proceed to Step 6.
+
+Before any `FORCE_PUSH_MODE=true` push, re-check the Step 3 red flags. If any red flag applies, stop instead of pushing automatically and report `MISSING REQUIREMENT: --force-push cannot bypass red-flag review; rerun without --force-push after addressing the concern.` This applies even when the rebase completed without conflicts.
+
+If `FORCE_PUSH_MODE=true` and `CONFLICTS_AUTO_RESOLVED` is not true, skip the confirmation prompt, use the validated push procedure immediately, then proceed to Step 6.
+
+If `FORCE_PUSH_MODE=true` and `CONFLICTS_AUTO_RESOLVED=true`, do not push until one of these gates is satisfied:
+
+1. Run the project's verification battery using the `kramme:verify:run` conventions. If verification is available and passes, use the validated push procedure.
+2. If verification is unavailable, fails, or cannot cover the conflict resolution, present the full Conflict Summary and ask the user to confirm before pushing.
+
+For the `FORCE_PUSH_MODE=true` conflict path, if neither gate succeeds, stop before `git push` and report:
+
+- the full Conflict Summary
+- verification command(s) attempted, if any
+- why the branch was not pushed automatically
+
+Use the `UNVERIFIED` marker for every conflict resolution that was not covered by a passing verification run.
+
+If no earlier branch in this step has already pushed or stopped, ask the user directly in chat to confirm:
+
+> "Ready to force push rebased branch. This will overwrite the remote branch history. Continue?"
+>
+> Options:
+>
+> - **Yes, force push** - Push with `--force-with-lease`
+> - **Do not push** - Keep local rebase but don't push
+
+If confirmed, use the validated push procedure.
+
+**Note:** `--force-with-lease` refuses to overwrite remote commits you haven't fetched, providing safety against overwriting others' work.
+
+### Step 6: Stabilize CI (when requested)
+
+If `FIX_CI_MODE` is not true, skip to Step 7.
+
+Require `PUSH_COMPLETED=true` before delegating. If it is false, do not invoke `kramme:pr:fix-ci`; report that the rebase remains local or the push failed and therefore no remote CI run can be stabilized by this workflow, then skip to Step 7.
+
+Invoke the sibling skill through the platform skill mechanism rather than reproducing its polling or remediation loop:
+
+- When `AUTO_MODE=true`, invoke `$kramme:pr:fix-ci --auto` so the explicitly requested unattended workflow remains unattended through CI remediation and consolidation.
+- Otherwise, invoke `$kramme:pr:fix-ci` with no additional flags. Its normal consolidation choice remains visible to the user; `--force-push` only controls the rebase push and must not silently opt the delegated workflow into unattended consolidation.
+
+The delegated skill owns Pull Request discovery, stack-aware fix pushes, `gh pr checks --watch`, failure-log inspection, review-feedback handling, retry limits, consolidation, and its `CI remediation JSON` handoff. Do not poll CI separately before invoking it. For a local stack, it stabilizes the current branch's Pull Request and applies its own stack propagation rules; do not claim that sibling Pull Requests were watched.
+
+Preserve and report the successful rebase/push separately from the delegated workflow outcome. Report the last CI and review-feedback state established by the delegated workflow; if CI reached green before a later consolidation or coordination blocker, report both facts instead of treating the blocker as a CI failure. Never infer green CI when the delegated workflow did not establish it. Retain the remediation handoff for the final report on both success and blocker returns.
+
+### Step 7: Report Results
+
+Show the commit log relative to the `BASE_BRANCH` resolved in Step 1; it should be linear, with no merge commits. Quote the entire revision range so the shell passes it as one argument:
+
+```bash
+git log --oneline "origin/$BASE_BRANCH..HEAD"
+```
+
+Confirm the rebase and push separately from optional CI stabilization:
+
+> "Branch rebased onto `origin/<base-branch>` and pushed."
+
+When `FIX_CI_MODE=true` and `PUSH_COMPLETED=true`, also report whether the delegated workflow reached green CI and addressed review feedback, name any later blocker separately, and include its `CI remediation JSON` line. The commit log may include fixes or consolidation produced by that workflow. When `FIX_CI_MODE=true` and `PUSH_COMPLETED=false`, report that CI stabilization was not started and do not require or fabricate a remediation handoff.

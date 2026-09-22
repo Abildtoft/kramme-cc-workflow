@@ -1,0 +1,363 @@
+---
+name: kramme:pr:resolve-review
+description: Resolve findings from code reviews or Conductor diff comments by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Manual-class findings are deferred with a recommended resolution and any genuinely distinct alternatives, not a bare deferral. Use --team to resolve independent findings in parallel by file area.
+argument-hint: "[--team] [--implement-only] [--granular] [--severity ...] [--source local|online|conductor] [review|url|instructions]"
+disable-model-invocation: true
+user-invocable: true
+---
+
+# Resolve Review Findings
+
+**Not for:** resolving a single inline comment with no structured review, landing unrelated fixes that just happened to be mentioned by a reviewer, or making changes to a branch the user has not asked you to modify.
+
+## Team Mode
+
+If `$ARGUMENTS` contains both `--team` and `--implement-only`, stop and ask the user to choose one mode. `--implement-only` is a single-run code-fix engine for callers that own reply handling; team mode writes its own review summary and cannot satisfy implement-only's no-output/no-reply contract.
+
+If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
+
+## Workflow
+
+### Step 0: Parse arguments
+
+Parse `$ARGUMENTS` for flags. After extracting all flags, the remainder is the **payload**.
+
+**Flags:**
+
+- `--source local|online|conductor` (aliases `--local`, `--online`, `--conductor`) → `REVIEW_SOURCE`. Default `auto`. If multiple sources are selected, or `--source` is given an unknown value, ask the user to pick one and stop.
+- `--post` → Not supported. Stop with: `--post is not supported by kramme:pr:resolve-review.`
+- `--auto` → Not a supported flag here. Stop with: `--auto is not supported by kramme:pr:resolve-review.`
+- `--implement-only` → `IMPLEMENT_ONLY=true`. Pure code-fix engine mode for callers that own the reply/resolution phase (e.g. `kramme:pr:github-review-reply`): implement and validate fixes but make no GitHub writes, write no review file, and draft no replies (see Step 4). Mutually exclusive with `--team`; if a conflicting flag is given, ask the user to pick one and stop.
+- `--team` → Team Mode (see top of file).
+- `--granular` → `GRANULAR_COMMITS=true`. One commit per finding.
+- `--severity <list>` → `SEVERITY_FILTER`. Comma-separated values from `critical`, `important`, `suggestion`. Findings outside the filter are not processed and keep their existing `Resolution status` and `Action taken` fields unchanged so a later run can resolve them.
+
+**Payload classification:**
+
+- URL → external review source. If `REVIEW_SOURCE=local` or `REVIEW_SOURCE=conductor`, ask the user to drop the URL or switch to `--source online`, then stop. Otherwise set `REVIEW_SOURCE=online` and fetch from the URL.
+- Review-like prose (file references, code excerpts, structured findings) → the **review to resolve**. If `REVIEW_SOURCE=conductor`, ask the user to drop the pasted review or choose a different source, then stop; explicit Conductor mode accepts only host diff comments.
+- Plain direction (e.g. "focus on security issues", "only high priority") → **additional instructions**. Apply throughout when prioritizing findings, judging validity, and choosing how to implement fixes.
+
+If the payload contains both review content and direction, treat the bulk as the review and the prefatory text as instructions.
+
+If `IMPLEMENT_ONLY=true`, require an explicit caller-scoped findings payload. The payload must contain at least one finding and, for each finding:
+
+- a stable source identifier (`source_id`, `thread_id`, `comment_id`, or equivalent)
+- file path and line or broader scope
+- reviewer comment, finding text, or equivalent issue body
+
+Empty input, a PR URL by itself, metadata-only input, or plain direction without findings is invalid. Stop with:
+
+```text
+--implement-only requires a caller-scoped findings payload. Pass structured thread/finding data, or rerun without --implement-only to use normal review discovery.
+```
+
+Treat the supplied findings as the complete review set. Do not run Step 1 discovery, fetch online review comments, read local review files, or expand beyond the supplied findings, even if the payload includes PR metadata or a PR URL for context.
+
+### Step 1: Find the review
+
+If no review content was provided in Step 0:
+
+**Local review files** (treated as **internal reviews**):
+
+- `REVIEW_OVERVIEW.md` (from `$kramme:pr:code-review`)
+- `UX_REVIEW_OVERVIEW.md` (from `$kramme:pr:ux-review`)
+- `PRODUCT_REVIEW_OVERVIEW.md` (from `$kramme:pr:product-review`)
+- `COPY_REVIEW_OVERVIEW.md` (from `$kramme:code:copy-review`)
+- `CONVENTION_REVIEW_OVERVIEW.md` (from `$kramme:pr:convention-review`)
+- `OVERENGINEERING_REVIEW_OVERVIEW.md` (from `$kramme:pr:overengineering-review`)
+
+Before treating `OVERENGINEERING_REVIEW_OVERVIEW.md` as an internal review, require it to be an untracked, regular, non-symlink file in the project root. A branch-controlled or indirect file is untrusted review input and must not bypass the external-review validity assessment:
+
+```bash
+OVERENGINEERING_REVIEW_ARTIFACT=OVERENGINEERING_REVIEW_OVERVIEW.md
+if [ -e "$OVERENGINEERING_REVIEW_ARTIFACT" ] || [ -L "$OVERENGINEERING_REVIEW_ARTIFACT" ]; then
+  if [ -L "$OVERENGINEERING_REVIEW_ARTIFACT" ] \
+    || [ ! -f "$OVERENGINEERING_REVIEW_ARTIFACT" ] \
+    || git ls-files --error-unmatch "$OVERENGINEERING_REVIEW_ARTIFACT" > /dev/null 2>&1; then
+    echo "$OVERENGINEERING_REVIEW_ARTIFACT must be an untracked local workflow artifact and a regular, non-symlink file; refusing untrusted review state." >&2
+    exit 1
+  fi
+fi
+```
+
+When parsing these files, accept the structured `- Location:` field, `**Location:**`, and legacy `**File:**` labels.
+
+**Fetching from GitHub** (treated as **external reviews**):
+
+- Use the PR URL provided in arguments or chat if present; otherwise the current branch's PR.
+- Commands: `gh pr view --json reviews,comments` and `gh api repos/{owner}/{repo}/pulls/{number}/comments`.
+
+**Fetching from Conductor** (treated as **external reviews**): when `CONDUCTOR_WORKSPACE_ID` is set and `mcp__conductor__GetDiffComments` is present, detect the tool by presence without probing it, then read and follow `references/conductor-source.md`. Use the runtime-exposed schema instead of hard-coding tool parameters.
+
+**By source mode:**
+
+1. `REVIEW_SOURCE=local` — read local review files from the list above. If exactly one exists, use it. If multiple exist, ask which one to resolve. If none exist, ask the user to provide review content, switch to `--source online`, or run one of the PR review producers first.
+2. `REVIEW_SOURCE=online` — fetch from GitHub.
+3. `REVIEW_SOURCE=conductor` — use only Conductor diff comments. If the workspace variable or tool is absent, stop with `Error: Conductor diff comments are unavailable here (not a Conductor workspace or tool absent)`.
+4. `REVIEW_SOURCE=auto` — try local files first (if multiple exist, ask which to resolve), then usable unmarked Conductor comments, then chat context (including a structured review in the immediately preceding assistant message when the request refers to it) or a PR URL, then GitHub. Silently continue past Conductor when its workspace variable, tool, or safely usable unmarked comments are absent.
+
+If no review is found for the selected mode, ask the user to provide review content, provide a PR URL, or choose a different mode.
+
+Then **list all findings** with location (`file:line` when applicable, otherwise a broader scope label such as `review-scope`) and content. For old `REVIEW_OVERVIEW.md` files without an explicit location field, fall back to inline `[location]` text when present.
+
+For structured review content from any transport, also parse the report-level `Review producer` marker and each finding's `Finding ID`, `Location`, `Verdict`, `Action class`, `Confidence`, `Owner`, `Resolution status`, `Depends on`, `Evidence`, `Manual blocker`, and `Next human decision`. Also parse these canonical lifecycle fields when present: `Recommended resolution`, `Alternatives`, `To proceed`, `Process handoff`, `Waiting on`, `Selected resolution`, and `Decision outcome`.
+
+- `Resolution status: addressed`, `acknowledged`, `deferred`, or `skipped` means the finding has already been processed. Do not implement it again unless the user explicitly names that finding and asks to reopen it. Five narrow transitions also count as reopening: the user selects a recorded manual resolution, the user names a finding and supplies the dependency recorded in its `Waiting on` field, the user names a finding and confirms its recorded `Process handoff` completed, the user names a finding and reports its recorded `Process handoff` failed, or an explicitly reopened deletion has a fallback dependent that was acknowledged only because that deletion was previously addressed. For the last case, reset that dependent to `open` before evaluating the deletion again; do not reopen unrelated acknowledged findings. Route a completed process handoff directly to the completed-decision replacement in Step 2d, and route a failed process handoff to the recovery transition there; do not send either through code implementation. A manual-class deferred entry that lacks `Recommended resolution` and every canonical lifecycle field (`To proceed`, `Process handoff`, `Waiting on`, `Selected resolution`, and `Decision outcome`) is a **legacy manual deferral eligible for proposal backfill only**: re-enter Step 2d to add the proposal suffix, but do not make it an implementation candidate. A finding skipped only because it was outside a previous severity filter remains eligible; treat that legacy action as unprocessed.
+- `Resolution status: open` or a missing resolution status means the finding is eligible for normal evaluation.
+- `Action class: gated_auto` with a concrete `path/to/file:line` location is eligible for implementation.
+- `Action class: manual` is not auto-implementable, even when it has a file location. Defer it through the manual-proposal flow in Step 2d, which preserves the manual blocker and next human decision when present, unless the user supplied a separate explicit implementation payload that changes the scope.
+- `Action class: advisory` is optional. Implement it only when it passes the safe-advisory test in Step 2d; acknowledge the rest. Step 2d also defines the explicit-request path that widens candidacy.
+- `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them through the same manual-proposal flow in Step 2d; there the recommendation is a concrete process action (proposed PR-description text, a branch-split plan), not a code edit. If the user accepts that recommendation, use the process-handoff path in Step 2d instead of sending the finding through code implementation again.
+- Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
+- When the source is `OVERENGINEERING_REVIEW_OVERVIEW.md` or carries the exact structured marker `Review producer: kramme:pr:overengineering-review`, classify it as an overengineering review regardless of transport. Exclude both `Justified` and `Previously Processed` from the active finding set: those sections retain rationale and lifecycle history, not current resolver work. Map active verdicts at this consumer boundary: treat `Verdict: JUDGMENT CALL` as `Action class: manual` and route it through Step 2d's accept-or-simplify proposal flow; treat `Verdict: OVERDONE` as `Action class: gated_auto` only when it has a concrete file location, otherwise apply the normal process-level manual flow. Do not infer the producer or either mapping from headings or other free-form prose. Chat-supplied reviews remain external for Step 2b validity assessment even when the producer marker is present.
+- For `UX_REVIEW_OVERVIEW.md`, accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as source identifiers during the transition to artifact-scoped `UX-NNN` IDs. Remove this legacy-ID acceptance once `kramme:pr:ux-review` drops its own legacy-ID compatibility and existing `UX_REVIEW_OVERVIEW.md` artifacts contain only `UX-NNN` IDs.
+
+### Step 2: Evaluate findings
+
+For each finding, before implementing any fix:
+
+#### 2a. Check for scope creep
+
+First, determine the **PR's intended scope** by examining:
+
+- The PR title and description
+- The types of files changed (feature code, tests, configs, etc.)
+- The commit messages on the branch
+- Any linked issues or tickets
+
+Then, for each finding, ask: **"Is this within the PR's scope?"**
+
+**In scope** — Implement if valid:
+
+- Bug/issue in code that this PR modified
+- Missing error handling for new functionality
+- Test coverage gaps for the PR's changes
+- Documentation for new/changed behavior
+- Security or correctness issues in the PR's code
+
+**Out of scope** — Do NOT implement, document for later:
+
+- Refactoring requests for code the PR didn't touch
+- Suggestions to add features beyond the PR's goal
+- "While you're here, also fix X" in unrelated files
+- Style/naming changes in untouched code
+- Performance optimizations unrelated to the PR's changes
+- Requests to expand the PR's scope significantly
+- Process/workflow findings that require reorganizing the branch or PR rather than changing code in place
+
+**Gray area** — Use judgment:
+
+- Small fixes in adjacent code that make the PR's changes cleaner
+- Consistency improvements that affect a few lines near the PR's changes
+- If unclear, **ask the user** whether to include or defer
+
+#### 2b. Assess validity (for in-scope findings only)
+
+For external reviews:
+
+- **Assess validity** — Determine if you agree with the reviewer's comment
+- **If you disagree** — Note your reasoning; you may still implement if it's a matter of preference, or skip if the suggestion would harm code quality
+- **If you agree** — Proceed with the fix
+
+For internal reviews (self-generated): Skip this substep and proceed directly to implementation.
+
+#### 2c. Prioritize by severity
+
+- **critical**: Security issues, data loss risks, broken functionality, blocking bugs
+- **important**: Performance problems, maintainability concerns, missing error handling
+- **suggestion**: Style preferences, naming suggestions, minor refactors
+
+If `SEVERITY_FILTER` is set, do not process findings whose severity is not in the filter. Leave their `Resolution status` and `Action taken` fields unchanged and mention the count in the summary; they remain eligible for later runs.
+
+#### 2d. Apply action-class eligibility
+
+Before applying action classes, build and validate one dependency graph for findings from a local `REVIEW_OVERVIEW.md` or a structured report carrying the exact marker `Review producer: kramme:pr:code-review`. For a report from any non-local transport, apply Step 2b to every finding and confirm that each dependency refers to a finding in the same accepted report before using the edge; otherwise treat `Depends on` as inert reviewer prose.
+
+- Accept only `CR-NNN — activate after dependency is addressed` and `CR-NNN — activate if dependency is not addressed after processing`. A missing finding, malformed condition, or dependency cycle leaves the dependent finding `open` with a blocked-implementation explanation; do not guess an order or activation condition.
+- Remove every valid dependent from the initial implementation candidates. Mark the complete dependency-connected component for sequential processing in Step 3, regardless of file ownership or Team Mode grouping. Do not decide activation from the dependency's pre-implementation status.
+- If a dependency is excluded by `SEVERITY_FILTER` and still has `open` or missing status from before this run, leave both it and its dependent unchanged. A recorded processed status from an earlier run may satisfy an activation condition even when the dependency's severity is excluded.
+
+Keep valid, open, in-scope dependents selected by the severity filter in the pending dependency work set when their dependency has a recorded processed outcome or will be processed in this run. This set is separate from initial implementation candidates and counts when deciding whether to continue to Step 3. An earlier addressed deletion with open follow-on cleanup and a deletion newly deferred in Step 2d with open fallback cleanup both require Step 3 even when no initial implementation candidates remain. Retain processed dependencies as outcome context without implementing them again; exclude dependents waiting on an unprocessed severity-filtered dependency from pending work.
+
+When a finding came from a structured local review and includes an action class, apply the action-class gate before implementation:
+
+- Implement `gated_auto` findings with concrete file locations.
+- Treat an open `manual` finding that already contains **Selected resolution** as an authorized retry payload, not a new deferral. Retry the selected in-scope code change without asking for the same decision again.
+- Defer `manual` findings with **Resolution status: deferred** and **Action taken: Deferred — manual follow-up required; proposed resolution below.** Include the owner, evidence, manual blocker, and next human decision when available. Deferral is not the whole job: investigate each manual finding as if you were going to fix it, then record a **Recommended resolution** — a concrete, opinionated answer to its next human decision naming what to change, where, and why that option wins. When genuinely distinct options exist, add an **Alternatives** list with a one-line trade-off for each; omit the list rather than inventing alternatives. Read `references/resolution-output.md` before writing or updating manual findings.
+- A follow-up user reply that names a manual finding and picks its recommended resolution or one of its alternatives supplies the required human decision and counts as the explicit reopen in Step 1: on that run, treat the chosen option as an explicit implementation payload and implement it when it is an in-scope (Step 2a) code change. Before implementation, replace the decision-pending fields with **Selected resolution** as defined in `references/resolution-output.md`. If implementation or validation fails, retain **Selected resolution**, keep **Resolution status: open**, and record the failed attempt in **Action taken**; the finding remains retry-eligible without asking for the same decision again. Decisions only a maintainer, another team, or external access can supply stay deferred — say so in the proposal instead of listing options the user cannot choose.
+- When the user accepts a process-level recommendation, replace **To proceed** with **Selected resolution** and a concrete **Process handoff** (for example, the proposed `gh pr edit` command or `$kramme:pr:plan-split`). Keep the finding deferred until the process action is completed; when the user confirms completion, mark it addressed. Do not route an accepted process decision back through code implementation.
+- When the user names a finding and reports that its recorded **Process handoff** failed, reopen it without asking them to select the same decision again. Retain **Selected resolution**, record the failed process attempt in **Action taken**, and replace the failed handoff with either a corrected **Process handoff** or **Waiting on** when another owner, approval, or access is now required. Keep the finding deferred until the corrected process action is completed or the named dependency is supplied.
+- When the decision can only come from a maintainer, another team, external access, or another named owner, omit `Alternatives` and `To proceed`. Add **Waiting on** with the required owner, approval, or access instead; the finding remains deferred until that dependency is supplied. A follow-up that names the finding and supplies the recorded approval, decision, or access satisfies the dependency; **supplying the dependency counts as the explicit reopen in Step 1**. Use the supplied decision — or, when access was the only dependency, the recorded recommendation — as **Selected resolution**, then follow the existing code-implementation or process-handoff path. Mark the finding addressed when the supplied dependency itself completes it.
+- When a reopened manual finding is addressed or acknowledged, apply the completed-decision replacement in `references/resolution-output.md` so the entry describes the completed decision instead of retaining stale pending instructions.
+- Implement an `advisory` finding without an explicit user request only when it passes the **safe-advisory test** — all of:
+  - `Location` is a concrete `path/to/file:line` and the finding is in scope per Step 2a
+  - The fix is mechanical with one obvious implementation — no design choice, API change, or behavior change a reviewer could reasonably contest — and it clearly improves the code rather than trading one valid style for another
+  - If it is a dead-code removal ask (`DEAD CODE IDENTIFIED: ... Safe to remove these?`), it is high-confidence: `Confidence` is at least 70, the finding names no remaining references and carries no `UNVERIFIED` marker, and removal is a mechanical deletion. Low-confidence dead-code removals still need the author's answer first, regardless of severity
+  - It does not touch code covered by an unresolved Critical/Important finding in the same review
+- Acknowledge the remaining `advisory` findings with **Resolution status: acknowledged** and **Action taken: Acknowledged — advisory.**, naming which part of the safe-advisory test failed. An explicit user request — asking in chat to resolve suggestions or naming the finding; a `--severity` filter is scoping only and never counts — widens candidacy to every in-scope advisory finding, still subject to the Step 2e nitpick judgment and to the low-confidence-dead-code and unresolved-Critical/Important conditions above, which no request path bypasses.
+- Never treat `manual`, `review-scope`, or `PR description` findings as implementation candidates just because they are critical or important.
+
+#### 2e. Dismiss nitpicks with judgment
+
+Not every finding deserves a code change. Dismiss findings that meet ALL of these criteria:
+
+- Severity is **suggestion**
+- The suggestion is subjective (style, naming preference, alternative approach that isn't clearly better)
+- Implementing it would churn code without measurable improvement
+
+For dismissed findings, document them in the output with **Resolution status: acknowledged**, **Action taken: Acknowledged — no change.**, and a one-line rationale. For external reviews, include the rationale in the generated review summary; do not post replies or resolve GitHub threads.
+
+### Step 2.5: Create rollback checkpoint
+
+If neither implementation candidates nor pending dependency work remain after scope, severity, and action-class filtering, skip this step and Step 3, and write a summary-only output in Step 4 (no checkpoint, no fixes, no validation, no stash). Otherwise continue to Step 3 even when only dependency activation or acknowledgement remains.
+
+Otherwise create a retry-safe checkpoint before editing. If `.context/resolve-review/checkpoint-*.env` already exists from an unfinished run, inspect the newest checkpoint first. If it references an existing stash object, restore it or ask the user how to proceed before creating another checkpoint; do not create nested checkpoints.
+
+Record the current HEAD and stash any uncommitted work so fix commits land on a clean tree. Store the exact checkpoint metadata under `.context/resolve-review/`:
+
+```bash
+mkdir -p .context/resolve-review
+CHECKPOINT_FILE=".context/resolve-review/checkpoint-$(date +%Y%m%d%H%M%S).env"
+CHECKPOINT_SHA=$(git rev-parse HEAD)
+CHECKPOINT_STASH_REF=
+CHECKPOINT_STASH_SHA=
+if ! git diff --quiet HEAD || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+  git stash push -u -m "pre-resolve-review checkpoint $CHECKPOINT_SHA"
+  CHECKPOINT_STASH_REF=$(git stash list --format='%gd %s' | awk -v sha="$CHECKPOINT_SHA" '$0 ~ sha { print $1; exit }')
+  CHECKPOINT_STASH_SHA=$(git rev-parse "$CHECKPOINT_STASH_REF")
+fi
+{
+  printf 'CHECKPOINT_SHA=%s\n' "$CHECKPOINT_SHA"
+  printf 'CHECKPOINT_STASH_REF=%s\n' "$CHECKPOINT_STASH_REF"
+  printf 'CHECKPOINT_STASH_SHA=%s\n' "$CHECKPOINT_STASH_SHA"
+} > "$CHECKPOINT_FILE"
+```
+
+If fixes later fail verification (Step 4), offer to roll back. Do not perform a destructive HEAD restore automatically. First report the recorded `CHECKPOINT_SHA`, whether a `CHECKPOINT_STASH_SHA` exists, and the validation failure. If the user explicitly confirms rollback, restore the branch to the recorded checkpoint using the repository's normal destructive restore command, then restore the exact recorded stash object using the Step 4 stash-restore flow below.
+
+Either way, Step 4 restores the exact stash object recorded in `CHECKPOINT_FILE` so the user's pre-existing uncommitted work is restored. Do not use a generic `git stash pop`; it may apply the wrong stash after an interrupted or retried run.
+
+### Step 3: Implement fixes
+
+Work through each finding in priority order, applying the guidelines below.
+
+Process each dependency-connected component sequentially in topological order before any of its dependents; independent findings may proceed separately after file ownership is established. After implementing a dependency, run the smallest relevant verification needed to establish its outcome; Step 4 still runs the full affected verification set. Then evaluate each dependent against the dependency's recorded earlier-run status or its verified outcome from this run:
+
+- For `activate after dependency is addressed`, revalidate and evaluate the dependent normally only when the dependency is `addressed`. Otherwise keep the dependent `open` and record which outcome it awaits.
+- For `activate if dependency is not addressed after processing`, acknowledge the dependent as unnecessary when the dependency is `addressed`. After a recorded or verified non-addressed outcome, revalidate the dependent against the current tree and evaluate it normally. Ignore only that processed dependency when applying the safe-advisory test's unresolved Critical/Important gate; unrelated unresolved findings still block the cleanup.
+- Treat an `open` dependency as a processed non-addressed outcome only when this run attempted it and recorded a blocked implementation without leaving unvalidated mutations. A dependency that remained open because a severity filter excluded it is unprocessed and leaves the dependent unchanged.
+
+If a finding is process-level and not implementable as an in-place code change, defer it through the Step 2d manual-proposal flow instead of attempting a partial code edit.
+
+**If `GRANULAR_COMMITS=true`:** After implementing each finding, create a dedicated commit for it before moving to the next finding:
+
+```bash
+git add -A
+git commit -m "review: <brief description of the fix>"
+```
+
+Each commit should be self-contained and pass linting/formatting on its own. If a finding requires changes across multiple files, include all of them in the same commit. If two findings touch the same lines and cannot be separated cleanly, combine them into a single commit and note both finding numbers in the message.
+
+### Step 4: Validate and summarize
+
+- **Validate** — Run `kramme:verify:run` and fix any new lint/format/test issues it reports. If validation fails after multiple attempts and `CHECKPOINT_SHA` exists, offer to roll back (see Step 2.5).
+- **Implement-only mode** (`IMPLEMENT_ONLY=true`) — Make no GitHub writes, write no review file, and draft no replies. Still run the scope-creep and validity checks (Step 2) and the validation above. Instead of the file output below, write `.context/resolve-review/implement-only-summary.json` atomically (write a temporary file, then rename it into place) and return a short chat summary naming that path. Use this schema:
+
+  ```json
+  {
+    "schema_version": 1,
+    "mode": "implement-only",
+    "pr": {
+      "number": 123,
+      "title": "Optional PR title",
+      "url": "Optional PR URL"
+    },
+    "validation": {
+      "status": "passed|failed|not-run",
+      "commands": [
+        {
+          "command": "test command",
+          "status": "passed|failed|not-run",
+          "summary": "short result"
+        }
+      ]
+    },
+    "findings": [
+      {
+        "source_id": "stable caller-provided finding/comment/thread id",
+        "thread_id": "optional GitHub review thread id",
+        "comment_id": "optional root comment id",
+        "location": "path/to/file.ts:123",
+        "status": "implemented|already-addressed|skipped-out-of-scope|skipped-invalid|disagreed|blocked-implementation|blocked-validation",
+        "action": "specific code change, or none",
+        "rationale": "one-line rationale; required for every non-implemented status",
+        "files_changed": ["path/to/file.ts"]
+      }
+    ]
+  }
+  ```
+
+  `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
+
+- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place. A chat or payload review carrying `Review producer: kramme:pr:overengineering-review` writes to `OVERENGINEERING_REVIEW_OVERVIEW.md`; other external, chat, and Conductor-sourced reviews write to `REVIEW_OVERVIEW.md`.
+  - Use `Resolution status: addressed` only when the finding was implemented, already satisfied by the current code, or otherwise fully resolved.
+  - Use `Resolution status: open` when implementation or validation failed, is blocked, or needs another run before it can be considered resolved.
+  - Use `deferred`, `acknowledged`, or `skipped` for the non-implementation outcomes defined in Step 2, but do not use `skipped` for severity-filtered findings that were never processed.
+- **Restore the checkpoint** — If a stash was created in Step 2.5, apply and drop the exact recorded stash now so the user's pre-existing uncommitted work is restored:
+
+  ```bash
+  . "$CHECKPOINT_FILE"
+  CHECKPOINT_RESTORE_STATUS=not-needed
+  if [ -n "$CHECKPOINT_STASH_SHA" ]; then
+    CHECKPOINT_STASH_REF=$(git stash list --format='%gd %H' | awk -v sha="$CHECKPOINT_STASH_SHA" '$2 == sha { print $1; exit }')
+    if git stash apply --index "$CHECKPOINT_STASH_SHA"; then
+      [ -n "$CHECKPOINT_STASH_REF" ] && git stash drop "$CHECKPOINT_STASH_REF"
+      CHECKPOINT_RESTORE_STATUS=restored
+    else
+      CHECKPOINT_RESTORE_STATUS=conflicted
+    fi
+  fi
+  ```
+
+  If `git stash apply` reports conflicts, leave the stash in place, keep `CHECKPOINT_FILE`, and tell the user to resolve manually with `git stash apply --index "$CHECKPOINT_STASH_SHA"`. After conflicts are resolved, re-resolve the matching stash ref with `git stash list --format='%gd %H'` and drop that ref.
+
+- **Clean up the consumed checkpoint** — After validation, summary writing, and stash restoration have completed successfully, delete the checkpoint created for this run:
+
+  ```bash
+  if [ "${CHECKPOINT_RESTORE_STATUS:-not-needed}" != "conflicted" ]; then
+    if [ -n "${CHECKPOINT_FILE:-}" ]; then
+      rm -f "$CHECKPOINT_FILE"
+    fi
+  fi
+  ```
+
+  Keep the checkpoint only when validation failed, rollback is still being considered, or stash restoration ended in conflicts.
+
+## Guidelines
+
+### General principles
+
+- **Choose fixes across UX/DX/AX** — For eligible in-scope findings, consider user experience (clear, reliable task completion), developer experience (understanding, maintenance, testing, and debugging), and agent experience (context discovery, predictable execution, recovery, and verification). Prefer fixes that improve all three while preserving established behavior and contracts outside the intended change; when a finding requires an intentional behavior or contract change, make it explicit. Unchanged or inapplicable dimensions are acceptable. Explain material tradeoffs and verify relevant regressions. Apply the same reasoning to manual proposals without bypassing action-class eligibility or expanding scope.
+- **Write clear, maintainable code** — prioritize readability and simplicity; prefer straightforward solutions over clever ones, but do not be lazy.
+- **Add comments where needed** — if a fix involves non-obvious logic or trade-offs, include concise comments explaining the reasoning.
+- **Ask questions if unsure** — if any aspect of the fix or the related business logic is unclear, seek clarification before proceeding.
+- **Follow project conventions** — ensure fixes align with the best practices outlined in the target project's AGENTS.md (when present).
+- **Stay focused** — limit changes to what's necessary for the fix; avoid unrelated refactors or improvements.
+
+### For each fix
+
+- **Understand the root cause** — before making changes, ensure you fully grasp why the issue exists.
+- **Be comprehensive within scope** — don't just patch the specific lines mentioned; briefly investigate and apply the same fix pattern wherever the same issue exists in the code touched by this branch.
+- **Update tests** — add or adjust appropriate tests to cover any new logic or edge cases.
+
+### When handling errors or external data
+
+- **Consider graceful degradation** — where it makes sense, prefer non-fatal error paths that preserve partial success. However, if failing hard is the safer or more appropriate choice, do that instead and explain why in succinct code comments.
+- **Be defensive at boundaries** — when parsing responses from third-party services, external APIs, or user input, normalize/fallback rather than assuming a single format. However, don't over-engineer defensiveness against internal code — trust our own contracts unless there's evidence they're being violated.
+
+## Output
+
+Before generating or updating review output, read `references/resolution-output.md` and apply its file-routing rules, in-place lifecycle updates, external/internal/out-of-scope templates, manual-finding suffix, completed-decision replacement, and final-summary contract.
+
+Preserve every unprocessed source entry verbatim, keep external and internal entry shapes distinct, and do not report completion until the reference's lifecycle and summary requirements are satisfied.

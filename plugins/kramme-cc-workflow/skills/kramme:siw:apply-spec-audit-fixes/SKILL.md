@@ -1,0 +1,331 @@
+---
+name: kramme:siw:apply-spec-audit-fixes
+description: Canonical auto-fix procedure for mechanical spec-audit findings and kramme:siw:spec-audit --apply. Fixes only issues with a single obvious resolution — cross-reference errors, terminology inconsistencies, numbering mistakes, formatting issues, and weasel words replaceable with specifics already in the spec. Run after spec-audit.
+argument-hint: "[audit-report-path] [--auto] [--dry-run] [--threshold 60-100] [--allow-dirty]"
+disable-model-invocation: true
+user-invocable: true
+---
+
+# Auto-Fix Safe Spec Audit Findings
+
+Apply deterministic and clearly-best fixes to spec-audit findings that can be corrected safely from the spec itself. This skill is the canonical direct-update procedure for standalone auto-fix runs and for `$kramme:siw:spec-audit --apply` (including `--team` runs). It directly edits spec files to resolve mechanical issues plus higher-confidence cleanup that still stays within the existing spec meaning.
+
+Findings that require product decisions, stakeholder input, or still lack a clearly best fix are left untouched for `$kramme:siw:resolve-audit`.
+
+**Flags:**
+
+- `--auto` — Skip classification approval, apply all auto-fixable fixes without asking
+- `--dry-run` — Show classification and proposed fixes without modifying any files
+- `--threshold N` — Set confidence threshold for auto-fixing (60-100, default 80). Findings with confidence >= N are auto-fixable only after safety caps and the four sub-score guardrails are applied. Use 90 for a stricter pass, 60 for the most permissive allowed run.
+- `--allow-dirty` — Allow `--auto` runs to proceed when spec files have uncommitted changes. Without this flag, dirty spec files abort an `--auto` run.
+
+## Hard Constraints
+
+**NEVER** modify a finding below the confidence threshold. If in doubt, score conservatively.
+
+**NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Rationale Documentation dimensions always require decisions; treat the legacy `Value Proposition` label in older reports as Rationale Documentation. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between", "discuss with", "evaluate options"), change scope, or define success-criteria substance always require decisions.
+
+**NEVER** auto-fix a finding when any sub-score is below 15. See `references/classification-rubric.md` (Auto-Fix Guardrails) for the authoritative rule and its rationale; this rubric is also the canonical scoring model for `$kramme:siw:spec-audit --apply`.
+
+**NEVER** apply a fix that changes the meaning, scope, or intent of any requirement. Fixes correct form, not substance.
+
+**NEVER** invent information not already present in the spec. Every fix must derive from content that already exists somewhere in the spec files.
+
+**NEVER** skip the spot-check verification after applying a fix. If verification fails, revert the edit and reclassify the finding.
+
+## Process Overview
+
+```
+$kramme:siw:apply-spec-audit-fixes [audit-report-path] [--auto] [--dry-run] [--threshold N] [--allow-dirty]
+    |
+    v
+[Step 1: Locate Report and Spec Files]
+    |
+    v
+[Step 2: Extract Findings]
+    |
+    v
+[Step 3: Score & Classify Findings] -> Confidence 0-100 -> AUTO-FIXABLE or REQUIRES_DECISION
+    |
+    v
+[Step 4: Approval Gate] -> User confirms (skip with --auto, stop with --dry-run, adjust with --threshold)
+    |
+    v
+[Step 5: Apply Fixes] -> Edit spec files, spot-check each fix
+    |
+    v
+[Step 6: Update Audit Report and SIW Log] -> Annotate fixed findings, record progress when SIW is active
+    |
+    v
+[Step 7: Summary]
+```
+
+---
+
+## Step 1: Locate Report and Spec Files
+
+### 1.1 Parse Arguments
+
+Extract control flags from `$ARGUMENTS`:
+
+- `--auto` → set `AUTO_MODE=true`
+- `--dry-run` → set `DRY_RUN=true`
+- `--allow-dirty` → set `ALLOW_DIRTY=true`
+- `--threshold N` → set `CONFIDENCE_THRESHOLD=N` (default 80). If `N` is non-numeric or outside 60-100, abort with: `Threshold {N} out of range. --threshold must be an integer between 60 and 100.`
+- Remaining markdown path token → candidate report path
+
+### 1.2 Find Report
+
+If a report path was provided, use it directly.
+
+Otherwise, auto-detect in order:
+
+1. `siw/AUDIT_SPEC_REPORT.md`
+2. `AUDIT_SPEC_REPORT.md` (project root)
+
+If no report found:
+
+```
+No spec audit report found.
+
+Run $kramme:siw:spec-audit first to generate one.
+
+Expected locations:
+  - siw/AUDIT_SPEC_REPORT.md
+  - AUDIT_SPEC_REPORT.md
+```
+
+**Action:** Abort.
+
+### 1.3 Read Report and Spec Files
+
+1. Read the report file completely.
+2. If the file contains multiple appended `# Spec Audit Report` blocks, isolate the **last** block only. Treat that as the active audit run and ignore older appended runs.
+3. Extract the spec file paths from the active run's report header ("Spec Files Reviewed").
+4. Read every referenced spec file completely.
+
+If a spec file no longer exists at its path, warn and skip all findings for that file.
+
+### 1.4 Check for Uncommitted Changes
+
+Run `git status` on the spec files. If any have uncommitted changes, warn:
+
+```
+Warning: {file} has uncommitted changes. Auto-fixes will be applied on top of these changes.
+```
+
+With `--auto` **and** `--allow-dirty`, continue with the warning. With `--auto` alone, abort:
+
+```
+Spec files have uncommitted changes. --auto refuses to edit dirty spec files without --allow-dirty.
+
+Either commit or stash the changes, or re-run with: $kramme:siw:apply-spec-audit-fixes --auto --allow-dirty
+```
+
+Otherwise (interactive), ask:
+
+Ask the user directly in chat:
+Question label: Uncommitted Spec Changes
+Question: {N} spec file(s) have uncommitted changes. Proceed anyway?
+Suggested options:
+- Continue — Apply fixes on top of current changes
+- Abort — Cancel — commit or stash changes first
+---
+
+## Step 2: Extract Findings
+
+Parse all `### SPEC-NNN: {title}` headings from the active audit run only.
+
+For each finding, extract:
+
+- Finding ID and title
+- Dimension
+- Severity
+- Severity Note (if present)
+- Location (source file > section heading)
+- Details (including quotes from the spec)
+- Recommendation
+- Fix Confidence (if present in the report)
+
+**Skip findings that match any of:**
+
+- Already marked `**Status:** [Auto-fixed]` (from a previous run)
+- Already marked `**Status:** [Applied directly]` (legacy marker from `$kramme:siw:spec-audit --apply`)
+- Contains `Existing issue:` note (already tracked via SIW)
+
+If no actionable findings remain:
+
+```
+No actionable findings to process.
+
+{If all auto-fixed:} All {N} findings were previously auto-fixed.
+{If all legacy-applied:} All {N} findings were previously applied directly with the legacy marker.
+{If all have issues:} All {N} findings already have SIW issues.
+```
+
+**Action:** Stop.
+
+---
+
+## Step 3: Score & Classify Findings
+
+Read the classification rubric from `references/classification-rubric.md`.
+
+For each extracted finding, assign a **fix confidence score** (0-100):
+
+1. Score each of the four conditions (0-25): Determinism, Information Availability, Meaning Preservation, Alternative Absence. **Always score from scratch using the rubric** — do not rely on a `Fix Confidence` value already present in the report (treat any such value as informational only).
+2. Sum the four scores for the finding's confidence (0-100).
+3. Apply safety caps — safety-capped findings are forced to confidence 0 regardless of score. If the report carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]` for a Completeness, Scope, Rationale Documentation, or legacy Value Proposition finding, preserve that safety cap here as well.
+
+Classify based on the final confidence vs `CONFIDENCE_THRESHOLD` (default 80):
+
+- safety-capped finding, or a Completeness / Scope / Rationale Documentation / legacy Value Proposition finding marked `**Severity Note:** [Deprioritized — capped at Minor from Critical]` → **REQUIRES_DECISION** regardless of threshold
+- finding with `Determinism < 15`, `Information Availability < 15`, `Meaning Preservation < 15`, or `Alternative Absence < 15` → **REQUIRES_DECISION** regardless of threshold
+- non-safety-capped finding with confidence >= `CONFIDENCE_THRESHOLD` → **AUTO-FIXABLE**
+- otherwise → **REQUIRES_DECISION**
+
+Display confidence tier labels alongside scores:
+
+- 90-100: MECHANICAL
+- 75-89: HIGH_CONFIDENCE
+- 50-74: MODERATE_CONFIDENCE
+- 0-49: REQUIRES_DECISION
+
+### 3.1 Present Classification
+
+```
+Finding Classification (threshold: {CONFIDENCE_THRESHOLD})
+==========================================================
+
+Auto-fixable ({N} findings at or above threshold):
+{For each:}
+  {SPEC-NNN} ({Severity}/{Dimension}) [confidence: {score} — {tier}]: {one-line description of the fix}
+
+Requires decision ({M} findings):
+{For below-threshold:}
+  {SPEC-NNN} ({Severity}/{Dimension}) [below threshold; confidence: {score} — {tier}]: {one-line reason}
+{For guardrail-blocked:}
+  {SPEC-NNN} ({Severity}/{Dimension}) [guardrail-blocked; confidence: {score} — {tier}]: {one-line reason}
+{For safety-capped:}
+  {SPEC-NNN} ({Severity}/{Dimension}) [safety cap]: {one-line reason}
+
+Skipped: {K}
+{For each:}
+  {SPEC-NNN}: {reason — already auto-fixed or has SIW issue}
+```
+
+If no findings at or above threshold:
+
+```
+No auto-fixable findings at threshold {CONFIDENCE_THRESHOLD}. All {N} findings require decisions.
+{If any findings score 60-79 and clear all guardrails:}
+Tip: {count} finding(s) cleared all guardrails but are below the threshold. Use --threshold 60 to include them.
+
+Next: $kramme:siw:resolve-audit {report_path}
+```
+
+**Action:** Stop.
+
+---
+
+## Step 4: Approval Gate
+
+### With `--dry-run`
+
+For each auto-fixable finding, show the proposed fix:
+
+```
+Proposed Fixes (dry run — threshold: {CONFIDENCE_THRESHOLD}, no files will be modified)
+========================================================================================
+
+SPEC-{NNN}: {title}
+  Confidence: {score}/100 ({tier})
+  File: {spec_file} > {section}
+  Current: "{quoted text from spec}"
+  Proposed: "{what it would change to}"
+  Reason: {why this fix is correct}
+
+{Repeat for each auto-fixable finding}
+```
+
+**Action:** Stop after showing all proposed fixes.
+
+### With `--auto`
+
+Proceed directly to Step 5 with all auto-fixable findings.
+
+### Default (interactive)
+
+Ask the user directly in chat:
+Question label: Auto-Fix Findings (threshold: {CONFIDENCE_THRESHOLD})
+Question: Found {N} auto-fixable findings (confidence >= {CONFIDENCE_THRESHOLD}) and {M} findings requiring decisions. Proceed?
+Suggested options:
+- Fix all {N} auto-fixable findings — Apply fixes and update the audit report
+- Let me review first — Show proposed fixes before applying (same as --dry-run)
+- Abort — Cancel — no changes
+If user chooses "Let me review first", show the dry-run output from above, then ask:
+
+Ask the user directly in chat:
+Question label: Apply Fixes?
+Question: Apply these {N} fixes?
+Suggested options:
+- Apply all — Apply all proposed fixes
+- Abort — Cancel — no changes
+This skill is intentionally batch-only — per-finding selection is **not** offered. To exclude specific findings, abort and re-run with a higher `--threshold`, or address them individually via `$kramme:siw:resolve-audit`.
+
+---
+
+## Step 5: Apply Fixes
+
+### 5.1 Order Fixes
+
+Group findings by spec file, then sort by location within each file (top of document to bottom). Processing top-to-bottom avoids `old_string` mismatches that occur when an earlier edit changes the surrounding text a later finding expects.
+
+### 5.2 Apply Each Fix
+
+For each auto-fixable finding in order:
+
+1. **Read the section** referenced by the finding's location, plus enough surrounding context to understand the fix.
+2. **Determine the fix** — Based on the finding's details, recommendation, and the surrounding spec context, determine the exact text change.
+3. **Apply the edit** to the spec file.
+4. **Spot-check verification** — Re-read the edited section. Confirm:
+   - The specific issue flagged by the finding no longer exists
+   - No new issues were introduced (broken references, grammar errors, meaning changes)
+5. **Record the result:**
+   - **Success:** Record finding ID, old text, new text, one-line description
+   - **Failure:** Revert the edit, reclassify the finding as `REQUIRES_DECISION`, record the failure reason
+
+### 5.3 Fix Application Rules
+
+- **One fix at a time.** Complete the full apply-verify cycle for one finding before starting the next.
+- **Minimal edits.** Change only what the finding requires. Do not improve surrounding text.
+- **Preserve formatting.** Match the existing style of the spec (heading levels, list markers, whitespace).
+- **Never add content not derivable from the spec.** If the fix requires inventing new requirements, constraints, or behaviors, it is not mechanical — revert and reclassify.
+
+---
+
+## Step 6: Update Audit Report
+
+Read `references/report-update.md`, then update the audit report and optional SIW log exactly as specified there.
+
+Required outcomes:
+
+- Each successfully fixed finding has `**Status:** [Auto-fixed]`, final `**Fix Confidence:**`, and `**Fix applied:**` annotations.
+- The summary table's `Auto-fixed` count is updated when the severity table has the expected schema.
+- Failed verification is documented in `## Auto-Fix Notes`.
+- `**Overall Assessment:**` changes to `Ready for implementation` only under the reference's all-clear conditions.
+- `siw/LOG.md` is updated only when it already exists, has a recognizable Current Progress section, and at least one finding was auto-fixed.
+
+---
+
+## Error Handling
+
+For report-parse failures, missing spec files, edit conflicts, and all-fixes-fail outcomes, read `references/usage-and-errors.md` and use the matching error handling branch.
+
+---
+
+## Step 7: Summary
+
+Use the summary template from `assets/auto-fix-summary.md`.
+
+**STOP HERE.** Wait for the user's next instruction.

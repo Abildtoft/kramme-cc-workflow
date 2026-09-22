@@ -1,0 +1,234 @@
+---
+name: kramme:docs:feature-spec
+description: Author a lightweight PRD-style feature spec before implementation. Produces a single reviewable markdown artifact covering objective, scope, boundaries, assumptions, non-goals, and testing strategy. Use when starting a feature that needs written alignment before coding but does NOT warrant the full siw/ tracked workflow. Pass --synthesize, --auto, or say "draft straight from context" to skip the assumptions block when the current conversation already grounds enough of the spec. For tracked initiatives (phased issues, LOG, audit) use kramme:siw:init instead.
+argument-hint: "[feature name or brief description] [--synthesize|--auto]"
+disable-model-invocation: true
+user-invocable: true
+---
+
+# Feature Spec
+
+Author a one-page PRD-style spec before implementation. Emit an assumptions block first, draft the spec, then gate implementation on explicit user approval.
+
+**Arguments:** "$ARGUMENTS"
+
+Parse `$ARGUMENTS` for a `--synthesize` or `--auto` flag (anywhere in the string). Strip it from the remaining text before deriving the slug or feature name. Treat either flag as activating Synthesize mode (see below). The trigger phrase "draft straight from context" (or close paraphrase) in the user's most recent turn activates Synthesize mode equivalently — no flag needed.
+
+## When to use this skill
+
+Use when the user is about to start a feature and needs written alignment — scope, boundaries, success criteria — before any code is written, and the work is small enough that SIW's tracked artifacts would be overkill.
+
+Route elsewhere if:
+
+- **Multi-phase, multi-contributor, or needs an audit trail** → use `$kramme:siw:init` for the full tracked workflow (siw/ dir, LOG.md, OPEN_ISSUES_OVERVIEW.md, issues/).
+- **Project-level rules** (package manager, commit style, coding conventions) → use `$kramme:docs:update-agents-md`.
+- **Deep requirements unknown** (need a long adaptive interview) → use `$kramme:discovery:interview`, then run this skill on the resulting plan.
+- **Security hardening depth** needed in the Boundaries section → this skill names the pattern (Always Do / Ask First / Never Do) but does not inline security content. Pair with a dedicated security-hardening skill if one exists.
+
+## Workflow Boundaries
+
+**This skill ONLY authors a single feature spec file.**
+
+- **DOES**: Emit an assumptions block, wait for correction, draft a six-area spec markdown, gate implementation on explicit approval.
+- **DOES NOT**: Create tracked SIW artifacts (no `siw/`, no `LOG.md`, no issue files). Does not decompose the spec into phases. Does not start implementation. Does not edit `AGENTS.md` or `CLAUDE.md`.
+
+### Artifact Readiness Contract
+
+Use this shared vocabulary when describing the output:
+
+- `product-only`: objective or user/problem context exists, but scope, success criteria, or boundaries are still missing.
+- `requirements-only`: the six spec areas are populated, but unresolved open questions or thin technical context prevent phase or issue planning.
+- `planning-ready`: the approved spec has concrete scope, boundaries, testing strategy, testable success criteria, and relevant technical context/dependencies or planning detail, with no blocking open questions.
+- `implementation-ready`: an issue or task is scoped for execution with dependencies, affected areas, and verification. This skill never produces implementation-ready artifacts.
+
+This skill's normal output is `requirements-only` while drafting and `planning-ready` only after explicit approval when the Phase 3 readiness conditions are met.
+
+## Process Overview
+
+```
+Phase 0: Strategy Grounding (optional)
+    ↓
+Phase 1: Assumptions
+    ↓
+[User corrects or confirms]
+    ↓
+Phase 2: Draft spec file
+    ↓
+Phase 3: Approval gate
+    ↓
+[User approves] → Spec complete, skill ends
+[User revises]  → Loop to Phase 2 (do not restart Phase 1)
+```
+
+## Phase 0: Strategy Grounding (optional)
+
+Before drafting assumptions, check for repo-root `STRATEGY.md`.
+
+- If it exists, read it and extract target problem, approach, who it is for, key metrics, active tracks, and non-goals.
+- If its `last_updated` frontmatter is older than 90 days, mark relevant strategy facts as `STALE:` when presenting assumptions.
+- If the proposed feature conflicts with an active track or strategy non-goal, emit `CONFUSION:` with the concrete conflict and ask whether the feature is intended to change strategy or should be scoped differently.
+- If no `STRATEGY.md` exists, proceed silently for narrow features. For broad product-direction work, emit `MISSING PRODUCT CONTEXT:` and suggest `$kramme:product:strategy` as an optional precursor without blocking this skill.
+
+## Phase 1: Assumptions
+
+Before drafting anything, state what you are assuming about the feature. Emit this block verbatim, filling each bullet:
+
+```
+ASSUMPTIONS I'M MAKING:
+- <assumption about scope>
+- <assumption about users>
+- <assumption about stack or constraints>
+- <assumption about what's out of scope>
+- <assumption about strategy fit; omit this bullet for narrow features when no repo-level strategy context exists>
+
+Correct me before I draft the spec.
+```
+
+Then stop and wait for the user's response. Do not proceed to Phase 2 until the user has either corrected or confirmed.
+
+### Handling edge cases in Phase 1
+
+- If the user's request is ambiguous or contradicts an earlier turn, emit a `CONFUSION:` block naming the ambiguity and ask for clarification.
+- If a required spec area cannot be filled without more input (e.g. no testable success criteria are derivable), emit a `MISSING REQUIREMENT:` block naming what is missing. Do not invent.
+
+## Synthesize mode (skips Phase 1)
+
+Synthesize mode is **opt-in**. Activation:
+
+- The argument string contains `--synthesize` or `--auto`, OR
+- The user's most recent turn says "draft straight from context" (or close paraphrase like "just draft it from what we discussed", "skip the assumptions").
+
+When activated, evaluate the **preconditions** before skipping Phase 1.
+
+### Preconditions
+
+Synthesis is permitted only when **both** of the following hold:
+
+- At least **4 of the 6** spec areas can be populated with grounded content from the current conversation, AND
+- **Objective and Success Criteria are among the grounded areas.** These two carry the spec's substance; a bare count can otherwise be met by cheap-to-fill areas (Open Questions, Boundaries) while the spec has no real spine.
+
+The six areas:
+
+1. Objective _(required for synthesis)_
+2. Scope & Non-goals
+3. Boundaries
+4. Testing Strategy
+5. Open Questions
+6. Success Criteria _(required for synthesis)_
+
+A spec area is "grounded" when the conversation contains explicit user statements, decisions, or shared context that lets you fill the area without inventing facts. Grounding is not the same as "I can guess plausibly." If you would prefix the content `UNVERIFIED:`, the area is not grounded.
+
+### When preconditions are met
+
+Skip Phase 1 entirely. Emit this marker before drafting:
+
+```
+SYNTHESIZE: drafting from current context, areas grounded: <N> of 6
+```
+
+Then proceed to Phase 2. Phase 3 approval gate stays — synthesis only removes the assumptions round-trip, not the explicit approval.
+
+### When preconditions fail
+
+Fall back to Phase 1 with this warning marker:
+
+```
+SYNTHESIZE: insufficient grounding (<N> of 6 areas), falling back to assumptions block
+```
+
+Then run Phase 1 normally. Do NOT silently invent the missing areas.
+
+### When the user disagrees with the fallback
+
+If the user pushes to synthesize anyway after a precondition-failure fallback, emit a `MISSING REQUIREMENT:` block naming the ungrounded areas and ask the user to either (a) supply enough context to ground them now, or (b) accept the assumptions-block round-trip. Do not draft.
+
+## Phase 2: Draft the spec
+
+Derive a slug from the feature name (lowercase, hyphenated, ~3–5 words). When no feature name was supplied — common in Synthesize mode — derive both the name and slug from the dominant feature discussed in the current conversation; if that is still ambiguous, emit `CONFUSION:` and ask for a name before writing.
+
+Write the spec to `<slug>-spec.md` in the repo root. This skill assumes a repository context: the repo root anchors both the default location and the path-safety check below. If no repository root resolves, fall back to the current working directory and state which directory was used.
+
+If the user passed an explicit path as the argument, honor it only when it still fits this skill's boundaries:
+
+- The destination must be a markdown spec file.
+- The resolved path must stay inside the current repository root.
+- Reject reserved destinations: `AGENTS.md`, `CLAUDE.md`, and any path under `siw/`.
+- If the path is reserved or otherwise unclear, emit `CONFUSION:` and ask for a different destination before writing.
+
+Before writing, check whether the destination file already exists. If it does, do not overwrite it blindly — emit `CONFUSION:` naming the existing path and ask the user to choose: overwrite it, revise it in place, or write to a different slug. This guard runs before the Phase 3 approval gate, so an existing spec is never clobbered without an explicit user choice.
+
+Copy the six-area structure from `assets/feature-spec-template.md` and fill each area. The areas are:
+
+1. **Objective** — one paragraph: problem statement + intended outcome.
+2. **Scope & Non-goals** — what's in, what's explicitly out.
+3. **Boundaries** — Always Do / Ask First / Never Do, feature-scoped.
+4. **Testing Strategy** — what gets covered, at which tier (unit / integration / e2e).
+5. **Open Questions** — unresolved items flagged for user input.
+6. **Success Criteria** — testable statements that let anyone confirm "done".
+
+Consider user experience (UX: clear, reliable task completion), developer experience (DX: understanding, changing, testing, and debugging), and agent experience (AX: discovering context, executing predictably, recovering, and verifying). Prefer outcomes that improve all three within scope; unchanged or inapplicable dimensions are acceptable. Put relevant measurable outcomes in Success Criteria, record established behavior and contracts outside the intended change plus the intentional changes themselves in Boundaries, and put regression coverage in Testing Strategy. Make material tradeoffs explicit without inventing requirements or adding a seventh area.
+
+Replace every angle-bracket template placeholder with concrete content and delete the author note comment block before treating the draft as reviewable.
+
+If drafting surfaces scope that the confirmed assumptions (or the grounded context in Synthesize mode) did not cover, surface it to the user before widening the spec rather than letting new scope appear silently mid-draft.
+
+When `STRATEGY.md` exists, weave its relevant facts into the existing six areas rather than adding a seventh section:
+
+- Objective: include the target problem or active track when it directly grounds the feature.
+- Scope & Non-goals: carry forward any applicable strategy non-goals.
+- Success Criteria: prefer strategy metrics when they are relevant and measurable for this feature.
+- Open Questions: list strategy conflicts or missing metric sources that still need a product decision.
+
+### Marking claims honestly
+
+- If a claim in the spec is an inference rather than confirmed fact (e.g. presumed user count, presumed API availability, presumed schema), prefix it inline with `UNVERIFIED:`.
+- If a strategy fact is old enough to need caution, prefix it inline with `STALE:`.
+- If strategy context would materially affect the spec but is absent, prefix the gap with `MISSING PRODUCT CONTEXT:`.
+- If the Open Questions area surfaces a risk the user should weigh, prefix that bullet with `POTENTIAL CONCERNS:`.
+
+After writing the file, emit a `PLAN:` block summarizing the spec shape — area headings, key decisions in each area, and the file path — so the user can review structure before reading prose.
+
+```
+PLAN: Drafted <slug>-spec.md with:
+- Objective: <one-line summary>
+- Scope: <in>, Non-goals: <out>
+- Boundaries: <count> Always, <count> Ask First, <count> Never Do rules
+- Testing: <tiers covered>
+- Open Questions: <count> (<count> flagged POTENTIAL CONCERNS)
+- Success Criteria: <count> testable statements
+
+Review the file, then approve or request revisions.
+```
+
+## Phase 3: Approval gate
+
+**Implementation does not start until the spec is explicitly approved.**
+
+This is a single checkpoint — the entire spec is reviewed and approved (or revised) in one go. If the user asks to start coding before approving, refuse and point back to this gate.
+
+On revision:
+
+- Edit the spec file in place.
+- Re-emit the `PLAN:` block if structure changed.
+- Do not restart Phase 1; assumptions are already settled.
+- Re-ask for approval afterwards; approval is scoped to the current spec version, so an earlier turn's "yes" does not carry over.
+
+On approval:
+
+- Confirm the file path.
+- State the artifact readiness: `planning-ready` when all six areas are concrete, relevant technical context/dependencies or planning detail are present, and no blocking open questions remain; otherwise name the remaining `product-only` or `requirements-only` gap.
+- Optionally point to next-step skills: `$kramme:siw:init <spec-file>` when the spec should be promoted to local tracking. After SIW is initialized, the next step is `$kramme:siw:generate-phases` for phased work or `$kramme:siw:issue-define` for one coherent issue. For a single-sitting change, point straight to implementation only when the approved spec plus current context is already `implementation-ready`.
+
+## Conventions — output markers used in this skill
+
+| Marker | Used when |
+| --- | --- |
+| `ASSUMPTIONS I'M MAKING:` | Phase 1, before drafting (skipped only in Synthesize mode when preconditions are met). |
+| `SYNTHESIZE:` | When `--synthesize`, `--auto`, or the trigger phrase activates synthesis — emitted before drafting (success) or before fallback to Phase 1 (insufficient grounding). |
+| `CONFUSION:` | Phase 1 or 2, when user input is ambiguous — including when the resolved destination is reserved, unclear, or already exists. |
+| `MISSING REQUIREMENT:` | Phase 2, when a required area cannot be filled. |
+| `UNVERIFIED:` | Phase 2, inline on any inferred claim inside the spec. |
+| `POTENTIAL CONCERNS:` | Phase 2, inside Open Questions for risks worth flagging. |
+| `PLAN:` | Phase 3, summary block before the approval gate. |
+
+These markers are deliberate. Keep them verbatim — tooling and downstream skills may parse them.
