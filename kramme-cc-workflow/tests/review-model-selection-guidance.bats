@@ -21,8 +21,7 @@ assert rows == [
     ('Claude', 'Sonnet', 'Haiku'),
     ('Claude', 'Haiku', 'Haiku'),
     ('Codex', 'Astra', 'Sol'),
-    ('Codex', 'Sol', 'Terra'),
-    ('Codex', 'Terra', 'Luna'),
+    ('Codex', 'Sol', 'Luna'),
     ('Codex', 'Luna', 'Luna'),
 ], rows
 PY

@@ -266,7 +266,7 @@ PR review subagents default to one model class below the orchestrator. This appl
 | Host | Orchestrator → reviewer |
 | --- | --- |
 | Claude | Fable → Opus; Opus → Sonnet; Sonnet → Haiku |
-| Codex | Astra → Sol; Sol → Terra; Terra → Luna |
+| Codex | Astra → Sol; Sol → Luna |
 
 Haiku and Luna stay at their own class. Override the default with `--subagent-model <model>` on any of these five skills, `pr:github-review`, or `pr:review-convergence`. The value can be a model class, a runtime-supported model ID, or `inherit` to use the orchestrator's model. The flag takes precedence over conversational reviewer-model preferences, persists through team passes and reruns, and must precede `--requirements` when that sentinel is used. Unsupported explicit choices stop with an error; unknown or unavailable automatic defaults retain host defaults with a reported limitation. GitHub review and review convergence preserve the orchestrator class when delegating these skills, so the step-down happens once. Implementation agents and different-provider adversarial reviews retain their own model policies; `--adversarial-model` controls the latter separately.
 

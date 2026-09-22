@@ -203,8 +203,7 @@ test("canonical plugin build preserves runtime path dependency closure", async (
       );
       for (const [orchestrator, reviewer] of [
         ["Astra", "Sol"],
-        ["Sol", "Terra"],
-        ["Terra", "Luna"],
+        ["Sol", "Luna"],
         ["Luna", "Luna"],
       ]) {
         assert.match(

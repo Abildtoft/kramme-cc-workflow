@@ -23,8 +23,7 @@ Select reviewer models once before launching any agents. This policy applies to 
    | Claude | Sonnet             | Haiku                 |
    | Claude | Haiku              | Haiku                 |
    | Codex  | Astra              | Sol                   |
-   | Codex  | Sol                | Terra                 |
-   | Codex  | Terra              | Luna                  |
+   | Codex  | Sol                | Luna                  |
    | Codex  | Luna               | Luna                  |
 
    Haiku and Luna are the floors; keep that class when already at the floor.
@@ -33,7 +32,7 @@ Select reviewer models once before launching any agents. This policy applies to 
 
 ## Apply the Selection
 
-- Resolve the selected class to a model identifier or alias supported by the current host. For Claude, use the matching `opus`, `sonnet`, or `haiku` alias when supported. For Codex, use the model ID advertised for Sol, Terra, or Luna by the current runtime; do not invent an ID or pin a version from memory.
+- Resolve the selected class to a model identifier or alias supported by the current host. For Claude, use the matching `opus`, `sonnet`, or `haiku` alias when supported. For Codex, use the model ID advertised for Sol or Luna by the current runtime; do not invent an ID or pin a version from memory.
 - Set the actual agent-launch `model` parameter on every spawn with a resolved model, overriding a reviewer definition's `model: inherit`; explicit inheritance and the fallback below use the host's inheritance/default mechanism. Mentioning the model only in a prompt does not select it. Use the same selection in sequential, parallel, and team execution.
 - **Claude Code:** pass the selected model to the Agent/Task invocation, including teammate creation and later validator spawns.
 - **Codex:** pass the selected model to `spawn_agent`. If a full-history fork forbids model overrides, use `fork_turns="none"` or a supported bounded fork and include the complete review mission, frozen scope, applicable conventions, and required review contracts in the task. Do not drop the model override just to retain a full-history fork. Preserve the current reasoning effort when supported; this is a model-class policy, not an effort reduction.
