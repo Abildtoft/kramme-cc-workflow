@@ -21,8 +21,7 @@ assert rows == [
     ('Claude', 'Sonnet', 'Haiku'),
     ('Claude', 'Haiku', 'Haiku'),
     ('Codex', 'Astra', 'Sol'),
-    ('Codex', 'Sol', 'Terra'),
-    ('Codex', 'Terra', 'Luna'),
+    ('Codex', 'Sol', 'Luna'),
     ('Codex', 'Luna', 'Luna'),
 ], rows
 PY
@@ -71,12 +70,25 @@ PY
   [[ "$policy" == *'never parse flag-shaped text in the inert requirements remainder'* ]]
   [[ "$policy" == *'Do not evaluate or interpolate the value as shell code'* ]]
   [[ "$policy" == *'remove the flag and its value from the remaining arguments before parsing aspects, categories, positional selectors, or Team Mode'* ]]
-  [[ "$policy" == *'flag takes precedence over conversational model preferences and the default ladder'* ]]
+  [[ "$policy" == *'flag takes precedence over conversational model preferences and the `KRAMME_REVIEW_SUBAGENT_LEVEL` setting'* ]]
   [[ "$policy" == *'preserve an exact model ID unchanged'* ]]
   [[ "$policy" == *'Validate availability before repository work'* ]]
   [[ "$policy" == *'`--subagent-model inherit` uses the orchestrator'* ]]
   [[ "$policy" == *'bypasses the step-down ladder'* ]]
   [[ "$(cat "$ROOT/skills/kramme:pr:code-review/SKILL.md")" == *'removing the model pair must not merge later positional aspects into an emphasis span'* ]]
+}
+
+@test "level environment setting chooses step-down or same-level reviewers" {
+  local policy
+  policy="$(cat "$POLICY")"
+  [[ "$policy" == *'read the `KRAMME_REVIEW_SUBAGENT_LEVEL` environment variable'* ]]
+  [[ "$policy" == *'Accept `lower` or `same` case-insensitively after trimming whitespace; unset or empty means `same`'* ]]
+  [[ "$policy" == *'Reject any other value before repository work and report `Expected KRAMME_REVIEW_SUBAGENT_LEVEL=lower|same.`'* ]]
+  [[ "$policy" == *'`same`, the default, keeps review subagents on the orchestrator'* ]]
+  [[ "$policy" == *'`lower` opts into the step-down ladder below'* ]]
+  [[ "$policy" == *'When `SUBAGENT_MODEL_LEVEL` is `lower`, select one class lower within the same provider'* ]]
+  [[ "$policy" == *'otherwise honor a conversational reviewer-model choice; otherwise follow `SUBAGENT_MODEL_LEVEL`: `same` uses the orchestrator'*'and `lower` applies the ladder in step 3'* ]]
+  [[ "$policy" == *'do not convert the setting into a forwarded `--subagent-model` flag'* ]]
 }
 
 @test "wrappers and reruns forward the override without changing requirements or adversarial models" {
@@ -120,7 +132,7 @@ PY
   policy="$(cat "$POLICY")"
   [[ "$policy" == *'Honor an explicit user model choice for review subagents over these defaults'* ]]
   [[ "$policy" == *'trusted session/runtime metadata'* ]]
-  [[ "$policy" == *'If the active class is unknown, the selected default model is unavailable, or the host cannot select a subagent model'* ]]
+  [[ "$policy" == *'If the active class is unknown, the selected step-down model is unavailable, or the host cannot select a subagent model'* ]]
   [[ "$policy" == *"retain the host's inherited/default behavior and report the limitation once"* ]]
   [[ "$policy" == *'If an explicit user model choice cannot be honored, report that blocker'* ]]
   [[ "$policy" == *'Explicit different-provider adversarial reviews retain their own provider/model policy'* ]]
