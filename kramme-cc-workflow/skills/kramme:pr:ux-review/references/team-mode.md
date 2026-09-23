@@ -60,12 +60,11 @@ TREE_MANIFEST_BEFORE=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || exit 1
 
 Spawn teammates based on applicable review categories. Each teammate receives:
 
-- The resolved base branch and git diff commands to run (`git diff $(git merge-base origin/$BASE_BRANCH HEAD)...HEAD`, `git diff --cached`, `git diff`, using the base resolved in Step 1)
+- The resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE` from Step 1 and the git diff commands to run (`git diff "$MERGE_BASE"...HEAD`, `git diff --cached`, `git diff`)
 - Untracked files list: `git ls-files --others --exclude-standard`
 - The list of UI-relevant changed files
 - Project conventions extracted from the project instruction files (explicitly mention stack requirements like Tailwind or Material Design 3 when present)
 - If `app_url` provided: the URL and browser MCP type
-- If `custom_threshold` provided: instruct the agent to use this threshold
 - Instructions to **message other teammates** when they find cross-cutting UX issues
 
 Use the same agent-selection logic as `/kramme:pr:ux-review` Step 5 (always-launch set, conditional a11y detection, and `--categories` filter) — substitute "spawn the teammate" for "launch the agent". Mission files: `agents/kramme:ux-reviewer.md`, `agents/kramme:product-reviewer.md`, `agents/kramme:visual-reviewer.md`, and `agents/kramme:a11y-auditor.md`.
@@ -81,7 +80,9 @@ Create tasks in the shared task list:
 
 **Phase 2 task (blocked on all Phase 1 tasks):**
 
-- "Validate finding relevance against full audit scope" -- spawn a new **relevance-validator** teammate
+- "Validate finding relevance against full audit scope" -- the coordinator prepares this task before spawning the validator
+- Once all Phase 1 tasks finish, collect their findings and perform the working-tree integrity check in Step 5 before starting the validator. Abandon the audit if that check requires it.
+- Before the validator starts, drop findings below the report threshold with the same rule as `/kramme:pr:ux-review` Step 8, then spawn a **relevance-validator** teammate with only the remaining findings
 - Mission from `agents/kramme:pr-relevance-validator.md`
 - Pass the resolved `BASE_BRANCH` from Step 1 so relevance validation uses the same PR base
 - Cross-references all findings against the full audit scope (PR diff + staged/unstaged/untracked local changes)
@@ -98,7 +99,7 @@ While teammates work:
 
 ### Step 5: Collect and Aggregate Results
 
-After all tasks complete, gather the findings from every teammate, then run the **working-tree integrity check** before anything downstream consumes them. Re-capture the manifest into `TREE_MANIFEST_AFTER` with `"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh"` and compare it with `TREE_MANIFEST_BEFORE` from Step 2. Under the record contract in `references/shared-working-tree.md`, compare the `@head` metadata records before interpreting path differences. If the captured commits differ, discard every finding from the stale batch, abandon the audit without writing `UX_REVIEW_OVERVIEW.md`, and require a fresh scope capture and complete team audit; do not derive mutated paths or attribute an unknown concurrent commit to a teammate. Only with equal commits may you remove the metadata and diff the path records. An empty path-record diff means the tree is intact. Otherwise apply the mutation handling in `references/shared-working-tree.md`: re-read the differing paths from disk, re-verify every finding citing them, drop the findings that no longer reproduce, name the mutated paths in `## Coverage Status`, never revert them, and abandon the audit without writing `UX_REVIEW_OVERVIEW.md` if the mutated paths cover most of the UI-relevant scope. In team mode, also name the teammate whose task window contains the path mutation when the task log makes that attributable.
+Apply this **working-tree integrity check** to the collected Phase 1 findings before starting the Phase 2 validator, as directed in Step 3. After all tasks complete, gather the findings from every teammate and run the same check again so the validator's task window is also covered. Each time, re-capture the manifest into `TREE_MANIFEST_AFTER` with `"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh"` and compare it with `TREE_MANIFEST_BEFORE` from Step 2. Under the record contract in `references/shared-working-tree.md`, compare the `@head` metadata records before interpreting path differences. If the captured commits differ, discard every finding from the stale batch, abandon the audit without writing `UX_REVIEW_OVERVIEW.md`, and require a fresh scope capture and complete team audit; do not derive mutated paths or attribute an unknown concurrent commit or branch switch to a teammate. Only with equal commits may you remove the metadata and diff the path records. An empty path-record diff means the tree is intact. Otherwise apply the mutation handling in `references/shared-working-tree.md`: re-read the differing paths from disk, re-verify every finding citing them, drop the findings that no longer reproduce, name the mutated paths in `## Coverage Status`, never revert them, and abandon the audit without writing `UX_REVIEW_OVERVIEW.md` if the mutated paths cover most of the UI-relevant scope. In team mode, also name the teammate whose task window contains the path mutation when the task log makes that attributable.
 
 Then aggregate:
 
