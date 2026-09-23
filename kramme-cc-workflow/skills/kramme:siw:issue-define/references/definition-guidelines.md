@@ -9,5 +9,5 @@ Use these guidelines throughout issue definition:
 5. **Be specific** - Vague issues lead to vague implementations.
 6. **Check for similar issues** - Do not create duplicates.
 7. **Keep simple bugs simple** - Do not over-engineer.
-8. **Exhaust the interview** - Especially Round 1 for complex issues.
+8. **Probe until concrete** - Ask what codebase and workflow context cannot answer; for complex issues, keep probing Round 1 until the problem and its impact are concrete.
 9. **Get user approval** - Always show draft before creating.
