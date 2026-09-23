@@ -6,8 +6,8 @@ from ..io import read_text, rel, skill_paths
 from .types import CheckResult, LintContext
 
 DEFAULT_FORBIDDEN_HEADING_REGEXES = (
-    r"^#{2,3}\s+Common Rationalizations\b",
-    r"^#{2,3}\s+Red Flags\b",
+    r"^#{2,3}\s+.*\bRationali[sz]ations?\b",
+    r"^#{2,3}\s+.*\bRed Flags\b",
 )
 DEFAULT_DECISION = "docs/decisions/2026-09-07-skill-epilogue-verification-only.md"
 
@@ -16,8 +16,9 @@ def check_epilogue_forbidden(context: LintContext) -> CheckResult:
     """Fail when a skill body carries a retired epilogue section.
 
     Skills fold gates into the step where they apply and keep at most a
-    trimmed ``## Verification`` section; ``Common Rationalizations`` and
-    ``Red Flags`` headings are forbidden in shipped ``SKILL.md`` files.
+    trimmed ``## Verification`` section; headings naming ``Rationalizations``
+    or ``Red Flags`` anywhere, such as ``## When To Apply — Red Flags``, are
+    forbidden in shipped ``SKILL.md`` files.
     """
     result = CheckResult()
     config = context.registry.get("epilogue_forbidden")
