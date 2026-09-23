@@ -5,7 +5,7 @@ Use this baseline as a shared vocabulary for maintainability findings in `code`,
 ## Rules
 
 - Apply documented repo standards first. If a local standard intentionally permits a pattern, suppress the smell.
-- Apply the codebase calibration rule from `SKILL.md` before reporting a smell. Nearby practice, framework guarantees, generated code, and existing conventions matter.
+- Apply the `Reviewer calibration` rules passed with this baseline before reporting a smell. Nearby practice, framework guarantees, generated code, and existing conventions matter.
 - Report a smell only with concrete diff evidence: name the smell, cite the changed location, and explain why it matters in this change.
 - Keep tooling-enforced issues out of smell findings. If formatting, linting, type checks, or tests already own the concern, do not duplicate it.
 - Prefer advisory Suggestions unless the smell creates a concrete correctness, security, error-handling, test, or contract risk.
