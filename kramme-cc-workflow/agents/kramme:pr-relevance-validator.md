@@ -1,7 +1,7 @@
 ---
 name: kramme:pr-relevance-validator
 description: Validates that review findings are actually caused by the current review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR description findings when PR metadata is provided). Use this agent after collecting findings from other review agents to filter out pre-existing issues and problems outside the in-scope changes. This prevents scope creep in code reviews by ensuring reviewers only see issues they should address.
-model: opus
+model: inherit
 color: orange
 ---
 

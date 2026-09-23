@@ -1,7 +1,7 @@
 ---
 name: kramme:deslop-reviewer
 description: Use this agent to detect AI-generated code slop in code changes or in review findings. In code-review mode it flags unnecessary comments, defensive noise, weak typing, and style inconsistencies in the diff; in meta-review mode it flags review suggestions that would introduce the same patterns.
-model: opus
+model: inherit
 color: purple
 ---
 
