@@ -258,7 +258,7 @@ Acceptance Criteria:
 
 ## Step 4: Codebase Exploration (PLANNING PHASE)
 
-Linear issues are typically product-focused and lack technical implementation details. Perform extensive codebase exploration to understand how to implement the feature, regardless of how the issue is written.
+Linear issues are typically product-focused and lack technical implementation details. Explore the codebase until you know which files to change, which patterns to follow, and which constraints apply.
 
 ### 4.1 Why This Phase Is Essential
 
@@ -275,11 +275,9 @@ They typically do NOT describe:
 - How existing similar features are implemented
 - Technical constraints or dependencies
 
-**Your job is to bridge this gap through thorough exploration.**
+### 4.2 Exploration Steps
 
-### 4.2 Mandatory Exploration Steps
-
-Perform these steps even if the issue seems straightforward:
+Scale these steps to the issue. For a small, well-specified change, the closest existing pattern and its tests can be enough; dispatch the exploration subagent in step 3 when the change spans modules or the issue names no concrete area.
 
 1. **Use the reference map as research input:**
    - Incorporate accessible related issues and Linear documents into the feature description and implementation constraints
