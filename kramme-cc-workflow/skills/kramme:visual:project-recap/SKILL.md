@@ -22,7 +22,7 @@ Load these on demand as Workflow step 2 directs — don't read them all up front
 - `references/css-patterns.md`, `references/libraries.md`, `references/responsive-nav.md`
 - `assets/architecture.html`, `assets/data-table.html`, `assets/mermaid-flowchart.html` — copy the one template matching the element you're rendering
 
-Use a warm editorial or paper/ink aesthetic with muted blues and greens. Vary fonts and palette so the page doesn't feel generic.
+Use a warm editorial or paper/ink aesthetic with muted blues and greens. Keep it from reading as the stock generated editorial page: no italic accent words in headlines, numbered "01/02/03" section labels, or pill-shaped badges.
 
 ## Workflow
 
@@ -125,5 +125,3 @@ Open in the browser, then report the file path to the user:
 If no opener is available (headless, CI, or the command fails), just report the path — the file is the deliverable.
 
 Include responsive section navigation.
-
-Ultrathink.

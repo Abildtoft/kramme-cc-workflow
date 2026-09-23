@@ -19,9 +19,9 @@ Generate self-contained HTML files for technical diagrams, visualizations, and d
 
 ## Workflow
 
-### 1. Think (5 seconds, not 5 minutes)
+### 1. Think
 
-Before writing HTML, commit to a direction. Don't default to "dark theme with blue accents" every time.
+Before writing HTML, commit to a direction. Don't fall back on a stock generated look: a dark theme with blue or purple accents, or a cream or off-white page with italic accent words in headlines, numbered "01/02/03" section labels, and pill-shaped badges.
 
 **Who is looking?** A developer understanding a system? A PM seeing the big picture? A team reviewing a proposal? This shapes information density and visual complexity.
 
@@ -39,7 +39,7 @@ Before writing HTML, commit to a direction. Don't default to "dark theme with bl
 - Data-dense (small type, tight spacing, maximum information)
 - Gradient mesh (bold gradients, glassmorphism, modern SaaS feel)
 
-Vary the choice each time. If the last diagram was dark and technical, make the next one light and editorial. The swap test: if you replaced your styling with a generic dark theme and nobody would notice the difference, you haven't designed anything.
+Vary the choice each time. If the last diagram was dark and technical, make the next one light and editorial. The swap test: if you replaced your styling with a generic dark theme or that stock editorial page and nobody would notice the difference, you haven't designed anything.
 
 ### 2. Structure
 
@@ -246,7 +246,7 @@ Every diagram is a single self-contained `.html` file. No external assets except
 Before delivering, verify:
 
 - **The squint test**: Blur your eyes. Can you still perceive hierarchy? Are sections visually distinct?
-- **The swap test** (defined in step 1, Think): if a generic dark theme would render this indistinguishable from a template, push the aesthetic further.
+- **The swap test** (defined in step 1, Think): if a generic dark theme or the stock editorial page would render this indistinguishable from a template, push the aesthetic further.
 - **Both themes**: Toggle your OS between light and dark mode. Both should look intentional, not broken.
 - **Information completeness**: Does the diagram actually convey what the user asked for? Pretty but incomplete is a failure.
 - **No overflow**: Resize the browser to different widths. No content should clip or escape its container. Every grid and flex child needs `min-width: 0`. Side-by-side panels need `overflow-wrap: break-word`. Never use `display: flex` on `<li>` for marker characters — it creates anonymous flex items that can't shrink. Use absolute positioning for markers instead. See the Overflow Protection section in `references/css-patterns.md`.
