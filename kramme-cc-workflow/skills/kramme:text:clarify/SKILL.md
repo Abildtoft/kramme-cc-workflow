@@ -98,4 +98,4 @@ Rewrite prose around the reader's task without reducing its substance, precision
 
 ## Output
 
-Return the clarified text first. When useful, follow it with no more than five bullets describing material changes, preserved constraints, or unresolved ambiguity.
+Return the clarified text first. When useful, follow it with a short list of material changes, preserved constraints, or unresolved ambiguity.

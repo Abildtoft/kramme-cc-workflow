@@ -164,7 +164,7 @@ Omit these:
 
 - "Welcome to..." or "This document explains..."
 - Obvious instructions ("run tests", "write clean code")
-- Explanations of why (just say what)
+- Long rationale paragraphs (keep a short reason clause when a rule's purpose or scope is not obvious, e.g. "because CI validates them")
 - Long prose paragraphs
 - Content duplicated from skills (reference instead)
 - Link dumps without a trigger or purpose

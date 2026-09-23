@@ -61,7 +61,7 @@ Every rater receives this contract in addition to its frame:
 
 - Explore the code first. Do not open agent instruction files (`CLAUDE.md`, `AGENTS.md`, `.cursorrules`, ADR directories, glossaries) or report artifacts until your impression is formed; afterward you may skim them only to note whether the project already knows about a problem you found.
 - There is no rubric. Say what you actually notice, in plain language. Holistic complaints ("this feels over-engineered") are welcome; concrete examples are encouraged but file:line evidence is not required.
-- Return: a score from 1–10 with a one-line justification; 3–7 complaints; the one sentence you would tell the codebase owner; and up to 3 genuine strengths.
+- Return: a score from 1–10 with a one-line justification; every complaint you noticed, most important first; the one sentence you would tell the codebase owner; and any genuine strengths.
 - After your impression is formed, list what you actually looked at — directories, files, and docs — so the report can record your footprint. Be honest about how far you got; a narrow footprint is normal and will not be judged.
 
 Run the cross-model rater only through the verified isolation profile selected in `references/personas.md`. Give it the same elicitation contract as every other rater. Never invoke a raw model CLI from the repository root. If the profile is unavailable, the CLI fails, or the output is unusable, record the reason and continue without that rater.

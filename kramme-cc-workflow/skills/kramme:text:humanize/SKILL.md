@@ -40,7 +40,7 @@ Skip rewriting and instead point out the AI patterns when the input is:
    - Keeps the source's tone (formal, casual, technical).
 5. Present the humanized version.
 
-Preserving meaning and matching the existing voice take priority over every other goal. Do not add facts, opinions, or feelings the source does not support.
+Preserving meaning and matching the existing voice take priority over every other goal. Do not add facts, opinions, or feelings the source does not support. The After examples in `references/ai-writing-patterns.md` sometimes show specifics that editor had sources for; never add names, numbers, dates, or citations the input lacks.
 
 ## AI writing patterns
 
@@ -79,7 +79,7 @@ When the input came from a file:
 
 **After (humanized):**
 
-> The software update adds batch processing, keyboard shortcuts, and offline mode. Early feedback from beta testers has been positive, with most reporting faster task completion.
+> The new software update is meant to make the product easier and faster to use.
 
 **Changes made:**
 
@@ -90,4 +90,4 @@ When the input came from a file:
 - Removed "It's not just...it's..." (negative parallelism)
 - Removed "Industry experts believe" (vague attribution)
 - Removed "pivotal role" and "evolving landscape" (AI vocabulary)
-- Added specific features and concrete feedback
+- Kept only claims the source supports; it names no features or feedback, so the rewrite adds none
