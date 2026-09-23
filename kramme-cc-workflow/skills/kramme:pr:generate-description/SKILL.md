@@ -359,7 +359,7 @@ Capture the single printed absolute path, require it to remain below the validat
 
 ### Phase 5: Pre-publish Verification
 
-Read `references/red-flags.md` once. Apply the `Red Flags — STOP` section from the already-loaded reference and regenerate when any condition matches.
+Read `references/red-flags.md` once. Apply the `Regeneration Triggers` section from the already-loaded reference and regenerate when any condition matches.
 
 Run the consolidated checklist in `references/verification-checklist.md`. Phases 1–4 do not have their own checklist; that reference is the single source of truth.
 

@@ -1,6 +1,6 @@
-# Red Flags — STOP
+# Regeneration Triggers
 
-## Red Flags — STOP
+## Regeneration Triggers
 
 Pause and regenerate the description if any of these are true:
 
