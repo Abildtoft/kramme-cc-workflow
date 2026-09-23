@@ -112,8 +112,10 @@ No UI/UX changes detected to audit.
 If `UX_REVIEW_OVERVIEW.md` exists in the project root:
 
 - Parse previously addressed findings (file path, line number, issue description, action taken)
-- Accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as previously addressed identifiers; new UX audit reports use artifact-scoped `UX-NNN` IDs. Remove this legacy-ID acceptance once existing `UX_REVIEW_OVERVIEW.md` artifacts contain only `UX-NNN` IDs (i.e., once reports generated before the `UX-NNN` switch are no longer in circulation).
+- Accept per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as previously addressed identifiers.
 - Store for filtering in Step 9
+
+New reports number every finding `UX-001`, `UX-002`, ... in report order, regardless of source agent.
 
 ### Step 5: Determine Which Agents to Launch
 
