@@ -24,7 +24,7 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
 - If present, set `AUTO_MODE=true` and remove the flag from the remaining input.
 - `--auto` means: if a previous report exists, write a fresh report and include a score comparison instead of prompting the user.
 
-**IMPORTANT:** This is a thorough codebase audit. Do not return early. Do not guess scores without evidence. Explore the codebase systematically and score based on what you find.
+Score every dimension from evidence you found in the codebase; do not guess a score you have not checked.
 
 ## Context Pointer Signals
 

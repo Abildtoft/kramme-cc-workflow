@@ -10,7 +10,7 @@ user-invocable: true
 
 Evaluate specification documents for implementation readiness across 8 dimensions before implementation begins. Use this skill when the question is whether implementation can proceed correctly without guessing. It checks whether product rationale is documented clearly enough to guide implementation, but does not decide whether the product problem, solution, prioritization, or strategy is correct; use `/kramme:siw:product-audit` for that product judgment. The standard workflow is spec-only; `--team` also runs a bounded codebase pattern reviewer that checks whether the spec introduces new implementation patterns without rationale.
 
-**IMPORTANT:** This is a thorough quality audit. Do not return early. Do not assume a section is well-written without reading it carefully. Check every part of the specification against quality criteria. The goal is to find ALL weaknesses — a clean report is suspicious, not reassuring.
+Check every section of the specification against every quality dimension before reporting. A dimension with no findings is a valid result when you can say what you checked.
 
 ## Team Mode
 
