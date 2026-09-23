@@ -11,7 +11,7 @@ kramme-platforms: [claude-code, codex]
 
 Critique specification documents from a product perspective before implementation begins. Use this skill when the question is whether the specification proposes the right product for the right users. For whether the specification is clear, complete, testable, technically sound, and ready to implement without guessing, use `/kramme:siw:spec-audit`. This is a spec-only analysis — no codebase code is read or compared.
 
-**IMPORTANT:** This is a thorough product critique. Do not return early. Do not assume a section is well-designed without reading it carefully. Evaluate whether the spec will actually solve the right problem for the right users. A clean report is suspicious, not reassuring.
+Evaluate every section of the specification against every product dimension, and judge whether the spec will actually solve the right problem for the right users. A dimension with no findings is a valid result when you can say what you checked.
 
 ## Process Overview
 

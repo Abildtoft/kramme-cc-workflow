@@ -103,7 +103,7 @@ For each finding, report:
 ## Rules
 
 - Report on every dimension. Even if no findings, confirm the dimension was analyzed.
-- Do not return early. Continue until every section is checked against every assigned dimension.
+- Check every section against every assigned dimension before returning.
 - Quote the spec. When flagging an issue, include the relevant text.
 - Be specific in recommendations. "Add more detail" is not enough — say what detail is missing.
 - Score provisional fix confidence on every finding using `references/fix-confidence-rubric.md`. Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`.
@@ -252,7 +252,7 @@ Output: Root-cause links
 
 For any dimension with 0 findings (or very few given spec size):
 - Read the spec sections that agent analyzed
-- Identify at least 2 specific aspects that SHOULD have been flagged
+- Look for specific aspects the agent should have flagged
 - If you find gaps: report them as additional findings with the same format, including `Fix Confidence`
 - If the dimension is genuinely strong: confirm it explicitly with evidence
 

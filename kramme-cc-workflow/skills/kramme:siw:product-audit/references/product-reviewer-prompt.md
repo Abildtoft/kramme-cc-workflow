@@ -114,7 +114,7 @@ For each finding, report:
 ## Rules
 
 - Report on every dimension. Even if no findings, confirm the dimension was analyzed.
-- Do not return early. Check every section against every dimension.
+- Check every section against every dimension before returning.
 - Quote the spec. Include relevant text when flagging an issue.
 - Be specific in recommendations. "Add more detail" is not enough.
 - If target user, value, why-now, or non-goals are missing, infer the most likely answer from the surrounding spec, state it as an assumption, and critique the spec against that assumption instead of stopping.
