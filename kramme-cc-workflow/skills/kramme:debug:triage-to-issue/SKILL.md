@@ -39,7 +39,7 @@ options:
   - (freeform) Describe the bug, paste an error message, or provide a Linear/SIW issue ref
 ```
 
-3. Otherwise, do not ask. Proceed silently.
+3. Otherwise, proceed without asking.
 
 Emit `PLAN: triage to issue — investigate, design TDD plan, draft, gate, file`.
 
@@ -264,5 +264,5 @@ Reuse from `kramme:debug:investigate`:
 ## Integration points
 
 - **`kramme:debug:investigate`** — source of the investigation phase (Steps 1–6 + Step 8 reporting). The orchestrator stops it at the propose-fix gate via the "Report only" option.
-- **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). v1 issues the create call directly through the available Linear create operation (Claude Code `mcp__linear__create_issue`; Codex `save_issue` without `id`) for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
+- **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). This skill issues the create call directly through `save_issue` without `id` (Claude Code `mcp__linear__save_issue`; Codex `save_issue`) for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
 - **`kramme:linear:issue-implement`** — downstream implementation consumer. A local SIW ticket reaches it through `kramme:siw:transfer-to-linear` without re-investigation.
