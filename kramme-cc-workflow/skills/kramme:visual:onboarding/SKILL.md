@@ -102,5 +102,3 @@ Open in the default browser:
 - Windows: `start <path>`
 
 If no browser opens (e.g., a headless environment), skip it. Always report the final file path to the user.
-
-Ultrathink.

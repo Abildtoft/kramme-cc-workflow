@@ -6,7 +6,7 @@
 
 Explore this codebase to gather information for an onboarding guide targeting newcomers. Focus on the dimensions listed below. Report findings with source citations (file:line).
 
-Be thorough but concise. Prioritize accuracy over completeness — only report what you can verify.
+Cite a source for every finding. List anything you could not verify under **Uncertain Items** instead of omitting it.
 
 ## Dimensions to Explore
 

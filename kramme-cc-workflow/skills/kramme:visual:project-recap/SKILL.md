@@ -125,5 +125,3 @@ Open in the browser, then report the file path to the user:
 If no opener is available (headless, CI, or the command fails), just report the path — the file is the deliverable.
 
 Include responsive section navigation.
-
-Ultrathink.

@@ -128,5 +128,3 @@ Write a user-requested HTML deliverable to `~/.kramme-cc-workflow/diagrams/plan-
 - Windows: `start "" "%USERPROFILE%\.kramme-cc-workflow\diagrams\{filename}.html"`
 
 Report the file path to the user. Include responsive section navigation.
-
-Ultrathink.
