@@ -33,7 +33,7 @@ Use a blueprint/editorial aesthetic with current-state vs. planned-state panels,
    - `references/responsive-nav.md` when the review spans 4+ sections and needs responsive navigation
    - `references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
 
-3. **Style.** Use typography, palette, and depth to separate current state, planned state, and risk. Avoid default app styling. Use CSS custom properties, atmospheric backgrounds, and motion only where it helps comprehension.
+3. **Style.** Use typography, palette, and depth to separate current state, planned state, and risk. Avoid the stock generated looks: a dark theme with blue or purple accents, and a cream or off-white page with italic accent words in headlines, numbered "01/02/03" section labels, and pill-shaped badges. Use CSS custom properties, atmospheric backgrounds, and motion only where it helps comprehension.
 
 4. **Generate and fact-check.** After composing the artifact, compare the rendered claims back to the fact sheet and source evidence before reporting it. Verify counts, file references, plan references, function/type names, Mermaid labels, current/planned behavior statements, and risk labels. If polish introduced a new claim, add source evidence or remove the claim.
 

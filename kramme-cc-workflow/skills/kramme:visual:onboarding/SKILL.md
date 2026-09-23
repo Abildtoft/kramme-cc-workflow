@@ -19,7 +19,7 @@ Use this for a full newcomer guide to a codebase or subsystem. For a single diag
 
 Read `references/css-patterns.md` before generating — it holds the always-needed layout, depth-tier, zoom, and collapsible patterns. Load the other references (`libraries.md`, `responsive-nav.md`) and the asset templates only when the workflow step below calls for them.
 
-**Aesthetic:** a warm, inviting editorial style — friendly textbook, not cold reference. Expressive typography, a clear palette, atmospheric backgrounds, obvious hierarchy, and motion only where it aids orientation. Vary fonts and palette. Respect `prefers-reduced-motion` and `prefers-color-scheme`.
+**Aesthetic:** a warm, inviting editorial style — friendly textbook, not cold reference. Expressive typography, a clear palette, atmospheric backgrounds, obvious hierarchy, and motion only where it aids orientation. Keep it from reading as the stock generated editorial page: no italic accent words in headlines, numbered "01/02/03" section labels, or pill-shaped badges. Respect `prefers-reduced-motion` and `prefers-color-scheme`.
 
 ## Workflow
 
