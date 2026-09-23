@@ -10,7 +10,7 @@ user-invocable: true
 
 Generate tests for existing code by analyzing the project's test framework, conventions, and patterns. Produces test files that match the existing style.
 
-**IMPORTANT:** This skill creates new test files and runs them. It does NOT modify source code — if a generated test fails, the test is fixed, not the source.
+This skill creates new test files and runs them, and it never modifies source code. When a generated test fails, fix the test only if the test itself is wrong; if the source behavior looks wrong, leave the test red and record the suspected defect for the Step 8 summary (see Step 7).
 
 **When to use:** Adding coverage to existing, untested code. For test-first new logic or bug reproduction, follow the repository's normal test-first workflow instead. Generate E2E specs only when explicitly asked — default to the project's unit test framework.
 
