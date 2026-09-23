@@ -115,7 +115,7 @@ Codex: get_issue with id: {ISSUE_ID}, includeRelations: true
 - `description` - Full issue description (markdown)
 - `state` - Current state (Backlog, In Progress, etc.)
 - `labels` - Associated labels
-- `branchName` - **CRITICAL**: Linear's recommended branch name
+- `branchName` - Linear's recommended branch name, used by Step 2
 - `url` - Link to issue in Linear
 - `project` - Associated project
 - `priority` - Issue priority
@@ -147,9 +147,9 @@ When `SET_IN_PROGRESS=true`, read `references/status-transition.md` and follow i
 
 Complete it here, before branch setup, so a declined confirmation or failed write stops the run without having created a branch or touched the worktree. Record `{transition-outcome}` for Step 8's output and for a delegating parent's report.
 
-## Step 2: Branch Setup (MANDATORY - DO IMMEDIATELY)
+## Step 2: Branch Setup
 
-**CRITICAL:** This step MUST be completed before any other actions. Do NOT proceed to issue parsing, planning, or any other step until you are on the correct branch. Only the Step 1.4 status transition may precede it, and only because it touches Linear rather than the repository; a declined or failed transition stops the run before this step rather than creating a branch.
+Complete this step before any other step, so issue parsing, planning, and every edit happen on the issue branch. Only the Step 1.4 status transition may precede it, and only because it touches Linear rather than the repository; a declined or failed transition stops the run before this step rather than creating a branch.
 
 Read `references/branch-setup.md` and follow it completely: extract or generate `branchName`, handle dirty-worktree state, create or switch to the branch, verify `git branch --show-current` matches, and display the branch confirmation. Only after this confirmation may you proceed to Step 3.
 
