@@ -74,7 +74,7 @@ Every active finding must include these fields before it is posted:
 | Finding ID | `CR-001`, `CR-002`, ... | Gives downstream workflows a stable source identifier for handoffs and resolution summaries. |
 | Severity | Critical, Important, Suggestion, FYI | Describes merge impact. Use the severity prefix grammar below. |
 | Location | `path/to/file:line`, `review-scope`, or `PR description` | Lets downstream workflows distinguish auto-fixable code findings from manual/process findings. |
-| Confidence | `0-100` | States how directly the reviewer traced the issue. During the transition, map reviewer tiers as `high=80`, `medium=60`, `low=30`. |
+| Confidence | `0-100` | States how directly the reviewer traced the issue. Never derive it from a severity label. |
 | Action class | `gated_auto`, `manual`, `advisory` | Separates urgency from safe ownership. |
 | Owner | resolver, author, maintainer, reviewer, unknown | Names who can act next. |
 | Evidence | concrete trace, location, reproduction, failed expectation, or `UNVERIFIED` reason | Prevents unsupported findings from becoming gatekeeping. |
@@ -118,7 +118,7 @@ Only **low-confidence** dead-code findings require the author's or maintainer's 
 
 A high-confidence dead-code finding is `gated_auto` (or, in Suggestions, passes the safe-advisory test): `/kramme:pr:resolve-review` may delete it without a separate approval. A dead-code finding that misses any bar above is **low-confidence** and stays `manual` with the `dead-code approval` blocker until the ask is answered.
 
-Because `high` maps to 80, an auto-removable dead-code finding usually sits in the 60-89 confidence band rather than 90-100, and that is intended. The bands under **Confidence and merge rules** below score how fully a finding's _runtime behavior_ was traced; dead-code removal safety instead turns on _static reference completeness_ — no remaining references anywhere. A removal can be fully traced against every reference yet still carry residual dynamic-reference risk, so a complete reference trace at `Confidence` at least 70 — not 90 — is the intended auto-removal bar here.
+An auto-removable dead-code finding usually sits in the 60-89 confidence band rather than 90-100, and that is intended. The bands under **Confidence and merge rules** below score how fully a finding's _runtime behavior_ was traced; dead-code removal safety instead turns on _static reference completeness_ — no remaining references anywhere. A removal can be fully traced against every reference yet still carry residual dynamic-reference risk, so a complete reference trace at `Confidence` at least 70 — not 90 — is the intended auto-removal bar here.
 
 ## Action classes
 
