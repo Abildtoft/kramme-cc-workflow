@@ -198,8 +198,8 @@ If the result is `product-only` or `requirements-only`, point to `/kramme:siw:di
 
 1. **Link, don't duplicate** - When external specs are provided, reference them; never copy their content into the SIW spec (single source of truth)
 2. **Smart input handling** - Accept file paths, folders, or "discover" keyword; fall back to brief interview if no arguments
-3. **Offer file relocation** - Ask if linked files should be moved into siw/ or kept in place
-4. **Thorough discovery** - When using discover mode, conduct comprehensive interview before creating spec
-5. **Smart defaults** - Auto-detect spec type but always confirm
+3. **Offer file relocation** - Ask if linked files should be moved into siw/ or kept in place; under `--auto`, keep them in place
+4. **Delegate discovery** - In discover mode, `/kramme:siw:discovery` runs the interview; do not repeat it here
+5. **Smart defaults** - Auto-detect spec type and confirm it, except under `--auto`, which uses the detected type
 6. **Clear next steps** - Always point user to the next skill implied by readiness: discovery for hardening, generate-phases for phased planning, or issue-define for a single issue
 7. **Respect existing work** - Never overwrite without explicit confirmation

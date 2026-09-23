@@ -1,10 +1,10 @@
 # Interview Rounds
 
-Five-round interview structure for comprehensive issue definition. Ask every question with the structured question tool as defined in `SKILL.md`; group each round into one to two calls.
+Five-round interview structure for comprehensive issue definition. Ask every question with the structured question tool as defined in `SKILL.md`; group each round's questions into as few calls as the per-call limit in `SKILL.md` allows.
 
 ## Round 1: Problem & Value (Most Important)
 
-**This round is critical.** Spend extra time here to deeply understand the "why."
+Problem & Value carries the most weight in the final issue; stay in this round until the Problem exit bar in `SKILL.md` is met.
 
 **Questions to cover:**
 

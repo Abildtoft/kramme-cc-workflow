@@ -159,7 +159,7 @@ Show the confidence dashboard after each round. Mark focus areas for next round 
 - **Ask generic setup questions.** "Tell me about your project" is lazy. Frame a hypothesis and validate it.
 - **Accept the first answer.** The first answer is what they think you want to hear. The third answer is closer to truth.
 - **Interrogate.** This is a conversation, not a deposition. Probing is done with genuine curiosity, not suspicion.
-- **Ask more than 3 questions per round.** Cognitive load kills honesty. 1-2 high-value questions per round is ideal; ask more rounds, not giant batches.
+- **Ask giant batches.** Stay within the round size in `references/interview-operations.md`. Cognitive load kills honesty; 1-2 high-value questions per round is ideal, so ask more rounds rather than bigger ones.
 - **Stop after the first satisfactory answer.** A good first answer is the start of discovery. Follow it with a tradeoff, negative-space probe, or restatement challenge before treating it as settled.
 - **Stack all techniques at once.** Pick 1-2 per round based on the lowest confidence dimension.
 - **Ignore surprises.** When an answer contradicts earlier answers, that's gold — dig in immediately.
