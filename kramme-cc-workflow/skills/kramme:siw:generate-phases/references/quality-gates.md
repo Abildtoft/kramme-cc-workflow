@@ -25,25 +25,6 @@ Use these markers as prefixes when surfacing specific kinds of information so ou
 
 Adopt all markers or none — mixed marker vocabularies degrade downstream parseability.
 
-## Common Rationalizations
-
-Watch for these justifications that signal you are about to skip a hard gate:
-
-- "These tasks feel atomic, sizing is overkill." — If sizing is skipped, the next reviewer has no objective basis to flag drift. Apply XS/S/M/L every time.
-- "One XL task is fine, the implementer will figure it out." — No. XL means "break it down further." Letting one through breaks the gate for all future tasks.
-- "Horizontal slicing is faster for the AI to generate." — It is, and it produces a plan that defers integration risk. Every task should ship the smallest end-to-end slice appropriate to its work context.
-
-## Red Flags
-
-Stop and recheck the workflow if any of these appear:
-
-- Phase 4 subagent returns "no findings" on the first pass — likely under-reviewing, not a clean breakdown. (Distinct from a missing or malformed response, which is handled by the Subagent failure stanza in `SKILL.md` Phase 4.)
-- Every task lands at size L — likely under-decomposed.
-- Sizing labels were assigned after the structure was drafted instead of during Phase 3.2 — the grammar did not drive decomposition.
-- Parallelization categories are all "Must be sequential" — likely missed safely-parallel slices.
-- Existing issue IDs are renumbered during append, refinement, splitting, deletion, or deepening — this breaks references that should survive ordinary plan evolution.
-- A risky plan skips Phase 4.5 because Phase 4 already ran — the deepening gate checks sequencing, hidden dependencies, and risk treatment beyond the hard atomicity/sizing review.
-
 ## Verification
 
 Before reporting Phase 7, verify:
@@ -52,6 +33,7 @@ Before reporting Phase 7, verify:
 - Every task carries an explicit size; no XL survived Phase 4.
 - Phase 4 subagent prompt ran with all ten criteria (including Vertical slicing, Parallelization, Mode coverage, and Prefactoring-first) against the final plan after any Phase 4.5 changes.
 - Parallelization categories are recorded for each task group.
+- If every task is size L or every group is "Must be sequential", decomposition and parallelization were re-checked before reporting.
 - The Phase 5 `PLAN:` block shows every issue size and every group-level `Parallelization:` note.
 - Existing append-mode issue IDs were preserved, with new work assigned to the next unused number in each prefix group.
 - Risk signals were checked; Phase 4.5 ran when triggered, did not run unconditionally for small, clear plans, and looped back through Phase 4 if it changed, split, deleted, or reordered tasks.

@@ -109,23 +109,7 @@ Stop interviewing when:
 - Enough information exists to write a comprehensive plan.
 - Simple topics have enough coverage; do not artificially extend the interview.
 
-## Common rationalizations
-
-- _"The topic is already clear enough to skip Phase 0."_ Sometimes true. But if you cannot state the concrete outcome in one sentence, the framing is vague and Phase 0 will save rounds.
-- _"The user will correct me if I'm wrong."_ They often will not, because they do not know what they do not know. Use `CONFUSION:` to surface mismatches early.
-- _"Coverage at 80% across all dimensions means I'm done."_ Coverage is a proxy, not a goal. Stop when no major unknowns remain, even if a dimension sits at 60%.
-- _"The template handles all topic types, so classification doesn't matter."_ It does. The template shapes what questions to ask; picking the wrong one produces a weak plan.
-
-## Red flags
-
-- Asking a question whose answer is already in the artifact. Stop and re-read the artifact.
-- Generating a plan before the user has confirmed the classification or chosen a Phase 0 framing.
-- Auto-running Phase 0 on a concrete topic the user already scoped when `--ideate` was not requested. Skip it.
-- Auto-running Phase R on a pure-priorities or business-context topic where research cannot help. Skip it.
-- Letting Phase R findings sit unread because they do not fit the original hypothesis. Surface contradictions before the interview, not after.
-- Filling in a plan section from assumption rather than interview data. Emit `MISSING REQUIREMENT:` instead.
-- Letting a Phase 0 framing change stand without reclassifying the topic type and template choice.
-- The interview drifts into implementation minutiae before the problem statement is settled.
+Coverage percentages are a proxy: stop when no major unknowns remain, even if a dimension sits below 80%.
 
 ## Pre-plan verification
 
@@ -137,5 +121,6 @@ Before writing the plan, confirm:
 - [ ] If Phase 0 was auto-triggered, the user was given an explicit skip-or-continue choice before variations were generated.
 - [ ] If Phase R ran, the post-research check-in surfaced any contradictions before the interview began, and the chosen template's `Sources` section is populated with the file paths and URLs each agent returned.
 - [ ] Every dimension either has interview-grounded content or an explicit `MISSING REQUIREMENT:` marker.
+- [ ] The problem statement was settled before the interview moved into implementation details.
 - [ ] If the chosen template includes a non-goals section, each entry includes a rationale instead of a bare placeholder.
 - [ ] If the chosen template has a `Risks & Mitigations` (or equivalent) section, each risk is concrete (e.g., "this adds an N+1 query on every page load") rather than vague ("this could be slow").

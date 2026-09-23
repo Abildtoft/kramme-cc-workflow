@@ -100,6 +100,8 @@ Label every finding within each bucket using Addy's prefixes so downstream tooli
 
 The report section headers (`## Critical Issues`, `## Important Issues`, `## Suggestions`) remain — the prefix is the finer-grained label inside each section.
 
+If every finding you are about to post is Critical, re-triage before posting; a bucket that holds everything carries no signal.
+
 ## Dead-code ask shape
 
 When `kramme:cleanup-reviewer` flags removable code under its `removal` or `lean` `delete` findings, emit Addy's ask-shape verbatim so removals are never presented as silent deletions:
@@ -182,34 +184,6 @@ After resolving correctness/security collisions, compare surviving deletion reco
 - When deletion would make cleanup moot, retain the cleanup as a separate advisory finding and set `Depends on: <deletion finding identity> — activate if dependency is not addressed after processing`. The resolver processes and verifies the deletion first; it acknowledges the cleanup as unnecessary when deletion succeeds and revalidates the cleanup only after the deletion has a recorded processed non-addressed outcome such as rejected, deferred, skipped, or safely blocked. An open dependency excluded by the current severity filter is unprocessed and leaves the cleanup unchanged. When the fallback activates, the dependency itself does not count as the unresolved Critical/Important finding that blocks the advisory; unrelated unresolved Critical/Important findings still block it. Do not count the conditional cleanup as independently required work.
 - When deletion enables further cleanup, retain separate findings and set `Depends on: <deletion finding identity> — activate after dependency is addressed`. Describe the affected code and ordering in Evidence: delete first, verify required behavior, then simplify the remainder. Combine only findings with one coherent fix. Do not infer that dependent code is already dead or that deletion has been authorized.
 - Use a provisional finding identity during aggregation. After final IDs are assigned, replace it with the deletion finding's `CR-NNN` ID. If the deletion finding is dropped before posting, remove the dependency and revalidate the cleanup against the surviving code.
-
-## Common rationalizations
-
-Watch for these excuses — they signal the review is slipping into low-value territory.
-
-| Excuse | Reality |
-| --- | --- |
-| "It's just a nit, skip it." | Nits compound across reviews; ship the `Nit:` prefix and let the author decide, or the diff drifts on every PR. |
-| "This doesn't block merge, so it's fine." | "Doesn't block" is not "good." Approve only if the change definitely improves overall code health. |
-| "AI wrote it, and the tests pass." | AI-generated code needs more scrutiny, not less — it's confident even when wrong. Read the diff as if a new hire wrote it under deadline. |
-| "We can clean this up in a follow-up." | Follow-ups are negotiable; the diff on screen is not. Land safe cleanup now or mark it clearly, unless it collides with an unresolved correctness/security finding. |
-| "I'll re-review when they push again." | Re-review is a checkpoint, not a finding delivery mechanism. Surface every finding on the first pass or they rot across round-trips. |
-| "This will make it easier to extend later." | Speculative flexibility is a real cost today and a guess about tomorrow. Recommend the simplest change that meets the actual requirements; an abstraction earns its keep when the second caller arrives. |
-
-## Red flags — STOP
-
-If any of these are true, pause and re-scope the review before posting it:
-
-- Every finding you're about to post is marked **Critical:** — the bucket has lost meaning; re-triage.
-- The review is older than the PR (you've been reviewing longer than the author spent writing).
-- You're rewriting the PR in your head instead of reviewing the diff in front of you.
-- You're about to edit a file, apply a fix, or run a formatter or `--fix` to check whether your recommendation works. The tree is shared; describe the change instead.
-- You're flagging style issues the project doesn't enforce anywhere else.
-- You're requiring defensive checks, logging, retries, or validation layers that nearby code intentionally does not use, and you cannot point to a concrete new failure path.
-- You're asking for flexibility, configurability, abstraction, or edge-case handling for scenarios the requirements don't include — or a recommended fix adds a layer the smallest direct change doesn't need.
-- You're approving because the CI is green, not because the change definitely improves overall code health.
-- A dead-code finding is phrased as an instruction (`"delete X"`) instead of the ask shape (`DEAD CODE IDENTIFIED: X. Safe to remove these?`).
-- You have no `FYI` in the Strengths section — a review with zero positive observations is usually miscalibrated, not comprehensive.
 
 ## Verification checklist
 
