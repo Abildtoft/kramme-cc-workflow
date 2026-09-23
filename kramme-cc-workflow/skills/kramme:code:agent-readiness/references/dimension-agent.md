@@ -55,7 +55,6 @@ The orchestrator will assign final `AN-NNN` IDs after sorting all agents' findin
 ## Rules
 
 - **Score every assigned dimension.** Do not skip any.
-- **Do not return early.** Explore thoroughly before scoring.
 - **Be evidence-based.** Every score must cite specific files, counts, or patterns. No vague assessments.
 - **Be calibrated.** A 5 means genuinely excellent, not just "has the thing." A 3 is average. A 1 means fundamentally missing.
 - **Findings need specificity.** "Could use more tests" is too vague. "Module src/auth/ has 12 source files and 0 test files" is specific.
