@@ -1831,8 +1831,8 @@
   "epilogue_forbidden": {
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
     "forbidden_heading_regexes": [
-      "^#{2,3}\\s+Common Rationalizations\\b",
-      "^#{2,3}\\s+Red Flags\\b"
+      "^#{2,3}\\s+.*\\bRationali[sz]ations?\\b",
+      "^#{2,3}\\s+.*\\bRed Flags\\b"
     ],
     "decision": "docs/decisions/2026-09-07-skill-epilogue-verification-only.md",
     "allowlist": []

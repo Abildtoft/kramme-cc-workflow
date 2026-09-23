@@ -13,8 +13,6 @@ Claiming work is complete without fresh verification evidence leaves the claim u
 
 **Core principle:** Evidence before claims, always.
 
-**Violating the letter of this rule is violating the spirit of this rule.**
-
 This skill runs your project's own verification commands (tests, build, lint) and gates claims on their output. To discover and run the project's checks, use `kramme:verify:run`. It produces no artifact and changes no code, except the optional regression red-green check below, which temporarily reverts a fix.
 
 ## The Iron Law
@@ -57,30 +55,16 @@ For claims about user experience (UX: clear, reliable task completion), develope
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
 
-## When To Apply — Red Flags That Mean STOP
+## When To Apply
 
-Run the gate before ANY of these:
+Run the gate before any of these:
 
 - A success/completion claim or expression of satisfaction ("Great!", "Perfect!", "Done!")
 - Any positive statement about work state, or hedging like "should", "probably", "seems to"
 - Committing, pushing, creating a PR, completing a task, or moving to the next one
 - Trusting an agent's success report, or relying on a partial check
-- Thinking "just this once" or "I'm tired and want this over"
 
-The rule covers exact phrases, paraphrases, synonyms, and **ANY wording implying success without fresh verification**. Different words do not exempt you.
-
-## Rationalization Prevention
-
-| Excuse                                  | Reality                |
-| --------------------------------------- | ---------------------- |
-| "Should work now"                       | RUN the verification   |
-| "I'm confident"                         | Confidence ≠ evidence  |
-| "Just this once"                        | No exceptions          |
-| "Linter passed"                         | Linter ≠ compiler      |
-| "Agent said success"                    | Verify independently   |
-| "I'm tired"                             | Exhaustion ≠ excuse    |
-| "Partial check is enough"               | Partial proves nothing |
-| "Different words so rule doesn't apply" | Spirit over letter     |
+The gate applies to any wording that implies success, not only these phrases.
 
 ## Key Patterns
 

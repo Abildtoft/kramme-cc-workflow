@@ -3379,6 +3379,59 @@ EOF
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
+write_shipped_epilogue_registry() {
+  python3 - "$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml" "$TMP_ROOT/registry.yaml" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    registry = json.load(handle)
+with open(sys.argv[2], "w", encoding="utf-8") as handle:
+    json.dump({"epilogue_forbidden": registry["epilogue_forbidden"]}, handle)
+PY
+}
+
+@test "retired epilogue names inside a heading fail with the shipped patterns" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## When To Apply — Red Flags That Mean STOP\n\n- claims\n\n## Rationalization Prevention\n\n- never'
+  write_shipped_epilogue_registry
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"epilogue forbidden"* ]]
+  [[ "$output" == *"When To Apply — Red Flags That Mean STOP"* ]]
+  [[ "$output" == *"Rationalization Prevention"* ]]
+}
+
+@test "retired epilogue names inside a heading fail with the default patterns" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## When To Apply — Red Flags That Mean STOP\n\n- claims\n\n## Rationalization Prevention\n\n- never'
+  write_file "$TMP_ROOT/registry.yaml" <<'EOF'
+{
+  "epilogue_forbidden": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "allowlist": []
+  }
+}
+EOF
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"epilogue forbidden"* ]]
+  [[ "$output" == *"When To Apply — Red Flags That Mean STOP"* ]]
+  [[ "$output" == *"Rationalization Prevention"* ]]
+}
+
+@test "ordinary headings pass the broadened epilogue patterns" {
+  write_minimal_skill "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" $'## Design rationale\n\n- why\n\n## Verification\n\n- [ ] the artifact exists'
+  write_shipped_epilogue_registry
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
 @test "mechanical frontmatter regression fails" {
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
 ---
