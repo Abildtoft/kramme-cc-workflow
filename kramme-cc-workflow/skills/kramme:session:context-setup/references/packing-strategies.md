@@ -10,12 +10,12 @@ Load everything the task might plausibly need at the start, then let the agent s
 
 - The task shape is fuzzy — you don't yet know which file will be load-bearing.
 - The cost of missing one file is high (e.g. the missing file is the one that encodes the invariant the task depends on).
-- The relevant surface is small enough that "everything" still fits under ~2,000 lines.
+- The relevant surface is small enough that "everything" is still a focused load.
 
 **When not to choose:**
 
 - The task is well-scoped and you can name the four L3 artifacts up front.
-- The relevant surface is large and "everything" would blow past ~5,000 lines.
+- The relevant surface is large enough that "everything" would bury the files that matter.
 
 **Example:**
 

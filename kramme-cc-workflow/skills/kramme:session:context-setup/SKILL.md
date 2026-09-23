@@ -65,7 +65,7 @@ Four-step pre-task load. Do this before writing code, not during:
 3. **One similar-pattern example.** One other place in the codebase that already does something structurally similar. Not an "analogous" file — a concrete example of the pattern to follow.
 4. **Relevant type definitions.** The types, interfaces, schemas, or protobuf definitions referenced by the files to modify.
 
-Stop after four. Adding a fifth, sixth, or seventh file rarely helps and dilutes the attention budget (see Context Budget below).
+Add callers, configs, or docs beyond these four only when they would change the answer; each extra file spends attention (see Context Budget below).
 
 ### L4 — Error output
 
@@ -87,12 +87,9 @@ The conversation itself is context. Treat it as a budget, not a log.
 
 ## Context Budget
 
-Context window size is not attention budget. A model can hold 200k+ tokens in its window and still ignore half of them. Optimize for focused context, not for filling the window.
+Context window size is not attention budget. Optimize for focused context, not for filling the window: load targeted slices of large files rather than whole modules.
 
-- **Target: <2,000 lines of focused context per task.** This is roughly one screenful of source per relevant artifact, not the whole module.
-- **Degradation threshold: ~5,000 lines.** Past this, performance drops noticeably — the agent starts missing relevant details inside loaded files and hallucinating across them.
-
-If a task seems to require more than 2,000 lines, the usual answer is a better slice of the work, not more context. If a task genuinely needs 5,000+ lines of reference (e.g. a wide refactor), switch to hierarchical packing (see packing strategies) and load full detail on demand, not upfront.
+If a task seems to need a large reference surface, the usual answer is a better slice of the work, not more context. If it genuinely needs a wide surface (e.g. a wide refactor), switch to hierarchical packing (see packing strategies) and load full detail on demand, not upfront.
 
 ## Packing Strategies
 
