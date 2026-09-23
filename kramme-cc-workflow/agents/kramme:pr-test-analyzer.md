@@ -67,8 +67,9 @@ Structure your analysis as:
 1. **Summary**: Brief overview of test coverage quality
 2. **Critical Gaps** (if any): Tests rated 8-10 that must be added
 3. **Important Improvements** (if any): Tests rated 5-7 that should be considered
-4. **Test Quality Issues** (if any): Tests that are brittle, overfit to implementation, or effectively meaningless (vacuous tests that don't verify real behavior)
-5. **Positive Observations**: What's well-tested and follows best practices
+4. **Minor Gaps** (if any): Tests rated 1-4, one line each, so the invoking review can decide whether they matter
+5. **Test Quality Issues** (if any): Tests that are brittle, overfit to implementation, or effectively meaningless (vacuous tests that don't verify real behavior)
+6. **Positive Observations**: What's well-tested and follows best practices
 
 **Important Considerations:**
 
