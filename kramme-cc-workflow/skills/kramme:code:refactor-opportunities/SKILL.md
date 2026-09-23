@@ -29,7 +29,7 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 
 ## Prerequisites — When NOT to flag a refactor
 
-A high-signal report rejects more than it reports. Do not flag:
+Do not flag:
 
 - **Code that is already clean.** Not every file needs changes. Skip files that read well and conform to the checklist.
 - **Code you don't understand yet.** If a pattern looks wrong but you haven't traced its callers, tests, or history, it is not a finding. Read more, or leave it.
@@ -106,7 +106,7 @@ Each agent must:
 ### Phase 3 — Synthesis
 
 1. Collect all agent findings and `NOTICED BUT NOT TOUCHING` entries.
-2. Deduplicate (same location + same issue = one finding). If more than ~30% of the remaining findings sit in one category, the filter for that category is too loose — re-apply the When-NOT-to-flag pre-filter to that category before continuing.
+2. Deduplicate (same location + same issue = one finding). If one category dominates, spot-check a sample of its findings against the When-NOT-to-flag rejections; do not trim findings to fit a ratio.
 3. **Apply the PR relevance gate when `SCOPE_MODE=pr`.** Cross-reference each candidate against `PR_CHANGE_MAP` and `PR_BASE_REF` before severity assignment:
    - Keep findings that satisfy the PR relevance gate defined in Phase 1.
    - Filter findings in files outside the PR file set, findings on unchanged lines with no PR-caused call-chain evidence, findings whose problem existed unchanged in the base tree, findings whose suggested fix is mainly broad cleanup in untouched files, and findings whose only relevance is "this file changed."
@@ -143,6 +143,5 @@ Each agent must:
 
 - **Evidence over speculation.** Every finding must reference a concrete file and line range. Do not flag hypothetical issues.
 - **Respect project conventions.** If the project intentionally uses a pattern (documented in project instruction files or established by consistent usage), do not flag it.
-- **No false positives over completeness.** It is better to miss a low-severity issue than to report something that isn't actually a problem.
 - **Be specific.** "This function is too complex" is not a finding. "Function `processOrder` (src/orders.ts:45-120) has 8 branches and 3 levels of nesting — extract validation into a separate function" is.
 - **Do not perform the refactors.** This skill identifies opportunities. The user decides what to act on. If they want to proceed, they can use `kramme:code:refactor-pass` on specific findings.
