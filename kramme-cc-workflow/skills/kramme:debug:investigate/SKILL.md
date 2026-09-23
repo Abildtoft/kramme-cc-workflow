@@ -10,7 +10,7 @@ user-invocable: true
 
 Structured debugging workflow: reproduce, isolate, trace root cause, and fix. Maintains an investigation log throughout with evidence and confidence assessment.
 
-**IMPORTANT:** Follow all phases systematically. Do not skip to a fix without tracing the root cause first.
+Trace the root cause before proposing a fix; a fix without a traced cause usually treats a symptom.
 
 **Not for:** performance profiling, greenfield feature work, or changes whose cause is already known — go straight to the change in those cases.
 

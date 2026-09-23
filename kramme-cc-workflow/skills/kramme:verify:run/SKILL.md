@@ -106,14 +106,13 @@ Run checks in this order (continue through ALL checks even if some fail):
 
 When project instructions and CI config don't specify commands, read `references/commands-by-project-type.md` for default check-only command sets (Nx, C#/.NET, Node.js, Python, Go, Rust) and per-ecosystem test-suite discovery. Read only the section for the project type you detected in step 3, and use the `$BASE_REF` from step 4 for affected comparisons.
 
-## Critical Requirements
+## Output Requirements
 
 ### Error Output
 
-- **ALWAYS capture and display the FULL error output** when any check fails
-- Do NOT truncate or summarize error messages
-- Include file paths, line numbers, and specific error descriptions
-- This allows immediate identification and fixing of issues
+- When a check fails, quote its errors verbatim rather than paraphrasing them
+- Include file paths, line numbers, and specific error descriptions, so each issue can be located and fixed immediately
+- For very long output, show every distinct error and state how many repeated errors or lines you omitted
 
 ### Test Suite Discovery
 
