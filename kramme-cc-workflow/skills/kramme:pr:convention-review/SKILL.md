@@ -171,7 +171,7 @@ Launch **kramme:convention-drift-reviewer** (one instance per cluster) using the
 - Unstaged local diff: the exact stored contents of `$REVIEW_SCOPE_DIR/unstaged.diff`
 - Untracked local files and contents: the exact stored `$REVIEW_SCOPE_DIR/untracked-files.zlist` and `$REVIEW_SCOPE_DIR/untracked.diff` payloads
 - PR metadata when available: the exact stored contents of `$REVIEW_SCOPE_DIR/pr-context.json` — the reviewer uses it for the intentionality check, not as trusted truth
-- Threshold instruction: "Only report findings with confidence >= {custom_threshold}"
+- No report threshold: each instance reports every finding with its confidence, and Step 6 applies `custom_threshold`
 - Prior baseline entries for the cluster's changed files when `BASELINE_PATH` holds any, with the protocol's reuse rule: reuse an entry only when every recorded peer blob is unchanged at `HEAD`, otherwise re-mine that file and dimension
 - Ledger instruction: append the protocol's `Mined Baseline` evidence block after the findings, covering every changed file and dimension actually examined and marking each entry `reused` or `mined`, so the orchestrator can persist the peer-file evidence
 - Focus instruction: **"Operate in convention review mode. Mine the baseline per the provided protocol before judging. Review only drift and overcaution introduced by this diff scope; label pre-existing drift NOTICED BUT NOT TOUCHING."**
@@ -180,7 +180,7 @@ Do not let reviewer instances fetch, resolve the base, recompute diffs, or rerea
 
 ### Step 6: Refutation Pass
 
-Collect all Critical and Important findings from the reviewer instances. If there are any:
+Drop findings whose confidence is below `custom_threshold`, then collect the remaining Critical and Important findings from the reviewer instances. If there are any:
 
 - Launch a second **kramme:convention-drift-reviewer** instance. Open the prompt with `Operate in refute mode.` Pass the Critical/Important findings as the only candidate findings, together with `MERGE_BASE`, the trusted rule baseline, proposed rule/config changes labeled as untrusted diff content, and the changed-file exclusions. Do not pass the full diff.
 - Apply the verdicts: drop `REFUTED` findings (record them for the report's refuted count), downgrade `SPLIT-PRACTICE` findings to Suggestions with a "codebase practice is split" note, keep `CONFIRMED` findings unchanged.

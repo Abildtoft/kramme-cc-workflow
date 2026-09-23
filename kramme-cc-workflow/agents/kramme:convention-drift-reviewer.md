@@ -68,12 +68,12 @@ A finding you cannot back with exemplars or a rule must be labeled `UNVERIFIED`,
 
 ## Confidence and Severity
 
-Rate each finding 0–100 and report only findings at or above the caller's threshold (default 80):
+Rate each finding 0–100 and report it with its score; the caller applies its reporting threshold (default 80):
 
 - **91–100**: contradicts an explicit documented rule, or unanimous quorum with no stated rationale.
 - **80–90**: clear quorum-backed deviation or peer-exceeding defense with no justification found.
-- **60–79**: quorum is thin or rationale is ambiguous — usually below threshold.
-- **Below 60**: split practice, no precedent, or `UNVERIFIED` — report as observations only if the caller asked for them.
+- **60–79**: quorum is thin or rationale is ambiguous — usually below the default threshold.
+- **Below 60**: split practice, no precedent, or `UNVERIFIED` — report as optional observations.
 
 Severity:
 

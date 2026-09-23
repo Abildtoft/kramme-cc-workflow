@@ -118,12 +118,12 @@ Rationale found → classify as **intentional new pattern**. Report it only when
 
 ## Confidence and Severity
 
-Rate each finding 0–100; the orchestrator supplies the reporting threshold (default 80):
+Rate each finding 0–100 and report it with its score; the orchestrator applies the reporting threshold (default 80):
 
 - **91–100**: contradicts an explicit Tier 1 rule, or unanimous quorum with no rationale.
 - **80–90**: clear quorum-backed deviation, or peer-exceeding defense failing the new-risk test.
-- **60–79**: thin quorum, ambiguous rationale, or widened (repo-level) peer set — usually below threshold.
-- **Below 60**: split practice, no precedent, or missing exemplars — label `UNVERIFIED` if reported at all.
+- **60–79**: thin quorum, ambiguous rationale, or widened (repo-level) peer set — usually below the default threshold.
+- **Below 60**: split practice, no precedent, or missing exemplars — report as `UNVERIFIED`.
 
 Severity:
 
