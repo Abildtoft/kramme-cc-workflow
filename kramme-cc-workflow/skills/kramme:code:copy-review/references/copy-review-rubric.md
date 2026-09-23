@@ -166,15 +166,15 @@ Do not flag:
 - Visual hierarchy, competing CTAs, or layout clutter.
 - Text required by documented project conventions or a consistent content strategy.
 
-When in doubt, do not flag. It is better to miss a borderline case than to recommend removing text that serves a purpose.
+Report a borderline case at lower confidence and name the purpose the text might still serve, so its removal is weighed against that purpose.
 
 ## Confidence and Severity
 
-Report findings only at confidence 75 or higher unless an invoking skill sets a higher threshold.
+Report every finding with its confidence. The invoking skill drops findings below its report threshold (75 by default).
 
-- **Critical:** confidence 90 or higher and high user impact. Text actively creates confusion by contradicting or competing with what the UI already communicates, or significantly degrades scannability of a high-traffic surface.
-- **Important:** confidence 80 or higher, or medium user impact. Clear redundancy adds visual noise or cognitive load without informational value.
-- **Suggestion:** confidence 75 or higher. Borderline redundancy where removal could help but may reduce clarity for some users.
+- **Critical:** high user impact. Text actively creates confusion by contradicting or competing with what the UI already communicates, or significantly degrades scannability of a high-traffic surface.
+- **Important:** medium user impact. Clear redundancy adds visual noise or cognitive load without informational value.
+- **Suggestion:** low user impact. Borderline redundancy where removal could help but may reduce clarity for some users.
 
 ## Finding Format
 

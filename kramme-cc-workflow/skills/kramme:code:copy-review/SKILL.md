@@ -128,7 +128,7 @@ When `SCAN_MODE=false`, launch **kramme:copy-reviewer** using the platform's age
 - Staged local diff: `git diff --cached`
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agent should treat these as new files and review full file content)
-- Instruct the agent to apply the confidence threshold: "Only report findings with confidence >= {custom_threshold}"
+- No report threshold: the agent reports every finding with its confidence, and Step 7 applies `custom_threshold`
 - Focus instruction: **"Focus on text redundancy introduced by this diff. Apply the shared copy-review rubric to each text element in changed code."**
 
 ### Step 6: Codebase Scan Mode
@@ -151,7 +151,7 @@ Launch **kramme:copy-reviewer** in audit mode using the platform's agent-invocat
 - The loaded rubric from `references/copy-review-rubric.md`
 - The list of UI-relevant files in scope
 - Project conventions from the discovered instruction files and established UI patterns
-- The confidence instruction: "Only report findings with confidence >= {custom_threshold}"
+- No report threshold: the agent reports every finding with its confidence, and Step 7 applies `custom_threshold`
 - Instruction: **"You are in audit mode. Scan all provided files for copy redundancy. Flag all issues regardless of when they were introduced."**
 
 If the scope exceeds 50 files, split it into batches. When the agent-invocation primitive supports parallelism, launch the batches in parallel; otherwise scan the batches sequentially.
@@ -160,7 +160,7 @@ Collect findings from all batches, deduplicate findings with the same file, line
 
 ### Step 7: Validate Relevance
 
-After collecting findings from the copy reviewer:
+After collecting findings from the copy reviewer, drop findings whose confidence is below `custom_threshold`.
 
 If no separate agent runtime is available, perform the same copy review and relevance validation directly in the main thread. If an invoked copy reviewer or relevance validator is unavailable, times out, or returns output that cannot be parsed as findings, surface the failure to the user with the agent name and what was attempted, then stop without writing `COPY_REVIEW_OVERVIEW.md`. Do not fabricate findings or silently continue with an empty result.
 
@@ -168,7 +168,7 @@ When `SCAN_MODE=true`, skip the PR relevance validator: every finding grounded i
 
 When `SCAN_MODE=false`:
 
-- Launch **kramme:pr-relevance-validator** using the same agent-invocation primitive with all findings and the resolved `BASE_BRANCH`
+- Launch **kramme:pr-relevance-validator** using the same agent-invocation primitive with the remaining findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope

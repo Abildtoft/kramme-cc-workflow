@@ -65,4 +65,4 @@ After all findings, conclude with:
 - **Cite what the UI already communicates.** Every finding must explain what visual element, context, or interaction pattern already conveys the information.
 - **Consider the audience.** An admin tool for developers can afford less text than a consumer app for non-technical users.
 - **Honor documented conventions.** If project instructions specify a content strategy or verbosity level, respect it.
-- **When in doubt, do not flag.** Prefer missing a borderline case over recommending removal of useful text.
+- **Report borderline cases at lower confidence.** Name the purpose the text might still serve; the invoking skill's threshold decides what reaches the report.
