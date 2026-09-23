@@ -1,7 +1,7 @@
 ---
 name: kramme:deslop-reviewer
 description: Use this agent to detect AI-generated code slop in code changes or in review findings. In code-review mode it flags unnecessary comments, defensive noise, weak typing, and style inconsistencies in the diff; in meta-review mode it flags review suggestions that would introduce the same patterns.
-model: opus
+model: inherit
 color: purple
 ---
 
@@ -41,9 +41,7 @@ Rate each finding from 0-100:
 - **76-90**: Clear slop pattern with high confidence
 - **91-100**: Obvious AI slop that should definitely be flagged
 
-**Only report findings with confidence ≥ 80**
-
-This threshold ensures we flag clear issues while avoiding noise from borderline cases. When in doubt, lean toward not flagging.
+In code review mode, report every finding you rate above 25, with its score, including borderline ones; the invoking workflow decides which confidence levels to act on. In meta-review mode, flag a suggestion only at 80 or above, because those warnings attach directly to other reviewers' findings without a later filter.
 
 ## Slop Patterns to Detect
 
@@ -242,7 +240,7 @@ When flagging these patterns, name the specific tell (e.g., "AI-aesthetic: `roun
 ```markdown
 ## Slop Review
 
-### Findings (X total, only showing confidence ≥ 80)
+### Findings (X total)
 
 **Unnecessary Comments** (X)
 
