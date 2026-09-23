@@ -45,8 +45,8 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		! grep -rlF "mcp__linear__create_issue" skills agents
-		! grep -rlF "mcp__linear__update_issue" skills agents
+		if grep -rlF "mcp__linear__create_issue" skills agents; then exit 1; fi
+		if grep -rlF "mcp__linear__update_issue" skills agents; then exit 1; fi
 	'
 	[ "$status" -eq 0 ]
 }

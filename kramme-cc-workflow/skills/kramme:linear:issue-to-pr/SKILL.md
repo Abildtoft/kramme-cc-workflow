@@ -13,7 +13,7 @@ Orchestrate the established Linear implementation, shared review-convergence, an
 ## Workflow Contract
 
 - Invoke every delegated skill through the platform's skill mechanism. If direct invocation is unavailable, locate and read that skill's installed `SKILL.md` and follow it with the same arguments. This rule covers every delegation below and in the shipping reference; they name the skill and its arguments without repeating it.
-- Continue from one delegated skill to the next without pausing for a progress summary.
+- Continue from one delegated skill to the next without ending the turn or waiting for acknowledgement; a one-line status note between skills is fine.
 - Pause only for a hard blocker or a decision that the issue, referenced context, repository conventions, and code cannot determine safely.
 - Treat a delegated skill failure as a workflow failure. Preserve its recovery information and do not skip ahead.
 - Do not broaden the Linear issue's scope to make review findings disappear.
