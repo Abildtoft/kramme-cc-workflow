@@ -89,19 +89,13 @@ Treat these conventions as authoritative. Generic WCAG guidance should be applie
 - No auto-playing animations that can't be paused
 - Content doesn't flash more than 3 times per second
 
-## Reporting Bar: Only Big Issues
+## Confidence and Severity
 
-**ONLY report findings that would genuinely block or significantly degrade the experience for users with disabilities.** Do not report minor best-practice suggestions, nice-to-haves, or theoretical concerns.
+Report every finding with a confidence (0-100) and a severity. The invoking review applies the report threshold (90 by default for accessibility), so do not drop a finding because you are unsure; give it the confidence the code supports. A11y has concrete, testable standards, so base confidence on how directly the code shows the violation.
 
-**Confidence (0-100), report threshold >= 90:**
-
-A11y has concrete, testable standards — if you aren't highly confident, don't report it.
-
-**Report these (Critical):** WCAG Level A violations that completely block access — no keyboard access to interactive elements, missing form labels on required inputs, no focus management in modal dialogs, images conveying information with no alt text.
-
-**Report these (Important):** WCAG Level AA violations that significantly degrade the experience — insufficient color contrast on primary text, interactive elements invisible to screen readers, keyboard traps with no escape.
-
-**Do NOT report:** Best-practice suggestions, aria-live for non-critical updates, missing skip nav links, heading hierarchy nitpicks, prefers-reduced-motion for non-essential animations, redundant ARIA on elements that already have semantic meaning.
+- **Critical:** WCAG Level A violations that completely block access — no keyboard access to interactive elements, missing form labels on required inputs, no focus management in modal dialogs, images conveying information with no alt text.
+- **Important:** WCAG Level AA violations that significantly degrade the experience — insufficient color contrast on primary text, interactive elements invisible to screen readers, keyboard traps with no escape.
+- **Suggestion:** gaps that do not block access — best-practice improvements, aria-live for non-critical updates, missing skip nav links, heading hierarchy issues, prefers-reduced-motion for non-essential animations, redundant ARIA on elements that already have semantic meaning.
 
 ## Output Format
 
@@ -123,12 +117,11 @@ For each finding:
 
 ## Guidelines
 
-- **Only flag what actually breaks access** — if a sighted keyboard user or screen reader user can still complete the task, it's probably not worth reporting
+- **Rate by impact on access** — if a sighted keyboard user or screen reader user can still complete the task, the finding is a Suggestion, not Critical or Important
 - **Cite WCAG criteria** — every finding must reference a specific success criterion
 - **Be specific about who is affected** — "screen reader users cannot...", "keyboard-only users cannot..."
 - **Provide before/after code** — don't just describe the problem, show the fix
 - **No false positives on decorative elements** — icons next to text labels don't need their own aria-label
-- **Context matters** — a skip link is critical on a content-heavy page, irrelevant on a single-form page
+- **Context matters** — a missing skip link on a content-heavy page may be worth reporting, while it may be irrelevant on a single-form page; rate its severity by the actual impact on access
 - **Don't flag framework-handled a11y** — React's `htmlFor`, Angular's built-in a11y, etc.
 - **Anchor findings to project rules** — when `CLAUDE.md`/`AGENTS.md` define accessibility standards or UI stack constraints, cite and follow them
-- **When in doubt, don't report** — a false positive wastes more time than a missed minor issue
