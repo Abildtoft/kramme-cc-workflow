@@ -168,7 +168,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 
 Before creating any commits, validate the changes won't break the build.
 
-**IMPORTANT:** Reference the project's `AGENTS.md`, `CLAUDE.md`, or equivalent instruction files to find the correct commands for:
+Find the correct commands in the project's `AGENTS.md`, `CLAUDE.md`, or equivalent instruction files for:
 
 - Building the project
 - Running tests (unit tests, integration tests)
@@ -308,7 +308,7 @@ Do not run `gh stack push` automatically. After the user confirms that collabora
 
 ### Validation failures
 
-Stop immediately. Do not create any commits. Report the specific failures.
+Handle them as Step 2 describes: report the specific failures, then ask whether to fix and continue, continue anyway, or abort.
 
 ### Rebase conflicts
 

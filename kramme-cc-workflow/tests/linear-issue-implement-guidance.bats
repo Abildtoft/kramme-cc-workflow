@@ -68,7 +68,7 @@ load 'test_helper/common'
     grep -qF -- "{issue-id} --auto --set-in-progress" "$parent"
 
     transition_line=$(grep -nF "### 1.4 Apply the Authorized Status Transition" "$skill" | head -n1 | cut -d: -f1)
-    branch_line=$(grep -nF "## Step 2: Branch Setup (MANDATORY - DO IMMEDIATELY)" "$skill" | head -n1 | cut -d: -f1)
+    branch_line=$(grep -nF "## Step 2: Branch Setup" "$skill" | head -n1 | cut -d: -f1)
     [ "$transition_line" -lt "$branch_line" ]
 
     diagram_transition=$(grep -nF "[Status Transition] -> ONLY with --set-in-progress" "$skill" | head -n1 | cut -d: -f1)
