@@ -270,7 +270,7 @@ PLAN: Written to {path}. Ready for review.
 
 If a required section cannot be filled because the interview didn't cover it, leave the placeholder in place and add `MISSING REQUIREMENT: {dimension}` above it so the gap is explicit.
 
-Before writing, run the red-flag and pre-plan verification checklists in `references/interview-operations.md`. Do not fill plan sections from assumption; use explicit `MISSING REQUIREMENT:` markers for interview gaps.
+Before writing, run the pre-plan verification checklist in `references/interview-operations.md`. Do not fill plan sections from assumption; use explicit `MISSING REQUIREMENT:` markers for interview gaps.
 
 ### Optional plan-mode handoff
 
