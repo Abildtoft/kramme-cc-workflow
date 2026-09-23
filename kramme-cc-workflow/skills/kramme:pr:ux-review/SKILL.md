@@ -28,7 +28,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 
 1. If argument starts with `http` or equals `auto` → store as `app_url` (enables visual mode for agents)
 2. If `--categories` flag → parse comma-separated list. Valid values: `a11y`, `ux`, `product`, `visual`, `all`
-3. If `--threshold N` → store as `custom_threshold` (0-100). Overrides each agent's default confidence threshold. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
+3. If `--threshold N` → store as `custom_threshold` (0-100). Replaces the per-category default report thresholds. Only findings with confidence >= N will be reported. Default thresholds if not specified: a11y = 90, ux/product/visual = 70.
 4. If `--base <branch>` → store as `BASE_BRANCH_OVERRIDE`
 5. If `--parallel` (or deprecated bare `parallel` for backward compatibility) → launch agents in parallel instead of sequentially
 6. If `--team` → use Team Mode and remove it from the remaining arguments
@@ -112,8 +112,10 @@ No UI/UX changes detected to audit.
 If `UX_REVIEW_OVERVIEW.md` exists in the project root:
 
 - Parse previously addressed findings (file path, line number, issue description, action taken)
-- Accept legacy per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as previously addressed identifiers; new UX audit reports use artifact-scoped `UX-NNN` IDs. Remove this legacy-ID acceptance once existing `UX_REVIEW_OVERVIEW.md` artifacts contain only `UX-NNN` IDs (i.e., once reports generated before the `UX-NNN` switch are no longer in circulation).
+- Accept per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as previously addressed identifiers.
 - Store for filtering in Step 9
+
+New reports number every finding `UX-001`, `UX-002`, ... in report order, regardless of source agent.
 
 ### Step 5: Determine Which Agents to Launch
 
@@ -198,7 +200,7 @@ For each applicable agent, launch the reviewer using the platform's agent-invoca
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agents should treat these as new files and review full file content)
 - The `app_url` and browser MCP type (if visual mode)
-- If `custom_threshold` was provided: instruct the agent to use this threshold instead of its default (e.g., "Only report findings with confidence >= {custom_threshold}")
+- No report threshold: each agent reports every finding with its confidence, and Step 8 applies the threshold
 
 Read `references/shared-working-tree.md` and instruct every reviewer that it is **read-only**. Every reviewer in this audit reads the same working tree, which usually holds uncommitted work, so a file one reviewer edits becomes false evidence for the others and produces fabricated findings that cite real files and real lines. No reviewer may create, edit, delete, move, or rename files, mutate git state, or run a command that rewrites files as a side effect, including formatters, `--fix` linters, codemods, dependency installs, and test runners that update snapshots or golden files. In visual mode, browser evidence stays read-only: never save a screenshot, recording, or trace into the repository working tree. Recommended code changes belong in the finding text; applying them is `/kramme:pr:resolve-review`'s job.
 
@@ -245,7 +247,8 @@ Parse both manifests using the record contract in `references/shared-working-tre
 
 After collecting findings from all agents:
 
-- Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
+- Drop findings whose confidence is below `custom_threshold`, or below the category default when no threshold was given (a11y 90; ux, product, and visual 70)
+- Launch **kramme:pr-relevance-validator** with the remaining findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full audit scope (PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope

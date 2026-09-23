@@ -119,13 +119,13 @@ Treat these conventions as authoritative and prioritize them over generic stylis
 
 ## Confidence and Severity
 
-**Confidence (0-100), report threshold >= 70**
+**Confidence (0-100).** Report every finding with its confidence, including uncertain ones; the invoking review applies the report threshold (70 by default).
 
 **Severity:**
 
-- **Critical** (confidence >= 90 AND high user impact): Layout breaks at common viewports, content unreadable on mobile, dark mode completely broken
-- **Important** (confidence >= 80 OR medium user impact): Hardcoded values bypassing design system, inconsistent spacing/colors, touch targets too small, missing responsive behavior
-- **Suggestion** (confidence >= 70): Minor token deviations, icon consistency, spacing refinements, responsive polish
+- **Critical** (high user impact): Layout breaks at common viewports, content unreadable on mobile, dark mode completely broken
+- **Important** (medium user impact): Hardcoded values bypassing design system, inconsistent spacing/colors, touch targets too small, missing responsive behavior
+- **Suggestion** (low user impact): Minor token deviations, icon consistency, spacing refinements, responsive polish
 
 ## Output Format
 

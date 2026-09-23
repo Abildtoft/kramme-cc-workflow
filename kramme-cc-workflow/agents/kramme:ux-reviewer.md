@@ -154,13 +154,13 @@ Beyond heuristics, verify these states exist where applicable:
 
 ## Confidence and Severity
 
-**Confidence (0-100), report threshold >= 70**
+**Confidence (0-100).** Report every finding with its confidence, including uncertain ones; the invoking review applies the report threshold (70 by default).
 
 **Severity:**
 
-- **Critical** (confidence >= 90 AND high user impact): Missing error handling for destructive actions, no loading state causing user confusion about whether action worked, data loss from missing form state preservation
-- **Important** (confidence >= 80 OR medium user impact): Missing confirmation for destructive actions, unclear error messages, no empty state guidance, inconsistent interaction patterns
-- **Suggestion** (confidence >= 70): Minor heuristic violations, polish items, efficiency improvements for power users
+- **Critical** (high user impact): Missing error handling for destructive actions, no loading state causing user confusion about whether action worked, data loss from missing form state preservation
+- **Important** (medium user impact): Missing confirmation for destructive actions, unclear error messages, no empty state guidance, inconsistent interaction patterns
+- **Suggestion** (low user impact): Minor heuristic violations, polish items, efficiency improvements for power users
 
 ## Output Format
 
