@@ -29,7 +29,7 @@ write_test_hook() {
 		printf '%s\n' '      [ -e "$marker" ] || continue'
 		printf '%s\n' '      ready_count=$((ready_count + 1))'
 		printf '%s\n' '    done'
-		printf '%s\n' '    if [ "$ready_count" -eq 3 ]; then'
+		printf '%s\n' '    if [ "$ready_count" -eq 2 ]; then'
 		printf '%s\n' '      touch "$BENCHMARK_TEST_BARRIER_DIR/released"'
 		printf '%s\n' '      break'
 		printf '%s\n' '    fi'
@@ -51,7 +51,6 @@ write_test_hook() {
 
 	write_test_hook "block-rm-rf" "block-rm-rf.sh"
 	write_test_hook "confirm-review-responses" "confirm-review-responses.sh"
-	write_test_hook "noninteractive-git" "noninteractive-git.sh"
 
 	run env BENCHMARK_TEST_BARRIER_DIR="$barrier_dir" \
 		"$BENCHMARK_ROOT/scripts/benchmark-hook-overhead.sh" \
@@ -63,7 +62,6 @@ write_test_hook() {
 	[[ "$output" == *"Added gating overhead median (paired):"* ]]
 	[ -e "$barrier_dir/block-rm-rf.ready" ]
 	[ -e "$barrier_dir/confirm-review-responses.ready" ]
-	[ -e "$barrier_dir/noninteractive-git.ready" ]
 	[ -e "$barrier_dir/released" ]
 }
 
@@ -72,7 +70,6 @@ write_test_hook() {
 
 	write_test_hook "block-rm-rf" "block-rm-rf.sh"
 	write_test_hook "confirm-review-responses" "confirm-review-responses.sh"
-	write_test_hook "noninteractive-git" "noninteractive-git.sh"
 	mkdir -p "$BENCHMARK_ROOT/scripts/lib"
 	cp "$HOOKS_DIR/auto-format.sh" "$BENCHMARK_ROOT/hooks/auto-format.sh"
 

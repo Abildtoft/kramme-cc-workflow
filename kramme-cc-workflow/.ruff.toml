@@ -8,6 +8,4 @@ select = ["E", "W", "F", "I", "UP", "B"]
 # Keep this ratchet scoped to the maintained scripts/test surface.
 "../.agents/skills/kramme:skill:audit-sources/scripts/normalize.py" = ["UP045"]
 "hooks/lib/command_safety/*.py" = ["UP045"]
-# Only the block-reason strings this mode prints exceed the line budget.
-"hooks/lib/command_safety/noninteractive.py" = ["E501"]
 "skills/*/scripts/*.py" = ["E", "W", "I", "UP", "B"]

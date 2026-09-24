@@ -2,7 +2,7 @@
 
 Bottom of the package dependency order: nothing here imports another
 command_safety module, so the command-prefix normalizer, the tokenizer, and
-all three policy modes can depend on it without a cycle.
+both policy modes can depend on it without a cycle.
 """
 
 from __future__ import annotations
@@ -59,14 +59,14 @@ SHELL_OPTIONS_WITH_VALUE = {
 }
 
 # Control tokens after which environment set earlier in the command list is
-# still in effect. Shared by the noninteractive and commit-contexts modes.
+# still in effect. Used by the commit-contexts mode.
 ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 # SHELL_RESERVED_COMMAND_WORDS plus a trailing ")". Used wherever a leading
 # token is skipped as a boundary keyword, which a subshell close also is:
-# the noninteractive and commit-contexts env/export scans, and the
-# command-prefix normalizer's own leading-keyword skip. The bare set is used
-# only in _detect_rm_rf_segment, which scans for a command word rather than
-# skipping a prefix, so a ")" there is not a boundary to step over.
+# the commit-contexts env/export scan, and the command-prefix normalizer's own
+# leading-keyword skip. The bare set is used only in _detect_rm_rf_segment,
+# which scans for a command word rather than skipping a prefix, so a ")"
+# there is not a boundary to step over.
 SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE = SHELL_RESERVED_COMMAND_WORDS | {")"}
 
 
@@ -319,7 +319,7 @@ def _basename(token: str) -> str:
 
 
 def _basename_no_unescape(token: str) -> str:
-    """Shared by the noninteractive and commit-contexts modes.
+    """Used by the commit-contexts mode.
 
     Unlike _basename(), this does not strip a leading backslash, so a token
     that still carries one after tokenization -- `\\git`, from a command

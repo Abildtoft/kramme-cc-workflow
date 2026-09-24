@@ -672,11 +672,6 @@
       "path": "kramme-cc-workflow/hooks/context-links.sh"
     },
     {
-      "name": "noninteractive-git",
-      "event": "PreToolUse (Bash)",
-      "path": "kramme-cc-workflow/hooks/noninteractive-git.sh"
-    },
-    {
       "name": "skill-usage-stats",
       "event": "PreToolUse (Skill), UserPromptSubmit",
       "path": "kramme-cc-workflow/hooks/skill-usage-stats.sh"

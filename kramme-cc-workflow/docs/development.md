@@ -60,9 +60,6 @@ make -C kramme-cc-workflow test-verbose
 # Run converter Node contracts and Bats CLI smoke tests
 make -C kramme-cc-workflow test-convert
 
-# Run only non-interactive git tests
-make -C kramme-cc-workflow test-noninteractive
-
 # Run only block-rm-rf tests
 make -C kramme-cc-workflow test-block
 

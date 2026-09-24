@@ -35,16 +35,18 @@ Generated bootstrap code does not read from stdin. Hooks that parse or drain JSO
 
 ## Bash Hook Invocation Benchmark
 
-Run the reusable process-level benchmark for the three hooks registered against the `Bash` matcher:
+Run the reusable process-level benchmark for the hooks registered against the `Bash` matcher:
 
 ```bash
 ./scripts/benchmark-hook-overhead.sh
 ./scripts/benchmark-hook-overhead.sh --iterations 50 --warmups 5
 ```
 
-The benchmark uses temporary hook-state files to run enabled and disabled arms through the normal toggle mechanism. It launches the three hook processes concurrently to mirror [Claude Code's matching-hook execution model](https://code.claude.com/docs/en/hooks#hook-handler-fields) and measures them for `echo hi` and `git status --short`; it does not include the hook dispatcher or execution of the user's command. Samples are interleaved, and added gating overhead is the median of the paired enabled-minus-disabled samples.
+The benchmark uses temporary hook-state files to run enabled and disabled arms through the normal toggle mechanism. It launches the Bash-matched hook processes concurrently to mirror [Claude Code's matching-hook execution model](https://code.claude.com/docs/en/hooks#hook-handler-fields) and measures them for `echo hi` and `git status --short`; it does not include the hook dispatcher or execution of the user's command. Samples are interleaved, and added gating overhead is the median of the paired enabled-minus-disabled samples.
 
 ### 2026-07-29 measurement and decision
+
+This measurement predates the removal of `noninteractive-git`, so it covers the three Bash-matched hooks registered at the time.
 
 The baseline and optimized versions were each measured twice with 30 samples per arm after three warmups on an x86_64 Vercel cloud sandbox running Linux 6.12.76 with glibc 2.34 and Python 3.11.15. The bare `python3 -c pass` startup median was 8.9-9.5 ms. Values below are the ranges across the two consecutive runs:
 
@@ -169,19 +171,6 @@ The `trash` command moves files to the system Trash instead of permanently delet
 Install: `brew install trash`
 
 > **Note:** This is a best-effort defense, not a comprehensive security barrier. There will always be edge cases that aren't covered.
-
-## noninteractive-git
-
-Blocks git commands that would open an interactive editor, forcing the agent to use non-interactive alternatives:
-
-| Command | Blocked When | Non-Interactive Alternative |
-| --- | --- | --- |
-| `git commit` | Missing message source (`-m`/`--message`/`-C`/`--reuse-message`/`-F`/`--file`) and no `--no-edit` (`-c`/`--reedit-message` still block) | `git commit -m "message"` or `git commit --amend --no-edit` |
-| `git rebase -i` | Missing `GIT_SEQUENCE_EDITOR=` | `GIT_SEQUENCE_EDITOR=true git rebase -i ...` |
-| `git rebase --continue` | Missing `GIT_EDITOR=` | `GIT_EDITOR=true git rebase --continue` |
-| `git add -p` / `-i` | Always | `git add <explicit-files>` |
-| `git merge` | Missing `--no-edit`/`--no-commit`/`--squash`/`--ff`/`--ff-only` and not a control flow (`--abort`/`--quit`) | `git merge --no-edit <branch>` or `git merge --abort` |
-| `git cherry-pick` | Missing `--no-edit`/`--no-commit`/`-n` and not a control flow (`--continue`/`--abort`/`--skip`/`--quit`) | `git cherry-pick --no-edit <commit>` or `git cherry-pick --continue` |
 
 ## auto-format
 

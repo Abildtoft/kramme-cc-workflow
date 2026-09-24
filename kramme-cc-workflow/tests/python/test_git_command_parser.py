@@ -14,17 +14,12 @@ from pathlib import Path
 PARSER_LIB_DIR = Path(__file__).resolve().parents[2] / "hooks" / "lib"
 PARSER_PATH = PARSER_LIB_DIR / "git_command_parser.py"
 
-INTERACTIVE_COMMIT_REASON = (
-    'git commit without a message source may open an editor. Use: git commit -m "your message" (or --no-edit for amend)'
-)
 RM_RF_REASON = "rm -rf is blocked. Use `trash` instead (install: brew install trash). Files go to Trash for recovery."
 XARGS_RM_RF_REASON = "xargs rm -rf is blocked. Use `trash` instead."
 FIND_DELETE_REASON = "find -delete is blocked. Use `trash` instead for recoverable deletion."
 FIND_EXEC_RM_RF_REASON = "find -exec rm -rf is blocked. Use `trash` instead."
 SHRED_REASON = "shred is blocked. Use `trash` instead for recoverable deletion."
 UNLINK_REASON = "unlink is blocked. Use `trash` instead for recoverable deletion."
-INTERACTIVE_REBASE_REASON = "Interactive rebase will open an editor. Use: GIT_SEQUENCE_EDITOR=true git rebase -i ..."
-NONINTERACTIVE_PARSE_ERROR_REASON = "Unable to safely parse command. Refusing potentially interactive git command."
 COMMIT_PARSE_ERROR_REASON = "parse failed"
 # The reason command_safety/cli.py substitutes when a caller omits its own.
 COMMIT_DEFAULT_PARSE_ERROR_REASON = "Unable to safely parse command."
@@ -65,7 +60,6 @@ sys.path.insert(0, str(PARSER_LIB_DIR))
 from command_safety import cli as parser_cli  # noqa: E402
 from command_safety import commit as parser_commit  # noqa: E402
 from command_safety import lexer as parser_lexer  # noqa: E402
-from command_safety import noninteractive as parser_noninteractive  # noqa: E402
 from command_safety import prefix as parser_prefix  # noqa: E402
 from command_safety import rm_rf as parser_rm_rf  # noqa: E402
 from command_safety import syntax as parser_syntax  # noqa: E402
@@ -220,63 +214,11 @@ class GitCommandPrimitiveBehaviorTest(unittest.TestCase):
                 self.assertEqual(parser_syntax._basename_no_unescape(token), expected_no_unescape)
 
 
-class GitCommandNoninteractiveHelperTest(unittest.TestCase):
-    """Direct tests for the option-consumption helpers promoted out of
-    run_noninteractive's closure to module scope."""
-
-    def test_has_long_option_matches_bare_and_attached_forms(self) -> None:
-        self.assertTrue(parser_noninteractive._has_long_option(["--no-edit"], "--no-edit"))
-        self.assertTrue(parser_noninteractive._has_long_option(["--message=x"], "--message"))
-        self.assertFalse(parser_noninteractive._has_long_option(["--", "--no-edit"], "--no-edit"))
-        self.assertFalse(parser_noninteractive._has_long_option(["--no-edits"], "--no-edit"))
-
-    def test_has_short_option_scans_clustered_flags_until_separator(self) -> None:
-        self.assertTrue(parser_noninteractive._has_short_option(["-pi"], "p"))
-        self.assertFalse(parser_noninteractive._has_short_option(["--", "-p"], "p"))
-        self.assertFalse(parser_noninteractive._has_short_option(["-"], "p"))
-
-    def test_short_option_consumes_next_value_only_when_trailing(self) -> None:
-        value_opts = parser_noninteractive.COMMIT_SHORT_OPTIONS_CONSUME_NEXT_VALUE
-        self.assertTrue(parser_noninteractive._short_option_consumes_next_value("-m", value_opts))
-        self.assertTrue(parser_noninteractive._short_option_consumes_next_value("-am", value_opts))
-        self.assertFalse(parser_noninteractive._short_option_consumes_next_value("-ma", value_opts))
-        self.assertFalse(parser_noninteractive._short_option_consumes_next_value("--message", value_opts))
-
-    def test_classify_commit_fixup_distinguishes_safe_and_interactive_values(self) -> None:
-        self.assertEqual(parser_noninteractive._classify_commit_fixup(["--fixup=amend:HEAD"]), "interactive")
-        self.assertEqual(parser_noninteractive._classify_commit_fixup(["--fixup=reword:HEAD"]), "interactive")
-        self.assertEqual(parser_noninteractive._classify_commit_fixup(["--fixup", "HEAD"]), "safe")
-        self.assertEqual(parser_noninteractive._classify_commit_fixup(["-m", "amend:not-a-fixup-value"]), "none")
-        self.assertEqual(parser_noninteractive._classify_commit_fixup(["--", "--fixup=amend:HEAD"]), "none")
-
-    def test_commit_requests_editor_detects_clustered_and_separate_flags(self) -> None:
-        self.assertTrue(parser_noninteractive._commit_requests_editor(["-e"]))
-        self.assertTrue(parser_noninteractive._commit_requests_editor(["--edit"]))
-        self.assertTrue(parser_noninteractive._commit_requests_editor(["-ae"]))
-        self.assertFalse(parser_noninteractive._commit_requests_editor(["-m", "message"]))
-        self.assertFalse(parser_noninteractive._commit_requests_editor(["--message=x"]))
-
-    def test_merge_edit_is_safe_requires_ff_only_without_no_ff(self) -> None:
-        self.assertTrue(parser_noninteractive._merge_edit_is_safe(["--ff-only"]))
-        self.assertFalse(parser_noninteractive._merge_edit_is_safe(["--ff-only", "--no-ff"]))
-        self.assertFalse(parser_noninteractive._merge_edit_is_safe([]))
-
-    def test_evaluate_noninteractive_commands_stops_recursion_at_depth_limit(self) -> None:
-        reason = parser_noninteractive._evaluate_noninteractive_commands([], [], depth=5)
-
-        self.assertEqual(reason, parser_noninteractive.NONINTERACTIVE_PARSE_ERROR_REASON)
-
-
 class StructValueTest(unittest.TestCase):
     """Pins the observable value semantics of lightweight parser results."""
 
     def test_every_logical_field_participates_in_equality(self) -> None:
         cases = [
-            (
-                parser_noninteractive.NoninteractiveParseResult,
-                {"env": {"A": "1"}, "subcmd": "commit", "args": ["-m", "x"]},
-                {"env": {"A": "2"}, "subcmd": "rebase", "args": ["-m", "y"]},
-            ),
             (
                 parser_prefix.NormalizedCommandPrefix,
                 {
@@ -320,15 +262,23 @@ class StructValueTest(unittest.TestCase):
                     self.assertNotEqual(struct(**baseline), struct(**changed))
 
     def test_unequal_across_struct_types_with_matching_field_values(self) -> None:
+        class OtherSegmentResult(parser_commit.CommitSegmentResult):
+            __slots__ = ()
+
+        fields = {"contexts": [], "persisted_git_env": [], "persisted_shell_git_vars": []}
         self.assertNotEqual(
-            parser_noninteractive.NoninteractiveParseResult(env={}, subcmd="", args=[]),
-            parser_commit.CommitSegmentResult(contexts=[], persisted_git_env=[], persisted_shell_git_vars=[]),
+            parser_commit.CommitSegmentResult(**fields),
+            OtherSegmentResult(**fields),
         )
 
     def test_repr_names_the_class_and_every_field(self) -> None:
         self.assertEqual(
-            repr(parser_noninteractive.NoninteractiveParseResult(env={}, subcmd="commit", args=["-m"])),
-            "NoninteractiveParseResult(env={}, subcmd='commit', args=['-m'])",
+            repr(
+                parser_commit.CommitSegmentResult(
+                    contexts=[], persisted_git_env=["GIT_DIR=.git"], persisted_shell_git_vars=[]
+                )
+            ),
+            "CommitSegmentResult(contexts=[], persisted_git_env=['GIT_DIR=.git'], persisted_shell_git_vars=[])",
         )
 
 
@@ -363,30 +313,6 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
                 self.assertEqual(normalized.executable, "git")
                 self.assertEqual(normalized.arguments, ["commit"])
-
-    def test_parse_env_wrapped_segment_exposes_wrapper_state(self) -> None:
-        result = parser_noninteractive.parse_env_wrapped_segment(
-            [
-                "env",
-                "GIT_EDITOR=true",
-                "sudo",
-                "-D",
-                "/tmp",
-                "bash",
-                "-c",
-                "git commit",
-            ],
-            inherited_env={"GIT_SEQUENCE_EDITOR": "false"},
-        )
-
-        self.assertEqual(
-            result,
-            parser_noninteractive.NoninteractiveParseResult(
-                env={"GIT_SEQUENCE_EDITOR": "false", "GIT_EDITOR": "true"},
-                subcmd="__shell_c__",
-                args=["git commit"],
-            ),
-        )
 
     def test_normalize_command_prefix_preserves_large_environment_order(self) -> None:
         assignments = [f"KEY_{idx}=initial" for idx in range(2_000)]
@@ -459,18 +385,6 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
         oversized = "x" * (parser_prefix.MAX_ENV_SPLIT_STRING_EXPANSION_WORK + 1)
         with self.assertRaisesRegex(ValueError, "env split-string expansion limit exceeded"):
             parser_prefix.normalize_command_prefix(["env", f"--split-string={oversized}"])
-
-    def test_parse_env_wrapped_segment_marks_aliases_as_parse_errors(self) -> None:
-        result = parser_noninteractive.parse_env_wrapped_segment(["alias", "git=git -c alias.x=commit"])
-
-        self.assertEqual(
-            result,
-            parser_noninteractive.NoninteractiveParseResult(
-                env={},
-                subcmd=parser_noninteractive.NONINTERACTIVE_PARSE_ERROR_SUBCOMMAND,
-                args=[],
-            ),
-        )
 
     def test_parse_commit_segment_exposes_commit_and_persisted_state(self) -> None:
         result = parser_commit.parse_commit_segment(
@@ -753,133 +667,111 @@ class GitCommandParserCliTest(unittest.TestCase):
         (
             "plain git command",
             "git status",
-            json_line({"block": None}),
             json_line([]),
         ),
         (
             "commit without message",
             "git commit",
-            json_line({"block": INTERACTIVE_COMMIT_REASON}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "commit with inline message",
             "git commit -m x",
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "env-prefixed git dir",
             "GIT_DIR=.git git commit -m x",
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": ["GIT_DIR=.git"]}]),
         ),
         (
             "git option before subcommand",
             "git -C repo commit --message=x",
-            json_line({"block": None}),
             json_line([{"git_args": ["-C", "repo"], "git_env": []}]),
         ),
         (
             "substitution with escaped quote",
             'git commit -m "$(printf "a\\"b")"',
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "substitution with escaped space",
             r'git commit -m "$(printf a\ b)"',
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "nested substitution",
             'git commit -m "$(printf "$(echo nested)")"',
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "backtick substitution",
             r"git commit -m `printf a\`b`",
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "multi-segment command",
             "printf start; git commit -m x && git status",
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "pipeline into commit",
             "git add . | git commit -F -",
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "shell inline command",
             'sh -c "git commit -m x"',
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "shell inline commit without message",
             "bash -c 'git commit'",
-            json_line({"block": INTERACTIVE_COMMIT_REASON}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "ansi c shell inline commit",
             "bash -c $'git commit'",
-            json_line({"block": INTERACTIVE_COMMIT_REASON}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "ansi c hex escaped shell inline commit",
             r"bash -c $'git\x20commit'",
-            json_line({"block": INTERACTIVE_COMMIT_REASON}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "multiline ansi c shell inline commit",
             "bash -c $'echo ok\ngit commit'",
-            json_line({"block": INTERACTIVE_COMMIT_REASON}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "option bearing ansi c shell inline commit",
             "bash -O extglob -c $'git commit'",
-            json_line({"block": INTERACTIVE_COMMIT_REASON}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "environment wrapped ansi c shell inline commit",
             "env FOO=bar bash -c $'git commit'",
-            json_line({"block": INTERACTIVE_COMMIT_REASON}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "safe ansi c shell inline command",
             "bash -c $'echo safe'",
-            json_line({"block": None}),
             json_line([]),
         ),
         (
             "env command with git index",
             "env GIT_INDEX_FILE=/tmp/index git commit -m x",
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": ["GIT_INDEX_FILE=/tmp/index"]}]),
         ),
         (
             "unquoted heredoc body substitution",
             "cat <<EOF\n$(git commit)\nEOF",
-            json_line({"block": INTERACTIVE_COMMIT_REASON}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
         (
             "quoted heredoc body with later commit",
             "cat <<'EOF'\n$(git commit)\nEOF\ngit commit -m x",
-            json_line({"block": None}),
             json_line([{"git_args": [], "git_env": []}]),
         ),
     ]
@@ -896,17 +788,8 @@ class GitCommandParserCliTest(unittest.TestCase):
             text=True,
         )
 
-    def test_noninteractive_cli_contracts(self) -> None:
-        for name, command, expected_stdout, _expected_commit_contexts in self.CASES:
-            with self.subTest(name=name):
-                result = self.run_parser("noninteractive", command)
-
-                self.assertEqual(result.returncode, 0)
-                self.assertEqual(result.stderr, "")
-                self.assertEqual(result.stdout, expected_stdout)
-
     def test_commit_contexts_cli_contracts(self) -> None:
-        for name, command, _expected_noninteractive, expected_stdout in self.CASES:
+        for name, command, expected_stdout in self.CASES:
             with self.subTest(name=name):
                 result = self.run_parser("commit-contexts", command)
 
@@ -925,17 +808,8 @@ class GitCommandParserCliTest(unittest.TestCase):
 
         for command in commands:
             with self.subTest(command=command):
-                noninteractive = self.run_parser("noninteractive", command)
                 commit_contexts = self.run_parser("commit-contexts", command)
 
-                self.assertEqual(noninteractive.returncode, 0)
-                self.assertEqual(noninteractive.stderr, "")
-                self.assertEqual(
-                    noninteractive.stdout,
-                    json_line(
-                        {"block": "Unable to safely parse command. Refusing potentially interactive git command."}
-                    ),
-                )
                 self.assertEqual(commit_contexts.returncode, 0)
                 self.assertEqual(commit_contexts.stderr, "")
                 self.assertEqual(
@@ -945,20 +819,19 @@ class GitCommandParserCliTest(unittest.TestCase):
 
 
 class GitGlobalOptionPrefixTest(unittest.TestCase):
-    """Both parser modes must resolve the same subcommand behind Git globals.
+    """The commit-contexts mode must resolve the subcommand behind Git globals.
 
     A global option that takes a separated value hides the real subcommand from
     any walker that mistakes the value for it, which bypasses the
-    interactive-command and review-artifact gates. This corpus pins one shared
-    vocabulary for both modes: every prefix either resolves the subcommand in
-    both modes, or fails closed in both.
+    review-artifact gate. This corpus pins the Git global-option vocabulary:
+    every prefix either resolves the subcommand, or fails closed.
     """
 
     maxDiff = None
 
     # (name, global options before the subcommand, git_args the commit mode
     # records). ``None`` marks a prefix whose value semantics are unknowable, so
-    # both modes must fail closed instead of guessing.
+    # the mode must fail closed instead of guessing.
     PREFIX_CASES = [
         ("no globals", [], []),
         ("separated -C", ["-C", "repo"], ["-C", "repo"]),
@@ -1053,17 +926,6 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
             text=True,
         )
 
-    def test_noninteractive_resolves_subcommand_behind_globals(self) -> None:
-        for name, prefix, git_args in self.PREFIX_CASES:
-            command = " ".join(["git", *prefix, "rebase", "-i", "HEAD~3"])
-            expected = INTERACTIVE_REBASE_REASON if git_args is not None else NONINTERACTIVE_PARSE_ERROR_REASON
-            with self.subTest(name=name):
-                result = self.run_parser("noninteractive", command)
-
-                self.assertEqual(result.returncode, 0)
-                self.assertEqual(result.stderr, "")
-                self.assertEqual(result.stdout, json_line({"block": expected}))
-
     def test_commit_contexts_resolves_subcommand_behind_globals(self) -> None:
         for name, prefix, git_args in self.PREFIX_CASES:
             command = " ".join(["git", *prefix, "commit", "-m", "x"])
@@ -1078,45 +940,6 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 0)
                 self.assertEqual(result.stderr, "")
                 self.assertEqual(result.stdout, json_line(expected))
-
-    def test_modes_agree_on_the_same_command(self) -> None:
-        # `git commit` with no message source is blocked only when a mode
-        # resolved `commit`, and a commit context is emitted only then, so one
-        # command exposes both modes' prefix resolution.
-        for name, prefix, git_args in self.PREFIX_CASES:
-            command = " ".join(["git", *prefix, "commit"])
-            with self.subTest(name=name):
-                noninteractive = self.run_parser("noninteractive", command)
-                commit_contexts = self.run_parser("commit-contexts", command)
-
-                if git_args is not None:
-                    self.assertEqual(
-                        noninteractive.stdout,
-                        json_line({"block": INTERACTIVE_COMMIT_REASON}),
-                    )
-                    self.assertEqual(
-                        commit_contexts.stdout,
-                        json_line([{"git_args": git_args, "git_env": []}]),
-                    )
-                else:
-                    self.assertEqual(
-                        noninteractive.stdout,
-                        json_line({"block": NONINTERACTIVE_PARSE_ERROR_REASON}),
-                    )
-                    self.assertEqual(
-                        commit_contexts.stdout,
-                        json_line([{"parse_error": COMMIT_PARSE_ERROR_REASON}]),
-                    )
-
-    def test_attr_source_cannot_hide_an_interactive_command(self) -> None:
-        for command in (
-            "git --attr-source HEAD rebase -i HEAD~3",
-            "git --attr-source=HEAD rebase -i HEAD~3",
-        ):
-            with self.subTest(command=command):
-                result = self.run_parser("noninteractive", command)
-
-                self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_REBASE_REASON}))
 
     def test_attr_source_cannot_hide_a_commit_context(self) -> None:
         for command, git_args in (
@@ -1139,20 +962,17 @@ class GitGlobalOptionPrefixTest(unittest.TestCase):
                 continue
             command = " ".join(["git", *prefix, "status"])
             with self.subTest(name=name):
-                noninteractive = self.run_parser("noninteractive", command)
                 commit_contexts = self.run_parser("commit-contexts", command)
 
-                self.assertEqual(noninteractive.stdout, json_line({"block": None}))
                 self.assertEqual(commit_contexts.stdout, json_line([]))
 
 
 class XargsOptionVocabularyParityTest(unittest.TestCase):
-    """The noninteractive and rm-rf modes share one xargs option-consumption
-    vocabulary via _skip_xargs_options().
+    """The rm-rf mode walks past xargs's own options via _skip_xargs_options().
 
     Membership in XARGS_OPTIONS_WITH_VALUE means "this option's value is a
     separate token, skip it too", and both directions of error hide the
-    invoked command from either gate. Omitting a mandatory-value option makes
+    invoked command from the gate. Omitting a mandatory-value option makes
     the walker read that value as the command; listing an optional-value
     option makes it skip past the command itself. This corpus pins both
     arities against the bare and separate-token forms that distinguish them.
@@ -1160,7 +980,7 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
 
     maxDiff = None
 
-    # Value is a mandatory separate token: `xargs -a FILE git commit`. This
+    # Value is a mandatory separate token: `xargs -a FILE rm -rf dir/`. This
     # list mirrors XARGS_OPTIONS_WITH_VALUE exactly (asserted below), so a
     # new member cannot enter the set without being exercised here.
     SEPARATE_TOKEN_VALUE_OPTIONS = [
@@ -1183,7 +1003,7 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
         "-S",
     ]
     # GNU value is optional and attached-only, so the next token is the
-    # command: `xargs -i git commit` really does run `git commit`.
+    # command: `xargs -i rm -rf dir/` really does run `rm -rf dir/`.
     OPTIONAL_ATTACHED_VALUE_OPTIONS = ["-i", "--replace", "--eof", "--max-lines"]
 
     def run_parser(self, mode: str, command: str) -> subprocess.CompletedProcess[str]:
@@ -1216,54 +1036,41 @@ class XargsOptionVocabularyParityTest(unittest.TestCase):
 
                 self.assertEqual(args[idx:], ["git", "commit"])
 
-    def test_xargs_wrapped_commit_without_message_source_is_blocked(self) -> None:
+    def test_xargs_wrapped_rm_rf_via_separate_token_value_option_is_blocked(self) -> None:
         for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
-            command = f"xargs {option} VALUE git commit"
-            with self.subTest(command=command):
-                result = self.run_parser("noninteractive", command)
-
-                self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
-
-    def test_bare_optional_value_option_cannot_hide_a_commit(self) -> None:
-        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
-            for command in (f"xargs {option} git commit", f"xargs {option}=VALUE git commit"):
-                with self.subTest(command=command):
-                    result = self.run_parser("noninteractive", command)
-
-                    self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
-
-    def test_attached_short_optional_value_option_cannot_hide_a_commit(self) -> None:
-        result = self.run_parser("noninteractive", "xargs -i{} git commit")
-
-        self.assertEqual(result.stdout, json_line({"block": INTERACTIVE_COMMIT_REASON}))
-
-    def test_xargs_wrapped_commit_with_message_is_still_allowed(self) -> None:
-        for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
-            command = f"xargs {option} VALUE git commit -m done"
-            with self.subTest(command=command):
-                result = self.run_parser("noninteractive", command)
-
-                self.assertEqual(result.stdout, json_line({"block": None}))
-
-    def test_optional_value_option_consumes_no_separate_token(self) -> None:
-        # `xargs -i VALUE git commit` runs VALUE, not git, so there is no
-        # git subcommand for the gate to classify.
-        result = self.run_parser("noninteractive", "xargs -i VALUE git commit")
-
-        self.assertEqual(result.stdout, json_line({"block": None}))
-
-    def test_xargs_wrapped_rm_rf_via_separate_token_value_option_is_still_blocked(self) -> None:
-        result = self.run_parser("rm-rf", "xargs -a file.txt rm -rf directory/")
-
-        self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
-
-    def test_xargs_wrapped_rm_rf_behind_optional_value_option_is_blocked(self) -> None:
-        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
-            command = f"xargs {option} rm -rf directory/"
+            command = f"xargs {option} VALUE rm -rf directory/"
             with self.subTest(command=command):
                 result = self.run_parser("rm-rf", command)
 
                 self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
+
+    def test_xargs_wrapped_rm_rf_behind_optional_value_option_is_blocked(self) -> None:
+        for option in self.OPTIONAL_ATTACHED_VALUE_OPTIONS:
+            for command in (f"xargs {option} rm -rf directory/", f"xargs {option}=VALUE rm -rf directory/"):
+                with self.subTest(command=command):
+                    result = self.run_parser("rm-rf", command)
+
+                    self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
+
+    def test_attached_short_optional_value_option_cannot_hide_rm_rf(self) -> None:
+        result = self.run_parser("rm-rf", "xargs -i{} rm -rf directory/")
+
+        self.assertEqual(result.stdout, json_line({"block": XARGS_RM_RF_REASON}))
+
+    def test_xargs_wrapped_rm_without_force_is_still_allowed(self) -> None:
+        for option in self.SEPARATE_TOKEN_VALUE_OPTIONS:
+            command = f"xargs {option} VALUE rm -r directory/"
+            with self.subTest(command=command):
+                result = self.run_parser("rm-rf", command)
+
+                self.assertEqual(result.stdout, json_line({"block": None}))
+
+    def test_optional_value_option_consumes_no_separate_token(self) -> None:
+        # `xargs -i VALUE rm -rf directory/` runs VALUE, not rm, so there is
+        # no deletion command for the gate to classify.
+        result = self.run_parser("rm-rf", "xargs -i VALUE rm -rf directory/")
+
+        self.assertEqual(result.stdout, json_line({"block": None}))
 
 
 class RmRfParserCliTest(unittest.TestCase):
@@ -1563,10 +1370,9 @@ class GitCommandParserEntryPointTest(unittest.TestCase):
     same dispatcher and produce the same bytes.
     """
 
-    USAGE = "usage: git_command_parser.py <noninteractive|commit-contexts|rm-rf> <command> [parse-error-reason]\n"
+    USAGE = "usage: git_command_parser.py <commit-contexts|rm-rf> <command> [parse-error-reason]\n"
 
     DISPATCH_CASES = [
-        ("noninteractive", ["noninteractive", "git commit"], json_line({"block": INTERACTIVE_COMMIT_REASON})),
         ("rm-rf", ["rm-rf", "rm -rf directory/"], json_line({"block": RM_RF_REASON})),
         (
             "commit-contexts",

@@ -16,20 +16,19 @@ cross-hook parsing and toggle behavior here.
 ### `command_safety/` module map
 
 Modules depend strictly downward in this table, so a mode can be read, changed,
-and tested without loading the other two. Do not add an upward import: a cycle
+and tested without loading the other one. Do not add an upward import: a cycle
 here would break every gate at once.
 
 | Module | Responsibility |
 | --- | --- |
 | `structs.py` | `_StructValue`, the `__slots__` value-object base the result types share instead of `dataclasses`. |
 | `syntax.py` | Shell syntax primitives: quoting and ANSI-C decoding, command-substitution readers, heredoc scanning, basename and assignment helpers, and the shared shell keyword/executable/option sets. Imports nothing else in the package. |
-| `vocabulary.py` | How `xargs` and `git` consume their own options, so no two modes can resolve the same prefix to different subcommands. |
+| `vocabulary.py` | How `xargs` (for `rm-rf`) and `git` (for `commit-contexts`) consume their own options, so a value-bearing option is never mistaken for the command or subcommand. |
 | `prefix.py` | `normalize_command_prefix()` and one handler per execution wrapper (`env`, `sudo`, `nice`, `timeout`, `time`, `nohup`, `exec`, `command`/`builtin`). Reports what actually runs; applies no policy. |
 | `lexer.py` | Heredoc stripping, newline folding, tokenization, segment splitting, and command-substitution placeholders. Uses `prefix.py` to decide whether a heredoc body is executable. |
-| `noninteractive.py` | The `noninteractive` mode: editor- and prompt-opening git detection, plus `run_noninteractive()`. |
 | `rm_rf.py` | The `rm-rf` mode: recursive-deletion detection through wrappers, `find`/`xargs`, `eval`, and substitutions, plus `run_rm_rf()`. |
 | `commit.py` | The `commit-contexts` mode: `CommitContext`, replay environment, content-selection parsing, plus `run_commit_contexts()`. |
-| `cli.py` | `main()`, dispatching one mode per invocation. Imports the chosen mode inside its branch so a gate never pays the other modes' import cost. |
+| `cli.py` | `main()`, dispatching one mode per invocation. Imports the chosen mode inside its branch so a gate never pays the other mode's import cost. |
 
 ## Git command parser mode contracts
 
@@ -42,7 +41,6 @@ exit 0; missing or unknown modes exit 2.
 
 | Mode and caller | Accepted command shapes | JSON stdout | Nested parsing | Failure posture |
 | --- | --- | --- | --- | --- |
-| `noninteractive` — [`noninteractive-git.sh`](../noninteractive-git.sh) | Command lists containing direct or prefixed Git commands, `env`/`sudo`/execution wrappers, `find`/`xargs` execution, inline shell commands, and command substitutions. Policy covers editor- or prompt-opening `git commit`, `rebase`, `add`, `merge`, and `cherry-pick` forms. | `{"block": null}` to allow, or `{"block": "<reason>"}` to block. | Follows inline shell commands and command substitutions through depth 4. | Tokenization, prefix-normalization, alias, or depth ambiguity returns the parser-error block reason. Unrecognized non-Git commands and Git forms outside the interactive policy pass. |
 | `commit-contexts` — [`confirm-review-responses.sh`](../confirm-review-responses.sh) | Command lists containing `git commit`, including normalized wrappers, repository-selection options and environment, inline shell commands, command substitutions, and index/worktree/pathspec selection forms. | An ordered array of commit-context objects; `[]` means no commit was found. See the field contract below. | Follows inline shell commands and command substitutions through depth 4 while carrying replayable repository state. | Parse ambiguity returns `[{"parse_error": "<reason>"}]`; unsupported commit selection adds `selection_error` to that context. The caller blocks on either error, dynamic repository selection, malformed fields, a string carrying a NUL byte, stdout that is not exactly one JSON document, or replay failure. |
 | `rm-rf` — [`block-rm-rf.sh`](../block-rm-rf.sh) | Command lists containing recursive-and-forced `rm`, `find -delete`, `find -exec`/`-execdir`, `xargs`, `shred`, or `unlink`, including normalized wrappers, inline shell commands, `eval`, shell functions, executable heredocs, and command/process substitutions. | `{"block": null}` to allow, or `{"block": "<reason>"}` to block. | Inspects supported destructive shapes through depth 5. If another nested command would require analysis beyond that bound, the parser blocks instead of classifying its contents. | Tokenization, prefix-normalization, analysis-depth exhaustion, or Python recursion failure returns the generic `rm -rf` block reason. Commands with no recognized destructive shape pass only when analysis completes within the bound. |
 
@@ -51,9 +49,9 @@ and 100,000 characters of expanded payload. Exceeding either bound is a parse
 failure and therefore blocks in every mode. Independently of mode, the shared
 wrapper blocks when hook input is malformed, Python or `jq` is unavailable,
 parser execution fails, or the parser output has the wrong top-level JSON type.
-For `noninteractive` and `rm-rf`, a missing or null `block` value allows the
-command; any non-null value must be a string. An absent or empty command is
-allowed before parser invocation (`commit-contexts` emits `[]` for that case).
+For `rm-rf`, a missing or null `block` value allows the command; any non-null
+value must be a string. An absent or empty command is allowed before parser
+invocation (`commit-contexts` emits `[]` for that case).
 
 ### Commit-context fields
 
@@ -88,17 +86,16 @@ replaying the selection:
 
 ## Verification
 
-Representative cross-mode wrapper cases live in
+Representative wrapper cases for the `commit-contexts` consumer live in
 [`git-command-parser-cases.json`](../../tests/fixtures/git-command-parser-cases.json).
 The direct CLI contract tables live in
 [`test_git_command_parser.py`](../../tests/python/test_git_command_parser.py):
-`GitCommandParserCliTest.CASES` covers `noninteractive` and `commit-contexts`,
-while `RmRfParserCliTest.CASES` covers `rm-rf`. The consuming-hook suites add
-policy fixtures for each mode:
+`GitCommandParserCliTest.CASES` covers `commit-contexts`, while
+`RmRfParserCliTest.CASES` covers `rm-rf`. The consuming-hook suites add policy
+fixtures for each mode:
 
 | Mode | Representative consuming fixtures |
 | --- | --- |
-| `noninteractive` | `git commit` without a message blocks; `git commit -m ...` and safe prefixed variants allow. |
 | `commit-contexts` | `git -C repo commit`, worktree/index selection, pathspec files, dynamic repository selection, and malformed context fields. |
 | `rm-rf` | Direct and wrapped `rm -rf`, `find`/`xargs`, substitutions and shell heredocs, quoted text and `git rm` allow cases, plus safe and destructive commands below, at, and beyond the analysis bound. |
 
@@ -109,11 +106,11 @@ bats kramme-cc-workflow/tests/check-enabled.bats
 ```
 
 For parser contracts or changes to `safety-hook-parser.sh`, run the direct CLI
-suite and all three consumers:
+suite and both consumers:
 
 ```bash
 python3 -m unittest discover -s kramme-cc-workflow/tests/python -p test_git_command_parser.py
-bats kramme-cc-workflow/tests/noninteractive-git.bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats
+bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats
 ```
 
 For the `rm-rf` analysis-bound contract specifically, run its direct and

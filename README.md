@@ -677,7 +677,6 @@ Event handlers defined once in the plugin source and packaged for both hosts. Ea
 | --- | --- | --- |
 | `block-rm-rf` | PreToolUse (Bash) | Blocks destructive file deletion commands and recommends `trash` instead. |
 | `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing review artifact files. |
-| `noninteractive-git` | PreToolUse (Bash) | Blocks git commands that open an interactive editor. |
 | `skill-usage-stats` | PreToolUse (Skill), UserPromptSubmit | Records local skill usage statistics. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications using detected project formatter. |
 | `context-links` | Stop | Displays PR and Linear issue links at end of messages. |

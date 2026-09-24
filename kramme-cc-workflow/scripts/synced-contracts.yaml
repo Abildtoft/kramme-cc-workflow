@@ -1872,7 +1872,6 @@
     "descriptions": {
       "block-rm-rf": "Blocks destructive file deletion commands and recommends `trash` instead.",
       "confirm-review-responses": "Confirms before committing review artifact files.",
-      "noninteractive-git": "Blocks git commands that open an interactive editor.",
       "skill-usage-stats": "Records local skill usage statistics.",
       "auto-format": "Auto-formats code after file modifications using detected project formatter.",
       "context-links": "Displays PR and Linear issue links at end of messages."
@@ -2021,7 +2020,6 @@
           "kramme-cc-workflow/hooks/auto-format.sh": 524,
           "kramme-cc-workflow/hooks/confirm-review-responses.sh": 758,
           "kramme-cc-workflow/hooks/lib/command_safety/commit.py": 629,
-          "kramme-cc-workflow/hooks/lib/command_safety/noninteractive.py": 624,
           "kramme-cc-workflow/hooks/lib/command_safety/prefix.py": 511,
           "kramme-cc-workflow/hooks/lib/command_safety/syntax.py": 531,
           "kramme-cc-workflow/scripts/convert-plugin/codex-transformer.js": 646,
@@ -2051,7 +2049,6 @@
           "kramme-cc-workflow/tests/confirm-review-responses.bats": 1563,
           "kramme-cc-workflow/tests/lint-skill-contracts.bats": 3508,
           "kramme-cc-workflow/tests/node/converter-core.test.js": 1334,
-          "kramme-cc-workflow/tests/noninteractive-git.bats": 1056,
           "kramme-cc-workflow/tests/python/test_git_command_parser.py": 1187,
           "kramme-cc-workflow/tests/siw-issue-reservation.bats": 1195
         },
