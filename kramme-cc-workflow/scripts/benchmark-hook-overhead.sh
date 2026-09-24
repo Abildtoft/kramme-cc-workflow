@@ -27,7 +27,6 @@ from pathlib import Path
 HOOKS = (
     ("block-rm-rf", "block-rm-rf.sh"),
     ("confirm-review-responses", "confirm-review-responses.sh"),
-    ("noninteractive-git", "noninteractive-git.sh"),
 )
 COMMANDS = (
     ("trivial", "echo hi"),

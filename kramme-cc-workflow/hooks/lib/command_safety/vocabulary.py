@@ -1,26 +1,26 @@
-"""Cross-mode option vocabularies for the commands the gates must see through.
+"""Option vocabularies for the commands the gates must see through.
 
-These tables are not shell grammar: they describe how `xargs` and `git`
-consume their own options. Every mode resolves them through this module so a
-given prefix can never mean different things to different gates.
+These tables are not shell grammar: they describe how `xargs` (read by the
+rm-rf mode) and `git` (read by the commit-contexts mode) consume their own
+options.
 """
 
 from __future__ import annotations
 
-# Shared by the noninteractive and rm-rf modes. Both walk past xargs's own
-# options to find the command xargs will invoke. Only options whose value is
-# a *mandatory separate token* belong here, because membership means "skip
-# the next token too". Both directions of error hide the real command from
-# either gate: omitting `-a FILE` makes the walker read FILE as the invoked
-# command, while listing an option that takes no separate token makes it
-# skip past the command itself. The set spans both implementations, since
+# Used by the rm-rf mode to walk past xargs's own options and find the
+# command xargs will invoke. Only options whose value is a *mandatory
+# separate token* belong here, because membership means "skip the next
+# token too". Both directions of error hide the real command from the
+# gate: omitting `-a FILE` makes the walker read FILE as the invoked command,
+# while listing an option that takes no separate token makes it skip past the
+# command itself. The set spans both implementations, since
 # either can be the xargs on PATH: `-J`, `-R`, and `-S` are BSD-only,
 # `--arg-file` and `--process-slot-var` GNU-only.
 #
 # Options taking an optional, attached-only value must therefore stay out
 # (GNU `-i[replace-str]`, `--replace[=str]`, `--eof[=str]`,
-# `--max-lines[=n]`, `-e[eof-str]`, `-l[max-lines]`): in `xargs -i git
-# commit` the next token is the command, so the generic leading-dash branch
+# `--max-lines[=n]`, `-e[eof-str]`, `-l[max-lines]`): in `xargs -i rm
+# -rf dir/` the next token is the command, so the generic leading-dash branch
 # in _skip_xargs_options handles them correctly. Their mandatory-value
 # counterparts `-I`, `-E`, and `-L` do belong here.
 XARGS_OPTIONS_WITH_VALUE = {
@@ -67,14 +67,14 @@ def _skip_xargs_options(args: list[str]) -> int:
     return idx
 
 
-# Git global options that consume the following token as their value. Both
-# parser modes share this compatibility vocabulary: a mode that
-# misses one of these mistakes the option's value for the subcommand, which
-# hides the real subcommand from the safety gates.
+# Git global options that consume the following token as their value, used
+# by the commit-contexts mode. A walker that misses one of these mistakes the
+# option's value for the subcommand, which hides the real subcommand from the
+# gate.
 #
 # `--exec-path` without an attached value makes Git print its exec path and
 # exit, so consuming the next token is a safe over-approximation — no
-# subcommand runs either way, and both modes have always agreed on it.
+# subcommand runs either way.
 # `--super-prefix` was value-bearing through Git 2.39. Keep consuming it for
 # compatibility; newer Git rejects it before executing a subcommand.
 GIT_GLOBAL_OPTIONS_WITH_VALUE = frozenset(
@@ -93,7 +93,7 @@ GIT_GLOBAL_OPTIONS_WITH_VALUE = frozenset(
 )
 # Git global long options that never consume a following token. Any other
 # unresolved long option before the subcommand is ambiguous: we cannot know
-# whether the next token is its value or the subcommand, so both modes fail
+# whether the next token is its value or the subcommand, so the gate fails
 # closed instead of guessing.
 GIT_GLOBAL_VALUELESS_LONG_OPTIONS = frozenset(
     {
@@ -127,9 +127,8 @@ GIT_GLOBAL_SUBCOMMAND = "subcommand"
 def classify_git_global_option(token: str) -> str:
     """Classify a token sitting between `git` and its subcommand.
 
-    Both parser modes walk Git's global options through this classifier so a
-    given prefix can never resolve to a different subcommand depending on which
-    gate is asking.
+    The commit-contexts mode walks Git's global options through this
+    classifier so a value-bearing option is never mistaken for the subcommand.
     """
     if token == "--":
         return GIT_GLOBAL_END_OF_OPTIONS

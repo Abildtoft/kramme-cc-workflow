@@ -25,14 +25,12 @@ Enable or disable hooks in the kramme-cc-workflow plugin.
 | --- | --- | --- |
 | `block-rm-rf` | PreToolUse | Blocks destructive file deletion (rm -rf, shred, etc.) |
 | `confirm-review-responses` | PreToolUse | Confirms before committing configured review artifact files (see `hooks/confirm-review-artifacts.txt`) |
-| `noninteractive-git` | PreToolUse | Forces non-interactive git commands |
 | `skill-usage-stats` | UserPromptSubmit, PreToolUse | Records local skill usage statistics for slash invocations and Skill tool calls |
 | `auto-format` | PostToolUse | Auto-formats code after Write/Edit operations |
-| `context-links` | Stop | Shows PR and Linear issue links at session end |
 
 The canonical hook list is the set of names each script passes to `exit_if_hook_disabled` (grep `hooks/*.sh` for `exit_if_hook_disabled`). Treat that set as the source of truth: if a hook script registers a name not in this table, the table is stale — update it (and surface the discrepancy to the user) rather than rejecting the name.
 
-`block-rm-rf`, `confirm-review-responses`, and `noninteractive-git` are safety guardrails.
+`block-rm-rf` and `confirm-review-responses` are safety guardrails.
 
 ## Implementation
 
@@ -59,7 +57,7 @@ Whenever you read the state file: a missing file means all hooks are enabled (pr
 1. Read the resolved state file (missing file = all enabled)
 2. Parse the argument to get hook name and optional action. If the action is present and is not `enable` or `disable`, stop and show the valid forms.
 3. Validate the hook name against the available hooks list. If it is unknown, stop and list the valid hook names.
-4. If the change disables a safety guardrail (`block-rm-rf`, `confirm-review-responses`, `noninteractive-git`), warn the user which protection is being removed and confirm before writing.
+4. If the change disables a safety guardrail (`block-rm-rf`, `confirm-review-responses`), warn the user which protection is being removed and confirm before writing.
 5. Update the `disabled` array:
    - If action is "enable": remove hook from disabled array
    - If action is "disable": add hook to disabled array only if not already present (no duplicates)
@@ -76,7 +74,7 @@ Whenever you read the state file: a missing file means all hooks are enabled (pr
 
 ```json
 {
-  "disabled": ["auto-format", "context-links"]
+  "disabled": ["auto-format", "skill-usage-stats"]
 }
 ```
 

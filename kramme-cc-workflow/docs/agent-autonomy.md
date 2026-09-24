@@ -26,7 +26,7 @@ The boundary the repository draws most consistently is publication. `closeout-lo
 
 The second outer-loop boundary is the truth of a completion claim. `skills/kramme:verify:before-completion/SKILL.md:14` states the principle as "Evidence before claims, always." The agent runs the project's checks and gates its claim on their output, so the human's acceptance decision rests on evidence rather than on the agent's self-assessment.
 
-Hooks provide a third boundary, outside the agent's instructions entirely. `hooks/hooks.json` registers three PreToolUse hooks on the `Bash` matcher. `confirm-review-responses.sh` gates staged files matching patterns in `hooks/confirm-review-artifacts.txt` (`docs/hooks.md:28`); `block-rm-rf.sh` and `noninteractive-git.sh` sit at the same layer but block outright instead of asking. All three are enforced by the harness, not by the agent's own compliance.
+Hooks provide a third boundary, outside the agent's instructions entirely. `hooks/hooks.json` registers two PreToolUse hooks on the `Bash` matcher. `confirm-review-responses.sh` gates staged files matching patterns in `hooks/confirm-review-artifacts.txt` (`docs/hooks.md:28`); `block-rm-rf.sh` sits at the same layer but blocks outright instead of asking. Both are enforced by the harness, not by the agent's own compliance.
 
 ## Back Pressure
 

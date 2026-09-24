@@ -46,7 +46,6 @@
       "kramme-cc-workflow/hooks/lib/command_safety/cli.py",
       "kramme-cc-workflow/hooks/lib/command_safety/commit.py",
       "kramme-cc-workflow/hooks/lib/command_safety/lexer.py",
-      "kramme-cc-workflow/hooks/lib/command_safety/noninteractive.py",
       "kramme-cc-workflow/hooks/lib/command_safety/prefix.py",
       "kramme-cc-workflow/hooks/lib/command_safety/rm_rf.py",
       "kramme-cc-workflow/hooks/lib/command_safety/structs.py",
@@ -546,19 +545,12 @@
       "kramme-cc-workflow/hooks/confirm-review-responses.sh": [
         "kramme-cc-workflow/tests/confirm-review-responses.bats"
       ],
-      "kramme-cc-workflow/hooks/context-links.sh": [
-        "kramme-cc-workflow/tests/context-links.bats"
-      ],
       "kramme-cc-workflow/hooks/lib/check-enabled.sh": [
         "kramme-cc-workflow/tests/check-enabled.bats"
       ],
       "kramme-cc-workflow/hooks/lib/safety-hook-parser.sh": [
         "kramme-cc-workflow/tests/block-rm-rf.bats",
-        "kramme-cc-workflow/tests/confirm-review-responses.bats",
-        "kramme-cc-workflow/tests/noninteractive-git.bats"
-      ],
-      "kramme-cc-workflow/hooks/noninteractive-git.sh": [
-        "kramme-cc-workflow/tests/noninteractive-git.bats"
+        "kramme-cc-workflow/tests/confirm-review-responses.bats"
       ],
       "kramme-cc-workflow/hooks/skill-usage-stats.sh": [
         "kramme-cc-workflow/tests/skill-usage-stats.bats"

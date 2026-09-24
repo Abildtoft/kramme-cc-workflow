@@ -50,6 +50,10 @@ make_nested_bash_command() {
 	run run_safety_hook_with_parser_output "$HOOK" "rm -rf directory/" 'not-json'
 	is_blocked
 	[[ "$output" == *"Unable to safely parse command metadata"* ]]
+
+	run run_safety_hook_with_parser_output "$HOOK" "rm -rf directory/" '[]'
+	is_blocked
+	[[ "$output" == *"Unable to safely parse command metadata"* ]]
 }
 
 @test "blocks command when jq is unavailable" {

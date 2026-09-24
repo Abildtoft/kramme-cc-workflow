@@ -124,7 +124,7 @@ test("generated hook scripts execute from the built plugin without a plugin root
   });
 });
 
-test("local hook state and config files never ship in the built plugin", async () => {
+test("local hook state files never ship in the built plugin", async () => {
   await withTempDir(async (root) => {
     const hookSourceDir = path.join(root, "source-plugin", "hooks");
     const bundle = fixtureHookBundle({
@@ -134,14 +134,6 @@ test("local hook state and config files never ship in the built plugin", async (
 
     await writeFile(path.join(hookSourceDir, "alpha-hook.sh"), "echo ok\n");
     await writeFile(path.join(hookSourceDir, "hook-state.json"), "{}\n");
-    await writeFile(
-      path.join(hookSourceDir, "context-links.config"),
-      'CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="local"\n',
-    );
-    await writeFile(
-      path.join(hookSourceDir, "context-links.config.example"),
-      'CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG="example"\n',
-    );
 
     const built = await buildCodexMarketplace(
       path.join(root, "marketplace"),
@@ -150,15 +142,7 @@ test("local hook state and config files never ship in the built plugin", async (
     const hooksRoot = path.join(built.pluginRoot, "hooks");
     assert.equal(await pathExists(path.join(hooksRoot, "alpha-hook.sh")), true);
     assert.equal(
-      await pathExists(path.join(hooksRoot, "context-links.config.example")),
-      true,
-    );
-    assert.equal(
       await pathExists(path.join(hooksRoot, "hook-state.json")),
-      false,
-    );
-    assert.equal(
-      await pathExists(path.join(hooksRoot, "context-links.config")),
       false,
     );
   });
@@ -180,10 +164,7 @@ test("fixture SubagentStart hook events are preserved in generated hook config",
       ],
     };
     const sourceRoot = path.join(root, "source-plugin");
-    const controlSkills = [
-      hookControlSkill(sourceRoot, "kramme:hooks:toggle"),
-      hookControlSkill(sourceRoot, "kramme:hooks:configure-links"),
-    ];
+    const controlSkills = [hookControlSkill(sourceRoot, "kramme:hooks:toggle")];
     for (const skill of controlSkills) {
       await writeFile(path.join(skill.sourceDir, "SKILL.md"), "control\n");
     }

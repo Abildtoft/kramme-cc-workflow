@@ -516,7 +516,7 @@ assert_review_parser_fixture_decision() {
 	local case_json case_name command expected mode
 
 	# Common shell/git parser cases belong in the shared fixture file so parser
-	# consolidation can compare both hook consumers against the same baseline.
+	# changes are checked against the same baseline.
 	while IFS= read -r case_json; do
 		case_name="$(printf '%s\n' "$case_json" | jq -r '.name')"
 		command="$(printf '%s\n' "$case_json" | jq -r '.command')"

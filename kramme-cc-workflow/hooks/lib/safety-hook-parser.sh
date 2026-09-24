@@ -58,7 +58,7 @@ run_safety_hook_parser() {
       fi
       printf '%s\n' "$parser_output"
       ;;
-    noninteractive | rm-rf)
+    rm-rf)
       if ! reason=$(printf '%s\n' "$parser_output" | jq -r 'if type != "object" then error("expected parser decision object") elif has("block") and .block != null and (.block | type) != "string" then error("expected block reason string") else .block // "__ALLOW__" end'); then
         safety_hook_block "$parser_error_reason"
       fi

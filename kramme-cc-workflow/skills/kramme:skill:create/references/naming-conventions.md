@@ -22,7 +22,7 @@ kramme:{domain}:{action}[:{qualifier}...]
 | `docs` | Documentation, conversion | `docs:to-markdown`, `docs:update-agents-md` |
 | `text` | Text processing | `text:humanize` |
 | `discovery` | Requirements gathering | `discovery:interview` |
-| `hooks` | Plugin hook management | `hooks:toggle`, `hooks:configure-links` |
+| `hooks` | Plugin hook management | `hooks:toggle` |
 | `verify` | Verification, testing | `verify:run`, `verify:before-completion` |
 | `workflow-artifacts` | Artifact management | `workflow-artifacts:cleanup` |
 | `session` | Session lifecycle | `session:context-setup` |

@@ -26,10 +26,7 @@ const {
  * @typedef {{ marketplaceRoot: string, pluginRoot: string, skillCount: number }} BuiltCodexMarketplace
  */
 
-const EXCLUDED_HOOK_SOURCE_FILES = new Set([
-  "context-links.config",
-  "hook-state.json",
-]);
+const EXCLUDED_HOOK_SOURCE_FILES = new Set(["hook-state.json"]);
 const SOURCE_SNAPSHOT_DIR = "references/sources-snapshot";
 const HOOK_BOOTSTRAP_MARKER = "# kramme hook bundle bootstrap";
 const MARKETPLACE_MANIFEST = path.join(

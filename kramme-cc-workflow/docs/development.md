@@ -31,7 +31,7 @@ make -C kramme-cc-workflow test
 make -C kramme-cc-workflow test-bats
 
 # Run one Bats integration test file
-make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/context-links.bats
+make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/block-rm-rf.bats
 
 # Run only Node unit tests
 make -C kramme-cc-workflow test-node
@@ -60,14 +60,8 @@ make -C kramme-cc-workflow test-verbose
 # Run converter Node contracts and Bats CLI smoke tests
 make -C kramme-cc-workflow test-convert
 
-# Run only non-interactive git tests
-make -C kramme-cc-workflow test-noninteractive
-
 # Run only block-rm-rf tests
 make -C kramme-cc-workflow test-block
-
-# Run only context-links tests
-make -C kramme-cc-workflow test-context
 
 # Run only auto-format tests
 make -C kramme-cc-workflow test-format
@@ -304,7 +298,7 @@ kramme-cc-workflow/tests/
 ├── fixtures/                         # Shared parser/frontmatter cases
 ├── test_helper/
 │   ├── common.bash                   # Shared Bats utilities
-│   └── mocks/                        # Mock git, gh, and skillspector commands
+│   └── mocks/                        # Mock codex and skillspector commands
 ├── makefile.bats                      # Make target contracts
 ├── convert-plugin.bats                # Converter CLI smoke tests
 └── … other top-level *.bats           # Hook, skill, script, and guidance contracts
