@@ -274,7 +274,6 @@ MD
 	[ "$(jq -r '.hooks' "$plugin_root/.codex-plugin/plugin.json")" = "./hooks/hooks.json" ]
 	[ -f "$plugin_root/hooks/hooks.json" ]
 	[ ! -e "$plugin_root/hooks/hook-state.json" ]
-	[ ! -e "$plugin_root/hooks/context-links.config" ]
 	[ -x "$plugin_root/scripts/collect-review-diff.sh" ]
 	[ -f "$plugin_root/skills/kramme:pr:create/SKILL.md" ]
 	[ -x "$plugin_root/skills/kramme:pr:adversarial-review/scripts/run-adversarial-review.sh" ]

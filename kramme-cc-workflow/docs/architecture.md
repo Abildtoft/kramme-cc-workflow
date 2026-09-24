@@ -16,7 +16,7 @@ This repo packages a personal workflow plugin for Claude Code and includes a Cod
 | --- | --- | --- |
 | Skills | `skills/*/SKILL.md`, `skills/*/references/`, `skills/*/assets/`, `skills/*/scripts/` | User-invocable and background workflows. Skills must carry their runtime policy inside their own directory. |
 | Agents | `agents/*.md` | Specialized Claude Code subagents used by skills and PR review workflows. |
-| Hooks | `hooks/hooks.json`, `hooks/*.sh`, `hooks/lib/` | Claude Code lifecycle hooks for command safety, formatting, context links, review confirmation, and usage stats. |
+| Hooks | `hooks/hooks.json`, `hooks/*.sh`, `hooks/lib/` | Claude Code lifecycle hooks for command safety, formatting, review confirmation, and usage stats. |
 | Shared scripts | `scripts/*.sh`, `scripts/*.py`, `scripts/*.js`, `scripts/dev-server/` | Helpers shared by skills, hooks, release workflows, and browser-facing workflows. |
 | Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/` | Loads the Claude plugin, transforms components for Codex, and writes managed output under a Codex home. |
 | Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals and the local SkillOpt adapter for the `kramme:skill:review` pilot. |

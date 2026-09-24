@@ -1873,8 +1873,7 @@
       "block-rm-rf": "Blocks destructive file deletion commands and recommends `trash` instead.",
       "confirm-review-responses": "Confirms before committing review artifact files.",
       "skill-usage-stats": "Records local skill usage statistics.",
-      "auto-format": "Auto-formats code after file modifications using detected project formatter.",
-      "context-links": "Displays PR and Linear issue links at end of messages."
+      "auto-format": "Auto-formats code after file modifications using detected project formatter."
     }
   },
   "skill_contract_coverage": {
@@ -1898,7 +1897,6 @@
       "kramme-cc-workflow/skills/kramme:docs:ubiquitous-language/SKILL.md",
       "kramme-cc-workflow/skills/kramme:docs:update-agents-md/SKILL.md",
       "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:hooks:configure-links/SKILL.md",
       "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md",
       "kramme-cc-workflow/skills/kramme:nx:setup-portless/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",

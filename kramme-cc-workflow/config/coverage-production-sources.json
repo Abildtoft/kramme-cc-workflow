@@ -545,9 +545,6 @@
       "kramme-cc-workflow/hooks/confirm-review-responses.sh": [
         "kramme-cc-workflow/tests/confirm-review-responses.bats"
       ],
-      "kramme-cc-workflow/hooks/context-links.sh": [
-        "kramme-cc-workflow/tests/context-links.bats"
-      ],
       "kramme-cc-workflow/hooks/lib/check-enabled.sh": [
         "kramme-cc-workflow/tests/check-enabled.bats"
       ],

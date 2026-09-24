@@ -27,7 +27,6 @@ Enable or disable hooks in the kramme-cc-workflow plugin.
 | `confirm-review-responses` | PreToolUse | Confirms before committing configured review artifact files (see `hooks/confirm-review-artifacts.txt`) |
 | `skill-usage-stats` | UserPromptSubmit, PreToolUse | Records local skill usage statistics for slash invocations and Skill tool calls |
 | `auto-format` | PostToolUse | Auto-formats code after Write/Edit operations |
-| `context-links` | Stop | Shows PR and Linear issue links at session end |
 
 The canonical hook list is the set of names each script passes to `exit_if_hook_disabled` (grep `hooks/*.sh` for `exit_if_hook_disabled`). Treat that set as the source of truth: if a hook script registers a name not in this table, the table is stale — update it (and surface the discrepancy to the user) rather than rejecting the name.
 
@@ -75,7 +74,7 @@ Whenever you read the state file: a missing file means all hooks are enabled (pr
 
 ```json
 {
-  "disabled": ["auto-format", "context-links"]
+  "disabled": ["auto-format", "skill-usage-stats"]
 }
 ```
 

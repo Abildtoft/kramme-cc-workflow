@@ -1191,12 +1191,6 @@ test("transformer exposes documented Codex generated surface fields", () => {
         sourceDir: "/plugin/skills/kramme-hooks-toggle",
       },
       {
-        body: "Configure hook links.",
-        description: "Configures hook links.",
-        name: "kramme:hooks:configure-links",
-        sourceDir: "/plugin/skills/kramme-hooks-configure-links",
-      },
-      {
         body: "Codex instructions.",
         description: "Available in Codex.",
         name: "Codex Tool",

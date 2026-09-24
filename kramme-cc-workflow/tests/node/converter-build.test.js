@@ -112,10 +112,7 @@ test("plugin package describes the native Codex plugin manifest", () => {
     },
     mcpServers,
     root: "/plugin",
-    skills: [
-      hookControlSkill("kramme:hooks:toggle"),
-      hookControlSkill("kramme:hooks:configure-links"),
-    ],
+    skills: [hookControlSkill("kramme:hooks:toggle")],
   };
 
   const { codexPlugin } = convertClaudeToCodex(plugin);

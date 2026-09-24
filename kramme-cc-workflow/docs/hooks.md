@@ -95,31 +95,6 @@ Each scan tracks physical directory and file identities across all supplied root
 
 The hook is silent and fail-open. If Node.js is unavailable, if the payload cannot be parsed, or if recording fails, the hook returns `{}` and does not block the session.
 
-## context-links Configuration
-
-`context-links` supports org-specific configuration via environment variables or an optional config file.
-
-```bash
-# Optional: create local hook config overrides
-mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow"
-cp hooks/context-links.config.example "${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow/context-links.config"
-```
-
-You can also configure this via skill:
-
-```bash
-/kramme:hooks:configure-links show
-/kramme:hooks:configure-links CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG=acme
-/kramme:hooks:configure-links CONTEXT_LINKS_LINEAR_TEAM_KEYS=ENG,OPS,PLAT
-```
-
-Supported variables:
-
-- `CONTEXT_LINKS_LINEAR_WORKSPACE_SLUG` - Linear workspace slug used in issue URLs (default: `consensusaps`)
-- `CONTEXT_LINKS_LINEAR_TEAM_KEYS` - Comma/space separated team keys used for branch parsing (default: `WAN,HEA,MEL,POT,FIR,FEG`)
-- `CONTEXT_LINKS_LINEAR_ISSUE_REGEX` - Optional regex override for issue extraction (takes precedence over team keys)
-- `CONTEXT_LINKS_CONFIG_FILE` - Optional path to a config file (default: `${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow/context-links.config`, with legacy fallback to `${CLAUDE_PLUGIN_ROOT}/hooks/context-links.config`)
-
 ## block-rm-rf
 
 `block-rm-rf` requires both `jq` and `python3` at runtime. If either binary is missing, the hook fails closed and blocks the Bash tool call until the dependency is installed or the hook is explicitly disabled.

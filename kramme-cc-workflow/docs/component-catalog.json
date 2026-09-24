@@ -213,11 +213,6 @@
       "path": "kramme-cc-workflow/skills/kramme:git:worktree/SKILL.md"
     },
     {
-      "name": "kramme:hooks:configure-links",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:hooks:configure-links/SKILL.md"
-    },
-    {
       "name": "kramme:hooks:toggle",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md"
@@ -665,11 +660,6 @@
       "name": "confirm-review-responses",
       "event": "PreToolUse (Bash)",
       "path": "kramme-cc-workflow/hooks/confirm-review-responses.sh"
-    },
-    {
-      "name": "context-links",
-      "event": "Stop",
-      "path": "kramme-cc-workflow/hooks/context-links.sh"
     },
     {
       "name": "skill-usage-stats",
