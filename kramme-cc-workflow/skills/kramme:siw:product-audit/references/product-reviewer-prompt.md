@@ -108,6 +108,7 @@ For each finding, report:
 - **Location**: {source_file} > {section_heading}
 - **Details**: What the issue is, with quotes from the spec
 - **Severity**: Critical | Major | Minor
+- **Confidence**: 0-100, how directly the quoted spec text supports the finding
 - **Product Impact**: What goes wrong for users if this isn't addressed
 - **Recommendation**: Specific action to fix
 

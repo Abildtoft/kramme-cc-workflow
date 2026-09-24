@@ -252,7 +252,7 @@ Read `references/product-reviewer-prompt.md`, fill in the placeholders, includin
 
 ### 5.1 Collect and Classify
 
-Gather all findings from the reviewer agent. Assign final severity using:
+Gather all findings from the reviewer agent and drop findings whose confidence is below 70, the product reviewer's report threshold. Assign final severity to the rest using:
 
 | Severity | Criteria |
 | --- | --- |

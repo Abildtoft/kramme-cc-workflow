@@ -292,7 +292,7 @@ per-flow reviews.
 
 ### Step 7: Aggregate Findings
 
-Collect all findings from every per-flow review and from the cross-flow synthesis pass. Organize by severity, then by dimension:
+Collect all findings from every per-flow review and from the cross-flow synthesis pass, and drop findings whose confidence is below 70, the product reviewer's report threshold. Organize the rest by severity, then by dimension:
 
 **Critical** (broken flows, inaccessible features, data loss risk):
 
