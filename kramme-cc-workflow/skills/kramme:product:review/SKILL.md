@@ -34,16 +34,16 @@ Store parsed values:
 
 **Normalize `--focus` to a dimension label.** Map the supplied token to a dimension from `references/review-dimensions.md`:
 
-| `--focus` token | Dimension label |
-| --- | --- |
-| `navigation`, `ia` | Navigation and IA Coherence |
-| `discoverability` | Feature Discoverability |
-| `onboarding` | Onboarding and First-Run |
-| `consistency` | Cross-Flow Consistency |
-| `dead-ends` | Dead Ends and Abandoned Transitions |
-| `friction` | Repeated Friction Points |
-| `trust-safety` | Trust and Safety Cues |
-| `copy` | Copy and Expectation Management |
+| `--focus` token    | Dimension label                     |
+| ------------------ | ----------------------------------- |
+| `navigation`, `ia` | Navigation and IA Coherence         |
+| `discoverability`  | Feature Discoverability             |
+| `onboarding`       | Onboarding and First-Run            |
+| `consistency`      | Cross-Flow Consistency              |
+| `dead-ends`        | Dead Ends and Abandoned Transitions |
+| `friction`         | Repeated Friction Points            |
+| `trust-safety`     | Trust and Safety Cues               |
+| `copy`             | Copy and Expectation Management     |
 
 If the token is unrecognized, warn (`Warning: unknown --focus "<token>"; emphasizing it as free text and reviewing all dimensions.`) and proceed, passing the token through verbatim. Store the mapped label (or raw token) as `FOCUS_DIMENSION`.
 
