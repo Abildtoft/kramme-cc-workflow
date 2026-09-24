@@ -233,17 +233,17 @@ Will existing users be disrupted? Is there a migration path?
 
 ## Threshold Philosophy
 
-This review uses a higher confidence bar than brainstorming tools but lower than pure security review. Every finding must be specific and actionable — avoid vague commentary like "consider the user experience." Each finding must describe a concrete scenario and its product impact. Explicitly distinguish blockers (Critical) from polish (Suggestion).
+The invoking review applies a confidence bar higher than brainstorming tools use but lower than a pure security review, so give every finding an honest confidence rather than dropping it. Every finding must be specific and actionable — avoid vague commentary like "consider the user experience." Each finding must describe a concrete scenario and its product impact. Explicitly distinguish blockers (Critical) from polish (Suggestion).
 
 ## Confidence and Severity
 
-**Confidence (0-100), report threshold >= 70**
+**Confidence (0-100).** Report every finding with its confidence, including uncertain ones; the invoking review applies the report threshold (70 by default).
 
 **Severity:**
 
-- **Critical** (confidence >= 90 AND high user impact): Broken user flow (user gets stuck), missing error handling that causes data loss, feature is unreachable/undiscoverable
-- **Important** (confidence >= 80 OR medium user impact): Missing edge case handling, unclear copy that confuses users, incomplete flow (missing cancel/back), no empty state
-- **Suggestion** (confidence >= 70): Copy improvements, progressive disclosure refinements, minor IA improvements, discoverability enhancements
+- **Critical** (high user impact): Broken user flow (user gets stuck), missing error handling that causes data loss, feature is unreachable/undiscoverable
+- **Important** (medium user impact): Missing edge case handling, unclear copy that confuses users, incomplete flow (missing cancel/back), no empty state
+- **Suggestion** (low user impact): Copy improvements, progressive disclosure refinements, minor IA improvements, discoverability enhancements
 
 ## Output Format
 
