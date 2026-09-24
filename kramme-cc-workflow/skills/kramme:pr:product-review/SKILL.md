@@ -110,14 +110,15 @@ Launch **kramme:product-reviewer** via the Task tool with:
 - Staged local diff: `git diff --cached`
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agent should treat these as new files and review full file content)
-- Threshold instruction: always pass an explicit threshold to the agent. Use `custom_threshold` if provided in Step 1, otherwise pass 70 (e.g., "Only report findings with confidence >= {threshold}"). Do not rely on the agent's internal default.
+- No report threshold: the agent reports every finding with its confidence, and Step 6 applies `custom_threshold` (default 70).
 - Explicit instruction: **"You are in PR mode. Focus on changes introduced by this diff. Evaluate: user-value alignment, flow completeness, missing states (loading, error, empty, edge), copy quality and defaults, permission/role behavior, adjacent-flow regressions, whether the change makes a clear product call, and whether obvious non-goals or deprioritized cases are missing. If rationale is absent, infer the likely user job and business reason from the code and docs, state the assumption, and review against it instead of stopping."**
 
 ### Step 6: Validate Relevance
 
 After collecting findings from the product reviewer:
 
-- Launch **kramme:pr-relevance-validator** with all findings and the resolved `BASE_BRANCH`
+- Drop findings whose confidence is below `custom_threshold` (default 70)
+- Launch **kramme:pr-relevance-validator** with the remaining findings and the resolved `BASE_BRANCH`
 - Cross-reference each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
