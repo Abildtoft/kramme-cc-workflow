@@ -24,6 +24,32 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 - **Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`. Existing prompts and automation must remove `--auto`; no-argument calls use the canonical branch review scope, while former base-branch arguments must become explicit file or directory scopes. The replacement verifies and checkpoints scoped uncommitted input, then commits each simplification separately. Ship this command removal only in the next major release.
 
+## [0.86.0] - 2026-09-27
+
+### Added
+
+- Name the stock generated looks in frontend prompts (#938)
+- Report every finding and let callers filter (#939)
+
+### Changed
+
+- **BREAKING:** Remove noninteractive-git and context-links hooks (#952)
+- Fold retired epilogue sections out of references (#950)
+- Move report thresholds into the orchestrator (#940)
+
+### Fixed
+
+- Move product reviewer threshold to orchestrators (#951)
+- Replace finding quotas with coverage rules (#946)
+- Reconcile interview round rules with owning skills (#947)
+- Move copy/convention thresholds to orchestrators (#949)
+- Rename Red Flags check to Regeneration Triggers (#948)
+- State workflow rules with reasons, not pressure (#944)
+- Resolve conflicting caps and examples (#945)
+- Harden Linear tool guard and allow run status notes (#942)
+- Calibrate code-review reviewer agent prompts (#943)
+- Drop Red Flags framing and close epilogue lint hole (#941)
+
 ## [0.85.0] - 2026-09-22
 
 ### Added
@@ -1041,6 +1067,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.86.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.85.0...v0.86.0
 [0.85.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.84.0...v0.85.0
 [0.84.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.83.0...v0.84.0
 [0.83.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.82.0...v0.83.0
