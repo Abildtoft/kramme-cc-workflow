@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Gesso Build skills@ab68f1878dd5f19ac8dee9d55d2f4313060cac83 | MIT | https://github.com/Gesso-Build/skills | src/cli.ts; src/engine.ts; src/rules.ts; src/types.ts
+// Gesso Build skills@1c3908b7efb56ec24624436dea5c32a371eb487c | MIT | https://github.com/Gesso-Build/skills | src/cli.ts; src/engine.ts; src/rules.ts; src/types.ts
 // node-html-parser@7.0.1 | MIT | https://github.com/taoqf/node-fast-html-parser | dist/back.js; dist/index.js; dist/matcher.js; dist/nodes/comment.js; dist/nodes/html.js; dist/nodes/node.js; dist/nodes/text.js; dist/nodes/type.js; dist/parse.js; dist/valid.js; dist/void-tag.js
 // css-select@5.2.2 | BSD-2-Clause | https://github.com/fb55/css-select | lib/attributes.js; lib/compile.js; lib/general.js; lib/index.js; lib/pseudo-selectors/aliases.js; lib/pseudo-selectors/filters.js; lib/pseudo-selectors/index.js; lib/pseudo-selectors/pseudos.js; lib/pseudo-selectors/subselects.js; lib/sort.js
 // boolbase@1.0.0 | ISC | https://github.com/fb55/boolbase | index.js
@@ -12713,44 +12713,83 @@ function tagAllows(tagOrAttrs, ruleId) {
 function stripCssComments(css) {
   return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
+var CSS_COMMENT_MARKER_RE = /--__kramme_slop_comment_(\d+):0;/g;
+function rewriteKeepingCssComments(css, rewrite) {
+  const comments = [];
+  const protectedCss = css.replace(/\/\*[\s\S]*?\*\//g, (comment) => {
+    const index = comments.push(comment) - 1;
+    return `--__kramme_slop_comment_${index}:0;`;
+  });
+  return rewrite(protectedCss).replace(
+    CSS_COMMENT_MARKER_RE,
+    (_marker, index) => comments[Number(index)] ?? "",
+  );
+}
+function splitCommentMarkers(body) {
+  return {
+    markers: (body.match(CSS_COMMENT_MARKER_RE) ?? []).join(""),
+    decls: body.replace(CSS_COMMENT_MARKER_RE, ""),
+  };
+}
+function openingTagAt(html, index) {
+  const start = html.lastIndexOf("<", index);
+  const end = html.indexOf(">", index);
+  return start < 0 || end < 0 ? "" : html.slice(start, end + 1);
+}
+function unlessAllowed(ruleId, predicate) {
+  return (decls, context) =>
+    !declsAllow(decls, ruleId) && predicate(decls, context);
+}
 function eachStyleAndInline(html, predicate) {
   let n = 0;
   for (const block of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
     for (const rule of stripCssComments(block[1]).matchAll(
-      /[^{}]+\{([^{}]*)\}/g,
+      /([^{}]+)\{([^{}]*)\}/g,
     )) {
-      if (predicate(rule[1])) n++;
+      if (predicate(rule[2], () => rule[1])) n++;
     }
   }
   for (const inline of html.matchAll(/\sstyle\s*=\s*"([^"]*)"/gi)) {
-    if (predicate(inline[1])) n++;
+    if (predicate(inline[1], () => openingTagAt(html, inline.index ?? 0))) n++;
   }
   return n;
 }
 function rewriteCssGroups(html, predicate, transform) {
   let out = html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (full, css) => {
-    const comments = [];
-    const protectedCss = css.replace(/\/\*[\s\S]*?\*\//g, (comment) => {
-      const index = comments.push(comment) - 1;
-      return `--__kramme_slop_comment_${index}:0;`;
-    });
-    const fixedProtected = protectedCss.replace(
-      /([^{}]+)\{([^{}]*)\}/g,
-      (rule, sel, body) =>
-        predicate(body.replace(/--__kramme_slop_comment_\d+:0;/g, ""))
+    const fixed = rewriteKeepingCssComments(css, (protectedCss) =>
+      protectedCss.replace(/([^{}]+)\{([^{}]*)\}/g, (rule, sel, body) =>
+        predicate(body.replace(CSS_COMMENT_MARKER_RE, ""), () =>
+          sel.replace(CSS_COMMENT_MARKER_RE, ""),
+        )
           ? `${sel}{${transform(body)}}`
           : rule,
-    );
-    const fixed = fixedProtected.replace(
-      /--__kramme_slop_comment_(\d+):0;/g,
-      (_marker, index) => comments[Number(index)] ?? "",
+      ),
     );
     return fixed === css ? full : full.replace(css, () => fixed);
   });
-  out = out.replace(/\sstyle\s*=\s*"([^"]*)"/gi, (full, val) =>
-    predicate(val) ? ` style="${transform(val)}"` : full,
+  out = out.replace(/\sstyle\s*=\s*"([^"]*)"/gi, (full, val, offset, whole) =>
+    predicate(val, () => openingTagAt(whole, offset))
+      ? ` style="${transform(val)}"`
+      : full,
   );
   return out;
+}
+function bodyAllows(html, ruleId) {
+  const bodyTag = html.match(/<body\b[^>]*>/i)?.[0];
+  if (bodyTag && tagAllows(bodyTag, ruleId)) return true;
+  const bodyStyle = bodyTag?.match(/\sstyle\s*=\s*"([^"]*)"/i)?.[1];
+  if (bodyStyle && declsAllow(bodyStyle, ruleId)) return true;
+  for (const block of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    for (const rule of stripCssComments(block[1]).matchAll(
+      /([^{}]+)\{([^{}]*)\}/g,
+    )) {
+      const selectsBody = rule[1]
+        .split(",")
+        .some((selector) => selector.trim().toLowerCase() === "body");
+      if (selectsBody && declsAllow(rule[2], ruleId)) return true;
+    }
+  }
+  return false;
 }
 var PROTECTED_SPAN_RE =
   /<style\b[\s\S]*?<\/style>|<script\b[\s\S]*?<\/script>|<!--[\s\S]*?-->/gi;
@@ -13862,23 +13901,25 @@ function fixGridSpacerVoid(html) {
   const classes = gridSpacerVoidClasses(html);
   if (classes.size === 0) return html;
   return html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (full, css) => {
-    const clean = stripCssComments(css);
-    const fixed = clean.replace(/([^{}]+)\{([^{}]*)\}/g, (rule, sel, body) => {
-      const selClasses = [...sel.matchAll(/\.([A-Za-z0-9_-]+)/g)].map(
-        (m) => m[1],
-      );
-      if (
-        !selClasses.some((c) => classes.has(c)) ||
-        fixedAutoRowPx(body) === null
-      )
-        return rule;
-      const next = body.replace(
-        /grid-auto-rows\s*:\s*[^;}]+/i,
-        "grid-auto-rows: auto",
-      );
-      return next === body ? rule : `${sel}{${next}}`;
-    });
-    return fixed === clean ? full : full.replace(css, () => fixed);
+    const fixed = rewriteKeepingCssComments(css, (protectedCss) =>
+      protectedCss.replace(/([^{}]+)\{([^{}]*)\}/g, (rule, sel, body) => {
+        const { markers, decls } = splitCommentMarkers(body);
+        const selClasses = [...sel.matchAll(/\.([A-Za-z0-9_-]+)/g)].map(
+          (m) => m[1],
+        );
+        if (
+          !selClasses.some((c) => classes.has(c)) ||
+          fixedAutoRowPx(decls) === null
+        )
+          return rule;
+        const next = decls.replace(
+          /grid-auto-rows\s*:\s*[^;}]+/i,
+          "grid-auto-rows: auto",
+        );
+        return next === decls ? rule : `${sel}{${markers}${next}}`;
+      }),
+    );
+    return fixed === css ? full : full.replace(css, () => fixed);
   });
 }
 var ZERO_LEN_RE = /^0(?:px|rem|em|%|vw|vh)?$/i;
@@ -14012,20 +14053,22 @@ function fixWrapPaddingCollision(html) {
   const classes = wrapPaddingCollisionClasses(html);
   if (classes.size === 0) return html;
   return html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (full, css) => {
-    const clean = stripCssComments(css);
-    const fixed = clean.replace(/([^{}]+)\{([^{}]*)\}/g, (rule, sel, body) => {
-      const selClasses = [...sel.matchAll(/\.([A-Za-z0-9_-]+)/g)].map(
-        (m) => m[1],
-      );
-      if (
-        !selClasses.some((c) => classes.has(c)) ||
-        !isInlineZeroPaddingBody(body)
-      )
-        return rule;
-      const next = stripHorizontalPadding(body);
-      return next === body ? rule : `${sel}{${next}}`;
-    });
-    return fixed === clean ? full : full.replace(css, () => fixed);
+    const fixed = rewriteKeepingCssComments(css, (protectedCss) =>
+      protectedCss.replace(/([^{}]+)\{([^{}]*)\}/g, (rule, sel, body) => {
+        const { markers, decls } = splitCommentMarkers(body);
+        const selClasses = [...sel.matchAll(/\.([A-Za-z0-9_-]+)/g)].map(
+          (m) => m[1],
+        );
+        if (
+          !selClasses.some((c) => classes.has(c)) ||
+          !isInlineZeroPaddingBody(decls)
+        )
+          return rule;
+        const next = stripHorizontalPadding(decls);
+        return next === decls ? rule : `${sel}{${markers}${next}}`;
+      }),
+    );
+    return fixed === css ? full : full.replace(css, () => fixed);
   });
 }
 var DISPLAY_CONTENTS_DECL = /display\s*:\s*contents\s*;?/gi;
@@ -14185,7 +14228,11 @@ function isPublicationMastheadBlock(el) {
 function findPublicationMastheadBlocks(root) {
   const matched = root
     .querySelectorAll(MASTHEAD_BLOCK_TAGS)
-    .filter(isPublicationMastheadBlock);
+    .filter(
+      (el) =>
+        isPublicationMastheadBlock(el) &&
+        !allowsUpTo(el, "publication-masthead-block", root),
+    );
   const set = new Set(matched);
   return matched.filter((el) => {
     for (let p = el.parentNode; p; p = p.parentNode)
@@ -14343,15 +14390,17 @@ function countRedundantBorders(html) {
 }
 function fixRedundantBorders(html) {
   let out = html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (full, css) => {
-    const clean = stripCssComments(css);
-    const fixed = clean.replace(STYLE_RULE_RE, (rule, sel, body) =>
-      !borderSkipSelector(sel) &&
-      !declsAllow(body, "redundant-border") &&
-      groupHasRedundantBorder(body)
-        ? `${sel}{${stripBorderDecls(body)}}`
-        : rule,
+    const fixed = rewriteKeepingCssComments(css, (protectedCss) =>
+      protectedCss.replace(STYLE_RULE_RE, (rule, sel, body) => {
+        const { markers, decls } = splitCommentMarkers(body);
+        return !borderSkipSelector(sel.replace(CSS_COMMENT_MARKER_RE, "")) &&
+          !declsAllow(decls, "redundant-border") &&
+          groupHasRedundantBorder(decls)
+          ? `${sel}{${markers}${stripBorderDecls(decls)}}`
+          : rule;
+      }),
     );
-    return fixed === clean ? full : full.replace(css, () => fixed);
+    return fixed === css ? full : full.replace(css, () => fixed);
   });
   out = out.replace(INLINE_STYLE_TAG_RE, (full, pre, val, post) =>
     !borderSkipTag(full) &&
@@ -14473,6 +14522,7 @@ function findRowCards(root, classMap) {
   for (const rows of repeatingRowSets(root, 3)) {
     const carded = rows.filter(
       (r) =>
+        !allowsUpTo(r, "row-as-card", root) &&
         rowMediaCount(r) >= 1 &&
         textRuns(r).length >= 2 &&
         declsHaveCardSurface(elDecls(r, classMap)),
@@ -14972,9 +15022,24 @@ function pageBackgroundHSL(html) {
   }
   return null;
 }
+var FONT_SHORTHAND_TAIL_RE =
+  /[\d.]+(?:px|pt|em|rem|%|vw|vh|ch)\s*(?:\/\s*[\d.]+[a-z%]*)?\s+([^;}]+)/i;
+function fontFamilyLists(html) {
+  const out = [];
+  eachStyleAndInline(html, (decls) => {
+    for (const m of decls.matchAll(/font-family\s*:\s*([^;}]+)/gi))
+      out.push(m[1]);
+    for (const m of decls.matchAll(/(?<![-a-z])font\s*:\s*([^;}]+)/gi)) {
+      const tail = m[1].match(FONT_SHORTHAND_TAIL_RE)?.[1];
+      if (tail) out.push(tail);
+    }
+    return false;
+  });
+  return out;
+}
 function pageHasSerifDisplay(html) {
-  for (const m of html.matchAll(/font-family\s*:\s*([^;}"]+)/gi)) {
-    const v = m[1].toLowerCase();
+  for (const list of fontFamilyLists(html)) {
+    const v = list.toLowerCase();
     if (
       /\bserif\b/.test(v) &&
       !/sans-serif\s*$/.test(v.trim()) &&
@@ -14988,8 +15053,8 @@ var OVERUSED_FONT_RE =
   /\b(?:Inter|Space\s+Grotesk|Geist|Instrument\s+Serif)\b/gi;
 function findOverusedFonts(html) {
   const found = /* @__PURE__ */ new Set();
-  for (const m of html.matchAll(/font-family\s*:\s*([^;}]+)/gi)) {
-    for (const f of m[1].matchAll(OVERUSED_FONT_RE))
+  for (const list of fontFamilyLists(html)) {
+    for (const f of list.matchAll(OVERUSED_FONT_RE))
       found.add(f[0].replace(/\s+/g, " "));
   }
   for (const m of html.matchAll(/fonts\.googleapis\.com\/css2?\?[^"']*/gi)) {
@@ -15019,17 +15084,16 @@ var GENERIC_FAMILIES = /* @__PURE__ */ new Set([
 ]);
 function declaredFamilies(html) {
   const out = /* @__PURE__ */ new Set();
-  let decls = 0;
-  for (const m of html.matchAll(/font-family\s*:\s*([^;}]+)/gi)) {
-    decls++;
+  const lists = fontFamilyLists(html);
+  for (const list of lists) {
     const first =
-      splitTopLevelCommas(m[1])[0]
+      splitTopLevelCommas(list)[0]
         ?.trim()
         .replace(/^["']|["']$/g, "") ?? "";
     if (first && !GENERIC_FAMILIES.has(first.toLowerCase()))
       out.add(first.toLowerCase());
   }
-  return decls >= 2 ? [...out] : ["", ""];
+  return lists.length >= 2 ? [...out] : ["", ""];
 }
 function trackingEm(value) {
   const m = value.match(/(-?[\d.]+)\s*(em|rem|px)/i);
@@ -15121,6 +15185,71 @@ function groupIsOverRounded(decls) {
   if (!hasRealFill(decls)) return false;
   const r = cardRadiusPx(decls);
   return r !== null && r >= 40 && r <= 120;
+}
+var CONTROL_CLASS_TOKENS = /* @__PURE__ */ new Set([
+  "btn",
+  "button",
+  "pill",
+  "chip",
+  "badge",
+  "tag",
+  "cta",
+]);
+var SURFACE_CLASS_TOKENS = /* @__PURE__ */ new Set([
+  "card",
+  "panel",
+  "tile",
+  "surface",
+]);
+function looksLikeControl(tagName, classTokens, attrs) {
+  const bases = classTokens.map((token) => token.toLowerCase().split("--")[0]);
+  if (bases.some((base) => SURFACE_CLASS_TOKENS.has(base))) return false;
+  if (bases.some((base) => CONTROL_CLASS_TOKENS.has(base))) return true;
+  if (tagName === "a" || tagName === "button") return true;
+  if (
+    tagName === "input" &&
+    /\btype\s*=\s*["']?(?:button|submit|reset)\b/i.test(attrs)
+  )
+    return true;
+  return /\brole\s*=\s*["']?button\b/i.test(attrs);
+}
+function selectorTargetsControl(selectorList) {
+  const selectors = selectorList
+    .split(",")
+    .map((selector) => selector.trim())
+    .filter(Boolean);
+  return (
+    selectors.length > 0 &&
+    selectors.every((selector) => {
+      const compound =
+        selector
+          .split(/[\s>+~]+/)
+          .filter(Boolean)
+          .pop() ?? "";
+      const plain = compound.replace(/::?[a-z-]+(?:\([^)]*\))?/gi, "");
+      const tagName = plain.match(/^[a-z][a-z0-9-]*/i)?.[0].toLowerCase() ?? "";
+      const classTokens = [...plain.matchAll(/\.([a-z0-9_-]+)/gi)].map(
+        (m) => m[1],
+      );
+      const attrs = [...plain.matchAll(/\[([^\]]*)\]/g)]
+        .map((m) => m[1])
+        .join(" ");
+      return looksLikeControl(tagName, classTokens, attrs);
+    })
+  );
+}
+function tagIsControl(tag) {
+  const tagName = tag.match(/^<\s*([a-z][a-z0-9-]*)/i)?.[1].toLowerCase() ?? "";
+  const cls = tag.match(/\bclass\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+  const classTokens = (cls?.[1] ?? cls?.[2] ?? "").split(/\s+/).filter(Boolean);
+  return looksLikeControl(tagName, classTokens, tag);
+}
+function groupIsOverRoundedCard(decls, context) {
+  if (!groupIsOverRounded(decls)) return false;
+  const trimmed = context().trim();
+  return trimmed.startsWith("<")
+    ? !tagIsControl(trimmed)
+    : !selectorTargetsControl(trimmed);
 }
 function fixOverRounded(decls) {
   if (!groupIsOverRounded(decls)) return decls;
@@ -15255,6 +15384,7 @@ function countHoverScaleImage(html) {
     for (const rule of stripCssComments(block[1]).matchAll(STYLE_RULE_RE)) {
       const sel = rule[1];
       if (!/:hover/i.test(sel)) continue;
+      if (declsAllow(rule[2], "hover-scale-image")) continue;
       if (
         !/(?:^|[\s,.>+~#-])(?:img|image|thumb|photo|media|cover|card)/i.test(
           sel,
@@ -15384,10 +15514,18 @@ var FLAGSHIP_RULES = [
     tier: "gate",
     severity: 1,
     detect: (html) =>
-      Array.from({ length: eachStyleAndInline(html, groupHasIndigo) }, () => ({
-        ruleId: "indigo-accent",
-        detail: "Tailwind indigo/violet hex",
-      })),
+      Array.from(
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("indigo-accent", groupHasIndigo),
+          ),
+        },
+        () => ({
+          ruleId: "indigo-accent",
+          detail: "Tailwind indigo/violet hex",
+        }),
+      ),
   },
   {
     id: "heavy-box-shadow",
@@ -16276,14 +16414,23 @@ var FLAGSHIP_RULES = [
     severity: 2,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, (d) => countDarkGlow(d) > 0) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("dark-glow", (d) => countDarkGlow(d) > 0),
+          ),
+        },
         () => ({
           ruleId: "dark-glow",
           detail: "saturated wide-blur glow shadow",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, (d) => countDarkGlow(d) > 0, stripDarkGlow),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("dark-glow", (d) => countDarkGlow(d) > 0),
+        stripDarkGlow,
+      ),
   },
   {
     id: "purple-violet-wash",
@@ -16296,7 +16443,12 @@ var FLAGSHIP_RULES = [
     sanctionedBy: (_styleRef, ctx) => ctx?.replicate === true,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasVioletWash) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("purple-violet-wash", groupHasVioletWash),
+          ),
+        },
         () => ({
           ruleId: "purple-violet-wash",
           detail: "saturated violet-band color",
@@ -16313,7 +16465,12 @@ var FLAGSHIP_RULES = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasSafeGreen) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("safe-green-default", groupHasSafeGreen),
+          ),
+        },
         () => ({
           ruleId: "safe-green-default",
           detail: "Tailwind emerald accent hex",
@@ -16337,7 +16494,9 @@ var FLAGSHIP_RULES = [
         bg.s >= 0.1 &&
         bg.s <= 0.5 &&
         bg.l >= 0.82;
-      return creamy && pageHasSerifDisplay(html)
+      return creamy &&
+        pageHasSerifDisplay(html) &&
+        !bodyAllows(html, "cream-default-wash")
         ? [
             {
               ruleId: "cream-default-wash",
@@ -16388,14 +16547,23 @@ var FLAGSHIP_RULES = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasCrushedTracking) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("crushed-tracking", groupHasCrushedTracking),
+          ),
+        },
         () => ({
           ruleId: "crushed-tracking",
           detail: "letter-spacing <= -0.05em",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, groupHasCrushedTracking, fixCrushedTracking),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("crushed-tracking", groupHasCrushedTracking),
+        fixCrushedTracking,
+      ),
   },
   {
     id: "wide-body-tracking",
@@ -16407,14 +16575,23 @@ var FLAGSHIP_RULES = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasWideBodyTracking) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("wide-body-tracking", groupHasWideBodyTracking),
+          ),
+        },
         () => ({
           ruleId: "wide-body-tracking",
           detail: "letter-spacing >= 0.08em on mixed-case text",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, groupHasWideBodyTracking, fixWideBodyTracking),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("wide-body-tracking", groupHasWideBodyTracking),
+        fixWideBodyTracking,
+      ),
   },
   {
     id: "tight-line-height",
@@ -16426,14 +16603,23 @@ var FLAGSHIP_RULES = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasTightLineHeight) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("tight-line-height", groupHasTightLineHeight),
+          ),
+        },
         () => ({
           ruleId: "tight-line-height",
           detail: "line-height < 1.25 at body size",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, groupHasTightLineHeight, fixTightLineHeight),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("tight-line-height", groupHasTightLineHeight),
+        fixTightLineHeight,
+      ),
   },
   {
     id: "tiny-body-text",
@@ -16445,14 +16631,23 @@ var FLAGSHIP_RULES = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasTinyBodyText) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("tiny-body-text", groupHasTinyBodyText),
+          ),
+        },
         () => ({
           ruleId: "tiny-body-text",
           detail: "font-size < 11px on mixed-case text",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, groupHasTinyBodyText, fixTinyBodyText),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("tiny-body-text", groupHasTinyBodyText),
+        fixTinyBodyText,
+      ),
   },
   {
     id: "monospace-body",
@@ -16479,13 +16674,23 @@ var FLAGSHIP_RULES = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupIsOverRounded) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("over-rounded-card", groupIsOverRoundedCard),
+          ),
+        },
         () => ({
           ruleId: "over-rounded-card",
           detail: "border-radius >= 40px on a filled card",
         }),
       ),
-    fix: (html) => rewriteCssGroups(html, groupIsOverRounded, fixOverRounded),
+    fix: (html) =>
+      rewriteCssGroups(
+        html,
+        unlessAllowed("over-rounded-card", groupIsOverRoundedCard),
+        fixOverRounded,
+      ),
   },
   {
     id: "ghost-card",
@@ -16497,13 +16702,23 @@ var FLAGSHIP_RULES = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupIsGhostCard) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("ghost-card", groupIsGhostCard),
+          ),
+        },
         () => ({
           ruleId: "ghost-card",
           detail: "hairline border + wide soft shadow",
         }),
       ),
-    fix: (html) => rewriteCssGroups(html, groupIsGhostCard, stripGhostShadow),
+    fix: (html) =>
+      rewriteCssGroups(
+        html,
+        unlessAllowed("ghost-card", groupIsGhostCard),
+        stripGhostShadow,
+      ),
   },
   {
     id: "nested-cards",
@@ -16558,14 +16773,23 @@ var FLAGSHIP_RULES = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, (d) => countBounceEasing(d) > 0) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("bounce-easing", (d) => countBounceEasing(d) > 0),
+          ),
+        },
         () => ({
           ruleId: "bounce-easing",
           detail: "overshoot cubic-bezier",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, (d) => countBounceEasing(d) > 0, fixBounceEasing),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("bounce-easing", (d) => countBounceEasing(d) > 0),
+        fixBounceEasing,
+      ),
   },
   {
     id: "layout-prop-animation",
@@ -16669,7 +16893,7 @@ var FLAGSHIP_RULES = [
 ];
 
 // cli.ts
-var VERSION = "0.4.2-kramme.1";
+var VERSION = "0.4.3-kramme.1";
 var HTML_FILE_RE = /\.html?$/i;
 var MAX_HTML_FILES = 256;
 var MAX_HTML_FILE_BYTES = 512 * 1024;

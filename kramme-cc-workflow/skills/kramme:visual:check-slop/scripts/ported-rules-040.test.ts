@@ -1,5 +1,5 @@
 // Derived from Gesso Build's src/__tests__/ported-rules-040.test.ts.
-// Upstream: https://github.com/Gesso-Build/skills/blob/ab68f1878dd5f19ac8dee9d55d2f4313060cac83/src/__tests__/ported-rules-040.test.ts
+// Upstream: https://github.com/Gesso-Build/skills/blob/1c3908b7efb56ec24624436dea5c32a371eb487c/src/__tests__/ported-rules-040.test.ts
 // Copyright (c) 2026 Gesso Build, Inc.
 // Licensed under MIT; see ../references/THIRD_PARTY_NOTICES.md.
 // The 14 rules ported from the production registry in 0.4.0: print-chrome

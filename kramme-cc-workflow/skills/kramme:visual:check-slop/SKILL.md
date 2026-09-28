@@ -8,7 +8,7 @@ user-invocable: true
 
 <!--
 Derived from Gesso Build's skills/anti-slop/SKILL.md.
-Upstream: https://github.com/Gesso-Build/skills/blob/ab68f1878dd5f19ac8dee9d55d2f4313060cac83/skills/anti-slop/SKILL.md
+Upstream: https://github.com/Gesso-Build/skills/blob/1c3908b7efb56ec24624436dea5c32a371eb487c/skills/anti-slop/SKILL.md
 Copyright (c) 2026 Gesso Build, Inc.
 Licensed under MIT; see references/THIRD_PARTY_NOTICES.md.
 -->

@@ -30,7 +30,7 @@ The wizard template in `kramme:workflow:wizard` is adapted from [`mattpocock/ski
 
 ## Gesso Build — `anti-slop`
 
-`kramme:visual:check-slop` vendors and adapts Gesso Build's MIT-licensed anti-slop detector, 73-rule registry, rule catalog, and tests at commit [`ab68f1878dd5f19ac8dee9d55d2f4313060cac83`](https://github.com/Gesso-Build/skills/tree/ab68f1878dd5f19ac8dee9d55d2f4313060cac83). Its offline runtime also bundles attributed parser dependencies. The complete Gesso and dependency notices are retained in `kramme-cc-workflow/skills/kramme:visual:check-slop/references/THIRD_PARTY_NOTICES.md`.
+`kramme:visual:check-slop` vendors and adapts Gesso Build's MIT-licensed anti-slop detector, 73-rule registry, rule catalog, and tests at commit [`1c3908b7efb56ec24624436dea5c32a371eb487c`](https://github.com/Gesso-Build/skills/tree/1c3908b7efb56ec24624436dea5c32a371eb487c). Its offline runtime also bundles attributed parser dependencies. The complete Gesso and dependency notices are retained in `kramme-cc-workflow/skills/kramme:visual:check-slop/references/THIRD_PARTY_NOTICES.md`.
 
 ## Wikipedia contributors
 

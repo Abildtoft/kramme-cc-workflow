@@ -1,4 +1,4 @@
-// Gesso Build skills@ab68f1878dd5f19ac8dee9d55d2f4313060cac83 | MIT | https://github.com/Gesso-Build/skills | src/cli.ts; src/engine.ts; src/rules.ts; src/types.ts
+// Gesso Build skills@1c3908b7efb56ec24624436dea5c32a371eb487c | MIT | https://github.com/Gesso-Build/skills | src/cli.ts; src/engine.ts; src/rules.ts; src/types.ts
 // node-html-parser@7.0.1 | MIT | https://github.com/taoqf/node-fast-html-parser | dist/back.js; dist/index.js; dist/matcher.js; dist/nodes/comment.js; dist/nodes/html.js; dist/nodes/node.js; dist/nodes/text.js; dist/nodes/type.js; dist/parse.js; dist/valid.js; dist/void-tag.js
 // css-select@5.2.2 | BSD-2-Clause | https://github.com/fb55/css-select | lib/attributes.js; lib/compile.js; lib/general.js; lib/index.js; lib/pseudo-selectors/aliases.js; lib/pseudo-selectors/filters.js; lib/pseudo-selectors/index.js; lib/pseudo-selectors/pseudos.js; lib/pseudo-selectors/subselects.js; lib/sort.js
 // boolbase@1.0.0 | ISC | https://github.com/fb55/boolbase | index.js
