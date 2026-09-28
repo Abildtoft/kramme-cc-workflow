@@ -22,7 +22,7 @@ Do NOT use for dashboards — CSS Grid card layouts with Chart.js look better fo
 
 ```html
 <script type="module">
-  import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs";
+  import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2/dist/mermaid-layout-elk.esm.min.mjs";
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
   mermaid.registerLayoutLoaders(elkLayouts);
@@ -31,6 +31,8 @@ Do NOT use for dashboards — CSS Grid card layouts with Chart.js look better fo
 ```
 
 Without the ELK import and registration, `layout: 'elk'` silently falls back to dagre. Only import ELK when you actually need it — it adds significant bundle weight. Most simple diagrams render fine with dagre.
+
+Keep the add-on on its `@0.2` line, which is the one built for Mermaid 11. Its 1.x releases require Mermaid 12, and an unpinned import now resolves to 1.x, which breaks against `mermaid@11`.
 
 ### Deep Theming
 
@@ -77,7 +79,7 @@ Add `look: 'handDrawn'` for a sketchy, whiteboard-style aesthetic. Combines well
 
 ```html
 <script type="module">
-  import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk/dist/mermaid-layout-elk.esm.min.mjs";
+  import elkLayouts from "https://cdn.jsdelivr.net/npm/@mermaid-js/layout-elk@0.2/dist/mermaid-layout-elk.esm.min.mjs";
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
   mermaid.registerLayoutLoaders(elkLayouts);
