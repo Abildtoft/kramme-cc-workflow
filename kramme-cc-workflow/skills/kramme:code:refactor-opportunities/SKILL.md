@@ -116,7 +116,7 @@ Each agent must:
 5. **Filter against `KNOWN_ADRS`.** For each finding, check whether it contradicts an accepted ADR. If the contradiction is theoretical (the ADR rejected this exact refactor and no concrete new evidence has emerged), drop the finding silently — the ADR is decision-of-record. Surface as `_"contradicts ADR-NNNN — but worth reopening because <concrete new evidence>"_` only when real friction has accumulated since the ADR was accepted. The default is silent skip; the annotation is the exception.
 6. Assign final severity. Promote findings that appear in 3+ locations to at least medium.
 7. Group related findings into **themes** — patterns that share a root cause or would benefit from a coordinated fix.
-8. **Rule of 500 — automation trigger.** For any theme whose combined blast radius exceeds **500 lines**, mark the theme as an automation candidate and recommend a codemod, AST transform, or batch refactor tool instead of manual per-file fixes. Addy's rule: _"If a refactoring would touch more than 500 lines, invest in automation."_ Manual edits at that scale are error-prone and review-hostile.
+8. **Rule of 500 — automation trigger.** For any theme whose combined blast radius exceeds **500 lines**, mark the theme as an automation candidate and recommend a codemod, AST transform, or batch refactor tool instead of manual per-file fixes. Hand edits at that size drift between call sites and produce a diff too large to review line by line.
 9. Determine a **recommended refactor order** considering:
    - High-severity items first
    - Quick wins (small blast radius, high clarity gain) early
