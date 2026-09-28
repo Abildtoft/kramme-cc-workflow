@@ -249,6 +249,111 @@ detect_conductor_port_range() {
   esac
 }
 
+detect_context_ignored() {
+  local root
+  local rule
+  local status=0
+
+  root="$(detect_repo_root)"
+  if [ -z "$root" ]; then
+    echo "not-a-git-repo"
+    return
+  fi
+  # The trailing slash lets a directory-only rule match before .context/ exists.
+  rule="$(git -C "$root" check-ignore -v -- .context/ 2> /dev/null)" || status=$?
+  if [ "$status" -eq 0 ]; then
+    rule="${rule%%$'\t'*}"
+    echo "yes${rule:+ ($rule)}"
+  elif [ "$status" -eq 1 ]; then
+    echo "no"
+  else
+    echo "unknown (git check-ignore failed)"
+  fi
+}
+
+codex_home_dir() {
+  if [ -n "${CODEX_HOME:-}" ]; then
+    printf '%s\n' "$CODEX_HOME"
+  elif [ -n "${HOME:-}" ]; then
+    printf '%s\n' "$HOME/.codex"
+  fi
+}
+
+# Records from converter releases that copied skills into the Codex home.
+detect_codex_legacy_records() {
+  local home
+  local found=""
+
+  home="$(codex_home_dir)"
+  if [ -z "$home" ]; then
+    echo "not checked (HOME and CODEX_HOME unset)"
+    return
+  fi
+  if [ -e "$home/.kramme-install-state.json" ]; then
+    found=".kramme-install-state.json"
+  fi
+  if [ -d "$home/.kramme-install-manifests" ]; then
+    found="${found:+$found, }.kramme-install-manifests/"
+  fi
+  if [ -n "$found" ]; then
+    echo "present ($found in $home)"
+  else
+    echo "none"
+  fi
+}
+
+# The tool-map block older converter releases wrote into the Codex AGENTS.md,
+# delimited by the same markers the converter's legacy cleanup looks for.
+detect_codex_tool_map() {
+  local home
+  local file
+  local line
+  local state="absent"
+  local start_marker="<!-- BEGIN KRAMME CODEX TOOL MAP -->"
+  local end_marker="<!-- END KRAMME CODEX TOOL MAP -->"
+
+  home="$(codex_home_dir)"
+  if [ -z "$home" ]; then
+    echo "not checked (HOME and CODEX_HOME unset)"
+    return
+  fi
+  file="$home/AGENTS.md"
+  if [ ! -e "$file" ]; then
+    echo "absent"
+    return
+  fi
+  if [ ! -r "$file" ]; then
+    echo "unknown (unreadable: $file)"
+    return
+  fi
+  while IFS= read -r line || [ -n "$line" ]; do
+    if [ "$state" = "absent" ]; then
+      case "$line" in
+        *"$start_marker"*)
+          state="incomplete"
+          line="${line#*"$start_marker"}"
+          ;;
+        *)
+          continue
+          ;;
+      esac
+    fi
+    case "$line" in
+      *"$end_marker"*)
+        state="present"
+        break
+        ;;
+    esac
+  done < "$file"
+  if [ "$state" = "present" ]; then
+    echo "present ($file)"
+  elif [ "$state" = "incomplete" ]; then
+    echo "incomplete: start marker without end ($file)"
+  else
+    echo "absent"
+  fi
+}
+
 detect_connector_note() {
   local name="$1"
   local hint="$2"
@@ -322,6 +427,8 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   printf ','
   repo_value ".context" "$(detect_file ".context")"
   printf ','
+  repo_value "contextIgnored" "$(detect_context_ignored)"
+  printf ','
   repo_value ".conductor/settings.toml" "$(detect_file ".conductor/settings.toml")"
   printf ','
   repo_value "conductor.json" "$(detect_file "conductor.json")"
@@ -329,6 +436,10 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   repo_value ".worktreeinclude" "$(detect_file ".worktreeinclude")"
   printf ','
   repo_value "hookConfig" "$(detect_file "${PLUGIN_ROOT}/hooks/hooks.json")"
+  printf ','
+  repo_value "codexLegacyRecords" "$(detect_codex_legacy_records)"
+  printf ','
+  repo_value "codexToolMapBlock" "$(detect_codex_tool_map)"
   printf ']'
   printf '}\n'
   exit 0
@@ -373,7 +484,10 @@ repo_value "Root path" "$(detect_env_or_not_set CONDUCTOR_ROOT_PATH)"
 repo_value "Default branch" "$(detect_env_or_not_set CONDUCTOR_DEFAULT_BRANCH)"
 repo_value "Port range" "$(detect_conductor_port_range)"
 repo_value ".context" "$(detect_file ".context")"
+repo_value ".context ignored" "$(detect_context_ignored)"
 repo_value ".conductor/settings.toml" "$(detect_file ".conductor/settings.toml")"
 repo_value "conductor.json" "$(detect_file "conductor.json")"
 repo_value ".worktreeinclude" "$(detect_file ".worktreeinclude")"
 repo_value "Hook config" "$(detect_file "${PLUGIN_ROOT}/hooks/hooks.json")"
+repo_value "Codex legacy records" "$(detect_codex_legacy_records)"
+repo_value "Codex tool map block" "$(detect_codex_tool_map)"
