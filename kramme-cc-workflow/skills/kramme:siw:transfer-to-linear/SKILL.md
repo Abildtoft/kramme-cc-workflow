@@ -40,9 +40,9 @@ If a positional argument is an existing directory, treat it as `siw-dir`. If it 
 1. Verify the SIW directory exists.
 2. Verify at least one permanent spec file or `OPEN_ISSUES_OVERVIEW.md` exists under the SIW directory. If not found, stop and suggest `/kramme:siw:init`.
 3. Verify Linear tools are available:
-   - Read tools: list teams, list projects, list milestones, list issue labels, list issue statuses. Current issue and Document body reads are required before any rewrite-only update to an existing Linear record. Current issue body reads are also required for the existing-Linear side of the duplicate-content preflight when existing project issues are present; if body reads are unavailable, the plan must say that only in-batch content duplicates could be checked.
+   - Read tools: list teams, list projects, list milestones, list issue labels, list issue statuses, and the connected workspace when a workspace read tool exists (a Linear connection is bound to one workspace). Current issue and Document body reads are required before any rewrite-only update to an existing Linear record. Current issue body reads are also required for the existing-Linear side of the duplicate-content preflight when existing project issues are present; if body reads are unavailable, the plan must say that only in-batch content duplicates could be checked.
    - Write tools: project create/update, milestone create/update, and issue create/update. Document create is optional — the spec migration falls back to the project description when it is unavailable. Document update is optional, but required to rewrite links inside already-created or reused Document bodies after document URLs are known. Linear tool names and prefixes vary across hosts and catalogs — discover the available Linear tools at runtime rather than assuming exact names.
-   - Discover capabilities, not just names: inspect the issue create/update tool schema for relation parameters (such as `blockedBy` / `blocks` / `relatedTo`) and check for attachment-upload tools. Relation support upgrades the dependency handling in Phases 4 and 6 from text-only to native relations; never assume support is absent just because an older catalog lacked it.
+   - Discover capabilities, not just names: inspect the issue create/update tool schema for relation parameters (such as `blockedBy` / `blocks` / `relatedTo`) and check for attachment-upload tools and which record type they accept; the current Linear MCP upload tools attach files to existing issues only, never to projects. Relation support upgrades the dependency handling in Phases 4 and 6 from text-only to native relations; never assume support is absent just because an older catalog lacked it.
 4. If Linear MCP tools are missing because the host is not connected or authenticated, report setup/auth hints before stopping. For Codex, the current MCP setup is `codex mcp add linear --url https://mcp.linear.app/mcp` followed by `codex mcp login linear`; older or generic clients can use `npx -y mcp-remote https://mcp.linear.app/mcp`. Do not run these setup commands inside the migration unless the user explicitly asks.
 5. If the core Linear write tools (project, milestone, issue) are unavailable and `--dry-run` is not set, stop. If `--dry-run` is set, continue with an offline plan and mark all Linear metadata as `UNVERIFIED`.
 
@@ -98,7 +98,7 @@ Build a plan with:
 - Metadata mappings for milestone, state, priority, labels, and project.
 - Dependencies recorded as text in the issue description (the `Related` field and the SIW metadata block) on every run. When Phase 1 found relation parameters on the issue write tool, additionally plan a relation pass: after all issues are created, resolve each issue's `Blocked by:` / `Blocks:` edges through the SIW-ID-to-Linear-ID transfer ledger and write them as native relations per `references/linear-mapping.md`. Report the planned edge count and any edges that reference unknown SIW IDs.
 - Rewrite verification facts: for each planned rewrite, record expected Linear identifier counts, Document URL counts, preserved SIW ID counts, migrated source paths removed from required implementation content, register pointer counts, absence of superseded inline metadata, and unchanged markdown table cell counts.
-- Non-markdown SIW artifacts listed as `cannot migrate — needs relocation`, naming each file. When Phase 1 found Linear attachment-upload tools, offer uploading them as issue or project attachments instead.
+- Non-markdown SIW artifacts listed as `cannot migrate — needs relocation`, naming each file. When Phase 1 found Linear attachment-upload tools, offer uploading each file as an attachment on a migrated issue that cites it; attachments cannot be added to a project, so files no issue cites stay `cannot migrate — needs relocation`.
 
 Whenever the plan contains `skip-existing` actions, include a "Skipped existing" section naming each skipped document or issue source item and the matched Linear record ID/URL, marker, or title-match reason.
 
@@ -108,6 +108,7 @@ Present the migration plan before any write:
 
 ```text
 SIW -> Linear Migration Plan
+Workspace: {connected Linear workspace name | unknown — no workspace read tool}
 Project: {create/update/reuse} {project name}
 Team: {team}
 Documents: {create_count} create, {skip_existing_count} skip-existing, {rewrite_only_update_count} rewrite-only update, {decision_count} need decision  (main spec + supporting specs + selected contract specs + decision log)
@@ -130,7 +131,7 @@ After migration: {prompt to run /kramme:siw:remove | withhold removal prompt unt
 
 If `--dry-run` is set, stop after printing the plan.
 
-If the plan contains `needs decision` items, ask the user how to resolve each one before proceeding. Then ask for final approval to execute the migration. If the user does not approve, stop without writing.
+If the plan contains `needs decision` items, ask the user how to resolve each one before proceeding. Then ask for final approval to execute the migration, and have the user confirm the workspace line: the migration writes to whichever workspace the Linear connection is bound to. If the user does not approve, stop without writing.
 
 ## Phase 6: Execute Migration
 
@@ -139,7 +140,7 @@ Execute in this order:
 1. Create or update the Linear project (a project requires at least one team). If the final project description references migrated files, use a minimal provisional description now and defer the final rewritten description until after document URLs are known.
 2. Create planned Linear Documents under the project and skip `skip-existing` document creates, carrying each created or reused document URL into the document reference map and result summary. If a skipped existing Document needs markdown reference rewrites, keep its rewrite-only body update as a separate planned update action. If document creation is unavailable, fall back to embedding the main spec summary in the project description and record which supporting specs, contract specs, and other document sources could not become Documents.
 3. Run the pre-create rewrite pass per `references/linear-mapping.md` after the document reference map has URLs: issue descriptions, project description when it references files, milestone descriptions when they reference files, migrated Document bodies that link to other migrated SIW markdown files, and register-code family pointers. Defer SIW issue ID rewrites that require Linear issue identifiers until after issue creation. Update the project description with the rewritten final text when it was deferred, and update rewritten Document bodies when the Linear tool catalog supports current-body reads plus updates. If document body rewrites require updating already-created Documents and no document read or update tool exists, report those references as unresolved local-only and withhold the removal prompt.
-4. Create or update all planned project milestones with rewritten descriptions.
+4. Create or update all planned project milestones with rewritten descriptions, one at a time in phase order. The milestone write tool has no ordering field, so creation order sets the order Linear displays.
 5. Run the final duplicate-content preflight immediately before issue creation, using the final rewritten descriptions that will be sent to Linear. Re-fetch readable existing issue bodies for the target team/project when possible so changes since planning are caught. If any unresolved duplicate-content group is found, stop before creating any issue, report the matching source issues and/or Linear issues, ask the user how to resolve them, and withhold the removal prompt.
 6. Create all planned issues with rewritten descriptions, assigning each to its mapped milestone when available and applying any mapped existing labels. `G-*` issues get no milestone. Record dependencies as text in every issue body regardless of relation support.
    - Skip `skip-existing` issue creates and carry the matched Linear ID/URL into the result summary. If the rewrite plan requires a description-only update for a skipped existing issue, apply only the markdown reference rewrite; if the update cannot be performed, report the remaining required local reference and withhold the removal prompt.
