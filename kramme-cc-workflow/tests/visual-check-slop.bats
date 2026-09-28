@@ -20,12 +20,12 @@ setup() {
 
   grep -qF 'Without `--fix`, do not modify' "$SKILL/SKILL.md"
   grep -qF 'Do not fetch or execute the upstream npm package' "$SKILL/SKILL.md"
-  grep -qF 'ab68f1878dd5f19ac8dee9d55d2f4313060cac83' "$SKILL/references/sources.yaml"
+  grep -qF '1c3908b7efb56ec24624436dea5c32a371eb487c' "$SKILL/references/sources.yaml"
   for dependency in boolbase css-select css-what dom-serializer domelementtype domhandler domutils entities he node-html-parser nth-check; do
     grep -qF "id: ${dependency}-runtime" "$SKILL/references/sources.yaml"
     grep -qF "## ${dependency}" "$SKILL/references/THIRD_PARTY_NOTICES.md"
   done
-  grep -qF 'Gesso Build skills@ab68f1878dd5f19ac8dee9d55d2f4313060cac83 | MIT' "$SKILL/references/BUNDLE_PROVENANCE.txt"
+  grep -qF 'Gesso Build skills@1c3908b7efb56ec24624436dea5c32a371eb487c | MIT' "$SKILL/references/BUNDLE_PROVENANCE.txt"
 
   assert_required_contracts_registered \
     visual-check-slop-guidance \

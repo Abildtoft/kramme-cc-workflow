@@ -54,6 +54,9 @@ Keep the context window lean by loading information only when needed.
   ```
   Read the patterns catalog from `references/patterns.md` when the task reaches pattern selection.
   ```
+  Tie the read to the step that needs it. An earlier read in the same session does not count, and a reference that governs a late step (a handoff, a menu, a destructive confirmation) is re-read after a user turn. Some hosts read every reference at skill start and never again, which can silently disable a late safety path.
+- **Front-load what must survive.** After auto-compaction, Claude Code re-attaches only the first 5,000 tokens of each invoked skill, within 25,000 tokens across all invoked skills, most recent first. Put the outcome contract, authority, stop conditions, and safety gates at the top of SKILL.md and bulky procedure later. A rule that must act before its reference loads stays in SKILL.md.
+- **Fail closed on a missing reference.** If a required reference cannot be read, stop before the action it governs and report the blocker with a recovery path. Never rebuild the reference's rules from memory.
 - **Relative paths with forward slashes** regardless of OS.
 
 **Do not create:**

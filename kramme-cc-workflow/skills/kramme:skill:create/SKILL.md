@@ -30,6 +30,17 @@ Batch Q2, Q3, and Q5 into a single multi-choice prompt (they are independent mul
 
 Skip if `$ARGUMENTS` already provides a clear description.
 
+### Warrant check
+
+Once the purpose is clear, confirm that a new skill is warranted before asking the remaining questions. All of these should hold:
+
+- The task recurs, or clearly will.
+- An agent handles it poorly without guidance, shown by trying the task once without a skill or by an observed failure.
+- The skill adds something the agent cannot derive: context, a safety gate, or a repeatable procedure with a clear stopping point.
+- No existing skill already covers it. Scan existing skill names and descriptions, and prefer extending a close match.
+
+When a check fails, name it and recommend extending the closest skill or not creating one. Continue only if the user still wants a new skill after hearing why.
+
 ### Question 2: Invocation and Side Effects
 
 > How should this skill be triggered, and does it have side effects?
@@ -192,6 +203,7 @@ If any target file already exists during scaffolding, abort and report the confl
 
 - Design for user experience (UX: clear interaction and reliable task completion), developer experience (DX: maintainable structure and easy testing/debugging), and agent experience (AX: unambiguous context discovery, execution, recovery, and handoffs). Prefer improvements across all three within the skill's job; unchanged or inapplicable dimensions are acceptable. At relevant decision points, state intentional changes and material tradeoffs, established behavior and contracts preserved outside the intended change, and verification evidence. Keep the guidance self-contained and specific; do not add scope or boilerplate merely to mention all three.
 - Lead with the outcome contract: the goal, the constraints the run must respect, any context the agent cannot derive from the repository or prompt, and the evidence that proves success. Omit the context section when no such facts exist. Be precise about the applicable contract elements and deliberately loose about the rest.
+- Put what must survive first: the outcome contract, what invoking the skill authorizes, stop conditions, and safety gates, with bulky procedure after them. After auto-compaction, Claude Code re-attaches only the first 5,000 tokens of each invoked skill (25,000 across all invoked skills, most recent first), so a gate placed late in a long body can silently drop out.
 - Use third-person imperative: "Extract the text..." not "I will extract..."
 - State strategy as an adaptable default rather than a mandate, and leave out steps the agent already performs reliably
 - Require a mandatory ordered sequence only when correctness or safety depends on order. Common cases include destructive, irreversible, security-sensitive, prerequisite-dependent, stateful, or resumable workflows. There, number the steps, name preconditions when later steps depend on them, and map decision branches or failure paths where they actually exist
@@ -199,6 +211,7 @@ If any target file already exists during scaffolding, abort and report the confl
   ```
   Read the {reference name} from `references/{file}.md` when {the condition that makes this resource useful}.
   ```
+- Tie each reference read to the step that depends on it. A read made earlier in the session does not satisfy a later step, and a reference that governs a late step, such as a handoff or menu rule, is re-read after a user turn. Keep any rule that must act before its reference loads in the SKILL.md body. When a required reference cannot be read, stop before the action it governs and report the missing path with a recovery step; never rebuild its rules from memory.
 - Keep SKILL.md under 500 lines — if approaching the limit, move content to resources
 - For workflow skills that write durable artifacts, document how each artifact is produced, consumed, refreshed, and retired.
 - When adapting external work as `usage: inspiration`, rewrite prose and workflow steps in local vocabulary. Do not directly port long monolithic upstream skills; split them into smaller skills or original references.
@@ -258,6 +271,8 @@ After scaffolding, verify the skill against these checks:
 - [ ] Strategy is written as an adaptable default, not as a mandated procedure
 - [ ] A mandatory ordered sequence appears only when correctness or safety depends on order; where present, it names required preconditions and maps decision branches or failure paths where they actually exist
 - [ ] Resource files are referenced with explicit JiT Read instructions
+- [ ] Stop conditions, safety gates, and authority rules sit near the top of SKILL.md, not only late in a long body or only in a reference
+- [ ] Each required reference is read at the step that depends on it, and the skill stops and reports when a required reference cannot be read
 - [ ] No references to repo-root CLAUDE.md or README.md (skills must be self-contained per installation)
 - [ ] No extra documentation files inside the skill directory (for example release notes or status docs)
 - [ ] No redundant logic the agent already handles

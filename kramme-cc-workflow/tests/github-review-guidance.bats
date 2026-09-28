@@ -157,6 +157,24 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "review worktree is created only at the verified PR head" {
+	run python3 - "$SKILL" <<'PY'
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+fetch = text.index('git fetch --quiet origin "pull/${PR_NUMBER}/head"')
+verify = text.index('FETCHED_OID=$(git rev-parse FETCH_HEAD)')
+guard = text.index('if [ "$FETCHED_OID" != "$HEAD_OID" ]; then')
+worktree = text.index('git worktree add --quiet --detach "$WORKTREE_DIR" "$HEAD_OID"')
+if not fetch < verify < guard < worktree:
+    sys.exit("head verification must sit between the fetch and the worktree creation")
+if 'git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD' in text:
+    sys.exit("worktree must be created at the verified HEAD_OID, not FETCH_HEAD")
+PY
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "draft payload omits event and verifies GitHub returned pending" {
 	run python3 - "$DRAFT_REFERENCE" <<'PY'
 import json
@@ -267,4 +285,16 @@ if "with those comments and the summary" in skill:
 PY
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review reply never replies to comments hidden as spam or abuse" {
+	run bash -c '
+    set -e
+    grep -qF "Never draft or post a reply to a comment hidden as \`spam\` or \`abuse\`" "$1"
+    grep -qF "even with \`--all\`" "$1"
+    grep -qF "isMinimized" "$1"
+    grep -qF "minimizedReason" "$1"
+    grep -qF "| Hidden |" "$1"
+  ' _ "$PLUGIN_ROOT/skills/kramme:pr:github-review-reply/SKILL.md"
+	[ "$status" -eq 0 ]
 }

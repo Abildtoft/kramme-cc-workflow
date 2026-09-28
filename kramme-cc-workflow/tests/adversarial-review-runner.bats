@@ -65,6 +65,7 @@ cat >"$FAKE_PROMPT_FILE"
 [ -z "${FAKE_EXPECTED_SNAPSHOT_FILE:-}" ] || [ -f "$FAKE_EXPECTED_SNAPSHOT_FILE" ]
 [ -z "${FAKE_EXPECTED_SNAPSHOT_CONTENT_FILE:-}" ] \
   || cmp "$FAKE_EXPECTED_SNAPSHOT_CONTENT_FILE" feature.txt
+[ -z "${FAKE_MUTATE_PATH:-}" ] || printf 'changed elsewhere\n' >>"$FAKE_MUTATE_PATH"
 jq -n --slurpfile review "$FAKE_REVIEW_FILE" '{structured_output:$review[0]}'
 SH
 	chmod +x "$BIN_DIR/claude"
@@ -547,7 +548,7 @@ SH
 	[[ "$output" == *"could not inspect the working tree after"* ]]
 }
 
-@test "Conductor reviewer mutation fails closed" {
+@test "Conductor workspace change fails closed" {
 	write_fake_conductor
 	export CONDUCTOR_IS_LOCAL=0
 	export CONDUCTOR_WORKSPACE_ID=workspace-1
@@ -560,10 +561,27 @@ SH
 		--merge-base "$MERGE_BASE"
 
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"reviewer mutated the prepared working tree"* ]]
+	[[ "$output" == *"the prepared working tree changed during the review"* ]]
+	[[ "$output" == *"the Conductor reviewer session shares this workspace"* ]]
 }
 
-@test "Conductor failure still reports a reviewer mutation" {
+@test "local review reports a workspace change without blaming the snapshot reviewer" {
+	write_fake_claude
+	export CONDUCTOR_IS_LOCAL=1
+	export FAKE_MUTATE_PATH="$WORK/feature.txt"
+
+	run "$RUNNER" \
+		--host-provider codex \
+		--provider claude \
+		--merge-base "$MERGE_BASE"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"the prepared working tree changed during the review"* ]]
+	[[ "$output" == *"the local reviewer only read an isolated snapshot"* ]]
+	[[ "$output" != *"the Conductor reviewer session"* ]]
+}
+
+@test "Conductor failure still reports a workspace change" {
 	write_fake_conductor
 	export CONDUCTOR_IS_LOCAL=0
 	export CONDUCTOR_WORKSPACE_ID=workspace-1
@@ -582,7 +600,8 @@ SH
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"Conductor adversarial review failed"* ]]
 	[[ "$output" == *"integrity check after provider failure"* ]]
-	[[ "$output" == *"reviewer mutated the prepared working tree"* ]]
+	[[ "$output" == *"the prepared working tree changed during the review"* ]]
+	[[ "$output" == *"the Conductor reviewer session shares this workspace"* ]]
 }
 
 @test "malformed reviewer output fails closed" {

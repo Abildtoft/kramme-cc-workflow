@@ -2,7 +2,7 @@
 
 Portions are adapted from Addy Osmani's `agent-skills` under the MIT License. See `addyosmani-agent-skills-LICENSE` for the complete notice.
 
-Six named anti-patterns with canonical fixes. Each one comes up enough that "I saw the smell, I knew the fix" should be the reflex.
+Eight named anti-patterns with canonical fixes. Each one comes up enough that "I saw the smell, I knew the fix" should be the reflex.
 
 ## N+1 queries (backend)
 
@@ -40,6 +40,22 @@ const tasks = await db.tasks.findMany({
 ```
 
 Always enforce a server-side maximum `take` — never trust the caller to send a reasonable `limit`. Cursor pagination is strictly better than offset pagination for large tables; offset paginations gets slower as `skip` grows.
+
+## Queries that miss their index (backend)
+
+An index gets added on a hunch and nothing improves, or every write gets slower. Read the query plan first (`EXPLAIN ANALYZE` or the database's equivalent) and look for:
+
+- a sequential scan where you expected an index scan;
+- estimated row counts far from the actual ones, which points at stale statistics rather than a missing index;
+- a sort above an index scan, meaning the index serves the filter but not the ordering.
+
+An index cannot help when one value dominates the column, when a pattern starts with a wildcard (`LIKE '%term'`), when the query wraps the column in a function or cast without a matching expression index, or when a write-heavy table spends more maintaining the index than its reads save. Add or change an index only after the plan shows the query will use it, then remeasure.
+
+## Connection pool exhaustion (backend)
+
+Every endpoint slows down at once, and most request time is spent waiting for a connection. A pool larger than the database can execute concurrently only moves the queue into the database. Size pools to the database's real concurrency split across all instances. When instance counts are unbounded (serverless, aggressive autoscaling), cap each instance's pool at a small number or put a connection pooler in front of the database.
+
+Detection: pool wait time and acquisition timeouts in the app's metrics, alongside the database's own active-connection count.
 
 ## Missing image optimization (frontend)
 
@@ -219,3 +235,8 @@ Caching rules of thumb:
 - Prefer a **TTL** over manual invalidation — cache invalidation is the hard problem.
 - Always have a **bypass** (header, query param, env var) so you can test without the cache.
 - For cross-process caches (Redis, Memcached): measure — a cache miss that adds 20 ms of network round-trip can be slower than no cache.
+- Pick the layer on purpose: in-process caches are fastest but hold one copy per instance, shared caches keep one copy at the cost of a network hop, and CDN or HTTP caching only fits responses that are safe to share between users.
+- Put every input that shapes the response in the key: tenant, locale, permissions, feature flags. A missing key part serves one user's data to another.
+- Use one invalidation strategy per cache (TTL, invalidate on write, or versioned keys) and write down which.
+- Guard hot keys against stampedes. When a popular entry expires, let one request refresh it (a lock or request coalescing) or refresh it early, instead of sending every waiting request to the database.
+- Never cache a value whose staleness is a correctness bug, such as a balance, a permission, or stock at checkout.

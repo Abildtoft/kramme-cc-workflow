@@ -58,7 +58,9 @@ If the note would rest on unverified claims, mark them inline with `UNVERIFIED:`
 
 ### 2. Apply the reusable-lesson gate
 
-Before writing, confirm the note has these minimum ingredients:
+Start with a durability test: if this note did not exist, would a future engineer reading the final code, tests, and docs likely repeat the mistake or redo substantial investigation? If not, write nothing and say why, naming where the lesson is already recoverable (the diff, a test, a code comment, an existing doc). A problem being fixed ("fixed", "working now") is not a lesson by itself, and invoking this skill does not lower the bar. If the user still wants a note, ask what a future reader would miss without it, and continue only on a concrete answer.
+
+Then confirm the note has these minimum ingredients:
 
 - The problem or failure mode.
 - The context or preconditions where the lesson applies.
@@ -75,7 +77,7 @@ Emit `MISSING REQUIREMENT` and ask for the missing item when any load-bearing in
 If `docs/solutions/` already exists:
 
 1. Search for notes with similar slug words, problem names, or code references.
-2. If an existing note likely covers the same lesson, emit `CONFUSION` and ask whether to update that note, create a new narrower note, or stop.
+2. If an existing note likely covers the same lesson, emit `CONFUSION` and ask whether to update that note, create a new narrower note, or stop. When that note has become inaccurate or incomplete, recommend updating it rather than adding a second note that contradicts it.
 3. If the existing note is adjacent but not the same, emit `NOTICED BUT NOT TOUCHING` with its path and why the new note remains separate.
 
 Never overwrite an existing solution note without explicit user confirmation.

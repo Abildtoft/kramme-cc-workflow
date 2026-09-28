@@ -23,7 +23,7 @@ Use a blueprint/editorial aesthetic with current-state vs. planned-state panels,
 
 ## Workflow
 
-1. **Think.** Decide who is reviewing the plan, which current-vs-planned comparisons need the strongest emphasis, and which diagram types will clarify blast radius and risk.
+1. **Think.** Decide who is reviewing the plan, which current-vs-planned comparisons need the strongest emphasis, and which diagram types will clarify blast radius and risk. Give each diagram one claim and state it in the caption: draw the mechanism behind it (the path a request, event, or record actually takes), label architecture, data-flow, and dependency edges with the relationship they stand for, and make the current-vs-planned differences the visible subject.
 
 2. **Structure.** Use the local templates and references to choose the rendering approach:
    - `assets/architecture.html` for text-heavy subsystem snapshots

@@ -1,5 +1,5 @@
 // Derived from Gesso Build's src/__tests__/canonical-tells.test.ts.
-// Upstream: https://github.com/Gesso-Build/skills/blob/ab68f1878dd5f19ac8dee9d55d2f4313060cac83/src/__tests__/canonical-tells.test.ts
+// Upstream: https://github.com/Gesso-Build/skills/blob/1c3908b7efb56ec24624436dea5c32a371eb487c/src/__tests__/canonical-tells.test.ts
 // Copyright (c) 2026 Gesso Build, Inc.
 // Licensed under MIT; see ../references/THIRD_PARTY_NOTICES.md.
 // The 0.4.0 canonical-tell tranche (Gaps B + C of the coverage plan): the
@@ -95,6 +95,42 @@ describe("type hygiene", () => {
       `<style>h1{font-family:'Fraunces',serif}p{font-family:'Inter',sans-serif}</style>`,
     );
     expect(guard(paired).counts.byRule["single-font-page"]).toBeUndefined();
+  });
+
+  it("reads family lists from the font shorthand", () => {
+    const allInter = page(
+      `<h1>One voice</h1>`,
+      `<style>body{font:16px/1.5 Inter, sans-serif}h1{font:700 48px/1.1 Inter, sans-serif}</style>`,
+    );
+    expect(guard(allInter).counts.byRule["overused-font-stack"]).toBe(1);
+    expect(guard(allInter).counts.byRule["single-font-page"]).toBe(1);
+    const shorthandBody = page(
+      `<h1>Two voices</h1><h2>Still two</h2>`,
+      `<style>body{font:16px/1.5 'Source Sans 3', sans-serif}h1{font-family:'Fraunces',serif}h2{font-family:'Fraunces',serif}</style>`,
+    );
+    expect(
+      guard(shorthandBody).counts.byRule["single-font-page"],
+    ).toBeUndefined();
+    const keyword = page(
+      `<h1>Hi</h1>`,
+      `<style>h1{font:inherit}p{font:menu}</style>`,
+    );
+    expect(guard(keyword).counts.byRule["single-font-page"]).toBeUndefined();
+  });
+
+  it("keeps quoted serif stacks and stops inline stacks at the attribute", () => {
+    const quoted = page(
+      `<h1>Quiet luxury</h1>`,
+      `<style>body{background:#f4f1ea}h1{font-family:"Playfair Display", Georgia, serif}</style>`,
+    );
+    expect(guard(quoted).counts.byRule["cream-default-wash"]).toBe(1);
+    const inlineSans = page(
+      `<p style="font-family:Inter, sans-serif">Serif lovers welcome</p>`,
+      `<style>body{background:#f4f1ea}</style>`,
+    );
+    expect(
+      guard(inlineSans).counts.byRule["cream-default-wash"],
+    ).toBeUndefined();
   });
 
   it("relaxes crushed display tracking", () => {

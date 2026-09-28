@@ -50,13 +50,15 @@ Use exactly one primary classification per note:
 - `KEEP`: note still matches referenced files and current behavior. Update only `last_checked` when the user confirms an apply step.
 - `UPDATE`: note is still valuable, but referenced files moved, commands changed, verification aged, or reuse cautions need correction.
 - `CONSOLIDATE`: note overlaps another note enough that keeping both would split future context.
-- `DELETE`: note is obsolete, misleading, or no longer has a live consumer.
+- `DELETE`: the note's lesson is no longer true, or the problem area it covers no longer exists.
 
 Severity guidance:
 
 - Prefer `UPDATE` over `DELETE` when a clear small edit would preserve useful knowledge.
 - Prefer `CONSOLIDATE` over `DELETE` when two notes each contain useful unique details.
-- Use `DELETE` only when the note's core lesson is no longer true or has no remaining consumer.
+- Use `DELETE` only when the note's core lesson is false or its problem area is gone. An accurate note is not a default `DELETE` because its reasoning seems recoverable elsewhere. Removing or trimming it for that reason needs an explicit user request to cull such notes, plus, for each claim, a named in-repo artifact (a test, code comment, AGENTS.md or CLAUDE.md, skill reference, or another note) whose own text states the same reasoning, quoted in the report. Topical overlap is not coverage.
+- Separate descriptive drift from an implementation conflict. Claims about current mechanics (paths, commands, APIs, symbol names) follow the code, so the note gets an `UPDATE`. When the note's guidance has independent support (a test, spec, ADR, or incident write-up) and the code no longer satisfies it, classify from that support: keep the guidance and report the mismatch as a possible regression under `NOTICED BUT NOT TOUCHING`. This skill never edits product code.
+- A claim the repository cannot confirm, such as an operational practice, an environment or production behavior, or an external-service fact, is not grounds for `DELETE`, for dropping it during `CONSOLIDATE`, or for an `UPDATE` that removes it. Act only on a demonstrated contradiction, and list the claim as `UNVERIFIED:` in the report.
 
 ## Core workflow
 
@@ -94,7 +96,7 @@ When overlap is plausible but not proven, classify as `UPDATE` with a `CONFUSION
 
 Emit one inline report with this shape:
 
-```markdown
+```text
 SOLUTION REFRESH REPORT
 
 - `docs/solutions/example.md` — UPDATE
@@ -124,7 +126,7 @@ Deletion and consolidation always require explicit confirmation, even with `--ap
 Use these markers exactly when they apply:
 
 - `CONFUSION`: target path is invalid, note format is unclear, or overlap is plausible but ambiguous.
-- `UNVERIFIED`: a claim, command, or behavior was not checked.
+- `UNVERIFIED`: a claim, command, or behavior was not checked. Report it as a verification gap; never treat it as false.
 - `NOTICED BUT NOT TOUCHING`: adjacent docs or notes are related but out of scope.
 - `PLAN`: any apply step that edits, deletes, or consolidates files.
 - `ASK FIRST`: every delete or consolidate action, any update that rewrites core reuse guidance, and running any command from a note body that is not a known-read-only verification.

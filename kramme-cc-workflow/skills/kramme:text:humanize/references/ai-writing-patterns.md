@@ -203,7 +203,7 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 
 ---
 
-### 11. Elegant Variation (Synonym Cycling)
+### 11. Elegant Variation (Synonym Cycling and Repeated Openings)
 
 **Problem:** AI has repetition-penalty code causing excessive synonym substitution.
 
@@ -214,6 +214,8 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 **After:**
 
 > The protagonist faces many challenges but eventually triumphs and returns home.
+
+The opposite habit is a tell too: several sentences in a row that open with the same word or frame ("This change...", "This means...", "This ensures..."). Vary the openings by restructuring the sentences, not by swapping in synonyms.
 
 ---
 
@@ -407,3 +409,97 @@ Avoiding AI patterns is only half the job. Sterile, voiceless writing is just as
 **After:**
 
 > The company plans to open two more locations next year.
+
+---
+
+## REPORTING AND STRUCTURE PATTERNS
+
+### 25. Procedural Self-Reports
+
+**Words to watch:** all existing behavior is preserved, no other files were touched, left intact, without breaking anything, carefully avoided
+
+**Problem:** A summary of work announces what was kept, preserved, or avoided instead of stating what changed. The reader learns about the writer's diligence rather than the change. When a preservation claim matters, state it once, specifically, with its evidence.
+
+**Before:**
+
+> I updated the retry logic while carefully preserving all existing behavior. No other files were modified, and the public API remains fully intact.
+
+**After:**
+
+> Retries now back off exponentially instead of repeating immediately. The public API is unchanged; its contract tests pass.
+
+---
+
+### 26. Re-explaining Shared Context
+
+**Problem:** A reply restates what the reader just said, or what both sides already know, before it answers. The reader has to hunt for the new part.
+
+**Before:**
+
+> You asked whether the cache should be cleared on deploy. As you know, the cache stores rendered pages, and deploys can change templates, which means cached pages can go stale. To answer your question: yes.
+
+**After:**
+
+> Yes. A template change would otherwise keep serving stale pages.
+
+---
+
+### 27. Signposting Announcements
+
+**Words to watch:** Let's dive in, Let's break it down, Here's the thing, Here's what you need to know, Let's take a look, Without further ado
+
+**Problem:** An opener announces that content is coming instead of delivering it. Casual versions ("okay, so here's the deal") are the same tell in a friendlier register.
+
+**Before:**
+
+> Let's dive into how the scheduler works. Here's what you need to know: jobs run in priority order.
+
+**After:**
+
+> The scheduler runs jobs in priority order.
+
+---
+
+### 28. Self-Describing Text
+
+**Words to watch:** This section explains, In this summary I will, The following outlines, This document aims to
+
+**Problem:** Text describes its own structure or purpose instead of doing its job. The heading and the content already tell the reader what a section covers.
+
+**Before:**
+
+> ## Overview
+>
+> This section provides an overview of the migration and explains the steps involved in completing it.
+
+**After:**
+
+> ## Migration
+>
+> Run the schema migration first, then backfill the new column in batches.
+
+---
+
+### 29. Formulaic Document Structure
+
+**Problem:** Structure applied by habit rather than need: a heading whose only content is sub-headings, the same generic top-level headings on every document ("Overview", "Key Takeaways", "Conclusion"), and a horizontal rule between sections that already have headings. Short text often needs no headings at all.
+
+**Before:**
+
+> ## Overview
+>
+> ### Background
+>
+> The export job fails on large accounts.
+>
+> ## Key Takeaways
+>
+> - Large accounts fail to export.
+>
+> ## Conclusion
+>
+> The export job should be fixed.
+
+**After:**
+
+> The export job fails on large accounts because it loads every record into memory. Streaming the export would fix it.

@@ -7,6 +7,8 @@ setup() {
 	REAL_JQ="$(command -v jq)"
 	FAKE_BIN="$BATS_TEST_TMPDIR/bin"
 	mkdir -p "$FAKE_BIN"
+	# Keep the Codex-home probes off the developer's real ~/.codex.
+	export CODEX_HOME="$BATS_TEST_TMPDIR/no-codex"
 }
 
 link_core_tools() {
@@ -315,4 +317,114 @@ assert_text_row() {
 	[[ "$output" == *"[error]    node"* ]]
 	[[ "$output" == *"runtime probe failed"* ]]
 	[[ "$output" != *"[outdated] node"* ]]
+}
+
+assert_context_value() {
+	printf '%s' "$output" | "$REAL_JQ" -e --arg key "$1" --arg value "$2" \
+		'.context[] | select(.key == $key and .value == $value)' >/dev/null
+}
+
+@test "reports legacy codex install records and tool map block without changing them" {
+	setup_all_tools_path
+	codex_home="$BATS_TEST_TMPDIR/codex home"
+	mkdir -p "$codex_home/.kramme-install-manifests"
+	printf '{}\n' >"$codex_home/.kramme-install-state.json"
+	printf '# Mine\n\n<!-- BEGIN KRAMME CODEX TOOL MAP -->\nold map\n<!-- END KRAMME CODEX TOOL MAP -->\n' >"$codex_home/AGENTS.md"
+	before="$(cat "$codex_home/AGENTS.md")"
+
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value codexLegacyRecords "present (.kramme-install-state.json, .kramme-install-manifests/ in $codex_home)"
+	assert_context_value codexToolMapBlock "present ($codex_home/AGENTS.md)"
+	[ "$(cat "$codex_home/AGENTS.md")" = "$before" ]
+	[ -f "$codex_home/.kramme-install-state.json" ]
+	[ -d "$codex_home/.kramme-install-manifests" ]
+}
+
+@test "reports no codex leftovers for a clean codex home" {
+	setup_all_tools_path
+	codex_home="$BATS_TEST_TMPDIR/codex"
+	mkdir -p "$codex_home"
+	printf '# My instructions\n' >"$codex_home/AGENTS.md"
+
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value codexLegacyRecords "none"
+	assert_context_value codexToolMapBlock "absent"
+}
+
+@test "reports a tool map start marker without its end marker" {
+	setup_all_tools_path
+	codex_home="$BATS_TEST_TMPDIR/codex"
+	mkdir -p "$codex_home"
+	printf 'intro\n<!-- BEGIN KRAMME CODEX TOOL MAP -->\nleftover\n' >"$codex_home/AGENTS.md"
+
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	assert_text_row "Codex tool map block" "incomplete: start marker without end ($codex_home/AGENTS.md)"
+	assert_text_row "Codex legacy records" "none"
+}
+
+@test "falls back to HOME/.codex when CODEX_HOME is unset" {
+	setup_all_tools_path
+	home="$BATS_TEST_TMPDIR/home"
+	mkdir -p "$home/.codex"
+	printf '{}\n' >"$home/.codex/.kramme-install-state.json"
+
+	run env -u CODEX_HOME HOME="$home" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value codexLegacyRecords "present (.kramme-install-state.json in $home/.codex)"
+	assert_context_value codexToolMapBlock "absent"
+}
+
+@test "skips the codex probes when HOME and CODEX_HOME are both unset" {
+	setup_all_tools_path
+
+	run env -u CODEX_HOME -u HOME PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	assert_text_row "Codex legacy records" "not checked (HOME and CODEX_HOME unset)"
+	assert_text_row "Codex tool map block" "not checked (HOME and CODEX_HOME unset)"
+}
+
+@test "matches tool map markers by order, including both on one line" {
+	setup_all_tools_path
+	codex_home="$BATS_TEST_TMPDIR/codex"
+	mkdir -p "$codex_home"
+
+	printf '<!-- BEGIN KRAMME CODEX TOOL MAP --> map <!-- END KRAMME CODEX TOOL MAP -->\n' >"$codex_home/AGENTS.md"
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value codexToolMapBlock "present ($codex_home/AGENTS.md)"
+
+	printf '<!-- END KRAMME CODEX TOOL MAP -->\nlater\n<!-- BEGIN KRAMME CODEX TOOL MAP -->\n' >"$codex_home/AGENTS.md"
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value codexToolMapBlock "incomplete: start marker without end ($codex_home/AGENTS.md)"
+}
+
+@test "reports whether .context is ignored and which rule ignores it" {
+	link_core_tools
+	ln -sf "$(command -v git)" "$FAKE_BIN/git"
+	isolated_git=(HOME="$BATS_TEST_TMPDIR/home" XDG_CONFIG_HOME="$BATS_TEST_TMPDIR/xdg" GIT_CONFIG_NOSYSTEM=1)
+	ignored_repo="$BATS_TEST_TMPDIR/ignored-repo"
+	plain_repo="$BATS_TEST_TMPDIR/plain-repo"
+	env "${isolated_git[@]}" git init -q "$ignored_repo"
+	env "${isolated_git[@]}" git init -q "$plain_repo"
+	printf '.context/\n' >"$ignored_repo/.gitignore"
+
+	cd "$ignored_repo"
+	run env "${isolated_git[@]}" PATH="$FAKE_BIN" CODEX_HOME="$BATS_TEST_TMPDIR/no-codex" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value contextIgnored "yes (.gitignore:1:.context/)"
+	[ ! -e "$ignored_repo/.context" ]
+
+	cd "$plain_repo"
+	run env "${isolated_git[@]}" PATH="$FAKE_BIN" CODEX_HOME="$BATS_TEST_TMPDIR/no-codex" "$BASH_PATH" "$SCRIPT"
+	[ "$status" -eq 0 ]
+	assert_text_row ".context ignored" "no"
 }

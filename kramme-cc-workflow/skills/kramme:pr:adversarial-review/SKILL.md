@@ -136,5 +136,5 @@ This skill returns inline output and writes no durable repository artifact. Its 
 - **Dirty or empty prepared branch** — stop before provider invocation.
 - **Provider CLI, authentication, or Conductor API unavailable** — report the exact missing capability and stop.
 - **Timeout, malformed output, or missing coverage** — stop with adversarial review blocked; cancel and confirm termination of an active Conductor session.
-- **Reviewer mutation** — stop, name the integrity failure, and require the user to inspect and recover the tree before any further review.
+- **Prepared tree changed during the review** — stop, name the integrity failure, and require the user to inspect and recover the tree before any further review. Do not assume the reviewer caused it: a local reviewer reads only an isolated snapshot, while a Conductor reviewer session shares the workspace, and any agent or process sharing the workspace can change the tree. Keep other agents out of the workspace while a review runs.
 - **Rejected external finding** — preserve the claim and concrete rejection evidence in the inline result; do not silently drop disagreement.

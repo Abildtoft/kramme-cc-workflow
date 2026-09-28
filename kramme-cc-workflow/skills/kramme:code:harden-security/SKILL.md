@@ -184,6 +184,10 @@ Uploads are `Ask First` territory by default.
 
 A `.jpg` extension on a PHP file is a five-second attack. If the upload feeds into any content-sniffing path (serving, thumbnailing, AV scanning, executing), the MIME decision must come from the file's bytes, not its filename. Additionally: enforce a size cap, strip EXIF for user-uploaded images, store outside the web root, and generate server-side filenames (never echo the user's).
 
+## Destructive operations on derived paths
+
+When a delete, move, or overwrite targets a path that came from a request, a config value, or another process, resolve symlinks first. Then require the resolved path to sit under an allowlisted root, below a minimum depth, and to be owned by the expected user, and run that check immediately before the operation. Then act on the resolved path you checked, not the original, with operations that do not follow symlinks where the platform allows (`lstat` before recursing, `O_NOFOLLOW`, `openat`/`unlinkat`); a check on a path an attacker can still rewrite is only a narrower race. A shape check or a marker file alone is not enough: a crafted path or symlink can pass it while pointing somewhere else.
+
 ## Rate limiting defaults
 
 Starting point when no project-specific guidance exists:
@@ -194,6 +198,8 @@ Starting point when no project-specific guidance exists:
 Auth endpoints are tighter because they're the target of credential-stuffing and enumeration. Tune down further (e.g. 5 / 15 min) if the endpoint is high-value and low-traffic. Adjusting existing rate limits is `ASK FIRST`.
 
 Every authentication endpoint must have a rate limit; the numbers above are defaults when the project has no stricter policy.
+
+An in-memory limiter counts per process, so N instances admit N times the configured limit and short-lived serverless instances may never trip it; multi-instance and serverless deployments need a shared counter store.
 
 ## Secrets and pre-commit hygiene
 

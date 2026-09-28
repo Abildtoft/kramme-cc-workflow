@@ -39,7 +39,7 @@ Also record a reference inventory for each document body:
 
 ## Non-Markdown Artifacts
 
-Enumerate non-`.md` files under the SIW directory (recursively) — `.pptx` storyboards, images, spreadsheets, anything a Linked Specifications table may cite. These cannot become Linear Documents. Surface each one in the migration plan as `cannot migrate — needs relocation`, and gate the Phase 7 removal prompt on them: the prompt may not green-light deleting a cited source artifact that exists nowhere but `siw/`. When Linear attachment-upload tools are available (such as `prepare_attachment_upload` / `create_attachment_from_upload`), offer uploading them instead.
+Enumerate non-`.md` files under the SIW directory (recursively) — `.pptx` storyboards, images, spreadsheets, anything a Linked Specifications table may cite. These cannot become Linear Documents. Surface each one in the migration plan as `cannot migrate — needs relocation`, and gate the Phase 7 removal prompt on them: the prompt may not green-light deleting a cited source artifact that exists nowhere but `siw/`. When Linear attachment-upload tools are available (such as `prepare_attachment_upload` / `create_attachment_from_upload`), offer uploading each file to a migrated issue that cites it instead. Those tools attach to existing issues only, so a file that no issue cites cannot be uploaded and stays `cannot migrate — needs relocation`.
 
 ## Project Identity
 

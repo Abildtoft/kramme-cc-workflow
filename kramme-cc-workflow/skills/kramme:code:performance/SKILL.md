@@ -5,7 +5,7 @@ disable-model-invocation: false
 user-invocable: true
 ---
 
-<!-- Adapted from addyosmani/agent-skills skills/performance-optimization/SKILL.md at commit 91d4d07522de9577caf5d213e5bf1acc38fa3df2 under the MIT License. Full notice: references/addyosmani-agent-skills-LICENSE. -->
+<!-- Adapted from addyosmani/agent-skills skills/performance-optimization/SKILL.md at commit 6a268d7710c15708598e4b0a6942275a359760ee under the MIT License. Full notice: references/addyosmani-agent-skills-LICENSE. -->
 
 # Performance Optimization
 
@@ -112,13 +112,13 @@ Write a durable baseline only when the user explicitly requests persistence or t
 
 ### Step 2 — Identify the bottleneck
 
-Read `references/triage.md` now. It contains the frontend/backend symptom tables (symptom → likely cause → investigation), the "Where to start measuring" decision tree, and the six anti-pattern summaries. Use the symptom to pick what to profile first, and follow one branch of the tree per measurement.
+Read `references/triage.md` now. It contains the frontend/backend symptom tables (symptom → likely cause → investigation), the "Where to start measuring" decision tree, and the eight anti-pattern summaries. Use the symptom to pick what to profile first, and follow one branch of the tree per measurement.
 
 Before choosing an optimization, inspect the current conversation or task, linked ticket, PR description, and existing project-local performance notes for prior attempts against this bottleneck. Do not repeat the same change or idea after a `REVERT` verdict under comparable conditions unless new evidence or materially different measurement conditions justify it. A different implementation for the same bottleneck is a new attempt.
 
 ### Step 3 — Fix the bottleneck
 
-Map the identified bottleneck to one of the six named anti-patterns in `references/triage.md` (N+1 queries, unbounded data fetching, missing image optimization, unnecessary re-renders, large bundle size, missing caching) and apply its canonical fix. Full before/after code examples live in `references/anti-patterns.md`.
+Map the identified bottleneck to one of the eight named anti-patterns in `references/triage.md` (N+1 queries, unbounded data fetching, queries that miss their index, connection pool exhaustion, missing image optimization, unnecessary re-renders, large bundle size, missing caching) and apply its canonical fix. Full before/after code examples live in `references/anti-patterns.md`.
 
 **The memoization trap.** `React.memo`, `useMemo`, and `useCallback` everywhere is itself a perf anti-pattern: each adds bookkeeping cost and obscures render causes. Apply only when profiling shows a measured win — and document the measurement next to the memo.
 

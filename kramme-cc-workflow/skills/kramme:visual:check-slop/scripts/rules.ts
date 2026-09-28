@@ -1,5 +1,5 @@
 // Derived from Gesso Build's src/rules.ts.
-// Upstream: https://github.com/Gesso-Build/skills/blob/ab68f1878dd5f19ac8dee9d55d2f4313060cac83/src/rules.ts
+// Upstream: https://github.com/Gesso-Build/skills/blob/1c3908b7efb56ec24624436dea5c32a371eb487c/src/rules.ts
 // Copyright (c) 2026 Gesso Build, Inc.
 // Licensed under MIT; see ../references/THIRD_PARTY_NOTICES.md.
 // Anti-slop: the flagship rule registry.
@@ -88,21 +88,69 @@ function stripCssComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
 
+// Authored comments become inert placeholder declarations while a fixer
+// rewrites a <style> body, then return as their original text.
+const CSS_COMMENT_MARKER_RE = /--__kramme_slop_comment_(\d+):0;/g;
+
+function rewriteKeepingCssComments(
+  css: string,
+  rewrite: (protectedCss: string) => string,
+): string {
+  const comments: string[] = [];
+  const protectedCss = css.replace(/\/\*[\s\S]*?\*\//g, (comment) => {
+    const index = comments.push(comment) - 1;
+    return `--__kramme_slop_comment_${index}:0;`;
+  });
+  return rewrite(protectedCss).replace(
+    CSS_COMMENT_MARKER_RE,
+    (_marker, index: string) => comments[Number(index)] ?? "",
+  );
+}
+
+/** Separate a protected rule body into its comment markers and declarations. */
+function splitCommentMarkers(body: string): { markers: string; decls: string } {
+  return {
+    markers: (body.match(CSS_COMMENT_MARKER_RE) ?? []).join(""),
+    decls: body.replace(CSS_COMMENT_MARKER_RE, ""),
+  };
+}
+
+/** The opening tag that carries an inline style="" match. */
+function openingTagAt(html: string, index: number): string {
+  const start = html.lastIndexOf("<", index);
+  const end = html.indexOf(">", index);
+  return start < 0 || end < 0 ? "" : html.slice(start, end + 1);
+}
+
+/**
+ * A CSS-group predicate sees the declarations plus their context: the
+ * selector of a <style> rule, or the opening tag of an inline style="".
+ * Context is resolved lazily because finding an inline style's opening tag
+ * scans the page, and only a few predicates read it.
+ */
+type GroupPredicate = (decls: string, context: () => string) => boolean;
+
+/** Apply a rule's documented `--slop-allow` opt-out before `predicate`. */
+function unlessAllowed(
+  ruleId: string,
+  predicate: GroupPredicate,
+): GroupPredicate {
+  return (decls, context) =>
+    !declsAllow(decls, ruleId) && predicate(decls, context);
+}
+
 /** Count <style> rule bodies + inline style="" values matching `predicate`. */
-function eachStyleAndInline(
-  html: string,
-  predicate: (decls: string) => boolean,
-): number {
+function eachStyleAndInline(html: string, predicate: GroupPredicate): number {
   let n = 0;
   for (const block of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
     for (const rule of stripCssComments(block[1]).matchAll(
-      /[^{}]+\{([^{}]*)\}/g,
+      /([^{}]+)\{([^{}]*)\}/g,
     )) {
-      if (predicate(rule[1])) n++;
+      if (predicate(rule[2], () => rule[1])) n++;
     }
   }
   for (const inline of html.matchAll(/\sstyle\s*=\s*"([^"]*)"/gi)) {
-    if (predicate(inline[1])) n++;
+    if (predicate(inline[1], () => openingTagAt(html, inline.index ?? 0))) n++;
   }
   return n;
 }
@@ -113,35 +161,53 @@ function eachStyleAndInline(
  */
 function rewriteCssGroups(
   html: string,
-  predicate: (decls: string) => boolean,
+  predicate: GroupPredicate,
   transform: (decls: string) => string,
 ): string {
   let out = html.replace(
     /<style\b[^>]*>([\s\S]*?)<\/style>/gi,
     (full, css: string) => {
-      const comments: string[] = [];
-      const protectedCss = css.replace(/\/\*[\s\S]*?\*\//g, (comment) => {
-        const index = comments.push(comment) - 1;
-        return `--__kramme_slop_comment_${index}:0;`;
-      });
-      const fixedProtected = protectedCss.replace(
-        /([^{}]+)\{([^{}]*)\}/g,
-        (rule: string, sel: string, body: string) =>
-          predicate(body.replace(/--__kramme_slop_comment_\d+:0;/g, ""))
-            ? `${sel}{${transform(body)}}`
-            : rule,
-      );
-      const fixed = fixedProtected.replace(
-        /--__kramme_slop_comment_(\d+):0;/g,
-        (_marker, index: string) => comments[Number(index)] ?? "",
+      const fixed = rewriteKeepingCssComments(css, (protectedCss) =>
+        protectedCss.replace(
+          /([^{}]+)\{([^{}]*)\}/g,
+          (rule: string, sel: string, body: string) =>
+            predicate(body.replace(CSS_COMMENT_MARKER_RE, ""), () =>
+              sel.replace(CSS_COMMENT_MARKER_RE, ""),
+            )
+              ? `${sel}{${transform(body)}}`
+              : rule,
+        ),
       );
       return fixed === css ? full : full.replace(css, () => fixed);
     },
   );
-  out = out.replace(/\sstyle\s*=\s*"([^"]*)"/gi, (full, val: string) =>
-    predicate(val) ? ` style="${transform(val)}"` : full,
+  out = out.replace(
+    /\sstyle\s*=\s*"([^"]*)"/gi,
+    (full: string, val: string, offset: number, whole: string) =>
+      predicate(val, () => openingTagAt(whole, offset))
+        ? ` style="${transform(val)}"`
+        : full,
   );
   return out;
+}
+
+/** Page-level opt-out: `data-slop-allow` on <body> or `--slop-allow` in a body rule. */
+function bodyAllows(html: string, ruleId: string): boolean {
+  const bodyTag = html.match(/<body\b[^>]*>/i)?.[0];
+  if (bodyTag && tagAllows(bodyTag, ruleId)) return true;
+  const bodyStyle = bodyTag?.match(/\sstyle\s*=\s*"([^"]*)"/i)?.[1];
+  if (bodyStyle && declsAllow(bodyStyle, ruleId)) return true;
+  for (const block of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    for (const rule of stripCssComments(block[1]).matchAll(
+      /([^{}]+)\{([^{}]*)\}/g,
+    )) {
+      const selectsBody = rule[1]
+        .split(",")
+        .some((selector) => selector.trim().toLowerCase() === "body");
+      if (selectsBody && declsAllow(rule[2], ruleId)) return true;
+    }
+  }
+  return false;
 }
 
 /** Map `fn` over text-node content only, skipping <style>/<script>/comments. */
@@ -1714,26 +1780,28 @@ function fixGridSpacerVoid(html: string): string {
   return html.replace(
     /<style\b[^>]*>([\s\S]*?)<\/style>/gi,
     (full, css: string) => {
-      const clean = stripCssComments(css);
-      const fixed = clean.replace(
-        /([^{}]+)\{([^{}]*)\}/g,
-        (rule: string, sel: string, body: string) => {
-          const selClasses = [...sel.matchAll(/\.([A-Za-z0-9_-]+)/g)].map(
-            (m) => m[1],
-          );
-          if (
-            !selClasses.some((c) => classes.has(c)) ||
-            fixedAutoRowPx(body) === null
-          )
-            return rule;
-          const next = body.replace(
-            /grid-auto-rows\s*:\s*[^;}]+/i,
-            "grid-auto-rows: auto",
-          );
-          return next === body ? rule : `${sel}{${next}}`;
-        },
+      const fixed = rewriteKeepingCssComments(css, (protectedCss) =>
+        protectedCss.replace(
+          /([^{}]+)\{([^{}]*)\}/g,
+          (rule: string, sel: string, body: string) => {
+            const { markers, decls } = splitCommentMarkers(body);
+            const selClasses = [...sel.matchAll(/\.([A-Za-z0-9_-]+)/g)].map(
+              (m) => m[1],
+            );
+            if (
+              !selClasses.some((c) => classes.has(c)) ||
+              fixedAutoRowPx(decls) === null
+            )
+              return rule;
+            const next = decls.replace(
+              /grid-auto-rows\s*:\s*[^;}]+/i,
+              "grid-auto-rows: auto",
+            );
+            return next === decls ? rule : `${sel}{${markers}${next}}`;
+          },
+        ),
       );
-      return fixed === clean ? full : full.replace(css, () => fixed);
+      return fixed === css ? full : full.replace(css, () => fixed);
     },
   );
 }
@@ -1915,23 +1983,25 @@ function fixWrapPaddingCollision(html: string): string {
   return html.replace(
     /<style\b[^>]*>([\s\S]*?)<\/style>/gi,
     (full, css: string) => {
-      const clean = stripCssComments(css);
-      const fixed = clean.replace(
-        /([^{}]+)\{([^{}]*)\}/g,
-        (rule: string, sel: string, body: string) => {
-          const selClasses = [...sel.matchAll(/\.([A-Za-z0-9_-]+)/g)].map(
-            (m) => m[1],
-          );
-          if (
-            !selClasses.some((c) => classes.has(c)) ||
-            !isInlineZeroPaddingBody(body)
-          )
-            return rule;
-          const next = stripHorizontalPadding(body);
-          return next === body ? rule : `${sel}{${next}}`;
-        },
+      const fixed = rewriteKeepingCssComments(css, (protectedCss) =>
+        protectedCss.replace(
+          /([^{}]+)\{([^{}]*)\}/g,
+          (rule: string, sel: string, body: string) => {
+            const { markers, decls } = splitCommentMarkers(body);
+            const selClasses = [...sel.matchAll(/\.([A-Za-z0-9_-]+)/g)].map(
+              (m) => m[1],
+            );
+            if (
+              !selClasses.some((c) => classes.has(c)) ||
+              !isInlineZeroPaddingBody(decls)
+            )
+              return rule;
+            const next = stripHorizontalPadding(decls);
+            return next === decls ? rule : `${sel}{${markers}${next}}`;
+          },
+        ),
       );
-      return fixed === clean ? full : full.replace(css, () => fixed);
+      return fixed === css ? full : full.replace(css, () => fixed);
     },
   );
 }
@@ -2178,7 +2248,11 @@ function isPublicationMastheadBlock(el: HTMLElement): boolean {
 function findPublicationMastheadBlocks(root: HTMLElement): HTMLElement[] {
   const matched = root
     .querySelectorAll(MASTHEAD_BLOCK_TAGS)
-    .filter(isPublicationMastheadBlock);
+    .filter(
+      (el) =>
+        isPublicationMastheadBlock(el) &&
+        !allowsUpTo(el, "publication-masthead-block", root),
+    );
   const set = new Set(matched);
   // Outermost match only (remove the container, not its inner rows).
   return matched.filter((el) => {
@@ -2375,17 +2449,22 @@ function fixRedundantBorders(html: string): string {
   let out = html.replace(
     /<style\b[^>]*>([\s\S]*?)<\/style>/gi,
     (full, css: string) => {
-      const clean = stripCssComments(css);
-      const fixed = clean.replace(
-        STYLE_RULE_RE,
-        (rule: string, sel: string, body: string) =>
-          !borderSkipSelector(sel) &&
-          !declsAllow(body, "redundant-border") &&
-          groupHasRedundantBorder(body)
-            ? `${sel}{${stripBorderDecls(body)}}`
-            : rule,
+      const fixed = rewriteKeepingCssComments(css, (protectedCss) =>
+        protectedCss.replace(
+          STYLE_RULE_RE,
+          (rule: string, sel: string, body: string) => {
+            const { markers, decls } = splitCommentMarkers(body);
+            return !borderSkipSelector(
+              sel.replace(CSS_COMMENT_MARKER_RE, ""),
+            ) &&
+              !declsAllow(decls, "redundant-border") &&
+              groupHasRedundantBorder(decls)
+              ? `${sel}{${markers}${stripBorderDecls(decls)}}`
+              : rule;
+          },
+        ),
       );
-      return fixed === clean ? full : full.replace(css, () => fixed);
+      return fixed === css ? full : full.replace(css, () => fixed);
     },
   );
   out = out.replace(
@@ -2548,6 +2627,7 @@ function findRowCards(
   for (const rows of repeatingRowSets(root, 3)) {
     const carded = rows.filter(
       (r) =>
+        !allowsUpTo(r, "row-as-card", root) &&
         rowMediaCount(r) >= 1 &&
         textRuns(r).length >= 2 &&
         declsHaveCardSurface(elDecls(r, classMap)),
@@ -3182,9 +3262,31 @@ function pageBackgroundHSL(
   }
   return null;
 }
+// Every family-list value on the page: `font-family:` declarations plus the
+// family tail of `font:` shorthands (the list after the size[/line-height]
+// token). A shorthand with no size token (font:inherit, font:menu) has no
+// family list and yields nothing. Lists are read per declaration group, so a
+// quoted family name inside <style> is kept while an inline style="" capture
+// still ends at the attribute's closing quote.
+const FONT_SHORTHAND_TAIL_RE =
+  /[\d.]+(?:px|pt|em|rem|%|vw|vh|ch)\s*(?:\/\s*[\d.]+[a-z%]*)?\s+([^;}]+)/i;
+function fontFamilyLists(html: string): string[] {
+  const out: string[] = [];
+  eachStyleAndInline(html, (decls) => {
+    for (const m of decls.matchAll(/font-family\s*:\s*([^;}]+)/gi))
+      out.push(m[1]);
+    for (const m of decls.matchAll(/(?<![-a-z])font\s*:\s*([^;}]+)/gi)) {
+      const tail = m[1].match(FONT_SHORTHAND_TAIL_RE)?.[1];
+      if (tail) out.push(tail);
+    }
+    return false;
+  });
+  return out;
+}
+
 function pageHasSerifDisplay(html: string): boolean {
-  for (const m of html.matchAll(/font-family\s*:\s*([^;}"]+)/gi)) {
-    const v = m[1].toLowerCase();
+  for (const list of fontFamilyLists(html)) {
+    const v = list.toLowerCase();
     if (
       /\bserif\b/.test(v) &&
       !/sans-serif\s*$/.test(v.trim()) &&
@@ -3200,8 +3302,8 @@ const OVERUSED_FONT_RE =
   /\b(?:Inter|Space\s+Grotesk|Geist|Instrument\s+Serif)\b/gi;
 function findOverusedFonts(html: string): string[] {
   const found = new Set<string>();
-  for (const m of html.matchAll(/font-family\s*:\s*([^;}]+)/gi)) {
-    for (const f of m[1].matchAll(OVERUSED_FONT_RE))
+  for (const list of fontFamilyLists(html)) {
+    for (const f of list.matchAll(OVERUSED_FONT_RE))
       found.add(f[0].replace(/\s+/g, " "));
   }
   for (const m of html.matchAll(/fonts\.googleapis\.com\/css2?\?[^"']*/gi)) {
@@ -3233,17 +3335,16 @@ const GENERIC_FAMILIES = new Set([
 /** Distinct leading (non-generic) family names declared on the page. */
 function declaredFamilies(html: string): string[] {
   const out = new Set<string>();
-  let decls = 0;
-  for (const m of html.matchAll(/font-family\s*:\s*([^;}]+)/gi)) {
-    decls++;
+  const lists = fontFamilyLists(html);
+  for (const list of lists) {
     const first =
-      splitTopLevelCommas(m[1])[0]
+      splitTopLevelCommas(list)[0]
         ?.trim()
         .replace(/^["']|["']$/g, "") ?? "";
     if (first && !GENERIC_FAMILIES.has(first.toLowerCase()))
       out.add(first.toLowerCase());
   }
-  return decls >= 2 ? [...out] : ["", ""]; // <2 decls: report as "diverse" (no hit)
+  return lists.length >= 2 ? [...out] : ["", ""]; // <2 decls: report as "diverse" (no hit)
 }
 
 // Type-hygiene extremes. Each predicate walks one decls group.
@@ -3346,6 +3447,80 @@ function groupIsOverRounded(decls: string): boolean {
   if (!hasRealFill(decls)) return false;
   const r = cardRadiusPx(decls);
   return r !== null && r >= 40 && r <= 120;
+}
+
+// Buttons, links, pills, chips, badges, and tags are rounded on purpose; only
+// content surfaces count as over-rounded cards. Judge the element that takes
+// the radius: the rightmost compound of every selector in the list, or the
+// tag carrying an inline style. Whole class tokens only (plus a BEM
+// `--modifier`), so `.cta-banner` or `.tag-list .card` still count.
+const CONTROL_CLASS_TOKENS = new Set([
+  "btn",
+  "button",
+  "pill",
+  "chip",
+  "badge",
+  "tag",
+  "cta",
+]);
+const SURFACE_CLASS_TOKENS = new Set(["card", "panel", "tile", "surface"]);
+
+function looksLikeControl(
+  tagName: string,
+  classTokens: string[],
+  attrs: string,
+): boolean {
+  const bases = classTokens.map((token) => token.toLowerCase().split("--")[0]);
+  if (bases.some((base) => SURFACE_CLASS_TOKENS.has(base))) return false;
+  if (bases.some((base) => CONTROL_CLASS_TOKENS.has(base))) return true;
+  if (tagName === "a" || tagName === "button") return true;
+  if (
+    tagName === "input" &&
+    /\btype\s*=\s*["']?(?:button|submit|reset)\b/i.test(attrs)
+  )
+    return true;
+  return /\brole\s*=\s*["']?button\b/i.test(attrs);
+}
+
+function selectorTargetsControl(selectorList: string): boolean {
+  const selectors = selectorList
+    .split(",")
+    .map((selector) => selector.trim())
+    .filter(Boolean);
+  return (
+    selectors.length > 0 &&
+    selectors.every((selector) => {
+      const compound =
+        selector
+          .split(/[\s>+~]+/)
+          .filter(Boolean)
+          .pop() ?? "";
+      const plain = compound.replace(/::?[a-z-]+(?:\([^)]*\))?/gi, "");
+      const tagName = plain.match(/^[a-z][a-z0-9-]*/i)?.[0].toLowerCase() ?? "";
+      const classTokens = [...plain.matchAll(/\.([a-z0-9_-]+)/gi)].map(
+        (m) => m[1],
+      );
+      const attrs = [...plain.matchAll(/\[([^\]]*)\]/g)]
+        .map((m) => m[1])
+        .join(" ");
+      return looksLikeControl(tagName, classTokens, attrs);
+    })
+  );
+}
+
+function tagIsControl(tag: string): boolean {
+  const tagName = tag.match(/^<\s*([a-z][a-z0-9-]*)/i)?.[1].toLowerCase() ?? "";
+  const cls = tag.match(/\bclass\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+  const classTokens = (cls?.[1] ?? cls?.[2] ?? "").split(/\s+/).filter(Boolean);
+  return looksLikeControl(tagName, classTokens, tag);
+}
+
+function groupIsOverRoundedCard(decls: string, context: () => string): boolean {
+  if (!groupIsOverRounded(decls)) return false;
+  const trimmed = context().trim();
+  return trimmed.startsWith("<")
+    ? !tagIsControl(trimmed)
+    : !selectorTargetsControl(trimmed);
 }
 function fixOverRounded(decls: string): string {
   if (!groupIsOverRounded(decls)) return decls;
@@ -3500,6 +3675,7 @@ function countHoverScaleImage(html: string): number {
     for (const rule of stripCssComments(block[1]).matchAll(STYLE_RULE_RE)) {
       const sel = rule[1];
       if (!/:hover/i.test(sel)) continue;
+      if (declsAllow(rule[2], "hover-scale-image")) continue;
       if (
         !/(?:^|[\s,.>+~#-])(?:img|image|thumb|photo|media|cover|card)/i.test(
           sel,
@@ -3653,7 +3829,12 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasIndigo) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("indigo-accent", groupHasIndigo),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "indigo-accent",
           detail: "Tailwind indigo/violet hex",
@@ -4616,14 +4797,23 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 2,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, (d) => countDarkGlow(d) > 0) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("dark-glow", (d) => countDarkGlow(d) > 0),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "dark-glow",
           detail: "saturated wide-blur glow shadow",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, (d) => countDarkGlow(d) > 0, stripDarkGlow),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("dark-glow", (d) => countDarkGlow(d) > 0),
+        stripDarkGlow,
+      ),
   },
   {
     id: "purple-violet-wash",
@@ -4636,7 +4826,12 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     sanctionedBy: (_styleRef, ctx) => ctx?.replicate === true,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasVioletWash) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("purple-violet-wash", groupHasVioletWash),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "purple-violet-wash",
           detail: "saturated violet-band color",
@@ -4653,7 +4848,12 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasSafeGreen) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("safe-green-default", groupHasSafeGreen),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "safe-green-default",
           detail: "Tailwind emerald accent hex",
@@ -4677,7 +4877,9 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
         bg.s >= 0.1 &&
         bg.s <= 0.5 &&
         bg.l >= 0.82;
-      return creamy && pageHasSerifDisplay(html)
+      return creamy &&
+        pageHasSerifDisplay(html) &&
+        !bodyAllows(html, "cream-default-wash")
         ? [
             {
               ruleId: "cream-default-wash",
@@ -4728,14 +4930,23 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasCrushedTracking) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("crushed-tracking", groupHasCrushedTracking),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "crushed-tracking",
           detail: "letter-spacing <= -0.05em",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, groupHasCrushedTracking, fixCrushedTracking),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("crushed-tracking", groupHasCrushedTracking),
+        fixCrushedTracking,
+      ),
   },
   {
     id: "wide-body-tracking",
@@ -4747,14 +4958,23 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasWideBodyTracking) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("wide-body-tracking", groupHasWideBodyTracking),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "wide-body-tracking",
           detail: "letter-spacing >= 0.08em on mixed-case text",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, groupHasWideBodyTracking, fixWideBodyTracking),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("wide-body-tracking", groupHasWideBodyTracking),
+        fixWideBodyTracking,
+      ),
   },
   {
     id: "tight-line-height",
@@ -4766,14 +4986,23 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasTightLineHeight) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("tight-line-height", groupHasTightLineHeight),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "tight-line-height",
           detail: "line-height < 1.25 at body size",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, groupHasTightLineHeight, fixTightLineHeight),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("tight-line-height", groupHasTightLineHeight),
+        fixTightLineHeight,
+      ),
   },
   {
     id: "tiny-body-text",
@@ -4785,14 +5014,23 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupHasTinyBodyText) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("tiny-body-text", groupHasTinyBodyText),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "tiny-body-text",
           detail: "font-size < 11px on mixed-case text",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, groupHasTinyBodyText, fixTinyBodyText),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("tiny-body-text", groupHasTinyBodyText),
+        fixTinyBodyText,
+      ),
   },
   {
     id: "monospace-body",
@@ -4823,13 +5061,23 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupIsOverRounded) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("over-rounded-card", groupIsOverRoundedCard),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "over-rounded-card",
           detail: "border-radius >= 40px on a filled card",
         }),
       ),
-    fix: (html) => rewriteCssGroups(html, groupIsOverRounded, fixOverRounded),
+    fix: (html) =>
+      rewriteCssGroups(
+        html,
+        unlessAllowed("over-rounded-card", groupIsOverRoundedCard),
+        fixOverRounded,
+      ),
   },
   {
     id: "ghost-card",
@@ -4841,13 +5089,23 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, groupIsGhostCard) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("ghost-card", groupIsGhostCard),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "ghost-card",
           detail: "hairline border + wide soft shadow",
         }),
       ),
-    fix: (html) => rewriteCssGroups(html, groupIsGhostCard, stripGhostShadow),
+    fix: (html) =>
+      rewriteCssGroups(
+        html,
+        unlessAllowed("ghost-card", groupIsGhostCard),
+        stripGhostShadow,
+      ),
   },
   {
     id: "nested-cards",
@@ -4909,14 +5167,23 @@ export const FLAGSHIP_RULES: SlopRule<SlopCtx>[] = [
     severity: 1,
     detect: (html) =>
       Array.from(
-        { length: eachStyleAndInline(html, (d) => countBounceEasing(d) > 0) },
+        {
+          length: eachStyleAndInline(
+            html,
+            unlessAllowed("bounce-easing", (d) => countBounceEasing(d) > 0),
+          ),
+        },
         (): SlopHit => ({
           ruleId: "bounce-easing",
           detail: "overshoot cubic-bezier",
         }),
       ),
     fix: (html) =>
-      rewriteCssGroups(html, (d) => countBounceEasing(d) > 0, fixBounceEasing),
+      rewriteCssGroups(
+        html,
+        unlessAllowed("bounce-easing", (d) => countBounceEasing(d) > 0),
+        fixBounceEasing,
+      ),
   },
   {
     id: "layout-prop-animation",

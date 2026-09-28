@@ -2,14 +2,14 @@ sources:
   - id: addy-performance-optimization
     url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/performance-optimization/SKILL.md
     title: "Addy Osmani agent-skills - performance optimization"
-    rationale: "The Core Web Vitals targets, measure-identify-fix-verify-guard workflow, experiment verdict and record guidance, and common performance anti-patterns are adapted from this source. Reviewed against upstream commit 91d4d07522de9577caf5d213e5bf1acc38fa3df2."
+    rationale: "The Core Web Vitals targets, measure-identify-fix-verify-guard workflow, experiment verdict and record guidance, and common performance anti-patterns, including query-plan, connection-pool, and cache-stampede guidance, are adapted from this source. Reviewed against upstream commit 6a268d7710c15708598e4b0a6942275a359760ee."
     usage: copied
     license: "MIT"
     notice: references/addyosmani-agent-skills-LICENSE
     upstream_path: skills/performance-optimization/SKILL.md
-    upstream_commit: 91d4d07522de9577caf5d213e5bf1acc38fa3df2
-    last_reviewed_at: 2026-08-20
-    baseline_hash: "sha256:c73f72fdfbabe9874d2852de3df3289917a936402d43557d966494a3d6cefcbd"
+    upstream_commit: 6a268d7710c15708598e4b0a6942275a359760ee
+    last_reviewed_at: 2026-09-28
+    baseline_hash: "sha256:5cf73a3bb51361dbc3d92b0e217e94bf7054653f8022b299594d776aafbbafeb"
   - id: no-session-pstack-benchmark
     url: https://raw.githubusercontent.com/no-session/pstack/9a24d1408a10a5d0df624ffc128230424e405b82/benchmark/SKILL.md
     title: "no-session/pstack - benchmark skill"

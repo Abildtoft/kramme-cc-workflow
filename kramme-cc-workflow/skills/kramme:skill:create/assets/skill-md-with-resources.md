@@ -41,6 +41,7 @@ user-invocable: { true|false }
 
 ## Error Handling
 
+- A required reference cannot be read — stop before the step it governs, report the missing path and how to restore it, and do not rebuild its rules from memory.
 - {TODO: Error scenario 1} — {recovery action}
 - {TODO: Error scenario 2} — {recovery action}
 

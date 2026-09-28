@@ -13,8 +13,18 @@ const STATE_DIR = path.join(
 const DEFAULT_USAGE_FILE = path.join(STATE_DIR, "skill-usage.jsonl");
 const MAX_NON_JSONL_COMPAT_BYTES = 1024 * 1024;
 const MAX_JSONL_LINE_BYTES = 1024 * 1024;
-const SLASH_SKILL_PATTERN = /(?:^|\s)\/(kramme:[A-Za-z0-9:_-]+)/g;
-const DIRECT_SKILL_PATTERN = /^\/?(kramme:[A-Za-z0-9:_-]+)(?:\s|$)/;
+// Claude Code names plugin skills `kramme-cc-workflow:kramme-pr-create` and
+// records typed slash commands inside `<command-name>` tags, so accept the
+// plugin prefix, hyphenated names, and a `>` before the slash, then map every
+// match back to the `kramme:` frontmatter name.
+const PLUGIN_SKILL_PREFIX = "kramme-cc-workflow:";
+const SKILLS_DIR = path.join(__dirname, "..", "skills");
+const SLASH_SKILL_PATTERN =
+  /(?:^|\s|>)\/((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)/g;
+const DIRECT_SKILL_PATTERN =
+  /^\/?((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)(?:\s|$)/;
+/** @type {Map<string, string> | null} */
+let hyphenatedSkillNames = null;
 const SCAN_PRUNED_DIRS = new Set([
   ".cache",
   ".git",
@@ -403,7 +413,8 @@ function extractSlashSkillNames(text) {
   /** @type {string[]} */
   const names = [];
   for (const match of text.matchAll(SLASH_SKILL_PATTERN)) {
-    names.push(match[1]);
+    const name = canonicalSkillName(match[1]);
+    if (name) names.push(name);
   }
   return names;
 }
@@ -411,7 +422,49 @@ function extractSlashSkillNames(text) {
 /** @param {unknown} text @returns {string[]} */
 function extractDirectSkillName(text) {
   const match = String(text).match(DIRECT_SKILL_PATTERN);
-  return match ? [match[1]] : [];
+  const name = match ? canonicalSkillName(match[1]) : null;
+  return name ? [name] : [];
+}
+
+/**
+ * Maps a matched skill spelling to its `kramme:` frontmatter name. Hyphenated
+ * names are only trusted when they match a skill shipped next to this script.
+ * @param {string} raw
+ * @returns {string | null}
+ */
+function canonicalSkillName(raw) {
+  const name = raw.startsWith(PLUGIN_SKILL_PREFIX)
+    ? raw.slice(PLUGIN_SKILL_PREFIX.length)
+    : raw;
+  if (name.startsWith("kramme:")) return name;
+  return knownHyphenatedSkillNames().get(name) ?? null;
+}
+
+/** @returns {Map<string, string>} */
+function knownHyphenatedSkillNames() {
+  if (hyphenatedSkillNames) return hyphenatedSkillNames;
+  /** @type {Map<string, string | null>} */
+  const owners = new Map();
+  /** @type {string[]} */
+  let entries;
+  try {
+    entries = fs.readdirSync(SKILLS_DIR);
+  } catch (error) {
+    reportIoFailure("read skills directory", error, SKILLS_DIR);
+    entries = [];
+  }
+  for (const entry of entries) {
+    if (!entry.startsWith("kramme:")) continue;
+    const alias = entry.replaceAll(":", "-");
+    owners.set(alias, owners.has(alias) ? null : entry);
+  }
+  /** @type {Map<string, string>} */
+  const aliases = new Map();
+  for (const [alias, owner] of owners) {
+    if (owner) aliases.set(alias, owner);
+  }
+  hyphenatedSkillNames = aliases;
+  return aliases;
 }
 
 /** @param {unknown} value @param {number} [depth] @returns {string[]} */

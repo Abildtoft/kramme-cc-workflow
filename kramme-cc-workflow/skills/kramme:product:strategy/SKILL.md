@@ -25,11 +25,13 @@ Create or maintain `STRATEGY.md` at the repository root. This document is a shor
    - If `STRATEGY.md` exists, read it completely.
    - If `docs/pulse-reports/` exists, read the 1-3 most recent pulse reports only when they are relevant to the update. Use them as evidence, not as automatic strategy changes.
    - If the file has `last_updated` frontmatter older than 90 days, mark the context with `STALE:` in user-facing summaries.
+   - If `STRATEGY.md` does not exist, look for a root-level product-direction doc such as `PRODUCT.md`, `VISION.md`, or one the README links to. If one exists, read `references/existing-file-handling.md` before drafting.
 
 4. **Choose the mode.**
    - **Create mode:** no `STRATEGY.md` exists.
    - **Update mode:** `STRATEGY.md` exists.
    - In update mode, preserve strong sections. Update only the requested section, sections contradicted by new evidence, or sections the user confirms are weak.
+   - In update mode, classify the file first. If it has at least one `##` heading and every `##` heading is a template heading, it is template-shaped. Otherwise it is a shared file: read `references/existing-file-handling.md` before editing and keep the file's own shape.
 
 5. **Interview only for missing product decisions.**
    - Ask one focused question at a time.
@@ -49,8 +51,8 @@ Create or maintain `STRATEGY.md` at the repository root. This document is a shor
    - Do not remove these markers unless the user supplies confirming evidence.
 
 8. **Write the strategy document.**
-   - Read `assets/strategy-template.md` and populate the template.
-   - Include `last_updated: {YYYY-MM-DD}` frontmatter.
+   - In create mode or for a template-shaped file, read `assets/strategy-template.md` and populate the template. Edit a shared file in place instead, as `references/existing-file-handling.md` describes.
+   - Include `last_updated: {YYYY-MM-DD}` frontmatter. For a shared file without frontmatter, ask before adding it.
    - Keep the finished file short enough to scan in a few minutes.
    - Before overwriting an existing `STRATEGY.md`, summarize the intended changes and ask for confirmation unless the user explicitly requested a direct update.
 
@@ -95,7 +97,7 @@ List decisions that prevent scope creep. Include why each non-goal is currently 
 Before claiming completion:
 
 1. `STRATEGY.md` exists at the repository root.
-2. Required sections are present and contain no angle-bracket placeholders.
+2. Required sections are present (for a shared file, the required topics are covered somewhere in it), and the file contains no angle-bracket placeholders.
 3. The file does not contain implementation plans or issue schedules.
 4. Inferred, stale, and missing context is marked.
 5. Existing strong sections were preserved unless the user approved changes.

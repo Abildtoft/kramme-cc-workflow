@@ -13,6 +13,7 @@ Review every relevant concern area before marking the slice done. Complete each 
 - [ ] Third-party API responses treated as untrusted even when the integration has been stable. Schema-validated on entry.
 - [ ] Environment-variable loading is validated: missing / malformed variables fail fast at startup with a clear message.
 - [ ] Validation errors return a generic message to callers, not library-internal error shapes (leaks library version, leaks schema detail).
+- [ ] Deletes, moves, and overwrites whose target path comes from a request, config value, or another process resolve symlinks, then check for an allowlisted root, a minimum depth, and the expected owner immediately before acting, then act on that resolved path without following symlinks.
 
 **Why grouped together**: the failure mode is the same — unknown-shape data reaches code that assumes a known shape.
 
@@ -127,6 +128,7 @@ Review every relevant concern area before marking the slice done. Complete each 
 - [ ] Auth endpoints have a tight rate limit — starting point `10 / 15 min per client`.
 - [ ] Password reset and other one-shot email flows are rate-limited per account, not only per IP.
 - [ ] Per-user limits in addition to per-IP limits for resource-heavy endpoints.
+- [ ] Multi-instance and serverless deployments count requests in a shared store; an in-memory limiter multiplies the effective limit by the instance count.
 - [ ] Changes to an existing rate limit are `ASK FIRST`.
 
 **Why grouped together**: rate limiting defends against the class of attack (credential stuffing, enumeration, brute force) that targets the auth endpoints specifically — and the default is usually missing, not loose.

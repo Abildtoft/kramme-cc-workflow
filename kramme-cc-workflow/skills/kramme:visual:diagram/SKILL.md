@@ -27,6 +27,8 @@ Before writing HTML, commit to a direction. Don't fall back on a stock generated
 
 **What type of diagram?** Architecture, flowchart, sequence, data flow, schema/ER, state machine, mind map, data table, timeline, or dashboard. Each has distinct layout needs and rendering approaches (see Diagram Types below).
 
+**What does each figure claim?** Give every figure one claim and state it in the caption. Draw the mechanism behind the claim, meaning the path a request, event, or record actually takes, instead of one box per component name. In architecture, data-flow, and dependency diagrams, label every edge with the relationship it stands for (calls, writes, invalidates, polls); an unlabeled arrow there leaves the reader guessing. When comparing options or before/after states, make the differences the visible subject rather than leaving the reader to spot them.
+
 **What aesthetic?** Pick one and commit:
 
 - Monochrome terminal (green/amber on black, monospace everything)
@@ -249,6 +251,7 @@ Before delivering, verify:
 - **The swap test** (defined in step 1, Think): if a generic dark theme or the stock editorial page would render this indistinguishable from a template, push the aesthetic further.
 - **Both themes**: Toggle your OS between light and dark mode. Both should look intentional, not broken.
 - **Information completeness**: Does the diagram actually convey what the user asked for? Pretty but incomplete is a failure.
+- **One claim per figure**: Each caption states the figure's claim, the figure draws the mechanism behind it, and relationship edges carry labels.
 - **No overflow**: Resize the browser to different widths. No content should clip or escape its container. Every grid and flex child needs `min-width: 0`. Side-by-side panels need `overflow-wrap: break-word`. Never use `display: flex` on `<li>` for marker characters — it creates anonymous flex items that can't shrink. Use absolute positioning for markers instead. See the Overflow Protection section in `references/css-patterns.md`.
 - **Mermaid zoom controls**: Every `.mermaid-wrap` container must have zoom controls (+/-/reset buttons), Ctrl/Cmd+scroll zoom, and click-and-drag panning. Complex diagrams render too small without them.
 - **File opens cleanly**: No console errors, no broken font loads, no layout shifts.

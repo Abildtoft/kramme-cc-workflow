@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Derived from Gesso Build's src/cli.ts.
-// Upstream: https://github.com/Gesso-Build/skills/blob/ab68f1878dd5f19ac8dee9d55d2f4313060cac83/src/cli.ts
+// Upstream: https://github.com/Gesso-Build/skills/blob/1c3908b7efb56ec24624436dea5c32a371eb487c/src/cli.ts
 // Copyright (c) 2026 Gesso Build, Inc.
 // Licensed under MIT; see ../references/THIRD_PARTY_NOTICES.md.
 // anti-slop CLI.
@@ -16,7 +16,7 @@ import * as path from "node:path";
 import { applySlopFixes, runSlopGuard } from "./engine.js";
 import { FLAGSHIP_RULES } from "./rules.js";
 
-const VERSION = "0.4.2-kramme.1";
+const VERSION = "0.4.3-kramme.1";
 const HTML_FILE_RE = /\.html?$/i;
 const MAX_HTML_FILES = 256;
 const MAX_HTML_FILE_BYTES = 512 * 1024;

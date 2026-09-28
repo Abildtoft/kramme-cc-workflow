@@ -65,29 +65,32 @@ This skill reviews document quality only.
    - Always apply:
      - `coherence`: internal consistency, terminology, narrative order, contradictions, missing connective tissue.
      - `scope`: boundaries, non-goals, unowned work, vague commitments, hidden expansion.
-   - Apply `feasibility` to requirements, implementation plans, proposals, migrations, timelines, staffing assumptions, or technical commitments.
-   - Apply `product` to requirements, strategy, proposals, user-facing docs, value propositions, adoption claims, metrics, and prioritization.
-   - Apply `security-privacy` when the document mentions authentication, authorization, user data, secrets, payments, compliance, external integrations, permissions, destructive actions, or operational access.
+   - Apply `feasibility` to requirements, implementation plans, proposals, migrations, timelines, staffing assumptions, or technical commitments, including deployment and rollout ordering.
+   - Apply `product` when the document takes a debatable product position that nothing upstream (a cited strategy, spec, or decision) already settles: problem framing, a predicted user outcome, adoption or metric claims, or build-versus-defer prioritization. Choosing among mechanisms for an already-agreed outcome is an implementation choice, not a product position.
+   - Apply `security-privacy` when the document changes authentication, authorization, permissions, or operational access; exposes an endpoint externally; integrates across a trust boundary; or handles sensitive data (credentials, secrets, personal data, payments) or its compliance obligations. Ordinary data handling and internal schema or storage changes that leave who can read or write the data unchanged do not trigger it.
    - Apply `design-ux` when the document describes UI, onboarding, workflows, user behavior, navigation, copy, accessibility, or service/API experience.
    - Apply `reader-success` to README/docs documents, runbooks, tutorials, API docs, onboarding docs, and documents intended to help someone complete a task.
 
 7. **Review for findings**
    - Findings must be grounded in the document. Cite the nearest section heading and line number when available.
-   - Report only issues with concrete user, maintainer, business, safety, or execution impact.
+   - Admit a finding above `Nit` only when the document's instructions contradict each other or its stated goal, or when a reader who follows it as written (plus what it references) would do the wrong thing or measurably avoidable work. Judge omissions against what a competent reader or implementer can already infer: a missing section, extra detail, a finer threshold, or a restated point is not a finding by itself.
+   - Before reporting something as missing or contradictory, search the rest of the document and drop the finding if another section already answers it. Do not reopen a decision the document records as settled (a decision log, non-goals, a cited ADR) unless that decision itself causes a concrete defect. When two lenses disagree, resolve it against the document's stated goal, and report a tradeoff only when the text leaves the choice open.
+   - State each problem independently of its fix; a plausible addition does not prove something is missing. The concrete fix is the smallest edit that removes the stated consequence.
+   - "No findings" is a normal result for a sound document, not a failed review.
    - Do not report taste preferences, speculative concerns, or items that require reviewing source code.
    - Deduplicate findings by root cause. If one issue appears in multiple places, cite the strongest location and mention repeats in the body.
    - Severity definitions:
      - `Critical`: the document could drive materially wrong work, unsafe behavior, a major product misdecision, or an irreversible execution mistake.
      - `Major`: a normal reader or implementer is likely to make the wrong call, miss required work, or proceed with an untestable plan.
      - `Minor`: clarity, completeness, or sequencing issue that creates friction but is unlikely to cause the wrong work by itself.
-     - `Nit`: small wording or structure issue with low risk; use sparingly.
+     - `Nit`: small wording or structure edit with a concrete reader benefit; drop pure preferences.
 
 8. **Synthesize the report**
    - Lead with findings ordered by severity, then by document order.
    - Use stable IDs: `DOC-001`, `DOC-002`, etc.
    - Each finding must use this structure:
 
-   ```markdown
+   ```text
    ### DOC-001: <short finding title> [<Severity>]
    Location: `<path>` - <section heading or "front matter">, line <line-or-range>
    Lens: <lens>
@@ -101,7 +104,7 @@ This skill reviews document quality only.
 
    - After findings, include:
 
-   ```markdown
+   ```text
    ## Coverage
 
    **Document type:** <primary type; secondary: ... if applicable>
@@ -111,7 +114,7 @@ This skill reviews document quality only.
 
    - If there are no findings, say:
 
-   ```markdown
+   ```text
    No findings.
 
    ## Coverage

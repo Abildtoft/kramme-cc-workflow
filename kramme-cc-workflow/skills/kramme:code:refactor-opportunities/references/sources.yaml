@@ -1,11 +1,11 @@
 sources:
-  - id: addy-agent-skills-lesson
-    url: https://addyosmani.com/agents/17-agent-skills/
-    title: "Addy Osmani - Agent skills reusable knowledge for agents"
-    rationale: "The Rule of 500 automation trigger for large refactors is attributed to Addy's guidance on skill-driven coding workflows."
+  - id: addy-code-simplification
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/code-simplification/SKILL.md
+    title: "Addy Osmani agent-skills - code simplification"
+    rationale: "The Rule of 500 automation trigger in Phase 3 step 8 comes from this source's guidance on scripting large refactors; the local step restates it in original wording."
     usage: inspiration
-    last_reviewed_at: 2026-07-06
-    baseline_hash: "sha256:2399a67f0b25ad7c0cc8d67c51c6b0c2f210bd007e0842d06820d55f1aecc759"
+    last_reviewed_at: 2026-09-28
+    baseline_hash: "sha256:f0c5ed754057eb0c1e027e2587f59de816651feb5e837242296c43ea21cf621d"
   - id: pocock-improve-codebase-architecture-skill
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/SKILL.md
     title: "Matt Pocock skills - improve-codebase-architecture (SKILL.md)"

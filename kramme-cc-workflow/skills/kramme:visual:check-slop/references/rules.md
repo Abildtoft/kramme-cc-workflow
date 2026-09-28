@@ -1,6 +1,6 @@
 <!--
 Derived from Gesso Build's anti-slop rule catalog.
-Upstream: https://github.com/Gesso-Build/skills/blob/ab68f1878dd5f19ac8dee9d55d2f4313060cac83/skills/anti-slop/references/rules.md
+Upstream: https://github.com/Gesso-Build/skills/blob/1c3908b7efb56ec24624436dea5c32a371eb487c/skills/anti-slop/references/rules.md
 Copyright (c) 2026 Gesso Build, Inc.
 Licensed under MIT; see THIRD_PARTY_NOTICES.md.
 -->
@@ -141,7 +141,7 @@ Opt-outs (for deliberate design decisions, never for making the check pass): ele
 
 ### cream-default-wash (severity 1, FLAG)
 
-**Detects:** the page ground (a `body`/`html` background hex) sitting in the warm cream band (hue 25-60, saturation 0.10-0.50, lightness >= 0.82) COMBINED with a serif display voice (a `font-family` whose leading family is serif, not a sans stack's trailing generic). One hit per page.
+**Detects:** the page ground (a `body`/`html` background hex) sitting in the warm cream band (hue 25-60, saturation 0.10-0.50, lightness >= 0.82) COMBINED with a serif display voice (a `font-family` value, or the family list of a `font` shorthand, whose leading family is serif, not a sans stack's trailing generic). One hit per page.
 
 **Why it reads as slop:** cream + serif is the "tasteful startup" costume: an editorial voice applied by default to products that are not editorial, cited across every 2026 tell list as the polite twin of the purple gradient.
 
@@ -286,7 +286,7 @@ Opt-outs (for deliberate design decisions, never for making the check pass): ele
 
 ### overused-font-stack (severity 1, FLAG)
 
-**Detects:** Inter, Space Grotesk, Geist, or Instrument Serif named in any `font-family` declaration or Google Fonts stylesheet URL. One hit per distinct family found.
+**Detects:** Inter, Space Grotesk, Geist, or Instrument Serif named in any `font-family` declaration, `font` shorthand family list, or Google Fonts stylesheet URL. One hit per distinct family found.
 
 **Why it reads as slop:** these four faces headline every list of AI design tells; they are good typefaces exhausted by being the default reach. A face that argues for the subject is the difference between a designed page and a generated one.
 
@@ -296,7 +296,7 @@ Opt-outs (for deliberate design decisions, never for making the check pass): ele
 
 ### single-font-page (severity 1, FLAG)
 
-**Detects:** a full document with two or more `font-family` declarations whose leading (non-generic) family names all resolve to ONE family. Generic keywords (serif, sans-serif, monospace, system-ui, ui-\*) are ignored; pages with fewer than two declarations stay quiet.
+**Detects:** a full document with two or more family lists (from `font-family` declarations or `font` shorthands) whose leading (non-generic) family names all resolve to ONE family. Generic keywords (serif, sans-serif, monospace, system-ui, ui-\*) are ignored, a shorthand with no size token (`font: inherit`) carries no list, and pages with fewer than two lists stay quiet.
 
 **Why it reads as slop:** one family at one register carrying display, body, and UI reads as unstyled output, not typographic restraint. Real single-family systems vary optical size, width, or weight with intent.
 
@@ -589,7 +589,7 @@ Opt-outs (for deliberate design decisions, never for making the check pass): ele
 
 ### over-rounded-card (severity 1, FIX)
 
-**Detects:** a filled surface (real background) whose `border-radius` is a single pixel value from 40 to 120. Pills and full circles pass (their 9999px / 50% conventions fall outside the band), as do unfilled wrappers.
+**Detects:** a filled surface (real background) whose `border-radius` is a single pixel value from 40 to 120. Pills and full circles pass (their 9999px / 50% conventions fall outside the band), as do unfilled wrappers. Controls rounded on purpose also pass: the element that takes the radius is a link, button, button-type input, or `role="button"`, or it carries a whole class token `btn`, `button`, `pill`, `chip`, `badge`, `tag`, or `cta` (a BEM `--modifier` counts). A `card`, `panel`, `tile`, or `surface` class keeps an element in scope even when it is a link, and look-alike names such as `.cta-banner` or `.tag-list .card` still count.
 
 **Why it reads as slop:** 40px+ corners turn content cards into blobs: the "friendly" dial turned past its stop, with text left floating in amorphous shapes. Confident systems hold 8-24px.
 

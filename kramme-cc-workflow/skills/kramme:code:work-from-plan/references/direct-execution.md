@@ -24,6 +24,8 @@ Direct execution is for bounded current-branch work only. It borrows the plannin
    - Edit only files needed for the current task.
    - Preserve existing local patterns and terminology.
    - Add focused tests when behavior changes or when the risk justifies coverage.
+   - A new or changed test must fail if the behavior it covers regresses and keep passing through a pure refactor. Assert observable results at the boundary (return values, persisted state, outgoing messages); do not compute the expected value with the code under test, stub the result the code is meant to produce, or assert only internal call sequences. When practical, watch the test fail for the expected reason before changing production code.
+   - Drive behavior through its real entry point. Do not add exports, flags, wrappers, or hooks to production code only so a test can reach it.
    - When resuming prior work, retrying a failed step, or stale workflow state would repeat proven work, apply `kramme:code:forward-progress`: continue from the latest proven work and replay only the smallest dependency cone affected by a meaningful change or demonstrated defect.
    - Treat every plan route, missing-requirement rule, scope boundary, user-approval boundary, and verification requirement in this workflow as substantive control; the forward-progress convention never authorizes bypassing them.
    - Do not add branch, PR, CI, release, or issue-tracker automation.

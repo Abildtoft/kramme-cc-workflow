@@ -52,13 +52,15 @@ What is slow?
 
 Use the tree as a triage path, not a checklist. Follow one branch per measurement.
 
-## The six anti-patterns
+## The eight anti-patterns
 
 Each has a canonical fix. Full before/after code examples live in `anti-patterns.md`.
 
 - **N+1 queries** — one query per row of a parent collection. Fix with a single query plus `include` / `join` / eager loading.
 - **Unbounded data fetching** — listing endpoints that return every row. Fix with pagination (`take` + `skip` or cursor pagination) and a hard server-side limit.
+- **Queries that miss their index** — an index added without reading the plan, or a query shape no index can serve. Fix by reading `EXPLAIN ANALYZE` (or the equivalent) first, then indexing only what the plan will use or rewriting the query.
+- **Connection pool exhaustion** — every endpoint slows while requests wait for connections. Fix by sizing pools to the database's concurrency across all instances, capping per-instance pools, or adding a pooler.
 - **Missing image optimization** — `<img>` without width/height, no `srcset`, no `loading="lazy"`, uncompressed format. Fix with `<picture>`, `srcset`, explicit dimensions, modern formats (AVIF/WebP), `fetchpriority="high"` for LCP image, `loading="lazy"` for below the fold.
 - **Unnecessary re-renders (React)** — new object/array literals passed as props on every render, or memoization applied blindly. Fix with stable references (module-scope constants or `useMemo`), `React.memo` only when profiling proves it helps.
 - **Large bundle size** — every route ships every dependency. Fix with route-level code splitting (`lazy` + `Suspense`), dynamic imports for heavy features, and tree-shaking (ESM + `sideEffects: false`). Profile before micro-optimizing import styles.
-- **Missing caching** — recomputing or re-fetching frequently read, rarely changed data. Fix with an in-memory TTL cache, HTTP `Cache-Control` headers for static assets, and content hashing in filenames for immutable long-cached resources.
+- **Missing caching** — recomputing or re-fetching frequently read, rarely changed data. Fix with an in-memory TTL cache, HTTP `Cache-Control` headers for static assets, and content hashing in filenames for immutable long-cached resources. Key every cache on all inputs that shape the response.

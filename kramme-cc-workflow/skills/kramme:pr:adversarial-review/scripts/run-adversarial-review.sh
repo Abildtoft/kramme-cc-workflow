@@ -229,7 +229,11 @@ verify_prepared_tree_integrity() {
     || [ "$HEAD_BEFORE" != "$head_after" ] \
     || [ "$TREE_BEFORE" != "$tree_after" ] \
     || [ -n "$worktree_status_after" ]; then
-    INTEGRITY_ERROR="reviewer mutated the prepared working tree; inspect and recover it before continuing"
+    local cause="the local reviewer only read an isolated snapshot, so another agent or process in this workspace changed it"
+    if [ "$RUN_MODE" = "conductor" ]; then
+      cause="the Conductor reviewer session shares this workspace, so it or another agent or process here changed it"
+    fi
+    INTEGRITY_ERROR="the prepared working tree changed during the review; ${cause}. Inspect and recover the tree before continuing, and keep other agents out of this workspace while a review runs"
     return 1
   fi
 }
