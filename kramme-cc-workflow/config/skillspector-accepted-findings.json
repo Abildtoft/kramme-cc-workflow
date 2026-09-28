@@ -193,6 +193,30 @@
       "review_after": "2026-10-19"
     },
     {
+      "path": "kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk-signals.py",
+      "rule_id": "OH1",
+      "reason": "Reviewed false-positive OH1 finding: the git() wrapper runs `git` from PATH with an argument list and no shell. Caller-supplied revisions reach git only as one argv element after `rev-parse --verify --quiet --end-of-options`; every later diff, ls-tree, and cat-file call receives the resolved commit or blob object ID and the constant policy path. No model output or diff content is passed to a command.",
+      "owner": "kramme",
+      "accepted_at": "2026-09-28",
+      "review_after": "2026-10-28"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk-signals.py",
+      "rule_id": "PE3",
+      "reason": "Reviewed false-positive PE3 findings: the `.env` / `.env.*` name check here and the credential name and suffix tables it imports from risk_patterns.py (`.npmrc`, `.netrc`, key-file suffixes) are compared against changed-path names and suffixes from `git diff --raw` to raise the path:secrets-config routing signal. The script never opens those files from disk or transmits them; their added lines are pattern-matched in memory from git diff output, the policy blob is read from the trusted `--policy-rev` (the default branch), and only paths, line numbers, and pattern names are reported.",
+      "owner": "kramme",
+      "accepted_at": "2026-09-28",
+      "review_after": "2026-10-28"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk_patterns.py",
+      "rule_id": "PE3",
+      "reason": "Reviewed false-positive PE3 findings: this static table module only defines the credential file names (`.npmrc`, `.netrc`, `.pypirc`, `id_rsa`, and similar), key-file suffixes, and example-env suffixes that risk-signals.py compares against changed-path names and suffixes from `git diff --raw` to raise the path:secrets-config routing signal. Nothing here opens, reads, or transmits a file; the module contains constants and compiled patterns only.",
+      "owner": "kramme",
+      "accepted_at": "2026-09-28",
+      "review_after": "2026-10-28"
+    },
+    {
       "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",
       "rule_id": "LP3",
       "reason": "Reviewed intentional LP3 finding: the run-state helper writes only inside the validated, git-ignored `.context/<archive-key>/reviews/` directory and commits only paths the convergence policy already classified; the skill body documents those side effects and the frontmatter schema has no permissions field.",
