@@ -50,6 +50,15 @@ output = AtomicOutput(args.output)
 SKILL_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,127}")
 SKILL_PATH = re.compile(r"(?:^|[/\\])skills[/\\]([A-Za-z0-9][A-Za-z0-9._:-]{0,127})[/\\]SKILL\.md\b")
 SLASH_SKILL = re.compile(r"^\s*/([A-Za-z0-9][A-Za-z0-9._:-]{0,127})(?=$|\s)")
+# Claude Code records a typed slash command as a user message that opens with
+# <command-message>…</command-message><command-name>/name</command-name>.
+COMMAND_NAME_RECORD = re.compile(
+    r"^\s*(?:<command-message>[^<]*</command-message>\s*)?"
+    r"<command-name>\s*/?([A-Za-z0-9][A-Za-z0-9._:-]{0,127})\s*</command-name>",
+    re.IGNORECASE,
+)
+# Cursor wraps the typed prompt in <user_query> tags.
+LEADING_PROMPT_WRAPPER = re.compile(r"^\s*<user_query>", re.IGNORECASE)
 DIRECT_SKILL_TOOLS = {"skill", "read_skill"}
 PATH_READ_TOOLS = {"open", "read", "read_file", "read_skill", "skill", "view"}
 SHELL_READ_TOOLS = {"bash", "exec_command", "local_shell_call", "shell"}
@@ -91,6 +100,24 @@ for raw_name in args.known_skill:
     if known_name is None:
         parser.error("--known-skill must be a valid skill name")
     known_skills.add(known_name)
+
+hyphen_owners: dict[str, Set[str]] = {}
+for known_name in known_skills:
+    hyphen_owners.setdefault(known_name.replace(":", "-"), set()).add(known_name)
+hyphen_aliases = {alias: next(iter(owners)) for alias, owners in hyphen_owners.items() if len(owners) == 1}
+
+
+def canonical_skill_name(name: str) -> str:
+    """Map a host's spelling of a known skill to its trusted frontmatter name.
+
+    Claude Code records plugin skills as ``<plugin>:<name with hyphens>``
+    (``kramme-cc-workflow:kramme-pr-create`` for ``kramme:pr:create``), and
+    some hosts use the hyphenated form alone. Unknown names pass through.
+    """
+    if name in known_skills:
+        return name
+    unqualified = name.split(":", 1)[1] if ":" in name else name
+    return hyphen_aliases.get(name) or hyphen_aliases.get(unqualified) or name
 
 
 def names_from_paths(value: object) -> Set[str]:
@@ -234,9 +261,17 @@ def user_texts(event: JsonObject, platform: Platform) -> Iterable[str]:
 
 
 def names_from_user_text(text: str) -> Set[str]:
-    """Extract explicit slash commands after removing injected wrapper blocks."""
+    """Extract explicit slash commands after removing injected wrapper blocks.
+
+    A command counts only when it opens the prompt: typed as ``/name``, as
+    Claude Code's ``<command-name>`` record, or inside Cursor's leading
+    ``<user_query>`` wrapper. Mentions later in the prose never count.
+    """
     checked_text = INJECTED_BLOCK.sub("", text)
-    return {match.group(1) for match in SLASH_SKILL.finditer(checked_text)}
+    names = {match.group(1) for match in COMMAND_NAME_RECORD.finditer(checked_text)}
+    unwrapped = LEADING_PROMPT_WRAPPER.sub("", checked_text, count=1)
+    names.update(match.group(1) for match in SLASH_SKILL.finditer(unwrapped))
+    return names
 
 
 def claude_or_cursor_tools(
@@ -280,7 +315,7 @@ for platform, event in iter_platform_events(sys.stdin, diagnostics):
     try:
         prompt_names: Set[str] = set()
         for text in user_texts(event, platform):
-            prompt_names.update(names_from_user_text(text))
+            prompt_names.update(canonical_skill_name(name) for name in names_from_user_text(text))
         if prompt_names:
             accepted = prompt_names & known_skills
             skills.update(accepted)
@@ -291,7 +326,7 @@ for platform, event in iter_platform_events(sys.stdin, diagnostics):
 
         tools = codex_tools(event) if platform == "codex" else claude_or_cursor_tools(event, platform)
         for tool_name, tool_input in tools:
-            detected = names_from_tool(tool_name, tool_input)
+            detected = {canonical_skill_name(name) for name in names_from_tool(tool_name, tool_input)}
             if detected:
                 accepted = detected & known_skills
                 skills.update(accepted)

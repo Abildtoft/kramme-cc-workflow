@@ -31,6 +31,135 @@ class SessionSkillUsageTests(unittest.TestCase):
         self.assertEqual(evidence["skill_events"], 0)
         self.assertEqual(evidence["unknown_skill_events"], 0)
 
+    def test_counts_claude_code_command_records_by_frontmatter_name(self):
+        session = json.dumps(
+            {
+                "type": "user",
+                "message": {
+                    "content": (
+                        "<command-message>kramme-cc-workflow:kramme-qa</command-message>\n"
+                        "<command-name>/kramme-cc-workflow:kramme-qa</command-name>\n"
+                        "<command-args>smoke the checkout flow</command-args>"
+                    )
+                },
+            }
+        )
+
+        evidence = self.run_skill_usage(session, "kramme:qa")
+        self.assertEqual(evidence["skills"], ["kramme:qa"])
+        self.assertEqual(evidence["skill_events"], 1)
+        self.assertEqual(evidence["unknown_skill_events"], 0)
+
+    def test_ignores_command_name_tags_quoted_inside_prose(self):
+        session = json.dumps(
+            {
+                "type": "user",
+                "message": {"content": "The log showed <command-name>/kramme:qa</command-name> earlier."},
+            }
+        )
+
+        evidence = self.run_skill_usage(session, "kramme:qa")
+        self.assertEqual(evidence["skills"], [])
+        self.assertEqual(evidence["skill_events"], 0)
+        self.assertEqual(evidence["unknown_skill_events"], 0)
+
+    def test_maps_plugin_qualified_skill_tool_names_to_known_skills(self):
+        session = json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Skill",
+                            "input": {"skill": "kramme-cc-workflow:kramme-pr-create"},
+                        }
+                    ]
+                },
+            }
+        )
+
+        evidence = self.run_skill_usage(session, "kramme:pr:create", "kramme:qa")
+        self.assertEqual(evidence["skills"], ["kramme:pr:create"])
+        self.assertEqual(evidence["skill_events"], 1)
+        self.assertEqual(evidence["unknown_skill_events"], 0)
+
+    def test_maps_bare_hyphenated_skill_names_to_known_skills(self):
+        session = json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Skill",
+                            "input": {"skill": "kramme-pr-create"},
+                        }
+                    ]
+                },
+            }
+        )
+
+        evidence = self.run_skill_usage(session, "kramme:pr:create", "kramme:qa")
+        self.assertEqual(evidence["skills"], ["kramme:pr:create"])
+        self.assertEqual(evidence["skill_events"], 1)
+        self.assertEqual(evidence["unknown_skill_events"], 0)
+
+    def test_ambiguous_hyphenated_names_stay_unknown(self):
+        session = json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Skill",
+                            "input": {"skill": "kramme-a-b-c"},
+                        }
+                    ]
+                },
+            }
+        )
+
+        evidence = self.run_skill_usage(session, "kramme:a-b:c", "kramme:a:b-c")
+        self.assertEqual(evidence["skills"], [])
+        self.assertEqual(evidence["skill_events"], 0)
+        self.assertEqual(evidence["unknown_skill_events"], 1)
+
+    def test_unknown_plugin_qualified_skill_names_stay_unknown(self):
+        session = json.dumps(
+            {
+                "type": "assistant",
+                "message": {
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "name": "Skill",
+                            "input": {"skill": "other-plugin:deploy"},
+                        }
+                    ]
+                },
+            }
+        )
+
+        evidence = self.run_skill_usage(session, "kramme:pr:create")
+        self.assertEqual(evidence["skills"], [])
+        self.assertEqual(evidence["skill_events"], 0)
+        self.assertEqual(evidence["unknown_skill_events"], 1)
+
+    def test_counts_cursor_prompts_wrapped_in_user_query(self):
+        session = json.dumps(
+            {
+                "role": "user",
+                "message": {"content": "<user_query>\n/kramme:qa check the cart\n</user_query>"},
+            }
+        )
+
+        evidence = self.run_skill_usage(session, "kramme:qa")
+        self.assertEqual(evidence["platforms"], ["cursor"])
+        self.assertEqual(evidence["skills"], ["kramme:qa"])
+        self.assertEqual(evidence["skill_events"], 1)
+
     def test_ignores_unsupported_raw_custom_tool_inputs(self):
         session = "\n".join(
             (
