@@ -2,7 +2,7 @@
 
 Techniques for uncovering what the user actually wants, not what they think they should want. The gap between those two is where most failed projects begin.
 
-Use the Core Principle, Technique Library, Codebase-as-Answer-Source Rule, pacing guidance, and anti-patterns in every interview profile. When the caller selected the evidence-confidence profile, also use this reference's Question Round Contract, ADR-Offer Hook, Coverage Mode Loop, answer-processing rules, and dashboard instructions. For the standalone topic-coverage profile, keep the question interaction, ADR offer, round size, progress dimensions, and stop rules from `interview-operations.md`.
+Use the Core Principle, Technique Library, Codebase-as-Answer-Source Rule, Unfamiliar Territory Map, pacing guidance, and anti-patterns in every interview profile. When the caller selected the evidence-confidence profile, also use this reference's Question Round Contract, ADR-Offer Hook, Coverage Mode Loop, answer-processing rules, and dashboard instructions. For the standalone topic-coverage profile, keep the question interaction, ADR offer, round size, progress dimensions, and stop rules from `interview-operations.md`.
 
 ## Core Principle
 
@@ -87,6 +87,18 @@ Before asking any question in either mode, decide whether the answer can be foun
 - If yes, explore first, report the finding with the source, and ask only for confirmation or correction if meaningful uncertainty remains.
 - If no, ask the user.
 - Skip exploration when the question is genuinely preference-, priority-, or business-context-based and no artifact could answer it.
+
+## Unfamiliar Territory Map
+
+Use this when the user lacks the background to judge a line of questions, not when they simply have not decided yet. Signals: they say they do not know the domain or system area, or they twice in a row defer a judgment they clearly cannot make ("you decide", "no idea").
+
+1. Ask once per area with AskUserQuestion whether to map the choices first or continue with recommended defaults. Do not switch from questioning to briefing without that consent. If they choose defaults, record them as in step 5 and move on.
+2. Build a map of 3-7 items, highest stakes first. Each item is either a choice (2-4 genuinely viable options, a one-line trade-off per option, and a recommended default) or a known pitfall that constrains a choice.
+3. Ground the map in the repository or research. Anything the repository already answers goes on the map as a cited fact, not a choice; mark items that rest only on model knowledge `UNVERIFIED:`.
+4. Let the user pick the items to discuss in one multi-select question, then probe those as normal.
+5. Record the recommended default for every item the user skips as an explicit assumption, in the written plan or among the decisions of a delegated `INTERVIEW RESULT:`, marked as defaulted rather than decided.
+
+Questions about the user's own problem, users, and priorities continue normally; the map replaces only the questions the user cannot evaluate.
 
 ## ADR-Offer Hook
 

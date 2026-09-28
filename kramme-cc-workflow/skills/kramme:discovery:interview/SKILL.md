@@ -241,6 +241,8 @@ In **Decision-Tree mode**, read `references/decision-tree-mode.md`, identify the
 
 If the user requests Decision-Tree mode mid-session (for example, "walk this depth-first"), finish processing the current answer, switch the active interview mode, apply any delegated decision-tree context, and continue with the coupled decisions in flight. Do not discard evidence already collected by the coverage profile.
 
+In either profile, when the user lacks the background to judge an area (they say so, or twice defer a judgment they cannot make), offer the Unfamiliar Territory Map from `references/probing-techniques.md` for that area instead of collecting guesses.
+
 For topic coverage, use `references/interview-operations.md` for round structure, adaptive follow-up behavior, the ADR-offer hook, progress tracking, and completion criteria. For evidence confidence, use the round and answer-processing contracts in `references/probing-techniques.md` and the stop rules in `references/confidence-framework.md`. In either profile, synthesize answers before the next round and stop according to the active profile rather than mixing thresholds.
 
 ## Step 5: Output Plan Document
