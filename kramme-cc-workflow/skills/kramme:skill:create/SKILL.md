@@ -30,6 +30,17 @@ Batch Q2, Q3, and Q5 into a single multi-choice prompt (they are independent mul
 
 Skip if `$ARGUMENTS` already provides a clear description.
 
+### Warrant check
+
+Once the purpose is clear, confirm that a new skill is warranted before asking the remaining questions. All of these should hold:
+
+- The task recurs, or clearly will.
+- An agent handles it poorly without guidance, shown by trying the task once without a skill or by an observed failure.
+- The skill adds something the agent cannot derive: context, a safety gate, or a repeatable procedure with a clear stopping point.
+- No existing skill already covers it. Scan existing skill names and descriptions, and prefer extending a close match.
+
+When a check fails, name it and recommend extending the closest skill or not creating one. Continue only if the user still wants a new skill after hearing why.
+
 ### Question 2: Invocation and Side Effects
 
 > How should this skill be triggered, and does it have side effects?
