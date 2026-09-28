@@ -161,7 +161,7 @@ Read the local `references/` and `assets/` files just in time, as step 2 below d
 
 ### Workflow
 
-1. **Think.** Decide what changed, who needs the explanation, and which comparisons deserve the most visual weight. Choose diagram types that make before/after changes legible, not just pretty.
+1. **Think.** Decide what changed, who needs the explanation, and which comparisons deserve the most visual weight. Choose diagram types that make before/after changes legible, not just pretty. Give each diagram one claim and state it in the caption: draw the mechanism behind it (the path a request, event, or record actually takes), label architecture, data-flow, and dependency edges with the relationship they stand for, and make the before/after differences the visible subject.
 
 2. **Structure.** Use the local templates and references to choose the rendering approach:
    - `assets/architecture.html` for text-heavy architecture comparisons

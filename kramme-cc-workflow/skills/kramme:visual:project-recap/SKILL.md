@@ -26,7 +26,7 @@ Use a warm editorial or paper/ink aesthetic with muted blues and greens. Keep it
 
 ## Workflow
 
-1. **Think.** Decide who the page is for, which diagram types best explain the project, and which visual direction fits this recap. Do not default to a generic dark dashboard.
+1. **Think.** Decide who the page is for, which diagram types best explain the project, and which visual direction fits this recap. Do not default to a generic dark dashboard. Give each diagram one claim and state it in the caption: draw the mechanism behind it (the path a request, event, or record actually takes), and label architecture, data-flow, and dependency edges with the relationship they stand for.
 
 2. **Structure.** Use the local templates and references to choose the right rendering approach:
    - `assets/architecture.html` for text-heavy architecture snapshots

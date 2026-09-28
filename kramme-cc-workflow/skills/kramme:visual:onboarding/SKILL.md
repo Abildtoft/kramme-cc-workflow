@@ -23,7 +23,7 @@ Read `references/css-patterns.md` before generating — it holds the always-need
 
 ## Workflow
 
-1. **Think.** Decide who the onboarding page is for, what they need to understand first, and which diagrams best lower the initial cognitive load.
+1. **Think.** Decide who the onboarding page is for, what they need to understand first, and which diagrams best lower the initial cognitive load. Give each diagram one claim and state it in the caption: draw the mechanism behind it (the path a request, event, or record actually takes), and label architecture, data-flow, and dependency edges with the relationship they stand for.
 
 2. **Structure.** Choose the rendering approach. Read each resource below only when its condition applies:
    - `assets/mermaid-flowchart.html` for architecture, entity relationships, and key flows
