@@ -151,6 +151,7 @@
         "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:triage-risk/SKILL.md",
         "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md"
       ]
     },
