@@ -47,10 +47,11 @@ Preserving meaning and matching the existing voice take priority over every othe
 Read the full catalog from `references/ai-writing-patterns.md`. It covers:
 
 - Content patterns (#1-6): inflated significance, fake notability, superficial analyses, promotional language, weasel words, formulaic sections
-- Language and grammar (#7-12): overused AI vocabulary, copula avoidance, negative parallelisms, rule of three, synonym cycling, false ranges
+- Language and grammar (#7-12): overused AI vocabulary, copula avoidance, negative parallelisms, rule of three, synonym cycling and repeated openings, false ranges
 - Style patterns (#13-18): em dash overuse, boldface, inline-header lists, title case, emojis, curly quotes
 - Communication patterns (#19-21): chatbot artifacts, knowledge-cutoff disclaimers, sycophantic tone
 - Filler and hedging (#22-24): filler phrases, excessive hedging, generic conclusions
+- Reporting and structure (#25-29): procedural self-reports, re-explained context, signposting, self-describing text, formulaic document structure
 
 ## Adding voice (opt-in)
 
