@@ -75,6 +75,8 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/schema.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/strings.py",
       "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
+      "kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk-signals.py",
+      "kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk_patterns.py",
       "kramme-cc-workflow/skills/kramme:visual:generate-image/scripts/generate_image.py"
     ],
     "contract_only": {
@@ -318,6 +320,11 @@
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/gut-check-guidance.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/pr-triage-risk-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:pr:triage-risk/SKILL.md"]
     },
     {
       "kind": "guidance",
