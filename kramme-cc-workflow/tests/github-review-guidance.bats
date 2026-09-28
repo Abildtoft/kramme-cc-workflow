@@ -286,3 +286,15 @@ PY
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "github review reply never replies to comments hidden as spam or abuse" {
+	run bash -c '
+    set -e
+    grep -qF "Never draft or post a reply to a comment hidden as \`spam\` or \`abuse\`" "$1"
+    grep -qF "even with \`--all\`" "$1"
+    grep -qF "isMinimized" "$1"
+    grep -qF "minimizedReason" "$1"
+    grep -qF "| Hidden |" "$1"
+  ' _ "$PLUGIN_ROOT/skills/kramme:pr:github-review-reply/SKILL.md"
+	[ "$status" -eq 0 ]
+}

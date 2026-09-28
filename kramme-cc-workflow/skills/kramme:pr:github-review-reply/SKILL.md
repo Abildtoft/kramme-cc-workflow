@@ -129,6 +129,8 @@ query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
               body
               url
               createdAt
+              isMinimized
+              minimizedReason
               author { login __typename }
             }
           }
@@ -153,11 +155,12 @@ Group feedback into actionable items.
 4. Treat each general PR comment as a single `general-comment` item.
 5. Record source comment links for every comment that contributes to the item. For inline threads, include one Markdown link per included source review comment in the thread, using REST `html_url` when available and GraphQL `url` as the fallback. For review-summary and general-comment items, use the REST `html_url`. Label links clearly enough to distinguish multiple comments, such as `[@alice root]`, `[@bob reply]`, `[@alice review]`, or `[@alice comment]`.
 6. Record the original comment author and author type for every item: the root inline-thread comment author for inline threads, the review author for review-summary items, and the issue comment author for general-comment items. Also record whether the item contains human-origin feedback that the draft reply/comment will answer. `Human confirmation required: yes` whenever any human non-author feedback is being answered, including human replies inside bot/app-rooted inline threads. This derived confirmation field controls the mandatory posting confirmation in Step 8.
-7. Identify the latest non-author comment in each item, where author means `PR_AUTHOR`. Also identify the latest human non-author comment separately, because `--human-only` keeps mixed-origin items for their human feedback while treating bot/app comments as context.
-8. Drop items whose only comments are from `SELF` or `PR_AUTHOR`. Keep items that contain reviewer feedback from any other human, bot, or app even when `SELF` or `PR_AUTHOR` also participated.
-9. If `HUMAN_ONLY=true`, exclude items with no human non-author feedback. For mixed-origin items, keep the item but answer only the human non-author feedback; use bot/app comments only as context when needed.
-10. Unless `--all` is set, exclude inline threads that are already resolved or whose latest non-author comment is older than a later reply from `PR_AUTHOR`; exclude review-summary and general-comment items when a later author reply clearly answers them. In REST-only fallback, Step 2 has already excluded inline threads unless `--all` was set, so still apply the author-reply filter to review-summary and general-comment items.
-11. Apply `--only <login>` after all other filtering. If `HUMAN_ONLY=true`, compare `<login>` against the latest human non-author comment so a later bot/app comment does not drop selected human feedback from a mixed-origin thread; otherwise compare against the latest non-author comment.
+7. Mark comments GitHub shows as hidden: a general PR comment whose REST `minimized` is non-null, and an inline-thread comment whose GraphQL `isMinimized` is true. Keep the reason (`minimized.reason` or `minimizedReason`). Unless `--all` is set, drop hidden general-comment items and leave hidden comments out when finding the latest non-author comments below, so an inline thread whose non-author comments are all hidden drops out. With `--all`, keep them and show the reason in the plan's `Hidden` field. Never draft or post a reply to a comment hidden as `spam` or `abuse` (compare case-insensitively), even with `--all`.
+8. Identify the latest non-author comment in each item, where author means `PR_AUTHOR`. Also identify the latest human non-author comment separately, because `--human-only` keeps mixed-origin items for their human feedback while treating bot/app comments as context.
+9. Drop items whose only comments are from `SELF` or `PR_AUTHOR`. Keep items that contain reviewer feedback from any other human, bot, or app even when `SELF` or `PR_AUTHOR` also participated.
+10. If `HUMAN_ONLY=true`, exclude items with no human non-author feedback. For mixed-origin items, keep the item but answer only the human non-author feedback; use bot/app comments only as context when needed.
+11. Unless `--all` is set, exclude inline threads that are already resolved or whose latest non-author comment is older than a later reply from `PR_AUTHOR`; exclude review-summary and general-comment items when a later author reply clearly answers them. In REST-only fallback, Step 2 has already excluded inline threads unless `--all` was set, so still apply the author-reply filter to review-summary and general-comment items.
+12. Apply `--only <login>` after all other filtering. If `HUMAN_ONLY=true`, compare `<login>` against the latest human non-author comment so a later bot/app comment does not drop selected human feedback from a mixed-origin thread; otherwise compare against the latest non-author comment.
 
 If no items remain after filtering, report that no unanswered review feedback was found and stop.
 
@@ -255,7 +258,7 @@ If the humanizer changes meaning, adds unsupported warmth, removes necessary tec
 
 Unless `--inline` is set, create or update `GITHUB_REVIEW_REPLY_PLAN.md` in the project root with this structure:
 
-```markdown
+```text
 # GitHub Review Reply Plan
 
 **PR:** [<title> (#<number>)](<url>)
@@ -288,6 +291,7 @@ Unless `--inline` is set, create or update `GITHUB_REVIEW_REPLY_PLAN.md` in the 
 | Source comment links | one or more Markdown links to the source GitHub review/general comments, or `unavailable` with a reason |
 | Original author | `@<login>` |
 | Original author type | one of `human`, `bot`, `app`, `unknown` |
+| Hidden | `no`, or the reason GitHub recorded when the comment was hidden (with `--all` only) |
 | Human confirmation required | `yes` or `no` |
 | Implementation status | one of `not needed`, `implemented`, `not attempted`, `blocked` |
 | Action executed | <specific change, or "none"> |
