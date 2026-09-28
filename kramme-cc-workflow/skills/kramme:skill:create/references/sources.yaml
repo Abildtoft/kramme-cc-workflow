@@ -44,7 +44,7 @@ sources:
   - id: compound-ce-plan
     url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-plan/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-plan"
-    rationale: "Large workflow decomposition and supporting-resource boundaries are informed by this representative planning workflow."
+    rationale: "Large workflow decomposition and supporting-resource boundaries are informed by this representative planning workflow, including putting the contract and safety gates first, reading each reference at the step it governs, and stopping when a required reference cannot be read."
     usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:16e4b8333e0db8dce5ce215d913075d7fb828a2820b1d544dc60e76e1c4e0ef9"
