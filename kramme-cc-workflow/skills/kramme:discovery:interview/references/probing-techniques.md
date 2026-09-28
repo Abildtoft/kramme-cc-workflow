@@ -100,7 +100,7 @@ Offer once when all three are true:
 2. It would be surprising later without context.
 3. It came from a real tradeoff, not a default.
 
-Prompt once: "This looks ADR-worthy because it is hard to reverse, surprising without context, and tradeoff-driven. Record it via `/kramme:docs:adr`?" Do not author the ADR inside this skill.
+Prompt once: "This looks ADR-worthy because it is hard to reverse, surprising without context, and tradeoff-driven. Record it via `/kramme:docs:adr`?" On yes, give the user the exact `/kramme:docs:adr` command to run next, with a decision title and short context summary as its arguments; `kramme:docs:adr` is user-triggered only, so do not call it through the Skill tool. Do not author the ADR inside this skill.
 
 ## Coverage Mode Loop
 

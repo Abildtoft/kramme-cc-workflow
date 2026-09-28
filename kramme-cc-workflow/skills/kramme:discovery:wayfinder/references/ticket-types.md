@@ -9,6 +9,8 @@ Every ticket asks one precise question that can be resolved in one agent session
 
 Default `research` to AFK, `prototype` and `grilling` to HITL, and choose `task` mode from the actual access requirement. Record a one-line HITL reason.
 
+Skills that are user-triggered only (for example `/kramme:prototype` and `/kramme:docs:ubiquitous-language`) cannot be invoked by the agent. When a ticket needs one, ask the human to run it; the ticket is HITL in that case.
+
 ## Types
 
 ### research
@@ -19,7 +21,7 @@ Resolve only when the ticket records the source-backed answer, links the evidenc
 
 ### prototype
 
-Use when a cheap, disposable artifact will make a behavior, interface, state model, data shape, or content direction concrete enough to judge. Invoke `/kramme:prototype`; do not turn the prototype into production implementation.
+Use when a cheap, disposable artifact will make a behavior, interface, state model, data shape, or content direction concrete enough to judge. Ask the human to run `/kramme:prototype`, which is user-triggered only; do not turn the prototype into production implementation.
 
 Resolve only after the human or named decision-maker reacts and the ticket records the resulting decision. Link the artifact or cleanup note, and follow the prototype skill's retirement rules.
 

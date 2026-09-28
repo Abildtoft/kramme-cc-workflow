@@ -11,7 +11,7 @@ Apply it only when:
 
 1. Extract the optional topic from `resolved_arguments` after the leading `discover` / `interview` keyword.
 2. If no topic is present, ask the Discovery Topic question from `references/argument-handling.md`.
-3. Invoke `/kramme:siw:discovery` in greenfield mode using that topic.
+3. Run `kramme:siw:discovery` in greenfield mode using that topic. It is user-triggered only, so the Skill tool rejects the call: locate its installed `SKILL.md` (the `kramme:siw:discovery` directory next to this skill's directory), read it, and follow it directly. If it cannot be found, stop and tell the user to run `/kramme:siw:discovery <topic>` and then `/kramme:siw:init siw/DISCOVERY_BRIEF.md`.
 4. Wait for that run to complete and verify it created `siw/DISCOVERY_BRIEF.md`.
 5. Return to `kramme:siw:init`, set `resolved_arguments=siw/DISCOVERY_BRIEF.md`, and continue with `references/discovery-brief-import.md`.
 6. If the discovery run does not create `siw/DISCOVERY_BRIEF.md`, stop without creating SIW workflow files.
