@@ -313,6 +313,7 @@ expected_args = {
         *shared_args,
         "--exclude-review-artifacts",
     ],
+    "kramme-cc-workflow/skills/kramme:pr:triage-risk/SKILL.md": shared_args,
     "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md": [
         *shared_args,
         "--exclude-review-artifacts",
