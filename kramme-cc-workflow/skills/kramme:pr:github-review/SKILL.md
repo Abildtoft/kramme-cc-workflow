@@ -138,7 +138,7 @@ PR_NWO=$(printf '%s' "$PR_URL" | sed -E 's#^https://github.com/([^/]+/[^/]+)/pul
 
 ## Step 3: Fetch the PR Into an Isolated Worktree
 
-Fetch the PR head, then add a detached worktree. Nothing in the user's current checkout changes. Step 4 resolves and fetches the base ref inside the worktree so `--base main`, `--base origin/main`, and `--base refs/remotes/origin/main` all follow the shared resolver contract.
+Fetch the PR head, confirm it is the `headRefOid` recorded in Step 2, then add a detached worktree at that commit. Nothing in the user's current checkout changes. Step 4 resolves and fetches the base ref inside the worktree so `--base main`, `--base origin/main`, and `--base refs/remotes/origin/main` all follow the shared resolver contract.
 
 ```bash
 git worktree prune # sweep any orphaned registrations from a prior interrupted run
@@ -146,10 +146,15 @@ git fetch --quiet origin "pull/${PR_NUMBER}/head" || {
   echo "Could not fetch pull/${PR_NUMBER}/head from origin." >&2
   exit 1
 }
+FETCHED_OID=$(git rev-parse FETCH_HEAD)
+if [ "$FETCHED_OID" != "$HEAD_OID" ]; then
+  echo "Fetched pull/${PR_NUMBER}/head is $FETCHED_OID, but the PR head is $HEAD_OID. The PR moved or its pull ref is still updating; re-run the review." >&2
+  exit 1
+fi
 
 TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
 WORKTREE_DIR="$TMP_PARENT/wt"
-if ! git worktree add --quiet --detach "$WORKTREE_DIR" FETCH_HEAD; then
+if ! git worktree add --quiet --detach "$WORKTREE_DIR" "$HEAD_OID"; then
   echo "Failed to create review worktree." >&2
   if ! rmdir "$TMP_PARENT"; then
     echo "Could not remove temporary parent automatically: $TMP_PARENT" >&2
