@@ -407,6 +407,58 @@ test("record tolerates malformed stdin without treating it as an I/O failure", a
   assert.equal(result.stderr, "");
 });
 
+test("record maps Claude Code plugin skill names to frontmatter names", async (t) => {
+  const usageFile = path.join(await tempDir(t), "usage.jsonl");
+  /** @param {string} name */
+  const skill = (name) => ({ tool_name: "Skill", tool_input: { skill: name } });
+  for (const fields of [
+    skill("kramme-cc-workflow:kramme-pr-create"),
+    { prompt: "/kramme-cc-workflow:kramme-qa smoke the cart" },
+    skill("kramme-cc-workflow:kramme-not-a-real-skill"),
+    { prompt: "/kramme-verify-run before the push" },
+    skill("kramme-cc-workflow:kramme:setup"),
+  ]) {
+    const hook_event_name =
+      "prompt" in fields ? "UserPromptSubmit" : "PreToolUse";
+    const event = { hook_event_name, session_id: "session-1", ...fields };
+    const result = runUsageWithInput(
+      ["record", "--file", usageFile],
+      JSON.stringify(event),
+    );
+    assert.deepEqual([result.status, result.stderr], [0, ""]);
+  }
+
+  const records = (await fs.readFile(usageFile, "utf8")).trim().split("\n");
+  assert.deepEqual(
+    records.map((line) => [JSON.parse(line).skill, JSON.parse(line).kind]),
+    [
+      ["kramme:pr:create", "tool"],
+      ["kramme:qa", "explicit"],
+      ["kramme:verify:run", "explicit"],
+      ["kramme:setup", "tool"],
+    ],
+  );
+});
+
+test("scan counts Claude Code command-name transcript records", async (t) => {
+  const transcript = path.join(await tempDir(t), "session.jsonl");
+  const content =
+    "<command-message>kramme-cc-workflow:kramme-qa</command-message>\n" +
+    "<command-name>/kramme-cc-workflow:kramme-qa</command-name>";
+  const record = { type: "user", session_id: "s1", message: { content } };
+  await fs.writeFile(transcript, `${JSON.stringify(record)}\n`);
+
+  const result = runUsage(["scan", transcript, "--json"]);
+  assert.deepEqual([result.status, result.stderr], [0, ""]);
+  const summary = /** @type {Array<{ skill: string, total: number }>} */ (
+    JSON.parse(result.stdout)
+  );
+  assert.deepEqual(
+    summary.map((row) => [row.skill, row.total]),
+    [["kramme:qa", 1]],
+  );
+});
+
 test("reports diagnose overlong JSONL records", async (t) => {
   const root = await tempDir(t);
   const usageFile = path.join(root, "overlong.jsonl");
