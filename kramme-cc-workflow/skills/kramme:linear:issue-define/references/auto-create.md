@@ -4,12 +4,12 @@ Use this reference when `kramme:linear:issue-define` is invoked with `--auto` an
 
 ## Goal
 
-Create one useful Linear issue. Prefer a clear, durable ticket through light clarification by default or exhaustive relevant questioning when `--ask` is active.
+Create one useful Linear issue that fits one PR, or a parent issue with one sub-issue per PR when the work needs more. Prefer a clear, durable ticket through light clarification by default or exhaustive relevant questioning when `--ask` is active.
 
 ## Boundaries
 
-- Create new Linear issues only.
-- Do not update existing issues.
+- Create new Linear issues only, including the parent and sub-issues of an approved split.
+- Do not update existing issues other than issues created in this run.
 - Do not perform deep codebase exploration unless the user supplied specific files.
 - Do not implement, branch, or start work after creating the issue.
 
@@ -54,6 +54,7 @@ Map the handoff through the normal auto-create flow:
 - Map only verified Linear identifiers from `issue.dependencies.blockedBy` to the `blockedBy` field. Before drafting, de-duplicate the array, fetch each unique blocker identifier exactly once with `get_issue`, and verify that the returned issue belongs to the exact handoff workspace/team/project scope. Store the returned identifier and title for the full-draft relation preview and dependency text; the body may state the same standalone dependency using its Linear identifier and title so the direction remains visible. An inaccessible, missing, or scope-mismatched blocker returns `Action: blocked`; never infer its title or silently drop the relation. Reject non-Linear identifiers or prose values in the array and never add parent-ledger sequencing.
 - Do not add hidden workflow metadata to the Linear title, description, or comments.
 - Never put agent workflow names, skill identifiers, slash commands, or instructions to invoke automation into the Linear title, description, or comments.
+- The caller owns slicing, so never split a handoff into sub-issues. If the one-PR size check in `references/one-pr-rule.md` finds the handoff issue oversized, return `Action: blocked` with `Reason:` naming the triggering signals and the proposed PR-sized slices. A resumed caller cannot re-slice its frozen ledger, so the user must re-cluster that theme in a fresh caller run.
 - Return the structured caller result below instead of terminating the parent batch silently.
 
 ## Workflow
@@ -63,10 +64,10 @@ Map the handoff through the normal auto-create flow:
    - Phase 3 already handles the strong-duplicate decision. If execution reaches this reference, treat that decision as resolved and do not ask again.
    - Keep partial overlaps, related issues, and any user-approved duplicate context for the `Context` section.
 3. If `ask_all_relevant = false`, ask at most two clarifying questions with the structured question tool, only when the answer materially changes the ticket. If `ask_all_relevant = true`, complete **Exhaustive Relevant Questions** instead; the two-question cap does not apply.
-4. Draft the title, body, metadata, and native Linear relations.
+4. Draft the title, body, metadata, and native Linear relations, then run the one-PR size check in `references/one-pr-rule.md`. If the draft is oversized, resolve it as that reference describes before review; an approved split is drafted, reviewed, and written as one set following that reference. For a breakdown handoff, return `Action: blocked` as described in **Structured Breakdown Handoff** instead of offering options.
 5. For a breakdown handoff, apply the **Full Draft Review Gate** below. Otherwise, show the draft normally. Then ask for approval with the structured question tool (approve, refine, or cancel); if breakdown-handoff approval is declined, return `Action: approval-declined` to the caller.
-6. Create the issue with `save_issue` (see **Create Tool Mapping**), passing structured relations as well as prose. Read it back and record whether its body contains the planned dependency direction.
-7. Return the Linear issue ID, URL, title, and applied metadata.
+6. Create the issue with `save_issue` (see **Create Tool Mapping**), passing structured relations as well as prose; for a split, follow the write order in `references/one-pr-rule.md`. Read it back and record whether its body contains the planned dependency direction.
+7. Return the Linear issue ID, URL, title, and applied metadata; for a split, return the parent and every sub-issue in delivery order.
 
 ## Full Draft Review Gate
 

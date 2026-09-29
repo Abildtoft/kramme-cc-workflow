@@ -47,6 +47,7 @@ The target issue was already fetched in Phase 1. Now present it to the user:
    - Selected areas always take precedence over prior-session skips. If the user says "improve scope", run Round 2 even when prior content exists.
 
 4. **Search for Related Issues**
+   - List existing sub-issues with `list_issues` using `parentId` set to the issue, so the one-PR size check can treat already-split work as a parent.
    - Use `list_issues` with `query` keywords from the existing issue, scoped to its team.
    - Identify issues to link as related or blockers. Store new ones in `relations` for Phase 7; relations the issue already has are skipped, never re-sent or removed.
 
@@ -107,6 +108,8 @@ If `auto_create = true` and mode is create:
 - Show the complete issue: title, description, and metadata.
 - Format clearly for review.
 
+**Split (either mode):** show the parent and every sub-issue in full as one set, as described in `references/one-pr-rule.md`.
+
 ### 2. Approve or Refine
 
 - Ask with the structured question tool: approve as drafted, refine first, or cancel without writing.
@@ -130,6 +133,8 @@ Both modes use `save_issue` (Claude Code `mcp__linear__save_issue`; Codex `save_
 - `title` only if changed. `labels` only if changed (the complete new set). `priority`, `project`, `cycle`, `assignee` only if changed.
 - `relatedTo`, `blockedBy`, `blocks` for new relations only.
 
+**Split** — follow Review and Write Order in `references/one-pr-rule.md`, including its read-back and failure handling, which replace the retry offer below.
+
 **If the create or update call fails:**
 
 - Output the full drafted issue markdown, including title, description, relations, and intended metadata, so the interview work is not lost.
@@ -145,12 +150,12 @@ Both modes use `save_issue` (Claude Code `mcp__linear__save_issue`; Codex `save_
 
 **Create mode:**
 
-- Provide the created issue URL.
+- Provide the created issue URL (or the parent and sub-issue URLs for a split).
 - Confirm successful creation.
 
 ### 5. Workflow Complete - Stop
 
-The `linear:issue-define` workflow is complete once the issue URL is returned.
+The `linear:issue-define` workflow is complete once the issue URL (or the parent and sub-issue URLs for a split) is returned.
 
 - Do not proceed to code implementation.
 - Do not start working on the issue.
@@ -159,7 +164,7 @@ The `linear:issue-define` workflow is complete once the issue URL is returned.
 **Next steps for the user:**
 
 - Review the created/updated issue in Linear.
-- If ready to implement, invoke `/kramme:linear:issue-implement {issue-id}`.
+- If ready to implement, invoke `/kramme:linear:issue-implement {issue-id}`. For a split, implement each sub-issue in delivery order, starting with the first unblocked one; never implement the parent.
 - If changes are needed, run `/kramme:linear:issue-define {issue-id}` again to refine.
 
 Stop here and wait for the user's next instruction.
