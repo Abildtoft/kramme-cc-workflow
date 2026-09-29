@@ -119,5 +119,6 @@ PY
 	require_phrases "$POLICY" \
 		"run each quality gate inside one such delegated agent on the orchestrator's model" \
 		"a delegated wrapper does not replace that check" \
+		"or the host is Codex, invoke the gate through the skill mechanism directly" \
 		"Delegation changes where a gate runs, never its arguments, model policy, or contract"
 }
