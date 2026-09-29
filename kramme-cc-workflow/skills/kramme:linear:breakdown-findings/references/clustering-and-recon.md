@@ -53,7 +53,7 @@ Keep unresolved decision conflicts as blocked themes. Do not convert uncertainty
 
    Increase one level for cross-layer changes, public API or persisted-data changes, generated artifacts, verification-infrastructure changes, migrations, rollouts, or compatibility coordination. Treat a public-contract change plus broad callers, a data migration/backfill, or unrelated subsystems as XL even under nine files.
 
-6. Aim for S/M. Split every XL theme unless the source is a pre-clustered handoff whose boundary cannot safely change; in that case block publication and ask the user to approve a split or keep the oversized issue explicitly.
+6. Aim for S/M. Split every XL theme unless the source is a pre-clustered handoff whose boundary cannot safely change; in that case block publication and ask the user to approve a split or exclude the theme. `kramme:linear:issue-define` blocks any issue that needs more than one PR, so an oversized issue cannot be kept.
 7. Do not place the same likely edited file in independent themes without either splitting ownership by non-overlapping symbols or adding a sequencing dependency.
 
 ## Build sequencing and value metadata

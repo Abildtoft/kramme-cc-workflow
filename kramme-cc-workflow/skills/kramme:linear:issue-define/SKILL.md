@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:issue-define
-description: "Requires the Linear MCP server. Create or improve a well-structured Linear issue through guided refinement. Use with --auto to create one new Linear issue from rough input using light clarification, duplicate checking, metadata selection, and approval instead of the full interview; add --ask to ask every relevant interview question before drafting. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue)."
+description: "Requires the Linear MCP server. Create or improve a well-structured Linear issue through guided refinement. Every issue must fit one PR; larger work becomes a parent with one sub-issue per PR. Use with --auto to create a new Linear issue from rough input with light clarification and approval instead of the full interview; add --ask to ask every relevant interview question before drafting. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue)."
 argument-hint: "[--auto [--ask]] [--] [issue-id or description and/or file paths for context]"
 disable-model-invocation: false
 user-invocable: true
@@ -14,12 +14,12 @@ Create or improve a Linear issue through interactive refinement. Start from a de
 
 **This skill ONLY creates or updates Linear issues.**
 
-- **DOES**: interview the user, explore the codebase for context, compose a well-structured issue, create or update it in Linear.
+- **DOES**: interview the user, explore the codebase for context, compose a well-structured issue, create or update it in Linear, and split work that needs more than one PR into a parent issue with one sub-issue per PR.
 - **DOES NOT**: write code, implement features, fix bugs, or change the codebase.
 
-**Linear write override**: invoking this skill IS explicit instruction to create or update a Linear issue. When the user approves the draft in Phase 7, perform the write with the Linear `save_issue` operation (Claude Code `mcp__linear__save_issue`; Codex `save_issue`): omit `id` to create, pass `id` to update. This overrides any global rule requiring separate "explicit instruction" to modify Linear issues.
+**Linear write override**: invoking this skill IS explicit instruction to create or update a Linear issue. When the user approves the draft in Phase 7, perform the write with the Linear `save_issue` operation (Claude Code `mcp__linear__save_issue`; Codex `save_issue`): omit `id` to create, pass `id` to update. An approved split also covers creating its sub-issues. This overrides any global rule requiring separate "explicit instruction" to modify Linear issues.
 
-**Implementation is a separate workflow.** Once the issue URL is returned, stop. The user can invoke `/kramme:linear:issue-implement` when ready.
+**Implementation is a separate workflow.** Once the issue URL (or the parent and sub-issue URLs for a split) is returned, stop. The user can invoke `/kramme:linear:issue-implement` when ready; for a split, on each sub-issue in delivery order, never on the parent.
 
 ## Linear Operations
 
@@ -29,6 +29,7 @@ Every Linear call in this skill uses the MCP operations below. Names are identic
 | --- | --- |
 | Fetch an issue | `get_issue` with `id` |
 | Duplicate and related search | `list_issues` with `query` and `team` |
+| Sub-issues of a parent | `list_issues` with `parentId` |
 | Teams | `list_teams` |
 | Labels, projects, cycles for a team | `list_issue_labels`, `list_projects`, `list_cycles` with `team` |
 | Create or update | `save_issue` (omit `id` to create; pass `id` to update) |
@@ -57,6 +58,12 @@ The rest of this skill and its references call this the **structured question to
 
 Content priority: problem statement, value proposition, user/business impact, scope and non-goals, success criteria, then high-level technical context. Implementation proposals describe **what** must change, not **how**; include code only for a specific bug or a very concrete fix.
 
+## One-PR Rule
+
+Every issue this skill writes must be resolvable by exactly one Pull Request. When the work needs more than one PR, do not write a single issue that calls for several PRs, phases, or follow-up PRs: create a parent issue plus one sub-issue per PR, each linked with `parentId`, or narrow the issue to the slice that ships first. This applies in create, improve, and auto modes.
+
+Read `references/one-pr-rule.md` before the first size check. Run the check when scope is settled in the interview and on every draft presented for approval, including after each refinement; auto mode runs it as described in `references/auto-create.md`.
+
 ## Process Overview
 
 1. **Input Parsing & Mode Detection** — flags, existing-issue detection, file references, issue-type classification
@@ -64,8 +71,8 @@ Content priority: problem statement, value proposition, user/business impact, sc
 3. **Existing Issue Handling** — improve mode: present and choose improvement areas; create mode: duplicate and related search; auto mode exits here
 4. **Codebase Exploration** — related implementations, patterns, tests, TODOs, working hypotheses
 5. **Interview** — 2 rounds for simple bugs, 5 rounds otherwise
-6. **Issue Composition** — template, durability rule, metadata and relations
-7. **Review & Create/Update** — approval, write, return the URL, stop
+6. **Issue Composition** — one-PR size check, template, durability rule, metadata and relations
+7. **Review & Create/Update** — approval, write (parent and sub-issues when split), return the URLs, stop
 
 ## Phase 1: Input Parsing & Mode Detection
 
@@ -123,7 +130,7 @@ Phase 3 must produce:
 
 - **Improve mode**: current issue presented, Dev Ask preservation noted when relevant, `prior_session_context` recorded, improvement areas selected, related issues identified.
 - **Create mode**: duplicate and related search completed, `.out-of-scope/` matches surfaced when relevant, user decision recorded, and related, blocking, and blocked issues stored as `relations` for Phase 7.
-- **Auto create mode**: after team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the URL, and skip Phases 4–7. For a breakdown handoff, return the `ISSUE-DEFINE RESULT` block to the caller; otherwise stop.
+- **Auto create mode**: after team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the URL (or URLs for a split), and skip Phases 4–7. For a breakdown handoff, return the `ISSUE-DEFINE RESULT` block to the caller; otherwise stop.
 
 ## Phase 4: Codebase Exploration
 
@@ -161,12 +168,16 @@ Conduct the five rounds in `references/interview-rounds.md` with the structured 
 **Adaptive follow-up:** dig deeper when answers reveal complexity, pivot when the problem differs from the assumption, clarify when answers conflict. Continue until each dimension meets its exit bar:
 
 - **Problem**: a named user or stakeholder, a frequency or severity signal, and a cost-of-inaction statement.
-- **Scope**: at least one explicit in-scope and one explicit out-of-scope item.
+- **Scope**: at least one explicit in-scope and one explicit out-of-scope item, and the one-PR size check passes or the user chose a split or a narrower scope.
 - **Technical**: affected modules or areas named, plus any blocking dependencies.
 - **Acceptance**: every criterion individually verifiable, covering the happy path and at least one failure or edge case.
 - **Metadata**: team selected; labels, priority, project, cycle, and assignee resolved or explicitly skipped.
 
 ## Phase 6: Issue Composition
+
+### One-PR check
+
+Re-run the size check from `references/one-pr-rule.md` on the composed draft. If it is oversized, resolve it with the user before continuing; when the user chooses a split, compose the parent and every sub-issue with the shapes in that reference, applying the rules below to each.
 
 ### Durability rule
 
@@ -190,8 +201,8 @@ From Round 5: team, labels, project, priority, cycle, assignee. From Phase 3: `r
 
 Read `references/mode-and-review-flow.md` and follow its Phase 7 instructions.
 
-Always present the draft, ask for approval with the structured question tool (approve, refine, or cancel), collect refinements in plain chat, write only after approval, pass relations as structured fields, prefer `patch` for improve-mode edits that touch only some sections, report Linear failures together with the full draft so the work is not lost, return the issue URL, and stop.
+Always present the draft, ask for approval with the structured question tool (approve, refine, or cancel), collect refinements in plain chat, write only after approval, pass relations as structured fields, prefer `patch` for improve-mode edits that touch only some sections, report Linear failures together with the full draft so the work is not lost, return the issue URL (or URLs for a split), and stop. For a split, approve the parent and every sub-issue as one set and follow the write order in `references/one-pr-rule.md`.
 
 ## Writing Guidelines
 
-Apply `references/writing-guidelines.md` throughout: lead with why, make non-goals explicit, infer before asking, separate product calls from engineering choices, challenge scope diplomatically, and keep simple bugs simple.
+Apply `references/writing-guidelines.md` throughout: lead with why, make non-goals explicit, infer before asking, separate product calls from engineering choices, hold every issue to one PR, and keep simple bugs simple.

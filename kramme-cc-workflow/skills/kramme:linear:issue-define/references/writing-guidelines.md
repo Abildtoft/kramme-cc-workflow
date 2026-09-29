@@ -7,6 +7,6 @@ Audience priority, content order, and technical-depth rules live in `SKILL.md`. 
 3. **Infer before asking** — Use repo context, existing issues, and provided files to draft the likely answer, then ask the user to confirm or correct it rather than fill in basics.
 4. **Separate product calls from engineering choices** — Capture the decision that needs alignment; leave the how to engineering.
 5. **Connect the dots** — Show how scope, acceptance, and priority decisions interact instead of collecting them in isolation.
-6. **Challenge diplomatically** — If scope looks too broad for one issue, propose a split and suggest which part ships first.
+6. **One issue, one PR** — If scope needs more than one PR, propose a parent with one sub-issue per PR, or narrow to the slice that ships first. Never write an issue that asks for several PRs or follow-up PRs.
 7. **Keep simple bugs simple** — When root cause and fix are clear, the simple template is sufficient; do not inflate it.
 8. **Redact before filing** — Strip secrets, tokens, personal data, and customer-specific identifiers from anything that goes into Linear.

@@ -37,7 +37,7 @@ Process `needs-issue-define` rows in execution-label order. Execution labels and
    - `created`: record returned identifiers/metadata and continue.
    - `covered-existing`: record the existing issue and continue; do not modify its body.
    - `approval-declined`: stop. Exclusions are frozen before the first Linear write, so a declined draft cannot become a late exclusion in the current publication run.
-   - `blocked` or `failed`: stop before invoking the next theme.
+   - `blocked` or `failed`: stop before invoking the next theme. A `blocked` result for an issue that needs more than one PR cannot be retried with `--resume`; report its proposed slices and tell the user to re-cluster that theme in a fresh run.
 5. Do not invoke the next theme until the current theme returns a terminal result. Never combine multiple issue drafts into one approval. Never call an issue create operation from this parent skill. Never rewrite a returned issue body to bypass or second-guess the delegated draft.
 
 If the Skill tool reports that `issue-define` is user-only and cannot be nested despite the explicit parent invocation, stop and report the capability boundary. Do not follow its files inline and do not fall back to direct Linear creation.

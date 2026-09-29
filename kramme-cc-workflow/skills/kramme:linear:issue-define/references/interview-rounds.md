@@ -36,12 +36,13 @@ Problem & Value carries the most weight in the final issue; stay in this round u
 - What is explicitly out of scope?
 - Are there related changes that should be separate issues?
 - What is the minimum viable implementation?
+- Can this ship in one PR? If not, what are the PR-sized slices and their order? (see `references/one-pr-rule.md`)
 - Which decisions belong in this issue, and which should remain implementation details for engineering?
 
 **Dig deeper when:**
 
-- Scope seems too broad for a single issue
-- There are natural breakpoints for phased delivery
+- Scope seems too broad for a single PR — propose a split into sub-issues
+- There are natural breakpoints for phased delivery — each phase becomes its own sub-issue
 
 ## Round 3: Technical Context
 
