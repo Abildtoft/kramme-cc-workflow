@@ -1,6 +1,6 @@
 ---
 name: kramme:verify:before-completion
-description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always
+description: Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires verification evidence for the current working tree before any success claim, reusing a green run only when the tree is unchanged; evidence before assertions always
 user-invocable: false
 disable-model-invocation: false
 ---
@@ -21,7 +21,7 @@ This skill runs your project's own verification commands (tests, build, lint) an
 NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE
 ```
 
-If you haven't run the verification command in this message, you cannot claim it passes.
+Fresh means the evidence covers the exact working tree the claim is about. A command run in this message qualifies. A green run from earlier in this session also qualifies when the tree has not changed since; see [Reusing a Green Run](#reusing-a-green-run). Anything else cannot support a claim that it passes.
 
 ## The Gate Function
 
@@ -29,7 +29,8 @@ If you haven't run the verification command in this message, you cannot claim it
 BEFORE claiming any status or expressing satisfaction:
 
 1. IDENTIFY: What command proves this claim?
-2. RUN: Execute the FULL command (fresh, complete)
+2. RUN: Execute the FULL command (fresh, complete), or confirm a green
+   run on this exact tree still covers it
 3. READ: Full output, check exit code, count failures
 4. VERIFY: Does output confirm the claim?
    - If NO: State actual status with evidence
@@ -47,13 +48,35 @@ For claims about user experience (UX: clear, reliable task completion), develope
 
 | Claim | Requires | Not Sufficient |
 | --- | --- | --- |
-| Tests pass | Test command output: 0 failures | Previous run, "should pass" |
+| Tests pass | Test command output: 0 failures, on this tree | Run on an earlier or unknown tree, "should pass" |
 | Linter clean | Linter output: 0 errors | Partial check, extrapolation |
 | Build succeeds | Build command: exit 0 | Linter passing, logs look good |
 | Bug fixed | Test original symptom: passes | Code changed, assumed fixed |
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
+
+## Reusing a Green Run
+
+Record the working-tree ID with every green run; `kramme:verify:run` reports it as `Verified tree`. For any other command, capture it with `"${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh"` immediately before the run. Before reusing that run, capture the ID again. Reuse the run instead of repeating it only when:
+
+- both IDs are non-empty and equal, which still holds after committing, amending, or recreating commits over the same content;
+- the recorded `BASE_REF` and `MERGE_BASE` are unchanged whenever the run used base-scoped or affected checks;
+- it covered every check the claim needs; and
+- no ignored input the checks read has changed since, such as installed dependencies, generated code, or local env files.
+
+For base-scoped checks, record the resolved `BASE_REF` and `MERGE_BASE` before execution and resolve them again using the same configuration and `resolve-base.sh` procedure as `kramme:verify:run` before reuse. Compare `BASE_REF`'s resolved commit OID, not just its ref name; unavailable or changed base evidence invalidates reuse. Otherwise run again. Quote the reused run's result, tree ID, and applicable base evidence in the claim.
+
+## Choosing the Tier
+
+Match the checks to the claim, following the project's documented cadence when it has one:
+
+- **While iterating**: a fast loop or focused check covering the change backs a claim about that change.
+- **Before the first push or Pull Request**: run the project's full sweep once, for example `kramme:verify:run --full`.
+- **After a failure**: use `kramme:verify:run`'s Narrowed Retry by the Caller procedure after fixing it: rerun recorded failed commands, invoke `--fast`, and rerun any passing check whose inputs or dependent behavior changed. Report carried checks with their original tree and independence proof; partial coverage cannot support a full-verification claim.
+- **After the branch is pushed**: CI can supply the full sweep when its successful jobs on that commit demonstrably cover every required check. Cite those job results; skipped jobs or status-only checks do not prove coverage. Run the missing checks locally when CI is absent or coverage is incomplete or unknown.
+
+Never run two overlapping full sweeps on the same tree.
 
 ## When To Apply
 
@@ -72,6 +95,7 @@ The gate applies to any wording that implies success, not only these phrases.
 
 ```
 ✅ [Run test command] [See: 34/34 pass] "All tests pass"
+✅ [Tree ID unchanged since the 34/34 run] "All tests pass (run on tree <id>)"
 ❌ "Should pass now" / "Looks correct"
 ```
 
