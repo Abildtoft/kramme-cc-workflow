@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:create
 description: Create a PR when explicitly requested or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr --ship. Generates the description, rewrites unpublished work into narrative commits, and publishes with lease protection; safely reuses or appends to an existing remote at or behind local HEAD. UI changes get best-effort local startup and screenshot/video evidence.
-argument-hint: "[--auto] [--draft] [--rebase-first] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
+argument-hint: "[--auto] [--draft] [--rebase] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -76,7 +76,7 @@ Parse `$ARGUMENTS` for optional flags before starting:
 
 - `--auto` -> set `AUTO_MODE=true` and `REQUIRE_GENERATED_DESCRIPTION=true`, then remove the flag from the remaining arguments. Auto mode authorizes the nested unstacked rewrite but does not synthesize the separate stack-wide authorization capability.
 - `--draft` -> set `DRAFT_MODE=true` and remove the flag from the remaining arguments.
-- `--rebase-first` -> set `REBASE_FIRST=true` and remove the flag from the remaining arguments. The delegated rebase runs before feature-branch selection and the workflow restarts after it completes.
+- `--rebase` (alias: `--rebase-first`) -> set `REBASE_FIRST=true` and remove the flag from the remaining arguments. Both spellings are equivalent; supplying both is the same as supplying one. The delegated rebase runs before feature-branch selection and the workflow restarts after it completes.
 - `--linear-issue <ISSUE-ID>` -> validate the value against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, store it as `LINEAR_ISSUE_OVERRIDE`, and remove the flag and value. Reject a missing or invalid value before pre-validation. This caller-supplied identifier is authoritative and takes precedence over branch-name extraction.
 - `--require-generated-description` -> set `REQUIRE_GENERATED_DESCRIPTION=true` and remove the flag. This orchestration-only safety mode forbids placeholder fallback when `kramme:pr:generate-description` returns no usable output.
 - `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a non-auto invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, existing-PR, or path-specific remote-state checks. Backup and remote absence apply to the fresh-remote rewrite path; exact-tip recovery never pushes; clean remote fast-forward mode preserves local history; remote append rewrites only the unpublished tail after its captured remote OID. Every existing-remote publication uses a lease tied to that OID.
