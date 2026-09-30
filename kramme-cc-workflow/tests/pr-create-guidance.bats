@@ -1269,3 +1269,16 @@ file_mode() {
 	[ "$(git -C "$repo" rev-parse HEAD)" = "$entry_commit" ]
 	! git -C "$repo" show-ref --verify --quiet refs/heads/feature/preserved
 }
+
+@test "pr-create accepts --rebase and its --rebase-first alias" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+
+    grep -qE "^argument-hint: .*\[--rebase\]" "$create"
+    grep -qF -- "- \`--rebase\` (alias: \`--rebase-first\`) -> set \`REBASE_FIRST=true\`" "$create"
+    grep -qF "When \`REBASE_FIRST=true\`" "$create"
+  '
+	[ "$status" -eq 0 ]
+}
