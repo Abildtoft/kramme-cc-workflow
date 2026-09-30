@@ -368,7 +368,7 @@
     grep -qF "kramme:verify:run" "$skill"
     grep -qF "consume one cycle" "$skill"
     grep -qF "return through Step 4" "$skill"
-    grep -qF "rerun this step" "$skill"
+    grep -qF "Narrowed Retry by the Caller procedure" "$skill"
     grep -qF "do not reset the budget, edit again, or return a clean handoff" "$skill"
   '
 
@@ -450,7 +450,7 @@
     grep -qF "Skip this step when \`VALIDATION_ONLY=true\`" "$skill"
     grep -qF "Mode: normal | validation-only" "$skill"
     grep -qF "Requirements JSON:" "$skill"
-    grep -qF "Verification: {passed evidence | caller-owned after validation-only}" "$skill"
+    grep -qF "Verification: {passed evidence with verified tree ID | reused (<tree ID>) | caller-owned after validation-only}" "$skill"
 
     for key in pr-review-convergence linear-issue-to-pr code-plan-to-pr; do
       grep -qF "\"path\": \".context/$key/reviews/REVIEW_OVERVIEW.md\"" "$registry"
@@ -502,7 +502,7 @@
     grep -qF "the exact frozen sentinel-last \`--requirements {issue-requirements}\` block" "$shipping"
     grep -qF "Mode: validation-only" "$shipping"
     grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shipping"
-    grep -qF "invoke \`kramme:verify:run\`" "$shipping"
+    grep -qF "invoke \`kramme:verify:run\` with \`--full\`" "$shipping"
     ! grep -qF "kramme:pr:overengineering-review --requirements" "$shipping"
   '
 

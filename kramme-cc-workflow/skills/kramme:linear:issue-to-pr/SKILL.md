@@ -213,8 +213,9 @@ Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
 Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
 Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
-Verification: initial tree {verified-tree} passed; final tree {final-tree} {unchanged|passed fresh verification}
+Verification: initial tree {verified-tree} passed; final tree {final-tree} {unchanged|passed CI on final head|passed fresh verification}
 CI: {green|none configured}; review feedback addressed; final tree {final-tree}
+CI coverage: {complete mapped CI evidence | local full sweep | incomplete}
 Pull Request: {url}
 History: narrative rewrite completed before PR creation; CI fix commits retained separately; final remote head matches the clean local tree
 ```
