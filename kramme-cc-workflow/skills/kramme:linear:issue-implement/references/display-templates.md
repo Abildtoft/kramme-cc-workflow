@@ -38,7 +38,8 @@ Approach: {selected approach}
 {Approach-specific next steps from Step 7}
 
 Quick Commands:
-- `/kramme:verify:run` - Run verification checks
+- `/kramme:verify:run --fast` - Run implementation verification checks
+- `/kramme:verify:run --full` - Run the full sweep before the first push or Pull Request
 - `/kramme:pr:create` - Create PR when ready
 - `/kramme:pr:code-review` - Review changes for issues
 ```

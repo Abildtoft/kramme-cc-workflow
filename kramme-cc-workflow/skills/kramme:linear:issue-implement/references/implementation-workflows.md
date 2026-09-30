@@ -23,7 +23,7 @@ During Guided or Autonomous implementation, apply `kramme:code:forward-progress`
    - Add tests for {task 1}
    - Implement {task 2 from requirements}
    - ...
-   - Run verification (kramme:verify:run)
+   - Run fast verification (kramme:verify:run --fast)
    ```
 
 3. **Begin Implementation**
@@ -48,7 +48,7 @@ During Guided or Autonomous implementation, apply `kramme:code:forward-progress`
    - [ ] {Acceptance criterion 2}
    - [ ] {Requirement from description}
    - [ ] Verify implementation meets requirements
-   - [ ] Run verification checks
+   - [ ] Run fast verification checks (kramme:verify:run --fast)
    ```
 
 3. **Provide Starting Points**
@@ -90,8 +90,8 @@ During Guided or Autonomous implementation, apply `kramme:code:forward-progress`
    - Document decisions in commit messages
 
 4. **Verification Phase**
-   - Invoke `kramme:verify:run` skill for full verification
-   - Fix any issues found
+   - Invoke `kramme:verify:run --fast` for the project's fast iteration tier; the full sweep runs once before publication, not here
+   - Fix any issues found, then rerun `kramme:verify:run --fast` so the fix receives the full fast-tier coverage
    - Ensure all acceptance criteria are met
 
 5. **Present Results**
@@ -108,10 +108,11 @@ During Guided or Autonomous implementation, apply `kramme:code:forward-progress`
    Files Modified:
    - {list of key files}
 
-   Verification Results:
+   Verification Results (fast tier, tree {TREE_ID}):
    - Tests: {status}
    - Lint: {status}
-   - Build: {status}
+   - Build: {status | not in fast tier}
+   - Full sweep: not run; run `kramme:verify:run --full` once before the first push or Pull Request
 
    Acceptance Criteria:
    - [x] {criterion 1}

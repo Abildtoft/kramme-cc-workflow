@@ -396,7 +396,7 @@ When creating commits, **PREFER** including issue reference:
 
 ### Verification Before Completion
 
-**ALWAYS** run verification before claiming completion. Use `kramme:verify:run` skill.
+**ALWAYS** run verification before claiming completion. Use `kramme:verify:run --fast`: the project's fast iteration tier covers implementation claims. Do not run the full pre-push or pre-PR sweep here. It runs once before publication: in `kramme:pr:review-convergence` when `kramme:linear:issue-to-pr` delegates, otherwise before the user's first push or Pull Request.
 
 ### Respect Existing Patterns
 
