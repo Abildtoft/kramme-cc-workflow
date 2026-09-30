@@ -24,6 +24,21 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 - **Breaking:** Rename `/kramme:siw:spec-audit:auto-fix` to `/kramme:siw:apply-spec-audit-fixes` and `/kramme:docs:out-of-scope` to `/kramme:docs:track-rejected-enhancements`. Existing prompts and automation must migrate to the replacement commands; arguments and behavior are unchanged. Ship these command removals only in the next major release.
 - **Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`. Existing prompts and automation must remove `--auto`; no-argument calls use the canonical branch review scope, while former base-branch arguments must become explicit file or directory scopes. The replacement verifies and checkpoints scoped uncommitted input, then commits each simplification separately. Ship this command removal only in the next major release.
 
+## [0.87.0] - 2026-09-30
+
+### Added
+
+- Add --rebase flag to fix-ci (#961)
+- Accept --rebase flag in pr:create (#960)
+- Add fast/full tiers and same-tree run reuse (#959)
+- Require issue-define issues to fit one PR (#958)
+- Apply upstream source updates across skills (#956)
+- Add PR risk triage skill (#955)
+
+### Fixed
+
+- Run gates inline on Codex (#957)
+
 ## [0.86.0] - 2026-09-27
 
 ### Added
@@ -1067,6 +1082,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.87.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.86.0...v0.87.0
 [0.86.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.85.0...v0.86.0
 [0.85.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.84.0...v0.85.0
 [0.84.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.83.0...v0.84.0
