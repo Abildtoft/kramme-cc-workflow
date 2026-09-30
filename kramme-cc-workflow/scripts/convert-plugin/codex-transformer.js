@@ -269,6 +269,11 @@ function sharedRuntimeFor(plugin) {
         targetPath: path.join("scripts", "review-tree-fingerprint.sh"),
       },
       {
+        executable: true,
+        sourceFile: path.join(plugin.root, "scripts", "worktree-tree-id.sh"),
+        targetPath: path.join("scripts", "worktree-tree-id.sh"),
+      },
+      {
         sourceFile: path.join(plugin.root, "scripts", "skill-usage.js"),
         targetPath: path.join("scripts", "skill-usage.js"),
       },
