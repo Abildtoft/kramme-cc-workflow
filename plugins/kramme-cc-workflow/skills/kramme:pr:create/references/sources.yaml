@@ -1,0 +1,15 @@
+sources:
+  - id: github-cli-pr-create-attachments
+    url: https://github.com/cli/cli/blob/v2.100.0/pkg/cmd/pr/create/create.go
+    title: "GitHub CLI v2.100.0 - pr create attachment support"
+    rationale: "The repeatable --attach behavior, supported inline body rewriting, 50-file limit, and partial-upload exit semantics are based on the GitHub CLI implementation and help text."
+    usage: inspiration
+    last_reviewed_at: 2026-09-04
+    baseline_hash: "sha256:8be0620f429ea5bf309103d9b37368bbf2f31c7570af26e10cee6798ad497761"
+  - id: github-cli-attachment-validation
+    url: https://github.com/cli/cli/blob/v2.100.0/internal/attachments/userasset.go
+    title: "GitHub CLI v2.100.0 - attachment validation"
+    rationale: "The local attachment helper mirrors GitHub CLI's accepted image/video extensions and 10 MiB image / 100 MiB video preflight limits."
+    usage: inspiration
+    last_reviewed_at: 2026-09-04
+    baseline_hash: "sha256:b3e48b0d5a09b969321b3050244d40f92577c951cde660635f7ac342c7959977"

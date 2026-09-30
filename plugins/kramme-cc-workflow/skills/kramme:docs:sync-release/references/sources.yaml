@@ -1,0 +1,8 @@
+sources:
+  - id: pstack-document-release
+    url: https://raw.githubusercontent.com/no-session/pstack/9a24d1408a10a5d0df624ffc128230424e405b82/document-release/SKILL.md
+    title: "no-session/pstack - document-release"
+    rationale: "The change-set inventory, behavior-to-document mapping, and cross-document consistency pass influenced this workflow; the local explicit-scope, evidence, read-only default, exact-preview, generated-file, verification, and permission boundaries are original."
+    usage: inspiration
+    last_reviewed_at: 2026-08-21
+    baseline_hash: "sha256:b4f0603fab1a95e49aea189c1087b36580abdec9ef0146acf795bfc6b94cc3ab"

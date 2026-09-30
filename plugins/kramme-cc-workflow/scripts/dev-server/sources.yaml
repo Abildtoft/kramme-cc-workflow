@@ -1,0 +1,7 @@
+sources:
+  - id: compound-ce-polish-dev-server
+    url: https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish
+    title: "EveryInc compound-engineering-plugin - ce-polish"
+    rationale: "The shared dev-server project-type, package-manager, launch config, and port-resolution scripts are adapted from this source; copied files preserve upstream path, reviewed commit, and MIT license notes in their headers."
+    last_reviewed_at: 2026-06-06
+    baseline_hash: ""

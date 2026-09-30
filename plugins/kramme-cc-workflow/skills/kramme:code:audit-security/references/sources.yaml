@@ -1,0 +1,36 @@
+sources:
+  - id: pstack-cso
+    url: https://raw.githubusercontent.com/no-session/pstack/9a24d1408a10a5d0df624ffc128230424e405b82/cso/SKILL.md
+    title: "no-session/pstack - CSO security audit"
+    rationale: "The infrastructure-first attack-surface census, whole-repository category breadth, evidence filtering, and remediation-oriented report influenced this audit; the local secret-safety, coverage, verification, routing, and output contracts are original."
+    usage: inspiration
+    last_reviewed_at: 2026-08-21
+    baseline_hash: "sha256:d960820f3dc2b30966d8063d3293814b702f904ca453e762fc571a154bca94b3"
+  - id: owasp-threat-modeling
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html
+    title: "OWASP Threat Modeling Cheat Sheet"
+    rationale: "The model-first workflow, trust-boundary and data-flow inventory, threat identification, ranking, and review stages inform the audit sequence."
+    usage: inspiration
+    last_reviewed_at: 2026-08-21
+    baseline_hash: "sha256:4541b3e1894b5b5b07c9f326f525fd77a30555de1477591c32933eef12a1387a"
+  - id: owasp-attack-surface-analysis
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Attack_Surface_Analysis_Cheat_Sheet.html
+    title: "OWASP Attack Surface Analysis Cheat Sheet"
+    rationale: "The requirement to enumerate entry points, data, privileged operations, and changing attack surfaces informs the repository-wide inventory."
+    usage: inspiration
+    last_reviewed_at: 2026-08-21
+    baseline_hash: "sha256:669bdad769448c522bbc2dfe4d769669e6cafc73c7dff010bd1213e991526546"
+  - id: microsoft-stride
+    url: https://raw.githubusercontent.com/MicrosoftDocs/azure-docs/refs/heads/main/articles/security/develop/threat-modeling-tool-threats.md
+    title: "Microsoft Threat Modeling Tool - STRIDE threats"
+    rationale: "The six STRIDE threat categories provide consistent prompts for evaluating every observed trust boundary."
+    usage: inspiration
+    last_reviewed_at: 2026-08-21
+    baseline_hash: "sha256:ce4d5cfab02daa66c18e88522d7d97d3a3fd815fceb9bda766d43400fa430087"
+  - id: owasp-csrf-testing
+    url: https://raw.githubusercontent.com/OWASP/wstg/master/document/4-Web_Application_Security_Testing/06-Session_Management_Testing/05-Testing_for_Cross_Site_Request_Forgery.md
+    title: "OWASP Web Security Testing Guide - Testing for Cross Site Request Forgery"
+    rationale: "The browser-ambient credential model, including cookies and HTTP authentication, informs the trust-boundary requirement to assess CSRF beyond cookie-authenticated state changes."
+    usage: inspiration
+    last_reviewed_at: 2026-08-21
+    baseline_hash: "sha256:1ac48d5cee3da8fbc9dd014c40e2788ac619090024daea09364ab877e45a1d79"

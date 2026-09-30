@@ -1,0 +1,8 @@
+sources:
+  - id: pstack-validate
+    url: https://github.com/no-session/pstack/blob/9a24d1408a10a5d0df624ffc128230424e405b82/validate/SKILL.md
+    title: "no-session/pstack - validate"
+    rationale: "The pre-build demand interrogation, attention to the status quo and narrowest wedge, and hard boundary against implementation informed this workflow. The local evidence taxonomy, verdict rubric, output contract, routing, and maintenance policy are original."
+    usage: inspiration
+    last_reviewed_at: 2026-08-20
+    baseline_hash: "sha256:df863ba1bee2a3bf1f8ff8f97d40741333d330beff9cc075bda5dbe703f39e99"
