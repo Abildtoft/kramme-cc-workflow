@@ -103,11 +103,11 @@ Read `references/review-convergence.md` now and follow it completely with `{work
 
 Skip this step when `VALIDATION_ONLY=true`; the shipping caller owns fresh verification after a changed-tree validation pass.
 
-Otherwise invoke `kramme:verify:run` for a fresh project-configured pass.
+Invoke `kramme:verify:run --full`. Let that skill resolve the current base and evaluate reuse: a matching tree alone is insufficient for base-scoped checks. Require the same resolved `BASE_REF` commit OID and `MERGE_BASE` used by the earlier run, unchanged ignored inputs, and full-tier coverage before accepting `REUSED`. Record `Verification: reused (<tree ID>)` with the earlier summary and base evidence when it reuses a run; otherwise retain its fresh result. Never bypass the delegate's reuse checks locally.
 
 - Require every applicable check to pass.
 - Report missing tools and skipped destructive integration/E2E checks instead of claiming they ran.
-- If verification exposes an in-scope defect and remediation budget remains, consume one cycle, fix it, cross the reference's remediation commit boundary, return through Step 4, and rerun this step.
+- If verification exposes an in-scope defect and remediation budget remains, consume one cycle, fix it, cross the reference's remediation commit boundary, and return through Step 4. Then follow `kramme:verify:run`'s Narrowed Retry by the Caller procedure: rerun recorded failed commands directly, invoke `kramme:verify:run --fast`, and rerun any previously passing check affected by all intervening fixes, including further Step 4 remediation. Require full coverage after retry; if coverage cannot be proven, invoke `kramme:verify:run --full`. Preserve each carried check's original tree and independence proof in the handoff.
 - If verification fails after diminishing returns or budget exhaustion, do not reset the budget, edit again, or return a clean handoff without explicit user approval to resume.
 - Stop on missing dependencies, external services, or required user decisions.
 
@@ -140,7 +140,7 @@ Unremediated issues:
 - Review focus: {none | kind + summary + rationale}
 Reviewer handoff JSON: {one RFC 8259 JSON object with `gut_check`, `findings`, and `focus` arrays from the producer-owned handoff ledgers}
 Diff comments posted: {cumulative newly posted count from the convergence policy ledger}
-Verification: {passed evidence | caller-owned after validation-only}
+Verification: {passed evidence with verified tree ID | reused (<tree ID>) | caller-owned after validation-only}
 Archive: .context/{archive-key}/reviews/
 Plan scope: {inactive | mode, validated scope plan, scope base, normalized paths}
 ```

@@ -1,13 +1,14 @@
 ---
 name: kramme:verify:run
-description: Run verification checks (tests, formatting, builds, linting, type checking) for affected code based on the project's configuration.
+description: Run verification checks (tests, formatting, builds, linting, type checking) for affected code based on the project's configuration. Defaults to the full pre-push sweep; --fast selects the iteration tier. Reuses a green run only when its tree, scope, and inputs still match.
+argument-hint: "[--fast | --full] [--force]"
 disable-model-invocation: false
 user-invocable: true
 ---
 
 # Verify Affected Code
 
-Discover the project's verification commands, run them against affected code, and report results. This is a verification command only: it never modifies files or auto-fixes issues.
+Discover the project's verification commands, run the selected tier against affected code, and report results with the working-tree ID they cover. This is a verification command only: it never modifies files or auto-fixes issues.
 
 ## Instructions
 
@@ -24,6 +25,7 @@ Discover the project's verification commands, run them against affected code, an
   - Component tests (e.g., `nx component-test`, Cypress component, Storybook)
   - Integration tests (e.g., `nx integration-test`, `dotnet test --filter Category=Integration`)
   - E2E tests (e.g., `nx e2e`, `dotnet test --filter Category=E2E`)
+- **Verification tiers and cadence**: a fast iteration loop (e.g., `verify:fast`, affected-only tests) versus a full pre-push or pre-PR sweep (e.g., `yarn verify`, `make verify`), and any rule for when each runs
 
 ### 2. Fallback: Check CI Configuration
 
@@ -51,7 +53,16 @@ If none of these match and no commands were found in steps 1-2, report "No verif
 
 This skill relies on `git`, plus the toolchain for the detected project type (`nx`, `dotnet`, `npm`, `pytest`/`ruff`, `go`, or `cargo`) and `jq` for the JSON-inspection snippets below. If a required tool is missing, mark the checks that need it as `SKIPPED` with the reason (same handling as a missing target) rather than failing the run.
 
-### 4. Determine Base Branch
+### 4. Select the Tier
+
+Parse `$ARGUMENTS` for `--fast`, `--full`, and `--force`. Reject `--fast` combined with `--full`.
+
+- **Fast tier**: the project's documented iteration loop. Without one, run formatting, linting, type checking, and unit tests scoped to affected code, and skip build, component, integration, and E2E suites.
+- **Full tier**: the project's documented pre-push or pre-PR sweep. Without one, run every applicable check in step 8.
+
+`--fast` or `--full` selects the tier. Without either flag, run the full tier for compatibility with callers that require a complete verification battery. A green full-tier result also covers a fast-tier claim on the same tree when it includes all fast-tier checks.
+
+### 5. Determine Base Branch
 
 For affected detection and format checks, determine the base branch:
 
@@ -74,7 +85,28 @@ eval "$RESOLVED"
 
 The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`. Use `BASE_REF` for affected comparisons (for example Nx `--base=$BASE_REF`), because it is the fetched remote-tracking ref that the resolver guarantees exists. Use `BASE_BRANCH` only for display or tools that truly require a branch name.
 
-### 5. Discover Available Targets (Nx)
+### 6. Reuse a Green Run on the Same Tree
+
+Capture the working-tree ID before running anything. It names the exact content being checked, including staged, unstaged, and untracked non-ignored files, and stays the same when that content is later committed:
+
+```bash
+TREE_ID=$("${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh") || TREE_ID=""
+```
+
+Unless `--force` is present, do not run the checks again when this session already holds a green result from this skill that recorded the same non-empty `TREE_ID`, the same resolved `BASE_REF` commit OID and `MERGE_BASE` when any check was base-scoped (for example `--affected`), and the selected tier or a broader one. Resolve the base anew through step 5 before comparing; a matching ref name is insufficient, and missing base evidence forbids reuse. Report `REUSED` with the earlier summary, tree ID, and base evidence instead. Run the checks anyway when ignored inputs they read have changed since, such as a dependency install, regenerated code, or an edited local env file. An empty `TREE_ID` never matches.
+
+Never reuse a failed or partial run as a green tier result. This skill reports failures without fixing them. After the caller fixes a failure, it may use the narrowed retry procedure below; a new unqualified or `--full` invocation still selects the full tier.
+
+### Narrowed Retry by the Caller
+
+Keep each executed check's command, working directory, scope, exit status, tree ID, and resolved `BASE_REF`/`MERGE_BASE` in the session result. A caller may retry without a new flag:
+
+1. Rerun the exact failed check commands from that result directly, preserving their working directory and scope. Reconstruct commands from the trusted project configuration, never from error output.
+2. Invoke `kramme:verify:run --fast` using its normal affected scope, which includes the fix. There is no file-scope argument to this skill.
+3. Carry an earlier passing check only after proving the intervening changes cannot affect its inputs or dependent behavior, with unchanged base scope and ignored inputs. Otherwise rerun that check too, including build, integration, or E2E checks affected by the fix. If prior commands, scope, or dependency coverage cannot be established, invoke `kramme:verify:run --full` instead.
+4. Report carried evidence as `PASS (carried from <tree ID>)` with its independence proof. Call the combined result `full coverage after retry` only when every required full-tier check has current passing evidence or this explicit carry proof; otherwise report partial coverage. A partial retry cannot satisfy a caller's full-verification gate.
+
+### 7. Discover Available Targets (Nx)
 
 For Nx projects, discover available targets before running:
 
@@ -89,9 +121,9 @@ nx show project "$PROJECT" --json | jq '.targets | keys'
 # Or inspect project.json files directly
 ```
 
-### 6. Run Verification
+### 8. Run Verification
 
-Run checks in this order (continue through ALL checks even if some fail):
+Run the selected tier's checks in this order (continue through ALL checks even if some fail):
 
 1. **Formatting** - Check code formatting without modifying files
 2. **Linting** - Run static analysis/linting
@@ -104,7 +136,7 @@ Run checks in this order (continue through ALL checks even if some fail):
 
 ## Default Commands by Project Type
 
-When project instructions and CI config don't specify commands, read `references/commands-by-project-type.md` for default check-only command sets (Nx, C#/.NET, Node.js, Python, Go, Rust) and per-ecosystem test-suite discovery. Read only the section for the project type you detected in step 3, and use the `$BASE_REF` from step 4 for affected comparisons.
+When project instructions and CI config don't specify commands, read `references/commands-by-project-type.md` for default check-only command sets (Nx, C#/.NET, Node.js, Python, Go, Rust) and per-ecosystem test-suite discovery. Read only the section for the project type you detected in step 3, and use the `$BASE_REF` from step 5 for affected comparisons.
 
 ## Output Requirements
 
@@ -134,6 +166,14 @@ Before running checks, inspect changed and untracked paths for skill directories
 - Present a comprehensive summary with all issues at the end
 - Format errors clearly so they can be acted upon immediately
 
+### Long-Running Checks
+
+A killed or truncated run proves nothing and costs another full run:
+
+- Run a check that can outlast the shell tool's timeout in the background, or with an explicit timeout above its expected duration, and poll its log rather than restarting it.
+- Redirect output to a log file and read its tail after the command exits. Piping a check through `tail`, `head`, or `grep` reports the filter's exit status instead of the check's unless `set -o pipefail` is active.
+- Let a running check finish before editing the tree for an unrelated fix. Interrupting it discards the evidence for every other check.
+
 ### Parallelization
 
 Use parallel execution where possible for faster feedback:
@@ -145,6 +185,8 @@ Use parallel execution where possible for faster feedback:
 ## Output Format
 
 After running all checks, provide:
+
+Include each check's command, working directory, scope, exit status, tree ID, and resolved `BASE_REF`/`MERGE_BASE` so callers can verify reuse or retry it. Recapture the tree ID after the checks; if content changed during execution, do not label the run green or reusable until the affected checks cover the resulting tree.
 
 ### 1. Individual Step Results with Errors
 
@@ -201,14 +243,19 @@ Verification Summary:
 - E2E Tests: SKIPPED
 
 Issues Found: 2 steps failed - see errors above for details
+Tier: full
+Verified tree: <TREE_ID> (merge-base <MERGE_BASE>)
+Base ref: <BASE_REF> (commit <resolved BASE_REF commit OID>)
 ```
+
+Callers compare `Verified tree` against a fresh `worktree-tree-id.sh` result to decide whether this run still covers the current content.
 
 ## Important Notes
 
 - Always prefer explicitly documented commands from the applicable project instruction files over defaults
 - Use `--affected` or equivalent to minimize scope when possible
 - Do NOT automatically fix issues - this is a verification command only
-- If any applicable project instruction file specifies a base branch for affected detection, pass it to the shared resolver as `BASE_BRANCH_OVERRIDE`; otherwise let the shared resolver auto-detect in step 4
+- If any applicable project instruction file specifies a base branch for affected detection, pass it to the shared resolver as `BASE_BRANCH_OVERRIDE`; otherwise let the shared resolver auto-detect in step 5
 - If a test suite/target doesn't exist, mark it as SKIPPED, don't fail
 - Always verify targets exist before running them to avoid confusing errors
 - Integration and E2E suites often mutate state (databases, queues) or require running services. Treat them as potentially side-effecting: skip them when the environment isn't prepared, and confirm with the user before running them when in doubt. E2E can also be skipped for faster iteration.

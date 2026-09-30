@@ -1,6 +1,6 @@
 # Default Commands by Project Type
 
-Use these only when no commands were found in project instruction files or CI config. They assume `$BASE_REF` is already set (see SKILL.md step 4). Read only the section for the project type you detected. Every command here is check-only - none modify files, push, or publish.
+Use these only when no commands were found in project instruction files or CI config. They assume `$BASE_REF` is already set (see SKILL.md step 5). Read only the section for the project type you detected. Every command here is check-only - none modify files, push, or publish.
 
 ## Nx Workspace (TypeScript/JavaScript)
 
