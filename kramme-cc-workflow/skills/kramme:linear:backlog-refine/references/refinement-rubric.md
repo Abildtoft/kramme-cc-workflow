@@ -1,6 +1,6 @@
 # Refinement Rubric
 
-Grade every backlog issue on five dimensions and report startability as a separate axis, then map the grades to one action. Grades are a thinking aid; the report must cite the concrete evidence, not just the label.
+Grade every backlog issue on five dimensions, report startability as a separate axis, check the backlog for conflicts between issues, and then map the grades to one action. Grades are a thinking aid; the report must cite the concrete evidence, not just the label.
 
 The target state is `agent-ready`: the specification gives an autonomous agent enough information to implement and verify the issue once its declared prerequisites are satisfied. Report whether work can start separately. Every `rewrite`, `split`, and `ask` exists to move an issue toward that state or to establish that it cannot get there.
 
@@ -93,7 +93,33 @@ Treat two issues as duplicates when either holds:
 - Linear records an explicit `duplicate` relation between them.
 - Their problem statements describe the same user-visible defect or outcome in the same area, and neither description names a distinction from the other.
 
-Shared labels, the same project, or overlapping keywords alone make issues `related`, not duplicates. Report related issues as a cluster without proposing `merge`.
+A competing approach to the same outcome is not such a distinction; see Conflicts. Shared labels, the same project, or overlapping keywords alone make issues `related`, not duplicates. Report related issues as a cluster without proposing `merge`.
+
+## Conflicts
+
+Open issues conflict when they cannot all be delivered as written, or when they pull the same surface or goal in different directions.
+
+| Type | Test |
+| --- | --- |
+| `contradiction` | The issues cannot all be delivered as written: delivering one undoes, prevents, or invalidates another's outcome, acceptance criteria, or recorded decision. |
+| `divergence` | Each issue can be delivered, but together they push the same surface, contract, or stated goal toward incompatible ends, leaving a direction choice undecided. |
+
+Signals to check:
+
+- Product: opposite changes to the same behavior, default, setting, or policy, such as adding versus removing, required versus optional, or shown versus hidden; different expected results for the same user action; the same surface optimized for different target users; opposing tradeoffs on the same flow, such as less friction versus more verification; a decision in one issue that rejects, rather than defers, what another requires.
+- Technical: one issue removes, deprecates, or migrates away from a component, dependency, API, or pattern that another extends or newly depends on; incompatible changes to the same API, schema, event, or data contract; competing approaches to the same problem; acceptance criteria that require behavior another issue removes or changes; work that would breach a performance, size, cost, or security constraint another issue sets.
+
+Not conflicts: issues that change the same area compatibly, which are `related`; duplicates that share an approach; follow-ups or refinements of another issue; overlaps that sequencing or a wording update reconciles without choosing between outcomes; different priorities alone; and the cost every change carries, such as more code or more options, unless an issue sets the specific budget or principle the other would breach.
+
+Record each conflict's issues, type, perspective (`product`, `technical`, or both), and basis: `explicit` when an issue or comment already names the conflict, otherwise `inferred`. Quote or closely paraphrase the conflicting statement from each issue and name its source, such as the description, the acceptance criteria, or a comment. Shared keywords or labels alone never establish a conflict.
+
+A conflict is resolved only when a recorded decision addresses it, such as an owner's comment choosing a direction; an earlier decision that a newer issue challenges leaves the conflict open. Apply the usual rules to a resolved conflict: a side whose description does not yet reflect the decision fails `Decisions are made`, and a `rewrite` folds the decision in; grade a side `cancel-supported` only when the record shows it was superseded. A conflict alone is never cancellation evidence.
+
+For an unresolved conflict:
+
+- A `contradiction` fails `Decisions are made` for every issue whose outcome it contests, because the backlog holds competing options for that outcome. A `divergence` alone fails no checklist item; report it so the owner can choose a direction.
+- Never settle it on the owner's behalf: do not pick a side, cite the conflict as a reason to `cancel` either side, or write the choice into a draft. Name the decision, the option each side represents, the evidence that bears on it, such as priority, customer need, recency, or a linked decision, and who can decide, naming each side's owner when the issues record one.
+- Issues that share an outcome but prescribe competing approaches are duplicates in a `contradiction`: merge them, carrying the competing approach into the canonical issue as an open decision, so the canonical issue fails `Decisions are made` until the approach is chosen.
 
 ## Action Mapping
 
@@ -104,6 +130,7 @@ Apply the first matching row:
 | `resolution-evidence = delivered` | `complete` |
 | `resolution-evidence = cancel-supported` | `cancel` |
 | Duplicate of a canonical issue | `merge` |
+| Unresolved `contradiction` after terminal and duplicate checks | `ask` once for the whole conflict; do not split or rewrite a side yet |
 | `clarity = clear` and `scope = oversized` | `split` |
 | `clarity = clear` and `scope = pr-sized` and `agent-readiness = needs-refinement` closable from Linear and the repository | `rewrite` |
 | `clarity = clear` and `scope = pr-sized` and `agent-readiness = needs-refinement` closable only by a person | `ask` |
@@ -127,6 +154,7 @@ Draft to the agent-readiness checklist: the reader is an autonomous agent that w
 - Include how to confirm completion: which tests to add or pass and which behavior to demonstrate.
 - Ground the draft in the repository where possible: confirm current behavior before describing it, and name the modules involved.
 - Never invent decisions, criteria, or product intent the original issue and its comments do not support; leave the gap and route it to `ask`.
+- Keep an outcome contested by an unresolved `contradiction` as an open decision that names the other issue, and never settle any conflict through a non-goal, an acceptance criterion, or a decision already made.
 - Describe modules, behaviors, and contracts; do not include file paths, line numbers, or internal helper or class names, because they rot after refactors.
 - Preserve every concrete fact from the original, such as reproduction steps, customer references, and links. Rewrite the framing, not the evidence.
 - Split children must each be independently shippable; if a child only makes sense after another, say so in the child's description rather than folding them back together.
