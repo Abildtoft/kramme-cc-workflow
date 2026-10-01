@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:backlog-refine
-description: "Requires Linear MCP. Grades a Linear team's open backlog for clarity, scope, agent-readiness, freshness, and resolution evidence, and reports startability separately; clusters related work; and proposes complete, cancel, merge, split, rewrite, ask, or keep. Read-only unless --apply is passed and each write batch is approved. Use for backlog grooming or pre-planning cleanup. Not for selecting, defining, or implementing an issue; use kramme:linear:select-next or kramme:linear:issue-define instead."
+description: "Requires Linear MCP. Grades a Linear team's open backlog for clarity, scope, agent-readiness, freshness, and resolution evidence; clusters related work and flags conflicting issues; and proposes complete, cancel, merge, split, rewrite, ask, or keep. Read-only unless --apply is passed and each write batch is approved. Use for backlog grooming or pre-planning cleanup. Not for selecting, defining, or implementing an issue; use kramme:linear:select-next or kramme:linear:issue-define instead."
 argument-hint: "[team] [--project <name>] [--label <name>] [--stale-days <n>] [--limit <n>] [--apply]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,12 +8,12 @@ user-invocable: true
 
 # Refine Linear Backlog
 
-Grade a Linear team's backlog so that as many issues as possible reach a state where an autonomous agent (for example `kramme:linear:issue-to-pr`) can pick them up and deliver quality work without a human in the loop: a clear problem, a bounded scope, verifiable acceptance criteria, and no undecided questions. Issues that cannot reach that bar are still kept clear, correctly sized, and still worth doing for humans. The skill reads the backlog, scores each issue against `references/refinement-rubric.md`, clusters related issues, and proposes one action per issue. Nothing in Linear changes unless the user passed `--apply` and approves a batch.
+Grade a Linear team's backlog so that as many issues as possible reach a state where an autonomous agent (for example `kramme:linear:issue-to-pr`) can pick them up and deliver quality work without a human in the loop: a clear problem, a bounded scope, verifiable acceptance criteria, and no undecided questions. Issues that cannot reach that bar are still kept clear, correctly sized, and still worth doing for humans. The skill reads the backlog, scores each issue against `references/refinement-rubric.md`, clusters related issues, searches for issues that contradict each other or pull in different directions, and proposes one action per issue. Nothing in Linear changes unless the user passed `--apply` and approves a batch.
 
 ## Boundaries
 
-- **Do:** inspect backlog issues, grade clarity, scope, and agent-readiness, detect duplicates, oversized items, and stale issues, and produce a refinement plan with a concrete action per issue.
-- **Do not:** implement issues, change assignees or priorities without an approved `--apply` batch, delete issues, or create issues from scratch.
+- **Do:** inspect backlog issues, grade clarity, scope, and agent-readiness, detect duplicates, conflicting issues, oversized items, and stale issues, and produce a refinement plan with a concrete action per issue.
+- **Do not:** implement issues, change assignees or priorities without an approved `--apply` batch, delete issues, create issues from scratch, or settle a conflict between issues on the owner's behalf.
 - **Handoff:** for a `rewrite` that needs a full interview, point to `kramme:linear:issue-define {IDENTIFIER}`; for picking work after refinement, point to `kramme:linear:select-next`.
 
 ## Arguments
@@ -76,65 +76,80 @@ Reject unknown flags and repeated flags with one short message naming the offend
    - Inside a cluster, pick the canonical issue: the clearest description, then the most recent activity, then the oldest identifier.
    - Label inferred overlap as an inference and name the evidence; only explicit Linear relations count as certain.
 
-8. **Propose one action per issue.** Choose from:
+8. **Search for conflicts.** Explicitly search the graded set for issues that contradict each other or pull in different directions, whether from a product or a technical perspective, using the rubric's conflict rules. Start from the clusters, but compare across them too; conflicting issues often sit in different clusters.
+   - For each issue, note the surface it changes (a behavior, flow, default, policy, API or data contract, component, or dependency), the direction of the change (add, expand, restrict, remove, replace, or reverse), and any goal, target user, or tradeoff it states.
+   - Compare every pair of issues that change the same surface, share a cluster or relation, reference each other, or state opposing goals for the same users or system quality, such as latency, privacy, or cost. Include a parent and its children.
+   - Treat an issue graded `delivered` as current behavior and one graded `cancel-supported` as no longer a side. An open issue outside the graded set that a fetched relation links to, such as started work, can be a side: fetch it, but never grade it or propose an action for it.
+   - When a conflict depends on current behavior or structure, check the repository when it is available and cite what it shows; drop the conflict when the issues turn out to change different things.
+   - Before calling a conflict unresolved, read the comments of every issue it involves, reusing comments already fetched; a recorded decision may already resolve it.
+   - Give each unresolved conflict a stable key such as `C1`, grouping pairwise findings that turn on the same decision under one key, and record its issues, type, perspective, basis, and each issue's conflicting statement.
+   - Before choosing actions, record every unresolved `contradiction` as a failing `Decisions are made` item on each issue whose outcome it contests, naming the conflict key. An `agent-ready` issue it contests becomes `needs-refinement`, and its startability becomes `n/a`. These findings carry into every later re-grade, including the apply phase.
+
+9. **Propose one action per issue.** Choose from:
    - `complete`: the requested outcome or acceptance criteria are demonstrably delivered, including when one of multiple explicitly permitted resolutions shipped. For a parent, its own requested outcome or acceptance criteria and every required child must be complete. Explicitly optional, follow-up, or out-of-scope children do not block this action. State the evidence.
-   - `cancel`: the work was superseded, abandoned, or is no longer relevant, including a stale issue with evidence that it has no remaining value. State the reason. Age alone is never enough. Two grading errors to avoid:
+   - `cancel`: the work was superseded, abandoned, or is no longer relevant, including a stale issue with evidence that it has no remaining value. State the reason. Age alone is never enough. Three grading errors to avoid:
      - Canceling delivered work, including a parent whose requested outcome is delivered and whose only unfinished child is explicitly optional, a follow-up, or out of scope.
      - Proposing `cancel` just because an issue is old while it carries priority, a customer need, or blocks other work.
-   - `merge`: duplicate of a canonical issue. Propose moving any unique detail into the canonical issue and marking this one as a duplicate.
+     - Canceling one side of an unresolved conflict because of the conflict.
+   - `merge`: duplicate of a canonical issue. Propose moving any unique detail into the canonical issue and marking this one as a duplicate. A competing approach to the same outcome is unique detail; carry it over as an open decision.
    - `split`: oversized. Propose 2-5 PR-sized child issues with full descriptions following the rubric's child brief contract. Give each child a stable draft key so dependencies between proposed children can be named before Linear identifiers exist. Each child must have its own verifiable outcome; state any prerequisites explicitly. The original becomes the parent.
    - `rewrite`: keep the issue but draft a clearer title and description whose goal is to make the issue `agent-ready`. Use the codebase to close gaps when it can: read the affected area to confirm the behavior, name the modules involved, and turn implied expectations into verifiable acceptance criteria. Include the draft in the report and state which checklist items it closes; hand off to `kramme:linear:issue-define` when the rewrite needs information only the user has. Never invent acceptance criteria or product decisions the issue never implied in order to reach `agent-ready`; missing decisions are an `ask`, not a guess.
-   - `ask`: value or relevance cannot be judged from Linear, or the issue is `needs-refinement` and the missing information (a decision, a design, an expected behavior) exists only with a person; name the single question whose answer would make the issue `agent-ready` and the person who can answer it when the issue records an owner.
+   - `ask`: value or relevance cannot be judged from Linear, or the issue is `needs-refinement` and the missing information (a decision, a design, an expected behavior) exists only with a person; name the single question whose answer would make the issue `agent-ready` and the person who can answer it when the issue records an owner. An unresolved `contradiction` is such a decision; ask it once for the whole conflict. For every unresolved contradiction that is not independently `delivered`, `cancel-supported`, or a duplicate being merged, `ask` takes precedence over `split`, `rewrite`, and `keep`; do not draft children or rewrite a side until the decision is recorded.
    - `keep`: clear, PR-sized, and still relevant. No change.
 
-   Apply those rules in the listed first-match order: delivered work is `complete`, cancellation-supported work is `cancel`, then duplicates are `merge`, followed by `split`, `rewrite`, `ask`, and `keep` according to the rubric. Never route an issue with `resolution-evidence = delivered` to `cancel`.
+   Apply those rules in the listed first-match order: delivered work is `complete`, cancellation-supported work is `cancel`, then duplicates are `merge`; for every remaining issue in an unresolved contradiction, use the conflict-wide `ask` before `split`, `rewrite`, or `keep`; then apply those actions according to the rubric. Never route an issue with `resolution-evidence = delivered` to `cancel`.
 
    Follow the rubric's drafting rules for every `rewrite` and `split`: lead with the problem and outcome, give acceptance criteria an agent can verify by running something, state explicit non-goals and decisions already made, and avoid file paths, line numbers, and internal helper names.
 
-9. **Validate drafts and report the plan.** Re-grade the exact final description of every rewrite and split child against every readiness item, retaining the evidence and any open gaps. Unsupported assumptions and unanswered questions never count as closed gaps. Compute projected readiness only from drafts that pass this final check; a proposed action alone is not evidence of readiness.
+10. **Validate drafts and report the plan.** Re-grade the exact final description of every rewrite and split child against every readiness item, retaining the evidence and any open gaps. Unsupported assumptions and unanswered questions never count as closed gaps. Compute projected readiness only from drafts that pass this final check; a proposed action alone is not evidence of readiness.
 
-   Count retained implementation issues once, replace split parents with their children, and exclude completed, canceled, merged-away, and tracking-only parent issues from projected readiness. Show the identifiers or draft keys behind each count, distinguish existing issues from new children, and keep awaiting-prerequisite and unknown startability separate from ready-to-start. Label projections as conditional on applying the drafts and persisting their relations; do not assume prerequisites will complete. Use this structure:
+    Count retained implementation issues once, replace split parents with their children, and exclude completed, canceled, merged-away, and tracking-only parent issues from projected readiness. Show the identifiers or draft keys behind each count, distinguish existing issues from new children, and keep awaiting-prerequisite and unknown startability separate from ready-to-start. Label projections as conditional on applying the drafts and persisting their relations; do not assume prerequisites will complete. Use this structure:
 
-   ```text
-   Backlog refinement: {team} ({n} issues graded, {m} need action)
-   Agent-ready now (verified specifications): {a} | projected after applying validated drafts: {b} | human-only: {c}
-   Startability now: ready-to-start {r} | awaiting-prerequisite {w} | unknown {u}
-   Projected startability: ready-to-start {pr} | awaiting-prerequisite {pw} | unknown {pu}
-   Count basis: {existing identifiers and proposed child keys, with exclusions}
+    ```text
+    Backlog refinement: {team} ({n} issues graded, {m} need action)
+    Agent-ready now (verified specifications): {a} | projected after applying validated drafts: {b} | human-only: {c}
+    Startability now: ready-to-start {r} | awaiting-prerequisite {w} | unknown {u}
+    Projected startability: ready-to-start {pr} | awaiting-prerequisite {pw} | unknown {pu}
+    Count basis: {existing identifiers and proposed child keys, with exclusions}
+    Unresolved conflicts: contradiction {x} | divergence {y}
 
-   Summary:
-   | Action | Count |
-   | --- | --- |
-   | complete | ... |
-   | cancel | ... |
-   | merge | ... |
-   | split | ... |
-   | rewrite | ... |
-   | ask | ... |
-   | keep | ... |
+    Summary:
+    | Action | Count |
+    | --- | --- |
+    | complete | ... |
+    | cancel | ... |
+    | merge | ... |
+    | split | ... |
+    | rewrite | ... |
+    | ask | ... |
+    | keep | ... |
 
-   Proposed actions:
-   | Issue | Action | Clarity | Scope | Freshness | Resolution evidence | Agent-readiness | Startability | Why |
-   | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-   | ... | ... | ... | ... | ... | ... | ... | ... | ... |
+    Proposed actions:
+    | Issue | Action | Clarity | Scope | Freshness | Resolution evidence | Agent-readiness | Startability | Why |
+    | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+    | ... | ... | ... | ... | ... | ... | ... | ... | ... |
 
-   Drafts:
-   {for each rewrite: issue, proposed title, proposed description, checklist items closed, items still open}
-   {for each split: parent issue, child draft keys, titles, full descriptions, dependency mapping, final readiness and startability per child}
-   {for each merge: duplicate -> canonical, unique detail to carry over}
+    Conflicts:
+    {for each unresolved conflict: key, issues, type, perspective, basis, each issue's conflicting statement and its source, the decision needed and the option each side represents, evidence bearing on it, who can decide, and what becomes agent-ready once decided}
+    {search scope: what the search compared and what it could not, such as issues outside the filters or beyond the cap}
 
-   Readiness evidence:
-   {for each current or projected agent-ready issue: checklist item, source, evidence; for others: failing or unknown items}
+    Drafts:
+    {for each rewrite: issue, proposed title, proposed description, checklist items closed, items still open}
+    {for each split: parent issue, child draft keys, titles, full descriptions, dependency mapping, final readiness and startability per child}
+    {for each merge: duplicate -> canonical, unique detail to carry over}
 
-   Open questions:
-   {for each ask: issue, question, who can answer, what becomes agent-ready once answered}
+    Readiness evidence:
+    {for each current or projected agent-ready issue: checklist item, source, evidence; for others: failing or unknown items}
 
-   Next: {"rerun with --apply to apply approved batches" | "handoff lines"}
-   ```
+    Open questions:
+    {for each ask: issue, question, who can answer, what becomes agent-ready once answered; for an ask raised by a conflict, the conflict key, because its question appears under Conflicts}
 
-   Omit the `keep` rows from `Proposed actions` when more than 20 issues were graded; list their identifiers in one line instead. Omit empty sections. Leave `Startability` as `n/a` for any issue that is not `agent-ready`; only `agent-ready` rows contribute to the startability counts, which sum to the agent-ready count rather than the graded count. For picking autonomous implementation work, hand off to `kramme:linear:select-next {team} --agent-ready-only`; only issues that are also ready to start are candidates. Selection rechecks live evidence rather than trusting this report.
+    Next: {"rerun with --apply to apply approved batches" | "handoff lines"}
+    ```
 
-10. **Apply approved changes (`--apply` only).**
+    Omit the `keep` rows from `Proposed actions` when more than 20 issues were graded; list their identifiers in one line instead. Omit empty sections except `Conflicts`, so an empty conflict result is distinguishable from a skipped search. Name the conflict key beside every issue a conflict involves, in its `Why` cell or in the `keep` identifier line. Leave `Startability` as `n/a` for any issue that is not `agent-ready`; only `agent-ready` rows contribute to the startability counts, which sum to the agent-ready count rather than the graded count. For picking autonomous implementation work, hand off to `kramme:linear:select-next {team} --agent-ready-only`; only issues that are also ready to start are candidates. Selection rechecks live evidence rather than trusting this report. With that handoff, list the issues in an unresolved `contradiction` and say not to pick them until the decision is recorded in Linear, because selection judges each issue on its own.
+
+11. **Apply approved changes (`--apply` only).**
     - Resolve the team's state whose type is `completed` and the state whose type is `canceled` before presenting terminal batches. If either needed state cannot be resolved unambiguously, do not apply that action; report the missing state. A `complete` action may use only the completed state, and a `cancel` action may use only the canceled state.
     - Group proposed changes into batches by action type in this order: `merge`, `complete`, `cancel`, `rewrite`, and `split`. `keep` and `ask` never write.
     - When a canonical issue also has its own proposed action, apply its incoming `merge` actions first. After a merge changes the canonical issue, re-fetch and re-grade it, replace its grading snapshot, and present its recomputed action in a new batch for fresh confirmation. Do not carry an earlier approval for that issue forward or treat the intentional merge change as a concurrent edit.

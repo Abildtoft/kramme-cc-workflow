@@ -97,3 +97,59 @@
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "Linear backlog refine explicitly searches for conflicting issues and reports them" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:linear:backlog-refine/SKILL.md"
+
+    grep -qF "**Search for conflicts.** Explicitly search the graded set for issues that contradict each other or pull in different directions, whether from a product or a technical perspective" "$skill"
+    grep -qF "Start from the clusters, but compare across them too" "$skill"
+    grep -qF "Compare every pair of issues that change the same surface" "$skill"
+    grep -qF "Treat an issue graded \`delivered\` as current behavior" "$skill"
+    grep -qF "Before calling a conflict unresolved, read the comments of every issue it involves" "$skill"
+    grep -qF "every unresolved \`contradiction\` as a failing \`Decisions are made\` item on each issue whose outcome it contests" "$skill"
+    grep -qF "An \`agent-ready\` issue it contests becomes \`needs-refinement\`, and its startability becomes \`n/a\`." "$skill"
+    grep -qF "settle a conflict between issues on the owner'"'"'s behalf" "$skill"
+    grep -qF "Canceling one side of an unresolved conflict because of the conflict." "$skill"
+    grep -qF "A competing approach to the same outcome is unique detail; carry it over as an open decision." "$skill"
+    grep -qF "ask it once for the whole conflict" "$skill"
+    grep -qF "For every unresolved contradiction that is not independently \`delivered\`, \`cancel-supported\`, or a duplicate being merged, \`ask\` takes precedence over \`split\`, \`rewrite\`, and \`keep\`" "$skill"
+    grep -qF "for every remaining issue in an unresolved contradiction, use the conflict-wide \`ask\` before \`split\`, \`rewrite\`, or \`keep\`" "$skill"
+    grep -qF "Unresolved conflicts: contradiction {x} | divergence {y}" "$skill"
+    grep -qF "{search scope: what the search compared and what it could not" "$skill"
+    grep -qF "Omit empty sections except \`Conflicts\`" "$skill"
+    grep -qF "Name the conflict key beside every issue a conflict involves" "$skill"
+    grep -qF "say not to pick them until the decision is recorded in Linear" "$skill"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear backlog refine rubric grades conflicts without settling them" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    rubric="skills/kramme:linear:backlog-refine/references/refinement-rubric.md"
+
+    grep -qF "## Conflicts" "$rubric"
+    grep -qF "| \`contradiction\` | The issues cannot all be delivered as written" "$rubric"
+    grep -qF "| \`divergence\` | Each issue can be delivered, but together they push the same surface" "$rubric"
+    grep -qF "Product: opposite changes to the same behavior" "$rubric"
+    grep -qF "Technical: one issue removes, deprecates, or migrates away from" "$rubric"
+    grep -qF "overlaps that sequencing or a wording update reconciles without choosing between outcomes" "$rubric"
+    grep -qF "Shared keywords or labels alone never establish a conflict." "$rubric"
+    grep -qF "an earlier decision that a newer issue challenges leaves the conflict open" "$rubric"
+    grep -qF "A conflict alone is never cancellation evidence." "$rubric"
+    grep -qF "A \`contradiction\` fails \`Decisions are made\` for every issue whose outcome it contests" "$rubric"
+    grep -qF "A \`divergence\` alone fails no checklist item" "$rubric"
+    grep -qF "do not pick a side, cite the conflict as a reason to \`cancel\` either side, or write the choice into a draft" "$rubric"
+    grep -qF "Unresolved \`contradiction\` after terminal and duplicate checks" "$rubric"
+    grep -qF "A competing approach to the same outcome is not such a distinction" "$rubric"
+    grep -qF "carrying the competing approach into the canonical issue as an open decision" "$rubric"
+    grep -qF "Keep an outcome contested by an unresolved \`contradiction\` as an open decision that names the other issue" "$rubric"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
