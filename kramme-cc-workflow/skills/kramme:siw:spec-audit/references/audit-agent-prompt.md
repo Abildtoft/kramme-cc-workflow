@@ -28,7 +28,7 @@ Analyze the spec against each dimension below. For each finding, report:
 - **Cover every section.** Check every section against every assigned dimension before returning.
 - **Quote the spec.** When flagging an issue, include the relevant text from the spec.
 - **Be specific in recommendations.** "Add more detail" is not enough. Say what detail is missing.
-- **Score provisional fix confidence on every finding using `references/fix-confidence-rubric.md`.** Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`.
+- **Score provisional fix confidence on every finding using the rubric at `{fix-confidence rubric path}`.** Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`.
 
 {Dimension-specific instructions inserted here — see Section 3.4}
 

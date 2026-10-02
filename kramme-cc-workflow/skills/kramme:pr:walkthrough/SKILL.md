@@ -164,12 +164,12 @@ Read the local `references/` and `assets/` files just in time, as step 2 below d
 1. **Think.** Decide what changed, who needs the explanation, and which comparisons deserve the most visual weight. Choose diagram types that make before/after changes legible, not just pretty. Give each diagram one claim and state it in the caption: draw the mechanism behind it (the path a request, event, or record actually takes), label architecture, data-flow, and dependency edges with the relationship they stand for, and make the before/after differences the visible subject.
 
 2. **Structure.** Use the local templates and references to choose the rendering approach:
-   - `assets/architecture.html` for text-heavy architecture comparisons
-   - `assets/mermaid-flowchart.html` for dependency graphs, pipelines, state changes, and behavioral flows
-   - `assets/data-table.html` for KPI dashboards, file maps, and review tables
-   - `references/css-patterns.md` for layout patterns, zoom controls, depth tiers, and collapsible sections
-   - `references/responsive-nav.md` when the report spans 4+ sections and needs responsive navigation
-   - `references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/architecture.html` for text-heavy architecture comparisons
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/mermaid-flowchart.html` for dependency graphs, pipelines, state changes, and behavioral flows
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/data-table.html` for KPI dashboards, file maps, and review tables
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/css-patterns.md` for layout patterns, zoom controls, depth tiers, and collapsible sections
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/responsive-nav.md` when the report spans 4+ sections and needs responsive navigation
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
 
 3. **Style.** Use typography, palette, and depth to clearly distinguish before, after, neutral context, and risks. Avoid the stock generated looks: a dark theme with blue or purple accents, and a cream or off-white page with italic accent words in headlines, numbered "01/02/03" section labels, and pill-shaped badges. Respect `prefers-reduced-motion`.
 

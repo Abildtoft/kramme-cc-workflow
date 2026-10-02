@@ -106,7 +106,7 @@ For each finding, report:
 - Check every section against every assigned dimension before returning.
 - Quote the spec. When flagging an issue, include the relevant text.
 - Be specific in recommendations. "Add more detail" is not enough — say what detail is missing.
-- Score provisional fix confidence on every finding using `references/fix-confidence-rubric.md`. Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`.
+- Score provisional fix confidence on every finding using the rubric at `{fix-confidence rubric path}`. Sum the four 0-25 sub-scores, then apply the tier boundaries, the sub-score guardrail, and the safety caps documented in that file before writing the provisional `Fix Confidence`.
 
 ## Work Context Adjustments
 
@@ -187,7 +187,7 @@ For any issue that should become a spec-audit finding, add this mapping:
 - **Source**: Codebase Pattern Review
 - **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
 
-Score provisional `Fix Confidence` using `references/fix-confidence-rubric.md`.
+Score provisional `Fix Confidence` using the rubric at `{fix-confidence rubric path}`.
 Most pattern-fit findings are REQUIRES_DECISION unless the fix is simply "reuse
 the clearly established pattern at {path}".
 
@@ -269,7 +269,7 @@ Output: Challenge findings or clean confirmations
   - **Severity**: Critical | Major | Minor
   - **Recommendation**: Specific action to fix
   - **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
-  Compute `Fix Confidence` exactly like the dimension auditors using `references/fix-confidence-rubric.md`.
+  Compute `Fix Confidence` exactly like the dimension auditors using the rubric at `{fix-confidence rubric path}`.
   OR: "{dimension}: Confirmed no findings — {evidence}"
 
 ## Mission 3: Duplicate Detection
@@ -308,7 +308,7 @@ After the cross-reviewer completes:
 3. Follow `/kramme:siw:spec-audit` Steps 4-5 for:
    - Assigning global finding IDs (SPEC-001, SPEC-002, etc.)
    - Assigning severity
-   - After final severity assignment and any Work Context caps, re-scoring every finding (including cross-reviewer challenge findings) per `references/fix-confidence-rubric.md` so the final `Fix Confidence` uses the shared tier boundaries, sub-score guardrail, and safety caps, preserving any pre-downgrade Critical safety cap via recorded `original_severity` and the matching report `Severity Note`
+   - After final severity assignment and any Work Context caps, re-scoring every finding (including cross-reviewer challenge findings) per `${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md` so the final `Fix Confidence` uses the shared tier boundaries, sub-score guardrail, and safety caps, preserving any pre-downgrade Critical safety cap via recorded `original_severity` and the matching report `Severity Note`
    - Computing dimension scores (Strong/Adequate/Weak/Missing)
    - Cross-referencing existing SIW issues
    - Writing the report to `siw/AUDIT_SPEC_REPORT.md` (or project root), or replying inline if `INLINE_MODE=true`

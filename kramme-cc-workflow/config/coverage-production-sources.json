@@ -610,6 +610,9 @@
       "kramme-cc-workflow/scripts/run-skillspector.sh": [
         "kramme-cc-workflow/tests/skillspector-runner.bats"
       ],
+      "kramme-cc-workflow/scripts/siw-issue-reservation.sh": [
+        "kramme-cc-workflow/tests/siw-issue-reservation.bats"
+      ],
       "kramme-cc-workflow/scripts/verify-rewrite-state.sh": [
         "kramme-cc-workflow/tests/resolve-base.bats"
       ],
@@ -651,12 +654,6 @@
       ],
       "kramme-cc-workflow/skills/kramme:setup/scripts/check-environment.sh": [
         "kramme-cc-workflow/tests/check-environment.bats"
-      ],
-      "kramme-cc-workflow/skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh": [
-        "kramme-cc-workflow/tests/siw-issue-reservation.bats"
-      ],
-      "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh": [
-        "kramme-cc-workflow/tests/siw-issue-reservation.bats"
       ],
       "kramme-cc-workflow/skills/kramme:workflow:wizard/assets/template.sh": [
         "kramme-cc-workflow/tests/skill-resource-references.bats"

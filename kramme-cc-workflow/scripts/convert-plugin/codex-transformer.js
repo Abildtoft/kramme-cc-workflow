@@ -221,6 +221,11 @@ function sharedRuntimeFor(plugin) {
         sourceDir: path.join(plugin.root, "scripts", "lib"),
         targetDir: path.join("scripts", "lib"),
       },
+      {
+        rewriteMarkdown: true,
+        sourceDir: path.join(plugin.root, "shared"),
+        targetDir: "shared",
+      },
     ],
     sharedScriptFiles: [
       {
@@ -276,6 +281,15 @@ function sharedRuntimeFor(plugin) {
       {
         sourceFile: path.join(plugin.root, "scripts", "skill-usage.js"),
         targetPath: path.join("scripts", "skill-usage.js"),
+      },
+      {
+        executable: true,
+        sourceFile: path.join(
+          plugin.root,
+          "scripts",
+          "siw-issue-reservation.sh",
+        ),
+        targetPath: path.join("scripts", "siw-issue-reservation.sh"),
       },
     ],
   };

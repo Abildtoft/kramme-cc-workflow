@@ -332,14 +332,15 @@ NODE
 	[ "$status" -eq 0 ]
 }
 
-@test "spec-audit remains self-contained when copied without sibling skills" {
-	local skills_dir="$BATS_TEST_TMPDIR/standalone/skills"
-	mkdir -p "$skills_dir"
+@test "spec-audit stays self-contained within the plugin when copied without sibling skills" {
+	local plugin_dir="$BATS_TEST_TMPDIR/standalone"
+	mkdir -p "$plugin_dir/skills"
+	cp -R "$BATS_TEST_DIRNAME/../shared" "$plugin_dir/shared"
 	cp -R \
 		"$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit" \
-		"$skills_dir/kramme:siw:spec-audit"
+		"$plugin_dir/skills/kramme:siw:spec-audit"
 
-	run resource_reference_check "$skills_dir"
+	run resource_reference_check "$plugin_dir/skills"
 
 	[ "$status" -eq 0 ]
 }

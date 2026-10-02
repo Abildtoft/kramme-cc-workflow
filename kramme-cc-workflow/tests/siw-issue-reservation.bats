@@ -4,8 +4,10 @@ load 'test_helper/common'
 
 setup() {
   TMP_ROOT="$(mktemp -d)"
-  ISSUE_DEFINE_RESERVATION_HELPER="$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh"
-  GENERATE_PHASES_RESERVATION_HELPER="$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh"
+  # Both SIW issue creators call the one plugin-level helper; the two names keep
+  # the cross-workflow contention cases readable.
+  ISSUE_DEFINE_RESERVATION_HELPER="$BATS_TEST_DIRNAME/../scripts/siw-issue-reservation.sh"
+  GENERATE_PHASES_RESERVATION_HELPER="$ISSUE_DEFINE_RESERVATION_HELPER"
 }
 
 teardown() {

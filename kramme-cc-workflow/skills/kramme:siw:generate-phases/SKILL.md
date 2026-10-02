@@ -43,7 +43,7 @@ Issue IDs are stable once issue files are written. Preserve existing append-mode
 
 Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
 
-All final issue creation and tracker publication use this skill's `scripts/siw-issue-reservation.sh` helper. The helper serializes its own invocations, provides new ownership-tokened publication locks with a baseline state hash, creates exclusive per-ID reservations using portable atomic hard-link claims, and atomically publishes a final receipt that binds the owner and all three SIW views. A killed invocation's operation claim is reclaimed only after its recorded process no longer exists. Keep the locked critical section short. Draft IDs remain provisional until Phase 6 acquires publication ownership and reserves final IDs.
+All final issue creation and tracker publication use the shared `${CLAUDE_PLUGIN_ROOT}/scripts/siw-issue-reservation.sh` helper. The helper serializes its own invocations, provides new ownership-tokened publication locks with a baseline state hash, creates exclusive per-ID reservations using portable atomic hard-link claims, and atomically publishes a final receipt that binds the owner and all three SIW views. A killed invocation's operation claim is reclaimed only after its recorded process no longer exists. Keep the locked critical section short. Draft IDs remain provisional until Phase 6 acquires publication ownership and reserves final IDs.
 
 ## Process Overview
 

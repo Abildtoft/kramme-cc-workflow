@@ -3,11 +3,11 @@
 ## Merged Findings
 
 - When a merged finding spans both deprioritized and non-deprioritized dimensions, treat the non-deprioritized dimension as authoritative for severity capping. Only findings whose affected dimensions are entirely deprioritized may be capped to Minor in `Step 4.3.5`.
-- When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding using `references/fix-confidence-rubric.md` against the consolidated details and recommendation. Do not average the original agent scores.
+- When you merge duplicate findings, keep a single `Fix Confidence` field for the merged entry. Re-score the merged finding using `${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md` against the consolidated details and recommendation. Do not average the original agent scores.
 
 ## Final Fix Confidence
 
-After final severity assignment and any Work Context downgrades, recompute each finding's final `Fix Confidence` using `references/fix-confidence-rubric.md` on the consolidated details and final recommendation.
+After final severity assignment and any Work Context downgrades, recompute each finding's final `Fix Confidence` using `${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md` on the consolidated details and final recommendation.
 
 - Replace any earlier provisional score if severity, recommendation wording, or merged details changed during consolidation.
 - Track `preserved_critical_caps_count`: the number of final Minor findings whose `Severity Note` says `capped at Minor from Critical`.

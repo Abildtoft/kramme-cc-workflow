@@ -12,7 +12,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 **Review Aspects (optional):** "$ARGUMENTS"
 
-Before selecting a workflow, read and apply `references/model-selection.md`. It parses and removes `--subagent-model <model>` before aspect parsing or Team Mode routing. Preserve the original invocation's flag boundaries for `--emphasize`; removing the model pair must not merge later positional aspects into an emphasis span. Its model selection applies to every review subagent in standard, parallel, Team Mode, and loop verification passes.
+Before selecting a workflow, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`. It parses and removes `--subagent-model <model>` before aspect parsing or Team Mode routing. Preserve the original invocation's flag boundaries for `--emphasize`; removing the model pair must not merge later positional aspects into an emphasis span. Its model selection applies to every review subagent in standard, parallel, Team Mode, and loop verification passes.
 
 Before selecting any workflow, read `references/execution-contract.md` in full. Its execution ledger and fail-closed completion gate apply to every mode and rerun. Never replace specialized agents with a parent-only review, silently narrow the scope, cancel reviewers because enough findings exist, or skip stages on zero findings. Partial results are `INCOMPLETE`, never a completed or clean review.
 

@@ -19,8 +19,8 @@ Use this when returning to a project you already know and need to reload context
 
 Load these on demand as Workflow step 2 directs — don't read them all up front:
 
-- `references/css-patterns.md`, `references/libraries.md`, `references/responsive-nav.md`
-- `assets/architecture.html`, `assets/data-table.html`, `assets/mermaid-flowchart.html` — copy the one template matching the element you're rendering
+- `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/css-patterns.md`, `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/libraries.md`, `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/responsive-nav.md`
+- `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/architecture.html`, `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/data-table.html`, `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/mermaid-flowchart.html` — copy the one template matching the element you're rendering
 
 Use a warm editorial or paper/ink aesthetic with muted blues and greens. Keep it from reading as the stock generated editorial page: no italic accent words in headlines, numbered "01/02/03" section labels, or pill-shaped badges.
 
@@ -29,12 +29,12 @@ Use a warm editorial or paper/ink aesthetic with muted blues and greens. Keep it
 1. **Think.** Decide who the page is for, which diagram types best explain the project, and which visual direction fits this recap. Do not default to a generic dark dashboard. Give each diagram one claim and state it in the caption: draw the mechanism behind it (the path a request, event, or record actually takes), and label architecture, data-flow, and dependency edges with the relationship they stand for.
 
 2. **Structure.** Use the local templates and references to choose the right rendering approach:
-   - `assets/architecture.html` for text-heavy architecture snapshots
-   - `assets/mermaid-flowchart.html` for Mermaid-based flows, state, and dependency views
-   - `assets/data-table.html` for KPI tables, audits, and structured comparisons
-   - `references/css-patterns.md` for layout, depth tiers, zoom controls, and collapsible sections
-   - `references/responsive-nav.md` when the page has 4+ sections and needs sticky desktop nav plus mobile horizontal nav
-   - `references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/architecture.html` for text-heavy architecture snapshots
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/mermaid-flowchart.html` for Mermaid-based flows, state, and dependency views
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/data-table.html` for KPI tables, audits, and structured comparisons
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/css-patterns.md` for layout, depth tiers, zoom controls, and collapsible sections
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/responsive-nav.md` when the page has 4+ sections and needs sticky desktop nav plus mobile horizontal nav
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
 
 3. **Style.** Make typography, palette, depth, and motion feel intentional. Use distinctive Google Fonts, CSS custom properties for the full palette, atmospheric backgrounds instead of flat fills, meaningful hierarchy, and motion that respects `prefers-reduced-motion`.
 

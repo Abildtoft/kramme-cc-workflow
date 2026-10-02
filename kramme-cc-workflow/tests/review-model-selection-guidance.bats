@@ -2,7 +2,7 @@
 
 setup() {
   ROOT="$BATS_TEST_DIRNAME/.."
-  POLICY="$ROOT/skills/kramme:pr:code-review/references/model-selection.md"
+  POLICY="$ROOT/shared/pr-review/references/model-selection.md"
 }
 
 @test "review model policy defines the requested provider ladders and floors" {
@@ -28,14 +28,12 @@ PY
   [ "$status" -eq 0 ]
 }
 
-@test "every review producer loads an identical skill-local policy" {
+@test "every review producer loads the one shared policy" {
   local skill
   for skill in code-review convention-review github-review overengineering-review product-review review-convergence ux-review; do
-    [[ "$(cat "$ROOT/skills/kramme:pr:$skill/SKILL.md")" == *'read and apply `references/model-selection.md`'* ]]
-    cmp "$POLICY" "$ROOT/skills/kramme:pr:$skill/references/model-selection.md"
+    [[ "$(cat "$ROOT/skills/kramme:pr:$skill/SKILL.md")" == *'read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`'* ]]
+    [ ! -e "$ROOT/skills/kramme:pr:$skill/references/model-selection.md" ]
   done
-  run python3 "$ROOT/scripts/generate-synced-files.py" --check --group-prefix pr-review-model-selection
-  [ "$status" -eq 0 ]
 }
 
 @test "subagent model override is advertised and parsed before review routing" {

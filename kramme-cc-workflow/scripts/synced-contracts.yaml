@@ -453,103 +453,6 @@
       ]
     }
   ],
-  "file_identity_groups": [
-    {
-      "name": "pr-review-model-selection",
-      "canonical": "kramme-cc-workflow/skills/kramme:pr:code-review/references/model-selection.md",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:pr:code-review/references/model-selection.md",
-        "kramme-cc-workflow/skills/kramme:pr:convention-review/references/model-selection.md",
-        "kramme-cc-workflow/skills/kramme:pr:github-review/references/model-selection.md",
-        "kramme-cc-workflow/skills/kramme:pr:overengineering-review/references/model-selection.md",
-        "kramme-cc-workflow/skills/kramme:pr:product-review/references/model-selection.md",
-        "kramme-cc-workflow/skills/kramme:pr:review-convergence/references/model-selection.md",
-        "kramme-cc-workflow/skills/kramme:pr:ux-review/references/model-selection.md"
-      ]
-    },
-    {
-      "name": "siw-spec-audit-fix-confidence-rubric",
-      "canonical": "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/references/classification-rubric.md",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/references/classification-rubric.md",
-        "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/fix-confidence-rubric.md"
-      ]
-    },
-    {
-      "name": "siw-issue-reservation-helper",
-      "canonical": "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh",
-        "kramme-cc-workflow/skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh"
-      ]
-    },
-    {
-      "name": "visual-css-patterns",
-      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/css-patterns.md",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:visual:diagram/references/css-patterns.md",
-        "kramme-cc-workflow/skills/kramme:pr:walkthrough/references/css-patterns.md",
-        "kramme-cc-workflow/skills/kramme:visual:onboarding/references/css-patterns.md",
-        "kramme-cc-workflow/skills/kramme:visual:plan-review/references/css-patterns.md",
-        "kramme-cc-workflow/skills/kramme:visual:project-recap/references/css-patterns.md"
-      ]
-    },
-    {
-      "name": "visual-libraries",
-      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/libraries.md",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:visual:diagram/references/libraries.md",
-        "kramme-cc-workflow/skills/kramme:pr:walkthrough/references/libraries.md",
-        "kramme-cc-workflow/skills/kramme:visual:onboarding/references/libraries.md",
-        "kramme-cc-workflow/skills/kramme:visual:plan-review/references/libraries.md",
-        "kramme-cc-workflow/skills/kramme:visual:project-recap/references/libraries.md"
-      ]
-    },
-    {
-      "name": "visual-responsive-nav",
-      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/references/responsive-nav.md",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:visual:diagram/references/responsive-nav.md",
-        "kramme-cc-workflow/skills/kramme:pr:walkthrough/references/responsive-nav.md",
-        "kramme-cc-workflow/skills/kramme:visual:onboarding/references/responsive-nav.md",
-        "kramme-cc-workflow/skills/kramme:visual:plan-review/references/responsive-nav.md",
-        "kramme-cc-workflow/skills/kramme:visual:project-recap/references/responsive-nav.md"
-      ]
-    },
-    {
-      "name": "visual-asset-architecture-html",
-      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/architecture.html",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:visual:diagram/assets/architecture.html",
-        "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/architecture.html",
-        "kramme-cc-workflow/skills/kramme:visual:onboarding/assets/architecture.html",
-        "kramme-cc-workflow/skills/kramme:visual:plan-review/assets/architecture.html",
-        "kramme-cc-workflow/skills/kramme:visual:project-recap/assets/architecture.html"
-      ]
-    },
-    {
-      "name": "visual-asset-data-table-html",
-      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/data-table.html",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:visual:diagram/assets/data-table.html",
-        "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/data-table.html",
-        "kramme-cc-workflow/skills/kramme:visual:onboarding/assets/data-table.html",
-        "kramme-cc-workflow/skills/kramme:visual:plan-review/assets/data-table.html",
-        "kramme-cc-workflow/skills/kramme:visual:project-recap/assets/data-table.html"
-      ]
-    },
-    {
-      "name": "visual-asset-mermaid-flowchart-html",
-      "canonical": "kramme-cc-workflow/skills/kramme:visual:diagram/assets/mermaid-flowchart.html",
-      "paths": [
-        "kramme-cc-workflow/skills/kramme:visual:diagram/assets/mermaid-flowchart.html",
-        "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/mermaid-flowchart.html",
-        "kramme-cc-workflow/skills/kramme:visual:onboarding/assets/mermaid-flowchart.html",
-        "kramme-cc-workflow/skills/kramme:visual:plan-review/assets/mermaid-flowchart.html",
-        "kramme-cc-workflow/skills/kramme:visual:project-recap/assets/mermaid-flowchart.html"
-      ]
-    }
-  ],
   "required_file_contracts": [
     {
       "name": "work-from-plan-invocation-shape",
@@ -2026,9 +1929,8 @@
           "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py": 787,
           "kramme-cc-workflow/scripts/release.py": 595,
           "kramme-cc-workflow/scripts/run-skillspector.sh": 644,
-          "kramme-cc-workflow/scripts/skill-usage.js": 1165,
-          "kramme-cc-workflow/skills/kramme:siw:generate-phases/scripts/siw-issue-reservation.sh": 1772,
-          "kramme-cc-workflow/skills/kramme:siw:issue-define/scripts/siw-issue-reservation.sh": 1772
+          "kramme-cc-workflow/scripts/siw-issue-reservation.sh": 1772,
+          "kramme-cc-workflow/scripts/skill-usage.js": 1165
         },
         "excluded": [
           "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js"

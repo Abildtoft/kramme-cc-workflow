@@ -26,12 +26,12 @@ Use a blueprint/editorial aesthetic with current-state vs. planned-state panels,
 1. **Think.** Decide who is reviewing the plan, which current-vs-planned comparisons need the strongest emphasis, and which diagram types will clarify blast radius and risk. Give each diagram one claim and state it in the caption: draw the mechanism behind it (the path a request, event, or record actually takes), label architecture, data-flow, and dependency edges with the relationship they stand for, and make the current-vs-planned differences the visible subject.
 
 2. **Structure.** Use the local templates and references to choose the rendering approach:
-   - `assets/architecture.html` for text-heavy subsystem snapshots
-   - `assets/mermaid-flowchart.html` for current/planned architecture, dependency graphs, and flows
-   - `assets/data-table.html` for impact dashboards, ripple analysis, and review tables
-   - `references/css-patterns.md` for layout patterns, zoom controls, depth tiers, and collapsible sections
-   - `references/responsive-nav.md` when the review spans 4+ sections and needs responsive navigation
-   - `references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/architecture.html` for text-heavy subsystem snapshots
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/mermaid-flowchart.html` for current/planned architecture, dependency graphs, and flows
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/assets/data-table.html` for impact dashboards, ripple analysis, and review tables
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/css-patterns.md` for layout patterns, zoom controls, depth tiers, and collapsible sections
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/responsive-nav.md` when the review spans 4+ sections and needs responsive navigation
+   - `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/libraries.md` for Mermaid theming, Chart.js, anime.js, and CDN usage
 
 3. **Style.** Use typography, palette, and depth to separate current state, planned state, and risk. Avoid the stock generated looks: a dark theme with blue or purple accents, and a cream or off-white page with italic accent words in headlines, numbered "01/02/03" section labels, and pill-shaped badges. Use CSS custom properties, atmospheric backgrounds, and motion only where it helps comprehension.
 

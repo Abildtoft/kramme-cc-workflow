@@ -12,6 +12,10 @@ Evaluate specification documents for implementation readiness across 8 dimension
 
 Check every section of the specification against every quality dimension before reporting. A dimension with no findings is a valid result when you can say what you checked.
 
+## Fix-Confidence Rubric
+
+Both workflows score fix confidence with the shared rubric at `${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md`. Set the `{fix-confidence rubric path}` placeholder in every auditor and teammate prompt to that absolute path, because agents cannot resolve it on their own.
+
 ## Team Mode
 
 If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.

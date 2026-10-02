@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
+const { stat } = require("node:fs/promises");
 const path = require("path");
 const test = require("node:test");
 
@@ -177,6 +178,55 @@ test("canonical plugin build preserves runtime path dependency closure", async (
         bundle.agentSkills.length,
     );
 
+    for (const sharedFile of [
+      ["scripts", "siw-issue-reservation.sh"],
+      ["shared", "visual", "assets", "mermaid-flowchart.html"],
+      ["shared", "visual", "references", "css-patterns.md"],
+    ]) {
+      assert.equal(
+        await pathExists(path.join(built.pluginRoot, ...sharedFile)),
+        true,
+        `plugin-level resource ${sharedFile.join("/")} must be packaged`,
+      );
+    }
+    assert.equal(
+      (
+        await stat(
+          path.join(built.pluginRoot, "scripts", "siw-issue-reservation.sh"),
+        )
+      ).mode & 0o111,
+      0o111,
+      "the shared SIW reservation helper stays executable",
+    );
+
+    const policy = await readText(
+      path.join(
+        built.pluginRoot,
+        "shared",
+        "pr-review",
+        "references",
+        "model-selection.md",
+      ),
+    );
+    for (const [orchestrator, reviewer] of [
+      ["Astra", "Sol"],
+      ["Sol", "Luna"],
+      ["Luna", "Luna"],
+    ]) {
+      assert.match(
+        policy,
+        new RegExp(
+          String.raw`\| Codex\s*\| ${orchestrator}\s*\| ${reviewer}\s*\|`,
+        ),
+      );
+    }
+    assert.match(policy, /pass the selected model to `spawn_agent`/);
+    assert.match(policy, /fork_turns="none"/);
+    assert.match(policy, /Set the actual agent-launch `model` parameter/);
+    assert.match(policy, /parse `--subagent-model <model>` at most once/);
+    assert.match(policy, /`--subagent-model inherit` uses the orchestrator/);
+    assert.match(policy, /Insert it before `--requirements`/);
+
     const skillsRoot = path.join(built.pluginRoot, "skills");
     for (const name of [
       "code-review",
@@ -190,7 +240,7 @@ test("canonical plugin build preserves runtime path dependency closure", async (
       const skillDir = path.join(skillsRoot, `kramme:pr:${name}`);
       assert.match(
         await readText(path.join(skillDir, "SKILL.md")),
-        /read and apply `references\/model-selection\.md`/,
+        /read and apply `\$\{CODEX_HOME:-\$HOME\/\.codex\}\/plugins\/cache\/[^`]+\/shared\/pr-review\/references\/model-selection\.md`/,
       );
       const { data: frontmatter } = parseFrontmatter(
         await readText(path.join(skillDir, "SKILL.md")),
@@ -198,35 +248,35 @@ test("canonical plugin build preserves runtime path dependency closure", async (
       const argumentHint = frontmatter["argument-hint"];
       assert.ok(typeof argumentHint === "string");
       assert.ok(argumentHint.includes("[--subagent-model <model>]"));
-      const policy = await readText(
-        path.join(skillDir, "references", "model-selection.md"),
-      );
-      for (const [orchestrator, reviewer] of [
-        ["Astra", "Sol"],
-        ["Sol", "Luna"],
-        ["Luna", "Luna"],
-      ]) {
-        assert.match(
-          policy,
-          new RegExp(
-            String.raw`\| Codex\s*\| ${orchestrator}\s*\| ${reviewer}\s*\|`,
-          ),
-        );
-      }
-      assert.match(policy, /pass the selected model to `spawn_agent`/);
-      assert.match(policy, /fork_turns="none"/);
-      assert.match(policy, /Set the actual agent-launch `model` parameter/);
-      assert.match(policy, /parse `--subagent-model <model>` at most once/);
-      assert.match(policy, /`--subagent-model inherit` uses the orchestrator/);
-      assert.match(policy, /Insert it before `--requirements`/);
     }
-    const unresolvedRuntimePaths = (await readMarkdownTree(skillsRoot))
+    const convertedMarkdown = [
+      ...(await readMarkdownTree(skillsRoot)),
+      ...(await readMarkdownTree(path.join(built.pluginRoot, "shared"))),
+    ];
+    const unresolvedRuntimePaths = convertedMarkdown
       .filter(({ text }) => /\$\{?CLAUDE_PLUGIN_ROOT\b/.test(text))
-      .map(({ file }) => path.relative(skillsRoot, file));
+      .map(({ file }) => path.relative(built.pluginRoot, file));
     assert.deepEqual(
       unresolvedRuntimePaths,
       [],
       "converted skills must not retain Claude-only plugin root references",
+    );
+    const missingRuntimeDependencies = [];
+    for (const { file, text } of convertedMarkdown) {
+      for (const [, dependency] of text.matchAll(
+        /\$\{CODEX_HOME:-\$HOME\/\.codex\}\/plugins\/cache\/[^/\s]+\/[^/\s]+\/[^/\s]+\/((?:scripts|shared)\/[A-Za-z0-9._/:-]+\.(?:md|sh|js|py|html|json|txt))/g,
+      )) {
+        if (!(await pathExists(path.join(built.pluginRoot, dependency)))) {
+          missingRuntimeDependencies.push(
+            `${path.relative(built.pluginRoot, file)}: ${dependency}`,
+          );
+        }
+      }
+    }
+    assert.deepEqual(
+      missingRuntimeDependencies,
+      [],
+      "every plugin-level path a converted skill uses must be packaged",
     );
     const codeReview = await readText(
       path.join(skillsRoot, "kramme:pr:code-review", "SKILL.md"),
