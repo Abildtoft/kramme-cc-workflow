@@ -26,6 +26,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Git command safety parsing | `kramme-cc-workflow/hooks/lib/command_safety/`, `kramme-cc-workflow/hooks/lib/git_command_parser.py`, `kramme-cc-workflow/hooks/confirm-review-responses.sh`, `kramme-cc-workflow/hooks/block-rm-rf.sh` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_git_command_parser.py`, `bats kramme-cc-workflow/tests/confirm-review-responses.bats kramme-cc-workflow/tests/block-rm-rf.bats` |
 | Hook invocation benchmark | `kramme-cc-workflow/scripts/benchmark-hook-overhead.sh` | `bats kramme-cc-workflow/tests/benchmark-hook-overhead.bats` |
 | Review convergence run state | `kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_convergence_state.py` |
+| Linear issue-to-PR preflight | `kramme-cc-workflow/skills/kramme:linear:issue-to-pr/scripts/preflight.py`, `kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md` Steps 1–2 | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_issue_to_pr_preflight.py`, `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/linear-issue-to-pr-guidance.bats` |
 | PR risk triage signals | `kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk-signals.py`, `kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk_patterns.py`, `kramme-cc-workflow/skills/kramme:pr:triage-risk/references/signals.md` | `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_risk_signals.py`, `make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/pr-triage-risk-guidance.bats` |
 | Auto-format hook | `kramme-cc-workflow/hooks/auto-format.sh` | `make -C kramme-cc-workflow test-format` |
 | Skill usage stats | `kramme-cc-workflow/hooks/skill-usage-stats.sh`, `kramme-cc-workflow/scripts/skill-usage.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/skill-usage.test.js`, `make -C kramme-cc-workflow test-skill-usage` |
@@ -64,6 +65,8 @@ Run each returned suite through the focused Bats entry point, removing the leadi
 ```bash
 make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/pr-create-guidance.bats
 ```
+
+Run a returned `tests/python/` suite through the focused Python entry point instead, for example `make -C kramme-cc-workflow test-python-file PYTHON_TEST_FILE=tests/python/test_issue_to_pr_preflight.py`.
 
 No lookup result means the skill is still listed under `skill_contract_coverage.mechanical_only` in `scripts/synced-contracts.yaml`. The linter warns for that reviewed debt and fails when a skill is in neither the behavioral registry nor the explicit burndown.
 

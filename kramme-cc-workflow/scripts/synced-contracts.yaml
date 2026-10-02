@@ -1174,10 +1174,6 @@
       "contains": [
         "SHIP_MODE=false",
         "Before interpolating `{issue-branch}` into any shell command",
-        "Require the whole string to match `[A-Za-z0-9][A-Za-z0-9._/-]*`",
-        "git check-ref-format --branch \"{issue-branch}\"",
-        "git ls-remote --heads origin \"refs/heads/{issue-branch}\"",
-        "Continue only for the zero-line absent result.",
         "stop before delegated branch setup",
         "If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:create`.",
         "Next: $kramme:workflow-artifacts:cleanup --auto",

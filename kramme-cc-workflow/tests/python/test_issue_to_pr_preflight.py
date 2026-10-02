@@ -715,5 +715,42 @@ class ContinueBranchTests(RepoCase):
             self.assert_status(self.check(state), "blocked", "merge_base_not_ancestor")
 
 
+class SkillContractTests(unittest.TestCase):
+    def test_skill_invokes_each_helper_subcommand_in_order_through_the_plugin_root(self) -> None:
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        prefix = re.escape('python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:issue-to-pr/scripts/preflight.py" ')
+        invoked = list(dict.fromkeys(re.findall(prefix + r"([a-z-]+)", text)))
+        self.assertEqual(invoked, ["args", "capture", "check-branch", "cleanup"])
+        parser = preflight.build_parser()
+        subcommands = next(
+            action for action in parser._actions if isinstance(action, preflight.argparse._SubParsersAction)
+        )
+        self.assertEqual(set(subcommands.choices), set(invoked))
+
+    def test_skill_reads_only_fields_and_reasons_the_helper_emits(self) -> None:
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        preflight_text = text[text.index("## Step 1:") : text.index("7. Re-fetch `{issue-id}`")]
+        names = set(re.findall(r"`([a-z]+(?:_[a-z]+)+)`", preflight_text))
+        self.assertTrue({"state_file", "pull_request_open", "remote_branch_exists", "dirty_paths"} <= names, names)
+        source = SCRIPT_PATH.read_text(encoding="utf-8")
+        self.assertEqual(sorted(name for name in names if f'"{name}"' not in source), [])
+
+    def test_skill_treats_any_non_ok_helper_result_as_a_blocker(self) -> None:
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        self.assertRegex(text, r"For every helper call[^.]*`status` other than `ok` is a blocker")
+
+    def test_issue_implement_recomputes_the_handoff_with_the_helper_commands(self) -> None:
+        setup = SKILL_DIR.parent / "kramme:linear:issue-implement" / "references" / "branch-setup.md"
+        text = setup.read_text(encoding="utf-8")
+        self.assertIn("`git " + " ".join(preflight.STATUS_ARGS) + "`", text)
+        self.assertIn("`git " + " ".join(preflight.COMMITTED_DIFF_ARGS) + " <captured base> HEAD`", text)
+
+    def test_argument_hint_lists_exactly_the_supported_flags(self) -> None:
+        text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
+        hint = re.search(r'^argument-hint: "(.*)"$', text, re.MULTILINE)
+        assert hint is not None
+        self.assertEqual(re.findall(r"\[(--[^\]]+)\]", hint.group(1)), preflight.SUPPORTED_FLAGS)
+
+
 if __name__ == "__main__":
     unittest.main()
