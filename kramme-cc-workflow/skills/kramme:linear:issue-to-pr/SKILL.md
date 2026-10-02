@@ -4,6 +4,10 @@ description: Requires Linear MCP and the GitHub gh CLI. Takes one Linear issue, 
 argument-hint: "<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]"
 disable-model-invocation: true
 user-invocable: true
+permissions:
+  - shell
+  - env
+  - file_write
 ---
 
 # Take a Linear Issue to a Pull Request

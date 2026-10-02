@@ -223,6 +223,14 @@
       "owner": "kramme",
       "accepted_at": "2026-09-19",
       "review_after": "2026-10-19"
+    },
+    {
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/scripts/preflight.py",
+      "rule_id": "AST4",
+      "reason": "Reviewed false-positive AST4 finding: run() passes an explicit argument vector to subprocess.run with shell=False, empty stdin, captured output, a timeout, and prompts disabled. Every argv is fixed git or gh subcommands plus values the helper validates first: the Linear branch must match [A-Za-z0-9][A-Za-z0-9._/-]* and pass git check-ref-format --branch, the base comes from refs/remotes/origin/HEAD and passes the same check, and commit IDs must match the repository's object-ID pattern. No user text reaches a shell.",
+      "owner": "kramme",
+      "accepted_at": "2026-10-02",
+      "review_after": "2026-11-02"
     }
   ]
 }
