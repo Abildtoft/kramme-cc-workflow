@@ -5,7 +5,6 @@ from collections.abc import Iterable
 from ..schema import load_contract_schema
 from .base_diff_scope import check_base_diff_scope
 from .basic import (
-    check_file_identity,
     check_ordered_heading_contracts,
     check_required_file_contracts,
     check_text_contracts,
@@ -24,7 +23,6 @@ from .ui_relevance import check_ui_relevance_contracts
 CHECKS: tuple[tuple[str, CheckFunc], ...] = (
     ("text_contracts", check_text_contracts),
     ("ordered_heading_contracts", check_ordered_heading_contracts),
-    ("file_identity", check_file_identity),
     ("required_file_contracts", check_required_file_contracts),
     ("base_diff_scope", check_base_diff_scope),
     ("ui_relevance_contracts", check_ui_relevance_contracts),

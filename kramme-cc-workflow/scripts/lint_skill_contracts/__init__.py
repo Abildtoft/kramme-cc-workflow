@@ -13,7 +13,6 @@ from .catalog import (
 from .checks import CHECKS, CheckFunc, CheckResult, LintContext, run, run_checks
 from .checks.base_diff_scope import check_base_diff_scope
 from .checks.basic import (
-    check_file_identity,
     check_ordered_heading_contracts,
     check_required_file_contracts,
     check_text_contracts,
@@ -134,7 +133,6 @@ __all__ = [
     "check_component_catalog",
     "check_component_catalog_drift",
     "check_epilogue_forbidden",
-    "check_file_identity",
     "check_hooks_json",
     "check_marker_manifests",
     "check_mechanical",

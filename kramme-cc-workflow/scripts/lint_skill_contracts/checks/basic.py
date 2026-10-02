@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..frontmatter import parse_frontmatter
-from ..io import read_text, rel, resolve, sha256, skill_paths
+from ..io import read_text, rel, resolve, skill_paths
 from ..strings import normalize_value, strip_quotes
 from .types import CheckResult, LintContext, TextContract, TextContractInventory
 
@@ -263,32 +263,6 @@ def check_ordered_heading_contracts(context: LintContext) -> CheckResult:
                     result.failures.append(f"{name}: missing or out-of-order heading {heading!r} in {copy}")
                     break
                 last_index = found[0]
-    return result
-
-
-def check_file_identity(context: LintContext) -> CheckResult:
-    result = CheckResult()
-    root = context.root
-    for name, group in iter_registry_entries(context.registry, "file_identity_groups", result.failures):
-        paths = require_str_list_field(group, "paths", name, result.failures)
-        if paths is None:
-            continue
-        reference: tuple[str, str] | None = None
-        for copy in paths:
-            path = resolve(root, copy)
-            if not path.exists():
-                result.failures.append(f"{name}: registered path is missing: {copy}")
-                continue
-            current_hash = sha256(path)
-            if reference is None:
-                reference = (current_hash, copy)
-                continue
-            ref_hash, ref_path = reference
-            if current_hash != ref_hash:
-                result.failures.append(
-                    f"{name}: {copy} hash {current_hash} differs from {ref_path} hash {ref_hash}; "
-                    "sync all registered copies"
-                )
     return result
 
 

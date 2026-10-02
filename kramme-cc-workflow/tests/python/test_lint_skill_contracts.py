@@ -803,7 +803,6 @@ class CheckRegistryTest(unittest.TestCase):
             [
                 "text_contracts",
                 "ordered_heading_contracts",
-                "file_identity",
                 "required_file_contracts",
                 "base_diff_scope",
                 "ui_relevance_contracts",
