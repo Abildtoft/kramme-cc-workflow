@@ -2020,7 +2020,6 @@
           "kramme-cc-workflow/hooks/confirm-review-responses.sh": 758,
           "kramme-cc-workflow/hooks/lib/command_safety/commit.py": 629,
           "kramme-cc-workflow/hooks/lib/command_safety/prefix.py": 511,
-          "kramme-cc-workflow/hooks/lib/command_safety/syntax.py": 531,
           "kramme-cc-workflow/scripts/convert-plugin/codex-transformer.js": 646,
           "kramme-cc-workflow/scripts/convert-plugin/loader.js": 657,
           "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py": 787,

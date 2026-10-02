@@ -10,19 +10,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
-from typing import Optional, TypedDict
-
-
-class HeredocSpec(TypedDict):
-    delimiter: str
-    quoted: bool
-    strip_tabs: bool
-    start: int
-
-
-class PendingHeredoc(HeredocSpec):
-    keep_body: bool
-
+from typing import Optional
 
 CONTROL_TOKENS = {";", ";;", "&&", "||", "|", "|&", "&"}
 NON_KEYWORD_TIME_SENTINEL = "\0kramme-non-keyword-time\0"
@@ -368,96 +356,6 @@ def _function_body_start(tokens: list[str], idx: int) -> Optional[int]:
     return None
 
 
-def _collect_heredocs(line: str) -> list[HeredocSpec]:
-    heredocs: list[HeredocSpec] = []
-    idx = 0
-    quote: Optional[str] = None
-    length = len(line)
-
-    while idx < length:
-        char = line[idx]
-        next_char = line[idx + 1] if idx + 1 < length else ""
-
-        if quote == "'":
-            if char == "'":
-                quote = None
-            idx += 1
-            continue
-
-        if quote == '"':
-            if char == '"':
-                quote = None
-            elif char == "\\" and next_char:
-                idx += 2
-                continue
-            idx += 1
-            continue
-
-        if char in {"'", '"'}:
-            quote = char
-            idx += 1
-            continue
-
-        if char == "\\" and next_char:
-            idx += 2
-            continue
-
-        if char != "<" or next_char != "<":
-            idx += 1
-            continue
-
-        if idx + 2 < length and line[idx + 2] == "<":
-            idx += 3
-            continue
-
-        start = idx
-        strip_tabs = False
-        idx += 2
-        if idx < length and line[idx] == "-":
-            strip_tabs = True
-            idx += 1
-
-        while idx < length and line[idx] in {" ", "\t"}:
-            idx += 1
-
-        token: list[str] = []
-        quoted = False
-        if idx < length and line[idx] in {"'", '"'}:
-            quoted = True
-            delimiter_quote = line[idx]
-            idx += 1
-            while idx < length:
-                char = line[idx]
-                if char == delimiter_quote:
-                    idx += 1
-                    break
-                token.append(char)
-                idx += 1
-        else:
-            while idx < length:
-                char = line[idx]
-                if char in {" ", "\t", "\n", "\r", ";", "|", "&", "<", ">"}:
-                    break
-                if char == "\\" and idx + 1 < length:
-                    idx += 1
-                    char = line[idx]
-                token.append(char)
-                idx += 1
-
-        delimiter = "".join(token)
-        if delimiter:
-            heredocs.append(
-                {
-                    "delimiter": delimiter,
-                    "quoted": quoted,
-                    "strip_tabs": strip_tabs,
-                    "start": start,
-                }
-            )
-
-    return heredocs
-
-
 def _tokenize_heredoc_prefix(line: str) -> list[str]:
     lexer = shlex.shlex(line, posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
@@ -494,6 +392,8 @@ def _shell_has_c_option(word: str) -> bool:
 def _shell_invocation_reads_stdin(args: list[str]) -> bool:
     idx = 0
     skip_option_operand = False
+    # `-s` reads commands from stdin even when positional parameters follow.
+    reads_stdin_option = False
 
     while idx < len(args):
         word = args[idx]
@@ -523,9 +423,10 @@ def _shell_invocation_reads_stdin(args: list[str]) -> bool:
             continue
 
         if word.startswith("-") or word.startswith("+"):
+            reads_stdin_option = reads_stdin_option or (word.startswith("-") and "s" in word[1:])
             idx += 1
             continue
 
-        return False
+        return reads_stdin_option
 
     return True

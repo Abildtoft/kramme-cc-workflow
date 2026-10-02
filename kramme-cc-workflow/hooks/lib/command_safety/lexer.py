@@ -16,15 +16,14 @@ import shlex
 from collections.abc import Iterator
 from typing import Optional, cast
 
+from .heredoc import HeredocScanner, PendingHeredoc
 from .prefix import normalize_command_prefix
 from .syntax import (
     CONTROL_TOKENS,
     NON_KEYWORD_TIME_SENTINEL,
     SHELL_EXECUTABLES,
-    PendingHeredoc,
     ShellWord,
     _basename,
-    _collect_heredocs,
     _expand_ansi_c_quoted_strings,
     _extract_body_substitutions,
     _shell_invocation_reads_stdin,
@@ -35,9 +34,9 @@ from .syntax import (
 )
 
 
-def _line_has_supported_shell_stdin_heredoc(line: str, heredoc_start: int) -> bool:
+def _heredoc_feeds_shell_stdin(command_prefix: str) -> bool:
     try:
-        tokens = _tokens_for_heredoc_command(_tokenize_heredoc_prefix(line[:heredoc_start]))
+        tokens = _tokens_for_heredoc_command(_tokenize_heredoc_prefix(command_prefix))
     except ValueError:
         return False
 
@@ -52,6 +51,7 @@ def strip_heredoc_bodies(command: str) -> tuple[str, list[str]]:
     stripped_lines: list[str] = []
     pending_heredocs: list[PendingHeredoc] = []
     extracted: list[str] = []
+    scanner = HeredocScanner()
 
     for line in lines:
         if pending_heredocs:
@@ -64,6 +64,13 @@ def strip_heredoc_bodies(command: str) -> tuple[str, list[str]]:
             if compare == current["delimiter"]:
                 stripped_lines.append(line)
                 pending_heredocs.pop(0)
+                continue
+            if current["in_substitution"] and compare.startswith(current["delimiter"] + ")"):
+                # bash also ends a heredoc inside `$(...)` at `<delimiter>)` and parses the rest of that line as
+                # command text; no pending heredoc can receive a body after its substitution closed.
+                pending_heredocs.clear()
+                stripped_lines.append(line)
+                _queue_heredocs(scanner, line, pending_heredocs)
                 continue
             if current["keep_body"]:
                 stripped_lines.append(line)
@@ -78,13 +85,18 @@ def strip_heredoc_bodies(command: str) -> tuple[str, list[str]]:
             continue
 
         stripped_lines.append(line)
-        heredocs = _collect_heredocs(line)
-        if heredocs:
-            for heredoc in heredocs:
-                keep_body = _line_has_supported_shell_stdin_heredoc(line, heredoc["start"])
-                pending_heredocs.append(cast(PendingHeredoc, {**heredoc, "keep_body": keep_body}))
+        _queue_heredocs(scanner, line, pending_heredocs)
 
     return "".join(stripped_lines), extracted
+
+
+def _queue_heredocs(scanner: HeredocScanner, line: str, pending_heredocs: list[PendingHeredoc]) -> None:
+    for heredoc in scanner.scan(line):
+        # A command that began on an earlier line has its executable out of view; analyze the body as commands.
+        keep_body = heredoc["owner_started_earlier"] or _heredoc_feeds_shell_stdin(
+            line[heredoc["command_start"] : heredoc["start"]]
+        )
+        pending_heredocs.append(cast(PendingHeredoc, {**heredoc, "keep_body": keep_body}))
 
 
 def normalize_newlines(command: str) -> str:

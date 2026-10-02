@@ -45,6 +45,7 @@
       ".agents/skills/kramme:skill:audit-sources/scripts/normalize.py",
       "kramme-cc-workflow/hooks/lib/command_safety/cli.py",
       "kramme-cc-workflow/hooks/lib/command_safety/commit.py",
+      "kramme-cc-workflow/hooks/lib/command_safety/heredoc.py",
       "kramme-cc-workflow/hooks/lib/command_safety/lexer.py",
       "kramme-cc-workflow/hooks/lib/command_safety/prefix.py",
       "kramme-cc-workflow/hooks/lib/command_safety/rm_rf.py",
