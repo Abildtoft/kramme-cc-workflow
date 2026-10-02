@@ -1206,6 +1206,112 @@ REVIEW_SUMMARY.md"
 	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
 }
 
+@test "allows a heredoc commit message with quotes when no artifact is staged" {
+	setup_real_commit_repo
+	printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+	git -C "$REAL_COMMIT_REPO" add notes.txt
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -m \"\$(cat <<'EOF'
+Don't break the \"build
+EOF
+)\""
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks a heredoc commit message when a protected artifact is staged" {
+	setup_real_commit_repo
+	printf 'guarded staged change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	git -C "$REAL_COMMIT_REPO" add REVIEW_OVERVIEW.md
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -m \"\$(cat <<'EOF'
+Don't break the build
+EOF
+)\""
+
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "allows redirected commits when no artifact is staged" {
+	local command
+	local -a commands
+	setup_real_commit_repo
+	printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+	git -C "$REAL_COMMIT_REPO" add notes.txt
+	commands=(
+		"git -C $REAL_COMMIT_REPO commit -m 'msg' 2>&1"
+		"git -C $REAL_COMMIT_REPO commit -m 'msg' >/dev/null"
+		"git -C $REAL_COMMIT_REPO commit -m 'msg' 2> errors.log"
+		"git -C $REAL_COMMIT_REPO commit -F - <<'EOF'
+Don't break the build
+EOF"
+	)
+
+	for command in "${commands[@]}"; do
+		run run_hook "$command"
+		if [ "$status" -ne 0 ] || [ -n "$output" ]; then
+			printf 'Expected %s to be allowed, got status %s and output: %s\n' "$command" "$status" "$output" >&2
+			return 1
+		fi
+	done
+}
+
+@test "blocks a redirected commit when a protected artifact is staged" {
+	setup_real_commit_repo
+	printf 'guarded staged change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+	git -C "$REAL_COMMIT_REPO" add REVIEW_OVERVIEW.md
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -m 'msg' 2>&1"
+
+	is_blocked
+	[[ "$output" == *"REVIEW_OVERVIEW.md"* ]]
+}
+
+@test "blocks redirected commits whose later words select a protected artifact" {
+	local command
+	local -a commands
+
+	commands=(
+		"git -C %s commit -m 'msg' 2>&1 -a"
+		"git -C %s commit -m 'msg' >& /dev/null -a"
+		"git -C %s commit -m 'msg' &>/dev/null -a"
+		">/dev/null git -C %s commit -a -m 'msg'"
+		"git -C %s commit -m 'msg' >|out.txt REVIEW_OVERVIEW.md"
+	)
+	for command in "${commands[@]}"; do
+		setup_real_commit_repo
+		printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+		printf 'guarded unstaged change\n' >>"$REAL_COMMIT_REPO/REVIEW_OVERVIEW.md"
+		git -C "$REAL_COMMIT_REPO" add notes.txt
+		# shellcheck disable=SC2059
+		printf -v command "$command" "$REAL_COMMIT_REPO"
+
+		run run_hook "$command"
+
+		if ! is_blocked || [[ "$output" != *"REVIEW_OVERVIEW.md"* ]]; then
+			printf 'Expected %s to block, got status %s and output: %s\n' "$command" "$status" "$output" >&2
+			return 1
+		fi
+		rm -rf "$REAL_COMMIT_REPO"
+		REAL_COMMIT_REPO=""
+	done
+}
+
+@test "allows a heredoc commit message whose delimiter line closes the substitution" {
+	setup_real_commit_repo
+	printf 'ordinary staged change\n' >>"$REAL_COMMIT_REPO/notes.txt"
+	git -C "$REAL_COMMIT_REPO" add notes.txt
+
+	run run_hook "git -C $REAL_COMMIT_REPO commit -m \"\$(cat <<'EOF'
+Don't break the build
+EOF)\""
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
 @test "honors line and nul delimited pathspec files" {
 	local pathspec_args
 

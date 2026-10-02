@@ -128,6 +128,75 @@ class GitCommandLexerTest(unittest.TestCase):
         self.assertEqual(stripped, "bash <<'EOF'\nrm -rf directory/\nEOF\n")
         self.assertEqual(substitutions, [])
 
+    def test_strip_heredoc_bodies_handles_heredocs_inside_command_substitutions(self) -> None:
+        cases = [
+            (
+                "quoted delimiter inside double-quoted substitution",
+                "git commit -m \"$(cat <<'EOF'\nDon't say \"hi\n(part 1\nEOF\n)\"\n",
+                "git commit -m \"$(cat <<'EOF'\n\n\nEOF\n)\"\n",
+                [],
+            ),
+            (
+                "unquoted delimiter inside double-quoted substitution",
+                'git commit -m "$(cat <<EOF\n$(git status)\nEOF\n)"\n',
+                'git commit -m "$(cat <<EOF\n\nEOF\n)"\n',
+                ["git status"],
+            ),
+            (
+                "dashed delimiter inside unquoted substitution",
+                "x=$(cat <<-'EOF'\n\tDon't\n\tEOF\n)\n",
+                "x=$(cat <<-'EOF'\n\n\tEOF\n)\n",
+                [],
+            ),
+            (
+                "backtick substitution",
+                "x=`cat <<'EOF'\nit's\nEOF\n`\n",
+                "x=`cat <<'EOF'\n\nEOF\n`\n",
+                [],
+            ),
+            (
+                "later heredoc after a multi-line substitution closes",
+                "x=\"$(cat <<'A'\nit's\nA\n)\" && cat <<'B'\nbody's\nB\n",
+                "x=\"$(cat <<'A'\n\nA\n)\" && cat <<'B'\n\nB\n",
+                [],
+            ),
+            (
+                "shell stdin heredoc inside substitution keeps its body",
+                "x=\"$(bash <<'EOF'\nrm -rf directory/\nEOF\n)\"\n",
+                "x=\"$(bash <<'EOF'\nrm -rf directory/\nEOF\n)\"\n",
+                [],
+            ),
+            (
+                "delimiter line that also closes the substitution",
+                "x=\"$(cat <<'EOF'\nhello\nEOF)\"\nrm -rf directory/\n",
+                "x=\"$(cat <<'EOF'\n\nEOF)\"\nrm -rf directory/\n",
+                [],
+            ),
+        ]
+
+        for name, command, expected_command, expected_substitutions in cases:
+            with self.subTest(name=name):
+                stripped, substitutions = parser_lexer.strip_heredoc_bodies(command)
+
+                self.assertEqual(stripped, expected_command)
+                self.assertEqual(substitutions, expected_substitutions)
+
+    def test_strip_heredoc_bodies_ignores_markers_that_are_not_redirections(self) -> None:
+        commands = [
+            ("marker inside a multi-line string", 'echo "a\nb <<EOF"\nrm -rf directory/\nEOF\n'),
+            ("arithmetic left shift", "echo $((1<<2))\nrm -rf directory/\n"),
+            ("marker inside ANSI-C string", "printf $'it\\'s <<EOF'\nrm -rf directory/\nEOF\n"),
+            ("marker inside a comment", "# see <<EOF\nrm -rf directory/\nEOF\n"),
+            ("substitution that closes on the operator line", "x=$(cat <<EOF)\nrm -rf directory/\nEOF\n"),
+            ("backtick that closes on the operator line", 'x="`cat <<EOF`"\nrm -rf directory/\nEOF\n'),
+            ("multi-line arithmetic left shift", "echo $((1 <<2 +\n3))\nrm -rf directory/\n"),
+            ("arithmetic command", "(( n = 1<<2 ))\nrm -rf directory/\n"),
+        ]
+
+        for name, command in commands:
+            with self.subTest(name=name):
+                self.assertEqual(parser_lexer.strip_heredoc_bodies(command), (command, []))
+
     def test_replace_command_substitutions_collects_placeholder_contents(self) -> None:
         sanitized, substitutions = parser_lexer.replace_command_substitutions(r'git commit -m "$(printf a\ b)"')
 
@@ -149,6 +218,22 @@ class GitCommandLexerTest(unittest.TestCase):
                 (["git", "status"], None),
             ],
         )
+
+    def test_tokenize_rejoins_redirections_and_splits_grouped_control_tokens(self) -> None:
+        cases = [
+            ("cmd 2>&1 -a", ["cmd", "2>&1", "-a"]),
+            ("cmd >& out -a", ["cmd", ">&out", "-a"]),
+            ("cmd <&0 -a", ["cmd", "<&0", "-a"]),
+            ("cmd >|out -a", ["cmd", ">|out", "-a"]),
+            ("cmd &>out -a", ["cmd", "&>out", "-a"]),
+            ("cmd 2>&1 | tail", ["cmd", "2>&1", "|", "tail"]),
+            ("(cd x); rm y", ["(", "cd", "x", ")", ";", "rm", "y"]),
+            ("(cd x)&& rm y", ["(", "cd", "x", ")", "&&", "rm", "y"]),
+            ("a && b || c & d", ["a", "&&", "b", "||", "c", "&", "d"]),
+        ]
+        for command, expected in cases:
+            with self.subTest(command=command):
+                self.assertEqual(parser_lexer.tokenize(command), expected)
 
     def test_extract_placeholder_indexes_preserves_first_seen_order(self) -> None:
         indexes = parser_lexer.extract_placeholder_indexes(["__CMD_SUBST_2__", "x__CMD_SUBST_1__", "__CMD_SUBST_2__"])
@@ -501,6 +586,31 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
                     "pathspec_file_nul": True,
                 },
             ),
+            (
+                "stdin heredoc redirection",
+                ["git", "commit", "-F", "-", "<<EOF"],
+                {},
+            ),
+            (
+                "attached output redirections",
+                ["git", "commit", "-m", "test", ">/dev/null", "2>/dev/null"],
+                {},
+            ),
+            (
+                "separate redirection target around a pathspec",
+                ["git", "commit", "-m", "test", "2>", "err.txt", "one.txt", ">>", "out.txt"],
+                {"selection_mode": "only", "pathspecs": ["one.txt"]},
+            ),
+            (
+                "redirection after the option separator",
+                ["git", "commit", "-m", "test", "--", "one.txt", ">", "out.txt"],
+                {"selection_mode": "only", "pathspecs": ["one.txt"]},
+            ),
+            (
+                "option value that looks like a redirection",
+                ["git", "commit", "-m", ">not a redirection", "one.txt"],
+                {"selection_mode": "only", "pathspecs": ["one.txt"]},
+            ),
         ]
 
         for name, tokens, expected_selection in cases:
@@ -519,6 +629,7 @@ class GitCommandParserBoundaryTest(unittest.TestCase):
 
     def test_parse_commit_segment_marks_unmodelled_selection(self) -> None:
         cases = [
+            ["git", "commit", "-m", "test", "2>"],
             ["git", "commit", "--patch", "-m", "test"],
             ["git", "commit", "--interactive", "-m", "test"],
             ["git", "commit", "--mes", "notes.txt"],
@@ -773,6 +884,100 @@ class GitCommandParserCliTest(unittest.TestCase):
             "quoted heredoc body with later commit",
             "cat <<'EOF'\n$(git commit)\nEOF\ngit commit -m x",
             json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "heredoc message with unbalanced quotes in command substitution",
+            "git commit -m \"$(cat <<'EOF'\nDon't break the \"build\nEOF\n)\"",
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "dashed heredoc message in command substitution",
+            "git commit -m \"$(cat <<-'EOF'\n\tDon't break the build\n\tEOF\n)\"",
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "heredoc body in a non-git command substitution",
+            "gh pr create --title t --body \"$(cat <<'EOF'\nIt's done\nEOF\n)\"",
+            json_line([]),
+        ),
+        (
+            "commit inside an unquoted heredoc body within a substitution",
+            'git commit -m "$(cat <<EOF\n$(git commit -m inner)\nEOF\n)"',
+            json_line([{"git_args": [], "git_env": []}, {"git_args": [], "git_env": []}]),
+        ),
+        (
+            "commit message from a stdin heredoc",
+            "git commit -F - <<'EOF'\nDon't break the build\nEOF",
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "commit with redirected output streams",
+            "git commit -m x >/dev/null 2>&1",
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "commit with a separate redirection target",
+            "git commit -m x 2> err.txt notes.txt",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "only", "pathspecs": ["notes.txt"]}]),
+        ),
+        (
+            "commit words after duplicated stderr stay with the commit",
+            "git commit -m x 2>&1 -a",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "all", "pathspecs": []}]),
+        ),
+        (
+            "commit words after spaced duplication stay with the commit",
+            "git commit -m x >& /dev/null -a",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "all", "pathspecs": []}]),
+        ),
+        (
+            "commit words after clobbering redirection stay with the commit",
+            "git commit -m x >|out.txt REVIEW_OVERVIEW.md",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "only", "pathspecs": ["REVIEW_OVERVIEW.md"]}]),
+        ),
+        (
+            "commit words after combined redirection stay with the commit",
+            "git commit -m x &>/dev/null -a",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "all", "pathspecs": []}]),
+        ),
+        (
+            "redirection before git",
+            ">/dev/null git commit -a -m x",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "all", "pathspecs": []}]),
+        ),
+        (
+            "redirection between git and its subcommand",
+            "git 2>/dev/null commit -a -m x",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "all", "pathspecs": []}]),
+        ),
+        (
+            "commit after a subshell group",
+            "(git status); git commit -a -m x",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "all", "pathspecs": []}]),
+        ),
+        (
+            "heredoc message whose delimiter line closes the substitution",
+            "git commit -m \"$(cat <<'EOF'\nmsg\nEOF)\"",
+            json_line([{"git_args": [], "git_env": []}]),
+        ),
+        (
+            "commit after a heredoc whose substitution closes on the delimiter line",
+            "x=\"$(cat <<'EOF'\nhello\nEOF)\"\ngit commit -a -m y\n: <<'EOF'\nEOF",
+            json_line([{"git_args": [], "git_env": [], "selection_mode": "all", "pathspecs": []}]),
+        ),
+        (
+            "trailing redirection without a target fails closed",
+            "git commit -m x 2>",
+            json_line(
+                [
+                    {
+                        "git_args": [],
+                        "git_env": [],
+                        "selection_error": parser_commit.COMMIT_SELECTION_ERROR_PREFIX
+                        + " redirection 2> has no target.",
+                    }
+                ]
+            ),
         ),
     ]
 
@@ -1306,6 +1511,119 @@ class RmRfParserCliTest(unittest.TestCase):
         (
             "shell heredoc after stdout redirection blocked",
             "bash > out <<'EOF'\nrm -rf directory/\nEOF",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "heredoc commit message with unbalanced quotes allowed",
+            "git commit -m \"$(cat <<'EOF'\nDon't break the \"build\nEOF\n)\"",
+            json_line({"block": None}),
+        ),
+        (
+            "heredoc pull request body with apostrophe allowed",
+            "gh pr create --title t --body \"$(cat <<'EOF'\nIt's done\nEOF\n)\"",
+            json_line({"block": None}),
+        ),
+        (
+            "shell heredoc inside command substitution blocked",
+            "out=\"$(bash <<'EOF'\nrm -rf directory/\nEOF\n)\"",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "unquoted heredoc body substitution inside command substitution blocked",
+            'git commit -m "$(cat <<EOF\n$(rm -rf directory/)\nEOF\n)"',
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "command after heredoc inside command substitution blocked",
+            "out=\"$(cat <<'EOF'\nDon't\nEOF\nrm -rf directory/)\"",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "shell heredoc after separate stderr redirection blocked",
+            "bash 2> err <<'EOF'\nrm -rf directory/\nEOF",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "rm -rf after heredoc marker inside multi-line string blocked",
+            'echo "a\nb <<EOF"\nrm -rf directory/\nEOF',
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "shell heredoc after duplicated stderr blocked",
+            "bash 2>&1 <<'EOF'\nrm -rf directory/\nEOF",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "rm -rf after heredoc marker inside a comment blocked",
+            "# see <<EOF\nrm -rf directory/\nEOF",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "same-line closed substitution heredoc leaves later lines as commands",
+            "x=$(cat <<EOF)\nrm -rf directory/\nEOF",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        ("rm -rf flags after duplicated stderr blocked", "rm 2>&1 -rf directory/", json_line({"block": RM_RF_REASON})),
+        (
+            "find -delete after duplicated stderr blocked",
+            "find . 2>&1 -delete",
+            json_line({"block": FIND_DELETE_REASON}),
+        ),
+        ("redirection before rm blocked", "2>/dev/null rm -rf directory/", json_line({"block": RM_RF_REASON})),
+        ("subshell group then rm -rf blocked", "(cd /tmp); rm -rf directory/", json_line({"block": RM_RF_REASON})),
+        (
+            "unspaced subshell group then rm -rf blocked",
+            "(cd /tmp);rm -rf directory/",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "rm -rf after arithmetic left shift blocked",
+            "echo $((1<<2))\nrm -rf directory/",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "shell heredoc whose command began on an earlier line blocked",
+            "bash 2>\"$(\nmktemp\n)\" <<'EOF'\nrm -rf directory/\nEOF",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "shell heredoc after a line continuation blocked",
+            "bash \\\n<<'EOF'\nrm -rf directory/\nEOF",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "shell heredoc on the line where a substitution closes blocked",
+            "x=\"$(cat <<'A'\nit's\nA\n)\" && bash <<'B'\nrm -rf directory/\nB",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "shell heredoc inside a substitution opened on an earlier line blocked",
+            "out=\"$(\nbash <<'EOF'\nrm -rf directory/\nEOF\n)\"",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "unquoted delimiter does not swallow the closing backtick",
+            'x="`cat <<EOF`"\nrm -rf directory/\nEOF',
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "rm -rf after a heredoc that ends with its substitution blocked",
+            "x=\"$(cat <<'EOF'\nhello\nEOF)\"\nrm -rf directory/\n: <<'EOF'\nEOF\n)\"",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "heredoc commit message whose delimiter line closes the substitution allowed",
+            "git commit -m \"$(cat <<'EOF'\nDon't break the build\nEOF)\"",
+            json_line({"block": None}),
+        ),
+        (
+            "shell reading stdin with -s blocked",
+            "bash -s foo <<'EOF'\nrm -rf directory/\nEOF",
+            json_line({"block": RM_RF_REASON}),
+        ),
+        (
+            "shell heredoc after combined redirection blocked",
+            "bash &>/dev/null <<'EOF'\nrm -rf directory/\nEOF",
             json_line({"block": RM_RF_REASON}),
         ),
     ]
