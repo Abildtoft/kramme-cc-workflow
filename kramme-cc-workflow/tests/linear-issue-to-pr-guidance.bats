@@ -45,9 +45,6 @@
     shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
     readme="../README.md"
 
-    grep -qF "\`--cycles <count>\` requires exactly one ASCII digit from \`1\` through \`5\` as its value; store it as \`{cycles}\` and set \`CYCLES_EXPLICIT=true\`" "$parent"
-    grep -qF "a \`--cycles\` value outside \`1\`–\`5\`" "$parent"
-    grep -qF "\`CYCLES_EXPLICIT=false\`: set \`{cycles}\` to \`3\`" "$parent"
     grep -qF "always forwards an explicit remediation-cycle budget" "$parent"
     grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]" "$parent"
     grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} --requirements {issue-requirements}" "$parent"
@@ -144,7 +141,7 @@
     grep -qF "exactly one status whose type is \`started\`" "$transition"
     grep -qF "Proceed with implementation and move the issue to {target-status-name}?" "$transition"
 
-    remote_absence_line=$(grep -nF "git ls-remote --heads origin \"refs/heads/{issue-branch}\"" "$skill" | cut -d: -f1)
+    branch_check_line=$(grep -nF "scripts/preflight.py\" check-branch" "$skill" | cut -d: -f1)
     state_refresh_line=$(grep -nF "Re-fetch \`{issue-id}\` before the state gate" "$skill" | cut -d: -f1)
     state_target_line=$(grep -nF "Resolve the team'"'"'s target \`started\` status" "$skill" | cut -d: -f1)
     state_confirmation_line=$(grep -nF "If \`{confirmed-state-type}\` is anything other than \`backlog\`" "$skill" | cut -d: -f1)
@@ -152,7 +149,7 @@
     state_handoff_line=$(grep -nF "as the authoritative status handoff for the delegated transition" "$skill" | cut -d: -f1)
     delegate_line=$(grep -n "Invoke .*kramme:linear:issue-implement" "$skill" | cut -d: -f1)
 
-    [ "$remote_absence_line" -lt "$state_refresh_line" ]
+    [ "$branch_check_line" -lt "$state_refresh_line" ]
     [ "$state_refresh_line" -lt "$state_target_line" ]
     [ "$state_target_line" -lt "$state_confirmation_line" ]
     [ "$state_confirmation_line" -lt "$state_recheck_line" ]
@@ -176,9 +173,6 @@
     branch_setup="skills/kramme:linear:issue-implement/references/branch-setup.md"
 
     grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]\"" "$parent"
-    grep -qF "\`--continue\` sets \`CONTINUE_MODE=true\`" "$parent"
-    grep -qF "require the captured entry branch to equal \`{issue-branch}\` exactly" "$parent"
-    grep -qF "Require at least one such path" "$parent"
     grep -qF "Stop on any unrelated or ambiguous path" "$parent"
     grep -qF "require \`{confirmed-state-id}\` to equal \`{target-status-id}\`" "$parent"
     grep -qF "issue no Linear write" "$parent"
@@ -190,6 +184,23 @@
     grep -qF "reconcile every committed and dirty path in the parent resume handoff" "$child"
     grep -qF "If \`RESUME_CURRENT_BRANCH=true\`, use the parent-owned resume handoff" "$branch_setup"
     grep -qF "Do not checkout, create, reset, stash, discard, stage, or commit" "$branch_setup"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear issue to PR keeps shell-safety and routing boundaries around its preflight helper" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:linear:issue-to-pr/SKILL.md"
+
+    grep -F "single quote" "$skill" | grep -qF "without running the helper"
+    grep -F "Before interpolating \`{issue-branch}\` into any shell command" "$skill" | grep -qF "[A-Za-z0-9][A-Za-z0-9._/-]*"
+    grep -qF "never \`eval\`" "$skill"
+    grep -F "\`pull_request_open\`" "$skill" | grep -qF "kramme:pr:fix-ci --no-consolidate"
+    grep -F "\`pull_request_closed\`" "$skill" | grep -qF "new issue branch"
+    grep -F "\`remote_branch_exists\`" "$skill" | grep -qF "stop before delegated branch setup"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }

@@ -27,7 +27,7 @@ If `RESUME_CURRENT_BRANCH=true`, use the parent-owned resume handoff instead of 
 
 1. Require its issue identifier and exact branch to equal the freshly fetched Linear issue and its `branchName`.
 2. Require the current branch to equal that exact branch, `HEAD` to descend from the captured base, the remote branch still to be absent, and no merge, rebase, cherry-pick, revert, bisect, or unmerged path to be in progress.
-3. Require current `HEAD`, committed paths, and dirty paths to equal the captured entry handoff before continuing. Do not checkout, create, reset, stash, discard, stage, or commit in this branch-setup phase.
+3. Require current `HEAD`, committed paths, and dirty paths to equal the captured entry handoff before continuing. Compute the paths with the parent preflight's exact commands so repository status configuration cannot make them differ: dirty paths from `git status --porcelain=v1 -z --untracked-files=normal --no-renames`, and committed paths from `git diff --name-only -z --no-renames <captured base> HEAD`. Do not checkout, create, reset, stash, discard, stage, or commit in this branch-setup phase.
 4. Preserve the changes for the reference mapping, technical-plan reconciliation, implementation, and verification steps. A mismatch is a hard blocker; never fall through to the choices below.
 
 **If uncommitted changes exist:**
