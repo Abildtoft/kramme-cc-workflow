@@ -63,7 +63,7 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
 ### Phase 1: Branch Setup
 
-1. Read `references/base-branch-resolution.md` and follow it to confirm the current branch and compute `BASE_BRANCH`.
+1. Read `references/base-branch-resolution.md` and follow it to confirm the current branch and compute `BASE_BRANCH`. Run its base resolver from `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`.
 
 2. **If `AUTO_MODE=true` and `OUTPUT_ONLY` is not true**, check whether a PR exists for the current branch:
 
@@ -141,7 +141,7 @@ Read the context-gathering procedure from `references/context-gathering.md` and 
 
 **Skip this phase if `VISUAL_MODE` is not set.** Proceed directly to Phase 3.
 
-If `VISUAL_MODE=true`, read `references/visual-capture.md` and follow **Phase 2.6** in that document. This prepares the target summary for `kramme:visual:demo-reel`; it does not duplicate browser capture or dev-server heuristics inside this PR-description skill.
+If `VISUAL_MODE=true`, read `references/visual-capture.md` and follow **Phase 2.6** in that document. Run its URL detector from `${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh`. This prepares the target summary for `kramme:visual:demo-reel`; it does not duplicate browser capture or dev-server heuristics inside this PR-description skill.
 
 ### Phase 3: Description Generation
 

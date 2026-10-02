@@ -115,7 +115,7 @@ If route detection fails, fall back to testing only the landing page (`/`).
 
 **diff-aware mode:**
 
-Read `references/diff-scope.md` to resolve `BASE_BRANCH` and identify changed files, then continue with UI-relevant filtering below.
+Read `references/diff-scope.md` to resolve `BASE_BRANCH` and identify changed files, then continue with UI-relevant filtering below. Run its diff collector from `${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh`.
 
 Filter for UI-relevant files using this contract marker: UI relevance path contract: `ui-relevance-path-contract-v1`.
 

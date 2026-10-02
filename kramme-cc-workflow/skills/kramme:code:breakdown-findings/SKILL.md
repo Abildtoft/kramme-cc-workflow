@@ -80,7 +80,7 @@ Read `references/summary-templates.md` only now and use its findings-mode or han
 
 ### Phase 6: Reconcile Existing Plan Set
 
-Run only when `RECONCILE_MODE=true`. Read `references/reconcile-workflow.md` and follow it exactly. Always print `RECONCILE:` before any write. Without auto mode, wait for confirmation. With auto mode, update only the reference's four low-risk classes; structural, conflicted, missing-plan, dependency, scope, or pre-existing-edit cases still require confirmation. Update only `PR_PLAN_INDEX.md`, affected non-terminal plan files, and `PR_PLAN_REJECTIONS.md`; never edit product code or change theme boundaries.
+Run only when `RECONCILE_MODE=true`. Read `references/reconcile-workflow.md` and follow it exactly. Run its base resolver from `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`. Always print `RECONCILE:` before any write. Without auto mode, wait for confirmation. With auto mode, update only the reference's four low-risk classes; structural, conflicted, missing-plan, dependency, scope, or pre-existing-edit cases still require confirmation. Update only `PR_PLAN_INDEX.md`, affected non-terminal plan files, and `PR_PLAN_REJECTIONS.md`; never edit product code or change theme boundaries.
 
 ## Stop and Boundary Rules
 

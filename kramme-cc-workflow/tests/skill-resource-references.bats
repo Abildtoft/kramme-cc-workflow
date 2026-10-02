@@ -21,8 +21,11 @@ const parentResourcePathPattern =
   `(?:\\./)?(?:\\.\\./)+(?:[A-Za-z0-9:_-]+/)*${resourceTailPattern}`;
 const skillResourcePathPattern =
   `(?:\\$\\{(?:CLAUDE_)?PLUGIN_ROOT\\}/)?skills/[A-Za-z0-9:_-]+/${resourceTailPattern}`;
+// Plugin-level resources: shared references/assets and runtime helper scripts.
+const pluginResourcePathPattern =
+  `\\$\\{(?:CLAUDE_)?PLUGIN_ROOT\\}/(?:shared/[A-Za-z0-9:_-]+/(?=(?:references|assets)/)|(?=scripts/))${resourceTailPattern}`;
 const resourceReferencePathPattern =
-  `(?:${skillResourcePathPattern}|${parentResourcePathPattern}|${localResourcePathPattern})`;
+  `(?:${pluginResourcePathPattern}|${skillResourcePathPattern}|${parentResourcePathPattern}|${localResourcePathPattern})`;
 const referencePattern =
   new RegExp(
     `(?:^|[^A-Za-z0-9_./-])(${resourceReferencePathPattern})(?![A-Za-z0-9_/-]|\\.[A-Za-z0-9_/-])`,
@@ -202,6 +205,7 @@ function hasInstructionContext(lines, index, linkRanges) {
 }
 
 function resolveResourcePath(skillDir, resourcePath, referenceBase = skillDir) {
+  const pluginRooted = /^\$\{(?:CLAUDE_)?PLUGIN_ROOT\}\//.test(resourcePath);
   const normalizedPath = resourcePath
     .replace(/[),.;:]+$/g, "")
     .split("#")[0]
@@ -210,19 +214,47 @@ function resolveResourcePath(skillDir, resourcePath, referenceBase = skillDir) {
 
   if (normalizedPath.startsWith("skills/")) {
     return {
+      allowedRoot: skillDir,
       resourcePath: normalizedPath,
+      scope: "skill",
+      targetPath: path.resolve(pluginRoot, normalizedPath),
+    };
+  }
+
+  if (pluginRooted) {
+    const scope = normalizedPath.startsWith("shared/") ? "shared" : "scripts";
+
+    return {
+      allowedRoot: path.join(pluginRoot, scope),
+      resourcePath: normalizedPath,
+      scope,
       targetPath: path.resolve(pluginRoot, normalizedPath),
     };
   }
 
   return {
+    allowedRoot: skillDir,
     resourcePath: normalizedPath,
+    scope: "skill",
     targetPath: path.resolve(referenceBase, normalizedPath),
   };
 }
 
-function isWithinSkill(skillDir, targetPath) {
-  const relativePath = path.relative(skillDir, targetPath);
+// Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} only in a skill's SKILL.md body,
+// so every plugin-level path a reference file uses must also appear there.
+function pluginPathsNamedIn(skillFile) {
+  const named = new Set();
+  const pattern = new RegExp(pluginResourcePathPattern, "g");
+
+  for (const match of fs.readFileSync(skillFile, "utf8").matchAll(pattern)) {
+    named.add(resolveResourcePath(path.dirname(skillFile), match[0]).resourcePath);
+  }
+
+  return named;
+}
+
+function isWithin(allowedRoot, targetPath) {
+  const relativePath = path.relative(allowedRoot, targetPath);
 
   return (
     relativePath === "" ||
@@ -239,7 +271,11 @@ const skillDirs = fs
 
 for (const skill of skillDirs) {
   const skillDir = path.join(skillsDir, skill.name);
+  const skillFile = path.join(skillDir, "SKILL.md");
   const markdownFiles = walkMarkdownFiles(skillDir).sort();
+  const namedPluginPaths = fs.existsSync(skillFile)
+    ? pluginPathsNamedIn(skillFile)
+    : new Set();
 
   for (const file of markdownFiles) {
     const relativeFile = path.relative(pluginRoot, file);
@@ -260,18 +296,23 @@ for (const skill of skillDirs) {
         const referenceBase = isMarkdownResourceLink(match, linkRanges)
           ? path.dirname(file)
           : skillDir;
-        const { resourcePath, targetPath } = resolveResourcePath(
-          skillDir,
-          match[1],
-          referenceBase,
-        );
+        const { allowedRoot, resourcePath, scope, targetPath } =
+          resolveResourcePath(skillDir, match[1], referenceBase);
 
-        if (!isWithinSkill(skillDir, targetPath)) {
+        if (!isWithin(allowedRoot, targetPath)) {
           failures.push(
-            `${relativeFile}:${index + 1}: escapes skill directory: ${resourcePath}`,
+            `${relativeFile}:${index + 1}: escapes ${scope === "skill" ? "skill" : `plugin ${scope}`} directory: ${resourcePath}`,
           );
         } else if (!fs.existsSync(targetPath)) {
           failures.push(`${relativeFile}:${index + 1}: missing ${resourcePath}`);
+        } else if (
+          scope !== "skill" &&
+          file !== skillFile &&
+          !namedPluginPaths.has(resourcePath)
+        ) {
+          failures.push(
+            `${relativeFile}:${index + 1}: ${resourcePath} is not named in SKILL.md, the only file where Claude Code substitutes \${CLAUDE_PLUGIN_ROOT}`,
+          );
         }
       }
     });
@@ -301,6 +342,69 @@ NODE
 	run resource_reference_check "$skills_dir"
 
 	[ "$status" -eq 0 ]
+}
+
+# Writes a one-skill plugin whose reference file uses a plugin-level path.
+write_plugin_fixture() {
+	local plugin_dir="$1"
+	local skill_body="$2"
+	local reference_body="$3"
+	local skill_dir="$plugin_dir/skills/fixture-skill"
+
+	mkdir -p "$skill_dir/references" "$plugin_dir/shared/topic/references" "$plugin_dir/scripts"
+	printf '# Shared guide\n' >"$plugin_dir/shared/topic/references/guide.md"
+	printf '#!/bin/sh\n' >"$plugin_dir/scripts/helper.sh"
+	printf -- '---\nname: fixture-skill\n---\n%s\n' "$skill_body" >"$skill_dir/SKILL.md"
+	printf '%s\n' "$reference_body" >"$skill_dir/references/steps.md"
+}
+
+@test "plugin-level shared and script references resolve when SKILL.md names them" {
+	local plugin_dir="$BATS_TEST_TMPDIR/plugin"
+	write_plugin_fixture "$plugin_dir" \
+		'Read `${CLAUDE_PLUGIN_ROOT}/shared/topic/references/guide.md` and run `${CLAUDE_PLUGIN_ROOT}/scripts/helper.sh`. Then read `references/steps.md`.' \
+		'Read `${CLAUDE_PLUGIN_ROOT}/shared/topic/references/guide.md` and run `${CLAUDE_PLUGIN_ROOT}/scripts/helper.sh`.'
+
+	run resource_reference_check "$plugin_dir/skills"
+
+	[ "$status" -eq 0 ]
+}
+
+@test "missing plugin-level resources fail" {
+	local plugin_dir="$BATS_TEST_TMPDIR/plugin"
+	write_plugin_fixture "$plugin_dir" \
+		'Read `${CLAUDE_PLUGIN_ROOT}/shared/topic/references/absent.md` and run `${CLAUDE_PLUGIN_ROOT}/scripts/absent.sh`.' \
+		'No plugin-level paths here.'
+
+	run resource_reference_check "$plugin_dir/skills"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"missing shared/topic/references/absent.md"* ]]
+	[[ "$output" == *"missing scripts/absent.sh"* ]]
+}
+
+@test "plugin-level references cannot escape their directory" {
+	local plugin_dir="$BATS_TEST_TMPDIR/plugin"
+	write_plugin_fixture "$plugin_dir" \
+		'Read `${CLAUDE_PLUGIN_ROOT}/shared/topic/references/../../../skills/fixture-skill/references/steps.md`.' \
+		'No plugin-level paths here.'
+
+	run resource_reference_check "$plugin_dir/skills"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"escapes plugin shared directory"* ]]
+}
+
+@test "reference files may only use plugin-level paths their SKILL.md names" {
+	local plugin_dir="$BATS_TEST_TMPDIR/plugin"
+	write_plugin_fixture "$plugin_dir" \
+		'Read `references/steps.md`.' \
+		'Read `${CLAUDE_PLUGIN_ROOT}/shared/topic/references/guide.md` and run `${CLAUDE_PLUGIN_ROOT}/scripts/helper.sh`.'
+
+	run resource_reference_check "$plugin_dir/skills"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"references/steps.md:1: shared/topic/references/guide.md is not named in SKILL.md"* ]]
+	[[ "$output" == *"references/steps.md:1: scripts/helper.sh is not named in SKILL.md"* ]]
 }
 
 @test "SIW product and spec audits keep distinct review boundaries" {
