@@ -25,6 +25,7 @@ kramme-cc-workflow/            # Canonical plugin source
   .claude-plugin/plugin.json   # Plugin manifest
   agents/                      # Specialized subagents
   skills/                      # Shipped skills
+  shared/                      # References and assets used by more than one skill
   hooks/hooks.json             # Event handlers configuration
 .agents/skills/                # Local repository-maintenance skills
 ```
@@ -108,8 +109,9 @@ exit_if_hook_disabled "hook-name" "json" # PostToolUse or Stop
 - **ALWAYS** keep every skill and agent `description` frontmatter value at or below 1024 characters for Codex compatibility, moving examples and extended trigger guidance into the body.
 - **ALWAYS** resolve shipped skill edits to `kramme-cc-workflow/skills/kramme:<domain>:<skill-name>/` and maintenance skill edits to `.agents/skills/<skill-name>/`.
 - **NEVER** edit installed copies under `~/.codex/skills`, `~/.agents/skills`, `~/.claude/skills`, app bundles, or generated install output when changing repository behavior.
-- **ALWAYS** keep each skill self-contained inside its own directory so installed skills never depend on this repository's `AGENTS.md`, `CLAUDE.md`, `README.md`, or shared `docs/` files.
-- **ALWAYS** run static SkillSpector scanning for new or materially changed skills with `make -C kramme-cc-workflow skill-security-changed`; use `make -C kramme-cc-workflow skill-security` for release-candidate full-tree checks and `skillspector scan <url-or-path> --no-llm` before installing third-party skills.
+- **ALWAYS** keep each skill self-contained within the installed plugin: it may use its own directory, `kramme-cc-workflow/shared/<topic>/{references,assets}/`, and runtime helpers in `kramme-cc-workflow/scripts/`, but never this repository's `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/`, or `tests/`, per [docs/decisions/2026-10-01-plugin-level-shared-skill-resources.md](kramme-cc-workflow/docs/decisions/2026-10-01-plugin-level-shared-skill-resources.md).
+- **ALWAYS** keep a file that two or more skills need in one plugin-level location instead of mirroring it, and name every `${CLAUDE_PLUGIN_ROOT}/...` path a skill uses in its `SKILL.md` body, the only place Claude Code substitutes the variable; pass resolved paths into subagent prompts through placeholders.
+- **ALWAYS** run static SkillSpector scanning for new or materially changed skills and shared resources with `make -C kramme-cc-workflow skill-security-changed`; use `make -C kramme-cc-workflow skill-security` for release-candidate full-tree checks and `skillspector scan <url-or-path> --no-llm` before installing third-party skills.
 - **PREFER** semantic SkillSpector scans only when provider credentials are intentionally configured and the skill contents are acceptable to send to that provider.
 - **NOTE** SkillSpector complements tests, linting, and human review rather than replacing them.
 - **ALWAYS** triage high and critical SkillSpector findings before merge or installation.
