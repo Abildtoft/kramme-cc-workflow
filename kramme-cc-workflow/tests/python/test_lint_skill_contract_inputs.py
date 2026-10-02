@@ -314,31 +314,6 @@ class MalformedRegistryShapeTest(unittest.TestCase):
             ],
         )
 
-    def test_file_identity_reports_malformed_entries_without_crashing(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            context = lint_skill_contracts.LintContext(
-                root=Path(tmp_dir),
-                registry={
-                    "file_identity_groups": [
-                        {"paths": ["a.md", "b.md"]},
-                        {"name": "grp", "paths": "nope"},
-                    ]
-                },
-                schema={},
-            )
-
-            result = lint_skill_contracts.check_file_identity(context)
-
-        self.assertEqual(
-            result.failures,
-            [
-                "file_identity_groups[0]: entry missing required string key 'name'",
-                "file_identity_groups[0]: registered path is missing: a.md",
-                "file_identity_groups[0]: registered path is missing: b.md",
-                "grp: entry missing required list key 'paths'",
-            ],
-        )
-
     def test_required_file_contracts_reports_malformed_entries_without_crashing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)

@@ -46,7 +46,7 @@ Paths passed through file variables are relative to `kramme-cc-workflow/`.
 | Skill-review eval | `kramme-cc-workflow/evals/skill-review/` | `make -C kramme-cc-workflow test-skill-review-eval`, `make -C kramme-cc-workflow skill-eval-skill-review` |
 | Skill-review scorer | `kramme-cc-workflow/evals/skill-review/scorer.js` | `make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/scorer.test.js` |
 | SkillOpt adapter | `kramme-cc-workflow/evals/skillopt/` | `bats kramme-cc-workflow/tests/skillopt-adapter.bats kramme-cc-workflow/tests/skillopt-candidate-review.bats` |
-| Synced file mirrors (incl. visual shared assets) | `kramme-cc-workflow/scripts/generate-synced-files.py`, mirrored files declared in `scripts/synced-contracts.yaml` | `bats kramme-cc-workflow/tests/lint-skill-contracts.bats`, `make -C kramme-cc-workflow check-visual-shared-assets` |
+| Shared skill resources | `kramme-cc-workflow/shared/`, plugin-level helpers in `kramme-cc-workflow/scripts/` that skills reference through `${CLAUDE_PLUGIN_ROOT}` | `bats kramme-cc-workflow/tests/skill-resource-references.bats`, `make -C kramme-cc-workflow test-convert` |
 
 ## Skill Contract Lookup
 
@@ -69,7 +69,7 @@ No lookup result means the skill is still listed under `skill_contract_coverage.
 
 ## Common Investigation Paths
 
-When a skill behaves incorrectly, start with its `SKILL.md`, then load only the referenced local files under the same skill directory. Check `scripts/lint-skill-contracts.py` if the issue is frontmatter, naming, description length, platform filtering, or self-contained resource policy.
+When a skill behaves incorrectly, start with its `SKILL.md`, then load only the files it references: its own skill directory and any plugin-level `shared/` or `scripts/` paths its `SKILL.md` names. Check `scripts/lint-skill-contracts.py` if the issue is frontmatter, naming, description length, platform filtering, or self-contained resource policy.
 
 When a hook blocks or misses a command, inspect the hook script, then the shared helpers under `hooks/lib/` (see `hooks/lib/README.md` for the helper responsibility map). `git_command_parser.py` is the executable entry point the hooks invoke; the parser for complex shell and git command shapes lives in `hooks/lib/command_safety/`, one module per policy mode over shared syntax, vocabulary, prefix, and lexer layers.
 

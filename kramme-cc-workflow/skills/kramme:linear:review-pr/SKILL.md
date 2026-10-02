@@ -90,7 +90,7 @@ If the primary issue is unavailable, stop. If inaccessible referenced context co
 
 ## Step 5: Create a Checkout-Free Inspection Worktree
 
-Read the isolated inspection procedure from `references/pr-inspection.md` and follow it completely.
+Read the isolated inspection procedure from `references/pr-inspection.md` and follow it completely. Run its base resolver from `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`.
 
 The procedure must leave the user's current checkout unchanged, create no PR-head files, disable checkout hooks and filters, verify the fetched head and pinned base against `PR_HEAD_OID` and `PR_BASE_OID`, and establish `MERGE_BASE` plus the complete changed-file list. Read repository content only through pinned Git objects and use only diffs that disable text conversion and external drivers. Once the temporary worktree exists, run its cleanup block before every stop or return.
 

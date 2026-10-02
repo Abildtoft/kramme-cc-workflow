@@ -112,7 +112,7 @@ Read the pre-validation checks from `references/pre-validation-checks.md`. Run a
 
 ## Steps 2-3: Branch Handling
 
-Read the branch and base selection instructions from `references/branch-and-platform-handling.md`. Capture `{entry-branch}` / `{entry-commit}`, resolve one validated remote `{base-source-ref}`, pin its full commit OID as immutable `{base-ref}`, retain `{base-branch}` as metadata, select a validated `{feature-branch}`, capture `{observed-origin-oid}`, and record `{branch-action}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
+Read the branch and base selection instructions from `references/branch-and-platform-handling.md`. Run its base resolver from `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`. Capture `{entry-branch}` / `{entry-commit}`, resolve one validated remote `{base-source-ref}`, pin its full commit OID as immutable `{base-ref}`, retain `{base-branch}` as metadata, select a validated `{feature-branch}`, capture `{observed-origin-oid}`, and record `{branch-action}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
 
 ### Optional rebase-first
 

@@ -22,7 +22,7 @@ Both are relative measurements: the baseline is mined from the repository itself
 
 **Arguments:** "$ARGUMENTS"
 
-Before parsing other arguments, read and apply `references/model-selection.md` to every reviewer cluster, refutation pass, and relevance validator. It parses and removes `--subagent-model <model>` first.
+Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to every reviewer cluster, refutation pass, and relevance validator. It parses and removes `--subagent-model <model>` first.
 
 **Shared protocol:** Read `references/baseline-mining.md` before launching reviewers. It defines the evidence tiers, peer-file sampling, quorum rule, lens checklists, classification taxonomy, and finding format.
 

@@ -14,7 +14,7 @@ This repo packages a personal workflow plugin for Claude Code and includes a Cod
 
 | Subsystem | Main files | Responsibility |
 | --- | --- | --- |
-| Skills | `skills/*/SKILL.md`, `skills/*/references/`, `skills/*/assets/`, `skills/*/scripts/` | User-invocable and background workflows. Skills must carry their runtime policy inside their own directory. |
+| Skills | `skills/*/SKILL.md`, `skills/*/references/`, `skills/*/assets/`, `skills/*/scripts/`, `shared/<topic>/` | User-invocable and background workflows. Skills carry their runtime policy inside their own directory or in plugin-level `shared/` references and assets used by more than one skill. |
 | Agents | `agents/*.md` | Specialized Claude Code subagents used by skills and PR review workflows. |
 | Hooks | `hooks/hooks.json`, `hooks/*.sh`, `hooks/lib/` | Claude Code lifecycle hooks for command safety, formatting, review confirmation, and usage stats. |
 | Shared scripts | `scripts/*.sh`, `scripts/*.py`, `scripts/*.js`, `scripts/dev-server/` | Helpers shared by skills, hooks, release workflows, and browser-facing workflows. |
@@ -33,7 +33,7 @@ For Codex, `scripts/convert-plugin.js` is the entry point. It loads the Claude p
 
 Browser and visual workflows use the shared dev-server detector in `scripts/dev-server/`. The detector only resolves an already running local app. A caller may own a separately documented startup lifecycle; delegated PR demo capture permits one tightly bounded local-development startup attempt and owns cleanup of the process it launched.
 
-Shared runtime helpers belong to the main `CodexBundle`, independently of whether hook packaging is eligible. The transformer builds the directory and file metadata once, and the builder copies them into the plugin's `scripts/` and `hooks/` directories, so skills retain their helpers when hooks or hook controls are absent.
+Shared runtime helpers belong to the main `CodexBundle`, independently of whether hook packaging is eligible. The transformer builds the directory and file metadata once, and the builder copies them into the plugin's `scripts/` and `hooks/` directories, so skills retain their helpers when hooks or hook controls are absent. The plugin-level `shared/` directory travels the same way, and its Markdown receives the rewrite that skill-local references get.
 
 How much independence skills and agents take at runtime is described in [agent-autonomy.md](agent-autonomy.md).
 

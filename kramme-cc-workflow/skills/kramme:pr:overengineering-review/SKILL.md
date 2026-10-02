@@ -25,7 +25,7 @@ This skill is deliberately shaped differently from the other review skills:
 
 **Arguments:** "$ARGUMENTS"
 
-Before parsing other arguments, read and apply `references/model-selection.md` to the finder and every justification pass. It parses and removes `--subagent-model <model>` only before the `--requirements` sentinel.
+Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to the finder and every justification pass. It parses and removes `--subagent-model <model>` only before the `--requirements` sentinel.
 
 ## Review Workflow
 

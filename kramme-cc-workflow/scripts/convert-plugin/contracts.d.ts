@@ -97,6 +97,8 @@ export interface CodexPluginPackage {
 
 export interface SharedScriptDir {
   executableFiles?: string[];
+  /** Rewrite copied Markdown for Codex the way skill-local references are. */
+  rewriteMarkdown?: boolean;
   sourceDir: string;
   targetDir: string;
 }

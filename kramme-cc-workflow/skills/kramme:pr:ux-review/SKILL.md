@@ -12,7 +12,7 @@ Audit the UI, UX, and product experience of a PR's changes, including local stag
 
 **Arguments:** "$ARGUMENTS"
 
-Before selecting a workflow, read and apply `references/model-selection.md`. It parses and removes `--subagent-model <model>` before category parsing or Team Mode routing. Its model selection applies to every review subagent in standard, parallel, and Team Mode, including relevance validation.
+Before selecting a workflow, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`. It parses and removes `--subagent-model <model>` before category parsing or Team Mode routing. Its model selection applies to every review subagent in standard, parallel, and Team Mode, including relevance validation.
 
 If `$ARGUMENTS` contains `--no-diff-comments`, set `DIFF_COMMENTS=false` and remove that flag. Otherwise set `DIFF_COMMENTS=true`. Preserve this value for Team Mode and standard review output.
 

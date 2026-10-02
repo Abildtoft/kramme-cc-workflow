@@ -784,6 +784,7 @@ The shared plugin source lives in `kramme-cc-workflow/`; this root README is the
 │   │   └── plugin.json      # Plugin metadata
 │   ├── agents/              # Specialized subagents
 │   ├── skills/              # Skills (subdirectories with SKILL.md)
+│   ├── shared/              # References and assets used by more than one skill
 │   ├── hooks/               # Event handlers
 │   │   └── hooks.json
 │   ├── docs/                # Detailed reference docs

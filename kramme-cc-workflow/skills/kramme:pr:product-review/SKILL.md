@@ -13,7 +13,7 @@ Deep product review of branch changes and local work. Evaluates user-value align
 
 **Arguments:** "$ARGUMENTS"
 
-Before parsing other arguments, read and apply `references/model-selection.md` to the product reviewer and relevance validator. It parses and removes `--subagent-model <model>` first.
+Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to the product reviewer and relevance validator. It parses and removes `--subagent-model <model>` first.
 
 ## Review Workflow
 

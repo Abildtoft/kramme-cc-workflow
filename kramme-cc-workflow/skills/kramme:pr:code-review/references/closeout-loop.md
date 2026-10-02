@@ -4,7 +4,7 @@ Apply this workflow only when the caller passed `--loop`. The review this skill 
 
 ## Contract
 
-- Reuse the reviewer model selected under `references/model-selection.md` for review reruns and the independent termination verifier. Do not step down again or apply this policy to implementation/resolver agents.
+- Reuse the reviewer model selected under `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` for review reruns and the independent termination verifier. Do not step down again or apply this policy to implementation/resolver agents.
 - Treat review output as advisory. Never apply a finding blindly.
 - Verify every accepted finding against the real code path and adjacent files before changing code.
 - Reject speculative risks, unrealistic edge cases, broad rewrites, and fixes that do not fit the local codebase.

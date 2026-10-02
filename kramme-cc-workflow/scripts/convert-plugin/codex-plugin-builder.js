@@ -48,6 +48,7 @@ const OWNERSHIP_MARKER_VERSION = 1;
  * <root>/plugins/<name>/.codex-plugin/plugin.json
  * <root>/plugins/<name>/skills/<skill>/SKILL.md
  * <root>/plugins/<name>/scripts/...       shared runtime helpers
+ * <root>/plugins/<name>/shared/...        shared skill references and assets
  * <root>/plugins/<name>/hooks/...         when hook packaging is eligible
  * ```
  *
@@ -150,15 +151,25 @@ async function writeSkillFile(targetDir, skill, rootExpression) {
 async function writeSharedRuntime(pluginRoot, bundle) {
   for (const sharedScriptDir of bundle.sharedScriptDirs) {
     if (await pathExists(sharedScriptDir.sourceDir)) {
-      await copyDir(
-        sharedScriptDir.sourceDir,
-        resolveManagedChild(
-          pluginRoot,
-          sharedScriptDir.targetDir,
-          "shared script directory",
-        ),
-        { executableFiles: sharedScriptDir.executableFiles },
+      const targetDir = resolveManagedChild(
+        pluginRoot,
+        sharedScriptDir.targetDir,
+        "shared script directory",
       );
+      await copyDir(sharedScriptDir.sourceDir, targetDir, {
+        executableFiles: sharedScriptDir.executableFiles,
+      });
+      if (sharedScriptDir.rewriteMarkdown) {
+        await rewriteCodexMarkdownResourcesFromSource(
+          sharedScriptDir.sourceDir,
+          targetDir,
+          {
+            knownAgentSkills: bundle.knownAgentSkills,
+            knownCommands: bundle.knownCommands,
+            pluginRootExpression: bundle.codexPlugin.rootExpression,
+          },
+        );
+      }
     }
   }
   for (const sharedScriptFile of bundle.sharedScriptFiles) {

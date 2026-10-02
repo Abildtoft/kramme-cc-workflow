@@ -25,7 +25,7 @@ Findings that require product decisions, stakeholder input, or still lack a clea
 
 **NEVER** auto-fix a safety-capped finding regardless of threshold. Critical findings in Completeness, Scope, or Rationale Documentation dimensions always require decisions; treat the legacy `Value Proposition` label in older reports as Rationale Documentation. Findings whose recommendations use decision-signal language ("consider", "decide whether", "choose between", "discuss with", "evaluate options"), change scope, or define success-criteria substance always require decisions.
 
-**NEVER** auto-fix a finding when any sub-score is below 15. See `references/classification-rubric.md` (Auto-Fix Guardrails) for the authoritative rule and its rationale; this rubric is also the canonical scoring model for `/kramme:siw:spec-audit --apply`.
+**NEVER** auto-fix a finding when any sub-score is below 15. See `${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md` (Auto-Fix Guardrails) for the authoritative rule and its rationale; this rubric is also the canonical scoring model for `/kramme:siw:spec-audit --apply`.
 
 **NEVER** apply a fix that changes the meaning, scope, or intent of any requirement. Fixes correct form, not substance.
 
@@ -173,7 +173,7 @@ No actionable findings to process.
 
 ## Step 3: Score & Classify Findings
 
-Read the classification rubric from `references/classification-rubric.md`.
+Read the classification rubric from `${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md`.
 
 For each extracted finding, assign a **fix confidence score** (0-100):
 

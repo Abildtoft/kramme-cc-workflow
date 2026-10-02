@@ -44,7 +44,7 @@ After the user chooses Replace, verify nothing is at risk but defer deletion to 
 
 ## Final publication preparation
 
-Resolve `scripts/siw-issue-reservation.sh` relative to this `SKILL.md`. Generate a collision-resistant owner token once with `sh <helper> new-owner`, retain it in this workflow's session state, and use it for the workflow's full publication and recovery lifetime. During normal contention, never copy or reuse a token observed in an existing lock or reservation.
+Use `${CLAUDE_PLUGIN_ROOT}/scripts/siw-issue-reservation.sh` as `<helper>`. Generate a collision-resistant owner token once with `sh <helper> new-owner`, retain it in this workflow's session state, and use it for the workflow's full publication and recovery lifetime. During normal contention, never copy or reuse a token observed in an existing lock or reservation.
 
 1. Immediately before the first mutation, run `sh <helper> acquire siw <owner-token> 30`. The helper persists an owner-bound baseline manifest for the overview, log, and issue ID/file state; interrupted same-owner retries validate that manifest instead of treating the recovery-time files as a new baseline. If it reports that another writer owns publication, preserve the lock and reservations unchanged and stop for owner-guided recovery without exposing its token. For malformed state or operational failures, preserve state and surface the helper's diagnostic exactly instead of describing the failure as contention.
 2. Re-read `siw/OPEN_ISSUES_OVERVIEW.md`, `siw/LOG.md`, and all matching on-disk issue files while holding publication ownership. Never publish from the Phase 1 or draft-plan snapshot.
