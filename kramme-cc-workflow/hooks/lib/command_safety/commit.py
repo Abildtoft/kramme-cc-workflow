@@ -29,6 +29,8 @@ from .syntax import (
     SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE,
     _basename_no_unescape,
     _is_assignment,
+    _is_bare_redirection,
+    _redirection_token_count,
 )
 from .vocabulary import (
     GIT_GLOBAL_END_OF_OPTIONS,
@@ -135,6 +137,16 @@ def parse_commit_selection(args: list[str]) -> CommitContext:
 
     while idx < len(args):
         arg = args[idx]
+        # The shell removes redirections before git sees its arguments, even
+        # after `--`. Option values never reach this check: their options
+        # consume them below.
+        redirection_tokens = _redirection_token_count(args, idx)
+        if redirection_tokens:
+            if redirection_tokens == 1 and _is_bare_redirection(arg):
+                return commit_selection_error(f"redirection {arg} has no target.")
+            idx += redirection_tokens
+            continue
+
         if after_separator:
             pathspecs.append(arg)
             idx += 1
@@ -566,6 +578,10 @@ def parse_commit_segment(
     idx += 1
     while idx < len(tokens):
         token = tokens[idx]
+        redirection_tokens = _redirection_token_count(tokens, idx)
+        if redirection_tokens:
+            idx += redirection_tokens
+            continue
         classification = classify_git_global_option(token)
         if classification == GIT_GLOBAL_END_OF_OPTIONS:
             idx += 1

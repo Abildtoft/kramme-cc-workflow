@@ -10,19 +10,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
-from typing import Optional, TypedDict
-
-
-class HeredocSpec(TypedDict):
-    delimiter: str
-    quoted: bool
-    strip_tabs: bool
-    start: int
-
-
-class PendingHeredoc(HeredocSpec):
-    keep_body: bool
-
+from typing import Optional
 
 CONTROL_TOKENS = {";", ";;", "&&", "||", "|", "|&", "&"}
 NON_KEYWORD_TIME_SENTINEL = "\0kramme-non-keyword-time\0"
@@ -68,6 +56,9 @@ ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 # which scans for a command word rather than skipping a prefix, so a ")"
 # there is not a boundary to step over.
 SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE = SHELL_RESERVED_COMMAND_WORDS | {")"}
+REDIRECTION_OPERATOR = re.compile(r"(?:\d+|&)?(?:<<<|<<-|<<|<>|<&|>&|>>|>\||<|>)")
+# Shell operators that shlex can glue together, longest first, e.g. `);` or `)&&`.
+GROUPED_PUNCTUATION = ("&&", "||", ";;", "|&", "&", "|", ";", "(", ")")
 
 
 class ShellWord(str):
@@ -368,120 +359,86 @@ def _function_body_start(tokens: list[str], idx: int) -> Optional[int]:
     return None
 
 
-def _collect_heredocs(line: str) -> list[HeredocSpec]:
-    heredocs: list[HeredocSpec] = []
+def _is_bare_redirection(token: str) -> bool:
+    return REDIRECTION_OPERATOR.fullmatch(token) is not None
+
+
+def _redirection_token_count(tokens: list[str], idx: int) -> int:
+    """Return how many tokens the redirection starting at `tokens[idx]` spans, or 0.
+
+    The target is attached (`2>/dev/null`, `<<EOF`, and `2>&1` once
+    `normalize_shell_tokens` has rejoined it) or the next token (`2> err`).
+    A bare operator with nothing after it spans only itself.
+    """
+    match = REDIRECTION_OPERATOR.match(tokens[idx])
+    if match is None:
+        return 0
+    if match.end() < len(tokens[idx]) or idx + 1 >= len(tokens):
+        return 1
+    return 2
+
+
+def _split_grouped_punctuation(token: str) -> list[str]:
+    if token in CONTROL_TOKENS or token in {"(", ")"} or not token or any(char not in "()|&;" for char in token):
+        return [token]
+    parts: list[str] = []
+    while token:
+        part = next(operator for operator in GROUPED_PUNCTUATION if token.startswith(operator))
+        parts.append(part)
+        token = token[len(part) :]
+    return parts
+
+
+def normalize_shell_tokens(tokens: list[str]) -> list[str]:
+    """Undo two shlex artifacts before segments are split.
+
+    shlex joins adjacent punctuation, so `(cd x); rm` yields `);`; split such
+    runs into shell operators. It also splits `2>&1`, `<&0`, `>|out`, and
+    `&>out` at `&` or `|`, which would end the command early and orphan its
+    later words; rejoin those redirections into one token.
+    """
+    split = [part for token in tokens for part in _split_grouped_punctuation(token)]
+    merged: list[str] = []
     idx = 0
-    quote: Optional[str] = None
-    length = len(line)
-
-    while idx < length:
-        char = line[idx]
-        next_char = line[idx + 1] if idx + 1 < length else ""
-
-        if quote == "'":
-            if char == "'":
-                quote = None
-            idx += 1
-            continue
-
-        if quote == '"':
-            if char == '"':
-                quote = None
-            elif char == "\\" and next_char:
-                idx += 2
+    while idx < len(split):
+        token = split[idx]
+        following = split[idx + 1] if idx + 1 < len(split) else ""
+        target = split[idx + 2] if idx + 2 < len(split) else ""
+        joins_target = following == "&" or (following == "|" and token.endswith(">"))
+        if _is_bare_redirection(token) and token[-1] in "<>" and joins_target and target:
+            if target not in CONTROL_TOKENS and target not in {"(", ")"}:
+                merged.append(token + following + target)
+                idx += 3
                 continue
-            idx += 1
-            continue
-
-        if char in {"'", '"'}:
-            quote = char
-            idx += 1
-            continue
-
-        if char == "\\" and next_char:
+        if token == "&" and following.startswith(">"):
+            merged.append(token + following)
             idx += 2
             continue
-
-        if char != "<" or next_char != "<":
-            idx += 1
-            continue
-
-        if idx + 2 < length and line[idx + 2] == "<":
-            idx += 3
-            continue
-
-        start = idx
-        strip_tabs = False
-        idx += 2
-        if idx < length and line[idx] == "-":
-            strip_tabs = True
-            idx += 1
-
-        while idx < length and line[idx] in {" ", "\t"}:
-            idx += 1
-
-        token: list[str] = []
-        quoted = False
-        if idx < length and line[idx] in {"'", '"'}:
-            quoted = True
-            delimiter_quote = line[idx]
-            idx += 1
-            while idx < length:
-                char = line[idx]
-                if char == delimiter_quote:
-                    idx += 1
-                    break
-                token.append(char)
-                idx += 1
-        else:
-            while idx < length:
-                char = line[idx]
-                if char in {" ", "\t", "\n", "\r", ";", "|", "&", "<", ">"}:
-                    break
-                if char == "\\" and idx + 1 < length:
-                    idx += 1
-                    char = line[idx]
-                token.append(char)
-                idx += 1
-
-        delimiter = "".join(token)
-        if delimiter:
-            heredocs.append(
-                {
-                    "delimiter": delimiter,
-                    "quoted": quoted,
-                    "strip_tabs": strip_tabs,
-                    "start": start,
-                }
-            )
-
-    return heredocs
+        merged.append(token)
+        idx += 1
+    return merged
 
 
 def _tokenize_heredoc_prefix(line: str) -> list[str]:
     lexer = shlex.shlex(line, posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
     lexer.commenters = ""
-    return list(lexer)
+    return normalize_shell_tokens(list(lexer))
 
 
 def _tokens_for_heredoc_command(tokens: list[str]) -> list[str]:
-    start = 0
-    for idx, token in enumerate(tokens):
-        if token in CONTROL_TOKENS:
-            start = idx + 1
-
+    """Return the words of the last command in a heredoc prefix, without redirections."""
     command_tokens: list[str] = []
-    idx = start
+    idx = 0
     while idx < len(tokens):
-        token = tokens[idx]
-        if token in {"<", ">", ">>", "<>", ">|", "<&", ">&"}:
-            idx += 2
+        redirection_tokens = _redirection_token_count(tokens, idx)
+        if redirection_tokens:
+            idx += redirection_tokens
             continue
-        if re.match(r"^\d*(?:<<-?|<<<|<>|>>?|>\||<&|>&)", token):
-            idx += 1
-            continue
-        command_tokens.append(token)
+        if tokens[idx] in CONTROL_TOKENS:
+            command_tokens = []
+        else:
+            command_tokens.append(tokens[idx])
         idx += 1
 
     return command_tokens
@@ -494,6 +451,8 @@ def _shell_has_c_option(word: str) -> bool:
 def _shell_invocation_reads_stdin(args: list[str]) -> bool:
     idx = 0
     skip_option_operand = False
+    # `-s` reads commands from stdin even when positional parameters follow.
+    reads_stdin_option = False
 
     while idx < len(args):
         word = args[idx]
@@ -523,9 +482,10 @@ def _shell_invocation_reads_stdin(args: list[str]) -> bool:
             continue
 
         if word.startswith("-") or word.startswith("+"):
+            reads_stdin_option = reads_stdin_option or (word.startswith("-") and "s" in word[1:])
             idx += 1
             continue
 
-        return False
+        return reads_stdin_option
 
     return True

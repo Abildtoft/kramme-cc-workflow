@@ -1040,6 +1040,53 @@ make_nested_bash_command() {
 	is_blocked
 }
 
+@test "allows heredoc commit message with quotes inside command substitution" {
+	run run_hook $'git commit -m "$(cat <<\'EOF\'\nDon\'t break the "build\nEOF\n)"'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "allows heredoc pull request body with an apostrophe" {
+	run run_hook $'gh pr create --title t --body "$(cat <<\'EOF\'\nIt\'s done\nEOF\n)"'
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "blocks shell heredoc inside command substitution" {
+	run run_hook $'out="$(bash <<\'EOF\'\nrm -rf directory/\nEOF\n)"'
+	is_blocked
+}
+
+@test "blocks shell heredoc after stderr redirection" {
+	run run_hook $'bash 2>&1 <<\'EOF\'\nrm -rf directory/\nEOF'
+	is_blocked
+}
+
+@test "blocks rm -rf whose flags follow a duplicated stream" {
+	run run_hook "rm 2>&1 -rf directory/"
+	is_blocked
+}
+
+@test "blocks rm -rf after a redirection before the command word" {
+	run run_hook "2>/dev/null rm -rf directory/"
+	is_blocked
+}
+
+@test "blocks rm -rf after a subshell group" {
+	run run_hook "(cd /tmp); rm -rf directory/"
+	is_blocked
+}
+
+@test "blocks shell heredoc whose command began on an earlier line" {
+	run run_hook $'bash 2>"$(\nmktemp\n)" <<\'EOF\'\nrm -rf directory/\nEOF'
+	is_blocked
+}
+
+@test "blocks rm -rf after heredoc marker inside a multi-line string" {
+	run run_hook $'echo "a\nb <<EOF"\nrm -rf directory/\nEOF'
+	is_blocked
+}
+
 @test "allows command with 'rm' in path but not rm command" {
 	run run_hook "ls /var/run/rm-safe/"
 	[ "$status" -eq 0 ]

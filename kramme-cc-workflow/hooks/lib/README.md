@@ -22,7 +22,8 @@ here would break every gate at once.
 | Module | Responsibility |
 | --- | --- |
 | `structs.py` | `_StructValue`, the `__slots__` value-object base the result types share instead of `dataclasses`. |
-| `syntax.py` | Shell syntax primitives: quoting and ANSI-C decoding, command-substitution readers, heredoc scanning, basename and assignment helpers, and the shared shell keyword/executable/option sets. Imports nothing else in the package. |
+| `syntax.py` | Shell syntax primitives: quoting and ANSI-C decoding, command-substitution readers, token normalization (splitting shlex-joined operators such as `);` and rejoining redirections such as `2>&1`), redirection and heredoc-prefix helpers, basename and assignment helpers, and the shared shell keyword/executable/option sets. Imports nothing else in the package. |
+| `heredoc.py` | `HeredocScanner`: finds the `<<` operators that open a heredoc body. It carries quote, `$(...)`, backtick, `$'...'`, and arithmetic context across command lines, ignores `<<` in comments, and reports where the owning command's text starts on the operator's line and whether that command began on an earlier line. Imports nothing else in the package. |
 | `vocabulary.py` | How `xargs` (for `rm-rf`) and `git` (for `commit-contexts`) consume their own options, so a value-bearing option is never mistaken for the command or subcommand. |
 | `prefix.py` | `normalize_command_prefix()` and one handler per execution wrapper (`env`, `sudo`, `nice`, `timeout`, `time`, `nohup`, `exec`, `command`/`builtin`). Reports what actually runs; applies no policy. |
 | `lexer.py` | Heredoc stripping, newline folding, tokenization, segment splitting, and command-substitution placeholders. Uses `prefix.py` to decide whether a heredoc body is executable. |
@@ -64,7 +65,7 @@ replaying the selection:
 | `git_args` | Ordered string array of Git arguments captured before `commit`, including repository selectors and other global options. `confirm-review-responses.sh` rejects dynamic selectors and replays only an allowlisted safe subset, such as `-C`, `--git-dir`, or `--work-tree`; config-bearing arguments are never replayed. Present on normal commit contexts. |
 | `git_env` | Ordered string array of replayable `GIT_*` assignments that select repository, index, object, namespace, or pathspec behavior. Present on normal commit contexts. |
 | `selection_mode` | Effective commit content selection: `index` when absent, otherwise `all`, `include`, or `only`. |
-| `pathspecs` | Ordered command-line pathspecs. Present with non-index selection, including an empty array when the mode itself selects content. |
+| `pathspecs` | Ordered command-line pathspecs, excluding shell redirections such as `2>&1` or `<<EOF`. Present with non-index selection, including an empty array when the mode itself selects content. |
 | `pathspec_from_file` | Optional path to a line- or NUL-delimited pathspec file. `-` and dynamically substituted paths are rejected. |
 | `pathspec_file_nul` | Boolean delimiter flag emitted with `pathspec_from_file`; defaults to `false`. |
 | `selection_error` | Modeled commit with content-selection arguments that cannot be replayed safely. The consuming hook blocks with this reason. |
