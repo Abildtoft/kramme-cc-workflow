@@ -22,7 +22,7 @@ here would break every gate at once.
 | Module | Responsibility |
 | --- | --- |
 | `structs.py` | `_StructValue`, the `__slots__` value-object base the result types share instead of `dataclasses`. |
-| `syntax.py` | Shell syntax primitives: quoting and ANSI-C decoding, command-substitution readers, heredoc-prefix helpers, basename and assignment helpers, and the shared shell keyword/executable/option sets. Imports nothing else in the package. |
+| `syntax.py` | Shell syntax primitives: quoting and ANSI-C decoding, command-substitution readers, token normalization (splitting shlex-joined operators such as `);` and rejoining redirections such as `2>&1`), redirection and heredoc-prefix helpers, basename and assignment helpers, and the shared shell keyword/executable/option sets. Imports nothing else in the package. |
 | `heredoc.py` | `HeredocScanner`: finds the `<<` operators that open a heredoc body. It carries quote, `$(...)`, backtick, `$'...'`, and arithmetic context across command lines, ignores `<<` in comments, and reports where the owning command's text starts on the operator's line and whether that command began on an earlier line. Imports nothing else in the package. |
 | `vocabulary.py` | How `xargs` (for `rm-rf`) and `git` (for `commit-contexts`) consume their own options, so a value-bearing option is never mistaken for the command or subcommand. |
 | `prefix.py` | `normalize_command_prefix()` and one handler per execution wrapper (`env`, `sudo`, `nice`, `timeout`, `time`, `nohup`, `exec`, `command`/`builtin`). Reports what actually runs; applies no policy. |

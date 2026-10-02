@@ -56,6 +56,9 @@ ENV_PERSISTING_CONTROL_TOKENS = {";", "&&", "||"}
 # which scans for a command word rather than skipping a prefix, so a ")"
 # there is not a boundary to step over.
 SHELL_KEYWORDS_WITH_SUBSHELL_CLOSE = SHELL_RESERVED_COMMAND_WORDS | {")"}
+REDIRECTION_OPERATOR = re.compile(r"(?:\d+|&)?(?:<<<|<<-|<<|<>|<&|>&|>>|>\||<|>)")
+# Shell operators that shlex can glue together, longest first, e.g. `);` or `)&&`.
+GROUPED_PUNCTUATION = ("&&", "||", ";;", "|&", "&", "|", ";", "(", ")")
 
 
 class ShellWord(str):
@@ -356,30 +359,86 @@ def _function_body_start(tokens: list[str], idx: int) -> Optional[int]:
     return None
 
 
+def _is_bare_redirection(token: str) -> bool:
+    return REDIRECTION_OPERATOR.fullmatch(token) is not None
+
+
+def _redirection_token_count(tokens: list[str], idx: int) -> int:
+    """Return how many tokens the redirection starting at `tokens[idx]` spans, or 0.
+
+    The target is attached (`2>/dev/null`, `<<EOF`, and `2>&1` once
+    `normalize_shell_tokens` has rejoined it) or the next token (`2> err`).
+    A bare operator with nothing after it spans only itself.
+    """
+    match = REDIRECTION_OPERATOR.match(tokens[idx])
+    if match is None:
+        return 0
+    if match.end() < len(tokens[idx]) or idx + 1 >= len(tokens):
+        return 1
+    return 2
+
+
+def _split_grouped_punctuation(token: str) -> list[str]:
+    if token in CONTROL_TOKENS or token in {"(", ")"} or not token or any(char not in "()|&;" for char in token):
+        return [token]
+    parts: list[str] = []
+    while token:
+        part = next(operator for operator in GROUPED_PUNCTUATION if token.startswith(operator))
+        parts.append(part)
+        token = token[len(part) :]
+    return parts
+
+
+def normalize_shell_tokens(tokens: list[str]) -> list[str]:
+    """Undo two shlex artifacts before segments are split.
+
+    shlex joins adjacent punctuation, so `(cd x); rm` yields `);`; split such
+    runs into shell operators. It also splits `2>&1`, `<&0`, `>|out`, and
+    `&>out` at `&` or `|`, which would end the command early and orphan its
+    later words; rejoin those redirections into one token.
+    """
+    split = [part for token in tokens for part in _split_grouped_punctuation(token)]
+    merged: list[str] = []
+    idx = 0
+    while idx < len(split):
+        token = split[idx]
+        following = split[idx + 1] if idx + 1 < len(split) else ""
+        target = split[idx + 2] if idx + 2 < len(split) else ""
+        joins_target = following == "&" or (following == "|" and token.endswith(">"))
+        if _is_bare_redirection(token) and token[-1] in "<>" and joins_target and target:
+            if target not in CONTROL_TOKENS and target not in {"(", ")"}:
+                merged.append(token + following + target)
+                idx += 3
+                continue
+        if token == "&" and following.startswith(">"):
+            merged.append(token + following)
+            idx += 2
+            continue
+        merged.append(token)
+        idx += 1
+    return merged
+
+
 def _tokenize_heredoc_prefix(line: str) -> list[str]:
     lexer = shlex.shlex(line, posix=True, punctuation_chars="()|&;")
     lexer.whitespace_split = True
     lexer.commenters = ""
-    return list(lexer)
+    return normalize_shell_tokens(list(lexer))
 
 
 def _tokens_for_heredoc_command(tokens: list[str]) -> list[str]:
-    start = 0
-    for idx, token in enumerate(tokens):
-        if token in CONTROL_TOKENS:
-            start = idx + 1
-
+    """Return the words of the last command in a heredoc prefix, without redirections."""
     command_tokens: list[str] = []
-    idx = start
+    idx = 0
     while idx < len(tokens):
-        token = tokens[idx]
-        if token in {"<", ">", ">>", "<>", ">|", "<&", ">&"}:
-            idx += 2
+        redirection_tokens = _redirection_token_count(tokens, idx)
+        if redirection_tokens:
+            idx += redirection_tokens
             continue
-        if re.match(r"^\d*(?:<<-?|<<<|<>|>>?|>\||<&|>&)", token):
-            idx += 1
-            continue
-        command_tokens.append(token)
+        if tokens[idx] in CONTROL_TOKENS:
+            command_tokens = []
+        else:
+            command_tokens.append(tokens[idx])
         idx += 1
 
     return command_tokens

@@ -29,6 +29,7 @@ from .syntax import (
     _shell_invocation_reads_stdin,
     _tokenize_heredoc_prefix,
     _tokens_for_heredoc_command,
+    normalize_shell_tokens,
     read_backtick_substitution,
     read_dollar_substitution,
 )
@@ -237,7 +238,7 @@ def tokenize(command: str) -> list[str]:
     lexer.commenters = ""
     return [
         ShellWord("time", shell_keyword_eligible=False) if token == NON_KEYWORD_TIME_SENTINEL else token
-        for token in lexer
+        for token in normalize_shell_tokens(list(lexer))
     ]
 
 
