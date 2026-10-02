@@ -27,6 +27,7 @@ from .syntax import (
     SHELL_OPTIONS_WITH_VALUE,
     _basename,
     _is_assignment,
+    _redirection_token_count,
     _shell_has_c_option,
 )
 
@@ -463,6 +464,14 @@ _WRAPPER_HANDLERS: dict[str, Callable[[_WrapperScan], None]] = {
 }
 
 
+def _skip_redirections(scan: _WrapperScan) -> None:
+    while scan.idx < len(scan.tokens):
+        redirection_tokens = _redirection_token_count(scan.tokens, scan.idx)
+        if not redirection_tokens:
+            return
+        scan.idx += redirection_tokens
+
+
 def normalize_command_prefix(
     tokens: list[str],
     inherited_environment: Optional[list[str]] = None,
@@ -484,12 +493,21 @@ def normalize_command_prefix(
     ):
         scan.idx += 1
 
+    # Redirections may precede or interleave with assignments before the command word.
     assignment_start = scan.idx
-    scan.idx = _consume_environment_assignments(scan.tokens, scan.idx, scan.environment)
+    while True:
+        before = scan.idx
+        _skip_redirections(scan)
+        scan.idx = _consume_environment_assignments(scan.tokens, scan.idx, scan.environment)
+        if scan.idx == before:
+            break
     if scan.idx != assignment_start:
         scan.shell_keywords_allowed = False
 
     while scan.idx < len(scan.tokens):
+        _skip_redirections(scan)
+        if scan.idx >= len(scan.tokens):
+            break
         handler = _WRAPPER_HANDLERS.get(_basename(scan.tokens[scan.idx]))
         if handler is None:
             break

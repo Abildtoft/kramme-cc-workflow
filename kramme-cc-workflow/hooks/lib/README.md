@@ -65,7 +65,7 @@ replaying the selection:
 | `git_args` | Ordered string array of Git arguments captured before `commit`, including repository selectors and other global options. `confirm-review-responses.sh` rejects dynamic selectors and replays only an allowlisted safe subset, such as `-C`, `--git-dir`, or `--work-tree`; config-bearing arguments are never replayed. Present on normal commit contexts. |
 | `git_env` | Ordered string array of replayable `GIT_*` assignments that select repository, index, object, namespace, or pathspec behavior. Present on normal commit contexts. |
 | `selection_mode` | Effective commit content selection: `index` when absent, otherwise `all`, `include`, or `only`. |
-| `pathspecs` | Ordered command-line pathspecs. Present with non-index selection, including an empty array when the mode itself selects content. |
+| `pathspecs` | Ordered command-line pathspecs, excluding shell redirections such as `2>&1` or `<<EOF`. Present with non-index selection, including an empty array when the mode itself selects content. |
 | `pathspec_from_file` | Optional path to a line- or NUL-delimited pathspec file. `-` and dynamically substituted paths are rejected. |
 | `pathspec_file_nul` | Boolean delimiter flag emitted with `pathspec_from_file`; defaults to `false`. |
 | `selection_error` | Modeled commit with content-selection arguments that cannot be replayed safely. The consuming hook blocks with this reason. |
