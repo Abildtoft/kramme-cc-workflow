@@ -228,13 +228,13 @@ SkillSpector scans complement tests, linting, and human review. Run them for new
 
 The GitHub Actions release workflow runs the full-tree static scan before creating a release branch or Pull Request. Release scan findings are advisory for now, but SkillSpector installation or execution errors fail the release workflow. The workflow uploads the full report as the `skillspector-release-report` artifact and includes a concise scan summary in the generated release Pull Request body.
 
-The Pull Request workflow runs a static SkillSpector scan for changed skill directories. Pull Requests with no changed skills exit successfully without running the scanner. Changed-skill scans are blocking: enforceable high and critical findings fail `Skill Lint / SkillSpector static skill scan` and should block merge. Repository branch protection should require that check on `main`; if GitHub lists only the job name, require `SkillSpector static skill scan`.
+The Pull Request workflow runs a static SkillSpector scan for changed skill directories and changed `shared/<topic>` resource directories. Pull Requests with no changed skills exit successfully without running the scanner. Changed-skill scans are blocking: enforceable high and critical findings fail `Skill Lint / SkillSpector static skill scan` and should block merge. Repository branch protection should require that check on `main`; if GitHub lists only the job name, require `SkillSpector static skill scan`.
 
 ```bash
 # Scan every plugin skill
 make -C kramme-cc-workflow skill-security
 
-# Scan only skill directories changed against BASE_REF, defaulting to origin/main
+# Scan only skill directories and shared resource topics changed against BASE_REF, defaulting to origin/main
 make -C kramme-cc-workflow skill-security-changed
 
 # Scan every plugin skill with SkillSpector semantic analysis enabled.

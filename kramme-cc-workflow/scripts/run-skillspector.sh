@@ -9,6 +9,7 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 source "$SCRIPT_DIR/lib/shell-helpers.sh"
 PLUGIN_ROOT=$(cd -- "$SCRIPT_DIR/.." && pwd -P)
 SKILLS_DIR="$PLUGIN_ROOT/skills"
+SHARED_DIR="$PLUGIN_ROOT/shared"
 
 MODE=""
 BASE_REF="${BASE_REF:-origin/main}"
@@ -25,8 +26,8 @@ usage() {
 Usage: run-skillspector.sh (--all|--changed) [options]
 
 Options:
-  --all                         Scan every skill directory.
-  --changed                     Scan skill directories changed against the base ref.
+  --all                         Scan every skill directory and shared resource topic.
+  --changed                     Scan skill directories and shared resource topics changed against the base ref.
   --base <ref>                  Base ref for --changed (default: ${BASE_REF:-origin/main}).
   --format <format>             Primary report format: markdown, json, sarif, or terminal (default: json).
   --output-dir <dir>            Report directory (default: $RUNNER_TEMP/skillspector or .context/skillspector).
@@ -168,27 +169,40 @@ relative_plugin_path() {
   fi
 }
 
-append_unique_skill_dir() {
-  local skill_dir="$1"
+append_unique_scan_dir() {
+  local scan_dir="$1"
   local existing
 
-  if [ ! -f "$skill_dir/SKILL.md" ]; then
+  if [ ! -d "$scan_dir" ]; then
     return
   fi
   for existing in "${SKILL_DIRS[@]:-}"; do
-    if [ "$existing" = "$skill_dir" ]; then
+    if [ "$existing" = "$scan_dir" ]; then
       return
     fi
   done
-  SKILL_DIRS+=("$skill_dir")
+  SKILL_DIRS+=("$scan_dir")
+}
+
+append_unique_skill_dir() {
+  if [ -f "$1/SKILL.md" ]; then
+    append_unique_scan_dir "$1"
+  fi
 }
 
 discover_all_skills() {
   local skill_md
+  local shared_topic
   SKILL_DIRS=()
   while IFS= read -r skill_md; do
     append_unique_skill_dir "$(dirname -- "$skill_md")"
   done < <(find "$SKILLS_DIR" -mindepth 2 -maxdepth 2 -name SKILL.md -type f | sort)
+  # Shared references and assets are skill instructions too, scanned per topic.
+  if [ -d "$SHARED_DIR" ]; then
+    while IFS= read -r shared_topic; do
+      append_unique_scan_dir "$shared_topic"
+    done < <(find "$SHARED_DIR" -mindepth 1 -maxdepth 1 -type d | sort)
+  fi
 }
 
 discover_changed_skills() {
@@ -196,6 +210,7 @@ discover_changed_skills() {
   local merge_base
   local plugin_rel
   local skills_prefix
+  local shared_prefix
   local rest
   local skill_name
 
@@ -208,8 +223,10 @@ discover_changed_skills() {
   plugin_rel=$(relative_plugin_path)
   if [ -n "$plugin_rel" ]; then
     skills_prefix="$plugin_rel/skills/"
+    shared_prefix="$plugin_rel/shared/"
   else
     skills_prefix="skills/"
+    shared_prefix="shared/"
   fi
 
   while IFS= read -r changed_path; do
@@ -218,6 +235,10 @@ discover_changed_skills() {
         rest=${changed_path#"$skills_prefix"}
         skill_name=${rest%%/*}
         append_unique_skill_dir "$SKILLS_DIR/$skill_name"
+        ;;
+      "$shared_prefix"*/*)
+        rest=${changed_path#"$shared_prefix"}
+        append_unique_scan_dir "$SHARED_DIR/${rest%%/*}"
         ;;
     esac
   done < <(
@@ -232,6 +253,9 @@ report_stem_for_skill() {
   local skill_dir="$1"
   local skill_name
   skill_name=$(basename -- "$skill_dir")
+  if [ "$(dirname -- "$skill_dir")" = "$SHARED_DIR" ]; then
+    skill_name="shared_$skill_name"
+  fi
   printf '%s' "$skill_name" | tr -c 'A-Za-z0-9._-' '_'
 }
 

@@ -158,6 +158,27 @@ count_invocations() {
 	grep -q "kramme-cc-workflow/skills/kramme:two format=json" "$MOCK_SKILLSPECTOR_LOG"
 }
 
+@test "changed scan includes a changed shared resource topic" {
+	commit_file "kramme-cc-workflow/shared/visual/references/guide.md" "guide" "change shared resource"
+
+	run "$SCRIPT" --changed --base main --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 0 ]
+	[ "$(count_invocations)" = "1" ]
+	grep -q "kramme-cc-workflow/shared/visual format=json" "$MOCK_SKILLSPECTOR_LOG"
+	[ -f "$REPORT_DIR/shared_visual.json" ]
+}
+
+@test "all scan includes every shared resource topic" {
+	commit_file "kramme-cc-workflow/shared/visual/references/guide.md" "guide" "add shared resource"
+
+	run "$SCRIPT" --all --output-dir "$REPORT_DIR"
+
+	[ "$status" -eq 0 ]
+	[ "$(count_invocations)" = "3" ]
+	grep -q "kramme-cc-workflow/shared/visual format=json" "$MOCK_SKILLSPECTOR_LOG"
+}
+
 @test "all scan uses static-only mode by default" {
 	run "$SCRIPT" --all --output-dir "$REPORT_DIR"
 
