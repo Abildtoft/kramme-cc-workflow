@@ -37,7 +37,7 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "Linear issue to PR defaults remediation to three cycles and honors --cycles" {
+@test "Linear issue to PR defaults remediation to two cycles and honors --cycles" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
@@ -48,9 +48,9 @@
     grep -qF "always forwards an explicit remediation-cycle budget" "$parent"
     grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]" "$parent"
     grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} --requirements {issue-requirements}" "$parent"
-    grep -qF "Always pass \`--rounds {cycles}\`, which carries this workflow'"'"'s default budget of \`3\` unless \`--cycles\` overruled it" "$parent"
+    grep -qF "Always pass \`--rounds {cycles}\`, which carries this workflow'"'"'s default budget of \`2\` unless \`--cycles\` overruled it" "$parent"
     grep -qF "neither this workflow'"'"'s default remediation-cycle budget nor a \`--cycles\` override" "$shipping"
-    grep -qF "\`issue-to-pr\` instead always forwards a budget of three, which its own \`--cycles <1-5>\` flag overrules" "$readme"
+    grep -qF "\`issue-to-pr\` instead always forwards a budget of two, which its own \`--cycles <1-5>\` flag overrules" "$readme"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }

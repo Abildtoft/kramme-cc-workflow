@@ -212,7 +212,7 @@ class ArgumentTests(HelperCase):
             "continue_mode": False,
             "strict_review": False,
             "ship_mode": False,
-            "cycles": 3,
+            "cycles": 2,
             "cycles_explicit": False,
         }
         self.assertEqual({key: payload[key] for key in expected}, expected)
