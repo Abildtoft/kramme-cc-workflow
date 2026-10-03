@@ -40,13 +40,13 @@ Each helper call prints one JSON document; parse it as JSON and never `eval` or 
 Defaults:
 
 - `STRICT_REVIEW=false`: require no accepted unresolved Critical or Important findings. Report remaining manual or advisory findings.
-- `{cycles}` is `3` unless `--cycles` was supplied. This workflow always forwards an explicit remediation-cycle budget rather than letting `kramme:pr:review-convergence` apply its own higher default.
+- `{cycles}` is `2` unless `--cycles` was supplied. This workflow always forwards an explicit remediation-cycle budget rather than letting `kramme:pr:review-convergence` apply its own higher default.
 - `SHIP_MODE=false`: stop after clean review and final verification without rewriting history, pushing, or creating a Pull Request.
 - `CONTINUE_MODE=false`: require the ordinary clean-tree branch setup and start implementation from the delegated workflow's fresh preflight.
 
 `--strict` changes review disposition, not product authority. It does not permit inventing a missing requirement or bypassing a genuine manual blocker.
 
-`--cycles` overrules the default remediation-cycle budget in Step 3, either tightening it below `3` or raising it up to `5`. It changes only that budget: it is never forwarded to the shipping contract's post-CI validation-only pass, which always runs one read-only pass without a remediation budget, and a larger budget never permits shipping an unconverged branch.
+`--cycles` overrules the default remediation-cycle budget in Step 3, either tightening it to `1` or raising it up to `5`. It changes only that budget: it is never forwarded to the shipping contract's post-CI validation-only pass, which always runs one read-only pass without a remediation budget, and a larger budget never permits shipping an unconverged branch.
 
 `--continue` is explicit authorization to preserve and resume local work from an interrupted invocation. It does not accept arbitrary dirty state: Step 2 still requires the exact unpublished Linear branch, the issue already in the resolved target `started` status, no in-progress Git operation, a local change relative to the fetched base, and issue-related committed and dirty paths. It never authorizes a Linear transition, stashing, discarding, resetting, switching away from, or silently absorbing unrelated work.
 
@@ -150,7 +150,7 @@ Invoke `kramme:pr:review-convergence` with:
 --work-id {issue-id} --archive-key linear-issue-to-pr [--strict] --rounds {cycles} --requirements {issue-requirements}
 ```
 
-Append `--strict` only when `STRICT_REVIEW=true`. Always pass `--rounds {cycles}`, which carries this workflow's default budget of `3` unless `--cycles` overruled it. Keep the `--requirements` sentinel last. The delegated skill independently validates the prepared local branch, runs the gut check and applicable quality gates to one shared bounded convergence budget, owns every review-triggered edit and remediation commit, and runs fresh final verification.
+Append `--strict` only when `STRICT_REVIEW=true`. Always pass `--rounds {cycles}`, which carries this workflow's default budget of `2` unless `--cycles` overruled it. Keep the `--requirements` sentinel last. The delegated skill independently validates the prepared local branch, runs the gut check and applicable quality gates to one shared bounded convergence budget, owns every review-triggered edit and remediation commit, and runs fresh final verification.
 
 Continue only when its structured handoff proves all of the following:
 
