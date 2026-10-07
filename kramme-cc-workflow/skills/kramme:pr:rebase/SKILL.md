@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:rebase
-description: Rebase current branch onto latest main/master, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch or when delegated by kramme:pr:fix-ci with --force-push. Optionally delegates post-push CI stabilization to kramme:pr:fix-ci. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch.
+description: Rebase current branch onto its Pull Request target or configured workbench, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch or when delegated by kramme:pr:fix-ci with --force-push. Optionally delegates post-push CI stabilization to kramme:pr:fix-ci. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch.
 argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>]"
 disable-model-invocation: false
 user-invocable: true
@@ -17,7 +17,7 @@ Rebase the current branch onto the latest base branch and force push.
 
 ## Why rebase — dev branches are costs
 
-A feature branch is a cost that compounds every day it stays open. It drifts from the base branch, it accumulates irrelevant diff when other PRs land, and it forces every reviewer to re-learn a stale context. Rebasing is how you pay down that cost: the branch stays in sync with `main`, the diff stays scoped to the change, and the reviewer's mental model of the base is still valid when they open the PR. Merge commits defer the cost — they hide drift behind a merge marker instead of resolving it — which is why this skill rebases and force-pushes rather than merging `main` in. If the rebase fights you, that is evidence the branch is already too old: finish it or split it, don't patch it with more merges.
+A feature branch drifts from its base branch while it stays open, accumulating irrelevant diff as other PRs land. Rebasing keeps the branch in sync with its actual Pull Request target or configured workbench so the diff remains scoped to the change. Merge commits can hide that drift behind a merge marker, which is why this skill rebases and force-pushes rather than merging the base branch in. If the rebase fights you, finish or split the branch instead of patching it with more merges.
 
 ## Options
 
@@ -70,7 +70,7 @@ If both `--auto` and `--force-push` are present, `--auto` wins because it is the
 
 2. **Resolve base branch:**
 
-   Use the shared plugin script to resolve the base branch. It uses the same 3-tier strategy as the sibling review skills: explicit `--base`, PR target branch (via `gh`), then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode and fetches the resolved base, so fetch failures stop the workflow with the script's stderr message.
+   Use the shared plugin script to resolve the base branch. It uses the same order as the sibling review skills: explicit `--base`, PR target branch (via `gh`), repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode and fetches the resolved base, so fetch failures stop the workflow with the script's stderr message.
 
    ```bash
    RESOLVE_ARGS=(--strict)
@@ -94,7 +94,7 @@ If both `--auto` and `--force-push` are present, `--auto` wins because it is the
 
    > "You are on the base branch. Switch to a feature branch first."
 
-   Also stop if the current branch is `main`, `master`, or `develop` regardless of the resolved base; this skill never rewrites or force-pushes those branches.
+   Also stop if the current branch is `main`, `master`, `develop`, the repository's configured `kramme.baseBranch`, a valid Conductor default, the branch named by `origin/HEAD`, or another protected workbench/production branch named in repository instructions, regardless of the resolved base. This skill never rewrites or force-pushes those branches.
 
 ### Step 1.5: Stack Detection
 

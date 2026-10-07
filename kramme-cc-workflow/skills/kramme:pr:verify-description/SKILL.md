@@ -99,7 +99,7 @@ Classify each potential drift point against the rubric below. Severity drives th
 
    Capture the labeled values as immutable agent-tracked `{current-branch}` and `{current-head}`. Each later Bash block runs in a new shell, so later mutation guidance substitutes these validated literals rather than assuming the variables persist.
 
-3. Resolve the base branch with the shared plugin script. It uses the same 3-tier strategy: explicit `--base` override, PR target branch, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message instead of being silently swallowed:
+3. Resolve the base branch with the shared plugin script. It resolves in this order: explicit `--base` override, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message instead of being silently swallowed:
 
    ```bash
    RESOLVE_ARGS=(--strict)

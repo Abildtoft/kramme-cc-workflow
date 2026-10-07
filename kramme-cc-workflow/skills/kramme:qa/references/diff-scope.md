@@ -2,11 +2,11 @@
 
 Use this during `diff-aware` mode before filtering for UI-relevant files.
 
-Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
 ## Base And Changed Files
 
-If `--base <branch>` was provided, set `BASE_BRANCH_OVERRIDE` before running the shared script. Otherwise let the script resolve the PR target branch, then the remote default branch fallback chain. Do not duplicate the fallback logic in this skill.
+If `--base <branch>` was provided, set `BASE_BRANCH_OVERRIDE` before running the shared script. Otherwise let the script resolve the PR target branch, repository/Conductor base, then the remote default branch fallback chain. Do not duplicate the fallback logic in this skill.
 
 ```bash
 COLLECT_ARGS=(--strict)

@@ -6,7 +6,7 @@ Output markers and a short final check. Use the markers verbatim whenever the sk
 
 One marker per line, uppercase, no decoration.
 
-- **STACK DETECTED** — report the browser MCP, detected framework, and run mode. `STACK DETECTED: chrome-devtools + Angular 18, diff-aware mode against origin/main`.
+- **STACK DETECTED** — report the browser MCP, detected framework, and run mode. `STACK DETECTED: chrome-devtools + Angular 18, diff-aware mode against origin/<resolved-base>`.
 - **UNVERIFIED** — any claim about page behaviour not directly confirmed by a screenshot, console capture, or network response. `UNVERIFIED: the profile save button likely persists to /api/users — the 2xx was observed, but the list view was not re-fetched`.
 - **NOTICED BUT NOT TOUCHING** — issues outside the requested QA scope (wrong mode, outside the diff, different product area). `NOTICED BUT NOT TOUCHING: /admin/audit-log 500s but is outside the diff`.
 - **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — end-of-run summary. What the QA run covered, what it deliberately skipped, and risks the user should know about before shipping.

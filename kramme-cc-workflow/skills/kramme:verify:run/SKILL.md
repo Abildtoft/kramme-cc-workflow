@@ -66,7 +66,7 @@ Parse `$ARGUMENTS` for `--fast`, `--full`, and `--force`. Reject `--fast` combin
 
 For affected detection and format checks, determine the base branch:
 
-Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
 1. **Check the applicable project instruction files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalent) for a specified base branch. If one is specified, set `BASE_BRANCH_OVERRIDE` to that value.
 2. **Check `nx.json`** for `defaultBase` setting (Nx projects). If present and no project instruction already specified a base, set `BASE_BRANCH_OVERRIDE` to that value.

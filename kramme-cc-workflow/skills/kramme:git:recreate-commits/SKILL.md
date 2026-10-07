@@ -25,7 +25,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 - `--auto` — Skip the granularity question, automatically choose the best granularity based on diff size and complexity unless `--coarse` or `--granular` pins it, and authorize one backup-protected unstacked history rewrite. Unless `--no-push` is also set, it authorizes that branch's lease-protected force-push too. A stacked rewrite additionally requires `--authorize-history-rewrite`; `--auto` never authorizes stack-wide mutation by itself. Neither flag bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
 - `--coarse` — Force coarse decomposition: one commit per major grouping (typically 5–15 commits). Skips the granularity question but does not authorize the history rewrite or publication by itself. Combine it with `--auto` to retain all other auto-mode behavior while pinning coarse granularity. Do not combine it with `--granular`.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
-- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the skill tries to detect the base from an existing GitHub pull request, then from `origin/HEAD`, then from `origin/main` or `origin/master`.
+- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the shared resolver checks an existing GitHub Pull Request, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`, `origin/main`, or `origin/master`.
 - `--base-commit <oid>` — Pin diff and reset-point calculation to a caller-validated full commit OID while retaining the branch metadata from `--base`. Use this when a parent workflow must keep one base snapshot across multiple delegated skills.
 - `--after <commit>` — Only recreate commits after `<commit>`, keeping all earlier history intact. Accepts any valid git ref (SHA, short SHA, `HEAD~3`, etc.). The commit must exist and be an ancestor of `HEAD`. When set, the diff scope becomes `<commit>..HEAD` and the reset point becomes `<commit>` instead of the merge base.
 - `--backup-ref <branch>` — Use a caller-selected conservative recovery branch name. This requires backup mode and is primarily for parent workflows that need retry-safe per-input-tip backup names.
@@ -279,7 +279,7 @@ Never add AI attribution to any commit subject or body. Do not include generated
 
 Use these uppercase markers when reasoning about the recreation plan and reporting progress. One marker per line, no decoration:
 
-- **STACK DETECTED** — base branch and scope detected at the start of the run. `STACK DETECTED: origin/main, diff scope HEAD~12..HEAD, medium granularity selected`.
+- **STACK DETECTED** — base branch and scope detected at the start of the run. `STACK DETECTED: origin/<resolved-base>, diff scope HEAD~12..HEAD, medium granularity selected`.
 - **UNVERIFIED** — claims about the final state that haven't been confirmed by `git diff`. `UNVERIFIED: the test suite passes at each commit — only the final state was diffed`.
 - **NOTICED BUT NOT TOUCHING** — adjacent cleanups that could have slipped in but didn't. `NOTICED BUT NOT TOUCHING: a stale comment in an untouched file — outside the recreation scope`.
 - **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — required end-of-run summary (see Step 8).

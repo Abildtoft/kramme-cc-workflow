@@ -18,7 +18,7 @@ Before Step 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is prese
 
 ### 1. Resolve Base Branch
 
-Use the shared plugin script. It uses the same 3-tier strategy: explicit `--base`, PR target branch (via `gh`), then `origin/HEAD`/`origin/main`/`origin/master`. Invoke it with `--tolerate-fetch-failure` so a failed fetch falls back to the cached local `origin/<base>` ref with a warning instead of stopping (the script still errors when no cached ref exists):
+Use the shared plugin script. It resolves in this order: explicit `--base`, PR target branch (via `gh`), repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. Invoke it with `--tolerate-fetch-failure` so a failed fetch falls back to the cached local `origin/<base>` ref with a warning instead of stopping (the script still errors when no cached ref exists):
 
 ```bash
 RESOLVE_ARGS=(--tolerate-fetch-failure)

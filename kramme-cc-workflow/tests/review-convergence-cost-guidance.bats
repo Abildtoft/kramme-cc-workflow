@@ -31,6 +31,13 @@ PY
 	}
 }
 
+@test "PR refactor scan preserves explicit local tags and commits" {
+	require_phrases "$REFACTOR" \
+		'BASE_REF=$(git rev-parse --verify --quiet --end-of-options "${BASE_ARG}^{commit}")' \
+		'MERGE_BASE=$(git merge-base "$BASE_REF" HEAD)' \
+		'For a same-repo PR, pass its base branch through'
+}
+
 @test "convergence loop batches findings, verifies with delta rounds, and closes on a full pass" {
 	require_phrases "$POLICY" \
 		"do not remediate between gates" \

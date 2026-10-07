@@ -45,9 +45,9 @@ Before proceeding with the workflow, check if the user provided additional instr
 
 1. **Resolve base branch:**
 
-   Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+   Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
-   Use the shared plugin script. The `--base=<branch>` option sets `BASE_BRANCH_OVERRIDE`; otherwise let the script resolve the PR target branch and remote default fallback chain.
+   Use the shared plugin script. The `--base=<branch>` option sets `BASE_BRANCH_OVERRIDE`; otherwise let the script resolve the PR target branch, repository/Conductor configuration, and remote default fallback chain.
 
    ```bash
    RESOLVE_ARGS=(--strict)
@@ -80,6 +80,8 @@ Before proceeding with the workflow, check if the user provided additional instr
      exit 1
    fi
    ```
+
+   Also stop when the current branch is `main`, `master`, the repository's configured `kramme.baseBranch`, a valid Conductor default, the branch named by `origin/HEAD`, or another protected workbench/production branch named in repository instructions, even if an explicit `--base` points elsewhere. A production branch must not become a rewriteable feature branch just because the chosen workbench is `development`.
 
    Check whether the upstream tracking branch has commits that are not in local `HEAD`:
 
@@ -372,7 +374,7 @@ If the rebase fails mid-way due to conflicts:
 
 ## Notes
 
-- Base branch is resolved by the shared script from `--base=<branch>`, PR target branch metadata, then the remote default fallback chain
+- Base branch is resolved by the shared script from `--base=<branch>`, PR target branch metadata, repository/Conductor configuration, then the remote default fallback chain
 - If base resolution fails, use `--base=<branch>` to specify explicitly
 - Handles modified, deleted, and renamed files; untracked (new) files are surfaced as orphans, not fixed up
 - Staged changes prompt for handling before proceeding (included automatically under `--no-confirm`)

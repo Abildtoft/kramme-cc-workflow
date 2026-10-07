@@ -191,6 +191,22 @@ PY
   [ "$status" -eq 0 ]
 }
 
+@test "guided walkthrough keeps explicit local refs and names automatic base correctly" {
+  run python3 - "$SKILL" "$ROOT/skills/kramme:qa/references/addy-conventions.md" "$ROOT/skills/kramme:git:recreate-commits/SKILL.md" <<'PY'
+import pathlib
+import sys
+
+walkthrough, qa, recreate = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+assert 'BASE_REF=$(git rev-parse --verify --quiet --end-of-options "${BASE_ARG}^{commit}")' in walkthrough
+assert 'It overrides the PR target and accepts a local branch, tag, or commit.' in walkthrough
+assert 'Pull Request target when present, otherwise the configured workbench or remote default' in walkthrough
+assert 'origin/<resolved-base>' in qa
+assert 'origin/<resolved-base>' in recreate
+PY
+
+  [ "$status" -eq 0 ]
+}
+
 @test "PR walkthrough validator rejects unsafe URL schemes" {
   if ! command -v python3 >/dev/null 2>&1; then
     skip "python3 is required for PR walkthrough tests"

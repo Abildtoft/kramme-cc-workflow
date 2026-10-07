@@ -17,7 +17,7 @@
 
 **Effort:** Quick
 
-- [ ] Create migration branch: `git checkout -b migrate/{framework}-{target}`
+- [ ] Resolve the repository workbench and create migration branch `migrate/{framework}-{target}` from its fetched base ref; record the selected base branch and commit.
 - [ ] Run dependency audit (`/kramme:deps:audit` if available)
 - [ ] Capture test baseline: run full suite, record pass/fail counts
 - [ ] Document starting state

@@ -9,7 +9,7 @@ setup() {
 	WORK="$TMP_DIR/work"
 	BIN_DIR="$TMP_DIR/bin"
 	mkdir -p "$BIN_DIR"
-	write_failing_gh
+	write_no_pr_gh
 	export PATH="$BIN_DIR:$PATH"
 
 	init_test_git_repo "$WORK" --origin "$ORIGIN"
@@ -24,9 +24,10 @@ teardown() {
 	fi
 }
 
-write_failing_gh() {
+write_no_pr_gh() {
 	cat >"$BIN_DIR/gh" <<'GH'
 #!/bin/sh
+echo "no pull requests found for branch \"$(git branch --show-current)\"" >&2
 exit 1
 GH
 	chmod +x "$BIN_DIR/gh"
@@ -81,6 +82,27 @@ GH
 
 	[ "$status" -eq 0 ]
 	[ "$output" = $'committed.txt\nstaged.txt\ntracked.txt\nuntracked.txt' ]
+}
+
+@test "collect-review-diff excludes development trunk commits when production main is remote default" {
+	git switch -q -c development main
+	printf 'trunk\n' > development.txt
+	git add development.txt
+	git commit -qm 'Add development work'
+	git push -q origin development
+	git switch -q feature
+	git merge -q --ff-only development
+	printf 'feature\n' > feature.txt
+	git add feature.txt
+	git commit -qm 'Add feature work'
+	git config --local kramme.baseBranch development
+
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/collect-review-diff.sh"
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_BRANCH" = development ]
+	[ "$CHANGED_FILES" = feature.txt ]
 }
 
 @test "collect-review-diff keeps a caller-pinned base without refetching" {

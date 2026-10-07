@@ -1466,13 +1466,14 @@ EOF
 
   [[ "$skill_text" == *'neither `REBASE_MODE` nor `AUTO_MODE` has already decided, use `AskUserQuestion`'* ]]
   [[ "$skill_text" == *'**Rebase then fix CI (Recommended)**'* ]]
-  [[ "$skill_text" == *'Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism.'* ]]
+  [[ "$skill_text" == *'Require success and the same `BASE` recorded in Step 2'* ]]
+  [[ "$skill_text" == *'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism'* ]]
   [[ "$skill_text" == *'**Skip rebase and fix CI**'* ]]
   [[ "$skill_text" == *'do not watch the stale remote branch or silently choose the skip path'* ]]
   [[ "$skill_text" == *'Do not run `git rebase` or force-push inline from this skill'* ]]
 
   choice_line="$(grep -nF 'use `AskUserQuestion` and present exactly these choices:' <<<"$skill_text" | cut -d: -f1)"
-  delegate_line="$(grep -nF 'Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism.' <<<"$skill_text" | cut -d: -f1)"
+  delegate_line="$(grep -nF 'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism' <<<"$skill_text" | cut -d: -f1)"
   resume_line="$(grep -nF 'return to Step 1 with the original parsed `fix-ci` modes still active' <<<"$skill_text" | cut -d: -f1)"
   skip_line="$(grep -nF '**Skip rebase and fix CI**' <<<"$skill_text" | cut -d: -f1)"
   watch_line="$(grep -nF '### Step 3: Check CI status first' <<<"$skill_text" | cut -d: -f1)"
@@ -1502,7 +1503,7 @@ EOF
 
   rebase_line="$(grep -nF 'When `PLAN_SCOPE_ACTIVE=false` and `REBASE_MODE=true`, the user already chose: take choice 1 below' <<<"$skill_text" | cut -d: -f1)"
   choice_line="$(grep -nF 'use `AskUserQuestion` and present exactly these choices:' <<<"$skill_text" | cut -d: -f1)"
-  delegate_line="$(grep -nF 'Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism.' <<<"$skill_text" | cut -d: -f1)"
+  delegate_line="$(grep -nF 'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism' <<<"$skill_text" | cut -d: -f1)"
 
   auto_line="$(grep -nF '`AUTO_MODE=true`, decide from that inspection instead of asking' <<<"$skill_text" | cut -d: -f1)"
   [[ "$skill_text" == *'take choice 2 when the base movement clearly cannot affect CI for this Pull Request'* ]]
@@ -1552,7 +1553,7 @@ EOF
   [[ "$scoped_plan_text" == *'In initial lifecycle mode, immediately after every proven push use the atomic archive update contract above to replace only the archived workflow-state checkpoint head/tree'* ]]
   [[ "$scoped_plan_text" == *'never adding an execution result'* ]]
   [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=false` and neither `REBASE_MODE` nor `AUTO_MODE` has already decided, use `AskUserQuestion` and present exactly these choices:'* ]]
-  [[ "$skill_text" == *'Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism.'* ]]
+  [[ "$skill_text" == *'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism'* ]]
   [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` or changing history'* ]]
   [[ "$skill_text" == *'require a refreshed or explicitly re-authorized scoped plan before continuing'* ]]
 }

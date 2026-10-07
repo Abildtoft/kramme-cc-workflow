@@ -41,7 +41,7 @@ The order is load-bearing: establish the branch's actual problem and causal sign
 
 ### 1. Resolve the Branch Scope
 
-Use the shared plugin script to resolve the base branch and build the unified change scope: committed branch changes plus staged, unstaged, and untracked paths. The base priority is explicit `--base`, Pull Request target branch, then `origin/HEAD`, `origin/main`, or `origin/master`. Run in strict mode so a fetch or base-resolution failure stops the workflow instead of producing a partial diagnosis.
+Use the shared plugin script to resolve the base branch and build the unified change scope: committed branch changes plus staged, unstaged, and untracked paths. The base priority is explicit `--base`, Pull Request target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`, `origin/main`, or `origin/master`. Run in strict mode so a fetch or base-resolution failure stops the workflow instead of producing a partial diagnosis.
 
 ```bash
 [ -x "${CLAUDE_PLUGIN_ROOT:-}/scripts/collect-review-diff.sh" ] || {

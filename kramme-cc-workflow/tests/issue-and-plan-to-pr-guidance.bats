@@ -426,7 +426,7 @@
     grep -qF "Do not consume a cycle or restart applicability." "$review"
     grep -qF ".context/{archive-key}/reviews/" "$review"
 
-	    grep -qF "kramme:pr:create --auto --require-generated-description --authorize-history-rewrite" "$shipping"
+	    grep -qF "kramme:pr:create --auto --base {base-branch} --require-generated-description --authorize-history-rewrite" "$shipping"
 	    grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
 	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$skill")" -eq 3 ]
 	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$shipping")" -eq 2 ]
