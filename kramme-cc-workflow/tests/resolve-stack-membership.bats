@@ -312,7 +312,7 @@ load_assignments() {
 	local strategies="$REPO_ROOT/skills/kramme:pr:plan-split/references/strategies.md"
 
 	grep -F 'git check-ref-format --branch "$branch"' "$stack_skill"
-	grep -F 'gh stack init "${STACK_BRANCHES[@]}"' "$stack_skill"
+	grep -F 'gh stack init --base "$BASE_BRANCH" "${STACK_BRANCHES[@]}"' "$stack_skill"
 	grep -F 'gh stack link "${STACK_ITEMS[@]}"' "$stack_skill"
 	grep -F 'gh stack init --base "$BASE_BRANCH" stack-1-schema' "$strategies"
 	grep -F 'git checkout "$REFERENCE_BRANCH" -- db/migrations/' "$strategies"

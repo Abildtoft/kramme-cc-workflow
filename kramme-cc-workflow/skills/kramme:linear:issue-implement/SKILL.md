@@ -151,7 +151,7 @@ Complete it here, before branch setup, so a declined confirmation or failed writ
 
 Complete this step before any other step, so issue parsing, planning, and every edit happen on the issue branch. Only the Step 1.4 status transition may precede it, and only because it touches Linear rather than the repository; a declined or failed transition stops the run before this step rather than creating a branch.
 
-Read `references/branch-setup.md` and follow it completely: extract or generate `branchName`, handle dirty-worktree state, create or switch to the branch, verify `git branch --show-current` matches, and display the branch confirmation. Only after this confirmation may you proceed to Step 3.
+Read `references/branch-setup.md` and follow it completely: extract or generate `branchName`, handle dirty-worktree state, resolve the base with `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`, create or switch to the branch, verify `git branch --show-current` matches, and display the branch confirmation. Only after this confirmation may you proceed to Step 3.
 
 ---
 

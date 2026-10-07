@@ -366,6 +366,17 @@ def require_absent_remote_branch(root: Path, branch: str, object_id: re.Pattern[
 
 
 def resolve_base(root: Path) -> str:
+    configured = git(root, "config", "--local", "--get", "kramme.baseBranch", reason="base_unresolved", ok=(0, 1))
+    if configured.returncode == 0:
+        base = decode(configured.stdout, "base_unresolved").strip()
+        if not base:
+            raise Stop("base_unresolved", "kramme.baseBranch is empty.")
+        git(root, "check-ref-format", "--branch", base, reason="base_unresolved")
+        return base
+    conductor_base = os.environ.get("CONDUCTOR_DEFAULT_BRANCH", "")
+    if conductor_base and git(root, "check-ref-format", "--branch", conductor_base, ok=(0, 1)).returncode == 0:
+        if git(root, "show-ref", "--verify", "--quiet", f"{ORIGIN_PREFIX}{conductor_base}", ok=(0, 1)).returncode == 0:
+            return conductor_base
     symbolic = git(root, "symbolic-ref", "--quiet", "refs/remotes/origin/HEAD", reason="base_unresolved", ok=(0, 1))
     if symbolic.returncode == 0:
         target = decode(symbolic.stdout, "base_unresolved").strip()
@@ -378,7 +389,7 @@ def resolve_base(root: Path) -> str:
         verified = git(root, "rev-parse", "--quiet", "--verify", f"{ORIGIN_PREFIX}{candidate}^{{commit}}", ok=(0, 1))
         if verified.returncode == 0:
             return candidate
-    raise Stop("base_unresolved", "refs/remotes/origin/HEAD is unset and neither origin/main nor origin/master exists.")
+    raise Stop("base_unresolved", "No configured, Conductor, or remote default base branch is available.")
 
 
 def prove_continuation(root: Path, captured: JsonDict, object_id: re.Pattern[str]) -> JsonDict:

@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:stack
 description: Create and manage GitHub stacked PRs with gh-stack v0.1.0 or newer. Build an ordered chain of dependent branches, submit chained draft PRs, make mid-stack edits safely, merge or sync stacks, and adopt existing branch chains. Use when a change should land as a sequence of small dependent PRs instead of one large PR. Requires a repository with stacked PRs enabled (private preview); degrades to a manual chain otherwise.
-argument-hint: "[init <branches...> | submit | sync | merge <pr-number> | adopt <branches...> | status]"
+argument-hint: "[init [--base <trunk>] <branches...> | submit | sync | merge <pr-number> | adopt [--base <trunk>] <branches...> | status]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -13,8 +13,8 @@ user-invocable: true
 Manage a **stack**: an ordered chain of branches where each branch builds on the one below it and each maps to one PR whose base is the branch below. Reviewers see only the diff for that layer; GitHub tracks the chain server-side, evaluates CI and branch protection against the stack base, and lands cascading merges bottom-up.
 
 ```
-main (trunk)
- └── auth-layer     → PR #1 (base: main)
+<resolved trunk>
+ └── auth-layer     → PR #1 (base: <resolved trunk>)
   └── api-endpoints → PR #2 (base: auth-layer)
    └── frontend     → PR #3 (base: api-endpoints)
 ```
@@ -39,9 +39,10 @@ Read `references/cli-agent-rules.md` before running any `gh stack` command — e
 Treat every user-supplied branch, PR number, and PR URL as data:
 
 - Parse argument tokens directly into `STACK_BRANCHES` or `STACK_ITEMS` arrays. Never build a command string, use `eval`/`sh -c`, or re-split a joined string.
+- For `init` or local `adopt`, accept at most one `--base <trunk>` before collecting branch operands. Reject a missing value or a use of `--base` with another action. Validate it with `git check-ref-format --branch`, store it as `BASE_BRANCH_OVERRIDE`, and pass it to the shared base resolver; it is a trunk choice, not a stack layer.
 - Before passing a branch to `init`, `add`, or `checkout`, require `git check-ref-format --branch "$branch"` to succeed.
 - Before passing an item to `link` or remote `checkout`, accept only a valid branch, a positive integer PR/stack number, or a current-repository PR URL matching `https://github.com/<owner>/<repo>/pull/<positive-integer>`.
-- Invoke commands with quoted array expansion: `gh stack init "${STACK_BRANCHES[@]}"` and `gh stack link "${STACK_ITEMS[@]}"`.
+- Invoke commands with quoted array expansion: `gh stack init --base "$BASE_BRANCH" "${STACK_BRANCHES[@]}"` after validating the trunk, and `gh stack link "${STACK_ITEMS[@]}"`.
 
 If an operand fails validation, stop and name it. Do not “repair” or normalize user input.
 
@@ -88,12 +89,18 @@ The minimum supported extension version is v0.1.0. Older versions have known uns
 ## Create a new stack
 
 1. Plan layers by dependency order **before** creating branches: foundational changes (schema, models, shared utilities) in lower branches; consumers (API, UI, integration tests) above. Each branch is one reviewable concern. Keep a stack to roughly four or five PRs; anything deeper needs explicit coordination (named chain positions, one reviewer, an agreed merge cadence).
-2. Initialize with explicit branch names (never bare — that prompts):
+2. Resolve the new stack's trunk with `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh --strict --workbench --format json` from the user's repository, passing `--base "$BASE_BRANCH_OVERRIDE"` when supplied. `--workbench` skips any Pull Request target on the entry branch because this is a new stack. Parse its `base_branch` JSON field as `BASE_BRANCH`, validate it with `git check-ref-format --branch`, then initialize with explicit branch names and that branch (never bare — that prompts):
 
    ```bash
-   gh stack init first-layer                # trunk defaults to the repo default branch
-   gh stack init --base develop first-layer # explicit trunk
+   RESOLVE_ARGS=(--strict --workbench --format json)
+   [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+   RESOLVED_JSON=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || exit 1
+   BASE_BRANCH=$(printf '%s' "$RESOLVED_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["base_branch"])') || exit 1
+   git check-ref-format --branch "$BASE_BRANCH" > /dev/null || exit 1
+   gh stack init --base "$BASE_BRANCH" first-layer
    ```
+
+   This preserves a `main` workbench in repositories that release from tags and selects a configured `development` workbench when production `main` is the remote default. If the repository's workbench cannot be determined, stop for an explicit base rather than guessing from branch names. Carry the same `BASE_BRANCH` into a manual-chain fallback for the bottom Pull Request.
 
 3. Work bottom-up. On each branch, stage deliberately with plain `git add <files>` / `git commit`, then create the next layer:
 
@@ -157,15 +164,16 @@ gh stack push
 **Restructure (reorder / drop / rename branches):** never `gh stack modify` (TUI-only). Tear down and rebuild — PRs and branches survive:
 
 ```bash
+gh stack view --json # record and validate the existing trunk before unstacking
 gh stack unstack
 # rename/reorder with plain git as needed
-gh stack init <branches bottom-to-top>
+gh stack init --base <recorded-trunk> <branches bottom-to-top>
 gh stack submit --auto
 ```
 
 ## Adopt an existing chain
 
-- **Local ordered branches** (e.g. built from a plan-split Stack plan): validate every member with `git check-ref-format --branch`, store them in `STACK_BRANCHES`, then run `gh stack init "${STACK_BRANCHES[@]}"` (bottom to top — existing branches are adopted), followed by `gh stack submit --auto`.
+- **Local ordered branches** (e.g. built from a plan-split Stack plan): validate every member with `git check-ref-format --branch`, store them in `STACK_BRANCHES`, resolve `BASE_BRANCH` through the Create step's `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh` JSON procedure (including `BASE_BRANCH_OVERRIDE` when supplied), then run `gh stack init --base "$BASE_BRANCH" "${STACK_BRANCHES[@]}"` (bottom to top — existing branches are adopted), followed by `gh stack submit --auto`. Stop if the resolved trunk is unclear or conflicts with the chain's known parent.
 - **PRs or branches already on GitHub, or branches managed by external tools** (jj, Sapling, git-town, worktree chains): validate each branch/PR operand from Step 0, store them in `STACK_ITEMS`, then run `gh stack link "${STACK_ITEMS[@]}"` bottom to top. It pushes branches, creates missing PRs with correct chained bases, repairs wrong bases, and links the stack — no local tracking required.
 
 ## Status report

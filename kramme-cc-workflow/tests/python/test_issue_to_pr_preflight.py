@@ -112,6 +112,7 @@ class HelperCase(unittest.TestCase):
             "GIT_CONFIG_GLOBAL": str(global_config),
             "GIT_CONFIG_NOSYSTEM": "1",
             "GIT_EDITOR": "true",
+            "CONDUCTOR_DEFAULT_BRANCH": "",
         }
         for patcher in (
             mock.patch.dict(os.environ, environment),
@@ -647,6 +648,23 @@ class ContinueBranchTests(RepoCase):
                 payload = self.check(self.continuation(repo))
                 self.assert_status(payload, "ok")
                 self.assertEqual(payload["base_branch"], expected)
+
+    def test_continuation_uses_conductor_workbench_before_production_main(self) -> None:
+        git(self.repo, "push", "-q", "origin", "main:development")
+        git(self.repo, "fetch", "-q", "origin")
+        os.environ["CONDUCTOR_DEFAULT_BRANCH"] = "development"
+        payload = self.check(self.continuation(self.repo))
+        self.assert_status(payload, "ok")
+        self.assertEqual(payload["base_branch"], "development")
+
+    def test_continuation_uses_repository_setting_before_conductor_workbench(self) -> None:
+        git(self.repo, "push", "-q", "origin", "main:development")
+        git(self.repo, "fetch", "-q", "origin")
+        git(self.repo, "config", "--local", "kramme.baseBranch", "development")
+        os.environ["CONDUCTOR_DEFAULT_BRANCH"] = "main"
+        payload = self.check(self.continuation(self.repo))
+        self.assert_status(payload, "ok")
+        self.assertEqual(payload["base_branch"], "development")
 
     def test_continuation_refuses_an_unresolvable_base(self) -> None:
         trunk = self.make_repo("trunk", "trunk")

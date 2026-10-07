@@ -55,16 +55,12 @@ options:
 **If branch doesn't exist locally or remotely:**
 
 ```bash
-# Determine base branch
-BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's|refs/remotes/origin/||' || true)
-[ -n "$BASE" ] || BASE="main"
-
-# Fetch latest
-git fetch origin $BASE
-
-# Create branch from latest base
-git checkout -b "{branchName}" "origin/$BASE"
+RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" --strict --workbench) || exit 1
+eval "$RESOLVED"
+git checkout -b "{branchName}" "$BASE_REF"
 ```
+
+`--workbench` skips an existing Pull Request target on the current branch because this is a new, independent issue branch. The shared resolver uses the repository's configured workbench when present, including `kramme.baseBranch` or Conductor's default branch, and otherwise uses the remote default. It fetches and validates the chosen ref. Never substitute `main` or `development` solely from its name.
 
 **If branch exists locally:**
 
