@@ -51,10 +51,10 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
       "rule_id": "TM1",
-      "reason": "Re-reviewed intentional TM1 finding for this user-triggered history-recreation skill: destructive reset requires a recovery ref plus repeated branch, tip, worktree, and reset-collision validation; --auto authorizes only one unstacked branch, while automatic stack-wide rewriting requires separate --authorize-history-rewrite approval and non-auto stack-wide rewriting requires distinct interactive confirmations that enumerate the frozen stack before local restacking and atomic publication; the final tree must match the original tip; and unstacked publication freezes one URL/ref/lease, rejects mismatched or base-branch targets and push-destination-only commits, disables tag following, and uses force-with-lease.",
+      "reason": "Re-reviewed on 2026-10-08 after workbench guidance edits: this user-triggered history-recreation skill creates a recovery ref before reset, revalidates branch, tip, worktree, and stack membership at the rewrite boundary, and requires the final tree to match the original tip. --auto authorizes only one unstacked branch; stack-wide rewriting requires separate authorization. Publication freezes one URL, ref, and exact lease, disables tag following, and rejects remote-only commits. The flagged reset and force-with-lease instructions remain guarded workflow operations.",
       "owner": "kramme",
       "accepted_at": "2026-08-03",
-      "review_after": "2026-10-04"
+      "review_after": "2026-11-08"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md",
@@ -99,18 +99,18 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
       "rule_id": "TM1",
-      "reason": "Re-reviewed intentional TM1 findings for this user-triggered fixup skill: --no-confirm and validation-skip flags require explicit user invocation, rewrites stay limited to branch-local commits, unattended mode aborts on merge commits, stale locks, validation failures, upstream divergence, and unsafe stack state, and publication remains a separate manual, collaborator-coordinated force-with-lease or stack push.",
+      "reason": "Re-reviewed on 2026-10-08 after workbench guidance edits: this user-triggered fixup skill limits rewrites to the current feature branch, requires explicit flags for unattended or validation-skip modes, and aborts unattended on upstream divergence, merge commits, validation failures, stale locks, or unsafe stack state. It does not publish automatically; collaborator-coordinated force-with-lease or stack publication remains a separate step. The flagged history operations retain those guards.",
       "owner": "kramme",
       "accepted_at": "2026-08-03",
-      "review_after": "2026-10-04"
+      "review_after": "2026-11-08"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:visual:generate-image/scripts/generate_image.py",
       "rule_id": "E2",
-      "reason": "Re-reviewed intentional GEMINI_API_KEY lookup for the image-generation skill. The script reads this single named environment variable only when --api-key is absent, never logs it, and passes it directly to the Gemini client.",
+      "reason": "Re-reviewed on 2026-10-08: the image-generation script reads only GEMINI_API_KEY when --api-key is absent, passes the resolved value to genai.Client, and does not print or otherwise serialize the key. The flagged environment lookup is the documented credential input, not an attempt to collect unrelated secrets.",
       "owner": "kramme",
       "accepted_at": "2026-08-02",
-      "review_after": "2026-10-04"
+      "review_after": "2026-11-08"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/rules.md",
