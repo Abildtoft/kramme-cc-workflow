@@ -1930,7 +1930,6 @@ EOF
     pr-generate-description-output-cleanliness \
     pr-generate-description-antipattern-examples \
     pr-generate-description-red-flag-examples \
-    pr-generate-description-visual-capture-safety \
     pr-generate-description-direct-update-safety \
     pr-generate-description-save-and-checklist-contract \
     pr-generate-description-direct-update-checklist \

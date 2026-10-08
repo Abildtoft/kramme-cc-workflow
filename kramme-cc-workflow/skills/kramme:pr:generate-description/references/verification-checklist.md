@@ -24,7 +24,7 @@ Run this before presenting copy-paste output, before `gh pr edit`, and before sa
 - [ ] Test Plan contains only reviewer/QA scenarios or manual validation notes. Automated testing instructions, command checklists, and missing test targets are omitted from the PR body.
 - [ ] Local setup or infrastructure failures such as missing `node_modules`, failed package installs, unavailable Postgres, absent Docker services, and port conflicts are omitted from the PR body; CI owns automated verification status.
 - [ ] Breaking changes section is present (`None` is a valid value after consideration).
-- [ ] Screenshots/Videos section is included - populated when `--visual` produced embeddable remote assets, local-only table when copy-paste output can reference captured files, placeholder when capture failed or direct-update mode only has local files.
+- [ ] Screenshots/Videos section is included as the documented placeholder.
 
 ## Boundary, tone, and operational hygiene
 

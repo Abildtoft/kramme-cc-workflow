@@ -221,37 +221,3 @@ dotnet ef migrations remove -c ConnectContext
 <!-- - Error states or edge cases -->
 <!-- - Mobile/responsive views -->
 ````
-
-## Example 3: Frontend Feature with Visual Capture (`--visual`)
-
-**Input:**
-
-- Branch: `mab/wan-600-add-dark-mode-toggle`
-- Changed files: `settings-toggle.component.tsx`, `theme.service.ts`, `theme.css`
-- Flag: `--visual`
-- Auto-detected dev server: `http://localhost:4200` (Angular, port from `angular.json`)
-- Browser automation: screenshot and recording provider detected
-
-**Generated Screenshots/Videos section:**
-
-```markdown
-## Screenshots / Videos
-
-### Settings Page — Dark Mode Toggle
-
-The new dark mode toggle switch in the settings panel. Toggling it switches the application theme between light and dark mode.
-
-![Dark mode toggle in settings panel](https://github.com/user-attachments/assets/abc123...)
-
-### Dashboard — Dark Mode Applied
-
-The dashboard with dark mode enabled, showing the updated color scheme across all card and navigation components.
-
-![Dashboard in dark mode](https://github.com/user-attachments/assets/def456...)
-
-### Theme Toggle Flow (Demo)
-
-Animated demo showing the toggle interaction and smooth theme transition.
-
-![Theme toggle interaction](https://github.com/user-attachments/assets/ghi789.gif)
-```
