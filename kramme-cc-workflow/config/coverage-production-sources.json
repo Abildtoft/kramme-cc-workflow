@@ -103,9 +103,6 @@
       "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py": [
         "kramme-cc-workflow/tests/pr-walkthrough.bats"
       ],
-      "kramme-cc-workflow/skills/kramme:pr:create/scripts/prepare-demo-attachments.py": [
-        "kramme-cc-workflow/tests/pr-create-guidance.bats"
-      ],
       "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-errors.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
@@ -120,9 +117,6 @@
       ],
       "kramme-cc-workflow/skills/kramme:session:search/scripts/session_common.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
-      ],
-      "kramme-cc-workflow/skills/kramme:visual:demo-reel/scripts/demo_reel_helper.py": [
-        "kramme-cc-workflow/tests/demo-reel-skill.bats"
       ]
     },
     "measured_floors": {
@@ -194,7 +188,6 @@
         "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/SKILL.md",
         "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:diagram/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:plan-review/SKILL.md",
@@ -279,11 +272,6 @@
       "skills": [
         "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/SKILL.md"
       ]
-    },
-    {
-      "kind": "guidance",
-      "suite": "kramme-cc-workflow/tests/demo-reel-skill.bats",
-      "skills": ["kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md"]
     },
     {
       "kind": "executable",

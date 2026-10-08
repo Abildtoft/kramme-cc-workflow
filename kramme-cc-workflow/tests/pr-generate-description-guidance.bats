@@ -18,22 +18,9 @@ load 'test_helper/common'
     test -f "$skill/references/anti-patterns.md"
     test -f "$skill/references/red-flags.md"
     test -f "$skill/references/direct-update.md"
-    test -f "$skill/references/visual-capture.md"
 
     ! grep -qF "find . .github docs -maxdepth 2" "$skill/references/context-gathering.md"
     grep -qF "github-pr-template-docs" "$skill/references/sources.yaml"
-    grep -qF -- "--for-pr-description --base-commit {MERGE_BASE} [--start-if-easy] [--url <url>] -- VISUAL_CAPTURE_TARGET" "$skill/references/visual-capture.md"
-    grep -qF "UI-facing changes are presumptively relevant visual evidence" "$skill/references/visual-capture.md"
-    grep -qF "A UI-facing diff always proceeds to the best-effort delegation" "$skill/references/visual-capture.md"
-    grep -qF "make a bounded best-effort startup attempt" "$skill/references/visual-capture.md"
-    grep -qF "owns any qualifying environment startup, readiness check, capture, and cleanup" "$skill/references/visual-capture.md"
-    grep -qF "Include \`--start-if-easy\` only when \`START_IF_EASY=true\` and the pinned diff is UI-facing" "$skill/references/visual-capture.md"
-    grep -qF "Reject \`START_IF_EASY=true\` unless \`PUBLISHING_PARENT=true\`" "$skill/SKILL.md"
-    grep -qF "PUBLISHING_PARENT=true" "$skill/SKILL.md"
-    grep -qF "Do not emit \`DEMO_EVIDENCE_MANIFEST:\` because no publishing parent is present" "$skill/references/visual-capture.md"
-    grep -qF "DEMO_EVIDENCE_MANIFEST:" "$skill/references/visual-capture.md"
-    grep -qF "Never place the marker or any local artifact path between the description delimiters" "$skill/references/visual-capture.md"
-    ! grep -qF "Drag and drop into the PR description on GitHub" "$skill/references/visual-capture.md"
     grep -qF "The \"no Linear ID\" condition is the only non-blocking \`MISSING REQUIREMENT:\` marker." "$skill/SKILL.md"
     grep -qF "Treat every other \`MISSING REQUIREMENT:\` marker" "$skill/SKILL.md"
     grep -qF "including future marker types not yet listed here" "$skill/SKILL.md"
@@ -78,7 +65,6 @@ load 'test_helper/common'
 		pr-generate-description-output-cleanliness \
 		pr-generate-description-antipattern-examples \
 		pr-generate-description-red-flag-examples \
-		pr-generate-description-visual-capture-safety \
 		pr-generate-description-direct-update-safety \
 		pr-generate-description-save-and-checklist-contract \
 		pr-generate-description-direct-update-checklist
@@ -386,4 +372,24 @@ PY
   '
 
 	[ "$status" -eq 0 ]
+}
+
+@test "PR creation and description generation no longer capture or attach visual evidence" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create"
+    generator="skills/kramme:pr:generate-description"
+
+    test ! -e "skills/kramme:visual:demo-reel"
+    test ! -e "$create/scripts/prepare-demo-attachments.py"
+    test ! -e "$generator/references/visual-capture.md"
+    if grep -rqF "kramme:visual:demo-reel" "$create" "$generator"; then exit 1; fi
+    if grep -rqE -- "--visual|--for-pr-create|--start-if-easy" "$create" "$generator"; then exit 1; fi
+    if grep -rqF -- "--attach" "$create"; then exit 1; fi
+    grep -qF "Include a placeholder section for visual aids" "$generator/SKILL.md"
+    grep -qF "Add screenshots or videos if applicable" "$create/references/confirmation-and-creation.md"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
