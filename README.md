@@ -536,19 +536,20 @@ Linear issue tracking integration.
 
 #### Visual
 
-Generate, inspect, and capture visual output, including self-contained HTML pages, UI checks, diagrams, and demo evidence.
+Generate and inspect visual output, including self-contained HTML pages, UI checks, and diagrams.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:visual:check-slop` | User | `<file-or-directory> [--fix]` | Runs a bundled deterministic 73-guard check over HTML screens, reports exact AI-style UI findings, and optionally applies safe idempotent fixes with --fix. Use before generated or hand-written HTML is shown, exported, shipped, or committed, or when asked to check a screen for visual slop. Not for broad UX, accessibility, product-value, or screenshot critique; use kramme:pr:ux-review or kramme:product:design-critic. |
 | `/kramme:visual:diagram` | User, Auto | `[topic or description]` | Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, flowchart, schema, or any visual explanation of technical concepts. Also use proactively when about to render a large ASCII table (4+ rows and 3+ columns) — present it as a styled HTML page instead. |
-| `/kramme:visual:demo-reel` | User, Auto | `[what to capture] [--url <url>\|auto] [--tier static\|before-after\|browser-reel\|terminal-recording]` | Capture local screenshots, before/after images, browser reels, terminal recordings, or short video proof when explicitly requested or delegated for PR evidence. For delegated UI capture, make a bounded attempt to start a straightforward safe local environment when needed. |
 | `/kramme:visual:plan-review` | User | `[plan-file-path] [codebase-path]` | Generate a visual HTML plan review comparing current codebase state vs. a proposed implementation plan, with architecture diagrams, blast radius analysis, and risk assessment |
 | `/kramme:visual:project-recap` | User | `[time-window: 2w\|30d\|3m]` | Generate a visual HTML project recap to rebuild mental model when returning to a project — architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots |
 | `/kramme:visual:generate-image` | User | `[prompt or editing instructions]` | Generate and edit images using Google's Gemini 3 Pro Image API. Use when the user asks to generate, create, edit, modify, change, alter, or update images. Also use when user references an existing image file and asks to modify it in any way (e.g., "modify this image", "change the background", "replace X with Y"). Supports both text-to-image generation and image-to-image editing with configurable resolution (1K default, 2K, or 4K for high resolution). DO NOT read the image file first - use this skill directly with the --input-image parameter. |
 | `/kramme:visual:onboarding` | User, Auto | `[focus-area or audience]` | Generate an interactive HTML onboarding guide for newcomers to a codebase — architecture overview, domain model, key flows, conventions, and getting-started walkthrough. |
 
 `/kramme:visual:generate-image` requires a Gemini API key: `export GEMINI_API_KEY="your-api-key-here"`. This works in both Claude Code and Codex; when running the script directly you can pass `--api-key` instead.
+
+Migration: `/kramme:visual:demo-reel` has been removed together with the Pull Request visual-evidence path it powered. `/kramme:pr:generate-description` no longer accepts `--visual`, and `/kramme:pr:create` no longer starts a local environment, captures screenshots or video, or attaches them; both leave the Screenshots/Videos placeholder for the author to fill in. Ask directly for a screenshot or recording when one is needed, or use `/kramme:browse` or `/kramme:qa` for browser evidence. No dedicated replacement preserves tiered capture, the secret preflight, or bounded environment startup. Earlier captures left under `.context/demo-reels/` remain eligible for `/kramme:workflow-artifacts:cleanup`.
 
 #### Discovery & Documentation
 
@@ -942,7 +943,6 @@ material and its skill-local notices.
 - `kramme:docs:solution-note` and `kramme:docs:solution-refresh`: Adapted from skills `ce-compound` and `ce-compound-refresh`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:docs:review`: Adapted from [ce-doc-review](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-doc-review).
 - `kramme:code:work-from-plan`: Adapted from [ce-work](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-work) and [ce-plan](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-plan) as a thin routing adapter, not a full autonomous execution pipeline.
-- `kramme:visual:demo-reel` and PR visual evidence delegation: Adapted from [ce-demo-reel](https://github.com/EveryInc/compound-engineering-plugin/tree/b6250490bec4c0488d68ad66d72bd99f6edb95fd/plugins/compound-engineering/skills/ce-demo-reel), reviewed at commit `b6250490bec4c0488d68ad66d72bd99f6edb95fd`.
 - Codex converter: Inspired by the plugin's converter approach.
 - External-source adaptation policy, copied-script attribution guardrails, and artifact-lifecycle prompts: Informed by [the repository at commit `6f9ab03a031c054a8046659926251fb6c149269f`](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f), including representative skills `ce-compound`, `ce-compound-refresh`, `ce-plan`, `ce-code-review`, and `ce-optimize`.
 - Shared dev-server detection scripts and browser-facing auto URL detection contract: Adapted from [ce-polish](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.

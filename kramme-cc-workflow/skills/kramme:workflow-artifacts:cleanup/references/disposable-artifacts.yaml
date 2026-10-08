@@ -396,7 +396,7 @@
       "producer": "kramme:code:deprecate"
     },
     {
-      "id": "demo-reels",
+      "id": "demo-reels-legacy",
       "path": ".context/demo-reels/",
       "type": "dir",
       "category": "working-dir",

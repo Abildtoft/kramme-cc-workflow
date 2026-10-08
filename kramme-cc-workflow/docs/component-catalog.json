@@ -523,11 +523,6 @@
       "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/SKILL.md"
     },
     {
-      "name": "kramme:visual:demo-reel",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:visual:demo-reel/SKILL.md"
-    },
-    {
       "name": "kramme:visual:diagram",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:visual:diagram/SKILL.md"

@@ -1,6 +1,6 @@
 # Shared Dev-server Detection
 
-These scripts provide one detection contract for browser-facing workflows. They are used when a skill receives `auto` or a visual-capture mode needs to discover a running local app. Explicit user-provided URLs and ports always win.
+These scripts provide one detection contract for browser-facing workflows. They are used when a skill receives `auto` and needs to discover a running local app. Explicit user-provided URLs and ports always win.
 
 ## Scripts
 

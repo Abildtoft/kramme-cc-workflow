@@ -1940,9 +1940,6 @@ EOF
     linear-issue-implement-display-template \
     linear-issue-implement-plan-template \
     linear-issue-implement-readme-note \
-    visual-demo-reel-guidance \
-    visual-demo-reel-capture-tiers \
-    visual-demo-reel-source-manifest \
     code-optimize-shell-permission \
     code-optimize-source-manifest \
     workflow-artifact-cleanup-names
