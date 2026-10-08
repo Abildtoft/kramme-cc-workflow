@@ -7,7 +7,6 @@ setup() {
 SKILL="skills/kramme:code:migrate/SKILL.md"
 GROUNDING="skills/kramme:code:migrate/references/source-grounding.md"
 SOURCES="skills/kramme:code:migrate/references/sources.yaml"
-CONTEXT_SETUP="skills/kramme:session:context-setup/SKILL.md"
 CODEMODS="skills/kramme:code:migrate/references/codemod-registry.md"
 
 @test "migration loads a self-contained source-grounding contract" {
@@ -15,9 +14,6 @@ CODEMODS="skills/kramme:code:migrate/references/codemod-registry.md"
   grep -qF 'Read and follow `references/source-grounding.md` now.' "$SKILL"
   grep -qF 'local source-grounding contract' "$SKILL"
   ! grep -qF 'kramme:code:source-driven' "$SKILL"
-  ! grep -qF 'kramme:code:source-driven' "$CONTEXT_SETUP"
-  grep -qF 'The active task workflow owns _how_ to validate external sources' "$CONTEXT_SETUP"
-  grep -qF '`kramme:code:migrate` loads its local source-grounding contract' "$CONTEXT_SETUP"
 }
 
 @test "migration grounding binds official authority to detected versions" {

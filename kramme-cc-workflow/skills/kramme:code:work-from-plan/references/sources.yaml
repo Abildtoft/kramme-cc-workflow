@@ -13,3 +13,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:16e4b8333e0db8dce5ce215d913075d7fb828a2820b1d544dc60e76e1c4e0ef9"
+  - id: addy-context-engineering
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/context-engineering/SKILL.md
+    title: "Addy Osmani agent-skills - context engineering"
+    rationale: "The shared implementation checklist and selective context loading retain ideas from this source in original local language. The review date and hash preserve the original review against upstream commit 5e262b20e0cd88dba39e558f42f5c0b6d766d4b4."
+    usage: inspiration
+    last_reviewed_at: 2026-06-10
+    baseline_hash: "sha256:ff9d4e5706bdd2eb7de1bfed569f1f42d28e478979ce6fcc32e617e7861b491d"

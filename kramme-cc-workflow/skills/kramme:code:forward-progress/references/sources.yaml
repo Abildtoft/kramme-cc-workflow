@@ -7,3 +7,10 @@ sources:
     last_reviewed_at: 2026-08-30
     baseline_commit: 91fa46a0108ecfc612a55cf587a2086621a31161
     baseline_hash: "sha256:411a6de1df78dc0bf27572ddd1f88aeca8b1da23537152316e7a581e5e9e5b67"
+  - id: addy-context-engineering
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/context-engineering/SKILL.md
+    title: "Addy Osmani agent-skills - context engineering"
+    rationale: "The context-recovery paragraph retains this source's idea of reloading governing requirements and rebuilding task state when assumptions drift, expressed in original local language and preserving validated work. The review date and hash preserve the original review against upstream commit 5e262b20e0cd88dba39e558f42f5c0b6d766d4b4."
+    usage: inspiration
+    last_reviewed_at: 2026-06-10
+    baseline_hash: "sha256:ff9d4e5706bdd2eb7de1bfed569f1f42d28e478979ce6fcc32e617e7861b491d"

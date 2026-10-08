@@ -279,6 +279,8 @@ They typically do NOT describe:
 
 Scale these steps to the issue. For a small, well-specified change, the closest existing pattern and its tests can be enough; dispatch the exploration subagent in step 3 when the change spans modules or the issue names no concrete area.
 
+Resolve `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/context-preparation.md` as `{context-preparation-reference}`, then read it for the preparation checklist. Reuse relevant context already loaded.
+
 1. **Use the reference map as research input:**
    - Incorporate accessible related issues and Linear documents into the feature description and implementation constraints
    - Treat inaccessible referenced documents/assets as explicit research gaps
@@ -291,7 +293,7 @@ Scale these steps to the issue. For a small, well-specified change, the closest 
 
 3. **Dispatch a codebase-exploration subagent** (or run the search directly if subagents are unavailable):
 
-   Ask it to find existing implementations related to {feature description from issue plus accessible reference context} and identify the relevant files, patterns, and conventions used in this codebase. In Claude Code this is the `Explore` agent via the Task tool.
+   Pass `{context-preparation-reference}` as a resolved path and include relevant context already loaded. Ask it to read that reference, find existing implementations related to {feature description from issue plus accessible reference context}, and identify the relevant files, patterns, and conventions used in this codebase. In Claude Code this is the `Explore` agent via the Task tool.
 
 4. **Identify key files and patterns:**
    - List files that will likely need modification

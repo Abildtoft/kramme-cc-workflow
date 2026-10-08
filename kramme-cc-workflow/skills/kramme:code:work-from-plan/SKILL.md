@@ -114,6 +114,8 @@ If any precondition fails, stop with `MISSING REQUIREMENT` and the smallest usef
 
 ## Step 5: Execute Direct Work
 
+Read `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/context-preparation.md` and apply its checklist using relevant context already loaded or provided by the caller.
+
 Read and follow `references/direct-execution.md`.
 
 During execution:
