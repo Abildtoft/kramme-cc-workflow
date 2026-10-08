@@ -58,6 +58,8 @@ When replay is required, rerun the smallest affected dependency cone. Do not rew
 
 A validated completion or implementation checkpoint is part of the forward point. Resume after it instead of repeating the implementation it already proves.
 
+When repeated incorrect file paths or API signatures, lost decisions, or a context reset make the next action uncertain, reload the current task requirements, applicable repository guidance, relevant source and types, and any validated checkpoint. Reconstruct the goal, constraints, completed work, and next action while preserving valid prior work and authorization boundaries. Lost conversational context alone does not invalidate completed work; check evidence against the current inputs before relying on it, and follow substantive recovery controls when uncertainty remains.
+
 ## Handle a Blocking Workflow Safely
 
 When an orchestrator appears to block only on advisory state:
