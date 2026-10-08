@@ -6,6 +6,7 @@
 # Reviewed upstream commit: 6f9ab03a031c054a8046659926251fb6c149269f
 # License: MIT; full notice at ../references/EveryInc-LICENSE
 set -euo pipefail
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 
 usage() {
   cat << 'USAGE'
@@ -76,21 +77,20 @@ branch_worktree_path() {
 }
 
 default_base_ref() {
-  local base=""
-  base=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@' || true)
-  if [ -n "$base" ] && git rev-parse --verify --quiet "origin/$base^{commit}" > /dev/null; then
-    echo "origin/$base"
-    return
+  local resolved
+  local config_status=0
+
+  git config --local --get kramme.baseBranch > /dev/null 2>&1 || config_status=$?
+  if [ "$config_status" -eq 1 ] \
+    && [ -z "${CONDUCTOR_DEFAULT_BRANCH:-}" ] \
+    && ! git remote get-url origin > /dev/null 2>&1; then
+    printf '%s\n' HEAD
+    return 0
   fi
-  if git rev-parse --verify --quiet "origin/main^{commit}" > /dev/null; then
-    echo "origin/main"
-    return
-  fi
-  if git rev-parse --verify --quiet "origin/master^{commit}" > /dev/null; then
-    echo "origin/master"
-    return
-  fi
-  echo "HEAD"
+
+  resolved=$("$SCRIPT_DIR/../../../scripts/resolve-base.sh" --tolerate-fetch-failure --workbench --base-only) || return 1
+  eval "$resolved"
+  printf '%s\n' "$BASE_REF"
 }
 
 list_worktrees() {
@@ -194,7 +194,7 @@ case "$action" in
       git worktree add "$path" "$branch"
     else
       if [ -z "$base" ]; then
-        base=$(default_base_ref)
+        base=$(default_base_ref) || exit 1
       fi
       if ! git rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
         echo "Base ref does not resolve to a commit: $base" >&2

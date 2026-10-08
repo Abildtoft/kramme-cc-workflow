@@ -11,14 +11,17 @@ Follow these conventions when creating commits. These cover branch commits only 
 
 ## Prerequisites
 
-Before committing, ensure you're working on a feature branch, not the main branch.
+Before committing, ensure you're working on a feature branch rather than a repository workbench or production branch. A workbench may be `main`, `development`, or another name; do not infer its role from the name alone.
 
 ```bash
-# Check current branch
-git branch --show-current
+CURRENT_BRANCH=$(git branch --show-current)
+CONFIGURED_BASE=$(git config --local --get kramme.baseBranch || true)
+CONDUCTOR_BASE=${CONDUCTOR_DEFAULT_BRANCH:-}
+REMOTE_DEFAULT=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null || true)
+REMOTE_DEFAULT=${REMOTE_DEFAULT#origin/}
 ```
 
-If you're on `main` or `master`, ask the user to create a new branch first.
+If `CURRENT_BRANCH` is empty, or equals `main`, `master`, `CONFIGURED_BASE`, `CONDUCTOR_BASE`, or `REMOTE_DEFAULT`, ask the user to create a feature branch first. Also honor any additional protected branches named in repository instructions. Empty optional values do not match a named current branch. This keeps a `main` workbench protected while also guarding a configured `development` workbench.
 
 ## Format
 
@@ -43,7 +46,7 @@ Before running `git commit`, confirm all five:
 - [ ] **Verified the change.** Tests, typecheck, or lint ran against the staged state; failures were resolved or are deliberately called out in the body.
 - [ ] **Subject under 72 characters.** Plain-English (unless the user explicitly asked for another format), imperative mood, no trailing period, no Conventional Commit prefix, and never a placeholder such as `WIP`, `temp`, `fixup`, or `misc`.
 - [ ] **Body explains the _why_** when non-obvious — motivation, previous behavior, constraint that forced the shape. Omit the body if the subject is self-explanatory.
-- [ ] **Repository left in a working state.** This commit should not break `main` if it were the tip.
+- [ ] **Repository left in a working state.** This commit should not break the target workbench branch if it were the tip.
 
 Two things need explicit user approval before `git commit`: passing `--no-verify` to get past failing hooks (fix the hook failure first) and amending a commit that has already been pushed to a shared branch.
 

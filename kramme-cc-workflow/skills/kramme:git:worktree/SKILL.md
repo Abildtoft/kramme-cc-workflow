@@ -33,6 +33,7 @@ Use this skill when a user asks to list git worktrees, create a separate checkou
    - The target path is intentional and not already populated.
    - The branch is not checked out in any existing worktree (the helper script enforces this).
    - The base ref resolves to a commit when provided.
+   - Without `--base`, the helper uses `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh --workbench --base-only --tolerate-fetch-failure` to select this repository's configured workbench. It ignores a Pull Request target and does not require ancestry with the entry branch because this is a new worktree. A cached selected remote ref remains usable when fetching fails. In a local repository with no origin or configured workbench, it starts from `HEAD`. It never treats the branch name `development` or `main` as proof of the trunk by itself.
    - The operation does not rename any existing branch.
 
 4. Before `remove`, verify:

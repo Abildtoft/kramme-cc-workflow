@@ -57,7 +57,7 @@ Parse `$ARGUMENTS` for `--auto` before Step 1.
 2. If `$ARGUMENTS` is a **directory**: discover source files without existing tests.
    - If every source file already has a matching test, stop and report that there is nothing to generate.
 3. If `$ARGUMENTS` is a **glob pattern**: expand and collect matching files.
-4. If `$ARGUMENTS` is **empty** and `AUTO_MODE=true`, auto-detect target files by selecting source files changed in the working tree relative to the base branch (`git diff`) that do not already have matching tests.
+4. If `$ARGUMENTS` is **empty** and `AUTO_MODE=true`, run `${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh --strict --format nul` and select source files from its unified changed-file set that do not already have matching tests. That collector uses `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`, so an existing PR target or this repository's configured workbench wins over the remote default. Stop if base resolution fails; never guess `main` or `development` from their names.
    - If no such files are found, abort with a clear message telling the user to provide a file path or directory.
 5. If `$ARGUMENTS` is **empty** and `AUTO_MODE` is false, ask the user:
 

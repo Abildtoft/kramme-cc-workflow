@@ -41,6 +41,93 @@ assert_worktree_not_registered() {
 	grep -Fqx base "$CHILD/README.md"
 }
 
+@test "new worktree starts from this repository's configured development workbench" {
+	ORIGIN="$TMP_DIR/origin.git"
+	git init -q --bare "$ORIGIN"
+	git remote add origin "$ORIGIN"
+	git push -q origin main
+	git switch -q -c development main
+	printf 'development\n' > development.txt
+	git add development.txt
+	git commit -qm 'Add development change'
+	git push -q origin development
+	git switch -q main
+	git config --local kramme.baseBranch development
+	BIN_DIR="$TMP_DIR/bin"
+	mkdir -p "$BIN_DIR"
+	printf '#!/bin/sh\nprintf "main\\n"\n' > "$BIN_DIR/gh"
+	chmod +x "$BIN_DIR/gh"
+	NEW_WORKTREE="$TMP_DIR/elsewhere/new-work"
+	mkdir -p "$(dirname "$NEW_WORKTREE")"
+
+	run env PATH="$BIN_DIR:$PATH" CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT" create --path "$NEW_WORKTREE" --branch new-work
+
+	[ "$status" -eq 0 ]
+	[ -f "$NEW_WORKTREE/development.txt" ]
+	[ "$(git -C "$NEW_WORKTREE" rev-parse HEAD)" = "$(git rev-parse development)" ]
+}
+
+@test "new worktree falls back to HEAD in a repository without origin or configured workbench" {
+	NEW_WORKTREE="$TMP_DIR/elsewhere/local-work"
+
+	run env -u CONDUCTOR_DEFAULT_BRANCH "$SCRIPT" create --path "$NEW_WORKTREE" --branch local-work
+
+	[ "$status" -eq 0 ]
+	[ "$(git -C "$NEW_WORKTREE" rev-parse HEAD)" = "$(git rev-parse HEAD)" ]
+	[ -f "$NEW_WORKTREE/README.md" ]
+}
+
+@test "new worktree does not fall back to HEAD when a configured workbench is unavailable" {
+	git config --local kramme.baseBranch development
+	NEW_WORKTREE="$TMP_DIR/elsewhere/invalid-work"
+
+	run "$SCRIPT" create --path "$NEW_WORKTREE" --branch invalid-work
+
+	[ "$status" -eq 1 ]
+	[ ! -e "$NEW_WORKTREE" ]
+}
+
+@test "new worktree can use a cached workbench when fetch fails" {
+	ORIGIN="$TMP_DIR/origin.git"
+	git init -q --bare "$ORIGIN"
+	git remote add origin "$ORIGIN"
+	git push -q origin main
+	git switch -q -c development main
+	printf 'development\n' > development.txt
+	git add development.txt
+	git commit -qm 'Add development change'
+	git push -q origin development
+	git fetch -q origin development:refs/remotes/origin/development
+	git switch -q main
+	git config --local kramme.baseBranch development
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+	NEW_WORKTREE="$TMP_DIR/elsewhere/offline-work"
+
+	run "$SCRIPT" create --path "$NEW_WORKTREE" --branch offline-work
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"using existing refs/remotes/origin/development"* ]]
+	[ -f "$NEW_WORKTREE/development.txt" ]
+}
+
+@test "new worktree can start from a workbench unrelated to current HEAD" {
+	ORIGIN="$TMP_DIR/origin.git"
+	git init -q --bare "$ORIGIN"
+	git remote add origin "$ORIGIN"
+	git push -q origin main
+	git switch -q --orphan pages
+	printf 'pages\n' > pages.txt
+	git add pages.txt
+	git commit -qm 'Start pages history'
+	NEW_WORKTREE="$TMP_DIR/elsewhere/independent-work"
+
+	run "$SCRIPT" create --path "$NEW_WORKTREE" --branch independent-work
+
+	[ "$status" -eq 0 ]
+	[ -f "$NEW_WORKTREE/README.md" ]
+	[ ! -f "$NEW_WORKTREE/pages.txt" ]
+}
+
 @test "allows confirmed Conductor workspace removal with allow flag" {
 	run "$SCRIPT" remove --path ../child --yes --allow-conductor
 

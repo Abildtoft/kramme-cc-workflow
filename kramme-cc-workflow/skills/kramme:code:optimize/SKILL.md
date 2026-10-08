@@ -36,7 +36,7 @@ Stop and ask for the missing requirement before experiments run when any conditi
 - `metric.primary.type` is `judge` and `metric.judge.rubric` or `metric.judge.scoring.primary` is missing.
 - No degenerate gates are defined.
 - `scope.mutable` or `scope.immutable` is empty.
-- In-scope mutable or immutable files have uncommitted changes.
+- The working tree has uncommitted tracked or untracked changes before the baseline; experiment worktrees start from a commit and would omit them.
 - The measurement command does not output parseable JSON with the required gate and diagnostic keys.
 - The first-run measurement command has not been explicitly approved after showing the command, working directory, timeout, environment variables, and spec source.
 - Judge mode has `max_total_cost_usd: null` and the user has not explicitly approved uncapped spend.
@@ -111,7 +111,7 @@ Use `references/experiment-log-schema.yaml` when writing or validating `experime
 
 ### 3. Record Baseline
 
-1. Run the measurement command on the current code.
+1. Require `git status --porcelain --untracked-files=all` to be empty, resolve and record the full current `HEAD` commit as `EXPERIMENT_BASE_COMMIT`, then run the measurement command on that committed checkout. Experiment worktrees must start from this commit, regardless of whether the repository's workbench is named `main`, `development`, or something else.
 2. If judge mode is enabled, run baseline judge evaluation using `references/judge-prompt-template.md` after all degenerate gates pass.
 3. Initialize `experiment-log.yaml` with:
    - `spec`,
@@ -138,7 +138,7 @@ Use `references/experiment-log-schema.yaml` when writing or validating `experime
    - parallel mode selects at most `execution.max_concurrent`,
    - skip hypotheses with unapproved dependencies.
 2. For each experiment:
-   - For worktree isolation, run `"$SKILL_DIR/scripts/experiment-worktree.sh" create <spec-name> <iteration> <base-branch>`.
+   - For worktree isolation, run `"$SKILL_DIR/scripts/experiment-worktree.sh" create <spec-name> <iteration> "$EXPERIMENT_BASE_COMMIT"`.
    - Pass only explicitly approved `parallel.shared_files` to the worktree helper. The helper does not copy `.env*` files implicitly.
    - Fill `references/experiment-prompt-template.md` with the hypothesis, current best, baseline, allowed mutable scope, immutable scope, constraints, approved dependencies, and last 10 experiment summaries.
    - Dispatch a worker to implement only the hypothesis. The worker must not modify the harness, run final measurements, or commit.

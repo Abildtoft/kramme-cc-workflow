@@ -31,6 +31,7 @@ Before recommending any gate, declare what you detected about the repository. Em
 - Primary language(s).
 - Package manager and lockfile.
 - Existing pipeline file(s), if any, and their current gate set. If no CI exists yet, state that explicitly (e.g., "no pipeline file present; this is a greenfield design").
+- The repository's workbench branch and release trigger, using project instructions, CI configuration, an explicit user choice, the repository's `kramme.baseBranch` setting, a valid `CONDUCTOR_DEFAULT_BRANCH`, or remote default metadata. `main` may be the workbench with tag-based releases, or `development` may be the workbench with production builds from `main`; never infer the role from the branch name alone.
 
 Example:
 
@@ -86,9 +87,9 @@ If the pipeline is over 10 minutes or trending there, pick from:
 - **Test sharding** — partition the integration test suite across N runners.
 - **Dependency caching** — cache the package manager's install output keyed on lockfile hash.
 - **Fast-fail / cancel-in-progress** — on lint failure, cancel remaining jobs; on new push, cancel the prior run.
-- **Selective re-runs** — run affected-only tests for touched files on PR; run the full suite in the merge queue or on main after merge.
+- **Selective re-runs** — run affected-only tests for touched files on PR; run the full suite in the merge queue or on the resolved workbench after merge.
 
-A gate that still can't fit the budget is a signal to split, not remove: keep a blocking PR slice that covers the same risk on every PR, then run the extended suite in the merge queue, on push to main, or nightly as a backstop. Nightly-only is never enough for a gate that protects merge readiness.
+A gate that still can't fit the budget is a signal to split, not remove: keep a blocking PR slice that covers the same risk on every PR, then run the extended suite in the merge queue, on push to the resolved workbench, or nightly as a backstop. Nightly-only is never enough for a gate that protects merge readiness.
 
 ---
 
@@ -122,7 +123,7 @@ For the canary → full-rollout sequence, short summary. If the design requires 
 ## Step 5: Secrets and branch protection
 
 - **Secrets** must live in a secrets manager (GitHub Actions secrets, AWS Secrets Manager, Vault). Not in committed files. Not in plaintext `.env` files (gitignore is a convention, not a boundary). Not in CI-level env vars without masking. Never echoed in logs.
-- **Branch protection** must require the full PR gate set on the default branch. Required checks should include every blocking gate that runs before merge. If a gate also has an extended post-merge or nightly companion, name that separately instead of presenting it as a required PR check.
+- **Branch protection** must require the full PR gate set on the resolved workbench branch. Required checks should include every blocking gate that runs before merge. If production uses a separate branch, specify its build/release gate separately. If releases use tags, gate the tag workflow rather than inventing a production branch. If a gate also has an extended post-merge or nightly companion, name that separately instead of presenting it as a required PR check.
 - **Merge queue** (optional) — if the team ships multiple PRs per day, a merge queue prevents "green at PR time, red at merge time" drift by re-running the pipeline on the merged commit before landing. The queue adds a gate on top of the PR checks; it must not bypass or replace PR-level gate enforcement.
 
 ---
@@ -145,7 +146,7 @@ If the repo has no external consumers and no versioned artifact, record that in 
 A pipeline is ready to land when every box is checked:
 
 - [ ] All six default gate categories have an explicit enforcement point (blocking PR gate, merge-queue gate, or post-merge backstop). Omissions are named and justified.
-- [ ] Pipeline runs on every PR and every push to main.
+- [ ] Pipeline runs on every PR and every push to the resolved workbench; any production branch or release tag has its own appropriate build/release gate.
 - [ ] Branch protection requires the full PR gate set; merge is blocked on failure.
 - [ ] Secrets live in a secrets manager. No secrets in committed files, plaintext env, or unmasked CI variables.
 - [ ] A rollback mechanism exists and has been exercised at least once (not a theoretical runbook).

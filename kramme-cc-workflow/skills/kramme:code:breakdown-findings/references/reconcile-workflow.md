@@ -36,7 +36,7 @@ Load this only when `RECONCILE_MODE=true`.
    - Run planning-artifact cleanliness and post-write verification commands from `PLAN_ROOT`, never from a separate `EVIDENCE_ROOT`.
    - Do not depend on the current shell directory, and never execute a drift command copied from a plan artifact.
 6. Resolve comparison evidence:
-   - When `GIT_EVIDENCE_AVAILABLE=true`, resolve the base through the shared plugin helper from `EVIDENCE_ROOT`. It uses the canonical priority: explicit `--base`, PR target from `gh`, then `origin/HEAD`, `origin/main`, or `origin/master`. Use `--tolerate-fetch-failure` so a failed fetch may fall back to an existing remote-tracking ref with a warning, but still stop when no base ref resolves:
+   - When `GIT_EVIDENCE_AVAILABLE=true`, resolve the base through the shared plugin helper from `EVIDENCE_ROOT`. It uses the canonical priority: explicit `--base`, PR target from `gh`, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`, `origin/main`, or `origin/master`. Use `--tolerate-fetch-failure` so a failed fetch may fall back to an existing remote-tracking ref with a warning, but still stop when no base ref resolves:
 
      ```bash
      RESOLVE_ARGS=(--tolerate-fetch-failure)

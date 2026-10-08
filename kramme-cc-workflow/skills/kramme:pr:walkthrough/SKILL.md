@@ -48,7 +48,7 @@ Create a single static HTML page with four interactive D3 views:
      gh pr view --json number,url,title,body,baseRefName,headRefName,state,files,comments,reviews
      ```
 
-   - Set `BASE_REF` from the PR's `baseRefName`. If no PR is available, resolve `BASE_REF` from `--base`, then `origin/HEAD`, then `origin/main`, then `origin/master`.
+   - When the user supplied `--base <ref>`, set `BASE_REF=$(git rev-parse --verify --quiet --end-of-options "${BASE_ARG}^{commit}")` using the supplied ref as `BASE_ARG`; stop if it does not resolve. It overrides the PR target and accepts a local branch, tag, or commit. Otherwise, run `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh --strict`, passing the PR's `baseRefName` as `--base <branch>` when PR metadata is available. Use its fetched `BASE_REF`. Without a PR, the resolver honors repository and Conductor workbench configuration before the remote default. Stop on authentication, network, or API lookup errors rather than assuming there is no PR.
    - Collect:
 
      ```bash
@@ -186,7 +186,7 @@ Determine what to diff from the remaining positional scope after removing `--rep
 - `HEAD`: uncommitted changes only (`git diff` and `git diff --staged`)
 - PR number (for example, `#42`): `gh pr diff 42`
 - Range (for example, `abc123..def456`): diff between two commits
-- No scope argument: detect the default branch from `origin/HEAD`; fall back to `main`, then `master`
+- No scope argument: use `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh --strict` to select the Pull Request target when present, otherwise the configured workbench or remote default. Use its `BASE_REF`; do not infer `main` or `development` from a branch name alone.
 
 ### Data Gathering
 

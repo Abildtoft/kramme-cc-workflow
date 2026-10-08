@@ -24,6 +24,8 @@ BACKUP_REF_FLAG=""
 FETCH_MODE="strict"
 BACKUP_MODE=0
 FORCE_BACKUP=0
+WORKBENCH_MODE=0
+BASE_ONLY_MODE=0
 OUTPUT_FORMAT="shell"
 RESOLVE_BASE_FETCH_TIMEOUT_SECONDS="${RESOLVE_BASE_FETCH_TIMEOUT_SECONDS:-30}"
 RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS="${RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS:-10}"
@@ -31,7 +33,10 @@ RESOLVE_BASE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=ye
 
 usage() {
   cat >&2 << 'USAGE'
-Usage: resolve-base.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--backup] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--format shell|json]
+Usage: resolve-base.sh [--base <branch>] [--workbench] [--base-only] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--backup] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--format shell|json]
+
+--workbench skips the current Pull Request target when starting independent work.
+--base-only selects a base for independent work without comparing it with HEAD; MERGE_BASE is empty.
 
 Default output is shell-quoted assignments:
   BASE_REF BASE_BRANCH MERGE_BASE AFTER_COMMIT RESET_POINT ORIGINAL_BRANCH ORIGINAL_TIP BACKUP_REF
@@ -78,6 +83,14 @@ while [ $# -gt 0 ]; do
       require_value "$1" "${2-}"
       BASE_FLAG="$2"
       shift 2
+      ;;
+    --workbench)
+      WORKBENCH_MODE=1
+      shift
+      ;;
+    --base-only)
+      BASE_ONLY_MODE=1
+      shift
       ;;
     --base-commit)
       require_value "$1" "${2-}"
@@ -137,6 +150,10 @@ done
 
 if [ "$FORCE_BACKUP" -eq 1 ] && [ "$BACKUP_MODE" -ne 1 ]; then
   echo "--force-backup requires --backup" >&2
+  exit 1
+fi
+if [ "$BASE_ONLY_MODE" -eq 1 ] && { [ "$BACKUP_MODE" -eq 1 ] || [ -n "$AFTER_ARG" ]; }; then
+  echo "--base-only cannot be combined with --backup or --after" >&2
   exit 1
 fi
 if [ -n "$BACKUP_REF_FLAG" ] && [ "$BACKUP_MODE" -ne 1 ]; then
@@ -283,8 +300,44 @@ if [ -n "$BASE_FLAG" ]; then
     fetch_remote_branch "$BASE_REMOTE" "$BASE_BRANCH" "explicit base ref '$BASE_FLAG'"
   fi
 else
-  if command -v gh > /dev/null 2>&1; then
-    BASE_BRANCH=$(run_with_timeout "$RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json baseRefName --jq '.baseRefName' 2> /dev/null || true)
+  if [ "$WORKBENCH_MODE" -ne 1 ] && [ -n "$CURRENT_BRANCH" ] && command -v gh > /dev/null 2>&1; then
+    PR_LOOKUP_STDERR=$(mktemp "${TMPDIR:-/tmp}/resolve-base-pr-stderr.XXXXXX")
+    if BASE_BRANCH=$(run_with_timeout "$RESOLVE_BASE_GH_LOOKUP_TIMEOUT_SECONDS" env GH_PROMPT_DISABLED=1 gh pr view --json baseRefName --jq '.baseRefName' 2> "$PR_LOOKUP_STDERR"); then
+      if [ -z "$BASE_BRANCH" ]; then
+        rm -f "$PR_LOOKUP_STDERR"
+        echo "GitHub returned an empty Pull Request base; cannot safely select a fallback" >&2
+        exit 1
+      fi
+    else
+      PR_LOOKUP_STATUS=$?
+      if [ "$PR_LOOKUP_STATUS" -ne 1 ] \
+        || [ "$(cat "$PR_LOOKUP_STDERR")" != "no pull requests found for branch \"$CURRENT_BRANCH\"" ]; then
+        cat "$PR_LOOKUP_STDERR" >&2
+        rm -f "$PR_LOOKUP_STDERR"
+        echo "Could not determine whether the current branch has a Pull Request; re-run with --base <branch> after verifying its target" >&2
+        exit 1
+      fi
+    fi
+    rm -f "$PR_LOOKUP_STDERR"
+  fi
+  if [ -z "$BASE_BRANCH" ]; then
+    if CONFIGURED_BASE=$(git config --local --get kramme.baseBranch); then
+      if [ -z "$CONFIGURED_BASE" ]; then
+        echo "Configured kramme.baseBranch is empty" >&2
+        exit 1
+      fi
+      if ! git check-ref-format --branch "$CONFIGURED_BASE" > /dev/null 2>&1; then
+        echo "Configured kramme.baseBranch '$CONFIGURED_BASE' is not a valid branch name" >&2
+        exit 1
+      fi
+      BASE_BRANCH="$CONFIGURED_BASE"
+    else
+      CONFIG_STATUS=$?
+      if [ "$CONFIG_STATUS" -ne 1 ]; then
+        echo "Could not read repository-local kramme.baseBranch setting" >&2
+        exit 1
+      fi
+    fi
   fi
   if [ -z "$BASE_BRANCH" ] && [ -n "${CONDUCTOR_DEFAULT_BRANCH:-}" ]; then
     if git check-ref-format --branch "$CONDUCTOR_DEFAULT_BRANCH" > /dev/null 2>&1 \
@@ -299,7 +352,7 @@ else
     BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@' || true)
   fi
   if [ -z "$BASE_BRANCH" ]; then
-    echo "Could not determine base branch; expected PR metadata, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master" >&2
+    echo "Could not determine base branch; expected PR metadata, kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master" >&2
     exit 1
   fi
 
@@ -337,11 +390,26 @@ if [ "$BACKUP_MODE" -eq 1 ] && [ -n "$BASE_BRANCH" ] && [ "$CURRENT_BRANCH" = "$
   echo "Current branch is the base branch '$BASE_BRANCH'; switch to a feature branch first" >&2
   exit 1
 fi
-if ! git merge-base "$BASE_REF" HEAD > /dev/null; then
-  echo "No merge base between '$BASE_REF' and HEAD; histories are unrelated" >&2
-  exit 1
+if [ "$BACKUP_MODE" -eq 1 ]; then
+  PROTECTED_REMOTE_DEFAULT=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null || true)
+  PROTECTED_REMOTE_DEFAULT=${PROTECTED_REMOTE_DEFAULT#origin/}
+  PROTECTED_CONFIGURED_BASE=$(git config --local --get kramme.baseBranch || true)
+  if [ "$CURRENT_BRANCH" = main ] || [ "$CURRENT_BRANCH" = master ] \
+    || { [ -n "$PROTECTED_REMOTE_DEFAULT" ] && [ "$CURRENT_BRANCH" = "$PROTECTED_REMOTE_DEFAULT" ]; } \
+    || { [ -n "$PROTECTED_CONFIGURED_BASE" ] && [ "$CURRENT_BRANCH" = "$PROTECTED_CONFIGURED_BASE" ]; } \
+    || { [ -n "${CONDUCTOR_DEFAULT_BRANCH:-}" ] && [ "$CURRENT_BRANCH" = "$CONDUCTOR_DEFAULT_BRANCH" ]; }; then
+    echo "Current branch '$CURRENT_BRANCH' is a protected workbench or production branch; switch to a feature branch first" >&2
+    exit 1
+  fi
 fi
-MERGE_BASE=$(git merge-base "$BASE_REF" HEAD)
+MERGE_BASE=""
+if [ "$BASE_ONLY_MODE" -ne 1 ]; then
+  if ! git merge-base "$BASE_REF" HEAD > /dev/null; then
+    echo "No merge base between '$BASE_REF' and HEAD; histories are unrelated" >&2
+    exit 1
+  fi
+  MERGE_BASE=$(git merge-base "$BASE_REF" HEAD)
+fi
 
 AFTER_COMMIT=""
 if [ -n "$AFTER_ARG" ]; then

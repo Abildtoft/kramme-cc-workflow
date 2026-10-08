@@ -12,7 +12,7 @@ Condensed operating reference for driving `gh stack` non-interactively. Every co
 | Always pass branch names as positional arguments to `init`, `add`, and `checkout` | Running them bare opens interactive prompts. Names are used verbatim — never prefixed or transformed (`refactor/foo` stays `refactor/foo`). |
 | Always use `gh stack submit --auto` | Without `--auto`, submit opens a per-PR title editor. `--auto` creates new PRs as **drafts**; add `--open` to mark them ready for review. |
 | Always use `gh stack view --json` | Bare `view` (and `view --short`) launch a TUI. |
-| Never use `gh stack modify` | TUI-only. Restructure by tearing down and rebuilding: `gh stack unstack` (PRs and branches survive), make the structural change with plain git, then `gh stack init <branches bottom-to-top>`. If a repo is stuck mid-modify, `gh stack modify --abort` restores it. |
+| Never use `gh stack modify` | TUI-only. Record the existing trunk, then restructure by tearing down and rebuilding: `gh stack unstack` (PRs and branches survive), make the structural change with plain git, then `gh stack init --base <recorded-trunk> <branches bottom-to-top>`. If a repo is stuck mid-modify, `gh stack modify --abort` restores it. |
 | Never run bare `gh stack checkout`, `switch` | Interactive pickers. `checkout` with a stack number, PR number, or PR URL is safe; if local tracking conflicts with the remote stack, run `gh stack unstack --local` first, then retry. |
 | Run `gh stack merge` only with an explicit positive PR target, `--yes`, and one validated method flag (`--merge`, `--squash`, or `--rebase`) | A bare merge opens an interactive wizard, and omitting the target can land more of the stack than the user intended. |
 | Multiple remotes: set `git config remote.pushDefault origin` or pass `--remote <name>` | `push`, `submit`, `sync`, `rebase`, and `link` accept `--remote`; `checkout` and `trunk` rely on `remote.pushDefault` and error without it. |
@@ -25,8 +25,8 @@ Condensed operating reference for driving `gh stack` non-interactively. Every co
 
 | Task | Command |
 | --- | --- |
-| Create a stack (first branch, or several bottom-to-top) | `gh stack init <branch...>` (`--base <trunk>` for a non-default trunk) |
-| Adopt existing local branches into a stack | `gh stack init <existing-branch...>` (existing branches adopted, missing ones created) |
+| Create a stack (first branch, or several bottom-to-top) | `gh stack init --base <resolved-trunk> <branch...>` |
+| Adopt existing local branches into a stack | `gh stack init --base <resolved-trunk> <existing-branch...>` (existing branches adopted, missing ones created) |
 | Add a branch on top | `gh stack add <branch>` (must be on the topmost branch; exit 5 otherwise — `gh stack top` first) |
 | Push all branches | `gh stack push` (`--force-with-lease --atomic`, skips merged/queued) |
 | Push + create/update chained PRs + link stack | `gh stack submit --auto` (drafts) / `gh stack submit --auto --open` |
@@ -46,7 +46,7 @@ Condensed operating reference for driving `gh stack` non-interactively. Every co
 | --- | --- | --- |
 | 0 | Success | Proceed. |
 | 1 | Generic error | Read stderr. |
-| 2 | Not in a stack / stack not found | `gh stack init` to create one, or `gh stack checkout <number>` to pull one down. |
+| 2 | Not in a stack / stack not found | Resolve the trunk and use `gh stack init --base <resolved-trunk> <branch...>` to create one, or `gh stack checkout <number>` to pull one down. |
 | 3 | Rebase conflict | Recovery depends on the command: `sync` restores all branches, so start a fresh `gh stack rebase`; `rebase` leaves its session active, so resolve/stage files and run `gh stack rebase --continue` directly. Give up with `gh stack rebase --abort`. |
 | 4 | GitHub API failure | Check `gh auth status`, retry once. |
 | 5 | Invalid arguments | Fix the invocation. |

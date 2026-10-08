@@ -88,7 +88,7 @@ A rebase taken without asking, by `--rebase` or the `--auto` decision, runs at m
 
 When `PLAN_SCOPE_ACTIVE=false` and neither `REBASE_MODE` nor `AUTO_MODE` has already decided, use `AskUserQuestion` and present exactly these choices:
 
-1. **Rebase then fix CI (Recommended)** - Invoke `$kramme:pr:rebase --force-push` through the platform skill mechanism.
+1. **Rebase then fix CI (Recommended)** - Re-query `gh pr view --json baseRefName --jq .baseRefName` immediately before delegation. Require success and the same `BASE` recorded in Step 2; if it changed, restart Step 2. Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism, substituting that confirmed PR target for `<BASE>`.
 
    Choice 1, whether selected, requested with `--rebase`, or decided under `--auto`, uses the rebase workflow's safe unattended push mode, which preserves conflict, red-flag, and verification gates. If it proves that the rebase and push succeeded, return to Step 1 with the original parsed `fix-ci` modes still active, recheck base synchronization, then watch and fix CI. If it stops or cannot prove the push succeeded, stop this workflow with its blocker; do not watch the stale remote branch or silently choose the skip path.
 

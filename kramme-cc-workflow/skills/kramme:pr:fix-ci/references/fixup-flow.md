@@ -7,21 +7,18 @@
 Use the PR's base branch from Step 1 so fixups stay scoped to the actual target branch.
 
 ```bash
-BASE=$(gh pr view --json baseRefName --jq .baseRefName)
+BASE=$(env GH_PROMPT_DISABLED=1 gh pr view --json baseRefName --jq .baseRefName) || {
+  echo "Could not resolve the current Pull Request target; stop before rewriting commits." >&2
+  exit 1
+}
 ```
 
-If the PR base branch can't be determined, fall back to `origin/HEAD`, then `main`, then `master`.
+If the PR base branch is empty, stop rather than substituting the repository default. A Pull Request targeting `development` must not be rewritten against production `main`, and a Pull Request targeting `main` must retain that target.
 
 ```bash
 if [ -z "$BASE" ]; then
-  BASE=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null | sed 's@^refs/remotes/origin/@@')
-fi
-if [ -z "$BASE" ]; then
-  if git show-ref --verify --quiet refs/remotes/origin/main; then
-    BASE=main
-  else
-    BASE=master
-  fi
+  echo "Pull Request target branch is missing; stop before rewriting commits." >&2
+  exit 1
 fi
 BASE_REF="origin/$BASE"
 ```

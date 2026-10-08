@@ -31,7 +31,7 @@ Initialize `SCOPE=full`, `BASE_REF_ARG=""`, and `MAX_FINDINGS=20` before parsing
 
 Reject conflicting selectors, missing paths, paths outside the working tree, `--base` without `changed`, invalid finding caps, and unresolved base refs. State the resolved scope before scanning.
 
-For `changed`, use the shared collector rather than reconstructing Git commands. Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+For `changed`, use the shared collector rather than reconstructing Git commands. Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
 Before running `changed`, disclose that strict base resolution contacts the Git remote and may refresh remote-tracking refs and `FETCH_HEAD`. This is the only permitted persistent-state or external-service side effect; it does not modify repository contents or the working tree.
 

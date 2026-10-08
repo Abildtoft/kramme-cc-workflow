@@ -1275,10 +1275,14 @@ file_mode() {
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     create="skills/kramme:pr:create/SKILL.md"
+    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
 
     grep -qE "^argument-hint: .*\[--rebase\]" "$create"
     grep -qF -- "- \`--rebase\` (alias: \`--rebase-first\`) -> set \`REBASE_FIRST=true\`" "$create"
     grep -qF "When \`REBASE_FIRST=true\`" "$create"
+    grep -qF "apply the protected/workbench/production branch guard" "$create"
+    grep -qF "Before classifying \`{entry-branch}\` as a feature" "$branch"
+    grep -qF "Do not publish a Pull Request from a production branch" "$branch"
   '
 	[ "$status" -eq 0 ]
 }

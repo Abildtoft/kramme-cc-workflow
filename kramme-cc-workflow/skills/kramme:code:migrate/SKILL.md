@@ -183,7 +183,7 @@ Create a phased plan:
 
 **Phase 0: Pre-Migration** (Quick)
 
-- Create migration branch `migrate/{slug}` from current HEAD — `{slug}` follows the same derivation rules as the plan filename below. This naming is mandatory: Step 0 resume detection looks for `migrate/*` branches.
+- Resolve this repository's workbench with `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh --strict --workbench`, then create migration branch `migrate/{slug}` from its fetched `BASE_REF`. `--workbench` ignores an existing Pull Request target on the entry branch because this migration starts independent work. `{slug}` follows the same derivation rules as the plan filename below. This naming is mandatory: Step 0 resume detection looks for `migrate/*` branches. If the current `HEAD` contains commits absent from `BASE_REF`, stop and ask whether those commits belong in the migration source; do not silently drop them or branch from production `main` when the configured workbench is `development`.
 - Run `/kramme:deps:audit` if available
 - Capture test baseline (pass/fail counts)
 - Verification: branch exists, baseline captured

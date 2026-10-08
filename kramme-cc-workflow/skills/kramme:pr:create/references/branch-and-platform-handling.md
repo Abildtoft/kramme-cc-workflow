@@ -40,8 +40,12 @@ If the current branch is non-empty, apply the ref trust boundary immediately. Do
 Run the shared resolver from the user's repository in JSON mode. It safely fetches the remote base with bounded, noninteractive network behavior:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" --format json
+RESOLVE_ARGS=(--format json)
+[ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}"
 ```
+
+An explicit `--base` wins over PR and default metadata. Otherwise the resolver uses an existing PR target, this repository's `kramme.baseBranch` setting, Conductor's configured branch when available, then the remote default. The same flow supports a `main` workbench and a `development` workbench; branch names alone do not establish their roles.
 
 Require success. Capture its `base_ref` as `{base-source-ref}` and `base_branch` as `{base-branch}`. Apply the agent-side allowlist to both values before any later interpolation, validate `{base-branch}` with the branch-name helper, and require `{base-source-ref}` to start with `refs/remotes/`.
 
@@ -58,6 +62,8 @@ Require a full 40-character lowercase commit ID and capture it as pinned `{base-
 Track `{linear-issue-id}` as nullable workflow state. If `LINEAR_ISSUE_OVERRIDE` was supplied by Step 0, initialize it from that exact normalized value and never replace it through branch-name extraction.
 
 ### Already on a feature branch
+
+Before classifying `{entry-branch}` as a feature, check whether it is `main`, `master`, the repository's configured `kramme.baseBranch`, the branch named by a valid `origin/HEAD`, Conductor's configured default, or another protected/workbench/production branch named in repository instructions. If it matches any of these and differs from `{base-branch}`, stop and explain the conflicting branch roles. Do not publish a Pull Request from a production branch to the configured development workbench or silently move its changes to another branch.
 
 If `{entry-branch}` is neither `<detached>` nor `{base-branch}`, select it as `{feature-branch}`. When `{linear-issue-id}` is empty, scan the validated branch name for `[A-Z]{2,5}-\d+` case-insensitively; normalize a match to uppercase.
 

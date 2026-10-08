@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:create
 description: Create a PR when explicitly requested or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr --ship. Generates the description, rewrites unpublished work into narrative commits, and publishes with lease protection; safely reuses or appends to an existing remote at or behind local HEAD. UI changes get best-effort local startup and screenshot/video evidence.
-argument-hint: "[--auto] [--draft] [--rebase] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
+argument-hint: "[--auto] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -20,7 +20,7 @@ Orchestrate the creation of a clean, well-documented PR by validating git state,
 - Branch already has an open PR — update it directly (or use `kramme:pr:generate-description` to refresh the description) instead of running the full creation flow.
 - The feature branch exists on `origin` and contains commits absent locally, has genuinely diverged, or is not the current branch. Existing-remote modes never merge, switch branches, or rewrite published history; coordinate and use a fresh branch when the remote cannot be safely reused or fast-forwarded. Dirty existing branches are accepted only in `--auto` mode, which explicitly includes all local work.
 - Hotfix / cherry-pick that must preserve exact commit boundaries — `recreate-commits` will reorganize history. Push and `gh pr create` manually.
-- Working in a stacked-PR setup where the base is another feature branch — this skill assumes the repo default branch (resolved via `origin/HEAD`) as the PR base. Use `kramme:pr:stack` instead: it creates and submits the whole chain with correct base branches via the gh-stack CLI.
+- Working in a stacked-PR setup where the base is another feature branch — use `kramme:pr:stack` instead: it creates and submits the whole chain with correct base branches via the gh-stack CLI. This skill's `--base` is for selecting the repository's workbench when its remote default has a different role.
 - The current branch hasn't diverged from the base branch — Step 4 will abort, but skip running the skill in the first place.
 
 ## Process Overview
@@ -77,11 +77,12 @@ Parse `$ARGUMENTS` for optional flags before starting:
 - `--auto` -> set `AUTO_MODE=true` and `REQUIRE_GENERATED_DESCRIPTION=true`, then remove the flag from the remaining arguments. Auto mode authorizes the nested unstacked rewrite but does not synthesize the separate stack-wide authorization capability.
 - `--draft` -> set `DRAFT_MODE=true` and remove the flag from the remaining arguments.
 - `--rebase` (alias: `--rebase-first`) -> set `REBASE_FIRST=true` and remove the flag from the remaining arguments. Both spellings are equivalent; supplying both is the same as supplying one. The delegated rebase runs before feature-branch selection and the workflow restarts after it completes.
+- `--base <branch>` -> store one explicit workbench branch as `BASE_BRANCH_OVERRIDE` and remove the flag and value. Reject a missing or duplicate value. Apply the ref trust boundary in `references/branch-and-platform-handling.md` before passing this value to the shared resolver; never interpret it as permission to create a stacked PR.
 - `--linear-issue <ISSUE-ID>` -> validate the value against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, store it as `LINEAR_ISSUE_OVERRIDE`, and remove the flag and value. Reject a missing or invalid value before pre-validation. This caller-supplied identifier is authoritative and takes precedence over branch-name extraction.
 - `--require-generated-description` -> set `REQUIRE_GENERATED_DESCRIPTION=true` and remove the flag. This orchestration-only safety mode forbids placeholder fallback when `kramme:pr:generate-description` returns no usable output.
 - `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a non-auto invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, existing-PR, or path-specific remote-state checks. Backup and remote absence apply to the fresh-remote rewrite path; exact-tip recovery never pushes; clean remote fast-forward mode preserves local history; remote append rewrites only the unpublished tail after its captured remote OID. Every existing-remote publication uses a lease tied to that OID.
 
-Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REBASE_FIRST=false`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant.
+Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REBASE_FIRST=false`, `BASE_BRANCH_OVERRIDE=<none>`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant.
 
 `--auto` means:
 
@@ -116,7 +117,7 @@ Read the branch and base selection instructions from `references/branch-and-plat
 
 ### Optional rebase-first
 
-When `REBASE_FIRST=true`, after Step 2 resolves `{base-branch}` and before Step 3 selects or validates the feature branch, invoke `kramme:pr:rebase` with `--force-push --base {base-branch}` through the Skill tool. The delegated skill owns conflict handling and the lease-protected push. Require a successful completion, then restart this workflow at Step 1 to capture the rebased entry state; do not reuse pre-rebase OIDs or remote classification. Any conflict, lease failure, or incomplete rebase is a hard blocker.
+When `REBASE_FIRST=true`, after Step 2 resolves `{base-branch}` and before Step 3 selects or validates the feature branch, apply the protected/workbench/production branch guard in `references/branch-and-platform-handling.md` to `{entry-branch}`. Stop if that branch differs from `{base-branch}` and matches a protected role. Then invoke `kramme:pr:rebase` with `--force-push --base {base-branch}` through the Skill tool. The delegated skill owns conflict handling and the lease-protected push. Require a successful completion, then restart this workflow at Step 1 to capture the rebased entry state; do not reuse pre-rebase OIDs or remote classification. Any conflict, lease failure, or incomplete rebase is a hard blocker.
 
 ### Conductor workspaces
 

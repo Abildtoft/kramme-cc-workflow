@@ -42,7 +42,7 @@ If dirty files are workflow-owned implementation/remediation changes, return thr
 Invoke:
 
 ```text
-kramme:pr:create --auto --require-generated-description --authorize-history-rewrite
+kramme:pr:create --auto --base {base-branch} --require-generated-description --authorize-history-rewrite
 ```
 
 The delegated skill owns validation, base resolution, state preservation, narrative commit recreation with `--no-push`, description generation, the sole pre-PR push, self-assignment, Pull Request creation, and rollback.

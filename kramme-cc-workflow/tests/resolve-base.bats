@@ -9,7 +9,7 @@ setup() {
 	WORK="$TMP_DIR/work"
 	BIN_DIR="$TMP_DIR/bin"
 	mkdir -p "$BIN_DIR"
-	write_failing_gh
+	write_no_pr_gh
 	export PATH="$BIN_DIR:$PATH"
 
 	init_test_git_repo "$WORK" --origin "$ORIGIN"
@@ -24,9 +24,19 @@ teardown() {
 	fi
 }
 
-write_failing_gh() {
+write_no_pr_gh() {
 	cat >"$BIN_DIR/gh" <<'GH'
 #!/bin/sh
+echo "no pull requests found for branch \"$(git branch --show-current)\"" >&2
+exit 1
+GH
+	chmod +x "$BIN_DIR/gh"
+}
+
+write_broken_gh() {
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+echo 'failed to connect to api.github.com' >&2
 exit 1
 GH
 	chmod +x "$BIN_DIR/gh"
@@ -266,6 +276,46 @@ delete_origin_head() {
 	[ "$BASE_BRANCH" = "develop" ]
 }
 
+@test "GitHub lookup failure cannot fall through to a configured workbench" {
+	create_remote_branch development
+	git config --local kramme.baseBranch development
+	write_broken_gh
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"failed to connect to api.github.com"* ]]
+	[[ "$output" == *"Could not determine whether the current branch has a Pull Request"* ]]
+	[[ "$output" != *"BASE_BRANCH=development"* ]]
+}
+
+@test "a no-PR result for another branch cannot select the configured workbench" {
+	git config --local kramme.baseBranch development
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+echo 'no pull requests found for branch "other"' >&2
+exit 1
+GH
+	chmod +x "$BIN_DIR/gh"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not determine whether the current branch has a Pull Request"* ]]
+}
+
+@test "backup mode does not create a recovery branch after GitHub lookup failure" {
+	create_remote_branch development
+	git config --local kramme.baseBranch development
+	write_broken_gh
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not determine whether the current branch has a Pull Request"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
 @test "GitHub PR base metadata wins over CONDUCTOR_DEFAULT_BRANCH" {
 	create_remote_branch "develop"
 	write_gh_base "develop"
@@ -276,6 +326,88 @@ delete_origin_head() {
 	load_assignments
 	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
 	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "repository base setting selects development while origin HEAD stays on main" {
+	create_remote_branch "development"
+	git config --local kramme.baseBranch development
+
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/development" ]
+	[ "$BASE_BRANCH" = "development" ]
+}
+
+@test "repository base setting keeps main as workbench when Conductor names development" {
+	create_remote_branch development
+	git config --local kramme.baseBranch main
+	git tag v1 main
+
+	run env CONDUCTOR_DEFAULT_BRANCH=development "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "main" ]
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+}
+
+@test "GitHub PR target wins over repository base setting" {
+	create_remote_branch "development"
+	git config --local kramme.baseBranch development
+	write_gh_base "main"
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "new-work mode ignores current PR target and uses repository workbench" {
+	create_remote_branch development
+	git config --local kramme.baseBranch development
+	write_gh_base main
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict --workbench
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = development ]
+	[ "$BASE_REF" = refs/remotes/origin/development ]
+}
+
+@test "new-work mode keeps main workbench with tag releases despite another PR target" {
+	create_remote_branch development
+	git config --local kramme.baseBranch main
+	git tag v1 main
+	write_gh_base development
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict --workbench
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = main ]
+	[ "$BASE_REF" = refs/remotes/origin/main ]
+}
+
+@test "invalid repository base setting stops instead of falling through to main" {
+	git config --local kramme.baseBranch 'bad name'
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Configured kramme.baseBranch 'bad name' is not a valid branch name"* ]]
+}
+
+@test "empty repository base setting stops instead of falling through to main" {
+	git config --local kramme.baseBranch ''
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Configured kramme.baseBranch is empty"* ]]
 }
 
 @test "uses CONDUCTOR_DEFAULT_BRANCH when PR metadata is absent and origin HEAD is missing" {
@@ -361,7 +493,7 @@ delete_origin_head() {
 	run env -u CONDUCTOR_DEFAULT_BRANCH "$SCRIPT_DIR/resolve-base.sh"
 
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"Could not determine base branch; expected PR metadata, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master"* ]]
+	[[ "$output" == *"Could not determine base branch; expected PR metadata, kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master"* ]]
 }
 
 @test "explicit base branch wins over GitHub metadata and origin HEAD" {
@@ -542,6 +674,29 @@ delete_origin_head() {
 	[[ "$output" == *"Current branch is the base branch 'main'; switch to a feature branch first"* ]]
 }
 
+@test "backup mode rejects production main even when configured workbench is development" {
+	create_remote_branch development
+	git config --local kramme.baseBranch development
+	git switch -q main
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --base development
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"protected workbench or production branch"* ]]
+}
+
+@test "backup mode protects configured development when the explicit base is main" {
+	create_remote_branch development
+	git config --local kramme.baseBranch development
+	git switch -q development
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --base main
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"protected workbench or production branch"* ]]
+	! git show-ref --verify --quiet refs/heads/development-recreate-backup
+}
+
 @test "fails when histories are unrelated" {
 	git switch --orphan unrelated >/dev/null 2>&1
 	git rm -r --cached . >/dev/null 2>&1 || true
@@ -552,6 +707,28 @@ delete_origin_head() {
 
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"No merge base between 'refs/remotes/origin/main' and HEAD; histories are unrelated"* ]]
+}
+
+@test "base-only mode resolves a workbench across unrelated histories" {
+	git switch --orphan unrelated >/dev/null 2>&1
+	git rm -r --cached . >/dev/null 2>&1 || true
+	rm -f tracked.txt
+	commit_file "unrelated.txt" "unrelated" "unrelated root"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --workbench --base-only
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$MERGE_BASE" = "" ]
+}
+
+@test "base-only mode cannot bypass backup ancestry checks" {
+	run "$SCRIPT_DIR/resolve-base.sh" --base-only --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base-only cannot be combined with --backup or --after"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
 }
 
 @test "after commit is resolved and exported when it is an ancestor of HEAD" {
