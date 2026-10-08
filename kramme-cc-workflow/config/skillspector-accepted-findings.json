@@ -105,14 +105,6 @@
       "review_after": "2026-11-08"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:generate-image/scripts/generate_image.py",
-      "rule_id": "E2",
-      "reason": "Re-reviewed on 2026-10-08: the image-generation script reads only GEMINI_API_KEY when --api-key is absent, passes the resolved value to genai.Client, and does not print or otherwise serialize the key. The flagged environment lookup is the documented credential input, not an attempt to collect unrelated secrets.",
-      "owner": "kramme",
-      "accepted_at": "2026-08-02",
-      "review_after": "2026-11-08"
-    },
-    {
       "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/rules.md",
       "rule_id": "P2",
       "reason": "Reviewed false-positive P2 findings in the copied rule catalog: the flagged HTML comments label inert before/after markup examples or carry visible source attribution; they contain no agent directives and are loaded only as explanatory reference material. Re-reviewed on 2026-09-27: content unchanged since acceptance, and the CI-pinned SkillSpector scan still reports only the matches described above.",

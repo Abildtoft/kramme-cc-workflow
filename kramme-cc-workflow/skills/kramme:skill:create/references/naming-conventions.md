@@ -18,7 +18,7 @@ kramme:{domain}:{action}[:{qualifier}...]
 | `pr` | Pull request workflows | `pr:fix-ci`, `pr:create`, `pr:code-review` |
 | `siw` | Structured Implementation Workflow | `siw:init`, `siw:spec-audit`, `siw:issue-define` |
 | `git` | Git operations | `git:commit-message` |
-| `visual` | Visual output, diagrams | `visual:diagram`, `visual:generate-image` |
+| `visual` | Visual output, diagrams | `visual:diagram`, `visual:onboarding` |
 | `docs` | Documentation, conversion | `docs:to-markdown`, `docs:update-agents-md` |
 | `text` | Text processing | `text:humanize` |
 | `discovery` | Requirements gathering | `discovery:interview` |

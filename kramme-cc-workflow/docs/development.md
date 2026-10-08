@@ -290,7 +290,6 @@ kramme-cc-workflow/tests/
 │   └── scorer.test.js                # Skill-review scorer contracts
 ├── python/
 │   ├── test_changelog.py
-│   ├── test_generate_image.py
 │   ├── test_git_command_parser.py
 │   ├── test_lint_skill_contracts.py
 │   ├── test_session_search_extractors.py

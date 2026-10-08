@@ -1700,7 +1700,6 @@
       "kramme-cc-workflow/skills/kramme:test:generate/SKILL.md",
       "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md",
       "kramme-cc-workflow/skills/kramme:text:humanize/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:visual:generate-image/SKILL.md",
       "kramme-cc-workflow/skills/kramme:workflow:wizard/SKILL.md"
     ]
   },
