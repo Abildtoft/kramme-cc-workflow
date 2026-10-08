@@ -528,11 +528,6 @@
       "path": "kramme-cc-workflow/skills/kramme:visual:diagram/SKILL.md"
     },
     {
-      "name": "kramme:visual:generate-image",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:visual:generate-image/SKILL.md"
-    },
-    {
       "name": "kramme:visual:onboarding",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:visual:onboarding/SKILL.md"
