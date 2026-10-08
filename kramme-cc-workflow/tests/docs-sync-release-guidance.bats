@@ -6,10 +6,10 @@ setup() {
 
 SKILL="skills/kramme:docs:sync-release/SKILL.md"
 
-@test "current scope uses merge-base three-dot semantics before dirty changes" {
-  grep -qF 'compute `merge-base(<default>, HEAD)`' "$SKILL"
+@test "current scope uses workbench merge-base three-dot semantics before dirty changes" {
+  grep -qF 'compute `merge-base(<workbench>, HEAD)`' "$SKILL"
   grep -qF 'use `<merge-base>...HEAD` for committed branch changes' "$SKILL"
-  grep -qF 'Never use a two-endpoint `<default> HEAD` diff' "$SKILL"
+  grep -qF 'Never use a two-endpoint `<workbench> HEAD` diff' "$SKILL"
   grep -qF 'then add staged, unstaged, and untracked changes' "$SKILL"
 }
 
