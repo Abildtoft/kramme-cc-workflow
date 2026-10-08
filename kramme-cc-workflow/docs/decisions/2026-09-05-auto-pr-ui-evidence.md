@@ -1,7 +1,8 @@
 # Capture UI Evidence During Automatic Pull Request Creation
 
-- Status: ACCEPTED
+- Status: DEPRECATED
 - Date: 2026-09-05
+- Deprecated: 2026-10-08
 - Deciders: repository maintainers
 - First safety review: 2026-12-05
 
@@ -47,3 +48,7 @@ Rejected because local runtime availability is not a correctness requirement for
 ### Require the user to start every environment first
 
 Rejected because repositories with an established, dependency-ready local development command can be started and cleaned up safely enough for a bounded best-effort capture attempt.
+
+## Deprecation
+
+On 2026-10-08, repository maintainers removed `kramme:visual:demo-reel`, the capture child this decision delegates to. `kramme:pr:generate-description` no longer accepts `--visual`, `--for-pr-create`, or `--start-if-easy`, and `kramme:pr:create` no longer starts a local environment, captures evidence, or passes `gh pr create --attach`. This decision no longer applies and its scheduled safety review is void. The removal is recorded in [the skill catalog shape policy](2026-07-29-skill-catalog-shape.md).
