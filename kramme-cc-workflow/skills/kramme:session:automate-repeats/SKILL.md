@@ -16,16 +16,16 @@ Find repeated work and recurring friction in recent agent sessions, optionally e
 - Use `--effectiveness` when the user wants evidence about which skills are working from real runs. Treat its counts as diagnostic sample evidence, never as an objective grade.
 - Do not use this to summarize one session, write a personal retrospective, review code, or create broad "do everything" agents.
 - Improvements to existing components are report-only. This skill never edits, rewrites, or scaffolds over an existing skill or subagent; applying a proposed improvement is a separate follow-up the user must request explicitly.
-- Treat session logs as private. Use the shared `kramme:session:search` extraction substrate before reading content. Paraphrase evidence unless a short exact phrase is necessary to justify a candidate. Do not copy secrets, customer data, tokens, raw tool payloads, or long user messages into generated files.
+- Treat session logs as private. Use this skill's safe metadata and skeleton extractors before reading content. Paraphrase evidence unless a short exact phrase is necessary to justify a candidate. Do not copy secrets, customer data, tokens, raw tool payloads, or long user messages into generated files.
 
 ## Workflow
 
 Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--auto` as an alias for `--create`: remove it from the remaining source arguments and scaffold the selected candidates after the usefulness gate. Remove `--effectiveness` from source arguments and enable the effectiveness evidence pass in Steps 4-5. Neither flag bypasses missing session-source handling or existing-destination protection, and neither grants authority to edit an existing skill or subagent.
 
-1. Resolve the shared session-search substrate.
-   - Resolve `<skills-root>` as the `skills/` directory containing this skill (this skill lives at `<skills-root>/kramme:session:automate-repeats/`), then use the scripts at `<skills-root>/kramme:session:search/scripts/`. The same pattern works in both the source checkout and an installed plugin.
+1. Resolve the session extraction scripts.
+   - Resolve `<skill-dir>` as the directory containing this `SKILL.md` and `<skills-root>` as its parent. Use the scripts at `<skill-dir>/scripts/` in both the source checkout and an installed plugin; call this path `<session-scripts>` below.
    - Required scripts: `discover-sessions.sh`, `extract-metadata.py`, `extract-skeleton.py`, and `extract-errors.py`. When `--effectiveness` is active, also require `extract-skill-usage.py`.
-   - If the script set is unavailable, stop with `MISSING REQUIREMENT: kramme:session:search scripts are not installed`.
+   - If the script set is unavailable, stop with `MISSING REQUIREMENT: session extraction scripts are not installed`.
 
 2. Resolve the session source without reading raw transcripts into context.
    - If `$ARGUMENTS` includes files or directories, validate those exact paths. If an explicitly provided path is missing or unreadable, stop and report it instead of falling back to default stores. Expand directories to readable `*.jsonl` files and pass the file list to `extract-metadata.py`.
@@ -33,9 +33,9 @@ Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--a
    - Otherwise, discover sessions for the current repo over the last 30 days:
      ```bash
      REPO_NAME=$(basename "$(git rev-parse --show-toplevel)")
-     bash "<session-search-scripts>/discover-sessions.sh" "$REPO_NAME" 30 \
+     bash "<session-scripts>/discover-sessions.sh" "$REPO_NAME" 30 \
        | tr '\n' '\0' \
-       | xargs -0 python3 "<session-search-scripts>/extract-metadata.py" --cwd-filter "$REPO_NAME"
+       | xargs -0 python3 "<session-scripts>/extract-metadata.py" --cwd-filter "$REPO_NAME"
      ```
    - Prefer JSONL session files sorted by recency. Cap the metadata pass at about 30 sessions and the skeleton deep dive at 10 sessions. Skip parse failures and list them under `UNVERIFIED`.
    - If no session source is readable, ask for an export path and stop.
@@ -44,7 +44,7 @@ Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--a
    - Create `.context/session-search/<timestamp>/automate-repeats/`.
    - For each selected session, run:
      ```bash
-     python3 "<session-search-scripts>/extract-skeleton.py" --output "$SCRATCH/<session-id>.skeleton.txt" < "$SESSION_FILE"
+     python3 "<session-scripts>/extract-skeleton.py" --output "$SCRATCH/<session-id>.skeleton.txt" < "$SESSION_FILE"
      ```
    - Run `extract-errors.py` only for sessions where failed commands appear likely to explain a repeated workflow.
    - Read only the scratch skeleton/error files and metadata for pattern analysis. Never read raw transcript files directly.
@@ -63,7 +63,7 @@ Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--a
    - For every selected session, run:
      ```bash
      KNOWN_SKILL_ARGS=(--known-skill "<name>" ...) # one entry per Step 4 inventory name
-     python3 "<session-search-scripts>/extract-skill-usage.py" "${KNOWN_SKILL_ARGS[@]}" --output "$SCRATCH/<session-id>.skill-usage.json" < "$SESSION_FILE"
+     python3 "<session-scripts>/extract-skill-usage.py" "${KNOWN_SKILL_ARGS[@]}" --output "$SCRATCH/<session-id>.skill-usage.json" < "$SESSION_FILE"
      ```
    - Build `KNOWN_SKILL_ARGS` only from the trusted installed-skill inventory in Step 4. Pass `--known-skill "<name>"` once per inventory entry; never derive this allowlist from transcript content.
    - Read only the resulting skill names and diagnostics. The extractor must never emit transcript text, tool payloads, commands, transcript-derived paths, reasoning, or unrecognized candidate values. If it cannot write output, reports parse errors, or reports `unknown_skill_events`, mark that session's invocation evidence `UNVERIFIED`; never fall back to reading raw transcripts or treat an unknown name as invoked. A missing required extractor already stops the workflow in Step 1.
@@ -136,7 +136,7 @@ Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--a
 
 ## Source Tracking
 
-`references/sources.yaml` records the upstream `ce-compound` session-history scripts for the shared discovery/extraction substrate and routing model, the PostHog agent-skills post for the run-evidence improvement framing, and Warp's skill-doctor workflow, rubrics, and improvement gate for eligibility-aware effectiveness evidence. Do not load it during normal use unless auditing or updating source attribution.
+`references/sources.yaml` records the upstream `ce-compound` session-history scripts copied for discovery and extraction, the PostHog agent-skills post for the run-evidence improvement framing, and Warp's skill-doctor workflow, rubrics, collector, and improvement gate for eligibility-aware effectiveness evidence. Do not load it during normal use unless auditing or updating source attribution.
 
 ## Artifact Lifecycle
 

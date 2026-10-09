@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[2]
-EXTRACTOR = PLUGIN_ROOT / "skills" / "kramme:session:search" / "scripts" / "extract-skill-usage.py"
+EXTRACTOR = PLUGIN_ROOT / "skills" / "kramme:session:automate-repeats" / "scripts" / "extract-skill-usage.py"
 
 
 class SessionSkillUsageTests(unittest.TestCase):

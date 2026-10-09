@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS = PLUGIN_ROOT / "skills" / "kramme:session:search" / "scripts"
+SCRIPTS = PLUGIN_ROOT / "skills" / "kramme:session:automate-repeats" / "scripts"
 
 
 class SessionSearchPython38Tests(unittest.TestCase):
