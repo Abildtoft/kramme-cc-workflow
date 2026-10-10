@@ -102,19 +102,19 @@
       "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py": [
         "kramme-cc-workflow/tests/pr-walkthrough.bats"
       ],
-      "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-errors.py": [
+      "kramme-cc-workflow/skills/kramme:session:automate-repeats/scripts/extract-errors.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
-      "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-metadata.py": [
+      "kramme-cc-workflow/skills/kramme:session:automate-repeats/scripts/extract-metadata.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
-      "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-skill-usage.py": [
+      "kramme-cc-workflow/skills/kramme:session:automate-repeats/scripts/extract-skill-usage.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
-      "kramme-cc-workflow/skills/kramme:session:search/scripts/extract-skeleton.py": [
+      "kramme-cc-workflow/skills/kramme:session:automate-repeats/scripts/extract-skeleton.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
-      "kramme-cc-workflow/skills/kramme:session:search/scripts/session_common.py": [
+      "kramme-cc-workflow/skills/kramme:session:automate-repeats/scripts/session_common.py": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ]
     },
@@ -481,7 +481,9 @@
     {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/session-search-scripts.bats",
-      "skills": ["kramme-cc-workflow/skills/kramme:session:search/SKILL.md"]
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:session:automate-repeats/SKILL.md"
+      ]
     },
     {
       "kind": "executable",
@@ -640,7 +642,7 @@
       "kramme-cc-workflow/skills/kramme:pr:create/scripts/verify-clean-worktree.sh": [
         "kramme-cc-workflow/tests/pr-create-guidance.bats"
       ],
-      "kramme-cc-workflow/skills/kramme:session:search/scripts/discover-sessions.sh": [
+      "kramme-cc-workflow/skills/kramme:session:automate-repeats/scripts/discover-sessions.sh": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
       ],
       "kramme-cc-workflow/skills/kramme:setup/scripts/check-environment.sh": [

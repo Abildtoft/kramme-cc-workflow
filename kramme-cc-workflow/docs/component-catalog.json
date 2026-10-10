@@ -418,11 +418,6 @@
       "path": "kramme-cc-workflow/skills/kramme:session:automate-repeats/SKILL.md"
     },
     {
-      "name": "kramme:session:search",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:session:search/SKILL.md"
-    },
-    {
       "name": "kramme:setup",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:setup/SKILL.md"

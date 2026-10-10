@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 setup() {
-	SCRIPTS="$BATS_TEST_DIRNAME/../skills/kramme:session:search/scripts"
+	SCRIPTS="$BATS_TEST_DIRNAME/../skills/kramme:session:automate-repeats/scripts"
 	TEST_DIR=$(mktemp -d)
 }
 
@@ -68,16 +68,16 @@ JSONL
 @test "extract-skill-usage writes only validated skill names" {
 	cat >>"$TEST_DIR/codex-skill.jsonl" <<'JSONL'
 {"timestamp":"2026-06-06T10:00:00Z","type":"session_meta","payload":{"cwd":"/tmp/demo-repo","id":"codex-skill-session","timestamp":"2026-06-06T10:00:00Z","source":"codex"}}
-{"timestamp":"2026-06-06T10:01:00Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"sed -n 1,80p /tmp/.codex/skills/kramme:session:search/SKILL.md\",\"token\":\"sk-abcdefghijklmnopqrstuvwxyz123456\"}"}}
+{"timestamp":"2026-06-06T10:01:00Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"sed -n 1,80p /tmp/.codex/skills/kramme:session:automate-repeats/SKILL.md\",\"token\":\"sk-abcdefghijklmnopqrstuvwxyz123456\"}"}}
 JSONL
 	out="$TEST_DIR/skill-usage.json"
 
 	run python3 "$SCRIPTS/extract-skill-usage.py" \
-		--known-skill kramme:session:search \
+		--known-skill kramme:session:automate-repeats \
 		--output "$out" <"$TEST_DIR/codex-skill.jsonl"
 
 	[ "$status" -eq 0 ]
-	grep -qF '"skills": ["kramme:session:search"]' "$out"
+	grep -qF '"skills": ["kramme:session:automate-repeats"]' "$out"
 	grep -qF '"skill_events": 1' "$out"
 	grep -qF '"unknown_skill_events": 0' "$out"
 	! grep -qF '/tmp/.codex' "$out"

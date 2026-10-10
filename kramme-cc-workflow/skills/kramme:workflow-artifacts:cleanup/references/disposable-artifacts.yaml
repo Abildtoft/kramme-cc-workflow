@@ -425,7 +425,7 @@
       "type": "dir",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:session:search"
+      "producer": "kramme:session:automate-repeats"
     },
     {
       "id": "siw-issues",

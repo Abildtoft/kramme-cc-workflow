@@ -10,7 +10,7 @@ Portions of `kramme:code:performance` are adapted from [`addyosmani/agent-skills
 
 ## Every — `compound-engineering-plugin`
 
-Copied or adapted scripts and support files in `kramme:code:optimize`, `kramme:git:clean-gone-branches`, `kramme:git:worktree`, `kramme:session:search`, and `kramme:setup` come from [`EveryInc/compound-engineering-plugin`](https://github.com/EveryInc/compound-engineering-plugin), licensed under the MIT License. Each affected skill carries a complete copy of the upstream license in `references/EveryInc-LICENSE`.
+Copied or adapted scripts and support files in `kramme:code:optimize`, `kramme:git:clean-gone-branches`, `kramme:git:worktree`, `kramme:session:automate-repeats`, and `kramme:setup` come from [`EveryInc/compound-engineering-plugin`](https://github.com/EveryInc/compound-engineering-plugin), licensed under the MIT License. Each affected skill carries a complete copy of the upstream license in `references/EveryInc-LICENSE`.
 
 ## GitHub — `gh-stack`
 

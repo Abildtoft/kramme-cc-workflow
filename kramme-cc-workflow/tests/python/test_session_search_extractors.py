@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS = PLUGIN_ROOT / "skills" / "kramme:session:search" / "scripts"
+SCRIPTS = PLUGIN_ROOT / "skills" / "kramme:session:automate-repeats" / "scripts"
 
 
 CODEX_SESSION = """\
@@ -293,10 +293,10 @@ runpy.run_path(script_path, run_name="__main__")
             (
                 """\
 {"role":"user","message":{"content":[{"type":"text","text":"Inspect the session skill."}]}}
-{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/.agents/skills/kramme:session:search/SKILL.md","secret":"sk-abcdefghijklmnopqrstuvwxyz123456"}}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/.agents/skills/kramme:session:automate-repeats/SKILL.md","secret":"sk-abcdefghijklmnopqrstuvwxyz123456"}}]}}
 """,
                 "cursor",
-                ["kramme:session:search"],
+                ["kramme:session:automate-repeats"],
             ),
         )
 
