@@ -60,7 +60,7 @@ Create or maintain `STRATEGY.md` at the repository root. This document is a shor
    - State whether the skill created or updated `STRATEGY.md`.
    - List the sections changed.
    - Call out any remaining `UNVERIFIED`, `STALE`, or `MISSING PRODUCT CONTEXT` markers.
-   - Suggest the next workflow only when it follows from the user's current goal, for example discovery, feature spec, SIW init, or product pulse.
+   - Suggest the next workflow only when it follows from the user's current goal, for example discovery, feature spec, or SIW init.
 
 ## Section Guidance
 

@@ -424,13 +424,14 @@ Live product inspection and structured testing.
 
 #### Product Strategy
 
-Product direction, demand validation, and product health feedback loops.
+Product direction and demand validation.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:product:strategy` | User | `[optional: section or notes to revisit, e.g. 'metrics', 'active tracks']` | Create or update repo-root STRATEGY.md as a concise product anchor covering target problem, approach, users, metrics, active tracks, milestones, and non-goals. Use when starting a product, revisiting direction, grounding discovery/spec/SIW work, or resolving product-context drift. Not for one-off feature specs, roadmaps, or implementation plans. |
 | `/kramme:product:validate-demand` | User, Auto | `[idea or evidence] [--output <repo-relative-path>]` | Evaluate whether one concrete product idea has enough demand evidence to justify more work. Use when testing willingness to pay, the urgent first user, the status quo to displace, or the smallest paid wedge. Produces an evidence-labeled GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE verdict and one falsifiable action. Inline by default; writes a repository-scoped report only on request. Not for strategic inquiry, strategy, spec audits, design, promotion, or implementation. |
-| `/kramme:product:pulse` | User | `[lookback window, e.g. 24h, 7d, 1h] [--inline]` | Generate a time-windowed product pulse report in docs/pulse-reports/ covering usage, quality, errors, performance, customer signals, and followups. Use for weekly recaps, launch checks, "how are we doing", or strategy feedback loops. Works with partial or manual sources. Not for QA test reports, PR review, or editing STRATEGY.md directly. |
+
+Migration: `/kramme:product:pulse` has been removed. Ask directly for a time-windowed product health recap when one is needed. `/kramme:product:strategy`, `/kramme:product:review`, and `/kramme:siw:product-audit` still read existing reports under `docs/pulse-reports/` as optional evidence, but the plugin no longer generates them.
 
 #### Product Documentation
 
@@ -933,7 +934,7 @@ material and its skill-local notices.
 ### From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin)
 
 - `kramme:architecture-strategist`, `kramme:design-iterator`, and `kramme:performance-oracle`: Adapted from the plugin's review agents.
-- `kramme:product:strategy` and `kramme:product:pulse`: Adapted from skills `ce-strategy` and `ce-product-pulse`.
+- `kramme:product:strategy`: Adapted from skill `ce-strategy`.
 - `kramme:code:optimize`: Adapted from [ce-optimize](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-optimize), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:session:automate-repeats`: Adapted from skill `ce-sessions`, including its safe session discovery and extraction scripts reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:setup`: Adapted from skill `ce-setup`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
