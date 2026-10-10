@@ -498,12 +498,13 @@ Dependency auditing and management.
 
 #### Testing
 
-Test generation and coverage analysis.
+Test-suite quality audits.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:test:audit` | User, Auto | `[full \| path <file-or-folder> \| changed [--base <ref>]] [--max-findings N]` | Audits an existing test suite for low-value, brittle, obsolete, duplicated, provider-shape-coupled, or weak tests. Produces a read-only, evidence-backed REMOVE / REPAIR / CONSOLIDATE / INVESTIGATE report. Use to find poor-quality tests across a repository or path. Not for generating or ordinarily running tests, PR coverage review, or editing or pruning tests. |
-| `/kramme:test:generate` | User | `[file-path or directory] [--auto]` | (experimental) Generate tests for existing code by analyzing project test patterns and conventions. Use when adding test coverage to untested files or generating test stubs. |
+
+Migration: `/kramme:test:generate` has been removed. Ask directly for tests that follow the project's existing conventions, and use `/kramme:test:audit` to assess an existing suite.
 
 #### Git
 
