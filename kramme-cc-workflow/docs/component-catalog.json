@@ -508,16 +508,6 @@
       "path": "kramme-cc-workflow/skills/kramme:visual:onboarding/SKILL.md"
     },
     {
-      "name": "kramme:visual:plan-review",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:visual:plan-review/SKILL.md"
-    },
-    {
-      "name": "kramme:visual:project-recap",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:visual:project-recap/SKILL.md"
-    },
-    {
       "name": "kramme:workflow-artifacts:cleanup",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"

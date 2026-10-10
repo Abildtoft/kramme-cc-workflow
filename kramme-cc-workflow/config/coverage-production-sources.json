@@ -189,8 +189,6 @@
         "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:diagram/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:visual:plan-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:visual:project-recap/SKILL.md",
         "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
       ]
     },
