@@ -188,11 +188,6 @@
       "path": "kramme-cc-workflow/skills/kramme:docs:update-agents-md/SKILL.md"
     },
     {
-      "name": "kramme:git:clean-gone-branches",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/SKILL.md"
-    },
-    {
       "name": "kramme:git:commit-message",
       "invocation": "Background",
       "path": "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md"
@@ -206,11 +201,6 @@
       "name": "kramme:git:recreate-commits",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md"
-    },
-    {
-      "name": "kramme:git:worktree",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:git:worktree/SKILL.md"
     },
     {
       "name": "kramme:hooks:toggle",
