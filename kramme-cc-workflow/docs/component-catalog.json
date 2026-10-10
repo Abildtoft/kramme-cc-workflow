@@ -188,11 +188,6 @@
       "path": "kramme-cc-workflow/skills/kramme:docs:update-agents-md/SKILL.md"
     },
     {
-      "name": "kramme:git:clean-gone-branches",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/SKILL.md"
-    },
-    {
       "name": "kramme:git:commit-message",
       "invocation": "Background",
       "path": "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md"
@@ -206,11 +201,6 @@
       "name": "kramme:git:recreate-commits",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md"
-    },
-    {
-      "name": "kramme:git:worktree",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:git:worktree/SKILL.md"
     },
     {
       "name": "kramme:hooks:toggle",
@@ -373,11 +363,6 @@
       "path": "kramme-cc-workflow/skills/kramme:product:design-critic/SKILL.md"
     },
     {
-      "name": "kramme:product:pulse",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:product:pulse/SKILL.md"
-    },
-    {
       "name": "kramme:product:review",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:product:review/SKILL.md"
@@ -488,11 +473,6 @@
       "path": "kramme-cc-workflow/skills/kramme:test:audit/SKILL.md"
     },
     {
-      "name": "kramme:test:generate",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:test:generate/SKILL.md"
-    },
-    {
       "name": "kramme:text:clarify",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md"
@@ -526,16 +506,6 @@
       "name": "kramme:visual:onboarding",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:visual:onboarding/SKILL.md"
-    },
-    {
-      "name": "kramme:visual:plan-review",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:visual:plan-review/SKILL.md"
-    },
-    {
-      "name": "kramme:visual:project-recap",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:visual:project-recap/SKILL.md"
     },
     {
       "name": "kramme:workflow-artifacts:cleanup",

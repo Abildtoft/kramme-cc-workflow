@@ -515,7 +515,6 @@
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     triage="skills/kramme:debug:triage-to-issue/SKILL.md"
-    generator="skills/kramme:test:generate/SKILL.md"
 
     test ! -e "skills/kramme:test:tdd/SKILL.md"
     grep -qF "Build the TDD plan directly from the investigation evidence" "$triage"
@@ -524,7 +523,6 @@
     grep -qF "reproduction gate and preserve the marker in the issue body" "$triage"
     grep -qF "FAIL before the fix and PASS after" "$triage"
     ! grep -qF "kramme:test:tdd" "$triage"
-    ! grep -qF "kramme:test:tdd" "$generator"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }

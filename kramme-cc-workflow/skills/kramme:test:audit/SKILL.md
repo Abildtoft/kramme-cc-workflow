@@ -186,7 +186,7 @@ Include only findings with checkable evidence. If none survive, say so and repor
 
 | Scenario | Action |
 | --- | --- |
-| No tests found | Report the searched roots and detected conventions; suggest `kramme:test:generate` only if the user wants to add coverage. |
+| No tests found | Report the searched roots and detected conventions; suggest adding coverage only if the user wants it. |
 | Test command fails before tests run | Record the command and failure as an audit gap; continue static analysis without blaming individual tests. |
 | A focused test fails | Distinguish an existing failure from a quality finding; do not recommend cleanup until the failure's cause is understood. |
 | History is unavailable or shallow | Mark regression-purpose conclusions as limited and use INVESTIGATE instead of REMOVE when history is necessary. |

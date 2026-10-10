@@ -424,13 +424,14 @@ Live product inspection and structured testing.
 
 #### Product Strategy
 
-Product direction, demand validation, and product health feedback loops.
+Product direction and demand validation.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:product:strategy` | User | `[optional: section or notes to revisit, e.g. 'metrics', 'active tracks']` | Create or update repo-root STRATEGY.md as a concise product anchor covering target problem, approach, users, metrics, active tracks, milestones, and non-goals. Use when starting a product, revisiting direction, grounding discovery/spec/SIW work, or resolving product-context drift. Not for one-off feature specs, roadmaps, or implementation plans. |
 | `/kramme:product:validate-demand` | User, Auto | `[idea or evidence] [--output <repo-relative-path>]` | Evaluate whether one concrete product idea has enough demand evidence to justify more work. Use when testing willingness to pay, the urgent first user, the status quo to displace, or the smallest paid wedge. Produces an evidence-labeled GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE verdict and one falsifiable action. Inline by default; writes a repository-scoped report only on request. Not for strategic inquiry, strategy, spec audits, design, promotion, or implementation. |
-| `/kramme:product:pulse` | User | `[lookback window, e.g. 24h, 7d, 1h] [--inline]` | Generate a time-windowed product pulse report in docs/pulse-reports/ covering usage, quality, errors, performance, customer signals, and followups. Use for weekly recaps, launch checks, "how are we doing", or strategy feedback loops. Works with partial or manual sources. Not for QA test reports, PR review, or editing STRATEGY.md directly. |
+
+Migration: `/kramme:product:pulse` has been removed. Ask directly for a time-windowed product health recap when one is needed. `/kramme:product:strategy`, `/kramme:product:review`, and `/kramme:siw:product-audit` still read existing reports under `docs/pulse-reports/` as optional evidence, but the plugin no longer generates them.
 
 #### Product Documentation
 
@@ -497,12 +498,13 @@ Dependency auditing and management.
 
 #### Testing
 
-Test generation and coverage analysis.
+Test-suite quality audits.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:test:audit` | User, Auto | `[full \| path <file-or-folder> \| changed [--base <ref>]] [--max-findings N]` | Audits an existing test suite for low-value, brittle, obsolete, duplicated, provider-shape-coupled, or weak tests. Produces a read-only, evidence-backed REMOVE / REPAIR / CONSOLIDATE / INVESTIGATE report. Use to find poor-quality tests across a repository or path. Not for generating or ordinarily running tests, PR coverage review, or editing or pruning tests. |
-| `/kramme:test:generate` | User | `[file-path or directory] [--auto]` | (experimental) Generate tests for existing code by analyzing project test patterns and conventions. Use when adding test coverage to untested files or generating test stubs. |
+
+Migration: `/kramme:test:generate` has been removed. Ask directly for tests that follow the project's existing conventions, and use `/kramme:test:audit` to assess an existing suite.
 
 #### Git
 
@@ -512,10 +514,10 @@ Git history management and commit operations.
 | --- | --- | --- | --- |
 | `/kramme:git:fixup` | User | `[--skip-tests\|--skip-build\|--skip-lint\|--skip-all] [--no-confirm] [--base=<branch>] [instructions]` | Intelligently fixup unstaged changes into existing commits on the current branch. Maps each changed file to its most recent commit, validates (build/test/lint), creates fixup commits, and autosquashes. |
 | `/kramme:git:recreate-commits` | User, Auto | `[--auto] [--coarse\|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]` | Recreate commits with narrative-quality history when the user asks or kramme:pr:create delegates its guarded rewrite phase. Not for merged or shared branches — it rewrites history and uses --force-with-lease unless remote synchronization is disabled. |
-| `/kramme:git:clean-gone-branches` | User | `[--prune] [--delete --yes <branch>...] [--force]` | Find local git branches whose upstream remote branch is gone, list associated worktrees, label Conductor workspace paths, and delete only after explicit confirmation. Use for local branch hygiene after remote branches are merged or deleted. Not for deleting the current branch, deleting active worktrees, pruning without review, or rewriting history. |
-| `/kramme:git:worktree` | User | `<list\|create\|remove> [options]` | Safely list, create, and remove git worktrees with checks for existing paths, checked-out branches, and Conductor workspace directories. Use for manual worktree operations during PR splitting or local parallel development. Not for branch cleanup, deleting gone branches, renaming branches, or bypassing Conductor workspace archival. |
 
 `/kramme:git:recreate-commits --auto` authorizes one backup-protected unstacked history rewrite and any required lease-protected force-push. It rejects visible or assume-unchanged tracked edits, ordinary untracked work, and reset-colliding ignored work; refuses mismatched or base-branch upstreams, renamed push destinations, and effective push-destination commits missing locally; honors `branch.<name>.pushRemote` and `remote.pushDefault`; freezes one push URL, branch, and lease; disables tag following; and revalidates the checkout immediately before reset. Automatic stack-wide rewriting additionally requires `--authorize-history-rewrite`. A non-auto stacked invocation may instead use separate interactive confirmations that enumerate the full stack before authorizing the local reset/restack and the atomic whole-stack force-push.
+
+Migration: `/kramme:git:worktree` and `/kramme:git:clean-gone-branches` have been removed together with their helper scripts. Use Conductor workspace management or run `git worktree` and `git branch` directly. No dedicated replacement preserves their Conductor-path guards or confirmation-gated branch deletion.
 
 #### Linear
 
@@ -541,9 +543,9 @@ Generate and inspect visual output, including self-contained HTML pages, UI chec
 | --- | --- | --- | --- |
 | `/kramme:visual:check-slop` | User | `<file-or-directory> [--fix]` | Runs a bundled deterministic 73-guard check over HTML screens, reports exact AI-style UI findings, and optionally applies safe idempotent fixes with --fix. Use before generated or hand-written HTML is shown, exported, shipped, or committed, or when asked to check a screen for visual slop. Not for broad UX, accessibility, product-value, or screenshot critique; use kramme:pr:ux-review or kramme:product:design-critic. |
 | `/kramme:visual:diagram` | User, Auto | `[topic or description]` | Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, flowchart, schema, or any visual explanation of technical concepts. Also use proactively when about to render a large ASCII table (4+ rows and 3+ columns) — present it as a styled HTML page instead. |
-| `/kramme:visual:plan-review` | User | `[plan-file-path] [codebase-path]` | Generate a visual HTML plan review comparing current codebase state vs. a proposed implementation plan, with architecture diagrams, blast radius analysis, and risk assessment |
-| `/kramme:visual:project-recap` | User | `[time-window: 2w\|30d\|3m]` | Generate a visual HTML project recap to rebuild mental model when returning to a project — architecture snapshot, recent activity timeline, decision log, and cognitive debt hotspots |
 | `/kramme:visual:onboarding` | User, Auto | `[focus-area or audience]` | Generate an interactive HTML onboarding guide for newcomers to a codebase — architecture overview, domain model, key flows, conventions, and getting-started walkthrough. |
+
+Migration: `/kramme:visual:plan-review` and `/kramme:visual:project-recap` have been removed. Use `/kramme:pr:walkthrough --report` to explain an existing branch or Pull Request, `/kramme:visual:diagram` to visualize a plan or architecture, and `/kramme:visual:onboarding` to rebuild a codebase overview.
 
 Migration: `/kramme:visual:generate-image` has been removed. The plugin no longer bundles the Gemini image-generation script or its API-key setup. Use image tools available in your active host when you need image generation or editing.
 
@@ -933,10 +935,10 @@ material and its skill-local notices.
 ### From [EveryInc/compound-engineering-plugin](https://github.com/EveryInc/compound-engineering-plugin)
 
 - `kramme:architecture-strategist`, `kramme:design-iterator`, and `kramme:performance-oracle`: Adapted from the plugin's review agents.
-- `kramme:product:strategy` and `kramme:product:pulse`: Adapted from skills `ce-strategy` and `ce-product-pulse`.
+- `kramme:product:strategy`: Adapted from skill `ce-strategy`.
 - `kramme:code:optimize`: Adapted from [ce-optimize](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-optimize), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:session:automate-repeats`: Adapted from skill `ce-sessions`, including its safe session discovery and extraction scripts reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
-- `kramme:setup`, `kramme:git:clean-gone-branches`, and `kramme:git:worktree`: Adapted from skills `ce-setup`, `ce-clean-gone-branches`, and `ce-worktree`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+- `kramme:setup`: Adapted from skill `ce-setup`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:docs:solution-note` and `kramme:docs:solution-refresh`: Adapted from skills `ce-compound` and `ce-compound-refresh`, reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
 - `kramme:docs:review`: Adapted from [ce-doc-review](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-doc-review).
 - `kramme:code:work-from-plan`: Adapted from [ce-work](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-work) and [ce-plan](https://github.com/EveryInc/compound-engineering-plugin/tree/main/plugins/compound-engineering/skills/ce-plan) as a thin routing adapter, not a full autonomous execution pipeline.
@@ -951,7 +953,7 @@ material and its skill-local notices.
 - `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
 - `kramme:text:clarify`: Inspired by [fofr's GOV.UK style skill](https://gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2) and official GOV.UK guidance on [identifying user needs](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/plan-manage-content/identify-user-needs/) and [using clear language](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/), adapted into a locale-neutral reader-task workflow.
 - `kramme:text:humanize`: Based on Wikipedia: Signs of AI writing (maintained by WikiProject AI Cleanup) and heavily inspired by [blader/humanizer](https://github.com/blader/humanizer).
-- `kramme:visual:diagram`, `kramme:visual:onboarding`, `kramme:visual:plan-review`, and `kramme:visual:project-recap`: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
+- `kramme:visual:diagram` and `kramme:visual:onboarding`: Adapted from [nicobailon/visual-explainer](https://github.com/nicobailon/visual-explainer).
 - `kramme:visual:check-slop`: Vendors and adapts Gesso Build's MIT-licensed anti-slop detector and 73-rule registry at commit [`1c3908b7efb56ec24624436dea5c32a371eb487c`](https://github.com/Gesso-Build/skills/tree/1c3908b7efb56ec24624436dea5c32a371eb487c). Complete notices for Gesso and bundled parser dependencies ship with the skill.
 - Skills authoring patterns: Inspired by [mgechev/skills-best-practices](https://github.com/mgechev/skills-best-practices).
 - `kramme:session:automate-repeats` effectiveness evidence, counterfactual improvement gate, and explicit skill-use extraction: Inspired by Warp's [skill-doctor workflow, rubrics, guidance, and collector at commit `737129f`](https://github.com/warpdotdev/common-skills/tree/737129fae58e1feb4ec956c0f0bfa597b5c6ee89/.agents/skills/skill-doctor).

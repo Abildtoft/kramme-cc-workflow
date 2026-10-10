@@ -189,8 +189,6 @@
         "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:diagram/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:onboarding/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:visual:plan-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:visual:project-recap/SKILL.md",
         "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
       ]
     },
@@ -267,13 +265,6 @@
     },
     {
       "kind": "executable",
-      "suite": "kramme-cc-workflow/tests/clean-gone-branches.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/SKILL.md"
-      ]
-    },
-    {
-      "kind": "executable",
       "suite": "kramme-cc-workflow/tests/visual-check-slop.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:visual:check-slop/SKILL.md"]
     },
@@ -338,11 +329,6 @@
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/plan-to-pr-validation.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md"]
-    },
-    {
-      "kind": "guidance",
-      "suite": "kramme-cc-workflow/tests/product-pulse-guidance.bats",
-      "skills": ["kramme-cc-workflow/skills/kramme:product:pulse/SKILL.md"]
     },
     {
       "kind": "guidance",
@@ -515,11 +501,6 @@
         "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
         "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
       ]
-    },
-    {
-      "kind": "executable",
-      "suite": "kramme-cc-workflow/tests/worktree-helper.bats",
-      "skills": ["kramme-cc-workflow/skills/kramme:git:worktree/SKILL.md"]
     }
   ],
   "shell": {
@@ -621,14 +602,8 @@
       "kramme-cc-workflow/skills/kramme:code:optimize/scripts/parallel-probe.sh": [
         "kramme-cc-workflow/tests/optimize-skill.bats"
       ],
-      "kramme-cc-workflow/skills/kramme:git:clean-gone-branches/scripts/clean-gone-branches.sh": [
-        "kramme-cc-workflow/tests/clean-gone-branches.bats"
-      ],
       "kramme-cc-workflow/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh": [
         "kramme-cc-workflow/tests/recreate-commits-push-target.bats"
-      ],
-      "kramme-cc-workflow/skills/kramme:git:worktree/scripts/worktree-helper.sh": [
-        "kramme-cc-workflow/tests/worktree-helper.bats"
       ],
       "kramme-cc-workflow/skills/kramme:pr:adversarial-review/scripts/run-adversarial-review.sh": [
         "kramme-cc-workflow/tests/adversarial-review-runner.bats"
