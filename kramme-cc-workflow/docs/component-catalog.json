@@ -8,11 +8,6 @@
       "path": "kramme-cc-workflow/skills/kramme:browse/SKILL.md"
     },
     {
-      "name": "kramme:ci:design-pipeline",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:ci:design-pipeline/SKILL.md"
-    },
-    {
       "name": "kramme:code:agent-readiness",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:code:agent-readiness/SKILL.md"

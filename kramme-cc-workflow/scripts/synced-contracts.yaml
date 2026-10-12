@@ -1644,7 +1644,6 @@
     "inventory": "kramme-cc-workflow/config/coverage-production-sources.json",
     "mechanical_only": [
       "kramme-cc-workflow/skills/kramme:browse/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:ci:design-pipeline/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:audit-security/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:performance/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:refactor-opportunities/SKILL.md",
