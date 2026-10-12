@@ -403,13 +403,7 @@ PR creation, review, iteration, and resolution.
 
 Migration: `/kramme:pr:update-split-plans` has moved to `/kramme:code:breakdown-findings --reconcile`. Update saved prompts and automation to pass the same plan paths, `--all`, `--worktree`, `--source`, `--base`, and `--auto` options to the replacement command. Former no-scope calls must add `--all` to preserve the removed command's active-plan-only default; zero-scope reconcile intentionally retains `kramme:code:breakdown-findings`'s existing all-indexed behavior.
 
-#### CI
-
-CI/CD pipeline design and gate planning.
-
-| Skill | Invocation | Arguments | Description |
-| --- | --- | --- | --- |
-| `/kramme:ci:design-pipeline` | User, Auto | — | Design a CI/CD pipeline with quality gates, a <10-minute budget, feature-flag lifecycle, and an exit checklist. Use when adding a new CI pipeline, changing gate configuration, or planning a rollout for a new service. Complementary to kramme:pr:fix-ci (which fixes failures in an existing pipeline). Covers gate ordering, secrets storage, branch protection, rollback mechanism, and staged-rollout guardrails — not a rollout-execution runbook. |
+Migration: `/kramme:ci:design-pipeline` has been removed. Ask directly for CI/CD pipeline design or gate planning. `/kramme:pr:fix-ci` remains available for failures in an existing Pull Request pipeline.
 
 #### Browser & QA
 
