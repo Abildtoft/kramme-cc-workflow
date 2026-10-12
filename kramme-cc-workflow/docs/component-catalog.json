@@ -373,11 +373,6 @@
       "path": "kramme-cc-workflow/skills/kramme:product:validate-demand/SKILL.md"
     },
     {
-      "name": "kramme:prototype",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:prototype/SKILL.md"
-    },
-    {
       "name": "kramme:qa",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:qa/SKILL.md"

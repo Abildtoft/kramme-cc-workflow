@@ -229,7 +229,7 @@ Feature specification, API design, Linear implementation planning, review resolu
 | **Implement** | Build one issue at a time | `/kramme:linear:issue-implement`, `/kramme:linear:issue-to-pr` |
 | **Review & verify** | Check quality before shipping | `/kramme:pr:code-review`, `/kramme:verify:run` |
 
-Most tasks begin at Clarify or Spec and flow into SIW — the local markdown-based preparation workflow for refining specifications and the first issue set. Approved work then transfers one way to Linear for implementation and Pull Requests. Two supporting primitives slot in wherever a phase needs them, not as required gates: `/kramme:research` produces a cited answer from primary sources before you commit to an approach, and `/kramme:prototype` builds throwaway code to settle one design question.
+Most tasks begin at Clarify or Spec and flow into SIW — the local markdown-based preparation workflow for refining specifications and the first issue set. Approved work then transfers one way to Linear for implementation and Pull Requests. Use `/kramme:research` wherever a phase needs a cited answer from primary sources before committing to an approach. Request throwaway prototypes directly when a disposable experiment would settle one design question.
 
 For repository work, start with [CONTRIBUTING.md](CONTRIBUTING.md), then use [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant subsystem and tests.
 
@@ -442,7 +442,6 @@ Product critique and design-direction skills.
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:product:design-critic` | User, Auto | `[file-path, screenshot, URL, or product question]` | (experimental) Sharpen product design judgment for software UI/UX, interaction flows, jobs-to-be-done, hierarchy, trust, governance surfacing, and competitor-informed critique. Use when critiquing or shaping a product surface, card, panel, workflow, chat experience, or design strategy instead of merely suggesting visual polish. |
-| `/kramme:prototype` | User | `[design question or prototype goal]` | Builds a clearly throwaway logic/state or UI prototype to answer one design question before implementation hardens. Use when the user wants to sanity-check a state model, data shape, API surface, page layout, component direction, or interaction idea with disposable code. Not for production implementation, polished demos, visual diff reports, permanent routes, or broad design-system work. |
 
 #### Code Quality & Review
 

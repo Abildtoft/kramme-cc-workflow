@@ -150,6 +150,10 @@ Removal decision update (2026-10-12): repository maintainers approved accelerate
 
 The maintainer's explicit removal request waives the normal deprecation and additional-zero-use-quarter interval. Usage is not the sole basis for removal: no shipped skill or agent invokes the command, and its generic pipeline-design guidance can be requested directly or captured in project-specific CI conventions. The skill and its source manifest are retired, removing the singleton `ci` domain. The nearest existing route, `kramme:pr:fix-ci`, remains for repairing failures in an existing Pull Request pipeline; it does not inherit the removed design workflow, fixed gate ordering, runtime budget, feature-flag lifecycle, or exit checklist. Removing this public command is a breaking migration and must ship in the next major release.
 
+Removal decision update (2026-10-12): repository maintainers approved accelerated removal of `kramme:prototype`. Reports run on 2026-10-12 show zero recorded invocations in the current 30-day and 90-day windows of the local usage log, which spans only 2026-10-06 through 2026-10-12. The skill was introduced on 2026-07-10; use before the current evidence window is unmeasured.
+
+The maintainer's explicit removal request waives the normal deprecation and additional-zero-use-quarter interval. Usage is not the sole basis for removal: bounded throwaway experiments can be requested directly, while Wayfinder's prototype ticket type retains the human reaction, production separation, and cleanup handoff needed to resolve a planning decision. Wayfinder no longer asks the human to invoke the removed command. The standalone skill, logic/UI recipes, and source manifest are retired; no dedicated replacement inherits its variant controls, artifact placement, or automatic current-run deletion contract. Removing this public command is a breaking migration and must ship in the next major release.
+
 ### Overlapping skills
 
 | Case | 30-day use | 90-day use | Verdict under this policy | Reason |
@@ -171,7 +175,7 @@ The maintainer's explicit removal request waives the normal deprecation and addi
 | `deps` — `kramme:deps:audit` | 0 | 0 | — | — | Observe. Dependency lifecycle is a durable boundary, but the older experimental skill needs a current owner case. |
 | `learn` — `kramme:learn:verify-understanding` | 0 | 2 | — | — | Keep. It has recorded adoption and a distinct learning-verification outcome. |
 | `nx` — `kramme:nx:setup-portless` | 0 | 0 | — | — | Rehome candidate. The vendor-specific domain has no recorded adoption, and setup/tooling can classify the responsibility without a dedicated namespace. |
-| `prototype` — `kramme:prototype` | 0 | 0 | repository maintainers | 2026-10-01 | Keep provisionally through its first quarterly review. It was introduced on 2026-07-10 and represents a distinct disposable-prototyping mode. |
+| `prototype` — `kramme:prototype` | 0 | 0 | repository maintainers | 2026-10-12 | Remove (approved 2026-10-12). Request bounded throwaway experiments directly; Wayfinder retains its human-led prototype ticket type. |
 | `research` — `kramme:research` | 0 | 0 | repository maintainers | 2026-10-01 | Keep provisionally through its first quarterly review. It was introduced on 2026-07-09 and produces a distinct primary-source artifact. |
 | `setup` — `kramme:setup` | 0 | 0 | repository maintainers | 2026-10-01 | Keep provisionally through its first quarterly review. It was introduced on 2026-06-07 and has a distinct read-only environment-health boundary. |
 | `text` — `kramme:text:humanize` | 0 | 0 | — | — | Observe. General prose transformation can justify a domain, but this older zero-use singleton needs a current owner case. |
@@ -182,7 +186,7 @@ The maintainer's explicit removal request waives the normal deprecation and addi
 
 - `kramme:siw:spec-audit:auto-fix` does not satisfy the canonical structure. A follow-up must choose a canonical name or obtain an exception before renaming or otherwise restructuring it.
 - `kramme:docs:out-of-scope` satisfies the structural rule but not the existing verb-first, shared object-first, or noun-compound word-order patterns. It needs reconsideration under that convention, not a structural exception.
-- `kramme:browse`, `kramme:prototype`, `kramme:qa`, `kramme:research`, and `kramme:setup` are legacy short forms. They remain valid identifiers until a separately scoped migration, but this record grants none of them an exception.
+- `kramme:browse`, `kramme:qa`, `kramme:research`, and `kramme:setup` are legacy short forms. They remain valid identifiers until a separately scoped migration, but this record grants none of them an exception.
 
 ## Alternatives Considered
 
