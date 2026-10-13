@@ -5,7 +5,6 @@
 # - Path patterns (with slash): match exact/suffix relative paths.
 
 REVIEW_OVERVIEW.md
-UX_REVIEW_OVERVIEW.md
 PRODUCT_REVIEW_OVERVIEW.md
 PRODUCT_AUDIT_OVERVIEW.md
 PRODUCT_AUDIT.md

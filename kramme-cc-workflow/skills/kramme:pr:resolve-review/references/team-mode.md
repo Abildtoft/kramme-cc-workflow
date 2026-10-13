@@ -36,7 +36,7 @@ Same as `/kramme:pr:resolve-review` Steps 0-1:
 
 1. Check for arguments, including source flags, severity filters, granular commits, review content, instructions, or URL
 2. Honor explicit `REVIEW_SOURCE=local` or `REVIEW_SOURCE=online` selection before considering chat context. Also honor explicit `REVIEW_SOURCE=conductor`; read and follow `conductor-source.md` before grouping candidates.
-3. In auto mode, first check for `REVIEW_OVERVIEW.md`, `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, and `OVERENGINEERING_REVIEW_OVERVIEW.md`, then usable unmarked Conductor comments, then chat context. In auto mode, prefer a structured review in the immediately preceding assistant message when the current request refers to it within that chat-context stage.
+3. In auto mode, first check for `REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, and `OVERENGINEERING_REVIEW_OVERVIEW.md`, then usable unmarked Conductor comments, then chat context. In auto mode, prefer a structured review in the immediately preceding assistant message when the current request refers to it within that chat-context stage.
 4. Fetch from current branch's PR if nothing else found
 5. List all findings
 
@@ -137,7 +137,7 @@ After all agents complete:
 
 3. Do not post replies or resolve threads on GitHub.
 
-4. Write resolutions to the appropriate file (if the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place; if chat or payload content carries `Review producer: kramme:pr:overengineering-review`, write to `OVERENGINEERING_REVIEW_OVERVIEW.md`; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4 and Output format (in-place updates, never delete entries), with an additional note about parallel resolution:
+4. Write resolutions to the appropriate file (if the source was `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place; if chat or payload content carries `Review producer: kramme:pr:overengineering-review`, write to `OVERENGINEERING_REVIEW_OVERVIEW.md`; otherwise write to `REVIEW_OVERVIEW.md`), using the same format as `/kramme:pr:resolve-review` Step 4 and Output format (in-place updates, never delete entries), with an additional note about parallel resolution:
 
 ```markdown
 ## Resolution Summary

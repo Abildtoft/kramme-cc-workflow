@@ -14,7 +14,7 @@ Fill in placeholders surrounded by `{{ }}`. Omit empty sections (no "Errors: non
 | Skill | Sources | Changed | Unchanged | Errors | Bootstrapped |
 | --- | --: | --: | --: | --: | :-: |
 | {{kramme:code:harden-security}} | {{3}} | {{1}} | {{2}} | {{0}} | {{—}} |
-| {{kramme:pr:ux-review}} | {{2}} | {{0}} | {{2}} | {{0}} | {{✓}} |
+| {{kramme:pr:product-review}} | {{2}} | {{0}} | {{2}} | {{0}} | {{✓}} |
 
 Totals: {{X changed, Y unchanged, Z errors, B bootstrapped}}
 
@@ -45,11 +45,11 @@ Totals: {{X changed, Y unchanged, Z errors, B bootstrapped}}
 
 ---
 
-## {{kramme:pr:ux-review}}
+## {{kramme:pr:product-review}}
 
 ### Bootstrapped
 
-Manifest created at `kramme-cc-workflow/skills/kramme:pr:ux-review/references/sources.yaml` with {{N}} sources. No baselines yet — first audit will populate them.
+Manifest created at `kramme-cc-workflow/skills/kramme:pr:product-review/references/sources.yaml` with {{N}} sources. No baselines yet — first audit will populate them.
 
 Proposed sources:
 

@@ -20,14 +20,6 @@
       "producer": "kramme:pr:code-review"
     },
     {
-      "id": "ux-review-overview",
-      "path": "UX_REVIEW_OVERVIEW.md",
-      "type": "file",
-      "category": "working-dir",
-      "retention": "disposable",
-      "producer": "kramme:pr:ux-review"
-    },
-    {
       "id": "product-review-overview",
       "path": "PRODUCT_REVIEW_OVERVIEW.md",
       "type": "file",

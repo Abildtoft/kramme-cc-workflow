@@ -36,7 +36,7 @@ _You make the final call. A pending draft, when requested, remains unsubmitted u
 
 ## Coverage Status (omit when complete)
 
-<dimension> not covered: <reason — e.g. ux-review agent failed, app not running, --code-only>.
+<dimension> not covered: <reason — e.g. product-review agent failed, app not running, --code-only>.
 
 ## Open Conversation (X threads, Y awaiting you)
 
@@ -121,7 +121,7 @@ gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/r
 
 ## Optional deeper passes
 
-- `/kramme:pr:product-review` — deeper product-value and flow-completeness review.
+- `/kramme:pr:product-review` — product-value and flow-completeness review of every changed file.
 - `/kramme:code:copy-review --pr` — UI text redundancy review for the Pull Request diff.
 ````
 

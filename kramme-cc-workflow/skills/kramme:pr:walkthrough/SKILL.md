@@ -14,7 +14,7 @@ Create a local, reviewer-facing visual explanation of an existing diff. Choose o
 - **Guided walkthrough (default)** — Orient a reviewer to the current branch or open GitHub PR with a static D3 page and four interactive views.
 - **Report (`--report`)** — Explain a branch, commit, PR, or range with a self-contained before/after report built from local visual templates.
 
-This is an orientation artifact, not a review workflow. Do not invent authoritative findings, approve/request changes, or duplicate `kramme:pr:code-review` or `kramme:pr:ux-review`.
+This is an orientation artifact, not a review workflow. Do not invent authoritative findings, approve/request changes, or duplicate `kramme:pr:code-review` or `kramme:pr:product-review`.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -148,7 +148,7 @@ Report:
 
 ## Report Style (`--report`)
 
-Generate a comprehensive visual diff report as a self-contained HTML page. This is a visual before/after artifact, not an actionable code review: use `kramme:pr:code-review` for fix-oriented code findings and `kramme:pr:ux-review` for live UX, product, visual, and accessibility review.
+Generate a comprehensive visual diff report as a self-contained HTML page. This is a visual before/after artifact, not an actionable code review: use `kramme:pr:code-review` for fix-oriented code findings and `kramme:pr:product-review` for live UX, product, visual, and accessibility review.
 
 ### Prerequisites
 
@@ -224,7 +224,7 @@ Before generating HTML, produce a structured fact sheet of every claim to presen
 5. **Flow diagrams** — Use Mermaid flowcharts, sequences, or state diagrams for new lifecycle, pipeline, or interaction patterns with the same zoom controls.
 6. **File map** — Show a full tree with color-coded new, modified, and deleted indicators inside `<details>` collapsed by default.
 7. **Test coverage** — Compare before/after test file counts and explain what is covered.
-8. **Review notes** — Present explanatory Good/Bad/Ugly analysis for the visual artifact, not authoritative inline findings. Use `kramme:pr:code-review` for actionable review and `kramme:pr:ux-review` for live UX/product review.
+8. **Review notes** — Present explanatory Good/Bad/Ugly analysis for the visual artifact, not authoritative inline findings. Use `kramme:pr:code-review` for actionable review and `kramme:pr:product-review` for live UX/product review.
    - **Good**: Solid choices, improvements, and clean patterns
    - **Bad**: Bugs, regressions, missing error handling, and logic errors
    - **Ugly**: Introduced tech debt and maintainability concerns

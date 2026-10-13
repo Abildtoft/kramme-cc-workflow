@@ -61,7 +61,6 @@ If no review content was provided in Step 0:
 **Local review files** (treated as **internal reviews**):
 
 - `REVIEW_OVERVIEW.md` (from `/kramme:pr:code-review`)
-- `UX_REVIEW_OVERVIEW.md` (from `/kramme:pr:ux-review`)
 - `PRODUCT_REVIEW_OVERVIEW.md` (from `/kramme:pr:product-review`)
 - `COPY_REVIEW_OVERVIEW.md` (from `/kramme:code:copy-review`)
 - `CONVENTION_REVIEW_OVERVIEW.md` (from `/kramme:pr:convention-review`)
@@ -111,7 +110,6 @@ For structured review content from any transport, also parse the report-level `R
 - `review-scope`, `PR description`, and other non-file locations are process-level findings. Defer them through the same manual-proposal flow in Step 2d; there the recommendation is a concrete process action (proposed PR-description text, a branch-split plan), not a code edit. If the user accepts that recommendation, use the process-handoff path in Step 2d instead of sending the finding through code implementation again.
 - Legacy local findings without an action class keep the previous location/severity behavior, but do not infer `gated_auto` from a file location when an action class is present.
 - When the source is `OVERENGINEERING_REVIEW_OVERVIEW.md` or carries the exact structured marker `Review producer: kramme:pr:overengineering-review`, classify it as an overengineering review regardless of transport. Exclude both `Justified` and `Previously Processed` from the active finding set: those sections retain rationale and lifecycle history, not current resolver work. Map active verdicts at this consumer boundary: treat `Verdict: JUDGMENT CALL` as `Action class: manual` and route it through Step 2d's accept-or-simplify proposal flow; treat `Verdict: OVERDONE` as `Action class: gated_auto` only when it has a concrete file location, otherwise apply the normal process-level manual flow. Do not infer the producer or either mapping from headings or other free-form prose. Chat-supplied reviews remain external for Step 2b validity assessment even when the producer marker is present.
-- For `UX_REVIEW_OVERVIEW.md`, also accept per-agent finding IDs (`PROD-NNN`, `VIS-NNN`, and `A11Y-NNN`) from older UX audit reports as source identifiers alongside `UX-NNN` IDs.
 
 ### Step 2: Evaluate findings
 
@@ -300,7 +298,7 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
   `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
 
-- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `UX_REVIEW_OVERVIEW.md`, `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place. A chat or payload review carrying `Review producer: kramme:pr:overengineering-review` writes to `OVERENGINEERING_REVIEW_OVERVIEW.md`; other external, chat, and Conductor-sourced reviews write to `REVIEW_OVERVIEW.md`.
+- **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place. A chat or payload review carrying `Review producer: kramme:pr:overengineering-review` writes to `OVERENGINEERING_REVIEW_OVERVIEW.md`; other external, chat, and Conductor-sourced reviews write to `REVIEW_OVERVIEW.md`.
   - Use `Resolution status: addressed` only when the finding was implemented, already satisfied by the current code, or otherwise fully resolved.
   - Use `Resolution status: open` when implementation or validation failed, is blocked, or needs another run before it can be considered resolved.
   - Use `deferred`, `acknowledged`, or `skipped` for the non-implementation outcomes defined in Step 2, but do not use `skipped` for severity-filtered findings that were never processed.
