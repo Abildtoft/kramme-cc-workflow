@@ -286,6 +286,8 @@ $kramme:pr:code-review --subagent-model sol      # Codex reviewers use the runti
 
 `pr:review-convergence` keeps review spend proportional to what actually changed. Each quality round runs every applicable gate read-only and collects findings, then fixes the accepted ones as one batch that consumes one remediation cycle. The batch is checked by a delta round scoped to the fix (`--base <pre-batch-commit>`, `--no-cleanup` on `pr:code-review`, a reused `--baseline` for `pr:convention-review`), and the loop closes only when a full confirmation pass over the final tree changes nothing. Standard mode runs the advisory `code:refactor-opportunities` scan once on that final candidate, `pr:overengineering-review` carries findings whose cited regions are unchanged forward without re-justifying them, and the handoff reports a `Review cost:` line from the run-state ledger. After CI repair, `linear:issue-to-pr` and `code:plan-to-pr` pass `--verified-tree` so the validation-only pass reviews only the CI remediation.
 
+`pr:code-review --no-cleanup` excludes only the advisory `lean`, `refactor`, and `simplify` dimensions. Removal review remains independently applicable. The execution plan retains default `all` scope with `noCleanup: true`, records the skipped dimensions, and can seal and pass convergence's `--aspects all` completion check. Combining the flag with explicitly requested cleanup aspects or cleanup emphasis is rejected.
+
 ```bash
 /kramme:pr:code-review    # run specialized review agents on your branch
 /kramme:pr:resolve-review # fix the findings

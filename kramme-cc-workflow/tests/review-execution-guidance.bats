@@ -17,3 +17,16 @@
   [ "$status" -ne 0 ]
   [[ "$output" == *'INCOMPLETE:'* ]]
 }
+
+@test "review modes freeze no-cleanup without narrowing default aspect scope" {
+  local skill="$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review"
+  local contract
+  contract="$(cat "$skill/references/execution-contract.md")"
+  [[ "$(cat "$skill/SKILL.md")" == *'Save this boolean as `noCleanup` in the execution plan while retaining `["all"]`'* ]]
+  [[ "$(cat "$skill/references/team-mode.md")" == *'as `noCleanup` and `emphasizedDimensions` per `references/execution-contract.md`'* ]]
+  [[ "$contract" == *'"noCleanup": false'* ]]
+  [[ "$contract" == *'"emphasizedDimensions": []'* ]]
+  [[ "$contract" == *'retain `aspects: ["all"]` for default scope'* ]]
+  [[ "$contract" == *'still evaluates `removal` independently'* ]]
+  [[ "$contract" == *'including convergence delta reviews with `noCleanup: true`'* ]]
+}

@@ -28,6 +28,7 @@ const CONDITIONAL = [
   "performance",
   "security",
 ];
+const ADVISORY_CLEANUP = ["lean", "refactor", "simplify"];
 const STAGES = [
   "integrity",
   "relevance",
@@ -107,7 +108,36 @@ function jobsFor(plan) {
     plan.aspects.every((a) => a === "all" || Object.hasOwn(REVIEWERS, a)),
     "Unknown aspect",
   );
+  requireValue(
+    !Object.hasOwn(plan, "noCleanup") || typeof plan.noCleanup === "boolean",
+    "Plan noCleanup must be a boolean",
+  );
+  const emphasized = Object.hasOwn(plan, "emphasizedDimensions")
+    ? plan.emphasizedDimensions
+    : [];
+  requireValue(
+    Array.isArray(emphasized) &&
+      emphasized.every(
+        (dimension) =>
+          typeof dimension === "string" && Object.hasOwn(REVIEWERS, dimension),
+      ),
+    "Plan emphasizedDimensions must be an array of recognized dimensions (not all)",
+  );
+  if (plan.noCleanup) {
+    requireValue(
+      !plan.aspects.some((dimension) => ADVISORY_CLEANUP.includes(dimension)),
+      "--no-cleanup conflicts with explicitly requested cleanup aspects",
+    );
+    requireValue(
+      !emphasized.some((dimension) => ADVISORY_CLEANUP.includes(dimension)),
+      "--no-cleanup conflicts with emphasized cleanup dimensions",
+    );
+  }
   const all = plan.aspects.includes("all");
+  requireValue(
+    all || emphasized.every((dimension) => plan.aspects.includes(dimension)),
+    "Emphasized dimension excluded by explicit aspect filter",
+  );
   const jobs = {};
   const coverage = {};
   for (const [dimension, reviewers] of Object.entries(REVIEWERS)) {
@@ -116,6 +146,10 @@ function jobsFor(plan) {
     let reason = selected
       ? "required by selected scope"
       : "excluded by explicit aspect filter";
+    if (selected && plan.noCleanup && ADVISORY_CLEANUP.includes(dimension)) {
+      active = false;
+      reason = "excluded by --no-cleanup";
+    }
     if (selected && CONDITIONAL.includes(dimension)) {
       const decision = plan.applicability?.[dimension];
       requireValue(

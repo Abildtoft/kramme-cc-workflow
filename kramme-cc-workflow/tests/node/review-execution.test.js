@@ -11,8 +11,8 @@ const helper = path.resolve(
 );
 const { jobsFor } = require(helper);
 
-/** @param {import('node:test').TestContext} t @param {string[]} aspects @param {string[]} active */
-function fixture(t, aspects = ["all"], active = []) {
+/** @param {import('node:test').TestContext} t @param {string[]} aspects @param {string[]} active @param {{noCleanup?: boolean, emphasizedDimensions?: string[]}} options */
+function fixture(t, aspects = ["all"], active = [], options = {}) {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), "review-execution-test-"));
   t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   const root = path.join(temp, "repo");
@@ -45,6 +45,7 @@ function fixture(t, aspects = ["all"], active = []) {
   /** @type {{aspects: string[], context: string, applicability: Record<string, {applicable: boolean, reason: string}>}} */
   const plan = {
     aspects,
+    ...options,
     context: "base; source.txt changed; no PR metadata; no previous findings",
     applicability: {},
   };
@@ -157,6 +158,14 @@ test("default inventory cannot omit always-on and cleanup reviewers; one job per
       reason: "diff evidence",
     };
   const { jobs } = jobsFor(plan);
+  for (const noCleanup of [undefined, false]) {
+    const { coverage } = jobsFor({
+      ...plan,
+      ...(noCleanup === undefined ? {} : { noCleanup }),
+    });
+    for (const dimension of ["lean", "refactor", "simplify"])
+      assert.equal(coverage[dimension].active, true);
+  }
   for (const id of [
     "code-reviewer",
     "silent-failure-hunter",
@@ -178,6 +187,119 @@ test("default inventory cannot omit always-on and cleanup reviewers; one job per
     ["cleanup-reviewer"],
   );
 });
+
+test("no-cleanup excludes advisory dimensions and preserves independent removal", () => {
+  for (const removal of [false, true]) {
+    const plan = {
+      aspects: ["all"],
+      noCleanup: true,
+      emphasizedDimensions: ["code"],
+      applicability: Object.fromEntries(
+        [
+          "tests",
+          "comments",
+          "types",
+          "removal",
+          "performance",
+          "security",
+        ].map((dimension) => [
+          dimension,
+          {
+            applicable: dimension === "removal" && removal,
+            reason: `${dimension} inspected in diff`,
+          },
+        ]),
+      ),
+    };
+    const { jobs, coverage } = jobsFor(plan);
+    assert.deepEqual(plan.aspects, ["all"]);
+    for (const dimension of ["lean", "refactor", "simplify"]) {
+      assert.equal(coverage[dimension].active, false);
+      assert.match(coverage[dimension].reason, /--no-cleanup/);
+    }
+    assert.equal(coverage.removal.active, removal);
+    assert.equal(Object.hasOwn(jobs, "cleanup-reviewer"), removal);
+    for (const id of [
+      "code-reviewer",
+      "silent-failure-hunter",
+      "deslop-reviewer",
+    ])
+      assert.ok(jobs[id]);
+  }
+  const { coverage } = jobsFor({ aspects: ["code"], noCleanup: true });
+  assert.equal(coverage.lean.reason, "excluded by explicit aspect filter");
+});
+
+test("no-cleanup rejects explicitly requested cleanup aspects and emphasis", () => {
+  for (const dimension of ["lean", "refactor", "simplify"]) {
+    for (const aspects of [[dimension], ["all", dimension]])
+      assert.throws(
+        () => jobsFor({ aspects, noCleanup: true }),
+        /--no-cleanup.*explicit/i,
+      );
+    assert.throws(
+      () =>
+        jobsFor({
+          aspects: ["all"],
+          noCleanup: true,
+          emphasizedDimensions: [dimension],
+        }),
+      /--no-cleanup.*emphas/i,
+    );
+  }
+  const { jobs } = jobsFor({
+    aspects: ["removal"],
+    noCleanup: true,
+    emphasizedDimensions: ["removal"],
+    applicability: { removal: { applicable: true, reason: "deletion" } },
+  });
+  assert.ok(jobs["cleanup-reviewer"]);
+});
+
+test("normalized cleanup and emphasis options reject malformed values", () => {
+  for (const noCleanup of ["true", "false", 0, null])
+    assert.throws(
+      () => jobsFor({ aspects: ["code"], noCleanup }),
+      /noCleanup.*boolean/,
+    );
+  for (const emphasizedDimensions of [
+    "code",
+    null,
+    ["all"],
+    ["quick"],
+    [["code"]],
+  ])
+    assert.throws(
+      () => jobsFor({ aspects: ["code"], emphasizedDimensions }),
+      /emphasizedDimensions/,
+    );
+  assert.throws(
+    () => jobsFor({ aspects: ["code"], emphasizedDimensions: ["lean"] }),
+    /emphasized.*aspect filter/i,
+  );
+});
+
+for (const removal of [false, true]) {
+  test(`no-cleanup all run reloads, seals and passes convergence check (removal=${removal})`, (t) => {
+    const f = fixture(t, ["all"], removal ? ["removal"] : [], {
+      noCleanup: true,
+      emphasizedDimensions: [],
+    });
+    f.complete();
+    f.draft();
+    f.ok("seal", "--report", f.report);
+    const receipt = JSON.parse(
+      f.ok("check", "--report", f.report, "--aspects", "all").stdout,
+    );
+    assert.equal(receipt.status, "COMPLETE");
+    assert.equal(Object.hasOwn(receipt.jobs, "cleanup-reviewer"), removal);
+    assert.equal(receipt.coverage.removal.active, removal);
+    for (const dimension of ["lean", "refactor", "simplify"]) {
+      assert.equal(receipt.coverage[dimension].active, false);
+      assert.match(receipt.coverage[dimension].reason, /--no-cleanup/);
+    }
+  });
+}
 
 test("complete zero-findings run seals and independently rechecks", (t) => {
   const f = fixture(t);
