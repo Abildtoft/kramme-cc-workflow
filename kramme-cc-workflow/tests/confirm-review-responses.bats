@@ -873,13 +873,6 @@ REVIEW_SUMMARY.md"
 	[ -z "$output" ]
 }
 
-@test "blocks git commit when UX_REVIEW_OVERVIEW.md is staged" {
-	mock_git_staged "UX_REVIEW_OVERVIEW.md"
-	run run_hook "git commit -m 'ux review staged'"
-	is_blocked
-	[[ "$output" == *"UX_REVIEW_OVERVIEW.md"* ]]
-}
-
 @test "blocks git commit when PRODUCT_REVIEW_OVERVIEW.md is staged" {
 	mock_git_staged "PRODUCT_REVIEW_OVERVIEW.md"
 	run run_hook "git commit -m 'product review staged'"

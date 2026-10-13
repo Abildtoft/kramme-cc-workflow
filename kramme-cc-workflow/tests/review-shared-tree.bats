@@ -9,10 +9,10 @@ setup() {
   DISCIPLINE="$REPO_DIR/skills/kramme:pr:code-review/references/review-discipline.md"
   TEAM_MODE="$REPO_DIR/skills/kramme:pr:code-review/references/team-mode.md"
   TEMPLATE="$REPO_DIR/skills/kramme:pr:code-review/references/output-template.md"
-  UX_SKILL="$REPO_DIR/skills/kramme:pr:ux-review/SKILL.md"
-  UX_DISCIPLINE="$REPO_DIR/skills/kramme:pr:ux-review/references/shared-working-tree.md"
-  UX_TEAM_MODE="$REPO_DIR/skills/kramme:pr:ux-review/references/team-mode.md"
-  UX_TEMPLATE="$REPO_DIR/skills/kramme:pr:ux-review/assets/ux-review-report-format.md"
+  PRODUCT_SKILL="$REPO_DIR/skills/kramme:pr:product-review/SKILL.md"
+  PRODUCT_DISCIPLINE="$REPO_DIR/skills/kramme:pr:product-review/references/shared-working-tree.md"
+  PRODUCT_TEAM_MODE="$REPO_DIR/skills/kramme:pr:product-review/references/team-mode.md"
+  PRODUCT_TEMPLATE="$REPO_DIR/skills/kramme:pr:product-review/assets/product-review-report-format.md"
   TMP_DIR="$(mktemp -d)"
   WORK="$TMP_DIR/work"
   init_test_git_repo "$WORK"
@@ -225,44 +225,44 @@ EOF
   grep -qF "or the working tree changed during the review" "$TEMPLATE"
 }
 
-@test "ux review documents the shared working tree constraint" {
-  grep -qF "# Shared working tree" "$UX_DISCIPLINE"
-  grep -qF "**Every spawned reviewer is read-only.**" "$UX_DISCIPLINE"
-  grep -qF '${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh' "$UX_DISCIPLINE"
-  grep -qF 'Parse the single `@head<TAB><commit>` metadata record before interpreting any path record.' "$UX_DISCIPLINE"
-  grep -qF "discard all findings from the stale batch" "$UX_DISCIPLINE"
-  grep -qF "a screenshot, recording, or trace must not be saved into the repository working tree" "$UX_DISCIPLINE"
-  grep -qF "Drop any finding whose cited code does not reproduce." "$UX_DISCIPLINE"
-  grep -qF "Never revert or clean them automatically" "$UX_DISCIPLINE"
+@test "product review documents the shared working tree constraint" {
+  grep -qF "# Shared working tree" "$PRODUCT_DISCIPLINE"
+  grep -qF "**Every spawned reviewer is read-only.**" "$PRODUCT_DISCIPLINE"
+  grep -qF '${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh' "$PRODUCT_DISCIPLINE"
+  grep -qF 'Parse the single `@head<TAB><commit>` metadata record before interpreting any path record.' "$PRODUCT_DISCIPLINE"
+  grep -qF "discard all findings from the stale batch" "$PRODUCT_DISCIPLINE"
+  grep -qF "a screenshot, recording, or trace must not be saved into the repository working tree" "$PRODUCT_DISCIPLINE"
+  grep -qF "Drop any finding whose cited code does not reproduce." "$PRODUCT_DISCIPLINE"
+  grep -qF "Never revert or clean them automatically" "$PRODUCT_DISCIPLINE"
 }
 
-@test "ux review skill mandates read-only reviewers and checks tree integrity" {
-  grep -qF 'Read `references/shared-working-tree.md` and instruct every reviewer that it is **read-only**' "$UX_SKILL"
-  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$UX_SKILL"
-  grep -qF '**Working-tree integrity check.**' "$UX_SKILL"
-  grep -qF 'diff "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"' "$UX_SKILL"
-  grep -qF 'Compare the `@head` metadata records before deriving `MUTATED_PATHS`' "$UX_SKILL"
-  grep -qF 'stop without writing `UX_REVIEW_OVERVIEW.md`' "$UX_SKILL"
-  grep -qF "never save a screenshot, recording, or trace into the repository working tree" "$UX_SKILL"
-  grep -qF "Parallel reviewers share one working tree" "$UX_SKILL"
-  grep -qF "stop without writing \`UX_REVIEW_OVERVIEW.md\` and report the mutation instead" "$UX_SKILL"
+@test "product review skill mandates read-only reviewers and checks tree integrity" {
+  grep -qF 'Read `references/shared-working-tree.md` and instruct every reviewer that it is **read-only**' "$PRODUCT_SKILL"
+  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$PRODUCT_SKILL"
+  grep -qF '**Working-tree integrity check.**' "$PRODUCT_SKILL"
+  grep -qF 'diff "$TREE_MANIFEST_BEFORE" "$TREE_MANIFEST_AFTER"' "$PRODUCT_SKILL"
+  grep -qF 'Compare the `@head` metadata records before deriving `MUTATED_PATHS`' "$PRODUCT_SKILL"
+  grep -qF 'stop without writing `PRODUCT_REVIEW_OVERVIEW.md`' "$PRODUCT_SKILL"
+  grep -qF "never save a screenshot, recording, or trace into the repository working tree" "$PRODUCT_SKILL"
+  grep -qF "Parallel reviewers share one working tree" "$PRODUCT_SKILL"
+  grep -qF "stop without writing \`PRODUCT_REVIEW_OVERVIEW.md\` and report the mutation instead" "$PRODUCT_SKILL"
 }
 
-@test "ux team mode carries the same read-only mandate and integrity check" {
-  grep -qF 'Every teammate is **read-only**' "$UX_TEAM_MODE"
-  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$UX_TEAM_MODE"
-  grep -qF "**working-tree integrity check**" "$UX_TEAM_MODE"
-  grep -qF "TREE_MANIFEST_AFTER" "$UX_TEAM_MODE"
-  grep -qF 'compare the `@head` metadata records before interpreting path differences' "$UX_TEAM_MODE"
-  grep -qF 'discard every finding from the stale batch' "$UX_TEAM_MODE"
+@test "product review team mode carries the same read-only mandate and integrity check" {
+  grep -qF 'Every teammate is **read-only**' "$PRODUCT_TEAM_MODE"
+  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh" > "$TREE_MANIFEST_BEFORE"' "$PRODUCT_TEAM_MODE"
+  grep -qF "**working-tree integrity check**" "$PRODUCT_TEAM_MODE"
+  grep -qF "TREE_MANIFEST_AFTER" "$PRODUCT_TEAM_MODE"
+  grep -qF 'compare the `@head` metadata records before interpreting path differences' "$PRODUCT_TEAM_MODE"
+  grep -qF 'discard every finding from the stale batch' "$PRODUCT_TEAM_MODE"
 }
 
-@test "ux report formats can report a mutated working tree" {
-  grep -qF "Working tree mutated during audit:" "$UX_TEMPLATE"
-  grep -qF "Working tree mutated during audit:" "$UX_TEAM_MODE"
+@test "product review report formats can report a mutated working tree" {
+  grep -qF "Working tree mutated during audit:" "$PRODUCT_TEMPLATE"
+  grep -qF "Working tree mutated during audit:" "$PRODUCT_TEAM_MODE"
 }
 
-@test "every reviewer agent launched by ux review is read-only" {
+@test "every reviewer agent launched by product review is read-only" {
   local agents=(
     ux-reviewer
     product-reviewer
