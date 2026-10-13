@@ -333,11 +333,6 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:triage-risk/SKILL.md"
     },
     {
-      "name": "kramme:pr:ux-review",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md"
-    },
-    {
       "name": "kramme:pr:verify-description",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md"
