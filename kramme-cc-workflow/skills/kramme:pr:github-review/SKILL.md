@@ -254,7 +254,7 @@ If `--keep-worktree` was passed, report the path so the user can inspect or remo
 
 ## Step 9: Draft the Review Comments
 
-Read `references/report-template.md` and `references/comment-drafting.md`. Follow the latter's finding categories, evidence/comment separation, conversation deduplication, reply rules, and verdict criteria to complete the report fields.
+Read `references/report-template.md` and `references/comment-drafting.md`. Follow the latter's finding categories, evidence/comment separation, standalone-context rules, conversation deduplication, reply rules, and verdict criteria to complete the report fields.
 
 ## Step 10: Humanize the Draft Comments
 
