@@ -101,6 +101,26 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "github review draft comments name code outside their anchor" {
+	run bash -c '
+    set -e
+    grep -qF "Make the comment stand on its own" "$1"
+    grep -qF "name that code explicitly by file and symbol" "$1"
+    grep -qF "Anchor where the fix belongs" "$1"
+    grep -qF "run a cold-read check on each draft" "$1"
+    grep -qF "explicit references to code outside the anchor" "$1"
+    grep -qF "Identifiers and code references inside a body stay in that body" "$1"
+    grep -qF "Do not send report metadata such as" "$1"
+    ! grep -qF "Do not send file paths" "$1" || exit 1
+    grep -qF "Name the code you actually read" "$1"
+    grep -qF "  - Refers to: " "$2"
+    grep -qF -- "- **Refers to** — " "$2"
+    grep -qF "standalone-context rules" "$3"
+  ' _ "$COMMENT_REFERENCE" "$REPORT_TEMPLATE" "$SKILL"
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "github review description stays below the burndown threshold" {
 	run python3 - "$SKILL" <<'PY'
 import pathlib
