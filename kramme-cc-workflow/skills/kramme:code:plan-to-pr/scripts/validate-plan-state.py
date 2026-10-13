@@ -27,6 +27,29 @@ ATTACHMENT_PATH_RE = re.compile(r"^[A-Za-z0-9._/ -]+$")
 ACTIVE_STATUSES = {"TODO", "READY", "IN_PROGRESS", "BLOCKED", "DRIFTED", "STALE"}
 ALL_STATUSES = ACTIVE_STATUSES | {"MISSING", "DONE", "SUPERSEDED"}
 RECOVERY_STATUSES = {"DRIFTED", "STALE"}
+FORBIDDEN_EVIDENCE_SOURCES = (
+    "pr_plan_index.md",
+    "sibling plan",
+    "workflow `done`",
+    "pull request url",
+    "landing metadata",
+)
+EVIDENCE_CLAUSE_SPLIT_RE = re.compile(r"[;!?\n]|\.(?=\s|$)")
+EVIDENCE_SOURCE_ITEM = (
+    r"(?:(?:the|any|a)\s+)?`?(?:"
+    + "|".join(re.escape(source) for source in (*FORBIDDEN_EVIDENCE_SOURCES, "source report"))
+    + r")s?`?"
+)
+NEGATED_PREFIX_RE = re.compile(
+    r"(?:\bwithout|\b(?:do not|does not|never|not)\s+(?:need|require|consult|use|depend on|rely on))"
+    r"\s+(?:(?:the|any|a)\s+)?`?$"
+)
+NO_SOURCE_PREFIX_RE = re.compile(
+    rf"\bno\s+(?:{EVIDENCE_SOURCE_ITEM}\s*(?:,\s*|(?:and|or)\s+))*(?:(?:the|any|a)\s+)?`?$"
+)
+NEGATED_SUFFIX_RE = re.compile(r"s?`?\s+(?:is|are)\s+(?:not|never)\s+(?:needed|required|necessary|consulted|used)\b")
+UNNEEDED_SUFFIX_RE = re.compile(r"s?`?\s+(?:(?:is|are)\s+)?(?:needed|required|necessary|consulted|used)\b")
+CONDITION_RE = re.compile(r"\b(?:unless|until|if|when|once|after|before|while|but|only)\b")
 REQUIRED_PLAN_SECTIONS = (
     "### In Scope",
     "### Out of Scope",
@@ -436,6 +459,23 @@ def evidence_field(block: str, field: str) -> str:
     return matches[0]
 
 
+def forbidden_evidence_source(text: str) -> str | None:
+    """Return a workflow-owned source the evidence relies on, ignoring clauses that only disclaim it."""
+    for clause in EVIDENCE_CLAUSE_SPLIT_RE.split(text.casefold()):
+        for source in FORBIDDEN_EVIDENCE_SOURCES:
+            for occurrence in re.finditer(re.escape(source), clause):
+                prefix = clause[: occurrence.start()]
+                negated = (
+                    NEGATED_PREFIX_RE.search(prefix)
+                    or NEGATED_SUFFIX_RE.match(clause, occurrence.end())
+                    or (NO_SOURCE_PREFIX_RE.search(prefix) and UNNEEDED_SUFFIX_RE.match(clause, occurrence.end()))
+                )
+                if negated and not CONDITION_RE.search(clause):
+                    continue
+                return source
+    return None
+
+
 def parse_prerequisite_evidence(
     context: GitContext, text: str, blockers: tuple[str, ...]
 ) -> list[PrerequisiteEvidence]:
@@ -480,13 +520,14 @@ def parse_prerequisite_evidence(
             normalize_repository_path(context, raw_path, "PREREQUISITE_EVIDENCE_PATH_INVALID")[0]
             for raw_path in raw_paths
         )
-        combined = "\n".join((required_base_state, evidence_locations, readiness_decision)).casefold()
-        forbidden = ("pr_plan_index.md", "sibling plan", "workflow `done`", "pull request url", "landing metadata")
-        if any(value in combined for value in forbidden):
+        forbidden_source = forbidden_evidence_source(
+            "\n".join((required_base_state, evidence_locations, readiness_decision))
+        )
+        if forbidden_source:
             raise ValidationError(
                 "PREREQUISITE_EVIDENCE_INVALID",
                 "Prerequisite evidence must be decidable from repository base state alone.",
-                {"label": blocker},
+                {"label": blocker, "source": forbidden_source},
             )
         records.append(
             PrerequisiteEvidence(
