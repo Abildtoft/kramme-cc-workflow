@@ -1,157 +1,151 @@
 # PR Description Section Templates
 
-Templates and worked examples for each section of the PR description.
+Use these sections when the repository has no GitHub PR template. Each section has an **Include when** rule: add the section only when it carries information for this PR, and never write one whose only content is "None", "N/A", or "Not applicable". Keep this order:
 
-## Summary Section
+1. Summary (always)
+2. Changes
+3. Breaking changes
+4. How it works
+5. Rollout
+6. Review notes
+7. Test plan (always)
+8. Screenshots / Videos
 
-Open with the clearest possible answer to “What does this PR do?” Write it in simple, everyday language—almost ELI10—so an intelligent ten-year-old who does not know the codebase could understand the outcome. Lead with what changes for users or the business, and leave files, classes, APIs, and other implementation mechanics for later sections.
+When a repository GitHub PR template exists, map each default section into the closest template prompt instead of duplicating headings. Answer every prompt the template requires, even when the honest answer is "None".
 
-**EXAMPLE Summary:**
+The keep and cut lists in `references/best-practices.md` decide what goes into these sections. Clear is the goal, not short: include every keep-list item that applies, even when the body gets longer.
+
+## Summary
+
+**Include when:** always.
+
+Open with the clearest possible answer to “What does this PR do?” Write it in simple, everyday language—almost ELI10—so an intelligent ten-year-old who does not know the codebase could understand the outcome. Lead with what changes for users, callers, or maintainers, and leave files, classes, APIs, and other implementation mechanics for later sections.
+
+1. **What changes** (1–3 sentences, present tense): the outcome after merge.
+2. **Why** (1–3 sentences): the problem, who it affected, and how. Pull it from the Linear issue when one exists. A "why" that only says the change improves things is not a reason.
+3. **Pointer sentence** (only when needed): if the PR breaks something, needs rollout steps, or departs from the linked issue, say so in one sentence. A reader who stops after the Summary must not miss it.
+4. **Issue link**: a magic word and the issue ID, such as `Fixes WAN-521`.
+
+When the body has a `## Changes` section, the Summary states the outcome and leaves the parts to that list. For a PR that batches many independent changes, say what kind of batch it is and name the two or three changes that matter most; that overlap with the list is expected.
+
+**EXAMPLE:**
 
 ```markdown
 ## Summary
 
-Added a platform picker guard that automatically skips the platform selection page if a user only has access to one platform. This improves the user experience by reducing unnecessary navigation steps.
+People who can use only one platform no longer see the platform picker. After signing in, they go straight to that platform's dashboard.
 
-This change addresses user feedback that the platform picker was unnecessary for single-platform users, causing confusion and extra clicks.
+The picker asked these users to choose from a list with a single entry, and support tickets show it confused them. People with several platforms still see the picker.
 
 Fixes WAN-521
 ```
 
-The Summary section is followed immediately by the Change Summary block below.
+## Changes
 
-## Change Summary Section
+**Include when:** the PR makes two or more changes a reviewer would check separately. Supporting edits such as tests, docs, changelog entries, and generated files don't count unless one needs review attention.
 
-**ALWAYS** include this block immediately after `## Summary` and before `## Technical Details`.
+- Write one change per bullet, in one sentence, starting with an imperative verb like the title (`Add`, `Remove`, `Skip`, `Block`).
+- Describe the effect, not the files. Name a file or symbol only when it helps the reviewer find something. Keep a concrete example that makes a change clear, such as the command a fix now blocks.
+- Group related bullets by effect or audience, for example **Now allowed** and **Now blocked** for a fix. Never group by layer such as Frontend, Backend, and Tests.
+- Keep the list to about eight bullets. When a PR batches more changes than that, write one bullet per theme instead of one per change: name the theme and say how many places it touches. A theme bullet may add a short second sentence that names the one change a reviewer most needs to see. When the changes share no theme, group them by effect, such as **Fixed** and **Changed defaults**. When each change has its own commit, say so, so reviewers can go commit by commit.
 
-If a repository GitHub PR template exists, map this block into the closest template prompts instead of duplicating headings or overriding the template order.
-
-1. **Changes made**:
-   - Use verb-led bullets (`add`, `extract`, `wire`, `rename`, `remove`, `gate`)
-   - Scope each bullet to a feature, implementation area, or user-visible behavior
-   - Split distinct changes into separate bullets
-   - Do not mirror the GitHub file list; mention exact files only when the name helps reviewers find a non-obvious entry point or risk
-
-2. **Things I didn't touch**:
-   - List adjacent work considered and deliberately left out of scope
-   - Use `None` only after considering whether anything was explicitly deferred
-
-3. **Potential concerns**:
-   - Surface reviewer-relevant risk such as migrations, feature-flag defaults, partial coverage, rollout dependencies, or known follow-ups
-   - Use `None` if there is nothing material to flag
-
-**EXAMPLE Change Summary:**
+**EXAMPLE:**
 
 ```markdown
-### Changes made
+## Changes
 
-- Add `PlatformPickerRedirectGuard` and `PlatformPickerRedirectStore` to redirect single-platform users before the picker renders
-- Wire the guard into platform-picker routing and add unit coverage for redirect, multi-platform, and error paths
-
-### Things I didn't touch
-
-- Multi-platform picker UI and selection flow
-- Backend platform-count APIs, since this example is frontend-only
-
-### Potential concerns
-
-- Redirect behavior depends on the existing platform-count call; verify slow/error responses still fall back to the picker without a blank screen
+- Redirect users who have exactly one platform from the picker to that platform's dashboard
+- Show the picker as before when the platform count takes longer than 2 seconds or fails
 ```
 
-## Technical Details Section
+## Breaking changes
 
-**ALWAYS** include implementation approach. Include scope changes only when the implementation diverged from Linear. Include area notes and reviewer landmarks only when they add review value beyond GitHub's file tree:
+**Include when:** a behavior people were told they could rely on stops working, or callers must change their code, configuration, or usage. A new table, endpoint, column, or optional setting is never breaking. Neither is a fix that closes a bug or a bypass nobody was meant to rely on; describe that as a behavior change in `## Changes`. A breaking change also puts `!` in the title.
 
-1. **Implementation approach** (2-4 sentences):
-   - Key architectural decisions
-   - Design patterns used
-   - Why this approach was chosen over alternatives
-   - **If applicable**: Divergences from Linear issue description with clear rationale
+1. **What breaks**, and who is affected.
+2. **What they must do**, with a short before/after when it helps.
+3. **Release impact**: the SemVer level when the repository publishes a versioned artifact, and the changelog or release-note entry when one is expected.
 
-2. **Scope changes** (if implementation diverged from Linear issue):
-   - **ONLY document divergences from Linear issue(s)** - this is the only source reviewers have access to
-   - **NEVER** reference spec files (SPEC.md, LOG.md, etc.) or conversation history - reviewers cannot see these
-   - **What changed**: Clear description of how implementation differs from Linear issue
-   - **Why it changed**: Rationale for the divergence (discovered during implementation, technical constraints, better approach found, etc.)
-   - **EXAMPLE**: "Linear issue WAN-123 requested feature X, but implemented X + Y because Y was required to make X work correctly in production"
-   - **EXAMPLE**: "Linear issue requested server-side rendering approach, but changed to client-side due to performance testing results showing 40% better load times"
-   - **WRONG**: "As discussed in SPEC.md, we changed the approach..." (reviewers can't see SPEC.md)
-   - **WRONG**: "Based on our conversation, we decided..." (reviewers can't see conversation history)
+**EXAMPLE:**
 
-3. **Area notes** (optional):
+````markdown
+## Breaking changes
 
-   Use area notes only when grouping by area explains behavior, risk, coupling, rollout order, or review strategy. Do not add this section merely to restate which frontend, backend, test, or config files changed.
+`GET /api/platforms` now requires a `userId` query parameter instead of reading the user from the session, because admin screens need to list platforms for other users. The web app is updated in this PR. The audit-log and analytics services call the endpoint directly and must add the parameter:
 
-   **Frontend Changes** (if applicable):
-   - User-visible behavior or flow changes
-   - State management, routing, or UI changes that affect review strategy
-   - Component/service names only when they identify a non-obvious entry point
+```http
+GET /api/platforms              # before
+GET /api/platforms?userId=42    # after
+```
 
-   **Backend Changes** (if applicable):
-   - API contract or business logic behavior that reviewers need to understand
-   - Service/repository interactions that affect correctness, security, or rollout
-   - Database behavior that is not obvious from the migration file alone
+This is a major version change for the public API, listed under Breaking in the changelog.
+````
 
-   **Database Migrations** (if applicable):
-   - Migration name and purpose
-   - Compatibility, rollout, locking, or data backfill considerations
-   - Data migrations or defaults reviewers should inspect
+## How it works
 
-   **Test Coverage** (if applicable):
-   - Behavior covered, important gaps, or manual verification that remains
-   - Avoid raw counts unless the count itself is reviewer-relevant
+**Include when:** the approach isn't obvious from the diff, or a reviewer could reasonably ask "why this way?"
 
-4. **Reviewer landmarks** (optional):
-   - Use only when the diff has non-obvious entry points, generated files, migrations, or cross-area coupling that reviewers should inspect together
-   - **DO NOT** create a generic "Key Files" or "Files changed" section for completeness; GitHub already shows that list
-   - Keep this to 1-3 high-signal bullets
-   - **EXAMPLE**:
+- Explain the key decisions and why, and name the alternatives you rejected and why.
+- Explain any divergence from the Linear issue with its reason. Linear is the only source reviewers can see, so **NEVER** cite spec files (SPEC.md, LOG.md, etc.) or conversation history.
+  - **RIGHT**: "The Linear issue asked only for the redirect; the fallback was added after slow responses left users on a blank screen during testing."
+  - **WRONG**: "As discussed in SPEC.md, we changed the approach..."
+  - **WRONG**: "Based on our conversation, we decided..."
+- Don't narrate the code file by file; reviewers read the diff.
 
-     ```markdown
-     **Reviewer landmarks:**
-
-     - Start with `PlatformPickerRedirectGuard` when reviewing redirect behavior; the store only supports guard state transitions
-     - Review the preferences migration with the new API contract because rollout order matters
-     ```
-
-**EXAMPLE Technical Details:**
+**EXAMPLE:**
 
 ```markdown
-## Technical Details
+## How it works
 
-### Implementation Approach
+A route guard checks the user's platform count before the picker renders, so single-platform users never see it flash on screen. Doing the check inside the picker component was rejected because the picker would render first and then navigate away.
 
-Implemented a new Angular route guard (`PlatformPickerRedirectGuard`) that checks the user's platform count before allowing navigation to the platform picker page. If the user has only one platform, the guard automatically redirects to the appropriate destination.
-
-The implementation uses NgRx ComponentStore for reactive state management and integrates with the existing platform service to fetch user platform data.
-
-### Scope Changes
-
-The Linear issue originally requested only redirecting single-platform users. During implementation, added a 2-second timeout with graceful fallback to prevent indefinite loading states when the platform API is slow or unresponsive. This was added after discovering edge cases during testing where network latency could leave users on a blank screen.
-
-### Area Notes
-
-**Frontend:**
-
-- The route guard owns the navigation decision before the picker renders; the store only manages loading, success, and fallback states.
-- Routing keeps the existing picker path available for multi-platform and error cases.
-
-**Backend:**
-
-- The platform-count endpoint is read-only and supports the guard without changing the existing platform list contract.
-- Count caching affects redirect freshness, so stale counts should still fail open to the picker.
-
-**Tests:**
-
-- Coverage focuses on redirect, multi-platform, and fallback behavior rather than visual picker rendering.
-
-**Reviewer landmarks:**
-
-- Start with the route guard when reviewing redirect behavior; the store only supports guard state transitions
-- Review the platform-count endpoint and redirect fallback together because slow/error responses determine whether users still reach the picker
+If the count takes longer than 2 seconds or fails, the guard lets the picker load. The picker was the only behavior before this change, so it is the safest fallback. The Linear issue asked only for the redirect; the fallback was added after slow responses left users on a blank screen during testing.
 ```
 
-## Test Plan Section
+## Rollout
+
+**Include when:** deploying takes more than a merge: a migration that must run in a set order, a feature-flag default, a config or environment change, a backfill, or a rollback that is more than a revert.
+
+- Number the steps in the order they must happen, and say who does each one when it isn't the person deploying.
+- End with how to roll back.
+- If the migration rationale, rollback plan, or flag rollout plan is unknown, emit the matching `MISSING REQUIREMENT` from SKILL.md Phase 3 instead of inventing one.
+
+**EXAMPLE:**
+
+```markdown
+## Rollout
+
+1. Run the migration before deploying the app. It only adds the `user_preferences` table, so the current app version keeps working.
+2. Deploy the app.
+
+Rollback: revert the app deploy. The table can stay, because nothing reads it without the new code.
+```
+
+## Review notes
+
+**Include when:** something non-obvious remains that a reviewer should know. Order the bullets:
+
+1. **Risks and side effects**: what could go wrong, how it would show up, and what limits it.
+2. **Scope boundaries** a reviewer would otherwise expect in this PR, stated as facts ("The multi-platform picker is unchanged"), with follow-up issues when they exist.
+3. **Evidence**, when a reviewer would ask how the change was checked: one sentence on what the automated tests or measurements cover and what they leave to the Test plan.
+4. **Release impact** that isn't breaking, such as a minor or patch version note, when the repository publishes a versioned artifact.
+5. **Where to start**, only when the entry point isn't obvious, including files that must be reviewed together.
+
+Keep each bullet to three sentences at most. When a risk needs more, put the mechanism in `## How it works` and keep the consequence here. Don't list areas nobody expected to change, and don't describe your own diligence ("I made sure...", "carefully preserved").
+
+**EXAMPLE:**
+
+```markdown
+## Review notes
+
+- Single-platform users on slow connections will sometimes see the picker instead of the redirect, because the 2-second fallback wins. That is the intended trade-off.
+- The picker's layout and the multi-platform flow are unchanged; the redesign is tracked in WAN-540.
+- Start with `PlatformPickerRedirectGuard`; the store only tracks the loading and fallback states the guard reads.
+```
+
+## Test plan
+
+**Include when:** always.
 
 The Test Plan is for future reviewer or QA execution. It is not a transcript of the verification commands the agent already ran.
 
@@ -159,137 +153,36 @@ The Test Plan is for future reviewer or QA execution. It is not a transcript of 
 
 Do not include local setup or infrastructure failure notes such as missing `node_modules`, failed package install, unavailable Postgres, absent Docker services, or port conflicts. Those details belong in the skill's run output when relevant, never in the PR description.
 
-1. **Setup steps** (if needed):
-   - Environment configuration
-   - Test data requirements
-   - User permissions needed
+- Put shared setup, such as accounts, test data, or flags, on one line above the list.
+- Write one checkbox per scenario as "Do X. Expect Y." Add sub-steps only when a scenario needs several actions.
+- Cover the behavior changes and risks a reviewer can't confirm from the diff, including the failure path of the riskiest one. Combine cases that exercise the same path into one scenario.
+- Most test plans need two to six scenarios. For a PR that batches many small changes, test the riskiest few and one representative per theme, then say in one line what the plan leaves out.
+- A command the reviewer runs by hand to exercise the change is a manual step and belongs here. Commands that run the automated suite, lint, or build do not.
+- When an important risk can't be checked by hand, say why in one line and give the closest manual check.
+- Don't list missing automated test targets; put a real coverage gap in Review notes instead.
 
-2. **Manual reviewer/QA test scenarios** (organized by priority):
-   - **Happy path**: Normal expected flow
-   - **Edge cases**: Boundary conditions
-   - **Error cases**: What happens when things go wrong
-
-3. **Verification points**:
-   - Expected outcomes for each scenario
-   - What to check in the UI, database, logs, etc.
-
-4. **Manual QA fallback**:
-   - If no meaningful manual scenario applies, include a `### Manual QA` note explaining why and give the closest manual validation path
-   - Do not list missing automated test targets such as "No unit-test target exists"; put meaningful coverage risk in `### Potential concerns` instead
-
-**PREFER** using a checklist format for clarity:
-
-**EXAMPLE Test Plan:**
+**EXAMPLE:**
 
 ```markdown
-## Test Plan
+## Test plan
 
-### Prerequisites
+Use one account with a single platform and one with several.
 
-- User account with multiple platforms (for multi-platform testing)
-- User account with single platform (for auto-redirect testing)
-
-### Manual scenarios
-
-**Scenario 1: Single-platform user**
-
-- [ ] Log in as a user with only one platform
-- [ ] Navigate to a route that would normally show platform picker
-- [ ] Verify user is automatically redirected past the platform picker
-- [ ] Verify the correct platform is pre-selected
-
-**Scenario 2: Multi-platform user**
-
-- [ ] Log in as a user with multiple platforms
-- [ ] Navigate to platform picker route
-- [ ] Verify platform picker page is displayed
-- [ ] Verify all user's platforms are shown
-
-**Scenario 3: Platform count API error**
-
-- [ ] Simulate API error (network failure or 500 response)
-- [ ] Verify user is still able to access platform picker
-- [ ] Verify error is handled gracefully (no crash)
-
-**Scenario 4: First-time user (no platforms)**
-
-- [ ] Log in as a new user with no platforms
-- [ ] Verify appropriate message/redirect to onboarding
+- [ ] Sign in with the single-platform account. Expect to land on that platform's dashboard without seeing the picker.
+- [ ] Sign in with the multi-platform account. Expect the picker, listing every platform.
+- [ ] Block the platform-count request in the browser's dev tools, then sign in with the single-platform account. Expect the picker after about 2 seconds, not a blank page.
 ```
 
-## Breaking Changes Section
+## Screenshots / Videos
 
-**ALWAYS** include this section if any of the following are true:
+**Include when:** the PR changes something a reviewer can see in the UI. Leave the section out otherwise.
 
-- Database migrations that require downtime
-- API endpoint signatures changed (parameters, return types)
-- Configuration changes (environment variables, app settings)
-- Dependency version upgrades with breaking changes
-- Public interface/contract changes
+Add a one-line HTML comment that names what to capture, and remind the author in the run output to add the images before requesting review.
 
-**If no breaking changes**, use:
+**EXAMPLE:**
 
 ```markdown
-## Breaking Changes
+## Screenshots / Videos
 
-None
+<!-- Before/after: signing in as a single-platform user -->
 ```
-
-**If breaking changes exist**, include:
-
-1. **What breaks**:
-   - Clear description of what is no longer compatible
-
-2. **Why it's breaking**:
-   - Rationale for the breaking change
-
-3. **Migration path**:
-   - Step-by-step instructions for adapting to the change
-
-4. **Impact assessment**:
-   - What systems/components are affected
-   - Estimated effort to adapt
-
-**EXAMPLE Breaking Changes:**
-
-````markdown
-## Breaking Changes
-
-### API Endpoint Signature Change
-
-**What changed:** The `GET /api/platforms` endpoint now requires a `userId` query parameter. Previously, it inferred the user from the authentication context.
-
-**Why:** This change enables admin users to query platforms for other users, which is required for the new admin dashboard feature.
-
-**Migration:**
-
-- **Frontend clients**: Update API calls to include `userId` parameter
-
-  ```typescript
-  // Before
-  this.http.get("/api/platforms");
-
-  // After
-  this.http.get("/api/platforms", { params: { userId: currentUserId } });
-  ```
-
-- **External integrations**: Add `userId` to query string in API requests
-
-**Impact:**
-
-- All frontend components calling this endpoint (5 locations identified)
-- External API consumers (audit-log-service, analytics service)
-- Estimated migration effort: 2-4 hours
-
-### Database Migration
-
-**What changed:** New `platform_access_count` column added to `users` table with NOT NULL constraint.
-
-**Migration:** Run migration before deploying new application version:
-
-```bash
-dotnet ef database update -c ConnectContext
-```
-
-**Downtime:** ~5 minutes (backfill operation for existing users)
-````

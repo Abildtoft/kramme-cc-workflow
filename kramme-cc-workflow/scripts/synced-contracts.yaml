@@ -1225,7 +1225,9 @@
         "Treat every other `MISSING REQUIREMENT:` marker",
         "set `DIRECT_UPDATE=false` even when `--auto` found an existing PR",
         "local exclude file",
-        "Local environment failure notes such as missing `node_modules`, unavailable Postgres, missing services"
+        "Local environment failure notes such as missing `node_modules`, unavailable Postgres, missing services",
+        "Read `${CLAUDE_PLUGIN_ROOT}/shared/writing/references/plain-language-rubric.md` and `references/readability-pass.md`",
+        "Include a placeholder section for visual aids only when the diff changes something a reviewer can see"
       ]
     },
     {
@@ -1239,7 +1241,7 @@
         "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never",
         "NONINTERACTIVE_GIT_SSH_COMMAND=\"${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes\"",
         "GIT_SSH_COMMAND=\"$NONINTERACTIVE_GIT_SSH_COMMAND\"",
-        "git cat-file -e \"$DEFAULT_TEMPLATE_REF:$path\"",
+        "git cat-file -e \"$DEFAULT_TEMPLATE_REF:$template_path\"",
         "git ls-tree -r --name-only \"$DEFAULT_TEMPLATE_REF\" \"$dir\"",
         "**Default templates**",
         "**Selectable templates**",
@@ -1262,14 +1264,14 @@
         "missing `node_modules`, missing package installs, unavailable Postgres, absent Docker services, or port conflicts",
         "NEVER** list missing automated test targets",
         "NEVER** skip Linear issue lookup if the branch name contains an issue ID and a Linear integration is available",
-        "run a final conciseness pass"
+        "run the readability pass"
       ]
     },
     {
       "name": "pr-generate-description-section-template-rules",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/assets/section-templates.md",
       "contains": [
-        "map this block into the closest template prompts instead of duplicating headings",
+        "map each default section into the closest template prompt instead of duplicating headings",
         "The Test Plan is for future reviewer or QA execution. It is not a transcript",
         "Do not include automated testing instructions, command checklists, or an automated verification subsection",
         "Do not include local setup or infrastructure failure notes"
@@ -1280,9 +1282,9 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/verification-checklist.md",
       "contains": [
         "GitHub PR template lookup completed against the repository default branch",
-        "Screenshots/Videos section is included as the documented placeholder",
+        "`## Screenshots / Videos` appears only for UI-facing changes",
         "Local setup or infrastructure failures such as missing `node_modules`, failed package installs, unavailable Postgres, absent Docker services, and port conflicts are omitted from the PR body",
-        "Final conciseness pass",
+        "## Readability pass",
         "Removed repeated phrasing or duplicated facts"
       ]
     },
@@ -1292,7 +1294,9 @@
       "contains": [
         "Local Environment Noise",
         "CORRECT: Manual Scenarios Only",
-        "This only proves what the agent already ran"
+        "This only proves what the agent already ran",
+        "WRONG: Over-Trimmed Description",
+        "WRONG: Every Small Change Listed"
       ]
     },
     {

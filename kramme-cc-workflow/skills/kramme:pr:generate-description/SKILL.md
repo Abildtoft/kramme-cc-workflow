@@ -174,53 +174,34 @@ Generate a PR title using [Conventional Commits](https://www.conventionalcommits
 If Phase 2 found a GitHub PR template, treat it as the body structure contract before applying default section templates.
 
 - Follow the selected template's heading order, checklist items, and required prompts.
-- Map generated Summary, Change Summary, Technical Details, Test Plan, Breaking Changes, and Screenshots/Videos content into the closest matching template sections instead of creating duplicate default sections.
+- Map generated Summary, Changes, Breaking changes, How it works, Rollout, Review notes, Test plan, and Screenshots / Videos content into the closest matching template sections instead of creating duplicate default sections.
 - Preserve mandatory checkboxes and compliance prompts; check a box only when the diff or gathered context supports it.
 - Remove instructional HTML comments only when the generated content fully answers them; otherwise keep the prompt or emit a marker outside the PR body.
-- If no GitHub PR template is found, use the standard structure from `assets/section-templates.md`.
+- If no GitHub PR template is found, use the default sections from `assets/section-templates.md`, including each one only when it carries information for this PR.
 
 #### 3.1 Summary Section
 
 **ALWAYS** include:
 
-1. **What changed** (1-2 sentences, high-level, user/business-focused)
+1. **What changed** (1-3 sentences, high-level, user/business-focused)
    - **ALWAYS** make this opening answer to “What does this PR do?” the simplest part of the description—almost ELI10: use everyday language that an intelligent ten-year-old unfamiliar with the codebase could follow
    - **ALWAYS** lead with the user-visible or business outcome, not files, classes, APIs, or implementation mechanics
-   - **PREFER** short sentences and familiar words; save unavoidable technical terms and implementation detail for later sections
-   - **EXAMPLE**: "Added ability for users to export their survey results to PDF format"
+   - **PREFER** short sentences and familiar words; later sections may be more technical, but they stay plain too
+   - **EXAMPLE**: "People can now export their survey results as a PDF"
 
-2. **Why it changed** (1-2 sentences, business context)
+2. **Why it changed** (1-3 sentences, business context)
    - Pull from Linear issue description if available
-   - **EXAMPLE**: "Users requested this feature to share results with stakeholders who don't have system access"
+   - **EXAMPLE**: "People asked for this so they can share results with stakeholders who don't have system access"
 
-3. **Link to Linear issue** (if available):
-   - **ALWAYS** use a "magic word" + issue ID for automatic linking
-   - **Magic words**: `Fixes`, `Closes`, `Resolves` (marks issue as done when PR merges)
-   - **Alternative**: `Related to`, `Refs`, `References` (links without auto-closing)
-   - **CAN** use either issue ID or full Linear URL
+3. **Pointer sentence** (only when needed): if the PR breaks something, needs rollout steps, or departs from the linked issue, say so in one sentence so a reader who stops after the Summary cannot miss it.
 
-   **Format options:**
-
-   ```markdown
-   Fixes ABC-123
-   ```
-
-   or
-
-   ```markdown
-   Closes https://linear.app/your-workspace/issue/ABC-123/title
-   ```
-
-   or (for related but not closing):
-
-   ```markdown
-   Related to ABC-123
-   ```
-
+4. **Link to Linear issue** (if available): **ALWAYS** use a magic word with the issue ID or full Linear URL, as described in `references/platform-notes.md`.
    - **PREFER** `Fixes` or `Closes` when the PR completes the work for the issue
    - **PREFER** `Related to` when the PR is partial work or tangentially related
 
-Read the section templates and worked examples from `assets/section-templates.md`. It covers Summary, Technical Details (implementation approach, scope changes, optional area notes, reviewer landmarks), Test Plan, and Breaking Changes — each with structural guidance and a complete example.
+Read the section templates and worked examples from `assets/section-templates.md`. It defines when to include each default section (Summary, Changes, Breaking changes, How it works, Rollout, Review notes, Test plan, and Screenshots / Videos) and gives an example of each.
+
+Before drafting, read the What to Keep, What to Cut, and Length rules in `references/best-practices.md` and the examples in `references/pr-examples.md`, which set the calibration. Clear is the goal, not short and not exhaustive: include every keep-list item that applies, cut what the cut list names, and group a large or batched PR by theme instead of listing everything.
 
 When drafting the Test Plan, apply the Test Plan section in `assets/section-templates.md` and the Test Plans rules in `references/best-practices.md`.
 
@@ -235,7 +216,7 @@ Before drafting the body, decide what the PR description adds beyond GitHub's re
 - Scope boundaries and deliberate exclusions
 - Risks, release impact, rollout constraints, migrations, feature-flag defaults, SemVer implications, or partial coverage
 - Manual test scenarios reviewers or QA should perform
-- Review landmarks only when the diff has a non-obvious entry point or coupled files that should be reviewed together
+- Where to start reviewing, only when the diff has a non-obvious entry point or coupled files that should be reviewed together
 
 **NEVER** include description content whose main value is already provided by GitHub:
 
@@ -257,32 +238,27 @@ When the diff changes a versioned artifact surface or durable public contract, m
 - Include migration or upgrade notes for breaking changes, removed behavior, required env/config changes, or consumer action.
 - Mention the curated changelog/release-note entry when the PR is expected to feed one, but do not paste a raw commit log.
 
-If there is no versioned artifact or durable public contract change, say so briefly only when reviewers might otherwise infer a release impact.
+Put SemVer implications and consumer migration notes for a breaking change in `## Breaking changes`, steps that must happen at deploy time in `## Rollout`, and any other release impact in `## Review notes`. If there is no versioned artifact or durable public contract change, say so briefly only when reviewers might otherwise infer a release impact.
 
-#### 3.2 Change Summary Pattern
+#### 3.2 Section Selection
 
-Build the Change Summary block from `assets/section-templates.md` and enforce the Change Summary Block rules in `references/best-practices.md`.
+Include a default section only when its "Include when" rule in `assets/section-templates.md` holds for this PR. Never write a default section whose only content is "None", "N/A", or "Not applicable"; a repository template's required prompts are the exception and always get an answer.
 
 #### 3.5 Screenshots and Videos Section
 
-Include a placeholder section for visual aids:
+Include a placeholder section for visual aids only when the diff changes something a reviewer can see in the UI: a `## Screenshots / Videos` heading with a one-line HTML comment naming what to capture. Remind the author in the run output to add the images. Omit the section for changes with no visible UI.
 
-```markdown
-## Screenshots / Videos
+### Phase 3.5: Readability Pass and Verification
 
-<!-- Add screenshots or videos here to help reviewers visualize the changes -->
-<!-- Consider including: -->
-<!-- - Before/after UI comparisons -->
-<!-- - New features in action -->
-<!-- - Error states or edge cases -->
-<!-- - Mobile/responsive views -->
-```
+Run these three steps in order on the drafted title and body, before Phase 4 presents or publishes anything. None of them prompts the user.
 
-**NOTE**: This is a placeholder section for the PR creator to populate with relevant visuals.
+1. Read `references/red-flags.md` once. Apply the `Regeneration Triggers` section from the already-loaded reference and regenerate when any condition matches.
+2. Read `${CLAUDE_PLUGIN_ROOT}/shared/writing/references/plain-language-rubric.md` and `references/readability-pass.md`, then follow the pass. It edits the draft for a reviewer who is new to the change, then has a fresh agent read only the title and body using `references/cold-read-prompt.md`, and applies what that reader flags once.
+3. Run the consolidated checklist in `references/verification-checklist.md`. No other phase has its own checklist; that reference is the single source of truth. If the checklist leads to an edit, repeat the keep-list audit from the readability pass, but not the cold read.
 
 ### Phase 4: Output Formatting
 
-Use the selected GitHub template or `assets/section-templates.md` as the Markdown structure. Never include meta-commentary, placeholders such as `[TODO]` or `[Fill this in]`, AI attribution, AI badges, or AI co-author lines.
+Use the selected GitHub template or `assets/section-templates.md` as the Markdown structure. Never include meta-commentary, placeholders such as `[TODO]` or `[Fill this in]`, AI attribution, AI badges, or AI co-author lines. Keep the cold-read result, its open questions, and the screenshot reminder in the run output, outside the description.
 
 #### If `DIRECT_UPDATE=true`: Update PR directly
 
@@ -342,23 +318,17 @@ printf '%s\n' "$PR_DESCRIPTION_FILE"
 
 Capture the single printed absolute path, require it to remain below the validated `SAVE_DIR`, and write the description there with the runtime's native file-write capability. Confirm the absolute path after saving.
 
-### Phase 5: Pre-publish Verification
-
-Read `references/red-flags.md` once. Apply the `Regeneration Triggers` section from the already-loaded reference and regenerate when any condition matches.
-
-Run the consolidated checklist in `references/verification-checklist.md`. Phases 1–4 do not have their own checklist; that reference is the single source of truth.
-
 ## Best Practices
 
-Read the best practices guidelines from `references/best-practices.md`. Covers context gathering, writing style, technical details, and test plan rules.
+Read the best practices guidelines from `references/best-practices.md`. Covers context gathering, what to keep and cut, length, writing style, section rules, and test plan rules.
 
 ## Anti-Patterns
 
-Read the anti-pattern examples from `references/anti-patterns.md`. Includes title anti-patterns, vague-summary patterns (rejects titles like `Fix bug`, `Fix build`, `Phase 1`, `Add convenience functions`), and 6 paired WRONG/CORRECT examples covering vague summaries, missing context, missing tests, tone, hidden breaking changes, and AI attribution.
+Read the anti-pattern examples from `references/anti-patterns.md`. Includes title anti-patterns, vague-summary patterns (rejects titles like `Fix bug`, `Fix build`, `Phase 1`, `Add convenience functions`), and paired WRONG/CORRECT examples covering vague and over-trimmed descriptions, repeated facts, empty sections, mega-bullets, self-reported scope, file lists, missing tests, tone, hidden breaking changes, and AI attribution.
 
 ## Examples
 
-Read the complete PR examples from `references/pr-examples.md`. Includes 2 examples: frontend-only feature and full-stack with database migration.
+Read the complete PR examples from `references/pr-examples.md`. Includes 4 examples sized to their changes: a small fix, a typical feature with a migration, a breaking change with a staged rollout, and a batch of small changes grouped by theme.
 
 ## Platform-Specific Notes
 

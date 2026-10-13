@@ -45,12 +45,12 @@ Classify each potential drift point against the rubric below. Severity drives th
 | Undisclosed SemVer-major implication, or body claims no breaking changes when a versioned artifact surface or durable public contract breaks | Critical | Yes |
 | Undisclosed new endpoint, dependency, feature flag, or removed code path | Important | Yes |
 | Versioned artifact or durable public contract change lacks release impact, SemVer, changelog, or migration story needed for release-note accuracy | Important | Yes |
-| `Potential concerns: None` despite a migration, flag flip, partial coverage, or known follow-up | Important | Yes |
+| Risk notes (`## Review notes`, `## Rollout`, legacy `Potential concerns`, or a template's risk prompt) omit or deny a migration, flag flip, partial coverage, or known follow-up | Important | Yes |
 | Stale claim — body describes work that was removed or refactored away | Important | Yes |
-| `Things I didn't touch` excludes adjacent work the diff did touch | Important | Yes |
+| A scope statement (`## Review notes` or legacy `Things I didn't touch`) puts adjacent work out of scope that the diff did touch | Important | Yes |
 | Title Conventional Commit type wrong for the dominant change (`fix:` for a feature addition) | Important | Yes |
 | Title type defensible but not ideal for a mixed change (`refactor:` vs `feat:`) | Suggestion | Strict only |
-| Per-area technical notes missing when 3+ areas changed | Suggestion | Strict only |
+| No explanation of a non-obvious approach (`## How it works` or legacy technical notes) when 3+ areas changed | Suggestion | Strict only |
 | Test Plan missing manual scenarios when reviewer-visible UI changed | Suggestion | Strict only |
 | Body claim cannot be traced to a specific diff hunk | Suggestion | Strict only |
 | Wording, tone, polish, bullet ordering, formatting | Not flagged | Never |
@@ -220,7 +220,7 @@ If the diff is empty or near-empty (only whitespace, comments, or formatting), t
 
 Walk the description body section-by-section and the diff in parallel. Classify each potential drift point against the rubric in `## Scope and Rubric` above. For each finding, record:
 
-- **Location** — section of the PR body (e.g. `## Summary`, `### Potential concerns`, `Title`) or `PR description` if global.
+- **Location** — section of the PR body (e.g. `## Summary`, `## Review notes`, `Title`) or `PR description` if global.
 - **Type** — the drift type from the rubric (e.g. `Contradiction`, `Material omission`, `Stale claim`, `Missing risk callout`, `Scope misrepresentation`, `Title drift`).
 - **Severity** — from the rubric column.
 - **Evidence** — what the body says vs. what the diff shows (cite file paths and a hunk summary, not full diffs).

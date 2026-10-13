@@ -154,6 +154,8 @@ Removal decision update (2026-10-12): repository maintainers approved accelerate
 
 The maintainer's explicit removal request waives the normal deprecation and additional-zero-use-quarter interval. Usage is not the sole basis for removal: bounded throwaway experiments can be requested directly, while Wayfinder's prototype ticket type retains the human reaction, production separation, and cleanup handoff needed to resolve a planning decision. Wayfinder no longer asks the human to invoke the removed command. The standalone skill, logic/UI recipes, and source manifest are retired; no dedicated replacement inherits its variant controls, artifact placement, or automatic current-run deletion contract. Removing this public command is a breaking migration and must ship in the next major release.
 
+Implementation update (2026-10-13): `kramme:pr:generate-description` now sizes description sections to the change, so its Screenshots/Videos placeholder appears only for changes with visible UI; `kramme:pr:create` publishes that generated body. Neither Pull Request skill captures, starts environments for, or attaches visual evidence, as recorded above.
+
 ### Overlapping skills
 
 | Case | 30-day use | 90-day use | Verdict under this policy | Reason |
