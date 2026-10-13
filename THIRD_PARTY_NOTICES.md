@@ -4,10 +4,6 @@ The repository's MIT license covers original work in this repository. The third-
 
 Source-manifest entries marked `usage: inspiration` record ideas, facts, methods, or workflow influence only; they do not intentionally retain substantial upstream expression.
 
-## Addy Osmani — `agent-skills`
-
-Portions of `kramme:code:performance` are adapted from [`addyosmani/agent-skills`](https://github.com/addyosmani/agent-skills), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:code:performance/references/addyosmani-agent-skills-LICENSE`.
-
 ## Every — `compound-engineering-plugin`
 
 Copied or adapted scripts and support files in `kramme:code:optimize`, `kramme:session:automate-repeats`, and `kramme:setup` come from [`EveryInc/compound-engineering-plugin`](https://github.com/EveryInc/compound-engineering-plugin), licensed under the MIT License. Each affected skill carries a complete copy of the upstream license in `references/EveryInc-LICENSE`.

@@ -26,7 +26,7 @@ Run metric-driven optimization loops for problems where several plausible varian
    - Start from `references/example-judge-spec.yaml` when real quality requires semantic judgment.
    - Read `references/usage-guide.md` when the user is deciding between hard metrics and judge mode.
 
-Boundary with `kramme:code:performance`: repeatable harness-driven experiments belong here; one-shot review-and-fix performance passes without a variant harness belong to `kramme:code:performance`.
+Boundary: repeatable harness-driven experiments belong here; one-shot review-and-fix performance passes without a variant harness are ordinary agent requests.
 
 ## Hard Stops
 

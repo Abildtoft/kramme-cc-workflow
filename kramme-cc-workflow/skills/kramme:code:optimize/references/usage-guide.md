@@ -74,4 +74,4 @@ Use kramme:code:optimize to compare prompt variants for issue summaries. Optimiz
 - There is no repeatable measurement command.
 - The evaluation cost is too high for several variants.
 - The only metric is easy to game and no judge rubric is available.
-- The user wants a normal performance pass; use `kramme:code:performance`.
+- The user wants a normal performance pass; request it directly.

@@ -68,11 +68,6 @@
       "path": "kramme-cc-workflow/skills/kramme:code:outside-view/SKILL.md"
     },
     {
-      "name": "kramme:code:performance",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:code:performance/SKILL.md"
-    },
-    {
       "name": "kramme:code:plan-to-pr",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md"
