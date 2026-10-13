@@ -39,7 +39,7 @@ Rewrite prose around the reader's task without reducing its substance, precision
    - Preserve domain terminology when replacing it would reduce precision. Explain unfamiliar terms at first use when the source supports an explanation.
 
 3. **Load the editing rubric.**
-   - Read the plain-language rubric from `references/plain-language-rubric.md`.
+   - Read the plain-language rubric from `${CLAUDE_PLUGIN_ROOT}/shared/writing/references/plain-language-rubric.md`.
    - Apply its priorities and genre guidance to the reader contract. Do not import locale-specific spelling, date, currency, or number conventions unless the user requests them.
 
 4. **Restructure by reader value.**
