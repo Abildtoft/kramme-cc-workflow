@@ -736,6 +736,72 @@ EOF
 	append_readiness_evidence "$plan" PR_PLAN_INDEX.md
 	run python3 "$VALIDATOR" --repo-root "$REPO" "$plan"
 	assert_error PREREQUISITE_EVIDENCE_INVALID
+	[ "$(json_get error.details.source)" = "pr_plan_index.md" ]
+
+	write_plan "$plan" W02A BLOCKED tracked.txt W01A
+	append_readiness_evidence "$plan" tracked.txt "Pass when the sibling plan is marked DONE."
+	run python3 "$VALIDATOR" --repo-root "$REPO" "$plan"
+	assert_error PREREQUISITE_EVIDENCE_INVALID
+	[ "$(json_get error.details.source)" = "sibling plan" ]
+
+	write_plan "$plan" W02A BLOCKED tracked.txt W01A
+	append_readiness_evidence "$plan" tracked.txt "Do not start unless the sibling plan has landed."
+	run python3 "$VALIDATOR" --repo-root "$REPO" "$plan"
+	assert_error PREREQUISITE_EVIDENCE_INVALID
+}
+
+@test "detached readiness evidence accepts disclaimers of workflow-owned sources" {
+	plan="$REPO/.context/attachments/input.md"
+	write_plan "$plan" W02A BLOCKED tracked.txt W01A
+	append_readiness_evidence "$plan" tracked.txt \
+		"Pass when the parser fixture is present; no source report or sibling plan is needed. PR_PLAN_INDEX.md is not consulted."
+
+	run python3 "$VALIDATOR" --repo-root "$REPO" "$plan"
+
+	assert_success
+}
+
+@test "detached readiness evidence rejects workflow sources after unrelated negation" {
+	plan="$REPO/.context/attachments/input.md"
+	for decision in \
+		"Verify no missing fixtures and consult PR_PLAN_INDEX.md for readiness." \
+		"The parser is not ready and consult PR_PLAN_INDEX.md for readiness." \
+		"Proceed without missing fixtures and use PR_PLAN_INDEX.md for readiness."; do
+		write_plan "$plan" W02A BLOCKED tracked.txt W01A
+		append_readiness_evidence "$plan" tracked.txt "$decision"
+		run python3 "$VALIDATOR" --repo-root "$REPO" "$plan"
+		assert_error PREREQUISITE_EVIDENCE_INVALID
+		[ "$(json_get error.details.source)" = "pr_plan_index.md" ]
+	done
+}
+
+@test "detached readiness evidence checks repeated mentions of the same source" {
+	plan="$REPO/.context/attachments/input.md"
+	for decision in \
+		"The sibling plan is not required and the sibling plan must be DONE." \
+		"Do not consult the sibling plan and use the sibling plan as the readiness authority."; do
+		write_plan "$plan" W02A BLOCKED tracked.txt W01A
+		append_readiness_evidence "$plan" tracked.txt "$decision"
+		run python3 "$VALIDATOR" --repo-root "$REPO" "$plan"
+		assert_error PREREQUISITE_EVIDENCE_INVALID
+		[ "$(json_get error.details.source)" = "sibling plan" ]
+	done
+}
+
+@test "detached readiness evidence accepts source-specific negation" {
+	plan="$REPO/.context/attachments/input.md"
+	for decision in \
+		'Do not consult `PR_PLAN_INDEX.md`.' \
+		'No sibling plan is needed.' \
+		'No source report or sibling plan is needed.' \
+		'The readiness proof does not require a sibling plan.' \
+		'Verify the parser fixture without a pull request URL.' \
+		'PR_PLAN_INDEX.md is not consulted and PR_PLAN_INDEX.md is not needed.'; do
+		write_plan "$plan" W02A BLOCKED tracked.txt W01A
+		append_readiness_evidence "$plan" tracked.txt "$decision"
+		run python3 "$VALIDATOR" --repo-root "$REPO" "$plan"
+		assert_success
+	done
 }
 
 @test "valid normalized archive proves immutable source identity" {
