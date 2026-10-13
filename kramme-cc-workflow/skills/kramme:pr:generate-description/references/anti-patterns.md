@@ -37,64 +37,192 @@ Updated the platform picker functionality to work better.
 ```markdown
 ## Summary
 
-Added automatic redirect logic that skips the platform picker page when a user has access to only one platform, reducing unnecessary navigation steps.
+People who can use only one platform no longer see the platform picker; they go straight to that platform's dashboard. The picker asked them to choose from a list with a single entry, which confused them.
 
 Fixes WAN-521
 ```
 
 ---
 
-### ❌ WRONG: Summary Jumps Straight to Technical Details
+### ❌ WRONG: Over-Trimmed Description
+
+Shortness is not the goal. This body for a real one-rule change in a review workflow is short, but it drops the problem, the scope boundaries a reviewer would ask about, what limits the risk, and half of the test plan:
 
 ```markdown
 ## Summary
 
-Added automatic redirect logic that skips the platform picker page when a user has access to only one platform, reducing unnecessary navigation steps.
+On Codex, `kramme:pr:review-convergence` now runs each review gate in the main chat instead of in a helper agent, so Conductor no longer opens a tab per gate.
 
-Fixes WAN-521
+## Review notes
 
-## Technical Details
+- Long runs use more of the main chat's context.
 
-### Implementation Approach
+## Test plan
 
-Implemented a route guard that checks platform count before navigation.
+- [ ] Run `$kramme:pr:review-convergence` in a Codex chat in Conductor. Expect no gate tabs.
 ```
 
-### ✅ CORRECT: Include the Change Summary Block
+### ✅ CORRECT: Every Keep-List Item, Each Said Once
 
 ```markdown
 ## Summary
 
-Added automatic redirect logic that skips the platform picker page when a user has access to only one platform, reducing unnecessary navigation steps.
+Running the review-convergence skill in a Codex chat inside Conductor no longer opens a new chat tab for each review step. Each step, or "gate", now runs in the chat you started from.
 
-Fixes WAN-521
+Codex gives every agent its own thread, and Conductor shows each thread as a tab. The skill ran each gate inside a helper agent, so every round added one tab per gate next to the tabs the reviewers open. The chat you were working in got lost among tabs such as "Gate 1 code review".
+
+## How it works
+
+The skill already runs gates directly on hosts where a helper agent cannot start agents or skills of its own. This PR adds Codex to that condition instead of adding a new code path, so everything else about a gate stays the same: its arguments, model policy, evidence checks, and report.
+
+## Review notes
+
+- Claude Code keeps the helper agent per gate: its sub-agents open no tabs, and the agent keeps gate transcripts out of the main chat.
+- On Codex, the reviewers inside each gate still open their own tabs. Removing them would mean fewer, broader reviewers, a review-quality trade-off left for a separate decision.
+- On Codex, gate instructions and reports now pass through the main chat's context. Findings are already compacted and report text dropped after each gate, so growth should be small, but long multi-round runs will use more context than before.
+
+## Test plan
+
+- [ ] In Conductor, run `$kramme:pr:review-convergence` in a Codex chat on a branch ready for review. Expect no tabs named after a gate; only reviewer tabs open.
+- [ ] Run it in a Claude Code chat. Expect each gate to still run in a helper agent, with its transcript kept out of the main conversation.
+```
+
+The longer body is easier to review, because each sentence answers a question the reviewer would otherwise have to ask.
+
+---
+
+### ❌ WRONG: The Same Change in Every Section
+
+```markdown
+## Summary
+
+Adds a route guard that redirects single-platform users past the platform picker.
 
 ### Changes made
 
-- Add a route guard and state store for single-platform redirects
-- Wire the guard into routing and cover redirect, multi-platform, and error paths with tests
-
-### Things I didn't touch
-
-- Multi-platform picker UI and selection flow
-
-### Potential concerns
-
-- Redirect behavior depends on the platform-count call; verify slow/error responses still fall back to the picker
+- Add a route guard that redirects single-platform users past the picker
 
 ## Technical Details
 
 ### Implementation Approach
 
-Implemented a route guard that checks platform count before navigation.
+Implemented a route guard that checks the platform count and redirects single-platform users past the picker.
 ```
+
+The reader gets one fact three times and still doesn't know why the change exists or why it is a route guard.
+
+### ✅ CORRECT: Each Section Adds Something New
+
+```markdown
+## Summary
+
+People who can use only one platform no longer see the platform picker; they go straight to that platform's dashboard. The picker asked them to choose from a list with a single entry, which confused them.
+
+Fixes WAN-521
+
+## How it works
+
+A route guard checks the platform count before the picker renders, so the picker never flashes on screen. Doing the check inside the picker component was rejected because the picker would render first and then navigate away.
+```
+
+---
+
+### ❌ WRONG: Empty Sections
+
+```markdown
+## Breaking Changes
+
+None
+
+## Screenshots / Videos
+
+<!-- Add screenshots or videos here to help reviewers visualize the changes -->
+```
+
+Neither section tells the reader anything. On a change with no breaking changes and no visible UI, leave both out.
+
+---
+
+### ❌ WRONG: Mega-Bullet
+
+```markdown
+## Changes
+
+- Add `PlatformPickerRedirectGuard` and `PlatformPickerRedirectStore`, wire them into `app.routes.ts` with a 2-second timeout and a fallback to the picker on error, expose the count from `platform.service.ts`, and add unit tests for the redirect, multi-platform, timeout, and error paths
+```
+
+One bullet carries four changes and five identifiers, so the reader can't tell what matters.
+
+### ✅ CORRECT: One Change Per Bullet
+
+```markdown
+## Changes
+
+- Redirect users who have exactly one platform from the picker to that platform's dashboard
+- Show the picker as before when the platform count takes longer than 2 seconds or fails
+```
+
+The tests are a supporting edit; the Test plan covers the behavior they check.
+
+---
+
+### ❌ WRONG: Every Small Change Listed
+
+```markdown
+## Changes
+
+- Limit the length of the comment field on the feedback endpoint
+- Limit the length of the display name on the profile endpoint
+- Limit the length of the note field on the order endpoint
+- Limit the length of the title on the report endpoint
+- (26 more bullets, one per endpoint field)
+```
+
+The opposite of a mega-bullet is just as hard to read. A reviewer can't tell which of 30 bullets matter, and the list repeats what the commits already show. The same goes for a Test plan with one scenario per bullet.
+
+### ✅ CORRECT: One Bullet Per Theme in a Batch
+
+```markdown
+## Changes
+
+- Reject free-text fields longer than their database column on 7 endpoints, instead of failing with a server error
+- Reject unknown status values on 3 order endpoints, which used to be stored as given
+- Cap page size at 200 on the 2 list endpoints that had no limit
+
+Each endpoint has its own commit, so the branch can be reviewed commit by commit.
+```
+
+---
+
+### ❌ WRONG: Self-Reported Scope
+
+```markdown
+### Things I didn't touch
+
+- The login page
+- The settings page
+- Existing routes, which all still work
+- The database
+```
+
+This lists areas nobody expected to change and describes the writer's care instead of the change.
+
+### ✅ CORRECT: Scope Boundaries as Facts
+
+```markdown
+## Review notes
+
+- The multi-platform picker is unchanged; its redesign is tracked in WAN-540.
+```
+
+List a boundary only when a reviewer would otherwise expect that work in this PR.
 
 ---
 
 ### ❌ WRONG: List of Files Without Context
 
 ```markdown
-## Changes
+## Files changed
 
 - file1.ts
 - file2.cs
@@ -106,16 +234,14 @@ Implemented a route guard that checks platform count before navigation.
 ### ✅ CORRECT: Context Beyond The File List
 
 ```markdown
-## Technical Details
+## How it works
 
-### Implementation Approach
+The redirect runs before the platform picker renders, so single-platform users do not see the intermediate picker route. Error and multi-platform paths still fall back to the picker to keep the existing selection flow.
 
-The redirect runs before the platform picker renders, so single-platform users do not see the intermediate picker route. Error and multi-platform paths still fall back to the picker to preserve the existing selection flow.
+## Review notes
 
-### Review Notes
-
-- Review the guard and store together because the fallback behavior depends on both the navigation decision and loading/error state transitions.
-- The platform-count endpoint is read-only and should fail open to the existing picker flow if the lookup is slow or unavailable.
+- Review the guard and store together, because the fallback depends on both the navigation decision and the loading and error states.
+- The platform-count endpoint is read-only and fails open to the existing picker flow if the lookup is slow or unavailable.
 ```
 
 ---
@@ -145,24 +271,12 @@ These are agent run-output details. PR reviewers get build, lint, typecheck, for
 ### ✅ CORRECT: Manual Scenarios Only
 
 ```markdown
-## Test Plan
+## Test plan
 
-### Manual scenarios
+Use one account with a single platform and one with several.
 
-**Scenario 1: Single-platform user**
-
-- [ ] Log in as a user with only one platform
-- [ ] Navigate to `/platform-picker`
-- [ ] Verify automatic redirect to dashboard
-- [ ] Verify correct platform is pre-selected
-
-**Scenario 2: Multi-platform user**
-
-- [ ] Log in as a user with 2+ platforms
-- [ ] Navigate to `/platform-picker`
-- [ ] Verify platform picker page displays
-- [ ] Verify all platforms are listed
-
+- [ ] Sign in with the single-platform account and open `/platform-picker`. Expect a redirect to that platform's dashboard.
+- [ ] Sign in with the multi-platform account and open `/platform-picker`. Expect the picker, listing every platform.
 ```
 
 ---
@@ -184,28 +298,13 @@ The implementation is beautifully architected using cutting-edge patterns. The g
 ```markdown
 ## Summary
 
-Added automatic redirect logic to skip the platform picker page when users have access to exactly one platform, eliminating an unnecessary navigation step.
+People who have exactly one platform skip the platform picker and go straight to that platform. People with several platforms still see the picker.
 
 Fixes WAN-521
 
-### Changes made
+## How it works
 
-- Add a route guard that redirects users who have exactly one platform
-- Keep the picker route for multi-platform users and preserve existing navigation behavior
-
-### Things I didn't touch
-
-- Multi-platform picker UI copy and styling
-
-### Potential concerns
-
-- Redirect behavior depends on the platform-count lookup succeeding or falling back cleanly
-
-## Technical Details
-
-### Implementation Approach
-
-Implemented a route guard that checks platform count before navigation. When a user has exactly one platform, the guard redirects directly to that platform instead of showing the picker page.
+A route guard checks the platform count before navigation. When a user has exactly one platform, the guard redirects to it instead of showing the picker page.
 ```
 
 ---
@@ -221,26 +320,14 @@ Changed the API endpoint signature.
 ### ✅ CORRECT: Explicit Breaking Changes Section
 
 ````markdown
-## Breaking Changes
+## Breaking changes
 
-### API Endpoint Signature Change
+`GET /api/platforms` now requires a `userId` query parameter. The audit-log and analytics services call it directly and must add the parameter:
 
-**What changed:** `GET /api/platforms` now requires `userId` query parameter.
-
-**Migration:** Update all API calls:
-
-```typescript
-// Before
-this.http.get("/api/platforms");
-
-// After
-this.http.get("/api/platforms", { params: { userId } });
+```http
+GET /api/platforms              # before
+GET /api/platforms?userId=42    # after
 ```
-
-**Impact:**
-
-- 5 frontend components
-- 2 external services (audit-log, analytics)
 ````
 
 ---
@@ -250,7 +337,7 @@ this.http.get("/api/platforms", { params: { userId } });
 ```markdown
 ## Summary
 
-Added the new feature to improve user experience.
+Adds PDF export for survey results.
 
 🤖 Generated with [Claude Code](https://claude.ai/code)
 ```
@@ -260,5 +347,5 @@ Added the new feature to improve user experience.
 ```markdown
 ## Summary
 
-Added the new feature to improve user experience.
+Adds PDF export for survey results.
 ```

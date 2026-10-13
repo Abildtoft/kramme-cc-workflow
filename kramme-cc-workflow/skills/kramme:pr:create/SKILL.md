@@ -333,7 +333,7 @@ The skill will:
 - Analyze git diff and commit history
 - Check for Linear issue references in branch name
 - Generate a conventional commit-style **title** (`<type>(<scope>): <description>`)
-- Generate a comprehensive description
+- Generate a clear, reviewer-focused description
 
 When it returns, continue to Step 8. See the "Workflow rule" near the top of this skill.
 
@@ -412,7 +412,7 @@ This skill creates PRs with `gh pr create --assignee @me`. This is intentional â
 For a fresh remote branch, invoke both sub-skills:
 
 1. `kramme:git:recreate-commits` for clean commit history
-2. `kramme:pr:generate-description` for a comprehensive description
+2. `kramme:pr:generate-description` for a clear, reviewer-focused description
 
 This keeps PRs consistent across the workflow.
 

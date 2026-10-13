@@ -202,7 +202,7 @@
      - Any "why" explanations that would help reviewers understand the approach
 
 4. **Capture important decisions and divergences**:
-   - **ALWAYS** include significant decisions in the Technical Details section
+   - **ALWAYS** include significant decisions in `## How it works`, or in `## Review notes` when they are risks or scope boundaries
    - **ALWAYS** document any divergences from the Linear issue description with clear rationale
    - **PREFER** explaining "why" over just "what" for non-obvious choices
    - **EXAMPLE**: "Used debouncing instead of throttling because platform data changes infrequently and we want to avoid unnecessary API calls"
