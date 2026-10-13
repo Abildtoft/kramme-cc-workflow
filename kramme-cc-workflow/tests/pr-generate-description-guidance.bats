@@ -310,6 +310,87 @@ PY
 	done
 }
 
+@test "generate-description sizes sections to the change and runs a readability pass" {
+	run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:pr:generate-description"
+    templates="$skill/assets/section-templates.md"
+    examples="$skill/references/pr-examples.md"
+    checklist="$skill/references/verification-checklist.md"
+    practices="$skill/references/best-practices.md"
+    triggers="$skill/references/red-flags.md"
+    pass="$skill/references/readability-pass.md"
+    prompt="$skill/references/cold-read-prompt.md"
+    rubric="shared/writing/references/plain-language-rubric.md"
+
+    if grep -nE "Things I didn.t touch|### Changes made|### Potential concerns|## Technical Details|Reviewer landmarks|Area Notes" "$templates" "$examples" "$checklist" "$practices" "$triggers"; then exit 1; fi
+    if grep -nxE "(None|Not applicable|N/A)\.?" "$templates" "$examples"; then exit 1; fi
+    if grep -nF "is a valid value" "$checklist"; then exit 1; fi
+
+    previous=0
+    for heading in "## Summary" "## Changes" "## Breaking changes" "## How it works" "## Rollout" "## Review notes" "## Test plan" "## Screenshots / Videos"; do
+      line=$(grep -nxF "$heading" "$templates" | head -n 1 | cut -d: -f1)
+      [ -n "$line" ]
+      [ "$line" -gt "$previous" ]
+      previous=$line
+    done
+
+    grep -qF "Include a placeholder section for visual aids only when the diff changes something a reviewer can see" "$skill/SKILL.md"
+    grep -qF "\`## Screenshots / Videos\` appears only for UI-facing changes" "$checklist"
+    if grep -rnF "<!-- Consider including: -->" "$skill"; then exit 1; fi
+    if grep -rnF --exclude=anti-patterns.md "<!-- Add screenshots or videos here" "$skill"; then exit 1; fi
+
+    test -f "$rubric"
+    test ! -e "skills/kramme:text:clarify/references/plain-language-rubric.md"
+    grep -qF "Read \`\${CLAUDE_PLUGIN_ROOT}/$rubric\` and \`references/readability-pass.md\`" "$skill/SKILL.md"
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/$rubric" "skills/kramme:text:clarify/SKILL.md"
+    for source_id in fofr-govuk-style-skill govuk-identify-user-needs govuk-clear-language govuk-a-to-z-style-guide; do
+      grep -qF "id: $source_id" "$skill/references/sources.yaml"
+    done
+
+    test -f "$pass"
+    test -f "$prompt"
+    grep -qF "fork_turns=\"none\"" "$pass"
+    grep -qF "Never simulate the cold read in your own context" "$pass"
+    grep -qF "Cold read: skipped" "$pass"
+    grep -qF "Keep-list audit" "$pass"
+    grep -qF "{pr-title}" "$prompt"
+    grep -qF "{pr-body}" "$prompt"
+    grep -qF "STILL NEED TO KNOW" "$prompt"
+    if grep -nF "git diff" "$prompt"; then exit 1; fi
+    grep -qF "NEVER** delete the only statement of a keep-list item" "$practices"
+    grep -qF "WRONG: Over-Trimmed Description" "$skill/references/anti-patterns.md"
+
+    grep -qF "Keep the list to about eight bullets" "$templates"
+    grep -qF "Most test plans need two to six scenarios" "$templates"
+    grep -qF "has more than ten bullets, or the Test plan more than eight scenarios" "$triggers"
+    grep -qF "A body past about 900 words is rarely read in full" "$practices"
+    grep -qF "WRONG: Every Small Change Listed" "$skill/references/anti-patterns.md"
+    grep -qF "## Example 4: Batch of Small Changes" "$examples"
+
+    pass_line=$(grep -nF "### Phase 3.5: Readability Pass" "$skill/SKILL.md" | cut -d: -f1)
+    triggers_line=$(grep -nF "Apply the \`Regeneration Triggers\` section" "$skill/SKILL.md" | cut -d: -f1)
+    rubric_line=$(grep -nF "\${CLAUDE_PLUGIN_ROOT}/$rubric" "$skill/SKILL.md" | cut -d: -f1)
+    checklist_line=$(grep -nF "Run the consolidated checklist in \`references/verification-checklist.md\`." "$skill/SKILL.md" | cut -d: -f1)
+    output_line=$(grep -nF "### Phase 4: Output Formatting" "$skill/SKILL.md" | cut -d: -f1)
+    update_line=$(grep -nF "Read \`references/direct-update.md\` and follow it." "$skill/SKILL.md" | cut -d: -f1)
+    [ "$pass_line" -lt "$triggers_line" ]
+    [ "$triggers_line" -lt "$rubric_line" ]
+    [ "$rubric_line" -lt "$checklist_line" ]
+    [ "$checklist_line" -lt "$output_line" ]
+    [ "$output_line" -lt "$update_line" ]
+    if grep -nF "### Phase 5" "$skill/SKILL.md"; then exit 1; fi
+
+    verify="skills/kramme:pr:verify-description/SKILL.md"
+    grep -qF "\`## Review notes\`" "$verify"
+    grep -qF "legacy \`Potential concerns\`" "$verify"
+    if grep -nF "comprehensive description" "skills/kramme:pr:create/SKILL.md"; then exit 1; fi
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "generate-description base guidance uses canonical resolver contract" {
 	run bash -c '
     set -euo pipefail
