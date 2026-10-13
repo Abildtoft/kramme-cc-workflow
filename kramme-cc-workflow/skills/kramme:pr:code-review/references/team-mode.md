@@ -34,9 +34,9 @@ Then stop.
 Same setup as `/kramme:pr:code-review` Steps 1-7:
 
 1. Check git status to identify changed files.
-2. Parse arguments with the same rules as `/kramme:pr:code-review` Step 1, including specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, lean, refactor, simplify, all), `--emphasize <dim>...`, `--base <ref>`, `--previous-review <path>`, and `--inline`.
+2. Parse arguments with the same rules as `/kramme:pr:code-review` Step 1, including specific review aspects (comments, tests, errors, types, code, slop, security, performance, removal, lean, refactor, simplify, all), `--emphasize <dim>...`, `--no-cleanup`, `--base <ref>`, `--previous-review <path>`, and `--inline`. Freeze `NO_CLEANUP` and `EMPHASIZED_DIMENSIONS` in the execution plan as `noCleanup` and `emphasizedDimensions` per `references/execution-contract.md`.
 3. Accept and remove `--parallel` and the deprecated bare `parallel` token as no-op aliases in team mode. Team mode already launches teammate review tasks in parallel; these flags must not remain in the aspect list or cause an unrecognized-token error.
-4. Default `all` includes `lean`, `refactor`, and `simplify`; these cleanup dimensions are subordinated to unresolved correctness, security, error-handling, and test findings during aggregation. Cleanup emphasis (`lean`, `refactor`, `simplify`) never overrides the precedence pass or the action-class normalization rule that optional cleanup stays advisory.
+4. Default `all` includes `lean`, `refactor`, and `simplify`; `--no-cleanup` excludes those advisory dimensions while retaining `["all"]` and independent `removal` applicability. Reject conflicts with explicitly requested cleanup aspects or emphasis under the standard Step 1 rules. These cleanup dimensions are subordinated to unresolved correctness, security, error-handling, and test findings during aggregation. Cleanup emphasis (`lean`, `refactor`, `simplify`) never overrides the precedence pass or the action-class normalization rule that optional cleanup stays advisory.
 5. Resolve the base branch and build the unified change scope by running the exact shared `collect-review-diff.sh` collection flow from `/kramme:pr:code-review` Step 2. Do not inline `git merge-base` or reconstruct changed-file commands here. Reuse the resulting `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`.
 6. If `CHANGED_FILES` is empty, stop with the same empty-scope message as `/kramme:pr:code-review` Step 4.
 7. Read current PR metadata, if a PR exists for this branch:
@@ -88,14 +88,14 @@ Use the same reviewer taxonomy as the standard workflow:
 - **pr-test-analyzer** -- If test files changed or new functionality added (mission from `agents/kramme:pr-test-analyzer.md`)
 - **type-design-analyzer** -- If new types added or modified (mission from `agents/kramme:type-design-analyzer.md`)
 - **comment-analyzer** -- If significant comments or docs added (mission from `agents/kramme:comment-analyzer.md`)
-- **cleanup-reviewer** -- One teammate for the cleanup dimensions. `lean`, `refactor`, and `simplify` are active for default `all` reviews or when explicitly listed; `removal` is active only if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification. Pass the active dimensions; it labels every finding with one (mission from `agents/kramme:cleanup-reviewer.md`)
+- **cleanup-reviewer** -- One teammate for the cleanup dimensions. `lean`, `refactor`, and `simplify` are active for default `all` reviews unless `NO_CLEANUP=true`, or when explicitly listed; `removal` is active only if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification. Pass the active dimensions; it labels every finding with one (mission from `agents/kramme:cleanup-reviewer.md`)
 
 **Stack-specific conditional reviewers:**
 
 - **performance-oracle** -- If performance-relevant changes detected: data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles (mission from `agents/kramme:performance-oracle.md`)
 - **security-reviewer** -- If security-relevant changes detected (API routes, auth logic, DB queries, external calls, user input handling, crypto, secrets, session state, business-rule enforcement); one teammate runs all four lenses (mission from `agents/kramme:security-reviewer.md`)
 
-When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. Without an explicit aspect filter, default `all` includes **cleanup-reviewer** in addition to the other applicable reviewers.
+When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. Spawn **cleanup-reviewer** only when the execution ledger marks at least one cleanup dimension active; `--no-cleanup` can leave only `removal` active or exclude that teammate entirely.
 
 For cleanup review, instruct cleanup-reviewer to:
 
