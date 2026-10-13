@@ -19,7 +19,7 @@ load 'test_helper/common'
     test -f "$skill/references/red-flags.md"
     test -f "$skill/references/direct-update.md"
 
-    ! grep -qF "find . .github docs -maxdepth 2" "$skill/references/context-gathering.md"
+    if grep -qF "find . .github docs -maxdepth 2" "$skill/references/context-gathering.md"; then exit 1; fi
     grep -qF "github-pr-template-docs" "$skill/references/sources.yaml"
     grep -qF "The \"no Linear ID\" condition is the only non-blocking \`MISSING REQUIREMENT:\` marker." "$skill/SKILL.md"
     grep -qF "Treat every other \`MISSING REQUIREMENT:\` marker" "$skill/SKILL.md"
@@ -34,27 +34,27 @@ load 'test_helper/common'
     grep -qF "[--base-commit <oid>]" "$skill/SKILL.md"
     grep -qF "BASE_COMMIT_OVERRIDE=<oid>" "$skill/SKILL.md"
     grep -qF -- "--base-commit \"\$BASE_COMMIT_OVERRIDE\"" "$skill/references/base-branch-resolution.md"
-    ! grep -qF "DEFAULT_TEMPLATE_REF=\"\$BASE_REF\"" "$skill/references/context-gathering.md"
-    ! grep -qF "### Automated verification" "$skill/assets/section-templates.md"
-    ! grep -qF "add PR-specific signal beyond CI" "$skill/assets/section-templates.md"
+    if grep -qF "DEFAULT_TEMPLATE_REF=\"\$BASE_REF\"" "$skill/references/context-gathering.md"; then exit 1; fi
+    if grep -qF "### Automated verification" "$skill/assets/section-templates.md"; then exit 1; fi
+    if grep -qF "add PR-specific signal beyond CI" "$skill/assets/section-templates.md"; then exit 1; fi
     [ "$(grep -cF "\`references/red-flags.md\`" "$skill/SKILL.md")" -eq 1 ]
     grep -qF "Apply the \`Regeneration Triggers\` section from the already-loaded reference" "$skill/SKILL.md"
     if grep -qF "Red Flags" "$skill/references/red-flags.md"; then exit 1; fi
-    ! grep -qF "use proper heading hierarchy" "$skill/SKILL.md"
-    ! grep -qF "using tables for structured data" "$skill/SKILL.md"
+    if grep -qF "use proper heading hierarchy" "$skill/SKILL.md"; then exit 1; fi
+    if grep -qF "using tables for structured data" "$skill/SKILL.md"; then exit 1; fi
     grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$direct"
-    grep -qF "Capture the single printed line as agent-tracked `{update-dir}`" "$direct"
+    grep -qF "Capture the single printed line as agent-tracked \`{update-dir}\`" "$direct"
     grep -qF "UPDATE_DIR=\"{update-dir}\"" "$direct"
     grep -qF "gh pr view --json title,body > \"\$PR_BACKUP\"" "$direct"
     grep -qF "Generated PR payload files are missing or indirect" "$direct"
     grep -qF "mandatory title/body JSON backup" "$checklist"
     grep -qF "same shell invocation as validation and cleanup" "$checklist"
     grep -qF "self-contained local-exclude and symlink-rejection procedure" "$checklist"
-    ! grep -qF "repo-root anchored backup, local git exclude update" "$checklist"
+    if grep -qF "repo-root anchored backup, local git exclude update" "$checklist"; then exit 1; fi
     grep -qF "SAVE_NAMESPACE=\"\$REPO_ROOT/.kramme-cc-workflow\"" "$skill/SKILL.md"
     grep -qF "Could not update Git'\''s local exclude file; the description was not saved." "$skill/SKILL.md"
-    ! grep -qF "same idempotent check as step 1" "$skill/SKILL.md"
-    ! grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$direct"
+    if grep -qF "same idempotent check as step 1" "$skill/SKILL.md"; then exit 1; fi
+    if grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$direct"; then exit 1; fi
   '
 
 	assert_required_contracts_registered \
@@ -101,7 +101,7 @@ load 'test_helper/common'
     grep -qF "WORKTREE_MANIFEST=\$(\"\${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh\")" "$skill"
     grep -qF -- "--fix is unavailable for a <PR_STATE> Pull Request" "$skill"
     grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$update"
-    grep -qF "Capture the single printed line as agent-tracked `{update-dir}`" "$update"
+    grep -qF "Capture the single printed line as agent-tracked \`{update-dir}\`" "$update"
     grep -qF "UPDATE_DIR=\"{update-dir}\"" "$update"
     grep -qF "Could not back up and revalidate PR #\$PR_NUMBER; no update was made." "$update"
     grep -qF "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"\$PR_SNAPSHOT_FINGERPRINT" "$update"
@@ -112,7 +112,7 @@ load 'test_helper/common'
     grep -qF "Generated PR payload storage is missing or indirect" "$update"
     grep -qF "gh pr edit \"\$PR_NUMBER\"" "$update"
     grep -qF -- "--body-file \"\$PR_BODY_FILE\"" "$update"
-    ! grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$update"
+    if grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$update"; then exit 1; fi
     confirmation_line=$(grep -nF "Found <N> finding(s). Generate a replacement title and body" "$skill" | cut -d: -f1)
     no_pr_line=$(grep -nF "MISSING REQUIREMENT: no PR found for the current branch." "$skill" | head -1 | cut -d: -f1)
     generic_pr_failure_line=$(grep -nF "Could not inspect a Pull Request for the current branch" "$skill" | cut -d: -f1)
@@ -135,7 +135,7 @@ load 'test_helper/common'
     [ "$payload_line" -lt "$backup_line" ]
     [ "$backup_line" -lt "$snapshot_line" ]
     [ "$snapshot_line" -lt "$edit_line" ]
-    ! grep -qF "it will detect the existing PR and update it directly" "$skill"
+    if grep -qF "it will detect the existing PR and update it directly" "$skill"; then exit 1; fi
   '
 
 	assert_required_contracts_registered \
@@ -321,8 +321,8 @@ PY
     grep -qF "BASE_REF" "$base_ref"
     grep -qF "BASE_BRANCH" "$base_ref"
     grep -qF "MERGE_BASE" "$base_ref"
-    ! grep -qF "git symbolic-ref refs/remotes/origin/HEAD" "$base_ref"
-    ! grep -qF "gh pr view --json baseRefName" "$base_ref"
+    if grep -qF "git symbolic-ref refs/remotes/origin/HEAD" "$base_ref"; then exit 1; fi
+    if grep -qF "gh pr view --json baseRefName" "$base_ref"; then exit 1; fi
   '
 
 	[ "$status" -eq 0 ]
