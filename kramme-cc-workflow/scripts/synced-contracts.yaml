@@ -1239,7 +1239,7 @@
         "GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never",
         "NONINTERACTIVE_GIT_SSH_COMMAND=\"${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=yes\"",
         "GIT_SSH_COMMAND=\"$NONINTERACTIVE_GIT_SSH_COMMAND\"",
-        "git cat-file -e \"$DEFAULT_TEMPLATE_REF:$path\"",
+        "git cat-file -e \"$DEFAULT_TEMPLATE_REF:$template_path\"",
         "git ls-tree -r --name-only \"$DEFAULT_TEMPLATE_REF\" \"$dir\"",
         "**Default templates**",
         "**Selectable templates**",

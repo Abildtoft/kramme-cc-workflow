@@ -58,8 +58,8 @@
      DIRECT_UPDATE=false
    else
      {
-       for path in pull_request_template.md pull_request_template.txt .github/pull_request_template.md .github/pull_request_template.txt docs/pull_request_template.md docs/pull_request_template.txt; do
-         git cat-file -e "$DEFAULT_TEMPLATE_REF:$path" 2> /dev/null && printf '%s\n' "$path"
+       for template_path in pull_request_template.md pull_request_template.txt .github/pull_request_template.md .github/pull_request_template.txt docs/pull_request_template.md docs/pull_request_template.txt; do
+         git cat-file -e "$DEFAULT_TEMPLATE_REF:$template_path" 2> /dev/null && printf '%s\n' "$template_path"
        done
        for dir in PULL_REQUEST_TEMPLATE .github/PULL_REQUEST_TEMPLATE docs/PULL_REQUEST_TEMPLATE; do
          git ls-tree -r --name-only "$DEFAULT_TEMPLATE_REF" "$dir" 2> /dev/null \
