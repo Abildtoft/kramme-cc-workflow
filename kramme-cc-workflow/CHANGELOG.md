@@ -31,6 +31,33 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - `/kramme:pr:generate-description` now finds repository PR templates when the agent's shell is zsh. The lookup looped over a variable named `path`, which zsh ties to `PATH`, so every later command in the lookup failed and it reported no template.
 
+## [0.88.0] - 2026-10-13
+
+### Added
+
+- Fit sections to the change and check clarity (#979)
+- Make draft comments clear without context (#977)
+- Resolve repository workbench branches (#968)
+- **BREAKING:** Default issue-to-pr to two review cycles (#967)
+- Flag conflicting issues in backlog-refine (#963)
+
+### Changed
+
+- **BREAKING:** Remove standalone prototype skill (#975)
+- **BREAKING:** Remove CI pipeline design skill (#974)
+- **BREAKING:** Remove six low-use skills (#973)
+- **BREAKING:** Retire standalone session search (#972)
+- **BREAKING:** Remove demo-reel and PR visual evidence (#970)
+- **BREAKING:** Retire standalone context setup (#969)
+- Move issue-to-pr preflight into a tested script (#965)
+- Share cross-skill files at plugin level (#966)
+
+### Fixed
+
+- Accept disclaimed sources in readiness evidence (#978)
+- Honor no-cleanup in execution plans (#976)
+- Parse heredocs and redirections like the shell (#964)
+
 ## [0.87.0] - 2026-09-30
 
 ### Added
@@ -1089,6 +1116,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.88.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.87.0...v0.88.0
 [0.87.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.86.0...v0.87.0
 [0.86.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.85.0...v0.86.0
 [0.85.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.84.0...v0.85.0
