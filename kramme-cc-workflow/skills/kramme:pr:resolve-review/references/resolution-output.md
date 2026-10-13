@@ -4,7 +4,6 @@
 
 Write resolutions to the appropriate file in the project root:
 
-- If the source review was `UX_REVIEW_OVERVIEW.md` → update `UX_REVIEW_OVERVIEW.md` in place
 - If the source review was `PRODUCT_REVIEW_OVERVIEW.md` → update `PRODUCT_REVIEW_OVERVIEW.md` in place
 - If the source review was `COPY_REVIEW_OVERVIEW.md` → update `COPY_REVIEW_OVERVIEW.md` in place
 - If the source review was `CONVENTION_REVIEW_OVERVIEW.md` → update `CONVENTION_REVIEW_OVERVIEW.md` in place

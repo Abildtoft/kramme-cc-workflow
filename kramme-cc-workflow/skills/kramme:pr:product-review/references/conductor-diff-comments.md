@@ -3,7 +3,7 @@ Synced Conductor diff-comment contract (keep aligned across review producers):
 ## Producer values
 
 - Producer: `kramme:pr:product-review`
-- Canonical output: `PRODUCT_REVIEW_OVERVIEW.md` or the equivalent inline report
+- Canonical output: `PRODUCT_REVIEW_OVERVIEW.md` or the equivalent inline or Team Mode report
 - Current finding IDs: `PROD-NNN`
 - Location field: `File: path/to/file.ext:line`
 - Body classification: the finding's Critical, Important, or Suggestion severity

@@ -199,15 +199,15 @@ If `CODE_ONLY=true`, set `RUN_UI=false` and skip the rest of this step without l
 
 Keep delegated review orchestrators on this session's model unless the user explicitly chooses otherwise. Each review skill applies its own model-selection policy to its reviewers; do not lower the orchestrator first and cause a second step-down. Forward any explicit user reviewer-model choice with the review handoff.
 
-When `SUBAGENT_MODEL_OVERRIDE` is non-empty, include `--subagent-model <model>` in both the code-review and ux-review invocations below; otherwise omit it.
+When `SUBAGENT_MODEL_OVERRIDE` is non-empty, include `--subagent-model <model>` in both the code-review and product-review invocations below; otherwise omit it.
 
 Run all review commands **with the worktree as the working directory** (you are already `cd`'d there). If you delegate via slash command, the sibling skill resolves git state against the PR head only while the session's working directory is the worktree — keep it there until the worktree is removed in Step 8. If slash invocation is unavailable, read the sibling skill's `SKILL.md` from the installed skills directory and follow it, running every git command inside the worktree.
 
 1. **Code quality — always.** Delegate to `/kramme:pr:code-review --base "$BASE_REF" --inline`. `--inline` keeps the findings in chat instead of writing `REVIEW_OVERVIEW.md` into the throwaway worktree. Capture the structured findings (severity, location, confidence, evidence).
 
-2. **UI/UX/visual/accessibility/product — when `RUN_UI=true`.** Delegate to `/kramme:pr:ux-review --base "$BASE_REF" --inline`, appending `--categories <UI_CATEGORIES>` when the user supplied that flag. There is normally no running app for someone else's PR, so the UI pass runs as static, diff-based analysis. Capture its findings.
+2. **UI/UX/visual/accessibility/product — when `RUN_UI=true`.** Delegate to `/kramme:pr:product-review --base "$BASE_REF" --inline`, appending `--categories <UI_CATEGORIES>` when the user supplied that flag. There is normally no running app for someone else's PR, so the UI pass runs as static, diff-based analysis. Capture its findings.
 
-Do not auto-run the heavier `kramme:pr:product-review` or `kramme:code:copy-review --pr`. Mention them in the final report as optional deeper passes the user can request.
+When `RUN_UI=false`, do not auto-run `kramme:pr:product-review`; never auto-run `kramme:code:copy-review --pr`. Mention them in the final report as optional deeper passes the user can request.
 
 **Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded.
 

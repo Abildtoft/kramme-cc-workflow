@@ -235,7 +235,6 @@ test("canonical plugin build preserves runtime path dependency closure", async (
       "overengineering-review",
       "product-review",
       "review-convergence",
-      "ux-review",
     ]) {
       const skillDir = path.join(skillsRoot, `kramme:pr:${name}`);
       assert.match(

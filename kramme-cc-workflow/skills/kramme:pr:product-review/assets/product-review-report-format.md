@@ -1,56 +1,48 @@
 # Product Review Summary
 
-**Date:** {date} **Base Branch:** {base_branch}
+**Mode:** {Code-only | Visual + Code} **Agents Run:** {list of agents that ran} **Categories:** {list of categories audited}
 
 ## Relevance Filter
 
-- X findings validated as in-scope
+- X findings validated as in-scope (PR/local)
 - X findings filtered (pre-existing or out-of-scope)
 - X findings filtered (previously addressed)
 
+## Coverage Status (omit when complete)
+
+Coverage degraded: {agent names} failed; findings below exclude {categories}.
+
+Working tree mutated during audit: {paths}; findings citing them were re-verified against disk and {count} were dropped.
+
+UX, visual, and accessibility review not run: no UI-relevant files matched (changed file types: {types}).
+
 ## Critical Product Issues (X found)
 
-### PROD-NNN: {title}
+### PROD-NNN: {Brief title}
 
-**Severity:** Critical **Dimension:** {dimension name} **File:** `path/to/file:42` **Confidence:** {0-100} **User Impact:** High
+**Agent:** {kramme:ux-reviewer | kramme:product-reviewer | kramme:visual-reviewer | kramme:a11y-auditor} **Category:** {specific category within agent's domain} **File:** `path/to/file.tsx:42` **Confidence:** {0-100} **User Impact:** {High | Medium | Low}
 
-**Issue:** {user-facing scenario description}
+**Issue:** {Description}
 
-**Recommendation:** {specific fix}
+**Recommendation:** {Specific fix}
 
 ---
 
 ## Important Product Issues (X found)
 
-### PROD-NNN: {title}
-
-**Severity:** Important **Dimension:** {dimension name} **File:** `path/to/file:42` **Confidence:** {0-100} **User Impact:** Medium
-
-**Issue:** {user-facing scenario description}
-
-**Recommendation:** {specific fix}
-
----
+{Same format}
 
 ## Product Suggestions (X found)
 
-### PROD-NNN: {title}
+{Same format}
 
-**Severity:** Suggestion **Dimension:** {dimension name} **File:** `path/to/file:42` **Confidence:** {0-100} **User Impact:** Low
+## Open Questions (omit when the product reviewer did not run)
 
-**Issue:** {user-facing scenario description}
+- {What needs product owner input}
 
-**Recommendation:** {specific fix}
+## Assumptions Used (omit when the product reviewer did not run)
 
----
-
-## Open Questions
-
-- {things that need product owner input}
-
-## Assumptions Used
-
-- {only include when the reviewer inferred target user, value, or non-goals from incomplete context}
+- {Target user, value, or non-goal the product reviewer inferred from incomplete context}
 
 ## Filtered (Pre-existing/Out-of-scope)
 
@@ -67,13 +59,14 @@
 
 ## Product Strengths
 
-- {what's well done from a product perspective}
+- {What's well-done from a product and UX perspective}
 
-## Recommended Next Actions
+## Recommended Action
 
 1. Fix critical issues first
 2. Address important issues
-3. Discuss open questions with product owner
-4. Re-run after fixes
+3. Consider suggestions
+4. Discuss open questions with the product owner
+5. Re-run audit after fixes
 
 **To resolve findings, run:** `/kramme:pr:resolve-review`

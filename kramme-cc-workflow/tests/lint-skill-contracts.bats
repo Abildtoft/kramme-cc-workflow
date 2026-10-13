@@ -297,10 +297,9 @@ contract_name = "pr-review-collect-review-diff-nul-block"
 shared_args = ["--strict", "--format", "nul"]
 expected_args = {
     "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md": shared_args,
-    "kramme-cc-workflow/skills/kramme:pr:ux-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md": shared_args,
     "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md": shared_args,
     "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md": shared_args,
-    "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md": shared_args,
     "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md": [
         *shared_args,
         "--exclude-review-artifacts",
@@ -1269,7 +1268,7 @@ EOF
   [[ "$resolver_output_text" == *"retain **Selected resolution**, keep **Resolution status: open**, and record the failed attempt in **Action taken**"* ]]
   [[ "$resolver_output_text" == *"Do not leave proposal-only fields on an addressed or acknowledged finding."* ]]
   [[ "$resolver_output_text" == *"R open selected-resolution retries or blocked implementations, A manual findings awaiting a user decision, P accepted process handoffs awaiting completion, and X manual findings waiting on an external owner"* ]]
-  [[ "$resolver_output_text" == *'If the source review was `UX_REVIEW_OVERVIEW.md`'* ]]
+  [[ "$resolver_output_text" == *'If the source review was `PRODUCT_REVIEW_OVERVIEW.md`'* ]]
   [[ "$resolver_output_text" == *'If the source review was `OVERENGINEERING_REVIEW_OVERVIEW.md` or carries `Review producer: kramme:pr:overengineering-review`'* ]]
   [[ "$resolver_output_text" == *'If the source review came from Conductor diff comments'* ]]
   [[ "$resolver_output_text" == *"Findings present in the source but not addressed in this run"*'stay verbatim'* ]]
@@ -1366,17 +1365,26 @@ EOF
   assert_required_contracts_registered pr-code-review-closeout-loop-independent-verification
 }
 
-@test "pr ux review keeps routing contracts without embedded usage or agent summaries" {
+@test "pr product review keeps routing contracts without embedded usage or agent summaries" {
   local skill_text
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:ux-review/SKILL.md")"
+  local team_text
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:product-review/SKILL.md")"
 
   [[ "$skill_text" == *'argument-hint: "[--subagent-model <model>] [app-url|auto] [--categories a11y,ux,product,visual]'* ]]
   [[ "$skill_text" == *'If `--categories` flag → parse comma-separated list.'* ]]
   [[ "$skill_text" == *'If `--categories product,visual` → launch kramme:product-reviewer and kramme:visual-reviewer'* ]]
   [[ "$skill_text" == *'If `--categories all` → launch all 4 agents'* ]]
+  [[ "$skill_text" == *'The `product` category audits every file in `CHANGED_FILES`'* ]]
+  [[ "$skill_text" == *'continue with the product reviewer alone'* ]]
+  [[ "$skill_text" == *'If `--categories` also excludes `product`, stop instead:'* ]]
+  [[ "$skill_text" == *'the reviewer brief from `references/product-lens.md`, verbatim'* ]]
+  team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:product-review/references/team-mode.md")"
+  [[ "$team_text" == *'continue with the product reviewer alone, or stop with the same message as the base skill when `--categories` also excludes `product`'* ]]
+  [[ "$team_text" == *'keep the full changed-file list as the product reviewer'* ]]
+  [[ "$team_text" == *'For the product reviewer, the reviewer brief from `references/product-lens.md`, verbatim'* ]]
   [[ "$skill_text" != *'## Usage Examples'* ]]
   [[ "$skill_text" != *'## Agent Descriptions'* ]]
-  [[ "$skill_text" != *'/kramme:pr:ux-review http://localhost:4200'* ]]
+  [[ "$skill_text" != *'/kramme:pr:product-review http://localhost:4200'* ]]
 }
 
 @test "verify-understanding supports answer option prompts" {
@@ -3738,27 +3746,23 @@ EOF
     'kramme:pr:convention-review'
     'kramme:pr:overengineering-review'
     'kramme:pr:product-review'
-    'kramme:pr:ux-review'
   )
-  local finding_ids=('CONV-NNN' 'OE-NNN' 'PROD-NNN' 'UX-NNN')
-  local model_invocations=('false' 'false' 'true' 'true')
+  local finding_ids=('CONV-NNN' 'OE-NNN' 'PROD-NNN')
+  local model_invocations=('false' 'false' 'true')
   local location_fields=(
     'Location: path/to/file.ext:line'
     'Location: path/to/file.ext:line`; `scope:` locations are unanchored and ineligible'
-    'File: path/to/file.ext:line'
     'File: path/to/file.ext:line'
   )
   local classifications=(
     "the finding's Critical, Important, or Suggestion severity"
     "the finding's \`OVERDONE\` or \`JUDGMENT CALL\` verdict"
     "the finding's Critical, Important, or Suggestion severity"
-    "the finding's Critical, Important, or Suggestion severity"
   )
   local active_sets=(
     'Critical Convention Issues and Important Convention Issues are always eligible'
     'anchored findings in Confirmed Overdoing and Judgment Calls are eligible only when Resolution status is `open` or absent'
     'Critical Product Issues and Important Product Issues are always eligible'
-    'Critical UX Issues and Important UX Issues are always eligible'
   )
 
   canonical_tail="$(awk 'seen { print } /^## Synced contract$/ { seen=1 }' \
@@ -3794,7 +3798,7 @@ EOF
     [[ "$skill_text" == *'Detect tools by presence; never call one merely to probe availability.'* ]]
   done
 
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:ux-review/SKILL.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:product-review/SKILL.md")"
   [[ "$skill_text" == *'Preserve this value for Team Mode and standard review output.'* ]]
   [[ "$skill_text" == *'After its final aggregated audit succeeds, run `Post Conductor Diff Comments` below and then stop.'* ]]
 
@@ -3804,5 +3808,5 @@ EOF
   run grep -rlF 'Synced Conductor diff-comment contract (keep aligned across review producers):' \
     "$BATS_TEST_DIRNAME/../skills"
   [ "$status" -eq 0 ]
-  [ "$(wc -l <<<"$output" | tr -d ' ')" -eq 5 ]
+  [ "$(wc -l <<<"$output" | tr -d ' ')" -eq 4 ]
 }

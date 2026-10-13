@@ -30,7 +30,7 @@ PY
 
 @test "every review producer loads the one shared policy" {
   local skill
-  for skill in code-review convention-review github-review overengineering-review product-review review-convergence ux-review; do
+  for skill in code-review convention-review github-review overengineering-review product-review review-convergence; do
     [[ "$(cat "$ROOT/skills/kramme:pr:$skill/SKILL.md")" == *'read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`'* ]]
     [ ! -e "$ROOT/skills/kramme:pr:$skill/references/model-selection.md" ]
   done
@@ -42,7 +42,7 @@ from pathlib import Path
 import sys
 
 root = Path(sys.argv[1])
-for name in ['code-review', 'ux-review', 'product-review', 'convention-review',
+for name in ['code-review', 'product-review', 'convention-review',
              'overengineering-review', 'github-review', 'review-convergence']:
     text = (root / f'skills/kramme:pr:{name}/SKILL.md').read_text()
     hint = next(line for line in text.splitlines() if line.startswith('argument-hint:'))
@@ -53,7 +53,7 @@ for name in ['code-review', 'ux-review', 'product-review', 'convention-review',
             assert '[--subagent-model <model>]' in line, name
     work_start = '## Step 2: Validate' if name == 'review-convergence' else '```bash'
     assert body.index('references/model-selection.md') < body.index(work_start), name
-    if name in ('code-review', 'ux-review'):
+    if name in ('code-review', 'product-review'):
         assert body.index('references/model-selection.md') < body.index('## Team Mode'), name
 PY
   [ "$status" -eq 0 ]
@@ -94,9 +94,9 @@ PY
   policy="$(cat "$POLICY")"
   [[ "$policy" == *'Insert it before `--requirements` when that sentinel is present'* ]]
   [[ "$policy" == *'Do not place it inside the requirements block or append it after the sentinel'* ]]
-  [[ "$(cat "$ROOT/skills/kramme:pr:github-review/SKILL.md")" == *'include `--subagent-model <model>` in both the code-review and ux-review invocations'* ]]
+  [[ "$(cat "$ROOT/skills/kramme:pr:github-review/SKILL.md")" == *'include `--subagent-model <model>` in both the code-review and product-review invocations'* ]]
   [[ "$(cat "$ROOT/skills/kramme:pr:code-review/references/closeout-loop.md")" == *'Restore `--subagent-model <model>` from a non-empty `SUBAGENT_MODEL_OVERRIDE` in every nested review invocation; preserve explicit `inherit` as well'* ]]
-  for skill in code-review ux-review; do
+  for skill in code-review product-review; do
     team="$(cat "$ROOT/skills/kramme:pr:$skill/references/team-mode.md")"
     [[ "$team" == *'Preserve `SUBAGENT_MODEL_OVERRIDE` from startup parsing'* ]]
   done
@@ -108,7 +108,7 @@ PY
 
 @test "team and loop entry points preserve the reviewer selection" {
   local skill
-  for skill in code-review ux-review; do
+  for skill in code-review product-review; do
     [[ "$(cat "$ROOT/skills/kramme:pr:$skill/references/team-mode.md")" == *'selected reviewer model for every teammate and later validation spawn'* ]]
   done
   [[ "$(cat "$ROOT/skills/kramme:pr:code-review/references/closeout-loop.md")" == *'for review reruns and the independent termination verifier'* ]]

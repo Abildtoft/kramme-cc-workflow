@@ -28,8 +28,7 @@ Add each lane whose trigger the diff meets, at any tier:
 
 | Trigger | Command |
 | --- | --- |
-| The diff changes user-facing UI: components, templates, styles, or routes. The command applies its own UI-relevance rules. | `/kramme:pr:ux-review` |
-| The diff changes user-visible behavior, flows, copy, or product rules. | `/kramme:pr:product-review` |
+| The diff changes user-facing UI (components, templates, styles, or routes) or user-visible behavior, flows, copy, or product rules. The command applies its own UI-relevance rules to decide whether the UX and visual reviewers join the product reviewer. | `/kramme:pr:product-review` |
 | `shape:large` or `shape:very-large` is undiscounted. Run it before review so each slice gets its own triage. | `/kramme:pr:plan-split` |
 | An open Pull Request exists and its branch name, title, or body references a Linear issue. | `/kramme:linear:review-pr` |
 

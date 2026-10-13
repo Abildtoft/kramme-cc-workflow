@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:code-review
-description: "Review branch changes for tests, errors, types, security, performance, slop, lean deletion, refactor fit, and simplification. Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. --team cross-validates; --loop applies fixes and verifies convergence. Not for UX, visual, or accessibility; use kramme:pr:ux-review."
+description: "Review branch changes for tests, errors, types, security, performance, slop, lean deletion, refactor fit, and simplification. Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. --team cross-validates; --loop applies fixes and verifies convergence. Not for UX, visual, or accessibility; use kramme:pr:product-review."
 argument-hint: "[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--no-cleanup] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true
