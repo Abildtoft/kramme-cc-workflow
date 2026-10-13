@@ -50,41 +50,45 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Cross-ref: <`path:line` of the related fresh finding, or "—">
   - Humanized: yes|no
   - Draft reply:
-    > <human-voiced reply leading with your decision, grounded in what you read — e.g. "Looks like the empty-list case is handled now with the guard on line 88 — happy to resolve this." — or "(surfaced for awareness — no reply needed)">
+    > <human-voiced reply leading with your decision, grounded in what you read — e.g. "Looks like the empty-list case is handled now by the `if (!items.length)` guard in `parseItems()` — happy to resolve this." — or "(surfaced for awareness — no reply needed)">
 
 ## Blocking (must fix before merge) (X found)
 
 - **Blocking:** <what is wrong and why it blocks merge>
   - Location: `path/to/file.ts:123`
+  - Refers to: <code outside the anchor the comment depends on, e.g. `loadRows()` in `src/api/rows.ts:40`, or "—">
   - Evidence: <traced behavior, failing path, or UNVERIFIED reason>
   - Humanized: yes|no
   - Draft comment:
-    > <concise, calibrated, Socratic — e.g. "If `rows` comes back empty, does this still resolve, or does the `.then` chain hang? Couldn't trace it from the diff.">
+    > <concise, calibrated, Socratic, understandable from the anchor alone — e.g. "If `loadRows()` in `src/api/rows.ts` returns an empty array, does this `.then` chain still resolve, or does the dashboard spinner hang? Couldn't trace it from the diff.">
 
 ## Important (should fix) (X found)
 
 - **Important:** <what should change>
   - Location: `path/to/file.ts:123`
+  - Refers to: <outside code, or "—">
   - Evidence: <concrete reason>
   - Humanized: yes|no
   - Draft comment:
-    > <e.g. "Is there a reason the token isn't refreshed before this call? Looks like it could be expired by the time we reach here.">
+    > <e.g. "Is there a reason the token isn't refreshed before this `fetchInvoices` call? `refreshSession()` in `auth/session.ts` only runs on page load, so after an hour-long session it looks like this request goes out with an expired token.">
 
 ## Suggestions / Nits (X found)
 
 - **Nit:** <optional improvement>
   - Location: `path/to/file.ts:123`
+  - Refers to: <outside code, or "—">
   - Humanized: yes|no
   - Draft comment:
-    > <e.g. "Would pulling this into a named helper make the intent clearer? Up to you.">
+    > <e.g. "Would pulling this date-range check into a named helper make the intent clearer? `applyDateRange()` in `src/reports/ReportFilters.tsx` repeats the same logic. Up to you.">
 
 ## Questions for the Author (X found)
 
 - **Question:** <what needs the author's intent before you can judge it>
   - Location: `path/to/file.ts:123`
+  - Refers to: <outside code, or "—">
   - Humanized: yes|no
   - Draft comment:
-    > <e.g. "Is this meant to preserve the previous fallback behavior, or should a missing value fail here now?">
+    > <e.g. "Is it intentional that a missing `currency` now throws instead of falling back to `DEFAULT_CURRENCY` as it did before this change?">
 
 ## Strengths (X found)
 
@@ -124,8 +128,9 @@ gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/r
 ## Section notes
 
 - **Evidence** — written for you, the reviewer, not for the author. Capture the full trace, reproduction, or reasoning here so you can decide with it in front of you. It deliberately does **not** all go into the draft comment.
-- **Draft comment** — the part the author actually reads, and the value this report adds over a plain findings list. Follow the comment-craft rules in the skill's draft step (human voice, lead with a Socratic question, calibrated, brief, evidence kept in `Evidence`, not the comment). Include it for Questions so every proposed inline comment can be carried into a pending review; skip it only for Strengths.
+- **Draft comment** — the part the author actually reads, and the value this report adds over a plain findings list. Follow the comment-craft rules in `references/comment-drafting.md`, with the full trace kept in `Evidence`. Include it for Questions so every proposed inline comment can be carried into a pending review; skip it only for Strengths.
 - **Humanized** — `yes` once the draft has passed through `kramme:text:humanize`, `no` if the humanizer was unavailable or the original wording was kept to protect the human voice, question framing, calibration, or technical accuracy.
+- **Refers to** — the code outside the anchor that the draft comment depends on, so you can audit those references before posting. Use `—` when the anchor alone explains the comment.
 - **Location** — always a concrete `path:line` from the PR diff so the comment can be anchored. Use the line in the PR's head version. If a finding is PR-wide, say `review-scope` and explain in the body.
 - **Open Conversation** — only for ongoing reviews; omit on a clean first pass. List threads in priority order: `awaiting-you` and `author-responded` first (these need your input), then `peer-comment` / `new-from-others` / `your-open` (awareness). The root comment ID for each thread feeds the reply command in Manual posting.
 - **Verified (live tree)** — the result of reading the current file at the thread's location in the worktree, not an inference from finding overlap: `addressed`, `still-open`, or `cant-tell`. Name what you actually saw (the guard now present, the unchanged branch, etc.). This is what lets a reply say "looks handled now" with confidence.
