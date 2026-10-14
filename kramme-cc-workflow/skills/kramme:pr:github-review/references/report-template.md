@@ -60,7 +60,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Evidence: <traced behavior, failing path, or UNVERIFIED reason>
   - Humanized: yes|no
   - Draft comment:
-    > <concise, calibrated, Socratic, understandable from the anchor alone — e.g. "If `loadRows()` in `src/api/rows.ts` returns an empty array, does this `.then` chain still resolve, or does the dashboard spinner hang? Couldn't trace it from the diff.">
+    > <concise, calibrated, context first, understandable from the anchor alone — e.g. "If `loadRows()` in `src/api/rows.ts` returns an empty array, does this `.then` chain still resolve, or does the dashboard spinner hang? Couldn't trace it from the diff.">
 
 ## Important (should fix) (X found)
 
@@ -70,7 +70,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Evidence: <concrete reason>
   - Humanized: yes|no
   - Draft comment:
-    > <e.g. "Is there a reason the token isn't refreshed before this `fetchInvoices` call? `refreshSession()` in `auth/session.ts` only runs on page load, so after an hour-long session it looks like this request goes out with an expired token.">
+    > <e.g. "`refreshSession()` in `auth/session.ts` only runs on page load, so after an hour-long session this `fetchInvoices` call looks like it goes out with an expired token. Is there a reason it isn't refreshed first?">
 
 ## Suggestions / Nits (X found)
 
@@ -79,7 +79,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Refers to: <outside code, or "—">
   - Humanized: yes|no
   - Draft comment:
-    > <e.g. "Would pulling this date-range check into a named helper make the intent clearer? `applyDateRange()` in `src/reports/ReportFilters.tsx` repeats the same logic. Up to you.">
+    > <e.g. "`applyDateRange()` in `src/reports/ReportFilters.tsx` repeats this date-range check. Would one named helper for both make the intent clearer? Up to you.">
 
 ## Questions for the Author (X found)
 

@@ -13,17 +13,33 @@ For every actionable finding, keep the full trace or reasoning in `Evidence` and
 - **Make the comment stand on its own.** If the concern depends on code outside that view, such as a caller, a callee, another file, a branch further up or down, or behavior the diff removed, name that code explicitly by file and symbol. Add `path:line` when the symbol alone is ambiguous. Do not use "this", "here", "it", "above", or "the other check" for anything the author cannot see at the anchor.
 - **Anchor where the fix belongs.** When a concern spans two locations, anchor on the changed line where the author would make the fix and name the other location in the comment. If the fix belongs in code outside the diff, anchor on the changed line that introduces the problem and name the fix location by file and symbol.
 - **Say concretely what goes wrong.** Name the input, state, or sequence that triggers the problem and the result the author would see. Use plain words, not just a category label such as "race condition" or "leak".
+- **Use the code's and ticket's words, not your own labels.** Do not invent names for categories or test suites. Say "a call for a missing user", "this file", "the service unit spec".
 - **Sound like a person, not a report.** Use plain, natural reviewer language without finding structure, severity labels, or bullet lists inside the comment.
-- **Lead with a question, not a verdict.** Prefer a Socratic question that lets the author inspect the concern over a demand. The question must carry enough context to be answerable: ask "what happens when `items` is empty?", not "is this right?"
+- **Context first, ask last.** Open with one plain sentence saying what's wrong: what the ticket or code expects, and what is missing or broken. Then give the reasons, and end with the ask as a question, in its own paragraph when more than one sentence comes before it. The question must still be answerable on its own: "what happens when `items` is empty?", not "is this right?" A comment that is one question naming the trigger and the result needs no opening sentence.
+- **Make the ask concrete.** When you ask for a test or a change, name the setup and each expected result: "sets `deletedAt` on `sameOrganisationUserId` and expects `deleteAllClaimsForUser` to return `false`, keep the claim and write no audit entry".
 - **Keep the trace out and the context in.** Leave the full trace, reproduction, and reasoning in `Evidence`. Include the one or two facts the author needs to see the concern without opening your report.
 - **Calibrate confidence.** State traced failures plainly but politely. Phrase `UNVERIFIED` concerns as questions or with an explicit hedge.
-- **Be brief, not cryptic.** Usually write one to three sentences with one concern per comment, and no preamble, padding, AI attribution, or meta-process text.
+- **Short sentences, one concern.** One point per sentence and one concern per comment. No preamble, padding, AI attribution, or meta-process text.
 - **Keep comments actionable.** Preserve necessary function, file, and variable names plus a useful direction.
 - **Keep tone independent of severity.** Blocking comments remain concise questions or statements, not demands.
 
-Before finalizing, run a cold-read check on each draft. Reread it as if you could see only that view. If the author would have to ask "which one?", "where?", or "why does that matter?", add the missing reference or consequence. Record the outside code each comment depends on in the report's `Refers to` field. Use `—` when the comment is fully explained by its anchor.
+Before finalizing, run a cold-read check on each draft. Reread it as if you could see only that view. If the author would have to ask "which one?", "where?", or "why does that matter?", add the missing reference or consequence. Could the author tell what's wrong before reaching the ask? If not, move the problem statement to the front. Record the outside code each comment depends on in the report's `Refers to` field. Use `—` when the comment is fully explained by its anchor.
 
 Keep genuine `Strengths` in the local report only; never post them as a GitHub review body, and give each anchored question its own `Draft comment` body so it is eligible with the other inline comments.
+
+### Worked example
+
+First draft:
+
+> Could we add a case like this one for a soft-deleted target user? SER-1574 says a missing-user call deletes nothing, and soft-deleting a user leaves their `license_claim` rows in place, so the only guard is `isNull(userTable.deletedAt)` in `hardDeleteAllClaimsForUserInOrganisation` (license-claim.repo.ts). I removed that line locally and every test in the dal and service suites, this file included, still passed. Setting `deletedAt` on `sameOrganisationUserId` and expecting `false`, one claim left and no audit row would catch it.
+
+Rewrite:
+
+> SER-1574 says a call for a missing user should delete nothing, but no test checks that for a soft-deleted user. Soft-deleting a user keeps their `license_claim` rows, so the only thing stopping the delete is `isNull(userTable.deletedAt)` in `hardDeleteAllClaimsForUserInOrganisation` (license-claim.repo.ts). I removed that line locally, and every test in this file, the service unit spec and the repo spec still passed.
+>
+> Could you add a test like this one that sets `deletedAt` on `sameOrganisationUserId` and expects `deleteAllClaimsForUser` to return `false`, keep the claim and write no audit entry?
+
+The first draft asks before the author knows what's wrong, only implies that no test covers the case, chains the requirement, the surviving rows, and the only guard into one sentence, and uses made-up labels ("missing-user call", "the dal and service suites"). The rewrite fixes each, and its third sentence reports exactly the specs that ran. Both have four sentences; the rewrite is 13% longer, so order and density made the difference, not length.
 
 ## 2. Draft replies and recommend a verdict
 
@@ -48,4 +64,4 @@ For ongoing reviews, let verified thread outcomes affect the recommendation. Alw
 
 Run draft comment and reply bodies through `/kramme:text:humanize` in one batch before writing the report. Send only the prose bodies, separated by stable item indexes, as raw text; paths and identifiers inside bodies are prose, not files to read. Do not send report metadata such as `Location`, `Refers to`, snippets, finding IDs, reviewer quotes, or evidence. Identifiers and code references inside a body stay in that body and must come back unchanged.
 
-Map results back by index. If the count differs or a mapping is ambiguous, retain the original body. Accept humanized text only when it preserves question framing, confidence, factual claims, `UNVERIFIED` hedges, necessary identifiers, explicit references to code outside the anchor (never swapped for a vague pointer such as "this" or "the other function"), the consequence the comment states, and no added length. Mark accepted items `Humanized: yes`; otherwise keep the original and mark `Humanized: no`.
+Map results back by index. If the count differs or a mapping is ambiguous, retain the original body. Accept humanized text only when it preserves question framing, confidence, factual claims, `UNVERIFIED` hedges, necessary identifiers, explicit references to code outside the anchor (never swapped for a vague pointer such as "this" or "the other function"), the consequence the comment states, and the problem stated before the ask. Reject added length, except a modest increase from splitting a sentence or moving the ask into its own paragraph. Mark accepted items `Humanized: yes`; otherwise keep the original and mark `Humanized: no`.

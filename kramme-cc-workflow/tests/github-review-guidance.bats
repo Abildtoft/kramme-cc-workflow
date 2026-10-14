@@ -121,6 +121,29 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "github review draft comments state the problem before the ask" {
+	run bash -c '
+    set -e
+    grep -qF "**Use the code'\''s and ticket'\''s words, not your own labels.**" "$1"
+    grep -qF "**Context first, ask last.**" "$1"
+    grep -qF "end with the ask as a question, in its own paragraph when more than one sentence comes before it" "$1"
+    grep -qF "**Make the ask concrete.**" "$1"
+    grep -qF "**Short sentences, one concern.**" "$1"
+    grep -qF "Could the author tell what'\''s wrong before reaching the ask?" "$1"
+    grep -qF "### Worked example" "$1"
+    grep -qF "but no test checks that for a soft-deleted user" "$1"
+    grep -qF "the problem stated before the ask" "$1"
+    grep -qF "except a modest increase from splitting a sentence or moving the ask into its own paragraph" "$1"
+    if grep -qF "Lead with a question" "$1"; then exit 1; fi
+    if grep -qF "one to three sentences" "$1"; then exit 1; fi
+    if grep -qF "no added length" "$1"; then exit 1; fi
+    grep -qF "> <e.g. \"\`refreshSession()\` in \`auth/session.ts\` only runs on page load" "$2"
+    grep -qF "> <e.g. \"\`applyDateRange()\` in \`src/reports/ReportFilters.tsx\` repeats this date-range check." "$2"
+  ' _ "$COMMENT_REFERENCE" "$REPORT_TEMPLATE"
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "github review description stays below the burndown threshold" {
 	run python3 - "$SKILL" <<'PY'
 import pathlib
