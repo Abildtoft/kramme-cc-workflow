@@ -144,6 +144,19 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "github review draft comments claim only test results that ran" {
+	run bash -c '
+    set -e
+    grep -qF "**Claim only what ran.**" "$1"
+    grep -qF "make that change in a disposable checkout of \`HEAD_OID\`, run the affected specs, revert it, and word the claim to exactly what ran" "$1"
+    grep -qF "only when it has no tracked changes and its \`HEAD\` is \`HEAD_OID\`" "$1"
+    grep -qF "confirm \`git status\` shows no tracked changes" "$1"
+    grep -qF "If neither can run the specs, do not claim the result" "$1"
+  ' _ "$COMMENT_REFERENCE"
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "github review description stays below the burndown threshold" {
 	run python3 - "$SKILL" <<'PY'
 import pathlib
