@@ -1,7 +1,7 @@
 ---
 name: kramme:discovery:interview
-description: Conduct an in-depth interview about a topic/proposal to uncover requirements, priorities, and non-goals, then create a comprehensive plan. Pass --ideate for divergent framing, --decision-tree / depth-first language to resolve tightly coupled decisions one question at a time, or --research to launch topic-specific research agents before the interview.
-argument-hint: "[file-path or topic description] [--ideate] [--decision-tree] [--research]"
+description: Conduct an in-depth interview about a topic, proposal, or spec to uncover requirements, priorities, and non-goals, then write a plan. Pass --ideate for divergent framing, --decision-tree or depth-first language for coupled decisions, --research for pre-interview research, or --siw (or siw/ spec paths) to interview to 90% confidence and write siw/DISCOVERY_BRIEF.md or siw/SPEC_STRENGTHENING_PLAN.md. --apply edits SIW specs only on direct user request.
+argument-hint: "[topic | file-path(s) | siw] [--siw] [--apply] [--ideate] [--decision-tree] [--research]"
 disable-model-invocation: false
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -9,14 +9,14 @@ kramme-platforms: [claude-code, codex]
 
 # Deep Exploration Interview
 
-Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool throughout to gather decisions and uncover requirements. When invoked directly, conclude by writing a comprehensive plan. When called by another skill, return interview findings under that caller's synthesis contract.
+Conduct a structured, in-depth interview about the presented topic, files, proposal, or feature. Use the AskUserQuestion tool throughout to gather decisions and uncover requirements. When invoked directly, conclude by writing a comprehensive plan. In SIW mode, write SIW discovery artifacts instead.
 
-Use this skill directly for standalone discovery that produces a one-off plan file. For discovery inside a tracked SIW (Structured Implementation Workflow) initiative — where the output feeds `siw/` planning documents — use `kramme:siw:discovery`; it delegates interview mechanics back to this engine.
+By default this skill produces a one-off plan file. For discovery inside a tracked SIW (Structured Implementation Workflow) initiative — where the output feeds `siw/` planning documents — use **SIW mode** (see Step 0).
 
 ## Process Overview
 
 1. **Initial Analysis**: Examine the topic/files/proposal presented
-2. **Mode, Glossary, and Strategy Setup**: Detect `--decision-tree`, `--research`, or depth-first trigger phrases; read `UBIQUITOUS_LANGUAGE.md` and `STRATEGY.md` if present
+2. **Mode, Glossary, and Strategy Setup**: Detect SIW mode, `--decision-tree`, `--research`, or depth-first trigger phrases; resolve SIW context when SIW mode is active; read `UBIQUITOUS_LANGUAGE.md` and `STRATEGY.md` if present
 3. **Autonomous Framing**: Draft the likely target user, problem, why-now, strategy fit, and non-goals before asking questions
 4. **Topic Classification**: Determine the type of exploration needed
 5. **Phase 0 (optional) — Divergent**: If the framing is vague, pause for an explicit skip-or-continue choice before generating variations. If `--ideate` is set, treat that as an explicit request to run Phase 0 and proceed directly into the divergent pass.
@@ -25,7 +25,7 @@ Use this skill directly for standalone discovery that produces a one-off plan fi
 8. **Post-Research Classification Check**: If Phase R changes the framing or classification, repeat topic classification before interviewing.
 9. **Interview**: Use the active coverage profile by default or decision-tree mode for coupled decisions.
 10. **Progress Tracking**: Monitor topic coverage, evidence confidence, or resolved branches according to the active profile.
-11. **Synthesis**: Write an adaptive plan markdown file for direct use, or return findings to the delegated caller for its local synthesis.
+11. **Synthesis**: Write an adaptive plan markdown file for direct use, or write SIW artifacts in SIW mode (applying a strengthening plan only on a direct user request).
 
 ## Output Markers
 
@@ -39,37 +39,6 @@ Use these markers in user-facing output to keep downstream tooling parseable:
 - `FRAMING` — the label applied when Phase 0 converges on the concrete problem statement that will feed the interview.
 - `PLAN` — the label applied to the synthesized plan document at hand-off.
 
-## Called by Another Skill
-
-A sibling skill may call this skill as the interview engine without changing this skill's user-facing argument grammar. Accept an `INTERVIEW DELEGATION` brief containing:
-
-- **Resolved context** — topic text, readable artifact paths, caller mode, and any source-backed facts already extracted.
-- **Synthesis override** — the caller-owned templates, output path, markers, vocabulary, and readiness rules.
-- **Confidence target** — either `topic-coverage` (the standalone default) or an evidence-confidence percentage plus any Work Context profile.
-- **Interview mode** — coverage or decision-tree, including a user-requested mode switch.
-- **Decision-tree context** — optional caller-owned guidance for selecting the root, prioritizing branches, and crediting decisions already answered by source artifacts.
-
-For delegated calls, initialize `decision_tree_requested` from **Interview mode** before Step 0: set `decision_tree_requested=true` for `decision-tree` and `false` for `coverage`. Do not require the caller to repeat the mode as a user-facing argument.
-
-For delegated calls:
-
-1. Treat the brief as the resolved input to Step 0, but verify every referenced artifact is readable.
-2. Run autonomous framing, classification, and the interview loop from this skill. Do not repeat context-resolution questions the caller already answered.
-3. Read `references/probing-techniques.md` for the shared technique library. For an evidence-confidence target, also read `references/confidence-framework.md` and use its ledger, dashboard, and stop rules; otherwise keep the standalone topic-coverage rules from `references/interview-operations.md`.
-4. When Decision-Tree mode is active, apply any decision-tree context while selecting the root and mapping dependencies. Preserve caller-provided artifact references on branches they already answer.
-5. Apply the synthesis override as a return contract, not as permission to duplicate the caller's domain policy here.
-6. Return `INTERVIEW RESULT:` with all of:
-   - validated hypothesis and topic classification,
-   - decisions with rationales and, for artifact-backed refinement, an impact map from each decision to affected source file/section,
-   - non-goals with rationales and stated-vs-actual divergence (or explicit alignment),
-   - initial confidence, final confidence with overall percentage, and interview-round count,
-   - the evidence ledger for an evidence-confidence profile or topic-coverage status for a topic-coverage profile,
-   - unresolved `MISSING REQUIREMENT` items, risks, and source references.
-
-Do not ask for a plan path, write a standalone template, or emit `PLAN:` when the caller owns synthesis.
-
-Callers that cannot invoke this skill must stop at the invocation boundary rather than read this skill's internal files. The delegated profile and return contract are available only through the public skill invocation.
-
 ## Step 0: Inputs, Mode, and Glossary
 
 Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
@@ -77,10 +46,18 @@ Parse `$ARGUMENTS` as shell-style arguments so quoted paths stay intact.
 - If `--ideate` is present, set `force_ideate=true` and remove from argument list.
 - If `--decision-tree` is present, set `decision_tree_requested=true` and remove from argument list.
 - If `--research` is present, set `research_requested=true` and remove from argument list.
+- If `--siw` is present, set `siw_mode=true` and remove from argument list.
+- If `--apply` is present, set `apply_changes=true` and remove from argument list, subject to the user-only check below.
+- Only after every flag above, including `--apply`, has been removed: if the only remaining argument is the bare keyword `siw`, set `siw_mode=true` and remove it. Also set `siw_mode=true` when every supplied file path is inside `siw/`. If some but not all paths are in `siw/` and `--siw` is absent, ask (AskUserQuestion) whether to run SIW mode.
+- If `apply_changes=true` but the run is not SIW Refinement (no SIW mode, or SIW context resolves to Greenfield), tell the user `--apply` only applies to SIW Refinement, ignore it, and continue.
 - If remaining text includes trigger phrases like "walk the decision tree", "walk this depth-first", "resolve dependencies first", or "depth-first", set `decision_tree_requested=true` without removing meaningful topic words unless the phrase is only an instruction.
 - If the remaining text looks like file path(s), read and analyze them first. If a path cannot be read, report the exact path and ask (via AskUserQuestion) whether to treat the input as a free-text topic instead of proceeding on a missing artifact.
 - If it is free text, use it as the topic description.
-- If it is empty, ask the user what they want to explore using AskUserQuestion.
+- If it is empty, ask the user what they want to explore using AskUserQuestion. In SIW mode, let SIW context resolution decide instead: empty input refines existing SIW artifacts or asks for a Greenfield topic.
+
+**User-only `--apply`.** This skill is model-invocable for interviews and for writing new plan or SIW discovery artifacts; `--apply` is the only path that edits existing specs and removes a file. Honor `apply_changes=true` only when the user's own message typed `--apply` or explicitly asked in this session to apply the strengthening plan. A model-initiated invocation, including a call from another skill such as `kramme:siw:init`, must not add `--apply`; when one does without that user request, ignore the flag, say so, and stop after writing the plan. Even on a user request, the apply protocol confirms the exact edits in-session before changing any file.
+
+**SIW mode.** When `siw_mode=true`, read `references/siw-mode.md` now and resolve SIW context (Greenfield, Refinement, or Realignment), pending-plan state, prior rejections, audit evidence, and the Work Context profile before Step 1. SIW mode uses the evidence-confidence profile at a 90% target and replaces Step 5's standalone plan with the SIW synthesis in that reference. In SIW mode, `--research` runs Phase R as usual and `--ideate` runs Phase 0 only in Greenfield; in Refinement or Realignment, skip Phase 0 (including auto-detection) and tell the user when `--ideate` was ignored, so divergent framing never reframes away from the target spec.
 
 If `UBIQUITOUS_LANGUAGE.md` exists at the project root, read it before framing and use its canonical terms throughout the interview and plan. If the user uses a term that conflicts with the glossary, ask one targeted question to resolve the conflict. If the file does not exist, proceed silently.
 
@@ -112,7 +89,7 @@ Treat these as assumptions to validate, not excuses to ask generic setup questio
 
 **Frame the underlying problem, not the proposed solution.** When the input includes a proposed approach ("let's add X", "we should switch to Y"), separate the problem the proposal is meant to solve from the proposal itself. The proposal may be correct, but the framing — and any research in Phase R — must be about the problem so that alternatives stay visible.
 
-For delegated calls, present the working hypothesis before the first question as a 2–4 sentence `UNVERIFIED:` statement, then continue without waiting unless the user responds. This preserves an early correction point without turning framing into a gate.
+In SIW mode, present the working hypothesis before the first question as a 2–4 sentence `UNVERIFIED:` statement, then continue without waiting unless the user responds. This preserves an early correction point without turning framing into a gate.
 
 If the topic conflicts with active tracks, target users, key metrics, or non-goals in `STRATEGY_CONTEXT`, state the conflict before asking interview questions. Surface it as context, not as a veto: the user may be intentionally changing direction.
 
@@ -235,11 +212,11 @@ Use the default coverage rounds unless `decision_tree_requested=true`.
 Select one progress profile:
 
 - **Topic coverage** — default for direct standalone use. Use the topic dimensions, 1–4-question rounds, progress display, and completion criteria from `references/interview-operations.md`.
-- **Evidence confidence** — use when a delegated caller supplies a confidence percentage. Read `references/confidence-framework.md`; use the Work Context adjustments, evidence ledger, dashboard, and target threshold defined there.
+- **Evidence confidence** — use in SIW mode (90% target). Read `references/confidence-framework.md`; use the Work Context adjustments, evidence ledger, dashboard, and target threshold defined there.
 
 In **Decision-Tree mode**, read `references/decision-tree-mode.md`, identify the root decision for the topic type, map first-level dependencies, and resolve branches depth-first. Ask one question at a time by default; batch only routine independent sibling questions. When the active tree is resolved, return to the active progress profile for any remaining independent dimensions.
 
-If the user requests Decision-Tree mode mid-session (for example, "walk this depth-first"), finish processing the current answer, switch the active interview mode, apply any delegated decision-tree context, and continue with the coupled decisions in flight. Do not discard evidence already collected by the coverage profile.
+If the user requests Decision-Tree mode mid-session (for example, "walk this depth-first"), finish processing the current answer, switch the active interview mode, apply the SIW decision-tree context when SIW mode is active, and continue with the coupled decisions in flight. Do not discard evidence already collected by the coverage profile.
 
 In either profile, when the user lacks the background to judge an area (they say so, or twice defer a judgment they cannot make), offer the Unfamiliar Territory Map from `references/probing-techniques.md` for that area instead of collecting guesses.
 
@@ -247,7 +224,7 @@ For topic coverage, use `references/interview-operations.md` for round structure
 
 ## Step 5: Output Plan Document
 
-If a delegated caller owns synthesis, do not execute the standalone file-naming or template-selection steps below. Return the `INTERVIEW RESULT:` payload defined in **Called by Another Skill** so the caller can apply its local templates, vocabulary, readiness contract, and output path.
+In SIW mode, skip the standalone steps below and follow **Synthesize SIW Artifacts** and **Optional Apply** in `references/siw-mode.md`.
 
 ### File Naming
 
@@ -287,4 +264,4 @@ When the host runtime supports it (Claude Code) and the user wants to move direc
 5. **Depth over breadth** - Better to deeply explore key areas than superficially cover everything
 
 - [ ] Direct standalone hand-off includes the `PLAN:` marker.
-- [ ] Delegated hand-off includes `INTERVIEW RESULT:` and does not emit `PLAN:`.
+- [ ] SIW hand-off writes `siw/DISCOVERY_BRIEF.md` or `siw/SPEC_STRENGTHENING_PLAN.md`, emits `PLAN:` with an `Artifact readiness:` line, and never edits existing specs without a direct user `--apply` request and in-session confirmation.

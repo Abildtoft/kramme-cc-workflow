@@ -18,7 +18,7 @@ Artifact readiness: {product-only|requirements-only|planning-ready} - {one-line 
 
 Next Steps:
   {If product-only or requirements-only:}
-  1. Run /kramme:siw:discovery to harden the spec before phase or issue creation
+  1. Run /kramme:discovery:interview --siw to harden the spec before phase or issue creation
 
   {If planning-ready and the work should be phased:}
   1. Run /kramme:siw:generate-phases to decompose spec into phase-based issues

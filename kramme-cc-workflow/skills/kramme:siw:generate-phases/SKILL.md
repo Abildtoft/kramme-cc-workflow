@@ -29,7 +29,7 @@ Use this shared vocabulary when gating inputs and describing outputs:
 - `planning-ready`: the spec is concrete enough to decompose into phases and atomic issues.
 - `implementation-ready`: generated issue files have bounded scope, dependencies, acceptance criteria, Mode, and verification. This skill produces implementation-ready artifacts only after the reviewed issue files are written.
 
-If the input is `product-only` or `requirements-only`, stop before decomposition and route to `/kramme:siw:discovery` or spec hardening. Do not create issue files from an artifact that cannot support planning-ready decomposition.
+If the input is `product-only` or `requirements-only`, stop before decomposition and route to `/kramme:discovery:interview --siw` or spec hardening. Do not create issue files from an artifact that cannot support planning-ready decomposition.
 
 ## Issue Numbering Scheme
 
@@ -114,7 +114,7 @@ done
 
 Synced SIW main-spec ambiguity contract (keep aligned across SIW spec detectors): when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec.
 
-- **Zero candidates:** stop. Surface `MISSING REQUIREMENT: no spec file found under siw/` and suggest the user run `/kramme:siw:discovery` or pass an explicit `$ARGUMENTS` path. Do not invent a spec.
+- **Zero candidates:** stop. Surface `MISSING REQUIREMENT: no spec file found under siw/` and suggest the user run `/kramme:discovery:interview --siw` or pass an explicit `$ARGUMENTS` path. Do not invent a spec.
 - **One candidate:** use it as the main spec.
 - **Multiple candidates:** read the first `## Project` (or `# `) heading of `siw/LOG.md` to find the initiative name; build a deterministic match set from candidates whose filename or first `#` heading matches that name (case-insensitive, hyphen/underscore-insensitive). If exactly one candidate matches, use it. If zero or multiple candidates remain after matching and `AUTO_MODE=true`, stop with `MISSING REQUIREMENT: multiple spec candidates found; rerun without --auto and choose the main spec or pass an explicit $ARGUMENTS path`. If zero or multiple candidates remain after matching and `AUTO_MODE` is false, use AskUserQuestion to present the candidates and ask which file is the main spec. Do not pick the first candidate as a fallback.
 

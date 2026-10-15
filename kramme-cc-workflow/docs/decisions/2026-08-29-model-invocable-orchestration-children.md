@@ -2,7 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-29
-- Amended: 2026-10-08
+- Amended: 2026-10-15
 - Deciders: repository maintainers
 - First safety review: 2026-11-29
 
@@ -23,6 +23,7 @@ Permit a narrow exception to the default rule that side-effecting skills are mod
 - `kramme:pr:fix-ci` is model-invocable only as a child of `kramme:linear:issue-to-pr`, `kramme:code:plan-to-pr`, or `kramme:pr:rebase`, with the parent's bounded `--no-consolidate`/scope or explicit rebase-mode arguments. It retains all CI, review-feedback, retry, and publication checks.
 - `kramme:pr:rebase` is model-invocable only as a child of `kramme:pr:fix-ci`, which must pass the exact `--force-push` argument and must not invent `--auto`, `--fix-ci`, or a base override. It retains all branch, stack, conflict, red-flag, verification, lease, and publication gates and remains the sole owner of the validated rebase push.
 - `kramme:pr:convention-review` and `kramme:pr:overengineering-review` are model-invocable only as read-only gates of `kramme:pr:review-convergence`, with that parent's inline, requirements, and report-lifecycle arguments. They never edit source or choose dispositions.
+- `kramme:discovery:interview` is model-invocable, including its SIW mode (`--siw`, a bare `siw`, or `siw/` paths), which writes only a new, existence-checked `siw/DISCOVERY_BRIEF.md` or `siw/SPEC_STRENGTHENING_PLAN.md` during an interactive interview. Every model caller, including `kramme:siw:init` discover mode (which passes exactly `--siw <topic>`), must never pass `--apply`. Only a direct user request may enable `--apply`, which edits existing specifications and moves the strengthening plan to Trash, and the skill still confirms the exact edits in-session before changing any file.
 
 Each child must narrowly route model use, document its least-side-effect model contract, and retain its existing confirmation and validation gates. Focused tests must pin the parent arguments.
 

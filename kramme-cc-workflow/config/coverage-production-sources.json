@@ -175,7 +175,6 @@
         "kramme-cc-workflow/skills/kramme:qa/SKILL.md",
         "kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
@@ -271,7 +270,7 @@
       "suite": "kramme-cc-workflow/tests/discovery-delegation-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:discovery:interview/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md"
       ]
     },
     {

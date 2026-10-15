@@ -60,7 +60,7 @@ EOF
 
 siw_spec_exclusion_expected_paths() {
   printf '%s\n' \
-    "kramme-cc-workflow/skills/kramme:siw:discovery/SKILL.md" \
+    "kramme-cc-workflow/skills/kramme:discovery:interview/references/siw-mode.md" \
     "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md" \

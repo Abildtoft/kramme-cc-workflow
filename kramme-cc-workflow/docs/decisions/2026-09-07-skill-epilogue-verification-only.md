@@ -26,7 +26,7 @@ The output markers are unaffected. They are a parsed contract for downstream too
 
 ## Scope and follow-up
 
-The lint covers `SKILL.md` files only. Five reference files still contain checklist material under the retired headings and are loaded by their skill as a final checklist rather than named as an epilogue: `kramme:pr:code-review/references/review-discipline.md`, `kramme:code:breakdown-findings/references/generation-checks.md`, `kramme:discovery:interview/references/interview-operations.md`, `kramme:siw:generate-phases/references/quality-gates.md`, and `kramme:siw:discovery/references/synthesis-checklist.md`. They fall under the same rule and are the next pass; until then they are the only remaining carriers.
+The lint covers `SKILL.md` files only. Five reference files still contain checklist material under the retired headings and are loaded by their skill as a final checklist rather than named as an epilogue: `kramme:pr:code-review/references/review-discipline.md`, `kramme:code:breakdown-findings/references/generation-checks.md`, `kramme:discovery:interview/references/interview-operations.md`, `kramme:siw:generate-phases/references/quality-gates.md`, and `kramme:discovery:interview/references/siw-synthesis-checklist.md`. They fall under the same rule and are the next pass; until then they are the only remaining carriers.
 
 ## Consequences
 

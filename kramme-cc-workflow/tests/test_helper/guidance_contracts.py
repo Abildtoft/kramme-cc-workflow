@@ -43,29 +43,32 @@ def _require_terms(label: str, text: str, terms: tuple[str, ...]) -> None:
 
 def _result_field_bullets(section: str) -> list[str]:
     result = re.search(
-        r"(?ms)^6\.\s+.*?`INTERVIEW RESULT:`.*?\n",
+        r"(?m)^.*`INTERVIEW RESULT:`.*\ball of\b.*\n",
         section,
     )
     if result is None:
-        raise ContractFailure("delegated result schema is missing the numbered INTERVIEW RESULT return block")
+        raise ContractFailure("result schema is missing the INTERVIEW RESULT field list")
 
     bullets: list[str] = []
     current: list[str] = []
+    started = False
     for line in section[result.end() :].splitlines():
-        bullet = re.match(r"^[ \t]+-\s*(?P<body>.*)", line)
+        bullet = re.match(r"^[ \t]*-\s*(?P<body>.*)", line)
         if bullet:
             if current:
                 bullets.append(" ".join(current))
             current = [bullet.group("body").strip()]
-        elif current and (not line.strip() or line[:1].isspace()):
-            if line.strip():
-                current.append(line.strip())
+            started = True
+        elif not started and not line.strip():
+            continue
+        elif current and line[:1].isspace() and line.strip():
+            current.append(line.strip())
         else:
             break
     if current:
         bullets.append(" ".join(current))
     if not bullets:
-        raise ContractFailure("delegated result schema is missing the numbered INTERVIEW RESULT return block")
+        raise ContractFailure("result schema is missing the INTERVIEW RESULT field list")
     return bullets
 
 
@@ -82,23 +85,21 @@ def _is_affirmative_field(text: str) -> bool:
 
 
 def check_discovery_result_schema(path: pathlib.Path) -> None:
-    section = _markdown_section(path.read_text(encoding="utf-8"), r"Called by Another Skill")
+    section = _markdown_section(path.read_text(encoding="utf-8"), r"Interview Result")
     bullets = _result_field_bullets(section)
     contracts = {
         "hypothesis": ("validated", "hypothesis", "topic", "classification"),
         "decisions": ("decision", "rationale", "impact map", "source"),
         "non-goals": ("non-goal", "rationale", "divergence", "alignment"),
         "confidence": ("initial", "final", "percentage", "round"),
-        "evidence profile": ("evidence", "ledger", "topic-coverage", "status"),
+        "evidence profile": ("evidence", "ledger", "evidence-confidence", "profile"),
         "unresolved gaps": ("missing requirement", "risk", "source"),
     }
     for label, terms in contracts.items():
         if not any(
             _is_affirmative_field(bullet) and all(_contains_term(bullet, term) for term in terms) for bullet in bullets
         ):
-            raise ContractFailure(
-                f"delegated result schema is missing field '{label}' (required concepts: {', '.join(terms)})"
-            )
+            raise ContractFailure(f"result schema is missing field '{label}' (required concepts: {', '.join(terms)})")
 
 
 def _action_is_negated(text: str, action_start: int) -> bool:
@@ -293,59 +294,6 @@ def check_standalone_refresh_guidance(path: pathlib.Path) -> None:
     _require_standalone_refresh_contract(path.read_text(encoding="utf-8"))
 
 
-def check_discovery_failure_boundary(path: pathlib.Path) -> None:
-    section = _markdown_section(path.read_text(encoding="utf-8"), r"Step 2: Delegate the Interview")
-    boundary = next(
-        (
-            paragraph
-            for paragraph in re.split(r"\n\s*\n", section)
-            if "INTERVIEW RESULT:" in paragraph and re.search(r"required fields?", paragraph, re.IGNORECASE)
-        ),
-        "",
-    )
-    required_patterns = {
-        "delegation error trigger": r"\berrors?\b",
-        "delegation timeout trigger": r"times?\s+out|\btimeouts?\b",
-        "missing result marker trigger": (
-            r"(?:\b(?:absent|missing)\b[^.]*`?INTERVIEW RESULT:`?|"
-            r"\b(?:without|lacks?|omits?)\b[^.]*`?INTERVIEW RESULT:`?[^.]*\bmarker\b)"
-        ),
-        "missing required-field trigger": (
-            r"\b(?:missing|omits?|lacks?)\b[^.]*\brequired fields?\b|"
-            r"\bwithout\b[^.]*\brequired fields?\b"
-        ),
-    }
-    missing = [
-        label
-        for label, pattern in required_patterns.items()
-        if not re.search(pattern, boundary, re.IGNORECASE | re.DOTALL)
-    ]
-    failure_sentence = next(
-        (
-            sentence
-            for sentence in re.split(r"(?<=[.!?])\s+", boundary)
-            if all(re.search(pattern, sentence, re.IGNORECASE | re.DOTALL) for pattern in required_patterns.values())
-            and _has_affirmative_action(sentence, r"\b(?:stop|halt)\b")
-        ),
-        "",
-    )
-    if not failure_sentence:
-        missing.append("affirmative malformed-payload stop clause")
-    if not _explicitly_prohibits(boundary, r"replay(?:ing)?"):
-        missing.append("no interview replay")
-    if not _explicitly_prohibits(
-        boundary,
-        r"(?:writ(?:e|es|ing|ten)\b[^.;]*\bSIW artifact|SIW artifact\b[^.;]*\bwrit\w*)",
-    ):
-        missing.append("no SIW artifact write")
-    if not _explicitly_prohibits(boundary, r"emit(?:s|ting)?\b[^.;]*`?PLAN:"):
-        missing.append("no PLAN emission")
-    if not boundary:
-        missing.insert(0, "INTERVIEW RESULT required-field validation paragraph")
-    if missing:
-        raise ContractFailure("delegation failure boundary is missing: " + ", ".join(missing))
-
-
 def _ordered_regex_anchors(text: str, anchors: tuple[tuple[str, str], ...], label: str) -> None:
     positions: list[tuple[str, int]] = []
     for anchor_name, pattern in anchors:
@@ -388,7 +336,6 @@ Check = Callable[[pathlib.Path], None]
 
 CHECKS: dict[str, Check] = {
     "discovery-result-schema": check_discovery_result_schema,
-    "discovery-failure-boundary": check_discovery_failure_boundary,
     "review-gate-order": check_review_gate_order,
     "drift-self-update-guidance": check_drift_self_update_guidance,
     "standalone-refresh-guidance": check_standalone_refresh_guidance,
