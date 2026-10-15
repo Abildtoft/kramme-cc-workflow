@@ -6,8 +6,10 @@
     "category: working-dir (in the project working tree), shared-diagram (global, shared across sessions and projects), or permanent-spec (durable SIW specification).",
     "retention: disposable (deleted after confirmation) or permanent (kept unless the user explicitly opts in).",
     "type: file (literal path), glob (shell pattern; expand before deleting), or dir (whole directory).",
-    "condition: a marker path that must exist for the entry to become a candidate. expected_contents: a glob every child of a conditional dir must match, otherwise the dir is skipped and reported.",
-    "--auto deletes only working-dir disposables; it never selects shared-diagram or permanent-spec entries.",
+    "condition: a marker path that must exist for the entry to become a candidate. expected_contents: a glob every child of a conditional dir must match, otherwise the dir is skipped and reported. --siw does not require the condition marker and also accepts a .gitkeep placeholder child.",
+    "--auto deletes only default-scope working-dir disposables; it never selects shared-diagram, permanent-spec, or siw-only entries.",
+    "scopes: the cleanup modes that select an entry. default is direct and --auto cleanup; siw is the direct-user-only --siw mode. Absent means [\"default\"]. Every siw/ entry includes siw, except named permanent specs that the siw-spec-files detector already covers, and only siw/ entries may.",
+    "match_any / exclude: optional basename filters applied to every expansion of a glob entry; a match must fit one match_any pattern and no exclude pattern.",
     "Register only fixed default producer outputs here. Never register user-supplied or custom output paths."
   ],
   "artifacts": [
@@ -329,7 +331,8 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:product-audit"
+      "producer": "kramme:siw:product-audit",
+      "scopes": ["default", "siw"]
     },
     {
       "id": "siw-audit-implementation-report-legacy",
@@ -337,7 +340,8 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:implementation-audit"
+      "producer": "kramme:siw:implementation-audit",
+      "scopes": ["default", "siw"]
     },
     {
       "id": "siw-audit-spec-report",
@@ -345,7 +349,8 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:spec-audit"
+      "producer": "kramme:siw:spec-audit",
+      "scopes": ["default", "siw"]
     },
     {
       "id": "siw-log",
@@ -353,7 +358,8 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:init"
+      "producer": "kramme:siw:init",
+      "scopes": ["default", "siw"]
     },
     {
       "id": "siw-open-issues-overview",
@@ -361,7 +367,8 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:init"
+      "producer": "kramme:siw:init",
+      "scopes": ["default", "siw"]
     },
     {
       "id": "pr-plans",
@@ -427,7 +434,8 @@
       "retention": "disposable",
       "producer": "kramme:siw:issue-define",
       "condition": "siw/OPEN_ISSUES_OVERVIEW.md",
-      "expected_contents": "ISSUE-*.md"
+      "expected_contents": "ISSUE-*.md",
+      "scopes": ["default", "siw"]
     },
     {
       "id": "siw-qa-intake",
@@ -437,7 +445,35 @@
       "retention": "disposable",
       "producer": "kramme:qa:intake",
       "condition": "siw/OPEN_ISSUES_OVERVIEW.md",
-      "expected_contents": "QA-INTAKE-*.md"
+      "expected_contents": "QA-INTAKE-*.md",
+      "scopes": ["default", "siw"]
+    },
+    {
+      "id": "siw-discovery-brief",
+      "path": "siw/DISCOVERY_BRIEF.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:discovery:interview",
+      "scopes": ["siw"]
+    },
+    {
+      "id": "siw-spec-strengthening-plan",
+      "path": "siw/SPEC_STRENGTHENING_PLAN.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:discovery:interview",
+      "scopes": ["siw"]
+    },
+    {
+      "id": "siw-temporary-artifacts",
+      "path": "siw/SIW_*.md",
+      "type": "glob",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:*",
+      "scopes": ["siw"]
     },
     {
       "id": "visual-diagrams",
@@ -494,6 +530,48 @@
       "category": "permanent-spec",
       "retention": "permanent",
       "producer": "kramme:siw:init"
+    },
+    {
+      "id": "siw-spec-files",
+      "path": "siw/*.md",
+      "type": "glob",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init",
+      "scopes": ["siw"],
+      "match_any": [
+        "*SPEC*.md",
+        "*SPECIFICATION*.md",
+        "*PLAN*.md",
+        "*DESIGN*.md"
+      ],
+      "exclude": [
+        "LOG.md",
+        "OPEN_ISSUES_OVERVIEW.md",
+        "DISCOVERY_BRIEF.md",
+        "SPEC_STRENGTHENING_PLAN.md",
+        "AUDIT_*.md",
+        "PRODUCT_AUDIT.md",
+        "SIW_*.md"
+      ]
+    },
+    {
+      "id": "siw-supporting-specs",
+      "path": "siw/supporting-specs/",
+      "type": "dir",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init",
+      "scopes": ["siw"]
+    },
+    {
+      "id": "siw-contracts",
+      "path": "siw/contracts/",
+      "type": "dir",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:*",
+      "scopes": ["siw"]
     }
   ]
 }

@@ -413,11 +413,6 @@
       "path": "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md"
     },
     {
-      "name": "kramme:siw:remove",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:remove/SKILL.md"
-    },
-    {
       "name": "kramme:siw:resolve-audit",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md"

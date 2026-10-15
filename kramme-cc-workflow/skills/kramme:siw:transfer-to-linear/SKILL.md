@@ -1,6 +1,6 @@
 ---
 name: kramme:siw:transfer-to-linear
-description: One-way migration of a local SIW project into Linear. Creates one Linear project, migrates the main spec, supporting specs, selected contract specs, and decision log as Linear Documents, rewrites SIW-local markdown references to Linear Documents where possible, creates milestones from SIW phases and issues from SIW issues (with native blocking relations when supported), writes minimal Linear transfer markers back to migrated source issues for retry safety, then prompts to retire the local siw/ files via /kramme:siw:remove. Linear becomes the source of truth; this is not a two-way sync. Use when moving a planned SIW initiative into Linear for good. Not for implementing issues, defining new SIW issues, or generating an issue breakdown.
+description: One-way migration of a local SIW project into Linear. Creates one Linear project, migrates the main spec, supporting specs, selected contract specs, and decision log as Linear Documents, rewrites SIW-local markdown references to Linear Documents where possible, creates milestones from SIW phases and issues from SIW issues (with native blocking relations when supported), writes minimal Linear transfer markers back to migrated source issues for retry safety, then prompts to retire the local siw/ files via /kramme:workflow-artifacts:cleanup --siw. Linear becomes the source of truth; this is not a two-way sync. Use when moving a planned SIW initiative into Linear for good. Not for implementing issues, defining new SIW issues, or generating an issue breakdown.
 argument-hint: "[siw-dir] [--project <name-or-id>] [--team <team>] [--dry-run] [--skip-done] [--skip-existing|--retry]"
 disable-model-invocation: true
 user-invocable: true
@@ -14,7 +14,7 @@ Migrate an existing Structured Implementation Workflow project into Linear in on
 
 **This command migrates tracking and planning artifacts into Linear, then hands off removal.**
 
-- **DOES**: Read SIW markdown artifacts, create or update one Linear project, migrate the main spec, supporting specs, selected contract specs, and decision log as Linear Documents under that project, create project milestones from SIW phases, create Linear issues for local SIW issues, rewrite migrated SIW markdown references to Linear Documents where possible, record dependencies as text in issue descriptions and as native issue relations when the Linear tooling supports them, inventory non-markdown SIW artifacts that cannot be migrated, write Linear issue markers back to migrated source issue files, verify the writes, and prompt the user to run `/kramme:siw:remove`.
+- **DOES**: Read SIW markdown artifacts, create or update one Linear project, migrate the main spec, supporting specs, selected contract specs, and decision log as Linear Documents under that project, create project milestones from SIW phases, create Linear issues for local SIW issues, rewrite migrated SIW markdown references to Linear Documents where possible, record dependencies as text in issue descriptions and as native issue relations when the Linear tooling supports them, inventory non-markdown SIW artifacts that cannot be migrated, write Linear issue markers back to migrated source issue files, verify the writes, and prompt the user to run `/kramme:workflow-artifacts:cleanup --siw`.
 - **DOES NOT**: Implement code, define new SIW issues, generate an issue breakdown, delete `siw/` files itself, keep a two-way sync, or silently overwrite unrelated Linear work.
 
 **Linear Migration Override**: Invoking this command is explicit instruction to create or update the Linear project, documents, milestones, and issues after the user approves the migration plan. Always present the plan before any write unless `--dry-run` is passed, in which case no Linear writes occur.
@@ -118,7 +118,7 @@ Duplicate content: {group_count} duplicate groups, {blocked_create_count} create
 Cross-references: {issue_ref_count} issue refs, {document_ref_count} document refs, {register_family_count} register families, {unresolved_count} unresolved local-only
 Relations: {edge_count} dependency edges (as blocked-by) {planned as native relations | recorded as text only — no relation support}
 Non-markdown artifacts: {count} cannot migrate — needs relocation
-After migration: {prompt to run /kramme:siw:remove | withhold removal prompt until unresolved required references/non-markdown artifacts are handled} (no files deleted by this command)
+After migration: {prompt to run /kramme:workflow-artifacts:cleanup --siw | withhold removal prompt until unresolved required references/non-markdown artifacts are handled} (no files deleted by this command)
 
 {document list}
 {document reference map}
@@ -174,7 +174,7 @@ If a Linear call hits a rate limit signal (`RATELIMITED`, HTTP 429, or exposed `
    - Counts of created/updated milestones, documents, and issues, plus any skipped or unresolved items.
    - Counts of rewritten markdown references and every unresolved local markdown reference that remains as source provenance only.
 4. Removal prompt:
-   - If the migration completed cleanly (no errored writes, no unresolved in-scope issues, no unresolved required local markdown references, and the design docs are captured as Documents or via the description fallback) and the SIW directory contains no unrelocated non-markdown artifacts, prompt: `Migration complete and verified. Run /kramme:siw:remove to retire the local siw/ directory.`
+   - If the migration completed cleanly (no errored writes, no unresolved in-scope issues, no unresolved required local markdown references, and the design docs are captured as Documents or via the description fallback) and the SIW directory contains no unrelocated non-markdown artifacts, prompt: `Migration complete and verified. Run /kramme:workflow-artifacts:cleanup --siw to retire the local siw/ directory.`
    - If anything errored, was skipped due to failure, any supporting spec or selected contract spec could not be captured in Linear, any required markdown reference still points only to a local SIW path, or any non-markdown artifact has not been relocated or uploaded, **do not** prompt removal. Name exactly what is still local-only so the user does not delete uncaptured work.
 
 End the workflow here. Do not delete files and do not start implementation. A relevant follow-up for a newly created Linear issue is `/kramme:linear:issue-implement {issue-id}`.
