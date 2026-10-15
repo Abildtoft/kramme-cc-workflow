@@ -41,7 +41,7 @@ For an initiative too foggy to fit in one planning session, start with `/kramme:
 /kramme:siw:generate-phases                                     # create the initial phased issue set
 /kramme:siw:transfer-to-linear --dry-run                        # review the migration plan
 /kramme:siw:transfer-to-linear                                  # make Linear the source of truth
-/kramme:siw:remove                                              # retire local files after verification
+/kramme:workflow-artifacts:cleanup --siw                        # retire local files after verification
 ```
 
 Use `/kramme:siw:issue-define` instead of `generate-phases` when one coherent issue is enough. Use `/kramme:siw:resolve-audit` when audit findings require decisions rather than mechanical edits.
@@ -159,7 +159,7 @@ After a clean transfer:
 
 ## Cleanup
 
-`/kramme:siw:remove` is deliberately separate from transfer because deletion has a different permission boundary. It uses recoverable deletion when available, inventories the exact target set, and requires confirmation for permanent specification files.
+`/kramme:workflow-artifacts:cleanup --siw` is deliberately separate from transfer because deletion has a different permission boundary. It is a direct-user-only mode: it never runs with `--auto`, and model-invoked cleanup never selects it. It scopes cleanup to `siw/`, including `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md`, which plain cleanup leaves alone. It uses recoverable deletion when available, inventories the exact target set, and requires confirmation for permanent specification files.
 
 When retiring a successfully transferred run, use it only after:
 
@@ -169,7 +169,7 @@ When retiring a successfully transferred run, use it only after:
 - non-Markdown artifacts were relocated or uploaded;
 - every created Linear issue has a retry marker in its source SIW issue file.
 
-An explicitly abandoned preparation run may skip transfer and use `/kramme:siw:remove` directly under the same inventory, recoverable-deletion, and confirmation safeguards.
+An explicitly abandoned preparation run may skip transfer and use `/kramme:workflow-artifacts:cleanup --siw` directly under the same inventory, recoverable-deletion, and confirmation safeguards.
 
 ## Commands
 
@@ -184,7 +184,7 @@ An explicitly abandoned preparation run may skip transfer and use `/kramme:siw:r
 | `/kramme:siw:issue-define` | `[issue ID \| description and context]` | Define or refine one local issue |
 | `/kramme:siw:generate-phases` | `[spec path] [--auto]` | Generate the initial phased issue set |
 | `/kramme:siw:transfer-to-linear` | `[siw-dir] [--project ...] [--team ...] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | Migrate planning artifacts into Linear |
-| `/kramme:siw:remove` | — | Retire local SIW files after transfer or abandonment |
+| `/kramme:workflow-artifacts:cleanup` | `--siw` | Retire local SIW files after transfer or abandonment |
 
 ## Migration from the Former Local Implementation Workflow
 
@@ -199,7 +199,7 @@ The local implementation lifecycle was removed on 2026-08-26. Update old command
 | `/kramme:siw:implementation-audit` | No direct whole-initiative equivalent; use `/kramme:linear:issue-to-pr` for per-issue review convergence and final verification, or `/kramme:linear:review-pr` to audit an existing Pull Request against its issue |
 | `/kramme:siw:issue-reindex` | Preserve stable local IDs and manage issues in Linear after transfer |
 | `/kramme:siw:reset` | Start a separate SIW preparation run when a new initial issue set is required |
-| `/kramme:siw:close` | Transfer durable context, then `/kramme:siw:remove` |
+| `/kramme:siw:close` | Transfer durable context, then `/kramme:workflow-artifacts:cleanup --siw` |
 | `/kramme:siw:breakdown-findings` | `/kramme:siw:resolve-audit` |
 
 See [the decision record](decisions/2026-08-26-siw-ends-at-linear-transfer.md) for the rationale and rejected alternatives.

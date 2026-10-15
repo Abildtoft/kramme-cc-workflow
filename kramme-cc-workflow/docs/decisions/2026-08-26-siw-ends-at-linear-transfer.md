@@ -37,7 +37,7 @@ The migration routes are:
 | `kramme:siw:implementation-audit` | No direct whole-initiative equivalent; use `kramme:linear:issue-to-pr` for per-issue review convergence and final verification, or `kramme:linear:review-pr` to audit an existing Pull Request against its issue. |
 | `kramme:siw:issue-reindex` | Preserve stable local IDs until transfer; manage the resulting issues in Linear. |
 | `kramme:siw:reset` | Start a separate SIW preparation run only when a new initial issue set is needed. |
-| `kramme:siw:close` | Transfer durable specifications and decisions to Linear, then use `kramme:siw:remove`. |
+| `kramme:siw:close` | Transfer durable specifications and decisions to Linear, then use `kramme:workflow-artifacts:cleanup --siw` (originally `kramme:siw:remove`, merged into cleanup on 2026-10-15; see [the catalog-shape record](2026-07-29-skill-catalog-shape.md)). |
 | `kramme:siw:breakdown-findings` | Use `kramme:siw:resolve-audit`, which already provides decision-ready analysis and issue creation. |
 | `kramme:siw:wayfinder` | Use `kramme:discovery:wayfinder`. |
 
