@@ -2,7 +2,7 @@
 
 Track understanding across 7 dimensions. The interview continues until overall confidence reaches the target threshold (default: 90% — all critical dimensions at Confident, normal dimensions at High or above, and deprioritized dimensions at Medium or above).
 
-Load this reference when a delegated caller requests the evidence-confidence profile or supplies a numeric confidence target. The direct standalone flow keeps its topic-classified coverage profile unless its caller explicitly requests this one.
+Load this reference in SIW mode, which requests the evidence-confidence profile at a 90% target. The direct standalone flow keeps its topic-classified coverage profile.
 
 Confidence is evidence-based, not vibes-based. Track a lightweight evidence ledger for each active dimension:
 
@@ -129,7 +129,7 @@ Score each dimension based on section quality: missing → Low, present but vagu
 
 ## Work Context Adjustments
 
-First normalize the profile name from the caller-provided Work Context table:
+First normalize the profile name from the SIW spec's Work Context table:
 
 | Work Context value in spec | Normalized profile      |
 | -------------------------- | ----------------------- |

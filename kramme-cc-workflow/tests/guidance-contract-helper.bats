@@ -24,45 +24,45 @@ assert_contract_fails_with() {
 	[[ "$output" == *"$diagnostic"* ]]
 }
 
-@test "delegated result schema accepts paraphrased fields and rejects relocated vocabulary" {
+@test "result schema accepts paraphrased fields and rejects relocated vocabulary" {
 	passing="$BATS_TEST_TMPDIR/result-passing.md"
 	broken="$BATS_TEST_TMPDIR/result-broken.md"
 	unvalidated="$BATS_TEST_TMPDIR/result-unvalidated.md"
 	negated="$BATS_TEST_TMPDIR/result-negated.md"
 
 	write_file "$passing" <<'EOF'
-## Called by Another Skill
+## Interview Result
 
-For delegated calls:
+Before synthesis, assemble `INTERVIEW RESULT:` with all of:
 
-6. Return `INTERVIEW RESULT:` with all of:
-   - topic classification together with the validated
-     hypothesis,
-   - each decision, its rationale, and an impact map to the affected source file or section,
-   - each non-goal, its rationale, and either stated-vs-actual divergence or explicit alignment,
-   - initial and final confidence, including the overall percentage and interview round count,
-   - the evidence ledger and its evidence-confidence profile, or the topic-coverage status,
-   - risks, source references, and unresolved `MISSING REQUIREMENT` items.
+- topic classification together with the validated
+  hypothesis,
+- each decision, its rationale, and an impact map to the affected source file or section,
+- each non-goal, its rationale, and either stated-vs-actual divergence or explicit alignment,
+- initial and final confidence, including the overall percentage and interview round count,
+- the evidence ledger for its evidence-confidence profile,
+- risks, source references, and unresolved `MISSING REQUIREMENT` items.
 
 ## Next Section
 EOF
 
 	write_file "$negated" <<'EOF'
-## Called by Another Skill
+## Interview Result
 
-6. Return `INTERVIEW RESULT:` with all of:
-   - do not include the validated hypothesis or topic classification,
-   - decisions with rationales and an impact map to each affected source,
-   - non-goals with rationales, divergence, and explicit alignment,
-   - initial and final confidence with percentage and round count,
-   - an evidence ledger and topic-coverage status,
-   - missing requirement items, risks, and source references.
+Assemble `INTERVIEW RESULT:` with all of:
+
+- do not include the validated hypothesis or topic classification,
+- decisions with rationales and an impact map to each affected source,
+- non-goals with rationales, divergence, and explicit alignment,
+- initial and final confidence with percentage and round count,
+- an evidence ledger for the evidence-confidence profile,
+- missing requirement items, risks, and source references.
 EOF
 
 	write_file "$broken" <<'EOF'
-## Called by Another Skill
+## Interview Result
 
-6. Return `INTERVIEW RESULT:` after the interview.
+Assemble `INTERVIEW RESULT:` after the interview.
 
 ## Historical Field Vocabulary
 
@@ -70,27 +70,28 @@ EOF
 - decisions with rationales and an impact map to an affected source file,
 - non-goals with rationales and stated-vs-actual divergence or alignment,
 - initial and final confidence with percentage and round count,
-- evidence ledger and topic-coverage status,
+- evidence ledger for the evidence-confidence profile,
 - unresolved `MISSING REQUIREMENT` items, risks, and source references.
 EOF
 
 	write_file "$unvalidated" <<'EOF'
-## Called by Another Skill
+## Interview Result
 
-6. Return `INTERVIEW RESULT:` with all of:
-   - an unvalidated hypothesis and topic classification,
-   - decisions with rationales and an impact map to each affected source,
-   - non-goals with rationales, divergence, and explicit alignment,
-   - initial and final confidence with percentage and round count,
-   - an evidence ledger and topic-coverage status,
-   - missing requirement items, risks, and source references.
+Assemble `INTERVIEW RESULT:` with all of:
+
+- an unvalidated hypothesis and topic classification,
+- decisions with rationales and an impact map to each affected source,
+- non-goals with rationales, divergence, and explicit alignment,
+- initial and final confidence with percentage and round count,
+- an evidence ledger for the evidence-confidence profile,
+- missing requirement items, risks, and source references.
 EOF
 
 	assert_contract_passes discovery-result-schema "$passing"
 	assert_contract_fails_with \
 		discovery-result-schema \
 		"$broken" \
-		"missing the numbered INTERVIEW RESULT return block"
+		"missing the INTERVIEW RESULT field list"
 	assert_contract_fails_with \
 		discovery-result-schema \
 		"$unvalidated" \
@@ -100,62 +101,6 @@ EOF
 		"$negated" \
 		"missing field 'hypothesis'"
 }
-
-@test "delegation failure boundary accepts a paraphrase and rejects behavior moved out of Step 2" {
-	passing="$BATS_TEST_TMPDIR/failure-passing.md"
-	broken="$BATS_TEST_TMPDIR/failure-broken.md"
-	missing_triggers="$BATS_TEST_TMPDIR/failure-missing-triggers.md"
-	inverted="$BATS_TEST_TMPDIR/failure-inverted.md"
-
-	write_file "$passing" <<'EOF'
-## Step 2: Delegate the Interview
-
-On delegation errors, timeouts, an absent `INTERVIEW RESULT:` marker, or missing required fields, report the failure and stop. Do not replay the interview, write an SIW artifact, or emit `PLAN:`.
-
-## Step 3: Synthesize
-EOF
-
-	write_file "$inverted" <<'EOF'
-## Step 2: Delegate the Interview
-
-On delegation errors, timeouts, a missing `INTERVIEW RESULT:` marker, or missing required fields, do not stop; replay the interview, write an SIW artifact, and emit `PLAN:`.
-
-## Step 3: Synthesize
-EOF
-
-	write_file "$broken" <<'EOF'
-## Step 2: Delegate the Interview
-
-On a failed delegation, follow generic error handling.
-
-## Historical Delegation Note
-
-On delegation errors, timeouts, an absent `INTERVIEW RESULT:` marker, or missing required fields, report the failure and stop. Do not replay the interview, write an SIW artifact, or emit `PLAN:`.
-EOF
-
-	write_file "$missing_triggers" <<'EOF'
-## Step 2: Delegate the Interview
-
-On delegation errors or timeouts, report the failure and stop without replaying the interview, writing an SIW artifact, or emitting `PLAN:`. The `INTERVIEW RESULT:` required fields are documented by the caller.
-
-## Step 3: Synthesize
-EOF
-
-	assert_contract_passes discovery-failure-boundary "$passing"
-	assert_contract_fails_with \
-		discovery-failure-boundary \
-		"$broken" \
-		"INTERVIEW RESULT required-field validation paragraph"
-	assert_contract_fails_with \
-		discovery-failure-boundary \
-		"$missing_triggers" \
-		"missing result marker trigger"
-	assert_contract_fails_with \
-		discovery-failure-boundary \
-		"$inverted" \
-		"affirmative malformed-payload stop clause"
-}
-
 
 @test "review gate order follows invocations instead of numbered headings" {
 	passing="$BATS_TEST_TMPDIR/gates-passing.md"

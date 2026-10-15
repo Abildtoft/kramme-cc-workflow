@@ -32,7 +32,7 @@ Do not implement the local issue directly. Route the SIW project through `kramme
 
 If the plan mentions SIW but no issue can be found or identified, route to `recommend-siw` instead of `siw` so the user gets the next planning step rather than an implementation handoff that cannot run.
 
-Tracked SIW specs, `siw/DISCOVERY_BRIEF.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, phase plans, and other non-issue SIW artifacts are not implementation-ready. Recommend `/kramme:siw:generate-phases`, `/kramme:siw:issue-define`, or `/kramme:siw:discovery` based on artifact readiness.
+Tracked SIW specs, `siw/DISCOVERY_BRIEF.md`, `siw/SPEC_STRENGTHENING_PLAN.md`, phase plans, and other non-issue SIW artifacts are not implementation-ready. Recommend `/kramme:siw:generate-phases`, `/kramme:siw:issue-define`, or `/kramme:discovery:interview --siw` based on artifact readiness.
 
 ### Recommend SIW
 

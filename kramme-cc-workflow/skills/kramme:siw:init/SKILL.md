@@ -17,7 +17,7 @@ Set up the three-document system for preparing complex specifications and initia
 - **DOES**: Create siw/ folder, spec file, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/, and optionally siw/supporting-specs/
 - **DOES NOT**: Define issues, implement features, or make code changes
 
-**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:issue-define` to create your first issue, or `/kramme:siw:generate-phases` when the spec should be decomposed into phased issues. **Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:siw:discovery`.
+**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:issue-define` to create your first issue, or `/kramme:siw:generate-phases` when the spec should be decomposed into phased issues. **Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:discovery:interview --siw`.
 
 ### Artifact Readiness Contract
 
@@ -190,7 +190,7 @@ Include one readiness line in the success report:
 Artifact readiness: <product-only|requirements-only|planning-ready> — <one-line reason and next skill>
 ```
 
-If the result is `product-only` or `requirements-only`, point to `/kramme:siw:discovery` before phase or issue creation. If it is `planning-ready`, point to `/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for a single first issue.
+If the result is `product-only` or `requirements-only`, point to `/kramme:discovery:interview --siw` before phase or issue creation. If it is `planning-ready`, point to `/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for a single first issue.
 
 **STOP HERE.** Wait for the user's next instruction.
 
@@ -199,7 +199,7 @@ If the result is `product-only` or `requirements-only`, point to `/kramme:siw:di
 1. **Link, don't duplicate** - When external specs are provided, reference them; never copy their content into the SIW spec (single source of truth)
 2. **Smart input handling** - Accept file paths, folders, or "discover" keyword; fall back to brief interview if no arguments
 3. **Offer file relocation** - Ask if linked files should be moved into siw/ or kept in place; under `--auto`, keep them in place
-4. **Delegate discovery** - In discover mode, `/kramme:siw:discovery` runs the interview; do not repeat it here
+4. **Delegate discovery** - In discover mode, `/kramme:discovery:interview --siw` runs the interview; do not repeat it here
 5. **Smart defaults** - Auto-detect spec type and confirm it, except under `--auto`, which uses the detected type
 6. **Clear next steps** - Always point user to the next skill implied by readiness: discovery for hardening, generate-phases for phased planning, or issue-define for a single issue
 7. **Respect existing work** - Never overwrite without explicit confirmation

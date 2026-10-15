@@ -34,7 +34,7 @@ Use this shared vocabulary while deciding whether an issue can be written:
 - `planning-ready`: enough context exists to define one or more SIW issues, but the current artifact is not yet executable.
 - `implementation-ready`: the issue has bounded scope, dependencies/blockers, acceptance criteria, Mode, and verification.
 
-This skill turns `planning-ready` input into an `implementation-ready` local issue. If the interview cannot harden a `product-only` or `requirements-only` request into a single executable issue, stop and route to `/kramme:siw:discovery` or spec hardening instead of writing a vague issue. Route to `/kramme:siw:generate-phases` only when the artifact is `planning-ready` but too broad for one issue.
+This skill turns `planning-ready` input into an `implementation-ready` local issue. If the interview cannot harden a `product-only` or `requirements-only` request into a single executable issue, stop and route to `/kramme:discovery:interview --siw` or spec hardening instead of writing a vague issue. Route to `/kramme:siw:generate-phases` only when the artifact is `planning-ready` but too broad for one issue.
 
 ## SIW Issue-State Protocol
 

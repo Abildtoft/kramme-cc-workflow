@@ -34,14 +34,14 @@ For an initiative too foggy to fit in one planning session, start with `/kramme:
 ## Quick Start
 
 ```bash
-/kramme:siw:discovery "build a notification system" # optional deep discovery
-/kramme:siw:init siw/DISCOVERY_BRIEF.md             # create the SIW container and spec
-/kramme:siw:product-audit                           # optional product-pressure test
-/kramme:siw:spec-audit --apply                      # validate and safely fix the spec
-/kramme:siw:generate-phases                         # create the initial phased issue set
-/kramme:siw:transfer-to-linear --dry-run            # review the migration plan
-/kramme:siw:transfer-to-linear                      # make Linear the source of truth
-/kramme:siw:remove                                  # retire local files after verification
+/kramme:discovery:interview --siw "build a notification system" # optional deep discovery
+/kramme:siw:init siw/DISCOVERY_BRIEF.md                         # create the SIW container and spec
+/kramme:siw:product-audit                                       # optional product-pressure test
+/kramme:siw:spec-audit --apply                                  # validate and safely fix the spec
+/kramme:siw:generate-phases                                     # create the initial phased issue set
+/kramme:siw:transfer-to-linear --dry-run                        # review the migration plan
+/kramme:siw:transfer-to-linear                                  # make Linear the source of truth
+/kramme:siw:remove                                              # retire local files after verification
 ```
 
 Use `/kramme:siw:issue-define` instead of `generate-phases` when one coherent issue is enough. Use `/kramme:siw:resolve-audit` when audit findings require decisions rather than mechanical edits.
@@ -92,10 +92,10 @@ Discovery and audits move specifications toward `planning-ready`. `issue-define`
 
 ### Discovery
 
-`/kramme:siw:discovery` works before or after a specification exists:
+`/kramme:discovery:interview --siw` runs the discovery interview in SIW mode, before or after a specification exists:
 
 - Greenfield mode writes `siw/DISCOVERY_BRIEF.md`.
-- Refinement mode writes `siw/SPEC_STRENGTHENING_PLAN.md` and can apply approved changes with `--apply`.
+- Refinement mode writes `siw/SPEC_STRENGTHENING_PLAN.md` and can apply approved changes with `--apply` after an in-session confirmation; only a direct user request enables `--apply`.
 - `--decision-tree` resolves tightly coupled decisions depth-first.
 
 ### Product audit
@@ -175,7 +175,7 @@ An explicitly abandoned preparation run may skip transfer and use `/kramme:siw:r
 
 | Skill | Arguments | Purpose |
 | --- | --- | --- |
-| `/kramme:siw:discovery` | `[topic \| spec paths \| siw] [--apply] [--decision-tree]` | Discover or strengthen requirements |
+| `/kramme:discovery:interview --siw` | `[topic \| spec paths \| siw] [--apply] [--decision-tree]` | Discover or strengthen requirements |
 | `/kramme:siw:init` | `[spec paths \| folder \| discover] [--auto]` | Create the local preparation container |
 | `/kramme:siw:product-audit` | `[spec paths \| siw] [--auto] [--inline]` | Pressure-test product quality |
 | `/kramme:siw:spec-audit` | `[spec paths \| siw] [--auto] [--apply] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality |
