@@ -1,14 +1,14 @@
 ---
 name: kramme:siw:spec-audit
-description: Audit specifications for implementation readiness — coherence, completeness, clarity, scope consistency, actionability, testability, rationale documentation, and technical design. Checks whether product rationale is explicit and internally consistent without judging product correctness; use kramme:siw:product-audit for that. Supports --inline and --apply. Use --team for multi-agent cross-validation and codebase pattern review.
-argument-hint: "[spec-file-path(s) | 'siw'] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]"
+description: Audit specifications for implementation readiness — coherence, completeness, clarity, scope consistency, actionability, testability, rationale documentation, and technical design. Add --product to also judge product correctness — target user, problem/solution fit, user states, critical moments, scope, success criteria, prioritization, and strategy fit. Supports --inline and --apply. Use --team for multi-agent cross-validation and codebase pattern review.
+argument-hint: "[spec-file-path(s) | 'siw'] [--product] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]"
 disable-model-invocation: true
 user-invocable: true
 ---
 
 # Audit Specification Quality
 
-Evaluate specification documents for implementation readiness across 8 dimensions before implementation begins. Use this skill when the question is whether implementation can proceed correctly without guessing. It checks whether product rationale is documented clearly enough to guide implementation, but does not decide whether the product problem, solution, prioritization, or strategy is correct; use `/kramme:siw:product-audit` for that product judgment. The standard workflow is spec-only; `--team` also runs a bounded codebase pattern reviewer that checks whether the spec introduces new implementation patterns without rationale.
+Evaluate specification documents for implementation readiness across 8 dimensions before implementation begins. Use this skill when the question is whether implementation can proceed correctly without guessing. The Rationale Documentation dimension checks whether product rationale is documented clearly enough to guide implementation, but does not decide whether the product problem, solution, prioritization, or strategy is correct. Add `--product` when the question is also whether the specification proposes the right product for the right users. The standard workflow is spec-only; `--team` also runs a bounded codebase pattern reviewer that checks whether the spec introduces new implementation patterns without rationale.
 
 Check every section of the specification against every quality dimension before reporting. A dimension with no findings is a valid result when you can say what you checked.
 
@@ -20,10 +20,14 @@ Both workflows score fix confidence with the shared rubric at `${CLAUDE_PLUGIN_R
 
 If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
 
+## Product Mode
+
+If `$ARGUMENTS` contains `--product`, set `PRODUCT_MODE=true`, read `references/product-mode.md` before Step 2, and run its sections at the steps named there. Product mode adds a Product dimension whose `PROD-NNN` findings share this report but are never auto-applied. It combines with every other flag, including `--team`.
+
 ## Process Overview
 
 ```
-/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]
+/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--product] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -32,7 +36,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.
 [Step 2: Read Specs and Extract Structure] -> Read fully, detect type, extract elements
     |
     v
-[Step 3: Launch Parallel Analysis] -> Explore agents per dimension group
+[Step 3: Launch Parallel Analysis] -> Explore agents per dimension group (+ product reviewer with --product)
     |
     v
 [Step 4: Analyze Findings] -> Classify, deduplicate, assign severity and scores
@@ -93,7 +97,7 @@ After reading all spec files, look for a `## Work Context` section in the spec f
 
 1. Parse the markdown table to extract: Work Type, Priority Dimensions, Deprioritized dimensions
    - If multiple spec files define Work Context, prefer the top-level `siw/*.md` candidate (specs in `siw/supporting-specs/` are auxiliary). If more than one top-level spec defines Work Context, use the lexicographically first one and emit a one-line warning that names the ignored files.
-   - Ignore the legacy dimension name `Value Proposition` in priority and deprioritized lists before applying dimension routing or severity caps. It described product judgment now owned by `/kramme:siw:product-audit`; do not reinterpret it as the implementation-facing Rationale Documentation dimension.
+   - Ignore the legacy dimension name `Value Proposition` in priority and deprioritized lists before applying dimension routing or severity caps. It described product judgment that now belongs to the opt-in Product dimension (`--product`), which takes no priority or deprioritization from these lists; do not reinterpret it as the implementation-facing Rationale Documentation dimension.
 2. If not found or malformed, default to Production Feature (all dimensions equally weighted, no caps)
 3. Store as `work_context`
 
@@ -114,6 +118,8 @@ Work Context: {work_context.work_type} — Priority: {priority_dimensions}, Depr
 ```
 
 If no Work Context found, show: `Work Context: Not specified (using Production Feature defaults)`
+
+If `PRODUCT_MODE=true`, run product mode P1-P3 (Work Context gate, strategy and pulse context, product element extraction) before presenting this summary, and append the product lines from P3.
 
 **If no extractable structure found:**
 
@@ -170,7 +176,7 @@ For each agent group, launch an Explore agent using the Task tool (`subagent_typ
 
 **Default model:** `opus`. Override with `--model sonnet` or `--model haiku` for faster/cheaper runs.
 
-**All agents run in parallel** — launch them in a single message with multiple Task tool calls.
+**All agents run in parallel** — launch them in a single message with multiple Task tool calls. If `PRODUCT_MODE=true`, launch the product reviewer from product mode P4 in the same message.
 
 ### 3.3 Explore Agent Prompt Structure
 
@@ -191,6 +197,8 @@ After all Explore agents complete:
 ### 4.1 Collect Results
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
+
+If `PRODUCT_MODE=true`, collect the product reviewer's findings separately and process them with product mode P5; Steps 4.2 through 4.4 below govern `SPEC-NNN` findings only, except where P5 says otherwise.
 
 Read `references/post-processing-rules.md` once at the start of Step 4 and apply it throughout: merged-finding handling here in 4.1, severity-cap accounting in 4.3.5, final fix-confidence normalization in 4.3.6, dimension-score effects in 4.4, and issue eligibility in Step 6.
 
@@ -261,7 +269,7 @@ If `INLINE_MODE=true`, skip this overwrite step because no report file will be w
 
 Otherwise, if a previous report exists at the target path:
 
-If `AUTO_MODE=true`, choose **Replace** automatically.
+If `AUTO_MODE=true`, choose **Replace** automatically and record the prior report's date for the Step 7 summary.
 
 Otherwise:
 
@@ -281,7 +289,9 @@ If the user chooses **Append**, append the new report as a complete new `# Spec 
 
 ### 5.3 Compile and Write Report
 
-Use the report format template from `assets/spec-audit-report-format.md`.
+Use the report format template from `assets/spec-audit-report-format.md`. Include its Product row and Product Dimension section only when product mode ran or was skipped by P1.
+
+If `PRODUCT_MODE=false` and the previous report's active run contains `PROD-NNN` findings, read `references/product-mode.md` and follow P7 to carry them into the new report or inline reply, whether the report is replaced or appended.
 
 If `INLINE_MODE=true`:
 
@@ -304,6 +314,8 @@ If there are no findings, skip the rest of Step 6.
 
 If `APPLY_MODE=true`, read and follow `references/apply-now.md`, then skip issue creation entirely.
 
+Product findings (`PROD-NNN`) are never auto-applied. Apply now leaves them in the report for `/kramme:siw:resolve-audit`; issue creation handles them alongside spec findings.
+
 If `AUTO_MODE=true`, apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` (already loaded in Step 4.1), then read and follow `references/issue-creation.md` using the standard auto-mode behavior.
 
 Before prompting, determine whether SIW issue creation is available:
@@ -311,12 +323,13 @@ Before prompting, determine whether SIW issue creation is available:
 - Apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` using the **Critical and major only** selection to compute `ISSUE_ELIGIBLE_FINDINGS`.
 - Set `ISSUE_CREATION_AVAILABLE=true` only if all `references/issue-creation.md` eligibility requirements are met: `siw/OPEN_ISSUES_OVERVIEW.md` exists, `siw/issues/` exists or can be created, `siw/LOG.md` exists or can be created, and `ISSUE_ELIGIBLE_FINDINGS` is not empty.
 - If `ISSUE_CREATION_AVAILABLE=false`, do not show any issue-creation options.
+- In both prompts below, `{S}` counts `SPEC-NNN` findings and `{P}` counts `PROD-NNN` findings; drop the `and {P} product findings` clause when `{P}` is 0. If `{S}` is 0, omit the **Apply now** option, and when no other option but **Keep report only** remains, keep the report without asking and point the product findings to `/kramme:siw:resolve-audit`.
 
 If `ISSUE_CREATION_AVAILABLE=false`, ask the user which follow-up path to take:
 
 ```yaml
 header: "Resolve Spec Findings"
-question: "Found {N} actionable spec findings. Auto-fix safe findings now or keep the report only?"
+question: "Found {S} actionable spec findings and {P} product findings. Auto-fix safe spec findings now or keep the report only?"
 options:
   - label: "Apply now"
     description: "Run the canonical auto-fix procedure against the audit report"
@@ -332,7 +345,7 @@ If `ISSUE_CREATION_AVAILABLE=true`, ask the user which follow-up path to take:
 
 ```yaml
 header: "Resolve Spec Findings"
-question: "Found {N} actionable spec findings. Auto-fix safe findings, create SIW issues, or keep the report only?"
+question: "Found {S} actionable spec findings and {P} product findings. Auto-fix safe spec findings, create SIW issues, or keep the report only?"
 options:
   - label: "Apply now"
     description: "Run the canonical auto-fix procedure against the audit report; create no G-* issues"
@@ -376,6 +389,7 @@ Use the summary template from `assets/spec-audit-summary.md`, then end the turn.
 
 - If an agent returns incomplete results: Note affected dimensions as "Incomplete analysis" in the report.
 - If an agent times out: Report which dimension was affected, suggest re-running.
+- If the product reviewer fails or times out, follow the failure handling in `references/product-mode.md`.
 
 ### SIW Workflow Not Active
 

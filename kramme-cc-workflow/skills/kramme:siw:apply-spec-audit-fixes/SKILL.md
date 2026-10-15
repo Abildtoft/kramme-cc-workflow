@@ -140,6 +140,8 @@ options:
 
 Parse all `### SPEC-NNN: {title}` headings from the active audit run only.
 
+Never extract, score, or edit `### PROD-NNN:` findings. They come from the Product dimension of `/kramme:siw:spec-audit --product`, are product judgment calls, and always route to `/kramme:siw:resolve-audit`. Count the open ones in the Step 7 summary as product findings left for decisions.
+
 For each finding, extract:
 
 - Finding ID and title

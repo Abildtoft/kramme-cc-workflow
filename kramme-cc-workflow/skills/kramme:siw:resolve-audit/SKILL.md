@@ -66,31 +66,12 @@ For every finding, follow this structure:
    - Remaining markdown path tokens are candidate report paths
    - Remaining `DIV-*`, `EXT-*`, `DISC-*`, `MISS-*`, `SPEC-*`, and `PROD-*` tokens are finding filters
 2. If the parsed arguments include a markdown path, use that path and skip auto-detection.
-3. Otherwise, discover available report files in this order:
+3. Otherwise, use the first report that exists, in this order:
    - `siw/AUDIT_SPEC_REPORT.md`
-   - `siw/PRODUCT_AUDIT.md`
    - `AUDIT_SPEC_REPORT.md` (project root)
-   - `PRODUCT_AUDIT.md` (project root)
-4. If **more than one report type exists** (any location):
-   - Without `--auto`, ask which to resolve before continuing. Build the options list from the reports that were actually found (omit unavailable ones); include "All" only when two or more were found:
-
-```yaml
-header: "Choose Audit Type"
-question: "Multiple audit reports were found. Which findings should I resolve?"
-options:
-  - label: "Spec quality audit (Recommended when available)"
-    description: "Resolve SPEC-* findings from AUDIT_SPEC_REPORT.md"
-  - label: "Product audit"
-    description: "Resolve PROD-* findings from PRODUCT_AUDIT.md"
-  - label: "All"
-    description: "Resolve findings from every available report in one run"
-```
-
-       - With `--auto`, resolve every available report in one run, in this order: spec findings, product findings.
-
-5. If only one report exists, use it automatically.
-6. If no current report exists, stop and instruct the user to run `/kramme:siw:spec-audit` or `/kramme:siw:product-audit` first. Explicitly supplied legacy implementation-audit reports remain supported, but they are never auto-detected and no new SIW implementation-audit report is produced.
-7. If a selected report contains multiple appended top-level report blocks, isolate the last block only and treat it as the active audit run. Ignore earlier appended runs.
+4. The spec audit report holds both `SPEC-*` findings and, when `/kramme:siw:spec-audit --product` ran, `PROD-*` product findings. Resolve both from the one report.
+5. If no current report exists, stop and instruct the user to run `/kramme:siw:spec-audit` first (add `--product` for product findings). Explicitly supplied legacy implementation-audit reports remain supported, but they are never auto-detected and no new SIW implementation-audit report is produced.
+6. If a selected report contains multiple appended top-level report blocks, isolate the last block only and treat it as the active audit run. Ignore earlier appended runs.
 
 ## Step 2: Parse Findings
 
@@ -111,7 +92,7 @@ For each finding, collect:
 - Severity/category section
 - Severity Note if present
 - Existing issue note if present
-- Source report path (`AUDIT_IMPLEMENTATION_REPORT.md`, `AUDIT_SPEC_REPORT.md`, or `PRODUCT_AUDIT.md`)
+- Source report path (`AUDIT_IMPLEMENTATION_REPORT.md` or `AUDIT_SPEC_REPORT.md`)
 
 Ignore:
 
@@ -219,11 +200,11 @@ State a clear recommendation and justify it with:
 
 ---
 
-### For PROD-\* findings (product audit)
+### For PROD-\* findings (spec audit Product dimension)
 
 #### 4.1 Executive Summary
 
-- Which product dimension is affected (target user, problem/solution fit, user state, critical moments, scope, success criteria, prioritization)
+- Which product dimension is affected (target user, problem/solution fit, user state, critical moments, scope, success criteria, prioritization, strategy and pulse alignment)
 - What the spec or product surface says (quote when available) and what's missing
 - Why this matters for users or delivery if unfixed
 - Which spec section(s), flow(s), or screen(s) need attention

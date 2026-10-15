@@ -403,11 +403,6 @@
       "path": "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md"
     },
     {
-      "name": "kramme:siw:product-audit",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md"
-    },
-    {
       "name": "kramme:siw:resolve-audit",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md"

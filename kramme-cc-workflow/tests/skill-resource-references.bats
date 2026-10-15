@@ -408,18 +408,45 @@ write_plugin_fixture() {
 	[[ "$output" == *"references/steps.md:1: scripts/helper.sh is not named in SKILL.md"* ]]
 }
 
-@test "SIW product and spec audits keep distinct review boundaries" {
-	local product_skill="$BATS_TEST_DIRNAME/../skills/kramme:siw:product-audit/SKILL.md"
-	local product_prompt="$BATS_TEST_DIRNAME/../skills/kramme:siw:product-audit/references/product-reviewer-prompt.md"
-	local spec_skill="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/SKILL.md"
-	local dimensions="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/references/dimension-instructions.md"
-	local team_mode="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/references/team-mode.md"
-	local work_contexts="$BATS_TEST_DIRNAME/../skills/kramme:siw:init/references/work-context-profiles.md"
+@test "SIW spec audit keeps product judgment in the opt-in Product dimension" {
+	local skills="$BATS_TEST_DIRNAME/../skills"
+	local spec_skill="$skills/kramme:siw:spec-audit/SKILL.md"
+	local product_mode="$skills/kramme:siw:spec-audit/references/product-mode.md"
+	local product_prompt="$skills/kramme:siw:spec-audit/references/product-reviewer-prompt.md"
+	local dimensions="$skills/kramme:siw:spec-audit/references/dimension-instructions.md"
+	local team_mode="$skills/kramme:siw:spec-audit/references/team-mode.md"
+	local apply_now="$skills/kramme:siw:spec-audit/references/apply-now.md"
+	local auto_fix_skill="$skills/kramme:siw:apply-spec-audit-fixes/SKILL.md"
+	local work_contexts="$skills/kramme:siw:init/references/work-context-profiles.md"
 
-	grep -qF "whether the specification proposes the right product for the right users" "$product_skill"
+	[ ! -e "$skills/kramme:siw:product-audit" ]
+	! grep -rqF --exclude=disposable-artifacts.yaml "siw:product-audit" "$skills" || false
+	grep -qF -- '--product' <(sed -n '/^argument-hint:/p' "$spec_skill")
+	grep -qF "whether the specification proposes the right product for the right users" "$spec_skill"
 	grep -qF "whether implementation can proceed correctly without guessing" "$spec_skill"
+	grep -qF 'read `references/product-mode.md` before Step 2' "$spec_skill"
+	grep -qF 'Product findings use `PROD-NNN` IDs in the same report' "$product_mode"
+	grep -qF 'are never auto-applied by `--apply` or `/kramme:siw:apply-spec-audit-fixes`' "$product_mode"
+	grep -qF 'Read `references/product-element-extraction.md`' "$product_mode"
+	grep -qF 'Read `references/product-reviewer-prompt.md`' "$product_mode"
+	grep -qF 'Do not merge a `PROD-NNN` finding into a `SPEC-NNN` finding' "$product_mode"
+	grep -qF 'Never apply product findings.' "$apply_now"
+	# Product IDs are never reused, even after a replace dropped the finding.
+	grep -qF 'Compute `previous_max_prod_id` as the highest `PROD-NNN` number found in either the previous report' "$product_mode"
+	grep -qF 'or a `siw/issues/` filename containing `PROD-NNN`' "$product_mode"
+	# Readiness-only re-runs carry product findings forward instead of dropping them.
+	grep -qF '## P7: Carry Product Findings Forward (Step 5.2)' "$product_mode"
+	grep -qF 'Copy every `PROD-NNN` finding from the previous active run into the new report unchanged' "$product_mode"
+	grep -qF 'Keep the carried findings in severity totals and the overall assessment' "$product_mode"
+	grep -qF 'If `PRODUCT_MODE=false` and the previous report'"'"'s active run contains `PROD-NNN` findings, read `references/product-mode.md` and follow P7' "$spec_skill"
+	grep -qF 'add --product if the report contains PROD-NNN findings' "$skills/kramme:siw:apply-spec-audit-fixes/assets/auto-fix-summary.md"
+	grep -qF 'no open `PROD-NNN` finding is Critical or Major' "$skills/kramme:siw:apply-spec-audit-fixes/references/report-update.md"
+	# The retired report name stays excluded from spec detection and cleanable.
+	grep -qF '`AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.' "$skills/kramme:siw:spec-audit/references/spec-resolution.md"
+	grep -qF '"id": "siw-product-audit-legacy"' "$skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+	grep -qF 'Never extract, score, or edit `### PROD-NNN:` findings.' "$auto_fix_skill"
 	grep -qF "## Dimension: Rationale Documentation" "$dimensions"
-	grep -qF "those questions belong to \`/kramme:siw:product-audit\`" "$dimensions"
+	grep -qF "those questions belong to the opt-in Product dimension (\`--product\`)" "$dimensions"
 	grep -qF "Do not judge whether the product is worth building" "$dimensions"
 	grep -qF "### 2. Problem/Solution Fit" "$product_prompt"
 	grep -qF "Are there simpler alternatives the spec doesn't consider?" "$product_prompt"

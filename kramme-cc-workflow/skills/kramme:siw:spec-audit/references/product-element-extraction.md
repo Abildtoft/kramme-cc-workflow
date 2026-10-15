@@ -1,6 +1,6 @@
 # Product Element Extraction
 
-Use this during Step 2.3 to identify and summarize product-relevant sections across every audited spec file.
+Use this during product mode §P3 to identify and summarize product-relevant sections across every audited spec file.
 
 | Element | What to look for |
 | --- | --- |

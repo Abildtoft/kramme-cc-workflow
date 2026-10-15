@@ -1,10 +1,10 @@
 # Product Reviewer Agent Prompt
 
-Use this prompt for `/kramme:siw:product-audit` Step 4. Fill in `{list of spec file paths}`, `{previous findings}` (previously resolved `PROD-NNN` findings, or `None - first audit`), `{product loop context}`, and optional work-context blocks before launching the reviewer agent.
+Use this prompt for the Product dimension of `/kramme:siw:spec-audit --product` (`references/product-mode.md` §P4). Fill in `{list of spec file paths}`, `{previous findings}` (previously resolved `PROD-NNN` findings from the prior spec audit report, or `None - first audit`), `{product loop context}`, and optional work-context blocks before launching the reviewer agent.
 
 ## Launch
 
-Run a single product-reviewer pass. Use the current host runtime's subagent mechanism when it exposes the `kramme:product-reviewer` reviewer; otherwise perform the same review inline in the main thread.
+Run a single product-reviewer pass, in parallel with the readiness-dimension agents. Use the current host runtime's subagent mechanism when it exposes the `kramme:product-reviewer` reviewer; otherwise perform the same review inline in the main thread.
 
 No relevance validation step is needed because the entire spec is the scope.
 

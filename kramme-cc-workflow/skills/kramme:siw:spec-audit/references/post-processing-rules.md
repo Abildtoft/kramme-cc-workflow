@@ -18,6 +18,10 @@ After final severity assignment and any Work Context downgrades, recompute each 
 - Any dimension that contains a final Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]` is still `Weak`, even though the displayed severity is Minor.
 - Any report with `preserved_critical_caps_count > 0` must not be assessed as `Ready for implementation`.
 
+## Product Findings
+
+`PROD-NNN` findings from product mode skip the Merged Findings, Final Fix Confidence, and severity-cap rules above: they carry no `Fix Confidence` and are never capped. They count toward severity totals and the overall assessment, and the Issue-Eligible Findings rules below select them by visible severity.
+
 ## Issue-Eligible Findings
 
 Before creating issue files, determine the selected findings set:

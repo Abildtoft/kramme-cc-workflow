@@ -16,7 +16,7 @@ This skill requires multi-agent execution.
 If multi-agent execution is not available, print:
 
 ```
-Multi-agent execution is not enabled. Run /kramme:siw:spec-audit instead.
+Multi-agent execution is not enabled. Run /kramme:siw:spec-audit instead (keep --product if you passed it).
 Claude Code: add CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to settings.json.
 Codex: use a runtime with `multi_agent` enabled (for example, Conductor Codex runtime).
 ```
@@ -29,10 +29,11 @@ Then stop.
 
 Same as `/kramme:siw:spec-audit` Steps 1-2:
 
-1. Parse `$ARGUMENTS` — extract `--auto`, optional `--apply` / `--apply-now` auto-fix mode, `--model` flag (default: `opus`), optional `--inline` output mode, abort before reading specs if `INLINE_MODE=true` and `APPLY_MODE=true`, then resolve spec file paths or auto-detect from `siw/`
+1. Parse `$ARGUMENTS` — extract `--auto`, optional `--product` mode, optional `--apply` / `--apply-now` auto-fix mode, `--model` flag (default: `opus`), optional `--inline` output mode, abort before reading specs if `INLINE_MODE=true` and `APPLY_MODE=true`, then resolve spec file paths or auto-detect from `siw/`
 2. Read every spec file end-to-end
 3. Extract structural elements (overview, scope, success criteria, requirements, design decisions, tasks, testing, edge cases, out of scope, technical architecture)
-4. Present extraction summary
+4. If `PRODUCT_MODE=true`, read `references/product-mode.md` and run P1-P3
+5. Present extraction summary
 
 ### Step 2: Spawn Dimension Auditors
 
@@ -52,6 +53,8 @@ Spawn **4 dimension auditors**, **1 codebase pattern reviewer**, and **1 cross-r
 | `codebase-pattern-reviewer` | Technical Design support | Checks whether proposed implementation choices follow existing codebase patterns or introduce new ones without rationale |
 | `cross-reviewer` | Meta-review | Cross-dimension pattern detection, suspiciously-clean challenge, duplicate detection |
 
+If `PRODUCT_MODE=true`, also spawn a `product-reviewer` teammate (7 agents total) for the Product dimension. It runs the `kramme:product-reviewer` mission with the prompt from product mode P4 and reports `PROD-NNN` findings to the lead.
+
 ### Step 3: Create and Assign Tasks
 
 **Phase 1 tasks (parallel):**
@@ -61,6 +64,7 @@ Spawn **4 dimension auditors**, **1 codebase pattern reviewer**, and **1 cross-r
 - Task 3: "Audit Testability + Scope" — assigned to `validation-auditor`
 - Task 4: "Audit Rationale Documentation + Technical Design" — assigned to `design-auditor`
 - Task 5: "Review codebase pattern fit" — assigned to `codebase-pattern-reviewer`
+- Task 5b (only with `--product`): "Review product dimension" — assigned to `product-reviewer`
 
 **Phase 2 task (blocked on all Phase 1 tasks):**
 
@@ -135,6 +139,7 @@ message them using SendMessage:
 - **Ambiguity or unclear wording** -> message clarity-auditor
 - **Untestable criteria or scope issues** -> message validation-auditor
 - **Rationale Documentation or Technical Design gaps** -> message design-auditor
+{If PRODUCT_MODE=true:} - **Product judgment (target user, problem/solution fit, prioritization, strategy)** -> message product-reviewer instead of reporting it yourself
 
 Message content:
 "[CROSS-REF] In {spec_file} > {section}, I found {brief finding}.
@@ -216,6 +221,12 @@ the audit is complete and internally consistent.
 ## All Phase 1 Findings
 
 {Collected findings from all 4 dimension auditors and the codebase pattern reviewer}
+
+{If PRODUCT_MODE=true:} ## Product Findings (reference only)
+
+{PROD-NNN findings from the product-reviewer. Use them only in Mission 3 to flag
+SPEC findings that restate a product judgment. Do not challenge, re-score, or
+merge PROD findings into SPEC findings; recommend `Related:` links instead.}
 
 ## Spec Files
 
@@ -305,6 +316,7 @@ After the cross-reviewer completes:
    - Add cross-reviewer challenge findings
    - Add codebase pattern findings as Technical Design findings unless the cross-reviewer marked them FYI
    - Remove duplicates per cross-reviewer recommendations
+   - If `PRODUCT_MODE=true`, process the product-reviewer's findings with product mode P5 and add the cross-reviewer's `Related:` links
 3. Follow `/kramme:siw:spec-audit` Steps 4-5 for:
    - Assigning global finding IDs (SPEC-001, SPEC-002, etc.)
    - Assigning severity
@@ -318,7 +330,7 @@ After the cross-reviewer completes:
 ```markdown
 ## Team
 
-- 4 dimension auditors + 1 codebase pattern reviewer + 1 cross-reviewer participated
+- 4 dimension auditors + 1 codebase pattern reviewer + 1 cross-reviewer participated {+ 1 product reviewer with --product}
 - Cross-validation messages: {N} sent, {M} produced additional findings
 - Cross-reviewer challenges: {N} dimensions challenged, {M} additional findings
 - Codebase pattern review: {N} established patterns confirmed, {M} intentional new patterns acknowledged, {K} unacknowledged pattern findings
@@ -333,7 +345,7 @@ Tag findings discovered via cross-validation with `[Cross-validated]`.
 
 ### Step 9: Optionally Apply Findings or Create SIW Issues
 
-Same as `/kramme:siw:spec-audit` Step 6. Inline runs are read-only and skip this step; `INLINE_MODE=true` with `APPLY_MODE=true` must already have aborted in Step 1. If `APPLY_MODE=true` or the user chooses **Apply now**, follow `references/apply-now.md` to run the canonical auto-fix procedure, and create no `G-*` issues. Otherwise, create SIW issues for actionable findings if SIW workflow is active. If `AUTO_MODE=true`, use the standard auto-mode issue creation behavior.
+Same as `/kramme:siw:spec-audit` Step 6. Inline runs are read-only and skip this step; `INLINE_MODE=true` with `APPLY_MODE=true` must already have aborted in Step 1. If `APPLY_MODE=true` or the user chooses **Apply now**, follow `references/apply-now.md` to run the canonical auto-fix procedure, never apply `PROD-NNN` findings, and create no `G-*` issues. Otherwise, create SIW issues for actionable findings if SIW workflow is active. If `AUTO_MODE=true`, use the standard auto-mode issue creation behavior.
 
 ### Step 10: Report Summary
 

@@ -887,13 +887,6 @@ REVIEW_SUMMARY.md"
 	[[ "$output" == *"PRODUCT_AUDIT_OVERVIEW.md"* ]]
 }
 
-@test "blocks git commit when PRODUCT_AUDIT.md is staged in subdirectory" {
-	mock_git_staged "siw/PRODUCT_AUDIT.md"
-	run run_hook "git commit -m 'siw product audit staged'"
-	is_blocked
-	[[ "$output" == *"siw/PRODUCT_AUDIT.md"* ]]
-}
-
 @test "blocks git commit when COPY_REVIEW_OVERVIEW.md is staged" {
 	mock_git_staged "COPY_REVIEW_OVERVIEW.md"
 	run run_hook "git commit -m 'copy review staged'"

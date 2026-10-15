@@ -1,12 +1,12 @@
 # ISSUE-G-{NNN}: Product: {finding_id} - {short title}
 
-**Status:** READY | **Priority:** {High/Medium/Low — see Step 3 severity-inheritance rule} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>; default AUTO — see Step 5} | **Related:** Product Audit Report
+**Status:** READY | **Priority:** {High/Medium/Low — see Step 3 severity-inheritance rule} | **Size:** {XS|S|M|L} | **Phase:** General | **Parallelization:** {Safe to parallelize | Must be sequential | Needs coordination} | **Mode:** {AUTO | HITL — <reason>; default AUTO — see Step 5} | **Related:** Spec Audit Report (Product)
 
 ## Problem
 
 {Executive summary — which product dimension is at risk and why it matters for users or delivery}
 
-**Audit Finding:** `{finding_id}` **Dimension:** {target user / problem-solution fit / user state / critical moments / scope / success criteria / prioritization} **Source:** `{report_path}` {If present} **Severity Note:** {copied from audit report}
+**Audit Finding:** `{finding_id}` **Dimension:** {target user / problem-solution fit / user state / critical moments / scope / success criteria / prioritization / strategy and pulse alignment} **Source:** `{report_path}` {If present} **Severity Note:** {copied from audit report}
 
 ## Context
 
@@ -27,7 +27,7 @@
 
 - [ ] Product gap is closed per the chosen option
 - [ ] {Specific criterion from the chosen option}
-- [ ] Follow-up product audit no longer reports `{finding_id}`
+- [ ] Follow-up `/kramme:siw:spec-audit --product` no longer reports `{finding_id}`
 
 ---
 
@@ -45,5 +45,5 @@
 
 ### References
 
-- Product audit report: `{report_path}` > `{finding_id}`
+- Spec audit report (Product dimension): `{report_path}` > `{finding_id}`
 - Spec section: `{spec_file}` > {section heading}
