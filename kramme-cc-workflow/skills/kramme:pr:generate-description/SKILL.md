@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
-description: Write a structured PR title and body from git diff, commit log, and Linear context when requested or delegated by a PR workflow. Model callers use output-only mode; a direct --auto invocation may update an existing PR.
-argument-hint: "[--auto] [--no-update] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
+description: Write a structured PR title and body from git diff, commit log, and Linear context when requested or delegated by a PR workflow. With --check, report drift between an open PR's title and body and its branch diff: false claims, missing major changes, stale scope, missing risk callouts. Model callers pass --no-update and stay read-only; only a direct user invocation may update an existing PR.
+argument-hint: "[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -17,14 +17,20 @@ Parse `$ARGUMENTS` for flags:
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 - `--base-commit <oid>`: Pin diff computation to a caller-validated full commit OID while retaining branch metadata from `--base`.
 - `--linear-issue <ISSUE-ID>`: Use a caller-validated Linear identifier as the authoritative issue context. Validate `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, and do not replace it with a branch-name substring.
+- `--check`: Check mode. Compare the open PR's current title and body against the branch diff and report drift instead of generating a description. Report-only unless a direct user confirms an update: with `--no-update` it never prompts, and without it a direct user invocation is offered a confirmed (y/N) update after Important or Critical drift.
+- `--strict`: Check mode only. Also report Suggestion-level drift, including body claims that cannot be tied to a diff hunk and accuracy-adjacent clarity-check failures. Default check mode is loose: only contradictions, material omissions, and missing risk callouts surface.
 
-If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments. If `--base-commit <oid>` is present, require a full 40-character lowercase commit OID, set `BASE_COMMIT_OVERRIDE=<oid>`, and remove the flag and value. If `--linear-issue <ISSUE-ID>` is present, set `LINEAR_ISSUE_OVERRIDE` to the validated normalized value and remove the flag and value. Reject a missing or invalid value before Phase 1.
+If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments. If `--base-commit <oid>` is present, require a full 40-character lowercase commit OID, set `BASE_COMMIT_OVERRIDE=<oid>`, and remove the flag and value. If `--linear-issue <ISSUE-ID>` is present, set `LINEAR_ISSUE_OVERRIDE` to the validated normalized value and remove the flag and value. Reject a missing or invalid value before Phase 1. If `--check` is present, set `CHECK_MODE=true`; if `--strict` is present, set `STRICT_MODE=true`; remove both flags.
+
+Check mode accepts only `--base <ref>`, `--strict`, and `--no-update`. Before Phase 1, reject `--check` combined with `--auto` (which would imply an unconfirmed update), `--base-commit`, or `--linear-issue`, and reject `--strict` without `--check`.
 
 ### Sub-Skill Invocation Contract
 
-When another skill invokes this one as an orchestration step, it must pass `--auto` (and should pass `--base <ref> --base-commit <oid>` when it already resolved and pinned the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
+When another skill invokes this one as an orchestration step to generate a description, it must pass `--auto` (and should pass `--base <ref> --base-commit <oid>` when it already resolved and pinned the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
 
 Every model-initiated invocation must include `--no-update`. Omitting `--no-update` is reserved for a direct user invocation because that mode may mutate an existing Pull Request. Model invocation changes routing only; it never supplies permission to publish generated content.
+
+A model caller that needs a drift report passes `--check --no-update` instead of `--auto`; check mode then stops after its read-only report. Only a direct user invocation of `--check` may reach the confirmation prompt and the update behind it.
 
 ## Instructions
 
@@ -36,12 +42,15 @@ Every model-initiated invocation must include `--no-update`. Omitting `--no-upda
 - You want a well-structured, focused description for your changes
 - You need to document what changed, why it changed, and how to test it
 - You want to analyze multiple sources (git diff, commits, Linear issues) to create reviewer-relevant context
+- You pushed commits to a branch with an open PR, or are about to request review, and want to know whether the description still matches the diff (`--check`)
+- A reviewer said the PR description is unclear or wrong, and you want a structured drift report before rewriting it (`--check`)
 
 **When NOT to use this skill:**
 
 - You only need a tiny manual wording edit to an existing PR description
 - You're creating a draft PR that doesn't need a full description yet
 - The changes are trivial (typo fixes, formatting) and don't warrant detailed documentation
+- You want a full code review; use `kramme:pr:code-review`, which checks description accuracy as one signal among many
 
 ### Context
 
@@ -57,6 +66,10 @@ This skill automates the process of gathering context from multiple sources (git
 Read the guideline keyword glossary from `references/guideline-keywords.md`.
 
 ## Workflow
+
+### Check Mode
+
+**If `CHECK_MODE=true`**, read `references/check-mode.md` and follow it instead of Phases 1 through 4. It owns the drift rubric, the report, and the confirmed update, and it reuses Phase 1 step 1, Phases 2 through 3.5, and `references/direct-update.md` only after the user confirms an update. Its base resolution runs `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`, and its working-tree snapshot and pre-publication revalidation run `${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh`.
 
 ### Phase 1: Branch Setup
 
@@ -336,7 +349,7 @@ Read the platform-specific notes from `references/platform-notes.md`. Covers mag
 
 ## Notes
 
-- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh pr edit`. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
+- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh pr edit`. Check mode updates a PR only after a direct user invocation without `--no-update` answers `y` to its prompt, and then only the exact PR it checked. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
 - **NOTE**: After generation, review the description and adjust as needed before using it
 - **NOTE**: This skill is self-contained. If a downstream installation needs custom PR-title policy, adapt this skill locally instead of depending on repo-root instruction files.
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context

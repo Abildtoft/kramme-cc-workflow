@@ -72,37 +72,69 @@ load 'test_helper/common'
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "verify-description owns confirmed publication after output-only generation" {
+@test "check mode is read-only for model callers and gates updates behind direct confirmation" {
 	run bash -c '
 	    set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:verify-description/SKILL.md"
-    update="skills/kramme:pr:verify-description/references/confirmed-update.md"
+    skill="skills/kramme:pr:generate-description/SKILL.md"
+    check="skills/kramme:pr:generate-description/references/check-mode.md"
+    update="skills/kramme:pr:generate-description/references/direct-update.md"
 
-    test -f "$update"
-    grep -qF "disable-model-invocation: true" "$skill"
-    grep -qF "kramme:pr:generate-description --auto --no-update" "$skill"
-    grep -qF "read \`references/confirmed-update.md\` and follow it" "$skill"
-    grep -qF -- "--auto --no-update --base {base-branch} --base-commit {base-commit}" "$update"
-    grep -qF "This skill owns the mutation; generation remains output-only." "$update"
-    grep -qF "Do not omit \`--no-update\`" "$update"
-    grep -qF "PR_SNAPSHOT=\$(env GH_PROMPT_DISABLED=1 gh pr view" "$skill"
-    grep -qF "PR_MATCH_COUNT=\$(env GH_PROMPT_DISABLED=1 gh pr list" "$skill"
-    grep -qF "if [ \"\$PR_MATCH_COUNT\" = 0 ]; then" "$skill"
-    grep -qF "MISSING REQUIREMENT: no PR found for the current branch." "$skill"
-    grep -qF "[[ ! \"\$CURRENT_BRANCH\" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*\$ ]]" "$skill"
-    grep -qF "[[ ! \"\$BASE_REF\" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*\$ ]]" "$skill"
-    grep -qF "Current branch is not safe for later shell substitution." "$skill"
-    grep -qF "Resolved base ref is not safe for later shell substitution." "$skill"
-    grep -qF "fix mode requires the generated base to match the Pull Request target" "$skill"
-    grep -qF "Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above." "$skill"
-	    grep -qF "PR_SNAPSHOT_FINGERPRINT=" "$skill"
-	    grep -qF "git hash-object --stdin" "$skill"
-    grep -qF "WORKTREE_MANIFEST=\$(\"\${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh\")" "$skill"
-    grep -qF -- "--fix is unavailable for a <PR_STATE> Pull Request" "$skill"
+    test -f "$check"
+    test ! -e "skills/kramme:pr:verify-description"
+    grep -qF "disable-model-invocation: false" "$skill"
+    grep -qF "argument-hint: \"[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]\"" "$skill"
+    grep -qF "Check mode accepts only \`--base <ref>\`, \`--strict\`, and \`--no-update\`." "$skill"
+    grep -qF "reject \`--check\` combined with \`--auto\` (which would imply an unconfirmed update), \`--base-commit\`, or \`--linear-issue\`, and reject \`--strict\` without \`--check\`" "$skill"
+    grep -qF "Every model-initiated invocation must include \`--no-update\`" "$skill"
+    grep -qF "A model caller that needs a drift report passes \`--check --no-update\`" "$skill"
+    grep -qF "Only a direct user invocation of \`--check\` may reach the confirmation prompt" "$skill"
+    grep -qF "read \`references/check-mode.md\` and follow it instead of Phases 1 through 4" "$skill"
+    if grep -qF -e "--fix" -e "FIX_MODE" "$skill" "$check" "$update"; then exit 1; fi
+
+    grep -qF "A model caller always passes \`--check --no-update\`, so for model callers check mode stops after the report." "$check"
+    grep -qF "**Skip this phase if \`OUTPUT_ONLY=true\`.**" "$check"
+    grep -qF "never prompt, generate, or update" "$check"
+    grep -qF -- "--auto --no-update --base {base-branch} --base-commit {base-commit}" "$check"
+    grep -qF "Run \`/kramme:pr:generate-description --check\` yourself" "$check"
+    grep -qF "Reuse only the accuracy-adjacent items of the generator" "$check"
+    grep -qF "the first sentence of item 1 (from the first paragraph alone, a newcomer can say what changes and for whom) and item 7" "$check"
+    grep -qF "Do not apply the style items (item 1" "$check"
+    grep -qF "do not run the Part 2 cold read in check mode" "$check"
+    grep -qF "(accuracy-adjacent clarity check, see Phase C3) | Suggestion | Strict only |" "$check"
+    grep -qF "| Not flagged | Never; the accuracy-adjacent clarity check above is the only clarity finding check mode reports |" "$check"
+    if grep -qF "items 1 through 8" "$check"; then exit 1; fi
+    grep -qF "The diff is the source of truth; the description is the suspect." "$check"
+    grep -qF "**CONFUSION** — diff evidence that contradicts the existing PR body or the commit log." "$check"
+    grep -qF "**UNVERIFIED** — a claim in the existing PR body that the diff can neither confirm nor refute." "$check"
+    grep -qF "A reviewer said the PR description is unclear or wrong" "$skill"
+    grep -qF "On \`n\` or no response, stop after the report." "$check"
+    grep -qF "**NEVER** generate or publish a replacement without this \`y\`" "$check"
+    grep -qF "**Stop without editing the PR** if generation emits any blocking \`MISSING REQUIREMENT:\` marker" "$check"
+    grep -qF "Update unavailable: the confirmed update requires the generated base to match the Pull Request target" "$check"
+    grep -qF "Update unavailable: the confirmed update is unavailable for a <PR_STATE> Pull Request" "$check"
+    if grep -qF "MISSING REQUIREMENT: the confirmed update" "$check"; then exit 1; fi
+    if grep -qF "or \\\`/kramme:pr:generate-description\\\` first" "$check"; then exit 1; fi
+    grep -qF "Run \\\`/kramme:pr:create\\\` first." "$check"
+    grep -qF "**VERDICT_TAG:** ACCURATE | MINOR_DRIFT | MATERIAL_DRIFT | INACCURATE" "$check"
+    grep -qF "\`## Review notes\`" "$check"
+    grep -qF "legacy \`Potential concerns\`" "$check"
+    grep -qF "PR_SNAPSHOT=\$(env GH_PROMPT_DISABLED=1 gh pr view" "$check"
+    grep -qF "PR_MATCH_COUNT=\$(env GH_PROMPT_DISABLED=1 gh pr list" "$check"
+    grep -qF "if [ \"\$PR_MATCH_COUNT\" = 0 ]; then" "$check"
+    grep -qF "MISSING REQUIREMENT: no PR found for the current branch." "$check"
+    grep -qF "[[ ! \"\$CURRENT_BRANCH\" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*\$ ]]" "$check"
+    grep -qF "[[ ! \"\$BASE_REF\" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]*\$ ]]" "$check"
+    grep -qF "Current branch is not safe for later shell substitution." "$check"
+    grep -qF "Resolved base ref is not safe for later shell substitution." "$check"
+    grep -qF "Could not inspect a Pull Request for the current branch; preserve the gh diagnostic above." "$check"
+    grep -qF "PR_SNAPSHOT_FINGERPRINT=" "$check"
+    grep -qF "git hash-object --stdin" "$check"
+    grep -qF "WORKTREE_MANIFEST=\$(\"\${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh\")" "$check"
+    grep -qF "Step 3 for a check-mode confirmed update" "$check"
+
+    grep -qF "### Step 3 for a check-mode confirmed update" "$update"
     grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$update"
-    grep -qF "Capture the single printed line as agent-tracked \`{update-dir}\`" "$update"
-    grep -qF "UPDATE_DIR=\"{update-dir}\"" "$update"
     grep -qF "Could not back up and revalidate PR #\$PR_NUMBER; no update was made." "$update"
     grep -qF "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"\$PR_SNAPSHOT_FINGERPRINT" "$update"
     grep -qF "PR_STATE\" != \"OPEN" "$update"
@@ -111,42 +143,54 @@ load 'test_helper/common'
     grep -qF "LATEST_WORKTREE_FINGERPRINT\" != \"\$WORKTREE_FINGERPRINT" "$update"
     grep -qF "Generated PR payload storage is missing or indirect" "$update"
     grep -qF "gh pr edit \"\$PR_NUMBER\"" "$update"
-    grep -qF -- "--body-file \"\$PR_BODY_FILE\"" "$update"
     if grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$update"; then exit 1; fi
-    confirmation_line=$(grep -nF "Found <N> finding(s). Generate a replacement title and body" "$skill" | cut -d: -f1)
-    no_pr_line=$(grep -nF "MISSING REQUIREMENT: no PR found for the current branch." "$skill" | head -1 | cut -d: -f1)
-    generic_pr_failure_line=$(grep -nF "Could not inspect a Pull Request for the current branch" "$skill" | cut -d: -f1)
-    base_match_line=$(grep -nF "fix mode requires the generated base to match the Pull Request target" "$skill" | cut -d: -f1)
-    non_open_line=$(grep -nF -- "--fix is unavailable for a <PR_STATE> Pull Request" "$skill" | cut -d: -f1)
-    delegation_line=$(grep -nF "read \`references/confirmed-update.md\` and follow it" "$skill" | cut -d: -f1)
-    storage_line=$(grep -nF "UPDATE_DIR=\$(mktemp -d" "$update" | cut -d: -f1)
-    backup_line=$(grep -nF "if ! env GH_PROMPT_DISABLED=1 gh pr view" "$update" | cut -d: -f1)
-    snapshot_line=$(grep -nF "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"\$PR_SNAPSHOT_FINGERPRINT" "$update" | cut -d: -f1)
-    payload_line=$(grep -nF "Generated PR payload storage is missing or indirect" "$update" | cut -d: -f1)
-    cleanup_line=$(grep -nF "trap cleanup_pr_payload EXIT" "$update" | cut -d: -f1)
-    edit_line=$(grep -nF "gh pr edit \"\$PR_NUMBER\"" "$update" | cut -d: -f1)
-    [ "$non_open_line" -lt "$confirmation_line" ]
+
+    output_only_line=$(grep -nF "**Skip this phase if \`OUTPUT_ONLY=true\`.**" "$check" | cut -d: -f1)
+    base_match_line=$(grep -nF "the confirmed update requires the generated base to match the Pull Request target" "$check" | cut -d: -f1)
+    non_open_line=$(grep -nF "the confirmed update is unavailable for a <PR_STATE> Pull Request" "$check" | cut -d: -f1)
+    confirmation_line=$(grep -nF "Found <N> finding(s). Generate a replacement title and body" "$check" | cut -d: -f1)
+    decline_line=$(grep -nF "On \`n\` or no response, stop after the report." "$check" | cut -d: -f1)
+    blocking_stop_line=$(grep -nF "**Stop without editing the PR** if generation emits any blocking" "$check" | cut -d: -f1)
+    generation_line=$(grep -nF -- "--auto --no-update --base {base-branch} --base-commit {base-commit}" "$check" | cut -d: -f1)
+    publish_line=$(grep -nF "run its \`Step 3 for a check-mode confirmed update\` block" "$check" | cut -d: -f1)
+    no_pr_line=$(grep -nF "MISSING REQUIREMENT: no PR found for the current branch." "$check" | head -1 | cut -d: -f1)
+    generic_pr_failure_line=$(grep -nF "Could not inspect a Pull Request for the current branch" "$check" | cut -d: -f1)
+    [ "$output_only_line" -lt "$base_match_line" ]
     [ "$base_match_line" -lt "$confirmation_line" ]
+    [ "$non_open_line" -lt "$confirmation_line" ]
+    [ "$confirmation_line" -lt "$generation_line" ]
+    [ "$confirmation_line" -lt "$decline_line" ]
+    [ "$decline_line" -lt "$generation_line" ]
+    [ "$generation_line" -lt "$blocking_stop_line" ]
+    [ "$blocking_stop_line" -lt "$publish_line" ]
+    [ "$generation_line" -lt "$publish_line" ]
     [ "$no_pr_line" -lt "$generic_pr_failure_line" ]
-    [ "$confirmation_line" -lt "$delegation_line" ]
-    [ "$storage_line" -lt "$payload_line" ]
+
+    check_step_line=$(grep -nF "### Step 3 for a check-mode confirmed update" "$update" | cut -d: -f1)
+    storage_line=$(grep -nF "UPDATE_DIR=\$(mktemp -d" "$update" | cut -d: -f1)
+    payload_line=$(grep -nF "Generated PR payload storage is missing or indirect" "$update" | cut -d: -f1)
+    cleanup_line=$(awk -v s="$check_step_line" "NR > s && index(\$0, \"trap cleanup_pr_payload EXIT\") { print NR; exit }" "$update")
+    backup_line=$(grep -nF "if ! env GH_PROMPT_DISABLED=1 gh pr view \"\$PR_NUMBER\"" "$update" | cut -d: -f1)
+    snapshot_line=$(grep -nF "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"\$PR_SNAPSHOT_FINGERPRINT" "$update" | cut -d: -f1)
+    edit_line=$(grep -nF "gh pr edit \"\$PR_NUMBER\"" "$update" | cut -d: -f1)
+    [ "$storage_line" -lt "$check_step_line" ]
+    [ "$check_step_line" -lt "$payload_line" ]
     [ "$payload_line" -lt "$cleanup_line" ]
     [ "$cleanup_line" -lt "$backup_line" ]
-    [ "$payload_line" -lt "$backup_line" ]
     [ "$backup_line" -lt "$snapshot_line" ]
     [ "$snapshot_line" -lt "$edit_line" ]
-    if grep -qF "it will detect the existing PR and update it directly" "$skill"; then exit 1; fi
   '
 
 	assert_required_contracts_registered \
-		pr-verify-description-confirmed-update \
-		pr-verify-description-snapshot-baseline
+		pr-generate-description-subskill-contract \
+		pr-generate-description-check-mode-update \
+		pr-generate-description-check-mode-snapshot
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "confirmed update publication fails closed for every captured drift" {
-	local update="${BATS_TEST_DIRNAME}/../skills/kramme:pr:verify-description/references/confirmed-update.md"
+@test "check-mode confirmed update publication fails closed for every captured drift" {
+	local update="${BATS_TEST_DIRNAME}/../skills/kramme:pr:generate-description/references/direct-update.md"
 	local block="$BATS_TEST_TMPDIR/confirmed-update.sh"
 	local fake_bin="$BATS_TEST_TMPDIR/bin"
 	local plugin_root="$BATS_TEST_TMPDIR/plugin"
@@ -161,13 +205,8 @@ load 'test_helper/common'
 	local pr_json snapshot_fingerprint worktree_fingerprint
 
 	awk '
-		$0 == "```bash" {
-			bash_blocks++
-			if (bash_blocks == 2) {
-				capture = 1
-				next
-			}
-		}
+		$0 == "### Step 3 for a check-mode confirmed update" { in_step = 1; next }
+		in_step && $0 == "```bash" { capture = 1; next }
 		capture && $0 == "```" { exit }
 		capture { print }
 	' "$update" >"$block"
@@ -382,9 +421,6 @@ PY
     [ "$output_line" -lt "$update_line" ]
     if grep -nF "### Phase 5" "$skill/SKILL.md"; then exit 1; fi
 
-    verify="skills/kramme:pr:verify-description/SKILL.md"
-    grep -qF "\`## Review notes\`" "$verify"
-    grep -qF "legacy \`Potential concerns\`" "$verify"
     if grep -nF "comprehensive description" "skills/kramme:pr:create/SKILL.md"; then exit 1; fi
   '
 
