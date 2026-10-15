@@ -1166,16 +1166,17 @@
         "it must pass `--auto`",
         "must also pass `--no-update`",
         "OUTPUT_ONLY=true",
-        "Every model-initiated invocation must include `--no-update`"
+        "Every model-initiated invocation must include `--no-update`",
+        "A model caller that needs a drift report passes `--check --no-update`",
+        "reject `--check` combined with `--auto`",
+        "read `references/check-mode.md` and follow it instead of Phases 1 through 4"
       ]
     },
     {
-      "name": "pr-verify-description-confirmed-update",
-      "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/references/confirmed-update.md",
+      "name": "pr-generate-description-check-mode-update",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/direct-update.md",
       "contains": [
-        "--auto --no-update --base {base-branch} --base-commit {base-commit}",
-        "This skill owns the mutation; generation remains output-only.",
-        "Do not omit `--no-update`",
+        "### Step 3 for a check-mode confirmed update",
         "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
         "Capture the single printed line as agent-tracked `{update-dir}`",
         "UPDATE_DIR=\"{update-dir}\"",
@@ -1191,9 +1192,16 @@
       ]
     },
     {
-      "name": "pr-verify-description-snapshot-baseline",
-      "path": "kramme-cc-workflow/skills/kramme:pr:verify-description/SKILL.md",
+      "name": "pr-generate-description-check-mode-snapshot",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/check-mode.md",
       "contains": [
+        "--auto --no-update --base {base-branch} --base-commit {base-commit}",
+        "**Skip this phase if `OUTPUT_ONLY=true`.**",
+        "Found <N> finding(s). Generate a replacement title and body",
+        "On `n` or no response, stop after the report.",
+        "**NEVER** generate or publish a replacement without this `y`",
+        "**Stop without editing the PR** if generation emits any blocking `MISSING REQUIREMENT:` marker",
+        "Update unavailable: the confirmed update",
         "CURRENT_HEAD=$(git rev-parse --verify HEAD)",
         "Current branch is not safe for later shell substitution.",
         "PR_SNAPSHOT=$(env GH_PROMPT_DISABLED=1 gh pr view",
@@ -1204,8 +1212,8 @@
         "Resolved base ref is not safe for later shell substitution.",
         "WORKTREE_MANIFEST=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh\")",
         "Capture the full 40-character value as immutable agent-tracked `{worktree-fingerprint}`",
-        "fix mode requires the generated base to match the Pull Request target",
-        "--fix is unavailable for a <PR_STATE> Pull Request"
+        "the confirmed update requires the generated base to match the Pull Request target",
+        "the confirmed update is unavailable for a <PR_STATE> Pull Request"
       ]
     },
     {
