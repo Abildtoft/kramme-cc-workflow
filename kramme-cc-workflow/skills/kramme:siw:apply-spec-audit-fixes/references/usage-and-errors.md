@@ -28,7 +28,14 @@ Load this reference only when showing examples or handling one of the failure ca
 
 ### Report Format Unexpected
 
-If the report does not contain `### SPEC-NNN:` headings, stop:
+If the report has no `### SPEC-NNN:` headings but does contain `### PROD-NNN:` headings, stop with:
+
+```text
+No SPEC findings to auto-fix in {report_path}.
+{N} PROD findings need decisions. Run /kramme:siw:resolve-audit {report_path}.
+```
+
+If the report contains neither `### SPEC-NNN:` nor `### PROD-NNN:` headings, stop:
 
 ```text
 Could not parse findings from {report_path}.

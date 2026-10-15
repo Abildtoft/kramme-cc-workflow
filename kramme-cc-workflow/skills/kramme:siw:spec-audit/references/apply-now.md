@@ -9,7 +9,9 @@ This file is a compatibility entry point. It does not define a separate eligibil
 
 ## Delegation Contract
 
-Run the auto-fix procedure against the active audit report:
+If the active audit run has no `SPEC-NNN` findings (only `PROD-NNN` product findings), skip the delegation, apply nothing, and report the product findings as left for `/kramme:siw:resolve-audit {report_path}`.
+
+Otherwise, run the auto-fix procedure against the active audit report:
 
 ```text
 /kramme:siw:apply-spec-audit-fixes {report_path}
@@ -31,6 +33,7 @@ If the user chose **Apply now** from the Step 6 prompt, treat the auto-fix appro
 - Use the auto-fix skill's canonical marker and report annotations for new writes: `**Status:** [Auto-fixed]`, `**Fix applied:** ...`, and the `Auto-fixed` summary row.
 - Preserve the auto-fix skill's optional `siw/LOG.md` progress update when a log already exists.
 - Treat `**Status:** [Applied directly]` as a legacy read marker only. New runs must not write it.
+- Never apply product findings. The auto-fix procedure reads only `SPEC-NNN` findings; leave every `PROD-NNN` finding from `--product` untouched and list the open ones as left for `/kramme:siw:resolve-audit {report_path}`.
 
 ## Summary
 

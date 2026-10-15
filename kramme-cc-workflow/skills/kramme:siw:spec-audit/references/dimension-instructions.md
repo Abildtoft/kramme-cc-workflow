@@ -154,7 +154,7 @@ Check for:
 
 ## Dimension: Rationale Documentation
 
-Assess whether the specification records enough product rationale to guide implementation. Evaluate the presence, clarity, and internal consistency of that rationale only. Do not judge whether the product is worth building, whether the chosen solution is the best one, or whether prioritization and strategy are correct; those questions belong to `/kramme:siw:product-audit`.
+Assess whether the specification records enough product rationale to guide implementation. Evaluate the presence, clarity, and internal consistency of that rationale only. Do not judge whether the product is worth building, whether the chosen solution is the best one, or whether prioritization and strategy are correct; those questions belong to the opt-in Product dimension (`--product`).
 
 Check for:
 

@@ -19,7 +19,7 @@ This skill reviews document quality only.
 - **Does:** Review one Markdown document for coherence, scope, feasibility, product fit, security/privacy risk, design implications, and reader usefulness when those lenses apply.
 - **Does:** Return findings inline by default, or write a generated report only when `--file` or `--output <path>` is present.
 - **Does not:** Edit the source document, review source code, inspect PR diffs, test running software, or create tracking issues.
-- **Does not:** Replace SIW audits. Documents under `siw/` route to `/kramme:siw:spec-audit` or `/kramme:siw:product-audit`.
+- **Does not:** Replace SIW audits. Documents under `siw/` route to `/kramme:siw:spec-audit`, with `--product` for product judgment.
 
 ## Workflow
 
@@ -37,7 +37,7 @@ This skill reviews document quality only.
    - Confirm the path exists, is readable, and has a Markdown extension (`.md`, `.markdown`, `.mdown`, or `.mkd`).
    - If the path is under `siw/`, stop before reviewing:
      - Use `/kramme:siw:spec-audit <path>` for specs, plans, issue definitions, phase docs, or implementation-facing SIW documents.
-     - Use `/kramme:siw:product-audit <path>` for product strategy, value proposition, product narrative, or product-audit SIW documents.
+     - Use `/kramme:siw:spec-audit --product <path>` for product strategy, value proposition, or product narrative SIW documents.
    - If the user asks to review source code, PR changes, or a live app instead, route to the relevant code, PR, QA, or product review skill.
 
 3. **Validate report output**

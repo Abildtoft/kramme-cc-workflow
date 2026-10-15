@@ -36,8 +36,7 @@ For an initiative too foggy to fit in one planning session, start with `/kramme:
 ```bash
 /kramme:discovery:interview --siw "build a notification system" # optional deep discovery
 /kramme:siw:init siw/DISCOVERY_BRIEF.md                         # create the SIW container and spec
-/kramme:siw:product-audit                                       # optional product-pressure test
-/kramme:siw:spec-audit --apply                                  # validate and safely fix the spec
+/kramme:siw:spec-audit --apply                                  # validate and safely fix the spec; add --product to pressure-test product quality
 /kramme:siw:generate-phases                                     # create the initial phased issue set
 /kramme:siw:transfer-to-linear --dry-run                        # review the migration plan
 /kramme:siw:transfer-to-linear                                  # make Linear the source of truth
@@ -58,7 +57,6 @@ siw/
 ├── DISCOVERY_BRIEF.md
 ├── SPEC_STRENGTHENING_PLAN.md
 ├── AUDIT_SPEC_REPORT.md
-├── PRODUCT_AUDIT.md
 ├── LOG.md
 ├── OPEN_ISSUES_OVERVIEW.md
 └── issues/
@@ -98,14 +96,11 @@ Discovery and audits move specifications toward `planning-ready`. `issue-define`
 - Refinement mode writes `siw/SPEC_STRENGTHENING_PLAN.md` and can apply approved changes with `--apply` after an in-session confirmation; only a direct user request enables `--apply`.
 - `--decision-tree` resolves tightly coupled decisions depth-first.
 
-### Product audit
-
-`/kramme:siw:product-audit` reviews target users, problem/solution fit, user states, critical moments, product scope, success criteria, prioritization, and strategy alignment. Use it when the question is whether the specification proposes the right product for the right users.
-
 ### Specification audit
 
-`/kramme:siw:spec-audit` reviews coherence, completeness, clarity, implementation-scope consistency, actionability, testability, rationale documentation, and technical design. Use it when the question is whether implementation can proceed correctly without guessing. It checks that product rationale is explicit and internally consistent, but leaves product correctness, prioritization, and strategy judgment to `/kramme:siw:product-audit`.
+`/kramme:siw:spec-audit` reviews coherence, completeness, clarity, implementation-scope consistency, actionability, testability, rationale documentation, and technical design. Use it when the question is whether implementation can proceed correctly without guessing. Its Rationale Documentation dimension checks that product rationale is explicit and internally consistent without judging whether it is right.
 
+- `--product` adds the Product dimension: target users, problem/solution fit, user states, critical moments, product scope, success criteria, prioritization, and strategy alignment. Use it when the question is also whether the specification proposes the right product for the right users. Product findings (`PROD-NNN`) share the report but are never auto-fixed; resolve them with `/kramme:siw:resolve-audit`.
 - `--inline` returns a read-only report.
 - `--apply` delegates mechanical fixes to the canonical safe-fix procedure.
 - `--team` performs cross-validated multi-agent analysis when the runtime supports it.
@@ -177,8 +172,7 @@ An explicitly abandoned preparation run may skip transfer and use `/kramme:workf
 | --- | --- | --- |
 | `/kramme:discovery:interview --siw` | `[topic \| spec paths \| siw] [--apply] [--decision-tree]` | Discover or strengthen requirements |
 | `/kramme:siw:init` | `[spec paths \| folder \| discover] [--auto]` | Create the local preparation container |
-| `/kramme:siw:product-audit` | `[spec paths \| siw] [--auto] [--inline]` | Pressure-test product quality |
-| `/kramme:siw:spec-audit` | `[spec paths \| siw] [--auto] [--apply] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality |
+| `/kramme:siw:spec-audit` | `[spec paths \| siw] [--product] [--auto] [--apply] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality, plus product quality with `--product` |
 | `/kramme:siw:apply-spec-audit-fixes` | `[report] [--auto] [--dry-run] [--threshold 60-100] [--allow-dirty]` | Apply deterministic audit fixes |
 | `/kramme:siw:resolve-audit` | `[report] [finding IDs] [--auto]` | Resolve decision findings into local issues |
 | `/kramme:siw:issue-define` | `[issue ID \| description and context]` | Define or refine one local issue |

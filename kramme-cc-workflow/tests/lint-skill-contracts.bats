@@ -65,7 +65,6 @@ siw_spec_exclusion_expected_paths() {
     "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:issue-define/references/classification-and-prefix.md" \
-    "kramme-cc-workflow/skills/kramme:siw:product-audit/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md" \
     "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md" \

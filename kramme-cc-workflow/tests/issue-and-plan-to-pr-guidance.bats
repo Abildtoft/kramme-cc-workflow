@@ -552,10 +552,11 @@
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:siw:resolve-audit/SKILL.md"
 
-    discovery=$(sed -n "/Otherwise, discover available report files in this order:/,/If \*\*more than one report type exists\*\*/p" "$skill")
+    discovery=$(sed -n "/Otherwise, use the first report that exists, in this order:/,/The spec audit report holds both/p" "$skill")
     printf "%s\n" "$discovery" | grep -qF "siw/AUDIT_SPEC_REPORT.md"
-    printf "%s\n" "$discovery" | grep -qF "siw/PRODUCT_AUDIT.md"
-    ! printf "%s\n" "$discovery" | grep -qF "AUDIT_IMPLEMENTATION_REPORT.md"
+    if printf "%s\n" "$discovery" | grep -qF "PRODUCT_AUDIT.md"; then exit 1; fi
+    grep -qF "Resolve both from the one report." "$skill"
+    if printf "%s\n" "$discovery" | grep -qF "AUDIT_IMPLEMENTATION_REPORT.md"; then exit 1; fi
     grep -qF "Explicitly supplied legacy implementation-audit reports remain supported" "$skill"
     grep -qF "they are never auto-detected" "$skill"
     ! grep -qF "Implementation audit (Recommended when available)" "$skill"

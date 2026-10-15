@@ -72,7 +72,7 @@ The following findings were initially classified as mechanical but failed verifi
 
 Update the `**Overall Assessment:**` line in the report's Summary section only if all of the following hold:
 
-- All Critical and Major findings were auto-fixed.
+- All Critical and Major findings were auto-fixed, and no open `PROD-NNN` finding is Critical or Major.
 - No remaining Minor finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]` or any other preserved-critical cap.
 - Only uncapped Minor findings remain, or zero findings remain.
 

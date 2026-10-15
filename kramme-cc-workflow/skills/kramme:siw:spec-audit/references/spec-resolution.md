@@ -12,6 +12,7 @@ Use this when `SKILL.md` reaches Step 1. Resolve `$ARGUMENTS` into mode flags an
 - If `$ARGUMENTS` contains `--apply` or `--apply-now`, set `APPLY_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before processing remaining arguments.
+- If `$ARGUMENTS` contains `--product`, set `PRODUCT_MODE=true` and remove the flag before processing remaining arguments.
 
 **Extract `--model` flag next (Claude Code only — ignored on other platforms):**
 
@@ -24,6 +25,11 @@ Use this when `SKILL.md` reaches Step 1. Resolve `$ARGUMENTS` into mode flags an
 - replace any previous audit report automatically
 - create SIW issues for **Critical and Major** findings, plus Minor findings that preserve original Critical or Major severity when Step 6 applies
 - skip the report overwrite / issue-creation prompts
+
+`--product` means:
+
+- add the Product dimension from `references/product-mode.md`, reported as `PROD-NNN` findings in the same report
+- never auto-apply product findings; `--apply` leaves them for `/kramme:siw:resolve-audit`
 
 `--apply` means:
 
@@ -89,6 +95,7 @@ Auto-detect spec files from the `siw/` directory:
    - Use Glob to find `siw/*.md`
    - Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors): `LOG.md`, `OPEN_ISSUES_OVERVIEW.md`, `DISCOVERY_BRIEF.md`, `SPEC_STRENGTHENING_PLAN.md`, `AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.
    - Exclude that workflow-artifact set before treating any top-level `siw/*.md` file as a spec. When the filter excludes every candidate, report the excluded filenames and ask for an explicit spec path instead of silently proceeding.
+   - `PRODUCT_AUDIT.md` is the retired standalone product audit report name. No skill writes it anymore; it stays in the list so stale copies are not treated as specs.
    - **Coupling note for SIW skill authors:** Any new top-level workflow file added under `siw/` by sibling skills must either match one of the patterns above or be added to this list, or it will be silently audited as a spec.
 
 3. Find supporting specs:

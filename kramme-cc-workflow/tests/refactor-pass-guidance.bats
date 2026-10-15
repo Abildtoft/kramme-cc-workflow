@@ -161,7 +161,7 @@ setup() {
 # entry would cover these paths without listing them. The allow cases in
 # tests/confirm-review-responses.bats are what prove they stay committable.
 # Disposability is not the criterion - every protected entry is disposable too -
-# nor is the directory, since siw/PRODUCT_AUDIT.md is blocked.
+# nor is the directory, since siw/AUDIT_SPEC_REPORT.md is blocked.
 @test "protected workflow artifacts omit the disposable siw and .context paths" {
   local disposable="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
   local disposable_path

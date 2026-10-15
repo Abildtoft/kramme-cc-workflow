@@ -13,6 +13,8 @@ Only create SIW issues if ALL of these conditions are met:
 - `siw/LOG.md` exists or can be created
 - Critical or Major findings were found, or a Minor finding preserves original Critical or Major severity via `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]`
 
+These rules cover both `SPEC-NNN` findings and `PROD-NNN` product findings from `--product`.
+
 ## SIW Issue-State Protocol
 
 Synced SIW issue-state contract (keep aligned across SIW issue creators): every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW.md, and siw/LOG.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently.
@@ -25,11 +27,11 @@ If `SKILL.md` already collected a concrete Step 6 issue-selection choice (**Crit
 
 A prior **Create SIW issues** routing choice is not a concrete issue-selection choice. Continue to this prompt so the user can choose which findings become issues.
 
-Otherwise:
+Otherwise (`{S}` counts `SPEC-NNN` and `{P}` counts `PROD-NNN` findings; drop the product clause when `{P}` is 0):
 
 ```yaml
 header: "Create SIW Issues"
-question: "Found {N} actionable spec findings. Create SIW issues for them?"
+question: "Found {S} actionable spec findings and {P} product findings. Create SIW issues for them?"
 options:
   - label: "Critical and major only"
     description: "Create {N} issues for visible Critical/Major findings plus Minor findings that preserve original Critical or Major severity"
@@ -60,20 +62,23 @@ Use the issue-eligible finding set selected from Step 6 in `SKILL.md`; do not cr
 
 For each selected finding:
 
-1. Determine next available `G-` issue number from `siw/issues/`.
-2. Create issue file `siw/issues/ISSUE-G-{NNN}-spec-{slugified-title}.md` using `assets/spec-issue-template.md`.
+1. For a `PROD-NNN` finding, apply the standard handled-finding skip rule first: skip it and report the matched artifact if it carries an `Existing issue:` annotation that resolves to an existing `siw/issues/ISSUE-G-*.md` file, or a file matching `siw/issues/ISSUE-G-*-{finding-id}-*.md` exists. Treat an unresolved `Existing issue:` annotation as stale metadata: warn in the final summary, but do not skip the finding.
+2. Determine the next available `G-` issue number from `siw/issues/`. Before creating a `PROD-NNN` issue, also verify no on-disk collision by globbing `siw/issues/ISSUE-G-{candidate}-*.md`; if any file matches, increment and re-check, then warn that the numbering gap will be preserved through transfer.
+3. Create issue file `siw/issues/ISSUE-G-{NNN}-spec-{slugified-title}.md` using `assets/spec-issue-template.md`.
+   - For a `PROD-NNN` finding, name the file `siw/issues/ISSUE-G-{NNN}-product-{finding-id}-{slugified-title}.md` and adapt the template: title prefix `Product:`, `**Related:** Spec Audit Report (Product)`, a Problem line naming the product sub-dimension and `PROD-{id}`, the finding's Product Impact in Context, and acceptance criterion `Follow-up spec audit with --product no longer reports PROD-{id}`.
    - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Critical]`, set the issue priority to `High` and copy the `Severity Note` into the issue body.
    - If the finding carries `**Severity Note:** [Deprioritized — capped at Minor from Major]`, set the issue priority to `Medium` and copy the `Severity Note` into the issue body.
    - Assign each issue an explicit `Size` (`XS|S|M|L`) and `Parallelization` category (`Safe to parallelize | Must be sequential | Needs coordination`) so the generated SIW issue matches the current tracker schema.
-   - Assign each issue an explicit `Mode`. **Default `AUTO`.** Most spec-revision findings are AUTO. Set `HITL — <one-line reason>` only when resolving the finding requires a concrete human-input step: an unsettled architectural/product decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`.
+   - Assign each issue an explicit `Mode`. **Default `AUTO`.** Most spec-revision findings are AUTO. Set `HITL — <one-line reason>` only when resolving the finding requires a concrete human-input step: an unsettled architectural/product decision, design review, a judgment call, manual testing that can't be automated, or external-system access. When unclear, choose `AUTO`. A finding's severity does not by itself make it HITL.
 
-3. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
+4. Update `siw/OPEN_ISSUES_OVERVIEW.md` with new issue rows.
    - For a brand-new modern section, use the 7-column modern schema including the `Mode` column (`# | Title | Status | Size | Priority | Mode | Related`); the `Mode` cell is `AUTO` or `HITL` (the reason lives in the issue body, not the table).
    - When a section already exists, match its column count exactly (legacy 5-col / pre-Mode 6-col / modern 7-col) and preserve it in place — do not migrate layouts or add a `Mode` column to a section that lacks one.
    - If `## General` already has a section-level `**Parallelization:**` line, treat that line as a roll-up summary for the whole section rather than a per-issue mirror.
    - Recompute it from all real `G-*` issue files after adding the new issue: if every issue shares the same section-level category/gating note, keep that shared summary; otherwise set it to `Mixed — see issue files for exact guidance`.
    - If the General section is still in its empty placeholder state (`_None_` row / no real issues yet), replace the default summary from `siw:init` with the first real issue's category.
    - If an existing legacy General section has no `**Parallelization:**` line, preserve that absence instead of inserting one.
-4. Update `siw/LOG.md` Current Progress section using `assets/spec-log-last-completed.md`.
+5. For a `PROD-NNN` finding, annotate its report entry with `Existing issue: G-{NNN}` immediately after the issue is created. If the report cannot be edited, warn in the final summary and include the finding id plus created issue id.
+6. Update `siw/LOG.md` Current Progress section using `assets/spec-log-last-completed.md`.
 
-If any issue file, overview, or log write fails after issue creation starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created.
+If any issue file, overview, source-report annotation, or log write fails after issue creation starts, surface the partial state in the completion summary and offer rollback guidance instead of reporting the issue as cleanly created.

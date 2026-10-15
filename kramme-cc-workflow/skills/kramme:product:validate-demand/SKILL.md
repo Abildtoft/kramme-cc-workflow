@@ -17,7 +17,7 @@ Use this skill for one decision: whether a concrete idea has sufficient real-wor
 - For broad questions about blind spots or unknown unknowns, use `kramme:discovery:strategic-inquiry`.
 - For the durable product direction in `STRATEGY.md`, use `kramme:product:strategy`.
 - For requirements discovery and a comprehensive plan, use `kramme:discovery:interview`.
-- For auditing an existing SIW specification, use `kramme:siw:product-audit`.
+- For auditing an existing SIW specification's product judgment, use `kramme:siw:spec-audit --product`.
 
 Do not design the product, create mockups, write promotional copy, recruit users, generate implementation plans, modify code, or invoke an implementation workflow. A `GO` verdict authorizes the next product-definition conversation, not a build.
 

@@ -38,7 +38,7 @@
       "producer": "kramme:product:review"
     },
     {
-      "id": "product-audit",
+      "id": "product-audit-legacy",
       "path": "PRODUCT_AUDIT.md",
       "type": "file",
       "category": "working-dir",
@@ -326,7 +326,7 @@
       "producer": "kramme:siw:spec-audit"
     },
     {
-      "id": "siw-product-audit",
+      "id": "siw-product-audit-legacy",
       "path": "siw/PRODUCT_AUDIT.md",
       "type": "file",
       "category": "working-dir",
