@@ -59,3 +59,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-06-22
     baseline_hash: "sha256:93478c870fa2884376910fb1f7202e85d8524ed63668f513281d1c5b6fd373c3"
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "The Module Map section of the feature plan template follows this article's advice to design module boundaries from the PRD onward."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"

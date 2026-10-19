@@ -168,6 +168,8 @@ Copy the six-area structure from `assets/feature-spec-template.md` and fill each
 
 Consider user experience (UX: clear, reliable task completion), developer experience (DX: understanding, changing, testing, and debugging), and agent experience (AX: discovering context, executing predictably, recovering, and verifying). Prefer outcomes that improve all three within scope; unchanged or inapplicable dimensions are acceptable. Put relevant measurable outcomes in Success Criteria, record established behavior and contracts outside the intended change plus the intentional changes themselves in Boundaries, and put regression coverage in Testing Strategy. Make material tradeoffs explicit without inventing requirements or adding a seventh area.
 
+When the feature adds or changes a module's public interface, record that under Boundaries as an Ask First rule naming the module and its interface impact (`new` or `changed`), so the interface stays a human decision while the implementation behind it proceeds. Name modules by their domain names, not file paths, and add no such rule for implementation-only work.
+
 Replace every angle-bracket template placeholder with concrete content and delete the author note comment block before treating the draft as reviewable.
 
 If drafting surfaces scope that the confirmed assumptions (or the grounded context in Synthesize mode) did not cover, surface it to the user before widening the spec rather than letting new scope appear silently mid-draft.

@@ -94,6 +94,10 @@ Draft the issue following this template:
 - [Component/module 1]
 - [Component/module 2]
 
+### Interface Impact
+
+- [Module]: [new | changed | implementation-only] — [what callers gain or must change; "none" for implementation-only]
+
 ### Patterns to Follow
 
 [Reference existing patterns in the codebase] [Only include code examples for specific bugs or concrete fixes]
@@ -134,4 +138,5 @@ Draft the issue following this template:
   - Making a very concrete, well-defined fix
   - The code example clarifies something that words cannot
 - For new features, describe the approach architecturally, not the implementation details
+- Record interface impact for each touched module: `new`, `changed`, or `implementation-only`. Settle new and changed interfaces in the issue; implementation-only work proceeds behind the existing interface and its tests
 - Engineers will determine the detailed implementation

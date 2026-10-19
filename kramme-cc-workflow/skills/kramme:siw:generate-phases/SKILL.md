@@ -242,6 +242,7 @@ For each phase, decompose into atomic tasks:
 - **Clearly defined** - Unambiguous scope with explicit boundaries
 - **Mode-tagged** - `AUTO` or `HITL` (see Mode taxonomy below)
 - **Prefactoring-aware** - Any necessary preparatory refactor is explicit as its own first slice or dependency, not hidden inside a feature task
+- **Interface-aware** - Its interface impact is recorded per touched module: `new`, `changed`, or `implementation-only`. A new or changed interface needs a settled shape in the spec; when the spec leaves it open, mark the task that defines it `HITL — needs architectural decision` and make it block the tasks that build behind it, which stay `AUTO`
 
 **Mode taxonomy (AUTO vs HITL — load-bearing for autonomous-agent pickup):**
 

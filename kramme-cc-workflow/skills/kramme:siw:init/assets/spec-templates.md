@@ -129,6 +129,7 @@ Use when `discovered_content` exists. Discovery mode generates content through i
 
 - Data Model details
 - API contracts
+- Module map: each module this work creates or changes, its public entry point, and its interface impact (`new`, `changed`, or `implementation-only`)
 - Architecture decisions
 - State management notes}
 

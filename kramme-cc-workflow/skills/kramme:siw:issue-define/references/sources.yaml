@@ -13,3 +13,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:05f43a612b1bbb64b35a61a729856a80a614a14fbf4499ac05ba71764a34472f"
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "The Interface Impact section in the comprehensive issue template follows this article's advice to carry module boundaries from specs into implementation issues."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"

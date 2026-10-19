@@ -18,6 +18,11 @@ Technical Implementation Plan for {identifier}
 |-----------|--------|-----------------------|
 | {related issue/document/asset or "None found"} | {accessible/inaccessible and why} | {requirement, dependency, risk, or "None"} |
 
+## Interfaces
+| Module | Interface impact | Change |
+|--------|------------------|--------|
+| {module} | {new / changed / implementation-only} | {export, signature, or contract change; "none" when implementation-only} |
+
 ## Files to Modify/Create
 - {file 1} - {what changes}
 - {file 2} - {what changes}
@@ -29,7 +34,7 @@ Based on exploration of {similar feature}, follow these patterns:
 - {pattern 2}
 
 ## Implementation Steps
-1. {step 1}
+1. {step 1 — for a new or changed interface, define it and the tests that pin it before the implementation behind it}
 2. {step 2}
 3. {step 3}
 ...

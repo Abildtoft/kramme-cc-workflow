@@ -13,3 +13,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-09
     baseline_hash: "sha256:918bdefab9313100cb1f7ccb412e2a773fe2f2801dd20d44f6b2acf7a42ca456"
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "The issue template's Interface Impact section and the interface-aware task rule, which makes an unsettled interface a HITL blocker for the AUTO tasks behind it, follow this article's division of labor in which people own module interfaces and agents own implementations."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"

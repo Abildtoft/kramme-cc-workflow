@@ -53,6 +53,10 @@ Use this template when creating each issue file in Phase 6.1.
 - {Component/file 1}
 - {Component/file 2}
 
+### Interface Impact
+
+- {Module}: {new | changed | implementation-only} — {what callers gain or must change; "none" for implementation-only}
+
 ### Dependencies
 
 - Blocked by: {P1-001, P2-003, etc. if any, or "None - can start immediately"}
