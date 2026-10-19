@@ -16,6 +16,7 @@ The report is written for the reviewer to act on. Findings are framed for the PR
 - Current GitHub review decision: <reviewDecision or "none">
 - Your last review: <APPROVED | CHANGES_REQUESTED | COMMENTED | none>
 - Conversation: <N open threads, M awaiting you> | none yet (first pass)
+- Linked Linear issues: <reviewed identifiers and verdicts | none found | incomplete — reason>
 - Draft review: <exact DRAFT_REVIEW_STATUS; include review ID/counts when available>
 
 ## Recommended Verdict: REQUEST CHANGES | COMMENT | APPROVE
@@ -37,6 +38,29 @@ _You make the final call. A pending draft, when requested, remains unsubmitted u
 ## Coverage Status (omit when complete)
 
 <dimension> not covered: <reason — e.g. product-review agent failed, app not running, --code-only>.
+
+## Linked Linear Issues
+
+- Discovery: <complete | partial — exact gap>
+- Issues: <in-scope issue links | none found after complete discovery>
+- Excluded or ambiguous references: <identifier/link — relationship or clarification needed, with source | none>
+
+For each in-scope issue:
+
+### <ISSUE-ID — title and URL>
+
+- Audit: <PASS | PASS_WITH_CONCERNS | FAIL | BLOCKED | not covered — reason>
+- Reviewed snapshot: <head and base OIDs | not reviewed>
+- Requirements: <total; verified / partial / missing / contradicted / unverified / out-of-scope counts>
+
+| ID | Linear requirement and citation | Status | PR evidence | Test evidence or gap |
+| --- | --- | --- | --- | --- |
+| ENG-217/LREQ-001 | <requirement and issue/comment citation> | <status> | <diff/code path:line> | <trusted CI evidence or exact limitation> |
+
+- Scope decisions: <material extensions, unrelated changes, contradictions, or authorization from another reviewed issue, with citations | none>
+- Verified alignments: <requirement-to-code proof | none established>
+- Context and verification gaps: <inaccessible references, ambiguous requirements, or missing evidence | none>
+- Findings: <cross-references to the severity sections or existing conversation below | none>
 
 ## Open Conversation (X threads, Y awaiting you)
 
@@ -138,5 +162,6 @@ gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/r
 - **Draft Review** — distinguish eligible proposed comments from comments actually included. Before the offer or write, use `not created — awaiting authorization` or `not created — authorized; creation not attempted yet`, with zero included comments and no payload. Existing-thread replies and non-diff anchors cannot be bundled into the pending review and must be listed as omissions rather than silently dropped; identify them by thread, scope, or another concrete descriptor when no `path:line` exists. `PENDING` means the skill created the review but did not submit it. Exact included counts require a confirmed pending-review response; ambiguous outcomes report the attempted count separately.
 - **Already Raised in the Conversation** — fresh findings you suppressed because someone already raised them. Naming who raised it and linking the thread keeps you from re-posting and shows the concern is tracked. If your finding materially extends the existing thread, draft it as a reply under Open Conversation instead of listing it here.
 - **Verdict** — see the skill's draft step for the REQUEST CHANGES / COMMENT / APPROVE criteria and how an ongoing review's conversation weighs in. Always a recommendation — never posted automatically.
+- **Linked Linear Issues** — always present, including when no issues were found. Keep each issue's requirement matrix and audit verdict distinct from the recommended GitHub verdict. Missing access or incomplete discovery is a coverage gap, never proof of compliance; withhold APPROVE while an in-scope audit remains incomplete or blocked. Issue-derived findings use the normal severity sections and conversation deduplication. A `review-scope` omission stays in the report and is ineligible for pending inline comments.
 - **Strengths** — a review with zero positive observations is usually miscalibrated. Keep strengths in this local report only; never turn them into a top-level GitHub review body. If the PR genuinely has nothing to praise, say so explicitly rather than omitting the section.
 - **Markers** — keep `UNVERIFIED` on findings you could not trace from the diff, and `NOTICED BUT NOT TOUCHING` on issues that pre-date this PR, so the author can separate "you introduced this" from "this was already here."
