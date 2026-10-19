@@ -70,15 +70,38 @@ These rejections are pre-filters — apply them before recording a finding, not 
    - **Path**: validate that every named file/folder exists or every glob matches at least one file. If a value does not resolve, ask the user to clarify — do not fall back to `feature`. For folders, recursively include source files under the folder.
    - **Feature**: search for the feature name and project-glossary synonyms across directory names, module names, routes, package names, tests, docs, config, schemas, and user-facing copy. Include primary implementation files, matching tests, API/routes, data models, feature flags, fixtures, and docs that directly define the feature. If the name maps to multiple unrelated areas, or if no file's name, route, or schema contains the feature term, present the candidate file groups (or the empty result) and ask the user to confirm or rename. If the user confirms an empty result, terminate with a one-line message that the feature could not be located rather than producing a report.
 
-8. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/<base-branch> (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, tests, and docs)`. Report it to the user before proceeding.
+8. **Collect co-change evidence** in full, path, and feature modes when the project is a git repository; skip this step in PR mode. Files in separate modules that keep changing in the same commits show low locality, the main lead for deepening candidates. The pipeline below skips merge commits and commits touching more than 30 files, and treats nested directories as one module:
+
+   ```bash
+   git log --since="12 months ago" --no-merges --format='>>> %H' --name-only -- <in-scope source paths> |
+     awk '
+       function dir(path,  d) { d = path; if (!sub(/\/[^\/]*$/, "", d)) d = "."; return d }
+       function nested(a, b) { return a == "." || b == "." || index(a "/", b "/") == 1 || index(b "/", a "/") == 1 }
+       function flush(  i, j) {
+         if (n >= 2 && n <= 30)
+           for (i = 1; i < n; i++)
+             for (j = i + 1; j <= n; j++)
+               if (!nested(dir(f[i]), dir(f[j])))
+                 print (f[i] < f[j] ? f[i] "\t" f[j] : f[j] "\t" f[i])
+         n = 0
+       }
+       /^>>> / { flush(); next }
+       NF { f[++n] = $0 }
+       END { flush() }' |
+     sort | uniq -c | sort -rn | awk '$1 >= 3' | head -40
+   ```
+
+   Store the pairs whose files both still exist as `CO_CHANGE` (count and the two paths). If the history is too short or the command fails, proceed silently with `CO_CHANGE = []`.
+
+9. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/<base-branch> (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, tests, and docs)`. Report it to the user before proceeding.
 
 ### Phase 2 — Parallel Scan
 
-Read `references/checklist.md` for the full checklist of categories and recording format. For findings in the Structural & Architectural and Coupling & Dependencies categories — anywhere depth, seams, wrappers, or speculative indirection are at issue — read `references/architecture-language.md` and use that vocabulary in the finding. Specifically, before flagging a wrapper as shallow, apply the **deletion test**; before flagging an interface as a speculative seam, apply the **adapter-count rule** ("one adapter = hypothetical seam, two adapters = real seam"). A finding that does not satisfy these tests is not yet a finding.
+Read `references/checklist.md` for the full checklist of categories and recording format. For findings in the Structural & Architectural and Coupling & Dependencies categories — anywhere depth, seams, wrappers, speculative indirection, or scattered concepts are at issue — read `${CLAUDE_PLUGIN_ROOT}/shared/architecture/references/architecture-language.md` and use that vocabulary in the finding. Specifically, before flagging a wrapper as shallow, apply the **deletion test**; before flagging an interface as a speculative seam, apply the **adapter-count rule** ("one adapter = hypothetical seam, two adapters = real seam"); before proposing a **deepening candidate**, gather the scattering evidence and interface sketch the glossary requires. A finding that does not satisfy these tests is not yet a finding.
 
 Launch parallel Explore agents to cover the codebase efficiently. Split work by **category group**, not by directory, so each agent builds cross-cutting expertise:
 
-- **Agent 1 — Structure & Dead Code**: categories 1 (Dead Code), 8 (Coupling & Dependencies), 9 (Structural & Architectural)
+- **Agent 1 — Structure & Dead Code**: categories 1 (Dead Code), 8 (Coupling & Dependencies), 9 (Structural & Architectural). Pass it `CO_CHANGE` and the resolved glossary path; it treats each co-change pair as a deepening-candidate lead to confirm or reject from the code.
 - **Agent 2 — Logic & Complexity**: categories 3 (Complexity), 4 (Abstraction Issues), 7 (Error Handling)
 - **Agent 3 — Duplication & Types**: categories 2 (Duplication), 6 (Type & Safety Issues), 10 (Performance Candidates)
 - **Agent 4 — Readability**: category 5 (Naming & Readability) — only if the user explicitly asks for naming/readability review, otherwise skip this agent.
@@ -128,7 +151,7 @@ Each agent must:
 1. Read `assets/report-template.md` for the output format.
 2. Produce the report following that template. In the "Patterns & Themes" section, mark each theme's total line count and flag themes ≥500 lines as **automation candidates**.
 3. In PR mode, include `PR relevance` for every active finding using the PR-only table column described in the template, and include the count of filtered PR-scope observations in the summary. In non-PR scopes, omit PR relevance entirely. Filtered observations must not be described as findings.
-4. **Depth/seam findings carry extra fields.** Any finding whose category is Structural or Coupling and whose vocabulary comes from `references/architecture-language.md` must include a one-line **deletion test** result (e.g., "inlining at the 1 call site removes 4 lines, no caller becomes harder to read") and an **adapter count** when claiming a seam is speculative. Findings missing these fields are not yet ready and should be dropped at this point, not paper-clipped together.
+4. **Depth/seam findings carry extra fields.** Any finding whose category is Structural or Coupling and whose vocabulary comes from the shared glossary must include a one-line **deletion test** result (e.g., "inlining at the 1 call site removes 4 lines, no caller becomes harder to read") and an **adapter count** when claiming a seam is speculative. Deepening candidates carry the glossary's deepening fields instead — evidence, proposed interface, what moves behind it, tests, and benefit — and go in the report's Deepening Candidates section. Findings missing these fields are not yet ready and should be dropped at this point, not paper-clipped together.
 5. **Names follow the project glossary.** When `UBIQUITOUS_LANGUAGE.md` was read in Phase 1, use the canonical domain terms in finding titles and descriptions. Default helper-class language is a tell that the scan didn't read the project's own vocabulary.
 6. Write the report to `REFACTOR_OPPORTUNITIES_OVERVIEW.md` in the project root. Overwrite any prior report — the file represents the latest scan only.
 7. End the run with `Agents launched: N` — the exact number of scan agents launched in Phase 2, or `0` when the scan ran in the main thread — so an orchestrator can account for review cost.
