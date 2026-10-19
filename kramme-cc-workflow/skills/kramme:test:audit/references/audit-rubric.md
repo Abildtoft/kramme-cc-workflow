@@ -91,6 +91,7 @@ Strong evidence:
 - assertions target private methods, internal call order, intermediate data, exact logs, or non-contractual markup, styling, or copy
 - mocks encode the current implementation graph instead of external boundaries
 - harmless refactors require rewriting expectations while observable behavior stays fixed
+- the test imports another module's implementation files instead of its public entry point, so moving code behind that interface breaks the test while behavior stays fixed
 
 Interaction assertions are valid when the interaction is itself a contract: durable events, writes, security boundaries, external calls, idempotency, or required non-calls.
 

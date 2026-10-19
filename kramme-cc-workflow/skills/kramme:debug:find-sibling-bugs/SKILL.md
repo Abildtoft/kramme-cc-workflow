@@ -156,6 +156,8 @@ Read the report shape from `assets/report-template.md` when the candidate valida
 
 Order findings by confidence, then likely impact and reach. Cite current paths and line numbers. For each sibling, state the matching trigger, mechanism, absent invariant, and evidence; do not merely say it "looks similar."
 
+When the worked example and its confirmed or probable siblings need the same fix invariant at three or more sites, each caller is carrying complexity that one module could own. Fill the template's Deepening Candidate section: name the module that could enforce the invariant once behind its interface, and suggest `/kramme:code:refactor-opportunities` to assess it. Do not plan or perform that consolidation here.
+
 If no candidate survives validation, say `No validated sibling bugs found.` This means the completed search found none, not that the repository is bug-free.
 
 ## Verification

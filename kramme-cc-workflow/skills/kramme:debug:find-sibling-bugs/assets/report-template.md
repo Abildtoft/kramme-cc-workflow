@@ -42,6 +42,16 @@
 
 {Repeat for each validated sibling associated with this worked example. If none survive validation, write `No validated sibling bugs found.`}
 
+### Deepening Candidate
+
+{Include only when the fix invariant must hold at three or more sites, counting the worked example; otherwise omit this section.}
+
+**Repeated invariant:** {the fix invariant and the sites that each enforce it}
+
+**Owning module:** {the module that could enforce it once behind its interface}
+
+**Next step:** `/kramme:code:refactor-opportunities` on {that module or feature}
+
 ### Search Coverage
 
 - **Changed example:** {files that established the diagnosis}

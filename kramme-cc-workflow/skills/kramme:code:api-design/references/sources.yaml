@@ -10,10 +10,10 @@ sources:
   - id: pocock-improve-codebase-architecture-deepening
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
     title: "Matt Pocock skills - codebase-design (DEEPENING.md)"
-    rationale: "The dependency-category framing for choosing test stand-ins and adapter strategy (in-process, local-substitutable, remote-but-owned, true-external) is operationalized in references/design-it-twice.md as a 'Dependency categories' subsection that gates constraint #4 (Ports & adapters) and is required output in the per-sub-agent prompt template's 'Dependency strategy' section."
+    rationale: "The dependency-category framing for choosing test stand-ins and adapter strategy (in-process, local-substitutable, remote-but-owned, true-external) is operationalized in references/design-it-twice.md as a 'Dependency categories' subsection that gates constraint #4 (Ports & adapters) and is required output in the per-sub-agent prompt template's 'Dependency strategy' section. The deletion test and adapter-count rule in the shared architecture glossary that Rule 0's depth check applies are also adapted from this source."
     usage: inspiration
-    last_reviewed_at: 2026-07-03
-    baseline_hash: "sha256:125e6b77413ad2bc7cf7a772bc74336d580a50f9e797db2178ed133d62333d06"
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:f3dd099ce99289bd213914d8ee3e2429b78309c3957ca4583f7659551b1d53c1"
   - id: pocock-improve-codebase-architecture-interface-design
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DESIGN-IT-TWICE.md
     title: "Matt Pocock skills - codebase-design (DESIGN-IT-TWICE.md)"
@@ -21,3 +21,17 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-03
     baseline_hash: "sha256:21c3264953bd30ee87b181a3ccaf0e70649f461e5ffd7dc654acee4ba1788b31"
+  - id: pocock-improve-codebase-architecture-language
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/SKILL.md
+    title: "Matt Pocock skills - codebase-design (SKILL.md)"
+    rationale: "The depth, locality, and seam definitions in the shared architecture glossary that Rule 0's depth check and the Design It Twice comparison rubric use are adapted from this source."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:2c20617f87ec8af6a434859f381b2f061a69b530444e74eb39e78bb016a6d1e2"
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "Rule 0's depth check — an interface much smaller than the behavior it hides, so an agent can use the module without reading its implementation — follows this article's case for deep modules."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"
