@@ -83,6 +83,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 - **Reference, don't duplicate** - Point to skills: "See `.claude/skills/db-migrate/SKILL.md`"
 - **Context Pointers over pasted detail** - Point to deeper docs, scripts, modules, tests, schemas, or ADRs with a clear when/why cue
 - **One hop** - Important pointers should be directly visible from the active agent instruction file; avoid chains of documents that only point to more documents
+- **Enforce before instructing** - Before adding a rule that steers agents around the code's structure ("when you change X, also update Y", "never import from `foo/internal`"), check whether a lint rule, type, test, or script could enforce it, or whether the rule papers over scattered code that a refactor should fix; propose that alternative alongside the rule
 - **No filler** - No intros, conclusions, or pleasantries
 
 ## After Writing
@@ -106,6 +107,17 @@ Use this authoring example when the repo has multiple important docs, skills, sc
 - **ALWAYS** run `scripts/verify.sh` before claiming local verification; see `docs/testing.md` only for suite-specific details
 - **PREFER** `packages/api/src/routes/index.ts` as the entry point for API route discovery
 - **CAN** use `.claude/skills/db-migrate/SKILL.md` when changing database migrations
+```
+
+### Module Map
+
+Use this authoring example when the top-level modules are not obvious from the directory tree. List each module once, with what it owns and its entry point, so an agent starts from the interface instead of searching implementation files:
+
+```markdown
+## Module Map
+
+- **NOTE** `packages/billing/` owns invoices and payment state; enter through `packages/billing/src/index.ts`
+- **NOTE** `packages/catalog/` owns products and pricing rules; enter through `packages/catalog/src/index.ts`
 ```
 
 ### When Stuck
