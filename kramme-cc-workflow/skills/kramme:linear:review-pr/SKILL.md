@@ -160,7 +160,7 @@ Read the report structure from `references/report-template.md` and assemble ever
 
 The report must include:
 
-- Reviewed PR URL and exact head OID
+- Reviewed PR URL and exact head and base OIDs
 - Linear issue URL and identifier
 - Verdict and coverage counts
 - Requirement traceability matrix

@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:github-review
-description: "Review a GitHub PR where you are the assigned reviewer, not the author. Produces a local Markdown report, deduplicates existing conversations, and drafts inline comments, replies, and a verdict recommendation. With confirmation—or --draft-review—creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), responding on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
+description: "Review a GitHub PR as the assigned reviewer, including linked Linear issues. Writes a local report, deduplicates conversations, and drafts inline comments, replies, and a verdict. With confirmation or --draft-review, creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), replying on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
 argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--parallel] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Review a GitHub PR
 
-Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, and produces a reviewer-facing assessment that can optionally become one pending GitHub review.
+Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, checks linked Linear issues when present, and produces a reviewer-facing assessment that can optionally become one pending GitHub review.
 
 This skill does not write to GitHub until the user authorizes it. It always materializes the Markdown review report before offering or attempting the GitHub write. After the report and draft comments are ready, it offers to create one pending GitHub review containing only the eligible proposed inline comments. The local report keeps the recommended verdict, rationale, strengths, and other summary context; none of that material is posted as the review body. The explicit `--draft-review` flag supplies authorization up front and skips the confirmation, but the report still comes first. Either path only creates the draft: the skill never submits the review or chooses a verdict on the user's behalf.
 
@@ -70,7 +70,7 @@ CURRENT_BRANCH=$(git branch --show-current 2> /dev/null || true)
 
 if [ -z "${PR_SELECTOR:-}" ] && [ -n "$CURRENT_BRANCH" ]; then
   BRANCH_PR_JSON=$(gh pr view \
-    --json number,url,title,author,state,baseRefName,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision,reviewRequests \
+    --json number,url,title,body,author,state,baseRefName,baseRefOid,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision,reviewRequests \
     2> /dev/null || true)
 
   if [ -n "$BRANCH_PR_JSON" ]; then
@@ -104,7 +104,7 @@ Fetch the PR context unless it was already resolved from the current branch:
 ```bash
 if [ -z "$PR_JSON" ]; then
   PR_JSON=$(gh pr view ${PR_SELECTOR:+"$PR_SELECTOR"} \
-    --json number,url,title,author,baseRefName,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision) \
+    --json number,url,title,body,author,baseRefName,baseRefOid,headRefName,headRefOid,additions,deletions,changedFiles,reviewDecision) \
     || {
       echo "PR not found. Pass a PR number or URL." >&2
       exit 1
@@ -114,8 +114,10 @@ fi
 PR_NUMBER=$(printf '%s' "$PR_JSON" | jq -r '.number')
 PR_URL=$(printf '%s' "$PR_JSON" | jq -r '.url')
 PR_TITLE=$(printf '%s' "$PR_JSON" | jq -r '.title')
+PR_BODY=$(printf '%s' "$PR_JSON" | jq -r '.body // ""')
 AUTHOR=$(printf '%s' "$PR_JSON" | jq -r '.author.login')
 PR_BASE_BRANCH=$(printf '%s' "$PR_JSON" | jq -r '.baseRefName')
+PR_BASE_OID=$(printf '%s' "$PR_JSON" | jq -r '.baseRefOid')
 BASE_REF_ARG=${BASE_OVERRIDE:-$PR_BASE_BRANCH}
 HEAD_REF=$(printf '%s' "$PR_JSON" | jq -r '.headRefName')
 HEAD_OID=$(printf '%s' "$PR_JSON" | jq -r '.headRefOid')
@@ -136,6 +138,10 @@ PR_NWO=$(printf '%s' "$PR_URL" | sed -E 's#^https://github.com/([^/]+/[^/]+)/pul
 **Repository guard.** The PR head must be fetchable from the local `origin`. This works for forks too, because the base repository always exposes a `pull/<N>/head` ref. If `PR_NWO` differs from `LOCAL_NWO`, stop: this skill must run from a clone of the PR's base repository. Tell the user the PR belongs to `PR_NWO` but the current clone is `LOCAL_NWO`.
 
 **Author guard.** If `AUTHOR` equals `SELF`, this PR is yours. Warn the user and ask whether to continue. Point them to `kramme:pr:code-review` for reviewing your own branch and `kramme:pr:github-review-reply` for responding to reviewers on your own PR. Only continue if the user confirms.
+
+## Step 2a: Discover Linked Linear Issues
+
+Read Section 1 of `references/linear-review.md` to discover and deduplicate linked issues from the PR metadata and linking comments. This discovery runs independently of `--fresh`, `--include-bots`, and `--code-only`. No linked issues means no Linear prerequisite; unavailable linked context is a coverage gap, not a reason to stop the code review.
 
 ## Step 3: Fetch the PR Into an Isolated Worktree
 
@@ -190,7 +196,7 @@ fi
 eval "$RESOLVED"
 ```
 
-The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. If `CHANGED_FILES` is empty, the PR has no diff against its base: note there are no code changes to review (no fresh findings), skip Steps 5–6, but still run Step 7 to surface the existing conversation unless `--fresh` is set, then clean up.
+The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. If `CHANGED_FILES` is empty, the PR has no diff against its base: note there are no code changes to review (no fresh findings), skip Steps 5–6, but still run Step 7 to surface the existing conversation unless `--fresh` is set, then clean up. Mark any linked Linear issues as not covered because there is no implementation diff; never count them as verified.
 
 ## Step 5: Classify Scope
 
@@ -208,9 +214,11 @@ Run all review commands **with the worktree as the working directory** (you are 
 
 2. **UI/UX/visual/accessibility/product — when `RUN_UI=true`.** Delegate to `/kramme:pr:product-review --base "$BASE_REF" --inline`, appending `--categories <UI_CATEGORIES>` when the user supplied that flag. There is normally no running app for someone else's PR, so the UI pass runs as static, diff-based analysis. Capture its findings.
 
-When `RUN_UI=false`, do not auto-run `kramme:pr:product-review`; never auto-run `kramme:code:copy-review --pr`. Mention them in the final report as optional deeper passes the user can request.
+3. **Linear requirements — when linked issues were discovered.** Follow Sections 2–3 of `references/linear-review.md`. Delegate to `/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"` separately for each in-scope issue, capture its inline result, and merge supported findings with the code/UI findings before Step 7. Keep this audit orchestrator on the session's model; its interface accepts neither `--parallel` nor `--subagent-model`.
 
-**Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded.
+When `RUN_UI=false`, do not auto-run `kramme:pr:product-review`; never auto-run `kramme:code:copy-review --pr`. Mention them in the final report as optional deeper passes the user can request. The Linear pass still runs with `--code-only` and `--fresh`.
+
+**Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded. Missing Linear access, unresolved issue scope, or a blocked Linear audit must appear in Coverage Status and the Linear section; withhold an `APPROVE` recommendation while these gaps remain.
 
 ## Step 7: Map the Existing Review Conversation
 
@@ -255,7 +263,7 @@ If `--keep-worktree` was passed, report the path so the user can inspect or remo
 
 ## Step 9: Draft the Review Comments
 
-Read `references/report-template.md` and `references/comment-drafting.md`. Follow the latter's finding categories, evidence/comment separation, standalone-context rules, conversation deduplication, reply rules, and verdict criteria to complete the report fields.
+Read `references/report-template.md` and `references/comment-drafting.md`. Follow the latter's finding categories, evidence/comment separation, standalone-context rules, conversation deduplication, reply rules, and verdict criteria to complete the report fields. Include the per-issue requirement coverage and context gaps from `references/linear-review.md`; Linear-derived findings use the same deduplication and drafting flow.
 
 ## Step 10: Humanize the Draft Comments
 
@@ -296,6 +304,8 @@ After Sections 2–4 finish, record the resulting draft-review status, review ID
 If `INLINE_MODE=true`, return the refreshed full report in chat after the user answers or the pre-authorized creation attempt finishes. Otherwise, the report at `ORIG_ROOT/GITHUB_PR_REVIEW_OVERVIEW.md` is already current from Step 12.
 
 End by telling the user: the recommended verdict, the count of findings per severity, the count of threads awaiting your reply, the report path (or that it was returned inline), and the exact draft-review outcome. If a pending review was created, give its URL and say it remains unsubmitted for inspection. Say that GitHub was not changed only for statuses that confirm no write occurred (`declined` or `not created — ...`). For `write outcome unknown — ...` or `unexpected state — ...`, say a write may have occurred, surface every available review ID/URL, and tell the user to inspect GitHub without retrying.
+
+Also state which linked Linear issues were reviewed, or why their review was incomplete; when none were found, say so.
 
 ## Artifact Lifecycle
 

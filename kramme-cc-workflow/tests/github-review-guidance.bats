@@ -8,7 +8,108 @@ setup() {
 	DRAFT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/draft-review.md"
 	REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/report-template.md"
 	UI_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/ui-relevance.md"
+	LINEAR_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/linear-review.md"
+	LINEAR_AUDIT_REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:linear:review-pr/references/report-template.md"
 	README="$PLUGIN_ROOT/../README.md"
+}
+
+@test "github review discovers linked issues from both PR lookup paths before inspection" {
+	run python3 - "$SKILL" "$LINEAR_REFERENCE" <<'PY'
+import pathlib
+import sys
+
+skill, reference = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+lookups = [line for line in skill.splitlines() if "--json number,url,title," in line]
+assert len(lookups) == 2, "current-branch and explicit PR lookups must both supply discovery context"
+for line in lookups:
+    fields = line.split("--json ")[1].rstrip(" \\\t)").split(",")
+    assert {"body", "baseRefOid", "headRefOid", "headRefName"} <= set(fields)
+discovery = skill.index("## Step 2a: Discover Linked Linear Issues")
+assert skill.index("**Author guard.**") < discovery < skill.index("## Step 3:")
+assert "Section 1 of `references/linear-review.md`" in skill[discovery:]
+for term in ["PR_TITLE", "PR_BODY", "HEAD_REF", "case-insensitively", "deduplicate", "comment URL"]:
+    assert term in reference, f"discovery must preserve {term}"
+assert "independently of `--fresh`, `--include-bots`, and `--code-only`" in skill
+assert "without requiring Linear MCP" in reference
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear link discovery preserves paginated bot comments and reports lookup failure" {
+	run python3 - "$LINEAR_REFERENCE" <<'PY'
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
+
+reference = pathlib.Path(sys.argv[1]).read_text()
+block = re.findall(r"```bash\n(.*?)\n```", reference, re.S)[0]
+pages = [[], [{"user": {"type": "Bot"}, "body": "[ENG-217](https://linear.app/acme/issue/ENG-217/export)"}]]
+script = '''set -eu
+gh() {
+  test "$*" = "api --paginate --slurp repos/acme/repo/issues/42/comments" || exit 3
+  printf '%s' "$COMMENTS_FIXTURE"
+  return "$GH_RESULT"
+}
+''' + block + '''
+printf '%s\\n%s\\n' "$LINEAR_DISCOVERY_STATUS" "$LINEAR_LINK_COMMENTS_JSON"
+'''
+for result in [0, 1]:
+    env = dict(os.environ, PR_NWO="acme/repo", PR_NUMBER="42", GH_RESULT=str(result),
+               COMMENTS_FIXTURE=json.dumps(pages), SKIP_THREADS="true", CODE_ONLY="true", INCLUDE_BOTS="false")
+    probe = subprocess.run(["bash", "-c", script], env=env, text=True, capture_output=True)
+    assert probe.returncode == 0, probe.stderr
+    status, comments = probe.stdout.split("\n", 1)
+    if result == 0:
+        assert status == "complete"
+        assert json.loads(comments) == pages, "link discovery must retain bot comments from later pages"
+    else:
+        assert status.startswith("partial"), "failed discovery cannot mean no linked issues"
+        assert json.loads(comments) == []
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review audits each linked issue on the same snapshot and reconciles shared scope" {
+	run python3 - "$SKILL" "$LINEAR_REFERENCE" "$LINEAR_AUDIT_REPORT_TEMPLATE" <<'PY'
+import pathlib
+import sys
+
+skill, reference, audit_report = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+review = skill[skill.index("## Step 6:"):skill.index("## Step 7:")]
+assert '/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"' in review
+assert "separately for each in-scope issue" in review
+assert "before Step 7" in review, "issue findings must participate in conversation deduplication"
+for term in ["read the sibling skill's `SKILL.md`", "never updates Linear", "Never run PR-head code",
+             "head and base OIDs match `HEAD_OID` and `PR_BASE_OID`", "discard that result's findings",
+             "`BASE_REF` commit to equal `PR_BASE_OID`", "another reviewed in-scope issue",
+             "do not suppress contradictions", "ENG-217/LREQ-001", "`review-scope`"]:
+    assert term in reference, f"linked-issue audit lost its {term} contract"
+assert "**Reviewed head:**" in audit_report and "**Reviewed base:**" in audit_report, "child output must expose both snapshot OIDs for aggregation"
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review reports issue traceability and withholds approval for missing coverage" {
+	run python3 - "$LINEAR_REFERENCE" "$REPORT_TEMPLATE" "$COMMENT_REFERENCE" "$README" <<'PY'
+import pathlib
+import sys
+
+reference, report, comments, readme = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+for term in ["## Linked Linear Issues", "Reviewed snapshot", "Linear requirement and citation",
+             "Test evidence or gap", "Scope decisions", "Context and verification gaps"]:
+    assert term in report, f"report must retain {term}"
+assert "not covered — Linear MCP unavailable" in reference
+assert "Missing runtime evidence alone does not prove an implementation defect" in reference
+assert "Withhold `APPROVE`" in reference
+assert "prevents `APPROVE`" in comments
+assert "no changed-line anchor" in reference
+assert "ineligible for pending inline comments" in report
+assert "per-issue requirement evidence and coverage gaps" in readme
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "github review materializes the report before offering the pending-review write" {

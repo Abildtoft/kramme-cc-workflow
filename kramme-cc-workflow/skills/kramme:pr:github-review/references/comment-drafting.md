@@ -59,6 +59,8 @@ Do not draft acknowledgement-only replies. Recommend:
 - `COMMENT` when no Blocking finding remains but Important findings, open questions, or threads awaiting you remain.
 - `APPROVE` when no Blocking or Important findings or unresolved concerns you raised remain, and the change improves code health.
 
+Apply the linked-issue coverage gate from `references/linear-review.md`: incomplete discovery or an incomplete/blocked in-scope Linear audit prevents `APPROVE`. Recommend `COMMENT` with the precise gap unless proven Blocking findings require `REQUEST CHANGES`. Cite Linear requirements in issue-derived comments, and keep verification gaps as questions rather than claiming defects.
+
 For ongoing reviews, let verified thread outcomes affect the recommendation. Always state it as a recommendation with one-line rationale; the user chooses and posts the verdict.
 
 ## 3. Humanize safely

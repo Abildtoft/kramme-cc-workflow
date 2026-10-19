@@ -9,6 +9,7 @@ Render every section. Use `None` for an empty findings or limitation section.
 - **Linear issue:** [TEAM-123 — title](issue-url)
 - **Pull Request:** [#123 — title](pr-url)
 - **Reviewed head:** `<full head OID>`
+- **Reviewed base:** `<full base OID>`
 - **PR state:** OPEN | CLOSED | MERGED
 - **Base:** `<base branch>`
 
