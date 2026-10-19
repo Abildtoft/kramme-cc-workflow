@@ -100,13 +100,21 @@ Core improvements that require moderate effort.
 | --- | -------- | ----------- | ------ | -------- | ----------- |
 | 1   | {action} | {dimension} | High   | Moderate | {files}     |
 
-### Phase 3: Polish
+### Phase 3: Structural
 
-Refinements for maximum agent-nativeness.
+Module-boundary and depth changes. Scope each one with `/kramme:code:refactor-opportunities` before starting.
 
 | #   | Action   | Dimension   | Impact | Effort      | Files/Areas |
 | --- | -------- | ----------- | ------ | ----------- | ----------- |
-| 1   | {action} | {dimension} | Medium | Significant | {files}     |
+| 1   | {action} | {dimension} | High   | Significant | {files}     |
+
+### Phase 4: Polish
+
+Refinements for maximum agent-nativeness.
+
+| #   | Action   | Dimension   | Impact | Effort   | Files/Areas |
+| --- | -------- | ----------- | ------ | -------- | ----------- |
+| 1   | {action} | {dimension} | Low    | Moderate | {files}     |
 ```
 
 ---

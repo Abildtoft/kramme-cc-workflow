@@ -16,6 +16,10 @@ Language(s): {languages}
 Framework(s): {frameworks}
 Key signals detected: {codebase_signals}
 
+## Architecture Vocabulary
+
+Read {architecture_glossary_path} before judging module structure, interfaces, or what tests exercise. Use its terms exactly (module, interface, depth, internal import, deepening) and its deletion test before calling a module shallow.
+
 ## Your Assigned Dimensions
 
 Analyze the codebase against each dimension below. For each dimension:

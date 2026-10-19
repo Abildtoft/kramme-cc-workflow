@@ -47,16 +47,16 @@ Assess how strongly the codebase leverages its type system to make code self-des
 
 ## Dimension: Traversable
 
-Assess how easily an AI agent can discover, navigate, and understand the project structure.
+Assess how easily an AI agent can discover, navigate, and understand the project structure. Use the architecture glossary's terms (module, interface, depth, internal import) for every structural claim.
 
 ### What to Check
 
-1. **Project layout clarity.** Is the directory structure logical and predictable? Can you infer what a file does from its path? (feature-based, layer-based, or domain-based organization)
+1. **Domain-shaped layout.** Does the top level group code into the areas a developer would name when describing the system (billing, catalog, auth), or into technical layers (`controllers/`, `services/`, `models/`) that scatter one concept across many directories? Count the top-level modules: roughly 7–9 is a map a person and an agent can hold; dozens of flat siblings or one undifferentiated `src/` is not.
 2. **Entry point discoverability.** Are main entry points obvious? (index files, main files, app files, clear routing)
 3. **Naming consistency.** Do files, functions, and variables follow consistent naming conventions? (kebab-case files, PascalCase components, etc.)
 4. **Import/dependency clarity.** Are import paths clean? Path aliases configured? Circular dependencies avoided?
-5. **File size discipline.** Are files reasonably sized (under ~300-500 lines)? Are large files split logically?
-6. **Barrel files / re-exports.** Are there clear module boundaries with index files that define public APIs?
+5. **Module depth.** Do modules offer a lot of behavior behind small interfaces? Flag wide interfaces (many exports, parameters, or call-order rules a caller must learn) and pass-through modules that fail the deletion test. File length is evidence only when a file mixes unrelated concerns; a long implementation behind a small interface is depth, not a defect.
+6. **Module boundaries.** Does each module declare its public interface in an entry point (`index.*`, `__init__.py`, `lib.rs`, `public-api.ts`, package `exports`), and do callers import only through it? Count internal imports — imports that resolve to a file inside another module instead of its entry point.
 7. **Colocation.** Are related files (component + test + styles + types) colocated or clearly cross-referenced?
 8. **Context Pointer structure.** Are there clear entry points that route agents from high-level docs or module boundaries to the right source files, workflows, schemas, tests, or design records?
 
@@ -64,19 +64,21 @@ Assess how easily an AI agent can discover, navigate, and understand the project
 
 | Score | Criteria |
 | --- | --- |
-| **5** | Predictable structure. Consistent naming throughout. Clean imports with aliases. All files under 500 lines. Clear module boundaries. Colocated related files. Strong Context Pointers connect docs, entry points, tests, schemas, and architecture decisions. |
-| **4** | Logical structure with minor inconsistencies. Most files well-sized. Imports mostly clean. Good naming conventions. Useful Context Pointers exist for the main workflows or modules. |
-| **3** | Understandable structure but some confusion. Mixed naming patterns. Some large files. Import paths somewhat messy. Some Context Pointers exist, but coverage is inconsistent or agents still need broad searches. |
-| **2** | Unclear structure. Inconsistent naming. Many large files. Confusing import paths. Few Context Pointers. Hard to find where things live. |
-| **1** | No discernible structure. Random file placement. Inconsistent naming. Massive files. Circular imports. No useful Context Pointers or clear entry points. |
+| **5** | Top-level modules follow the domain and fit in a short list. Modules expose small interfaces through clear entry points, and callers never use internal imports. Consistent naming throughout. Clean imports with aliases. Colocated related files. Strong Context Pointers connect docs, entry points, tests, schemas, and architecture decisions. |
+| **4** | Mostly domain-shaped structure with minor inconsistencies. Most modules have clear entry points; internal imports are rare. Imports mostly clean. Good naming conventions. Useful Context Pointers exist for the main workflows or modules. |
+| **3** | Understandable structure, but some concepts are split across technical layers or many small modules. Mixed naming patterns. Some modules lack entry points or are reached through internal imports. Import paths somewhat messy. Some Context Pointers exist, but coverage is inconsistent or agents still need broad searches. |
+| **2** | Layer-shaped or unclear structure that scatters concepts. Inconsistent naming. Many shallow modules with wide interfaces, and frequent internal imports. Confusing import paths. Few Context Pointers. Hard to find where things live. |
+| **1** | No discernible structure. Random file placement. Inconsistent naming. No module boundaries: anything imports anything, and massive files mix unrelated concerns. Circular imports. No useful Context Pointers or clear entry points. |
 
 ### Evidence to Gather
 
 - Directory tree listing (top 2-3 levels)
-- File size distribution (count files over 500 lines)
+- Top-level module map: names, count, and whether they follow the domain or technical layers
+- Sample of 3-5 module interfaces: what a caller must learn, compared with what the module hides
+- Internal-import count with 2-3 examples (imports that climb out of one module and into another's implementation files)
+- Files over 500 lines that mix unrelated concerns, not merely long implementations
 - Sample of import paths (clean vs messy)
 - Naming pattern consistency check across 10+ files
-- Presence of barrel/index files
 - Examples of effective Context Pointers and missing pointer gaps
 
 ---
@@ -90,7 +92,7 @@ Assess the quality, breadth, and agent-friendliness of the test suite.
 1. **Test existence.** Does the project have tests at all? What types? (unit, integration, e2e)
 2. **Test runner configuration.** Is there a single command to run all tests? Is it documented? Is it fast?
 3. **Coverage breadth.** Are critical paths tested? Are edge cases covered? Sample 3-5 key modules and check if they have corresponding tests.
-4. **Test quality.** Do tests assert behavior (not implementation)? Are tests readable and self-documenting? Are test names descriptive?
+4. **Test quality.** Do tests assert behavior (not implementation)? Do they exercise each module through its public interface, so an agent can rewrite the implementation without editing tests? Are tests readable and self-documenting? Are test names descriptive?
 5. **Test isolation.** Do tests run independently? No shared mutable state? No order dependencies?
 6. **Test speed.** How fast is the test suite? Can individual tests be run quickly? Is there a watch mode?
 7. **Test patterns.** Are there test utilities, factories, fixtures? Are patterns consistent across the test suite?
@@ -99,7 +101,7 @@ Assess the quality, breadth, and agent-friendliness of the test suite.
 
 | Score | Criteria |
 | --- | --- |
-| **5** | Comprehensive tests for critical paths. Single-command execution. Fast feedback (under 30s for unit tests). Behavioral assertions. Consistent patterns. Test utilities and factories. Watch mode available. |
+| **5** | Comprehensive tests for critical paths. Single-command execution. Fast feedback (under 30s for unit tests). Behavioral assertions through module interfaces. Consistent patterns. Test utilities and factories. Watch mode available. |
 | **4** | Good coverage of critical paths. Easy to run. Mostly behavioral. Some test utilities. Reasonable speed. |
 | **3** | Tests exist for some modules. Runnable but maybe slow or flaky. Mixed quality. Some missing critical paths. |
 | **2** | Sparse tests. Difficult to run or slow. Poor quality (testing implementation, not behavior). No patterns. |
@@ -110,6 +112,7 @@ Assess the quality, breadth, and agent-friendliness of the test suite.
 - Test runner command and configuration file
 - Count of test files vs source files (ratio)
 - Sample 3-5 core modules: check for corresponding tests
+- Sample 3-5 test files: do they import the module's entry point or reach into its implementation files?
 - Presence of test utilities, factories, or fixtures
 - Test script in package.json or equivalent
 
@@ -128,12 +131,13 @@ Assess the automated feedback infrastructure that helps agents catch errors quic
 5. **Type checking.** Is type checking part of the build/CI process? Can it be run independently?
 6. **Build verification.** Does the project build cleanly? Is there a build command? Does CI verify the build?
 7. **Editor integration.** Are there editor settings (.vscode/, .editorconfig) that help agents use the right tools?
+8. **Boundary enforcement.** Do lint or build rules fail when one module imports another's implementation files? (Nx `@nx/enforce-module-boundaries`, ESLint `no-restricted-imports` or `import/no-internal-modules`, dependency-cruiser, import-linter, Go `internal/` packages, Rust `pub(crate)`, ArchUnit, Java module `exports`) An enforced boundary turns a documented architecture rule into feedback an agent receives on its first wrong import.
 
 ### Scoring Rubric
 
 | Score | Criteria |
 | --- | --- |
-| **5** | Full CI pipeline (lint + typecheck + test + build). Pre-commit hooks. Auto-formatting enforced. Linter with strict rules. Type checking in CI. Editor settings present. Fast local feedback loop. |
+| **5** | Full CI pipeline (lint + typecheck + test + build). Pre-commit hooks. Auto-formatting enforced. Linter with strict rules. Type checking in CI. Module boundaries enforced by tooling. Editor settings present. Fast local feedback loop. |
 | **4** | CI with most checks. Linter configured. Formatter available. Type checking available. Some pre-commit hooks. |
 | **3** | Basic CI (tests only). Linter exists but not strict. Formatter available but not enforced. No pre-commit hooks. |
 | **2** | Minimal CI or no CI. Linter exists but barely configured. No formatter. No hooks. Must manually verify. |
@@ -146,6 +150,7 @@ Assess the automated feedback infrastructure that helps agents catch errors quic
 - Formatter configuration
 - Pre-commit hook configuration (.husky/, .pre-commit-config.yaml)
 - Build command and whether it type-checks
+- Boundary-rule configuration and which modules it covers
 - .vscode/ or .editorconfig presence
 
 ---
