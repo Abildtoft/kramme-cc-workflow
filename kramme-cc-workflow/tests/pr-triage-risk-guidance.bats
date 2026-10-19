@@ -86,9 +86,9 @@ setup() {
 
 @test "every emphasis dimension is a code-review aspect" {
   local dimension
-  for dimension in security tests removal; do
+  for dimension in security tests architecture removal; do
     grep -qF "| \`$dimension\` |" "$LANES"
     grep -qF "\`$dimension\`" "skills/kramme:pr:code-review/SKILL.md"
   done
-  grep -qF 'in this order: `security`, `tests`, `removal`' "$LANES"
+  grep -qF 'in this order: `security`, `tests`, `architecture`, `removal`' "$LANES"
 }

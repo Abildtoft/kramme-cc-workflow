@@ -46,6 +46,7 @@ SIGNALS: dict[str, tuple[str, bool]] = {
     "shape:very-large": ("high", True),
     "path:dependencies": ("medium", True),
     "path:api-contract": ("medium", True),
+    "path:public-interface": ("medium", True),
     "shape:large": ("medium", True),
     "shape:non-trivial": ("medium", True),
     "shape:deleted-source": ("medium", True),
@@ -216,6 +217,8 @@ def code_path_signals(path: str) -> list[str]:
     is_openapi = lower.startswith(("openapi", "swagger")) and suffix in (".json", ".yaml", ".yml")
     if suffix in patterns.API_CONTRACT_SUFFIXES or is_openapi:
         found.append("path:api-contract")
+    if lower in patterns.PUBLIC_INTERFACE_NAMES or patterns.PUBLIC_INTERFACE_RE.match(lower):
+        found.append("path:public-interface")
     return found
 
 

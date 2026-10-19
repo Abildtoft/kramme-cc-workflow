@@ -12,12 +12,13 @@ Map the final tier and the undiscounted signals to review commands and human dec
 
 ## Code-Review Emphasis
 
-Add `--emphasize` with every dimension that an undiscounted signal maps to, in this order: `security`, `tests`, `removal`. For example: `/kramme:pr:code-review --emphasize security tests`.
+Add `--emphasize` with every dimension that an undiscounted signal maps to, in this order: `security`, `tests`, `architecture`, `removal`. For example: `/kramme:pr:code-review --emphasize security tests`.
 
 | Signals | Dimension |
 | --- | --- |
 | `content:secret`, `content:dangerous-sink`, `path:auth`, `path:secrets-config` | `security` |
 | `shape:untested-source`, `content:disabled-test` | `tests` |
+| `path:public-interface` | `architecture` |
 | `shape:deleted-source` | `removal` |
 
 `/kramme:pr:code-review` stops when an emphasized dimension has no applicable reviewer. Tell the user to rerun without that dimension if it does.
@@ -48,6 +49,7 @@ Every undiscounted signal below adds its decision to "Needs a human", tied to th
 | `path:infra` | The production blast radius and the rollback plan. |
 | `path:dependencies` | Whether each new or upgraded dependency is trusted, maintained, and acceptably licensed. |
 | `path:api-contract` | Whether existing consumers tolerate the contract change, and how it is versioned. |
+| `path:public-interface` | Whether the module's public interface should change this way: what each caller must now learn or change, and whether the new surface belongs in this module. |
 | `shape:very-large` | Whether to split the change before review. |
 
 The remaining signals route to code-review emphasis or conditional lanes rather than to a person; `shape:non-trivial` only sets the tier.

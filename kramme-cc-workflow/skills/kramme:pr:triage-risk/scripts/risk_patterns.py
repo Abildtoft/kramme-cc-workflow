@@ -59,6 +59,11 @@ SECRET_FILE_NAMES = frozenset(".htpasswd .netrc .npmrc .pypirc id_dsa id_ecdsa i
 SECRET_FILE_SUFFIXES = frozenset(".jks .kdbx .key .keystore .p12 .pem .pfx".split())
 ENV_EXAMPLE_SUFFIXES = (".dist", ".example", ".sample", ".template")
 API_CONTRACT_SUFFIXES = frozenset(".avsc .gql .graphql .graphqls .proto .thrift .wsdl".split())
+# Module entry points: their exports are the public interface the rest of the codebase depends on.
+PUBLIC_INTERFACE_NAMES = frozenset(
+    "__init__.py __init__.pyi lib.rs mod.rs module-info.java public-api.ts public_api.ts".split()
+)
+PUBLIC_INTERFACE_RE = re.compile(r"^index\.(?:d\.)?[cm]?[jt]sx?$")
 
 SECRET_PATTERNS = (
     ("private-key", re.compile(r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----")),

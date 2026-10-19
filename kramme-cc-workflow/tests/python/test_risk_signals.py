@@ -132,6 +132,34 @@ class RiskSignalsTests(unittest.TestCase):
         self.assertEqual(signals["path:secrets-config"]["evidence"], [".env.production"])
         self.assertEqual(signals["path:api-contract"]["evidence"], ["api/openapi.yaml"])
 
+    def test_module_entry_points_raise_public_interface(self) -> None:
+        self.write("src/billing/index.ts", "export * from './invoice'\n")
+        self.write("src/orders/__init__.py", "from .service import place_order\n")
+        self.write("crates/core/src/lib.rs", "pub mod engine;\n")
+        self.write("libs/ui/src/public-api.ts", "export * from './lib/button'\n")
+        self.write("types/index.d.ts", "export type Id = string\n")
+        signal = self.signals(self.report())["path:public-interface"]
+
+        self.assertEqual((signal["level"], signal["discountable"]), ("medium", True))
+        self.assertEqual(
+            signal["evidence"],
+            [
+                "crates/core/src/lib.rs",
+                "libs/ui/src/public-api.ts",
+                "src/billing/index.ts",
+                "src/orders/__init__.py",
+                "types/index.d.ts",
+            ],
+        )
+
+    def test_public_interface_skips_tests_and_lookalike_names(self) -> None:
+        self.write("tests/helpers/index.ts", "export const fixture = 1\n")
+        self.write("src/reindex.ts", "export const reindex = 1\n")
+        self.write("src/index.html", "<html></html>\n")
+        self.write("src/main.rs", "fn main() {}\n")
+
+        self.assertNotIn("path:public-interface", self.signals(self.report()))
+
     def test_lockfile_only_change_raises_dependencies_without_code_lines(self) -> None:
         self.write("package-lock.json", '{\n  "lockfileVersion": 3\n}\n')
         report = self.report()
