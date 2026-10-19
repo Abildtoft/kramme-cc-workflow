@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:github-review
 description: "Review a GitHub PR where you are the assigned reviewer, not the author. Produces a local Markdown report, deduplicates existing conversations, and drafts inline comments, replies, and a verdict recommendation. With confirmation—or --draft-review—creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), responding on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
-argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
+argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--parallel] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -23,13 +23,14 @@ First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-se
 - `--base <ref>` → `BASE_OVERRIDE` (use when the PR targets a non-default base and detection is wrong).
 - `--categories <list>` → `UI_CATEGORIES` (comma-separated subset of `a11y,ux,product,visual`), passed through to the UI review pass.
 - `--code-only` → `CODE_ONLY=true`. Skip the UI review pass even when UI files changed.
+- `--parallel` → `PARALLEL_REVIEWERS=true`. Each delegated review launches all of its applicable reviewers at once instead of one after another.
 - `--fresh` → `SKIP_THREADS=true`. Ignore the existing review conversation and produce a clean first-pass assessment only.
 - `--include-bots` → `INCLUDE_BOTS=true`. Include bot/app comments when mapping the conversation (default: human only).
 - `--all-threads` → `INCLUDE_RESOLVED=true`. Include already-resolved threads in the map (default: unresolved and awaiting-you threads only).
 - `--inline` → `INLINE_MODE=true`. Return the report in chat instead of writing the artifact file.
 - `--keep-worktree` → `KEEP_WORKTREE=true`. Leave the fetched worktree on disk for manual inspection and report its path.
 
-Defaults: `CREATE_DRAFT_REVIEW=false`, `CODE_ONLY=false`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
+Defaults: `CREATE_DRAFT_REVIEW=false`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=false`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
 
 ## Step 1: Preflight
 
@@ -199,7 +200,7 @@ If `CODE_ONLY=true`, set `RUN_UI=false` and skip the rest of this step without l
 
 Keep delegated review orchestrators on this session's model unless the user explicitly chooses otherwise. Each review skill applies its own model-selection policy to its reviewers; do not lower the orchestrator first and cause a second step-down. Forward any explicit user reviewer-model choice with the review handoff.
 
-When `SUBAGENT_MODEL_OVERRIDE` is non-empty, include `--subagent-model <model>` in both the code-review and product-review invocations below; otherwise omit it.
+When `SUBAGENT_MODEL_OVERRIDE` is non-empty, include `--subagent-model <model>` in both the code-review and product-review invocations below; otherwise omit it. When `PARALLEL_REVIEWERS=true`, append `--parallel` to both invocations so each review launches its reviewers simultaneously; otherwise omit it and let each review use its default sequential launch.
 
 Run all review commands **with the worktree as the working directory** (you are already `cd`'d there). If you delegate via slash command, the sibling skill resolves git state against the PR head only while the session's working directory is the worktree — keep it there until the worktree is removed in Step 8. If slash invocation is unavailable, read the sibling skill's `SKILL.md` from the installed skills directory and follow it, running every git command inside the worktree.
 
