@@ -354,3 +354,15 @@ PY
   ' _ "$PLUGIN_ROOT/skills/kramme:pr:github-review-reply/SKILL.md"
 	[ "$status" -eq 0 ]
 }
+
+@test "github review forwards --parallel to both delegated review passes" {
+	run bash -c '
+    set -e
+    grep -qF "[--code-only] [--parallel] [--fresh]" "$1"
+    grep -qF -- "- \`--parallel\` → \`PARALLEL_REVIEWERS=true\`" "$1"
+    grep -qF "\`PARALLEL_REVIEWERS=false\`" "$1"
+    grep -qF "When \`PARALLEL_REVIEWERS=true\`, append \`--parallel\` to both invocations" "$1"
+    grep -qF "[--code-only] [--parallel] [--fresh]" "$2"
+  ' _ "$SKILL" "$README"
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
