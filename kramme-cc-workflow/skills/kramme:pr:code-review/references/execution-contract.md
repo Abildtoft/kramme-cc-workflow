@@ -38,6 +38,10 @@ After standard Steps 1–6 (Team Step 1), save a plan JSON outside the run direc
       "applicable": false,
       "reason": "No types, schemas or invariants changed"
     },
+    "architecture": {
+      "applicable": false,
+      "reason": "No module added or moved, no public interface changed, no cross-module imports"
+    },
     "removal": {
       "applicable": false,
       "reason": "No deletion, consolidation or refactor"

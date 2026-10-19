@@ -21,6 +21,9 @@ Load this only when the user asks for examples or when validating argument parsi
 /kramme:pr:code-review performance
 # Performance and scalability review only
 
+/kramme:pr:code-review architecture
+# Module design only: interface depth, public-interface changes, internal imports, and locality
+
 /kramme:pr:code-review lean
 # Deletion-focused review: existing-code, stdlib, native, dependency, and YAGNI opportunities
 

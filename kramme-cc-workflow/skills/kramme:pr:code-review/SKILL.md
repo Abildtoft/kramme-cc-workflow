@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:code-review
-description: "Review branch changes for tests, errors, types, security, performance, slop, lean deletion, refactor fit, and simplification. Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. --team cross-validates; --loop applies fixes and verifies convergence. Not for UX, visual, or accessibility; use kramme:pr:product-review."
+description: "Review branch changes for tests, errors, types, module architecture, security, performance, slop, lean deletion, refactor fit, and simplification. Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. --team cross-validates; --loop applies fixes and verifies convergence. Not for UX, visual, or accessibility; use kramme:pr:product-review."
 argument-hint: "[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--no-cleanup] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true
@@ -36,7 +36,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    - If `--team` flag → use Team Mode and remove it from the aspect list
    - If `--parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel` and remove it from the aspect list. Default is `LAUNCH_MODE=sequential`.
    - If the bare token `parallel` appears anywhere in `$ARGUMENTS` → set `LAUNCH_MODE=parallel`, remove it from the aspect list, and treat it as a deprecated alias for `--parallel`.
-   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `--parallel`, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `code`, `slop`, `security`, `performance`, `removal`, `lean`, `refactor`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op). Cleanup emphasis (`lean`, `refactor`, `simplify`) never overrides the precedence pass or the action-class normalization rule that optional cleanup stays advisory.
+   - If `--emphasize <dim>...` flag → store dimension names in `EMPHASIZED_DIMENSIONS` list and remove from aspect list. Consume all tokens after `--emphasize` until the next `--` flag, `--parallel`, `parallel`, or end of arguments. Each token must be a valid aspect name (`comments`, `tests`, `errors`, `types`, `architecture`, `code`, `slop`, `security`, `performance`, `removal`, `lean`, `refactor`, `simplify`). Reject `--emphasize all` (emphasizing everything is a no-op). Cleanup emphasis (`lean`, `refactor`, `simplify`) never overrides the precedence pass or the action-class normalization rule that optional cleanup stays advisory.
    - Validate remaining positional tokens as aspect names against the same list plus `all`. If any token is not a recognized aspect, stop with an error naming the unrecognized token and listing valid aspects. Do not silently fall through to "run all applicable reviews."
    - If an explicit aspect list was provided and it does not include `all`, every emphasized dimension must also appear in that list. If any emphasized dimension was excluded by the user's aspect filter, stop with an error instead of re-ranking unrelated findings.
    - Default (no aspect tokens, or `all`): Run all applicable reviews, including the cleanup dimensions `lean`, `refactor`, and `simplify`. These cleanup dimensions are lower-priority than unresolved correctness, security, error-handling, and test findings when recommendations collide; the precedence pass in Step 11 suppresses or demotes cleanup advice that would undermine an open higher-priority finding. When `NO_CLEANUP=true`, exclude `lean`, `refactor`, and `simplify` from this default set and record `Cleanup dimensions: skipped (--no-cleanup)` in the report metadata.
@@ -83,6 +83,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    - **tests** - Review test coverage quality and completeness
    - **errors** - Check error handling for silent failures
    - **types** - Analyze type design and invariants (if new types added)
+   - **architecture** - Review module design: interface depth, public-interface changes, internal imports, and locality (if module structure changed)
    - **code** - General code review for project guidelines
    - **slop** - Detect AI-generated code patterns (unnecessary comments, defensive overkill, type workarounds)
    - **security** - Security review: injection, auth, data protection, business logic (4 specialized agents)
@@ -153,6 +154,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    - `kramme:pr-test-analyzer` — if test files changed, new behavior was added, or coverage claims appear in the PR description
    - `kramme:comment-analyzer` — if comments, docstrings, docs, or explanation-heavy inline text changed
    - `kramme:type-design-analyzer` — if types, schemas, interfaces, data models, or invariants changed
+   - `kramme:architecture-strategist` — if the diff adds, removes, or moves a module, changes what a module exports or the signatures other modules call, adds a dependency between modules that did not depend on each other, or imports another module's implementation files
    - `kramme:cleanup-reviewer` — one invocation covers the four cleanup dimensions. `lean` (code the PR can avoid owning: deletions, existing-helper reuse, stdlib/native replacements, avoidable dependencies, YAGNI abstractions), `refactor` (review-only reuse, composition, and codebase-fit findings), and `simplify` (clarity and maintainability suggestions) are active for default `all` reviews unless `NO_CLEANUP=true`, or when explicitly listed; `removal` (safe-removal verification) is active only if code was deleted, deprecated, consolidated, or refactored enough that safe removal needs verification, or when explicitly listed. Record each active dimension separately; the agent runs whenever at least one is active and labels every finding with its dimension.
 
    **Stack-specific conditional reviewers** (activate only when the touched stack has the relevant risk surface):
@@ -179,6 +181,8 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    - As a review target: if the title or body is materially inaccurate for the current diff or local changes, emit a finding with location `PR description` and a concrete correction.
 
    If any of `code`, `refactor`, or `simplify` is active, read `references/fowler-smell-baseline.md` once and pass it only to the corresponding `kramme:code-reviewer` and/or `kramme:cleanup-reviewer` reviewers as advisory vocabulary after documented repo standards, the discipline reference's reviewer calibration, and concrete diff evidence. Each smell finding must name the smell, cite the changed location, explain why it matters in this diff, and recommend the smallest local fix; do not report smells as hard violations, duplicate tooling-enforced issues, or promote optional cleanup unless it creates concrete blocking impact under the action-class rules.
+
+   If `architecture` is active, pass `kramme:architecture-strategist` the resolved path of `${CLAUDE_PLUGIN_ROOT}/shared/architecture/references/architecture-language.md` and instruct it to read that glossary before reviewing and to use its terms in every finding.
 
    If any cleanup dimension activated `kramme:cleanup-reviewer`, instruct it to operate as a review-only cleanup reviewer:
    - Do not edit files.
@@ -279,7 +283,7 @@ After validation, slop meta-review, and previous-review processing, apply the `C
 
 After validation, slop meta-review, and previous-review processing, apply emphasis adjustments if `EMPHASIZED_DIMENSIONS` is non-empty. Only use findings from agents that actually ran in Step 7 when deciding what is emphasized vs non-emphasized.
 
-**Dimension-to-agent mapping:** `security` → security-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal`, `lean`, `refactor`, `simplify` → cleanup-reviewer, which labels each finding with its dimension; emphasis on one cleanup dimension applies only to findings carrying that label
+**Dimension-to-agent mapping:** `security` → security-reviewer | `errors` → silent-failure-hunter | `tests` → pr-test-analyzer | `comments` → comment-analyzer | `types` → type-design-analyzer | `architecture` → architecture-strategist | `code` → code-reviewer | `slop` → deslop-reviewer | `performance` → performance-oracle | `removal`, `lean`, `refactor`, `simplify` → cleanup-reviewer, which labels each finding with its dimension; emphasis on one cleanup dimension applies only to findings carrying that label
 
 **Promotion rules (per finding, based on source agent):**
 
