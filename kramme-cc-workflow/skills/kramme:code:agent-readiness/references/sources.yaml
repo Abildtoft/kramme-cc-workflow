@@ -1,0 +1,22 @@
+sources:
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "The Traversable checks for a domain-shaped layout of roughly 7-9 top-level modules, module depth over file length, and internal imports, the Test Coverage check for tests through module interfaces, the Feedback Loops check for enforced module boundaries, and the Structural plan phase follow this article's argument that agents navigate and verify a codebase through its module interfaces."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"
+  - id: pocock-improve-codebase-architecture-language
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/SKILL.md
+    title: "Matt Pocock skills - codebase-design (SKILL.md)"
+    rationale: "The module, interface, and depth vocabulary in the shared architecture glossary that the dimension agents read is adapted from this source."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:2c20617f87ec8af6a434859f381b2f061a69b530444e74eb39e78bb016a6d1e2"
+  - id: pocock-improve-codebase-architecture-deepening
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
+    title: "Matt Pocock skills - codebase-design (DEEPENING.md)"
+    rationale: "The deletion test the dimension agents apply before calling a module shallow, from the shared architecture glossary, is adapted from this source."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:f3dd099ce99289bd213914d8ee3e2429b78309c3957ca4583f7659551b1d53c1"

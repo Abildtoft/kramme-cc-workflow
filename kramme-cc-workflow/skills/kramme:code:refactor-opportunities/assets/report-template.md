@@ -40,6 +40,19 @@
 | --------- | ------------- | -------------- | --------------------- |
 | {{theme}} | {{#1, #2, …}} | {{count}}      | {{yes / no}}          |
 
+## Deepening Candidates
+
+{{One block per deepening candidate, strongest evidence first. Write "None found." when the scan produced none. Name each candidate with the project's domain terms.}}
+
+### {{candidate name}}
+
+- **Files involved:** {{paths}}
+- **Evidence:** {{co-change counts, or the files one ordinary change has to touch}}
+- **Proposed interface:** {{what callers would call}}
+- **What moves behind it:** {{files, helpers, or caller logic that become implementation}}
+- **Tests:** {{tests that move to the new interface; old tests on the shallow pieces that get deleted}}
+- **Benefit:** {{locality or leverage gained}}
+
 ## Recommended Refactor Order
 
 {{Ordered list of refactors to tackle first, considering: risk, blast radius, dependency between findings, and quick wins. Separate automation-candidate themes (≥500 lines) from manual fixes.}}

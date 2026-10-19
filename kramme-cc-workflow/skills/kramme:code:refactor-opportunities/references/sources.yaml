@@ -9,21 +9,28 @@ sources:
   - id: pocock-improve-codebase-architecture-skill
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/SKILL.md
     title: "Matt Pocock skills - improve-codebase-architecture (SKILL.md)"
-    rationale: "The commit-history hot-spot seeding for full-codebase scans and the post-report offer to record rejected candidates as ADRs are adapted from this source's Explore phase and grilling loop."
+    rationale: "The commit-history hot-spot seeding for full-codebase scans, the post-report offer to record rejected candidates as ADRs, and the three deepening-candidate patterns in references/checklist.md and the shared architecture glossary are adapted from this source's Explore phase and grilling loop."
     usage: inspiration
-    last_reviewed_at: 2026-08-10
-    baseline_hash: "sha256:7b76f01b0eefe49a127754c9027a6235a036a21348df5dad988893d8b2f384d6"
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:552240a5ab5cec6b67c15dd1ad6e9f6962b1bca6ce870059a8c2713760c20392"
   - id: pocock-improve-codebase-architecture-deepening
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
     title: "Matt Pocock skills - codebase-design (DEEPENING.md)"
-    rationale: "The deletion-test heuristic, adapter-count seam rule (one adapter = hypothetical seam, two = real seam), and replace-don't-layer test-migration rule in references/architecture-language.md are adapted from this source."
+    rationale: "The deletion-test heuristic, adapter-count seam rule (one adapter = hypothetical seam, two = real seam), internal-seam principle, and replace-don't-layer test-migration rule in the shared architecture glossary (shared/architecture/references/architecture-language.md) are adapted from this source."
     usage: inspiration
-    last_reviewed_at: 2026-07-03
-    baseline_hash: "sha256:125e6b77413ad2bc7cf7a772bc74336d580a50f9e797db2178ed133d62333d06"
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:f3dd099ce99289bd213914d8ee3e2429b78309c3957ca4583f7659551b1d53c1"
   - id: pocock-improve-codebase-architecture-language
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/SKILL.md
     title: "Matt Pocock skills - codebase-design (SKILL.md)"
-    rationale: "The architectural glossary (Module/Interface/Implementation/Depth/Seam/Adapter/Leverage/Locality) used in references/architecture-language.md is adapted from this source."
+    rationale: "The architectural glossary (Module/Interface/Implementation/Depth/Seam/Adapter/Leverage/Locality) in the shared architecture glossary, including depth measured at the interface rather than by implementation size, is adapted from this source."
     usage: inspiration
-    last_reviewed_at: 2026-07-03
-    baseline_hash: "sha256:a8d50abac5a4018f60e1d911d4b6f4e36454ca14d6c390c0695a578c7de65dad"
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:2c20617f87ec8af6a434859f381b2f061a69b530444e74eb39e78bb016a6d1e2"
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "The deepening-candidate direction — replacing many shallow modules with fewer deep ones behind simple interfaces — follows this article's argument that agents navigate and verify a codebase through its module interfaces."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"

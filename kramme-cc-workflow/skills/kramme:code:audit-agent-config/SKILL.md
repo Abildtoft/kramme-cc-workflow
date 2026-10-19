@@ -66,6 +66,8 @@ Test every item against the four defect classes. Each REMOVE verdict must name i
 3. **Conflicting** — contradicts another in-scope item so the agent cannot satisfy both. Cite both sides; recommend REMOVE for the weaker or staler side and KEEP for the other.
 4. **Irrelevant** — cannot apply to this project (targets a stack, tool, or platform the repo does not use). Verify with a repository-wide search for the tool or pattern before flagging. Where the platform records local usage statistics for skills or commands, zero recorded use is supporting evidence of irrelevance — never sufficient on its own.
 
+Also test every instruction for **structural compensation**: a rule that exists only to steer agents around the code's structure, such as "when you change X, also update Y and Z" or "never import from `foo/internal`". The rule may still be needed, but always-on prose is the weakest way to hold it. When a tool the repository already runs could enforce it — a lint rule, a type, a test, or a check script — the verdict is IMPROVE, and the sentence names that mechanism; verify the tool is configured in the repository before naming it. When no tool can enforce it, the verdict stays KEEP, and the sentence notes the scattered code it compensates for so `/kramme:code:refactor-opportunities` can assess it.
+
 Verdict rules:
 
 - Weight scrutiny by context cost: always-on items ship into every session, so hold them to a stricter bar for redundancy and relevance; an on-demand item's defect costs context only when it is triggered.

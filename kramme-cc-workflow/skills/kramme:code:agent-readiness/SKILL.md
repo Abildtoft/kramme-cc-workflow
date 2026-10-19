@@ -72,7 +72,7 @@ Good pointers are scoped, accurate, and explain why the target matters. Link dum
 
 Gather codebase metadata before launching agents.
 
-This step assumes `ripgrep` (`rg`) is available. If `rg` is missing, substitute `grep -rEn` in the search command below.
+This step assumes `ripgrep` (`rg`) is available. If `rg` is missing, substitute `grep -rEn` in the search commands below.
 
 ### 1.1 Detect Language and Framework
 
@@ -115,14 +115,19 @@ if [ -d .github/workflows ]; then
   find .github/workflows -maxdepth 1 -type f \( -name "*.yml" -o -name "*.yaml" \)
 fi
 
-# Linting, formatting, and test runner configs (root level)
+# Linting, formatting, test runner, and module-boundary configs (root level)
 find . -maxdepth 1 -type f \( \
   -name ".eslintrc*" -o -name "eslint.config*" \
   -o -name ".prettierrc*" -o -name "prettier.config*" \
   -o -name "ruff.toml" -o -name ".editorconfig" \
   -o -name "jest.config*" -o -name "vitest.config*" \
   -o -name "pytest.ini" -o -name "karma.conf*" \
-  -o -name "cypress.config*" -o -name "playwright.config*" \)
+  -o -name "cypress.config*" -o -name "playwright.config*" \
+  -o -name ".dependency-cruiser*" -o -name ".importlinter" \)
+
+# Module-boundary rules declared in lint or build configuration
+rg -l --max-depth 4 "enforce-module-boundaries|no-restricted-imports|no-internal-modules|importlinter|dependency-cruiser" \
+  -g '*eslint*' -g '*.json' -g 'setup.cfg' -g 'pyproject.toml' . 2> /dev/null | head -20
 
 # Context pointer signals: scan instruction and doc files for routing language
 rg -ni "\[[^]]+\]\([^)]+\)|\b(see|read|follow|refer to|ADR|runbook|schema|entry point)\b" AGENTS.md CLAUDE.md README.md CONTRIBUTING.md docs 2> /dev/null | head -100
@@ -179,6 +184,7 @@ For each agent:
    - `{languages}`: detected languages from Step 1
    - `{frameworks}`: detected frameworks from Step 1
    - `{codebase_signals}`: signals from Step 1.3
+   - `{architecture_glossary_path}`: the resolved path of `${CLAUDE_PLUGIN_ROOT}/shared/architecture/references/architecture-language.md`, the shared vocabulary for module depth, interfaces, and internal imports
    - `{dimension_rubrics}`: the relevant dimension sections from the rubrics file
 
 ### Launch
@@ -267,7 +273,8 @@ Collect all improvement actions from all agents. Sort by:
 | --- | --- | --- |
 | **Phase 1: Quick Wins** | Any action with Quick Win effort | Do these first — fast improvements regardless of impact |
 | **Phase 2: Foundation** | High or Medium impact + Moderate effort | Core improvements requiring real work |
-| **Phase 3: Polish** | Everything else (Significant effort, or Low impact + Moderate effort) | Refinements for maximum agent-nativeness |
+| **Phase 3: Structural** | High or Medium impact + Significant effort | Module-boundary and depth changes, such as gathering a scattered concept behind one interface; scope each with `/kramme:code:refactor-opportunities` before starting |
+| **Phase 4: Polish** | Low impact + Moderate or Significant effort | Refinements for maximum agent-nativeness |
 
 ### 5.3 Deduplicate
 
@@ -309,7 +316,7 @@ Populate and write `AGENT_NATIVE_AUDIT.md` in the project root with:
 - Dimension details with evidence, findings, and improvement actions
 - Context Pointer evidence folded into Traversable and Self-Documenting details
 - All findings summary table with severity counts
-- Refactoring plan with 3 phases
+- Refactoring plan with 4 phases
 
 ```
 Report written to: AGENT_NATIVE_AUDIT.md
@@ -346,7 +353,8 @@ Findings:
 Refactoring Plan:
   Phase 1 (Quick Wins):  {N} actions
   Phase 2 (Foundation):  {N} actions
-  Phase 3 (Polish):      {N} actions
+  Phase 3 (Structural):  {N} actions
+  Phase 4 (Polish):      {N} actions
 
 Report: AGENT_NATIVE_AUDIT.md
 

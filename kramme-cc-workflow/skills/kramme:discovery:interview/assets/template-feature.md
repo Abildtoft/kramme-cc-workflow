@@ -30,6 +30,10 @@ Entities, relationships, key fields, constraints.
 
 Endpoints, request/response shapes, error codes.
 
+### Module Map
+
+Each module this work creates or changes, its public entry point, and its interface impact: `new`, `changed`, or `implementation-only`. Settle new and changed interfaces here, before implementation.
+
 ### State Management
 
 How state flows through the application, ownership.

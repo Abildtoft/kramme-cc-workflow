@@ -31,6 +31,7 @@ Feature-scoped rules the implementer should follow. Keep project-wide rules out 
 
 - <Action the implementer should pause and confirm before doing.>
 - <Additional Ask First rule.>
+- <Any change to a module's public interface, naming the module and its interface impact (new or changed). Omit when the feature is implementation-only.>
 
 ### Never Do
 

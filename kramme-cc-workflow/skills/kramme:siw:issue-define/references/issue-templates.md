@@ -112,6 +112,10 @@ Issue bodies must NOT include file paths, line numbers, or internal helper/class
 
 - {Component/module 1}
 
+### Interface Impact
+
+- {Module}: {new | changed | implementation-only} — {what callers gain or must change; "none" for implementation-only}
+
 ### Patterns to Follow
 
 {Reference existing patterns by name and behavior; avoid pinning to file paths or line numbers}

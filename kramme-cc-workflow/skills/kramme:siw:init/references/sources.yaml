@@ -41,3 +41,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:af5b873414a8b45b96b0d30d5297400f55eb3a56425161a088e470c14260a1e5"
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "The Technical Design module map (modules created or changed, their entry points, and interface impact) follows this article's advice to design module boundaries from the PRD onward."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"

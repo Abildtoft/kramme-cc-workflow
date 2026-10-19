@@ -53,6 +53,7 @@ function fixture(t, aspects = ["all"], active = [], options = {}) {
     "tests",
     "comments",
     "types",
+    "architecture",
     "removal",
     "performance",
     "security",
@@ -149,6 +150,7 @@ test("default inventory cannot omit always-on and cleanup reviewers; one job per
     "tests",
     "comments",
     "types",
+    "architecture",
     "removal",
     "performance",
     "security",
@@ -188,6 +190,45 @@ test("default inventory cannot omit always-on and cleanup reviewers; one job per
   );
 });
 
+test("architecture is a conditional dimension owned by architecture-strategist", () => {
+  const applicability = Object.fromEntries(
+    ["tests", "comments", "types", "removal", "performance", "security"].map(
+      (dimension) => [dimension, { applicable: false, reason: "not touched" }],
+    ),
+  );
+  assert.throws(
+    () => jobsFor({ aspects: ["all"], applicability }),
+    /Missing applicability evidence: architecture/,
+  );
+  const { jobs, coverage } = jobsFor({
+    aspects: ["all"],
+    applicability: {
+      ...applicability,
+      architecture: {
+        applicable: true,
+        reason: "src/billing/index.ts exports changed",
+      },
+    },
+  });
+  assert.equal(
+    jobs["architecture-strategist"].agent,
+    "kramme:architecture-strategist",
+  );
+  assert.deepEqual(coverage.architecture.reviewers, [
+    "architecture-strategist",
+  ]);
+  const { jobs: filtered } = jobsFor({
+    aspects: ["architecture"],
+    applicability: {
+      architecture: { applicable: true, reason: "new cross-module import" },
+    },
+  });
+  assert.deepEqual(
+    Object.keys(filtered).filter((id) => filtered[id].kind === "reviewer"),
+    ["architecture-strategist"],
+  );
+});
+
 test("no-cleanup excludes advisory dimensions and preserves independent removal", () => {
   for (const removal of [false, true]) {
     const plan = {
@@ -199,6 +240,7 @@ test("no-cleanup excludes advisory dimensions and preserves independent removal"
           "tests",
           "comments",
           "types",
+          "architecture",
           "removal",
           "performance",
           "security",

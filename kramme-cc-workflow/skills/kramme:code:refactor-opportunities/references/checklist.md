@@ -75,7 +75,7 @@ Scan every category below. For each finding, record:
 ## 8. Coupling & Dependencies
 
 - Circular dependencies between modules
-- Modules reaching deep into other modules' internals (violating encapsulation)
+- Internal imports: modules reaching into other modules' implementation files instead of their public entry points
 - Tight coupling to concrete implementations where an interface/injection would help
 - Import chains that pull in far more than needed (barrel file bloat)
 - Shared mutable state across module boundaries
@@ -87,6 +87,10 @@ Scan every category below. For each finding, record:
 - Inconsistent module boundaries (some features split across many files, others monolithic)
 - Configuration or constants scattered across multiple locations
 - Test files that don't mirror source structure
+- Deepening candidates — behavior that belongs behind one smaller interface (record them with the glossary's deepening fields, not as table rows):
+  - One concept, many files: understanding or changing one concept means visiting many small modules, or a `CO_CHANGE` pair keeps changing together across modules
+  - Leaks across a seam: callers use internal imports or must know a module's call-order rules or intermediate data to use it correctly
+  - Helpers extracted only for testability: pure functions unit-tested in isolation while the behavior callers depend on goes untested at the module's interface
 
 ## 10. Performance Candidates
 

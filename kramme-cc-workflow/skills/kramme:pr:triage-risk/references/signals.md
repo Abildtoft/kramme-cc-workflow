@@ -33,6 +33,7 @@ The script diffs with `--text`, so a branch's `.gitattributes` cannot hide conte
 | `shape:very-large` | high | yes | More than 1000 code lines changed. |
 | `path:dependencies` | medium | yes | Any dependency manifest, lockfile, or `.gitmodules` changed, or a submodule pointer moved, regardless of submodule ignore settings. |
 | `path:api-contract` | medium | yes | A `code` path is an interface contract such as `*.proto`, `*.graphql`, `*.gql`, `*.avsc`, `*.thrift`, or an `openapi*` or `swagger*` JSON or YAML file. |
+| `path:public-interface` | medium | yes | A `code` path is a module entry point whose exports form the module's public interface: a JavaScript or TypeScript `index.*` file (including `index.d.ts`), `__init__.py`, `lib.rs`, `mod.rs`, `public-api.ts`, or `module-info.java`. |
 | `shape:large` | medium | yes | More than 400 code lines or more than 25 code files changed. |
 | `shape:non-trivial` | medium | yes | More than 100 code lines or more than 10 code files changed. Only the largest `shape:` size signal is emitted. |
 | `shape:deleted-source` | medium | yes | A source file (a `code` file with a programming-language extension) was deleted. |

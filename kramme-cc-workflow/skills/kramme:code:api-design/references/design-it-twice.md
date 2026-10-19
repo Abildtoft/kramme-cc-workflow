@@ -110,7 +110,7 @@ Present the designs sequentially first — readers should be able to evaluate ea
 
 #### Comparison rubric
 
-Score each design on three axes:
+Score each design on three axes, using the definitions in the shared architecture glossary (`${CLAUDE_PLUGIN_ROOT}/shared/architecture/references/architecture-language.md`, named in `SKILL.md`):
 
 - **Depth.** What implementation complexity does the interface hide that the caller would otherwise carry? Cite an example call site.
 - **Locality.** When the most likely change request arrives ("we now also need to <X>"), how many places does the design force a change in?

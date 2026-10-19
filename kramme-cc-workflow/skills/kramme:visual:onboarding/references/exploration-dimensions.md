@@ -32,7 +32,9 @@ Detailed guidance for each of the 6 exploration dimensions used in the onboardin
 - Directory-level docs or AGENTS.md files
 - Clear separation: `src/`, `libs/`, `packages/`, `apps/`
 
-**For the guide:** Generate a Mermaid architecture diagram showing modules, their responsibilities, and how they connect. Label nodes with what they do, not just their names.
+**Chunking:** Group the system into roughly 7–9 top-level chunks a newcomer can hold in mind at once, each named for what it owns in domain terms. Record each chunk's responsibility and its entry point: the file or exports other code calls. When the directory tree does not match those chunks — one concept spread across several directories, or one directory mixing unrelated concepts — say so in the guide instead of mirroring the tree.
+
+**For the guide:** Generate a Mermaid architecture diagram showing those chunks, their responsibilities, and how they connect. Label nodes with what they do and where to enter them, not just their names.
 
 ## 3. Domain Model
 

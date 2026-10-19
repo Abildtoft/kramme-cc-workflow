@@ -36,6 +36,8 @@ SIMPLICITY CHECK: <the smallest interface that meets the requirement>
 
 If the interface you end up designing is not the smallest version, write a second line explaining what forced the expansion. If there is no forcing requirement, ship the smaller surface.
 
+Then run a **depth check** on that interface. List what a caller must learn — methods, parameters, call-order rules, error modes, required configuration — and compare it with the behavior the module hides. An interface nearly as complicated as its implementation is shallow: callers carry the complexity anyway, and an agent has to read the implementation to use it correctly. Read `${CLAUDE_PLUGIN_ROOT}/shared/architecture/references/architecture-language.md` and apply its deletion test before adding a pass-through layer and its adapter-count rule before adding a port.
+
 Within that scope, consider user experience (UX: clear, reliable task completion), developer experience (DX: ease of understanding, maintenance, testing, and debugging), and agent experience (AX: discoverable contracts, predictable calls, recoverable errors, and verifiable results). Prefer designs that improve all three while preserving established behavior and contracts outside the intended change. When the task changes an existing contract, make the intentional change and its compatibility or migration effects explicit. Unchanged or inapplicable dimensions are acceptable; do not add speculative interfaces to manufacture improvements. Explain material tradeoffs and identify relevant compatibility checks.
 
 ### Rule 1 — Contract first

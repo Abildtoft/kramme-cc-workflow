@@ -75,7 +75,7 @@ Before generating HTML, produce a structured fact sheet:
 
 1. **Welcome & Project Identity** — Hero: name, one-sentence description, who it's for, key stats (languages, deps, test count). _Hero depth: large type, dominant._
 
-2. **Architecture Overview** — Mermaid diagram of modules/relationships in `.mermaid-wrap` with zoom controls. Brief explanation per module. _Elevated depth._
+2. **Architecture Overview** — Mermaid diagram of the roughly 7–9 top-level chunks and their relationships in `.mermaid-wrap` with zoom controls. Brief explanation per chunk: what it owns and its entry point. _Elevated depth._
 
 3. **Domain Model** — Mermaid ER/class diagram of key entities. Glossary of domain terms. Collapsible `<details>` per entity.
 

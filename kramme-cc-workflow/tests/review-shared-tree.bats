@@ -291,6 +291,7 @@ EOF
     pr-test-analyzer
     comment-analyzer
     type-design-analyzer
+    architecture-strategist
     performance-oracle
     security-reviewer
     pr-relevance-validator
