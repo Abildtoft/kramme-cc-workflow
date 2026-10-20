@@ -74,3 +74,7 @@ Rejected because paths and line counts cannot see semantic risk, and they over-f
 ### Read the policy file from the working tree, or use YAML
 
 Rejected. Reading policy from the branch would let a branch lower its own triage. YAML would add a third-party parser to a runtime that otherwise needs only the Python standard library.
+
+## Amendment
+
+On 2026-10-20 the [risk-routed review convergence record](2026-10-20-risk-routed-review-convergence.md) decided routing automation for `kramme:pr:review-convergence`: it maps the deterministic floor, without discounts, to its review profile. `risk-signals.py` and `risk_patterns.py` moved to plugin-level `scripts/` because both skills run them. Auto-approval, pair review, review memory, and Pull Request-number or CI triage remain undecided.
