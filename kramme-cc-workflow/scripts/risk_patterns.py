@@ -48,7 +48,8 @@ CI_NAMES = frozenset(
     "bitbucket-pipelines.yml".split()
 )
 INFRA_WORDS = frozenset(
-    "ansible cloudformation deploy deployment deployments helm infra infrastructure k8s kubernetes pulumi terraform".split()
+    "ansible cloudformation deploy deployment deployments helm infra infrastructure k8s kubernetes pulumi "
+    "terraform".split()
 )
 INFRA_SUFFIXES = frozenset(".hcl .tf .tfvars".split())
 INFRA_NAMES = frozenset(

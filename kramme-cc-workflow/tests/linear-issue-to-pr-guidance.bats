@@ -46,11 +46,11 @@
     readme="../README.md"
 
     grep -qF "always forwards an explicit remediation-cycle budget" "$parent"
-    grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]" "$parent"
-    grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} --requirements {issue-requirements}" "$parent"
+    grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]" "$parent"
+    grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} [--depth {depth}] [--isolated] --requirements {issue-requirements}" "$parent"
     grep -qF "Always pass \`--rounds {cycles}\`, which carries this workflow'"'"'s default budget of \`2\` unless \`--cycles\` overruled it" "$parent"
     grep -qF "neither this workflow'"'"'s default remediation-cycle budget nor a \`--cycles\` override" "$shipping"
-    grep -qF "\`issue-to-pr\` instead always forwards a budget of two, which its own \`--cycles <1-5>\` flag overrules" "$readme"
+    grep -qF "\`issue-to-pr\` and \`plan-to-pr\` instead always forward a budget of two, which their own \`--cycles <1-5>\` flag overrules" "$readme"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -172,7 +172,7 @@
     child="skills/kramme:linear:issue-implement/SKILL.md"
     branch_setup="skills/kramme:linear:issue-implement/references/branch-setup.md"
 
-    grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]\"" "$parent"
+    grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]\"" "$parent"
     grep -qF "Stop on any unrelated or ambiguous path" "$parent"
     grep -qF "require \`{confirmed-state-id}\` to equal \`{target-status-id}\`" "$parent"
     grep -qF "issue no Linear write" "$parent"
@@ -287,13 +287,13 @@
     registry="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
     readme="../README.md"
 
-    grep -qF "argument-hint: \"[--subagent-model <model>] [--strict] [--rounds <1-5>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]\"" "$skill"
+    grep -qF "argument-hint: \"[--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]\"" "$skill"
     grep -qF "user-invocable: true" "$skill"
     grep -qF "**Direct user mode:**" "$skill"
     grep -qF "Set \`{archive-key}=pr-review-convergence\`" "$skill"
     grep -qF "\`DIRECT_REQUIREMENTS_SOURCE=explicit\`" "$skill"
     grep -qF "\`DIRECT_REQUIREMENTS_SOURCE=linear\`" "$skill"
-    grep -qF "Reject \`--scope-plan\` and \`--validation-only\`" "$skill"
+    grep -qF "Reject \`--scope-plan\`, \`--validation-only\`, and \`--isolated\`" "$skill"
     grep -qF "Accept at most one remaining positional Linear selector only when both \`--requirements\` and \`--derive\` are absent" "$skill"
     grep -qF "issue identifier matching \`{TEAM}-{number}\` case-insensitively, where \`TEAM\` is alphanumeric" "$skill"
     grep -qF "require the exact host, no credentials or port, and a single extractable identifier" "$skill"
@@ -312,7 +312,7 @@
     grep -qF "When direct mode has \`DIRECT_REQUIREMENTS_SOURCE=conversation\` and no explicit selector" "$skill"
     grep -qF "set \`DIRECT_REQUIREMENTS_SOURCE=linear\` and \`{work-id}={linear-issue-id}\`" "$skill"
     grep -qF "Do not use the branch diff, implementation, commit messages, Pull Request metadata, or repository conventions to fill missing product intent." "$skill"
-    grep -qF "Usage: \$kramme:pr:review-convergence [--subagent-model <model>] [--strict] [--rounds <1-5>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]" "$skill"
+    grep -qF "Usage: \$kramme:pr:review-convergence [--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]" "$skill"
     grep -qF "with no requirement argument it derives the contract from the current conversation" "$readme"
     grep -qF "with \`--derive\` it drafts a contract from conversation and committed branch evidence" "$readme"
     grep -qF "set its maximum to one through five fix-and-rerun rounds with \`--rounds <1-5>\`" "$readme"

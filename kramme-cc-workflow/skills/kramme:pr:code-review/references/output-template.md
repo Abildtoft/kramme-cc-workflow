@@ -44,7 +44,13 @@ Execution evidence: self-attested; validated locally
 
 | Job | Agent invocation ID | Status | Saved output |
 | --- | --- | --- | --- |
-| {every required reviewer and downstream stage} | {actual ID or orchestrator} | {pending/running/succeeded/failed} | {absolute output path or none} |
+| {every required reviewer and downstream stage} | {actual ID, orchestrator, or none (skipped)} | {pending/running/succeeded/failed/skipped} | {absolute output path or none} |
+
+When no finding reached the relevance validator or the slop meta-review, include the matching line below for each stage recorded as `skipped`; the seal rejects a skipped stage the report does not state.
+
+Relevance validation: skipped (no findings)
+
+Slop meta-review: skipped (no findings)
 
 When coverage is degraded or the working tree changed during the review, include the applicable limitation lines below. Failed seal or missing execution evidence requires INCOMPLETE; never emit the candidate COMPLETE report.
 

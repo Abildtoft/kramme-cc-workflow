@@ -6,7 +6,7 @@ Run a comprehensive PR review using multi-agent execution. Each reviewer runs wi
 
 This reference is loaded by `/kramme:pr:code-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
-Read and apply `references/execution-contract.md` before creating the team. The same frozen plan, invocation IDs, saved outputs and completion validator govern this mode. Initialize the ledger after Step 1. Team cross-messages do not replace any required reviewer, relevance-validation or separate slop meta-review job.
+Read and apply `references/execution-contract.md` before creating the team. The same frozen plan, invocation IDs, saved outputs and completion validator govern this mode. Initialize the ledger after Step 1. Team cross-messages do not replace any required reviewer, relevance-validation or separate slop meta-review job. When no finding reaches the relevance or slop meta-review stage, record it as `skipped` under the contract instead of spawning a teammate with nothing to process.
 
 **Review Aspects (optional):** "$ARGUMENTS"
 

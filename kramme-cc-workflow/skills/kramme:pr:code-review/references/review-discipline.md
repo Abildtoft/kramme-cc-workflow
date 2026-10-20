@@ -13,6 +13,7 @@ Reviewers read one working tree that is shared with every other reviewer in the 
 - Read-only verification is encouraged: reading files, `git diff`, `git log`, `git show`, `grep`, and search tools all leave the tree untouched.
 - When a fix requires a code change, put the change in the finding as recommended text. Describing the edit is the deliverable; applying it is `/kramme:pr:resolve-review`'s job.
 - A reviewer that genuinely must execute something that writes has to run alone or in an isolated worktree. It must never do so inside a parallel batch on the shared tree.
+- Put scratch files outside the repository in a fresh `mktemp -d` directory and leave it there when you finish. Never delete it with `rm -rf`: the plugin's `block-rm-rf` hook refuses the command, so the attempt only wastes a turn.
 
 The orchestrator captures a working-tree manifest before launching reviewers and again after collecting their findings (`${CLAUDE_PLUGIN_ROOT}/scripts/review-tree-fingerprint.sh`). Each successful manifest contains exactly one metadata record followed by zero or more sorted path records:
 

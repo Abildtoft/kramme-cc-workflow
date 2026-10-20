@@ -23,3 +23,7 @@ Amend the July 6 skill-quality regime with one narrow exception: `evals/review-c
 Stronger prose alone remains unobservable. A report checklist without raw outputs cannot distinguish planned reviewers from returned reviewers. A host hook would provide stronger enforcement but has no portable trusted-event adapter here.
 
 Local evidence adds temporary files and a Node/Git dependency. Missing tooling or retired evidence blocks completion checks. No global PR creation requirement is added: workflows that require review convergence enforce this gate through that phase, while unrelated PR creation workflows retain their current contract.
+
+## Amendment
+
+On 2026-10-20 the [risk-routed review convergence record](2026-10-20-risk-routed-review-convergence.md) let the `relevance` and `slop-meta` stages be recorded as `skipped` when no finding reaches them. A skip launches no agent, needs saved `Skipped:` evidence, and must appear as its fixed line in the sealed report; every applicable reviewer still runs. `review-execution.js record --manifest` records a batch of jobs in one call under the same checks.

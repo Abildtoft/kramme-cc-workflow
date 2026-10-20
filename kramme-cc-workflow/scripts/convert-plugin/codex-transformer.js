@@ -279,6 +279,14 @@ function sharedRuntimeFor(plugin) {
         targetPath: path.join("scripts", "worktree-tree-id.sh"),
       },
       {
+        sourceFile: path.join(plugin.root, "scripts", "risk-signals.py"),
+        targetPath: path.join("scripts", "risk-signals.py"),
+      },
+      {
+        sourceFile: path.join(plugin.root, "scripts", "risk_patterns.py"),
+        targetPath: path.join("scripts", "risk_patterns.py"),
+      },
+      {
         sourceFile: path.join(plugin.root, "scripts", "skill-usage.js"),
         targetPath: path.join("scripts", "skill-usage.js"),
       },

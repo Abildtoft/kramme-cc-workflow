@@ -314,7 +314,7 @@ def apply_patch(changes: list[FileChange], patch: str, signals: Signals) -> None
     owners = [change for change in changes for _ in range(2 if change.status == "T" else 1)]
     if len(owners) != len(sections):
         raise TriageError(f"patch has {len(sections)} file sections but the raw diff has {len(owners)}")
-    for change, section in zip(owners, sections):
+    for change, section in zip(owners, sections):  # noqa: B905 - lengths checked above; strict= needs Python 3.10
         scan_sinks = change.kind == "code"
         new_line: int | None = None  # None until the first hunk header
         for line in section.split("\n"):

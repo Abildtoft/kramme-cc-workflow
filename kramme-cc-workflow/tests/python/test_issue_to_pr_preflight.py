@@ -215,6 +215,7 @@ class ArgumentTests(HelperCase):
             "ship_mode": False,
             "cycles": 2,
             "cycles_explicit": False,
+            "depth": None,
         }
         self.assertEqual({key: payload[key] for key in expected}, expected)
         state_file = Path(payload["state_file"])
@@ -228,6 +229,9 @@ class ArgumentTests(HelperCase):
         self.assertEqual(payload["issue_id"], "ABC-7")
         self.assertTrue(payload["continue_mode"] and payload["strict_review"] and payload["ship_mode"])
         self.assertEqual((payload["cycles"], payload["cycles_explicit"]), (5, True))
+        self.assertIsNone(payload["depth"])
+        for depth in ("balanced", "full"):
+            self.assertEqual(self.invoke("args", "--", f"DISC-1 --depth {depth} --ship")["depth"], depth)
         for value in "1234":
             self.assertEqual(self.invoke("args", "--", f"DISC-1 --cycles {value}")["cycles"], int(value))
 
@@ -260,6 +264,12 @@ class ArgumentTests(HelperCase):
             "--cycles --ship DISC-1": "cycles_value_invalid",
             "DISC-1 --cycles ３": "cycles_value_invalid",
             "DISC-1 --cycles ٣": "cycles_value_invalid",
+            "DISC-1 --depth light": "depth_value_invalid",
+            "DISC-1 --depth FULL": "depth_value_invalid",
+            "DISC-1 --depth": "depth_value_invalid",
+            "--depth --ship DISC-1": "depth_value_invalid",
+            "DISC-1 --depth full --depth full": "duplicate_flag",
+            "DISC-1 --depth=full": "unknown_flag",
             "": "issue_id_missing",
             "--ship --strict": "issue_id_missing",
             "DISC-1 DISC-2": "extra_positional",
@@ -276,7 +286,10 @@ class ArgumentTests(HelperCase):
             with self.subTest(raw=raw):
                 payload = self.invoke("args", "--", raw)
                 self.assert_status(payload, "blocked", reason)
-                self.assertEqual(payload["supported_flags"], ["--continue", "--strict", "--cycles <1-5>", "--ship"])
+                self.assertEqual(
+                    payload["supported_flags"],
+                    ["--continue", "--strict", "--cycles <1-5>", "--depth <balanced|full>", "--ship"],
+                )
                 self.assertNotIn("state_file", payload)
         self.assertEqual(list(self.state_dir.iterdir()), [])
 

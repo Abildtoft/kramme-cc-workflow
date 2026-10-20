@@ -7,7 +7,8 @@ Read this before selecting standard or Team Mode. It applies to default, filtere
 - Freeze normalized aspects and applicability before the first reviewer launch. Default is `["all"]`. Never invent an aspect filter to save time or tokens.
 - Run the selected specialized agents with their full missions and required references. A parent-only review or one agent impersonating several reviewers does not satisfy the selected jobs. The `lean`, `removal`, `refactor`, and `simplify` dimensions deliberately share one cleanup-reviewer invocation, and the `security` dimension runs one security-reviewer whose four lenses (injection, access control, data protection, logic) all execute inside that invocation.
 - Wait for every selected reviewer. Do not cancel, omit, or replace a reviewer because the diff looks small, CI passes, enough findings exist, another reviewer found nothing, or elapsed time feels excessive. Capacity limits mean queueing.
-- Zero findings still require relevance validation, a separate slop meta-review invocation, previous-context processing, aggregation, and the final checklist. Save explicit zero-result output; silence, a launch acknowledgement, or a progress message is not a completed review.
+- Zero findings still require previous-context processing, aggregation, and the final checklist. Save explicit zero-result output; silence, a launch acknowledgement, or a progress message is not a completed review.
+- The two downstream agent stages are skipped only when nothing reaches them: record `relevance` as `skipped` when every primary reviewer returned zero findings, and `slop-meta` as `skipped` when relevance left no validated finding or suggestion (always when `relevance` was skipped). A skip launches no agent, saves output that starts with `Skipped:` and says why, and adds `Relevance validation: skipped (no findings)` or `Slop meta-review: skipped (no findings)` to the report; the seal rejects a skip the report does not state. No other job may be skipped.
 - Actual unavailability, timeout, cancellation, malformed output, or a missing stage makes the run `INCOMPLETE`. Preserve partial findings and failure evidence; never call it complete, clean, passed, approved, or converged. User cancellation stops work and stays incomplete. Do not wait indefinitely on a failed agent.
 - A changed review scope requires a fresh full run to claim completion. Existing mutation recovery may preserve useful findings, but cannot certify the new tree.
 
@@ -77,18 +78,26 @@ node "$REVIEW_SKILL_DIR/scripts/review-execution.js" start "$REVIEW_RUN" --job c
 node "$REVIEW_SKILL_DIR/scripts/review-execution.js" finish "$REVIEW_RUN" --job code-reviewer --status succeeded --output "$RAW_RESULT"
 ```
 
-After all primary reviewers return, record these jobs in order using the same start/finish commands. Orchestrator jobs omit `--agent-id`. A pending job that cannot launch may be finished directly with `--status failed` and saved failure evidence; never invent a host ID. If at least one primary reviewer succeeded and all others have terminal states, downstream stages may process the partial batch, but the failed primary jobs still prevent sealing. All-primary or relevance failure stops downstream work under the existing no-report rule:
+Prefer one `record` call per batch over a start/finish pair per job: after the parallel primary reviewers return, write one manifest listing each reviewer's job, actual invocation ID, status, and saved output, then run:
+
+```bash
+node "$REVIEW_SKILL_DIR/scripts/review-execution.js" record "$REVIEW_RUN" --manifest "$MANIFEST"
+```
+
+The manifest is a JSON array of `{"job", "status", "output", "agentId"}` objects in execution order; orchestrator jobs and skipped stages omit `agentId`. The helper applies every entry with the same checks as `start` and `finish`, and records nothing when any entry fails. Record each downstream stage the same way once it finishes, combining consecutive orchestrator stages in one manifest.
+
+After all primary reviewers return, record these jobs in order using `record` or the same start/finish commands. Orchestrator jobs omit `--agent-id`. A pending job that cannot launch may be finished directly with `--status failed` and saved failure evidence; never invent a host ID. If at least one primary reviewer succeeded and all others have terminal states, downstream stages may process the partial batch, but the failed primary jobs still prevent sealing. All-primary or relevance failure stops downstream work under the existing no-report rule:
 
 | Job | Executor | Saved output |
 | --- | --- | --- |
 | `integrity` | orchestrator | Before/after manifest comparison and mutation disposition |
-| `relevance` | new relevance-validator invocation | Classifications over all primary findings, including an explicit empty-set result |
-| `slop-meta` | new deslop-reviewer invocation | Meta-review annotations over validated findings, including an explicit empty-set result |
+| `relevance` | new relevance-validator invocation, or `skipped` when every primary reviewer returned zero findings | Classifications over all primary findings, or `Skipped:` evidence |
+| `slop-meta` | new deslop-reviewer invocation, or `skipped` when no validated finding or suggestion remains | Meta-review annotations over validated findings, or `Skipped:` evidence |
 | `previous-context` | orchestrator | Prior-source counts, revalidation, carry-forward and filtering decisions, or explicit none |
 | `aggregation` | orchestrator | Dedupe, precedence, deletion dependencies, emphasis, action-class normalization and stable IDs |
 | `final-check` | orchestrator | Completed discipline checklist and final report structure check |
 
-Each delegated job needs a distinct invocation ID, including slop meta-review. Keep the existing shared-tree safety checks. If any required job fails, retain the run as incomplete; a retry uses a new full run with fresh scope and agents. Optional diff-comment projection is outside the completion gate and cannot repair missing coverage.
+Each delegated job that runs needs a distinct invocation ID, including slop meta-review. Keep the existing shared-tree safety checks. If any required job fails, retain the run as incomplete; a retry uses a new full run with fresh scope and agents. Optional diff-comment projection is outside the completion gate and cannot repair missing coverage.
 
 ## Seal and consume
 

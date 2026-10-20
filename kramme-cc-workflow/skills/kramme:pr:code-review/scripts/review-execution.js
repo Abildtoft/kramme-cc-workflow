@@ -39,6 +39,13 @@ const STAGES = [
   "aggregation",
   "final-check",
 ];
+// Agent stages that have nothing to process when no finding reaches them. A skip launches no agent, needs explicit
+// `Skipped:` evidence, and must be stated in the sealed report so a consumer can see the stage did not run.
+const SKIPPABLE = {
+  relevance: "Relevance validation: skipped (no findings)",
+  "slop-meta": "Slop meta-review: skipped (no findings)",
+};
+const COMPLETE = ["succeeded", "skipped"];
 const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const jsonHash = (value) => hash(JSON.stringify(value));
 function requireValue(condition, message) {
@@ -235,9 +242,15 @@ function fresh(ledger) {
 function validate(directory, ledger) {
   fresh(ledger);
   const ids = new Set();
+  requireValue(
+    ledger.jobs.relevance?.status !== "skipped" ||
+      ledger.jobs["slop-meta"]?.status === "skipped",
+    "A skipped relevance stage leaves nothing for slop meta-review; skip it too",
+  );
   for (const [id, job] of Object.entries(ledger.jobs)) {
     requireValue(
-      job.status === "succeeded",
+      job.status === "succeeded" ||
+        (job.status === "skipped" && Object.hasOwn(SKIPPABLE, id)),
       `Incomplete job: ${id} (${job.status})`,
     );
     requireValue(
@@ -246,7 +259,7 @@ function validate(directory, ledger) {
         job.started < job.finished,
       `Invalid execution order: ${id}`,
     );
-    if (job.agent !== "orchestrator") {
+    if (job.agent !== "orchestrator" && job.status !== "skipped") {
       requireValue(
         typeof job.agentId === "string" &&
           job.agentId.trim() &&
@@ -268,12 +281,96 @@ function validate(directory, ledger) {
     );
   }
 }
+function requireDependencies(ledger, id) {
+  for (const dependency of dependencies(id, ledger.jobs))
+    requireValue(
+      COMPLETE.includes(ledger.jobs[dependency].status) ||
+        (id === "integrity" && ledger.jobs[dependency].status === "failed"),
+      `Incomplete dependency: ${dependency}`,
+    );
+  if (id === "integrity")
+    requireValue(
+      Object.values(ledger.jobs).some(
+        (item) => item.kind === "reviewer" && item.status === "succeeded",
+      ),
+      "All primary reviewers failed",
+    );
+}
+function applyStart(ledger, id, agentId) {
+  const job = ledger.jobs[id];
+  requireValue(Object.hasOwn(ledger.jobs, id), `Unknown job: ${id}`);
+  requireValue(
+    job.status === "pending",
+    "Job already started; retain failed evidence and start a fresh run for retries",
+  );
+  requireDependencies(ledger, id);
+  if (job.agent !== "orchestrator") {
+    requireValue(agentId?.trim(), "Actual host agent ID required");
+    requireValue(
+      !Object.values(ledger.jobs).some((other) => other.agentId === agentId),
+      "Use a distinct invocation ID per delegated job",
+    );
+    job.agentId = agentId;
+  }
+  job.status = "running";
+  job.started = ++ledger.sequence;
+}
+function applyFinish(ledger, id, status, output) {
+  const job = ledger.jobs[id];
+  requireValue(Object.hasOwn(ledger.jobs, id), `Unknown job: ${id}`);
+  requireValue(
+    (job.status === "running" && ["succeeded", "failed"].includes(status)) ||
+      (job.status === "pending" && ["failed", "skipped"].includes(status)),
+    "finish needs running job, --status succeeded|failed and --output (or a pending job with --status failed|skipped)",
+  );
+  requireValue(
+    output.toString().trim(),
+    "Empty output is not evidence; save an explicit zero-findings result",
+  );
+  if (status === "skipped") {
+    requireValue(
+      Object.hasOwn(SKIPPABLE, id),
+      `Only ${Object.keys(SKIPPABLE).join(" and ")} may be skipped`,
+    );
+    requireValue(
+      output.toString().trimStart().startsWith("Skipped:"),
+      "Skipped output must start with `Skipped:` and say why nothing reached the stage",
+    );
+    requireDependencies(ledger, id);
+  }
+  if (job.status === "pending") job.started = ++ledger.sequence;
+  job.status = status;
+  job.outputHash = hash(output);
+  job.finished = ++ledger.sequence;
+}
+function readManifest(file) {
+  const manifest = readJson(file);
+  requireValue(
+    Array.isArray(manifest) && manifest.length > 0,
+    "Manifest must be a non-empty JSON array",
+  );
+  return manifest.map((entry, index) => {
+    requireValue(
+      entry &&
+        typeof entry === "object" &&
+        typeof entry.job === "string" &&
+        typeof entry.status === "string" &&
+        typeof entry.output === "string" &&
+        (entry.agentId === undefined || typeof entry.agentId === "string") &&
+        Object.keys(entry).every((key) =>
+          ["job", "status", "output", "agentId"].includes(key),
+        ),
+      `Manifest entry ${index} needs job, status, output, and optional agentId`,
+    );
+    return { ...entry, data: fs.readFileSync(entry.output) };
+  });
+}
 function main(argv) {
   const [command, directoryArg, ...rest] = argv;
   requireValue(
-    ["init", "start", "finish", "seal", "check"].includes(command) &&
+    ["init", "start", "finish", "record", "seal", "check"].includes(command) &&
       directoryArg,
-    "Usage: review-execution.js init|start|finish|seal|check RUN_DIR [--key value]",
+    "Usage: review-execution.js init|start|finish|record|seal|check RUN_DIR [--key value]",
   );
   requireValue(rest.length % 2 === 0, "Options require values");
   const options = {};
@@ -281,6 +378,7 @@ function main(argv) {
     init: ["plan", "base"],
     start: ["job", "agent-id"],
     finish: ["job", "output", "status"],
+    record: ["manifest"],
     seal: ["report"],
     check: ["report", "aspects"],
   }[command];
@@ -343,69 +441,62 @@ function main(argv) {
     return;
   }
   const { plan, ledger } = load(directory);
-  if (command === "start" || command === "finish") {
+  if (command === "start" || command === "finish" || command === "record") {
     requireValue(
       !ledger.reportHash,
       "Sealed run cannot change; start a fresh run",
     );
-    const job = ledger.jobs[options.job];
-    requireValue(Object.hasOwn(ledger.jobs, options.job), "Unknown job");
+    /** @type {{job: string, status?: string, agentId?: string, data?: Buffer}[]} */
+    let steps;
     if (command === "start") {
       fresh(ledger);
+      applyStart(ledger, options.job, options["agent-id"]);
+      steps = [];
+    } else if (command === "finish") {
       requireValue(
-        job.status === "pending",
-        "Job already started; retain failed evidence and start a fresh run for retries",
+        options.job && options.status && options.output,
+        "finish needs --job, --status succeeded|failed|skipped and --output",
       );
-      for (const dependency of dependencies(options.job, ledger.jobs))
-        requireValue(
-          ledger.jobs[dependency].status === "succeeded" ||
-            (options.job === "integrity" &&
-              ledger.jobs[dependency].status === "failed"),
-          `Incomplete dependency: ${dependency}`,
-        );
-      if (options.job === "integrity")
-        requireValue(
-          Object.values(ledger.jobs).some(
-            (item) => item.kind === "reviewer" && item.status === "succeeded",
-          ),
-          "All primary reviewers failed",
-        );
-      if (job.agent !== "orchestrator") {
-        requireValue(
-          options["agent-id"]?.trim(),
-          "Actual host agent ID required",
-        );
-        requireValue(
-          !Object.values(ledger.jobs).some(
-            (other) => other.agentId === options["agent-id"],
-          ),
-          "Use a distinct invocation ID per delegated job",
-        );
-        job.agentId = options["agent-id"];
-      }
-      job.status = "running";
-      job.started = ++ledger.sequence;
+      steps = [
+        {
+          job: options.job,
+          status: options.status,
+          data: fs.readFileSync(options.output),
+        },
+      ];
+      applyFinish(ledger, options.job, options.status, steps[0].data);
     } else {
+      requireValue(options.manifest, "record needs --manifest <file.json>");
+      fresh(ledger);
+      // Apply every entry to the in-memory ledger before writing anything, so a bad entry records nothing.
+      steps = readManifest(options.manifest);
+      for (const step of steps) {
+        const job = ledger.jobs[step.job];
+        requireValue(
+          Object.hasOwn(ledger.jobs, step.job),
+          `Unknown job: ${step.job}`,
+        );
+        const startsNow =
+          job.status === "pending" &&
+          !(
+            step.status === "skipped" ||
+            (step.status === "failed" &&
+              !step.agentId &&
+              job.agent !== "orchestrator")
+          );
+        if (startsNow) applyStart(ledger, step.job, step.agentId);
+        applyFinish(ledger, step.job, step.status, step.data);
+      }
+    }
+    for (const step of steps)
       requireValue(
-        (job.status === "running" ||
-          (job.status === "pending" && options.status === "failed")) &&
-          ["succeeded", "failed"].includes(options.status) &&
-          options.output,
-        "finish needs running job, --status succeeded|failed and --output",
+        !fs.existsSync(path.join(directory, `${step.job}.txt`)),
+        `Output already recorded: ${step.job}`,
       );
-      const output = fs.readFileSync(options.output);
-      requireValue(
-        output.toString().trim(),
-        "Empty output is not evidence; save an explicit zero-findings result",
-      );
-      fs.writeFileSync(path.join(directory, `${options.job}.txt`), output, {
+    for (const step of steps)
+      fs.writeFileSync(path.join(directory, `${step.job}.txt`), step.data, {
         flag: "wx",
       });
-      if (job.status === "pending") job.started = ++ledger.sequence;
-      job.status = options.status;
-      job.outputHash = hash(output);
-      job.finished = ++ledger.sequence;
-    }
     save(path.join(directory, "ledger.json"), ledger);
     return;
   }
@@ -459,6 +550,12 @@ function main(argv) {
     reportText.split("\n").includes("Review status: COMPLETE"),
     "Report status must be COMPLETE",
   );
+  for (const [id, line] of Object.entries(SKIPPABLE))
+    if (ledger.jobs[id]?.status === "skipped")
+      requireValue(
+        reportText.split("\n").some((text) => text.trim() === line),
+        `Report must state: ${line}`,
+      );
   if (command === "seal") {
     requireValue(!ledger.reportHash, "Run already sealed");
     ledger.reportHash = hash(report);

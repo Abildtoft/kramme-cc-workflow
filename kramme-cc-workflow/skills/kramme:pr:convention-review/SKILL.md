@@ -87,7 +87,6 @@ REVIEW_SCOPE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/convention-review-scope.XXXXXX") |
   echo "Could not create temporary convention-review scope; stop." >&2
   exit 1
 }
-trap 'rm -rf "$REVIEW_SCOPE_DIR"' EXIT
 printf '%s' "$CHANGED_FILES" > "$REVIEW_SCOPE_DIR/changed-files.txt"
 PR_CONTEXT_JSON=$(gh pr view --json title,body 2> /dev/null || printf '{}')
 printf '%s\n' "$PR_CONTEXT_JSON" > "$REVIEW_SCOPE_DIR/pr-context.json"
@@ -303,4 +302,4 @@ Before posting the report, self-check:
 
 If any answer is no, fix the report before posting.
 
-After the report is posted or written successfully, remove `$REVIEW_SCOPE_DIR`; the EXIT trap remains the failure-path cleanup.
+Leave `$REVIEW_SCOPE_DIR` in the temporary directory when the review ends, whether it succeeded or failed; the system reclaims it. Do not delete it with `rm -rf`: the plugin's `block-rm-rf` hook refuses the command, and a scope-capture block that contains it fails as a whole.

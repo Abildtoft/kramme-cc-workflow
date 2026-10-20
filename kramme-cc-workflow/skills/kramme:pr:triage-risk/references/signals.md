@@ -1,6 +1,6 @@
 # Risk Signals
 
-`scripts/risk-signals.py` emits these signals. Each has a fixed level and says whether the model may discount it. The script reports paths, line numbers, and pattern names only; it never prints file content.
+The plugin-level `${CLAUDE_PLUGIN_ROOT}/scripts/risk-signals.py` emits these signals; `kramme:pr:review-convergence` reads the same report to choose its review profile. Each has a fixed level and says whether the model may discount it. The script reports paths, line numbers, and pattern names only; it never prints file content.
 
 ## File Kinds
 

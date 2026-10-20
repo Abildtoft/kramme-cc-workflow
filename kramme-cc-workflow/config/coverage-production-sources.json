@@ -77,8 +77,8 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/strings.py",
       "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/scripts/preflight.py",
       "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
-      "kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk-signals.py",
-      "kramme-cc-workflow/skills/kramme:pr:triage-risk/scripts/risk_patterns.py"
+      "kramme-cc-workflow/scripts/risk-signals.py",
+      "kramme-cc-workflow/scripts/risk_patterns.py"
     ],
     "contract_only": {
       "kramme-cc-workflow/scripts/generate-component-reference.py": [
