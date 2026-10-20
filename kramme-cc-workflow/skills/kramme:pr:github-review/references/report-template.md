@@ -30,6 +30,7 @@ _You make the final call. A pending draft, when requested, remains unsubmitted u
 - Status: <exact DRAFT_REVIEW_STATUS>
 - Review: <review URL and ID | —>
 - Proposed inline comments: <N eligible>
+- Clarity check: <exact CLARITY_CHECK_STATUS>
 - Included in pending review: <N when creation is confirmed | 0 for confirmed no-write | unknown (<N> attempted) for unknown/unexpected outcomes>
 - Omitted: <N — list each proposed-item identifier and reason, using `path:line` when available, or "none">
 - Payload: <run-unique `.context/github-review-drafts/pr-<number>.<suffix>` | —>
@@ -83,6 +84,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Refers to: <code outside the anchor the comment depends on, e.g. `loadRows()` in `src/api/rows.ts:40`, or "—">
   - Evidence: <traced behavior, failing path, or UNVERIFIED reason>
   - Humanized: yes|no
+  - Clarity: <author>/<teammate>, then <final> | not checked
   - Draft comment:
     > <concise, calibrated, context first, understandable from the anchor alone — e.g. "If `loadRows()` in `src/api/rows.ts` returns an empty array, does this `.then` chain still resolve, or does the dashboard spinner hang? Couldn't trace it from the diff.">
 
@@ -93,6 +95,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Refers to: <outside code, or "—">
   - Evidence: <concrete reason>
   - Humanized: yes|no
+  - Clarity: <author>/<teammate>, then <final> | not checked
   - Draft comment:
     > <e.g. "`refreshSession()` in `auth/session.ts` only runs on page load, so after an hour-long session this `fetchInvoices` call looks like it goes out with an expired token. Is there a reason it isn't refreshed first?">
 
@@ -102,6 +105,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Location: `path/to/file.ts:123`
   - Refers to: <outside code, or "—">
   - Humanized: yes|no
+  - Clarity: <author>/<teammate>, then <final> | not checked
   - Draft comment:
     > <e.g. "`applyDateRange()` in `src/reports/ReportFilters.tsx` repeats this date-range check. Would one named helper for both make the intent clearer? Up to you.">
 
@@ -111,6 +115,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Location: `path/to/file.ts:123`
   - Refers to: <outside code, or "—">
   - Humanized: yes|no
+  - Clarity: <author>/<teammate>, then <final> | not checked
   - Draft comment:
     > <e.g. "Is it intentional that a missing `currency` now throws instead of falling back to `DEFAULT_CURRENCY` as it did before this change?">
 
@@ -155,6 +160,8 @@ gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/r
 - **Draft comment** — the part the author actually reads, and the value this report adds over a plain findings list. Follow the comment-craft rules in `references/comment-drafting.md`, with the full trace kept in `Evidence`. Include it for Questions so every proposed inline comment can be carried into a pending review; skip it only for Strengths.
 - **Humanized** — `yes` once the draft has passed through `kramme:text:humanize`, `no` if the humanizer was unavailable or the original wording was kept to protect the human voice, question framing, calibration, or technical accuracy.
 - **Refers to** — the code outside the anchor that the draft comment depends on, so you can audit those references before posting. Use `—` when the anchor alone explains the comment.
+- **Clarity check** — the outcome of Step 10a: `complete — ...` with the readers that ran, the final scores, and the facts corrected; `incomplete — ...` with the stage and reason; or `not run — ...` with the reason. Corrected facts also appear in the affected comments' `Evidence`.
+- **Clarity** — the readers' 1–5 scores for the comment: author and teammate on the first reading, then the final confirmation score, such as `3/4, then 5`. Use `—` for a reading the comment missed because a split created it, and `not checked` when the clarity check did not run.
 - **Location** — always a concrete `path:line` from the PR diff so the comment can be anchored. Use the line in the PR's head version. If a finding is PR-wide, say `review-scope` and explain in the body.
 - **Open Conversation** — only for ongoing reviews; omit on a clean first pass. List threads in priority order: `awaiting-you` and `author-responded` first (these need your input), then `peer-comment` / `new-from-others` / `your-open` (awareness). The root comment ID for each thread feeds the reply command in Manual posting.
 - **Verified (live tree)** — the result of reading the current file at the thread's location in the worktree, not an inference from finding overlap: `addressed`, `still-open`, or `cant-tell`. Name what you actually saw (the guard now present, the unchanged branch, etc.). This is what lets a reply say "looks handled now" with confidence.
