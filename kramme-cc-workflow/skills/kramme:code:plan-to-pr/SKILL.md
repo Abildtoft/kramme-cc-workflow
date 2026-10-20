@@ -1,7 +1,7 @@
 ---
 name: kramme:code:plan-to-pr
 description: Implements one self-contained `PR_PLAN_*.md` from an indexed breakdown set or `.context/attachments/` on a deterministic unpublished branch. Detached `W##L` plans prove prerequisites from embedded evidence. `--continue` resumes validated dirty work only from an archived `IN_PROGRESS` plan. Enforces drift, scope, and publication checks, delegates review and verification, and can ship the PR. Not for inline plans, Linear/SIW issues, split worktrees, stacked or existing PRs, or batches.
-argument-hint: "<attached plan | PR_PLAN_W##L_*.md> [--continue] [--strict] [--ship]"
+argument-hint: "<attached plan | PR_PLAN_W##L_*.md> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]"
 disable-model-invocation: true
 user-invocable: true
 permissions:
@@ -25,7 +25,7 @@ Execute exactly one PR-sized plan that satisfies the generated-plan contract. Ac
 
 ## Step 1: Parse Arguments
 
-1. Parse the original user arguments before invoking the validator. Accept `--continue`, `--strict`, and `--ship` at most once each, require exactly one remaining plan path, and reject every other user-supplied flag, including `--repo-root` and `--allow-worktree-drift`. Set `CONTINUE_MODE=true` only when `--continue` is present. Set `REPO_ROOT` from the canonical Git worktree root, build `VALIDATOR_ARGS` only from the validated public flags and plan path, and invoke the skill-local read-only validator without forwarding raw `$@`. Translate validated `--continue` to the validator's internal `--allow-worktree-drift`; never accept that internal flag directly from the user:
+1. Parse the original user arguments before invoking the validator. Accept `--continue`, `--strict`, `--cycles <1-5>`, `--depth <balanced|full>`, and `--ship` at most once each, require exactly one remaining plan path, and reject every other user-supplied flag, including `--repo-root` and `--allow-worktree-drift`. `--cycles` takes exactly one ASCII digit from `1` through `5` and sets `{cycles}`, which defaults to `2`; `--depth` takes `balanced` or `full` and sets `{depth}`, which defaults to empty. Both are review-convergence controls: never pass them to the validator. Set `CONTINUE_MODE=true` only when `--continue` is present. Set `REPO_ROOT` from the canonical Git worktree root, build `VALIDATOR_ARGS` only from the validated public flags and plan path, and invoke the skill-local read-only validator without forwarding raw `$@`. Translate validated `--continue` to the validator's internal `--allow-worktree-drift`; never accept that internal flag directly from the user:
 
    ```bash
    VALIDATOR_ARGS=(--repo-root "$REPO_ROOT")
@@ -53,7 +53,7 @@ Execute exactly one PR-sized plan that satisfies the generated-plan contract. Ac
 If validation fails:
 
 ```text
-Usage: $kramme:code:plan-to-pr <attached-plan | PR_PLAN_W##L_NAME.md> [--continue] [--strict] [--ship]
+Usage: $kramme:code:plan-to-pr <attached-plan | PR_PLAN_W##L_NAME.md> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]
 Example: $kramme:code:plan-to-pr PR_PLAN_W01A_DEFINE_ERROR_TYPES.md --strict --ship
 Continue: $kramme:code:plan-to-pr .context/code-plan-to-pr/<plan-set-id>/plans/PR_PLAN_W01A_DEFINE_ERROR_TYPES.md --continue --ship
 Attached: $kramme:code:plan-to-pr .context/attachments/<id>/pasted_text.txt --ship
@@ -185,10 +185,14 @@ Set `{work-id}` to `{execution-label}` and `{archive-key}` to `code-plan-to-pr`.
 Build delegated arguments:
 
 ```text
---work-id {work-id} --archive-key {archive-key} --scope-plan {validated-scope-plan} [--strict] --requirements {work-requirements}
+--work-id {work-id} --archive-key {archive-key} --scope-plan {validated-scope-plan} [--strict] --rounds {cycles} [--depth {depth}] [--isolated] --requirements {work-requirements}
 ```
 
-Append `--strict` only when `STRICT_REVIEW=true`. Invoke `kramme:pr:review-convergence` once and capture its structured handoff. Continue only when it returns `Review convergence: passed`, normal mode, the exact work ID and branch, a clean current tree matching its review tree, complete ordered-gate evidence, no required or blocked finding, and passed final verification. JSON-decode its `Requirements JSON` field and require the decoded value to equal `{work-requirements}` byte-for-byte.
+Append `--strict` only when `STRICT_REVIEW=true` and `--depth {depth}` only when it is set. Always pass `--rounds {cycles}`, so the remediation budget defaults to two cycles instead of convergence's own ceiling of five. `--depth` raises the review profile convergence chooses from the branch's deterministic risk floor and never lowers it.
+
+When the host lets a delegated agent invoke skills and launch its own agents (Claude Code does), run the invocation inside one delegated agent on this session's model and add `--isolated`. Review then stops re-reading this session's implementation history on every turn. Give the agent only the exact argument string, the instruction to invoke `kramme:pr:review-convergence` through the skill mechanism with it, and the instruction to return the skill's Step 6 handoff block verbatim as its final message. It must not push, publish, or change the plan archive. When the handoff stops on a decision only the user can make, relay that exact question and continue the same agent with the answer instead of starting a new invocation. On Codex, or when nesting is unavailable, invoke the skill directly without `--isolated`.
+
+Invoke `kramme:pr:review-convergence` once and capture its structured handoff. Continue only when it returns `Review convergence: passed`, normal mode, the exact work ID and branch, a clean current tree matching its review tree, complete ordered-gate evidence, no required or blocked finding, and passed final verification. JSON-decode its `Requirements JSON` field and require the decoded value to equal `{work-requirements}` byte-for-byte.
 
 For plan scope, require the handoff's validated scope plan, scope mode, scope base, and normalized paths to equal `{validated-scope-plan}`, `PLAN_SCOPE_MODE`, `{branch-base-commit}`, and `SCOPE_PATHS`. Preserve those exact returned values as `{scope-base-commit}`, `VALIDATED_SCOPE_PATHS`, and `RECHECK_STANDALONE_SCOPE`; they are the only scope state the shipping contract may use. Stop at any missing invariant. Never reconstruct or restart the delegated remediation loop in this caller.
 
@@ -205,9 +209,10 @@ Local head/tree: {head} {tree}
 Remote head: absent
 Work item: {work-id}
 Implementation: complete
+Review profile: {light|balanced|full} ({floor and reasons from the handoff})
 Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
-Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
+Remediation: {cycles used}/{cycles}; stop={converged|diminishing returns}
 Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
 Verification: passed
 Pull Request: not created (--ship was not supplied)
@@ -228,9 +233,10 @@ Local head/tree: {final-head} {final-tree}
 Remote head: {final-head}
 Work item: {work-id}
 Implementation: complete
+Review profile: {light|balanced|full} ({floor and reasons from the handoff})
 Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
-Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
+Remediation: {cycles used}/{cycles}; stop={converged|diminishing returns}
 Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
 Verification: initial tree {verified-tree} passed; final tree {final-tree} {unchanged|passed CI on final head|passed fresh verification}
 CI: {green|none configured}; review feedback addressed; final tree {final-tree}

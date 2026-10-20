@@ -15,7 +15,16 @@ Subcommands:
   ledger record --archive-key KEY --entry JSON
   ledger summary --archive-key KEY
       Maintain the run-scoped cycle ledger under the validated archive and
-      summarize cycles, rounds, commits, and per-gate agent launches.
+      summarize cycles, rounds, commits, per-gate agent launches, and the review
+      profile. `--entry` takes one JSON object or a non-empty JSON array of them;
+      an array is validated completely and appended in one write.
+
+  profile --archive-key KEY --base-ref REF --risk-script PATH
+          [--strict] [--depth balanced|full] [--raise balanced|full --reason TEXT]
+      Run the plugin's deterministic risk-signals helper over the committed
+      branch, map its floor to a review profile (low -> light, medium -> balanced,
+      high -> full), apply the raising options, never lower a profile this run
+      already recorded, and record the result in the ledger.
 
   commit-boundary --archive-key KEY --work-id ID --message MSG
                   [--scope-mode none|exact-files|containment] [--scope-path P ...]
@@ -40,9 +49,16 @@ from typing import Any
 
 ARCHIVE_KEYS = ("pr-review-convergence", "linear-issue-to-pr", "code-plan-to-pr")
 LEDGER_NAME = "cycle-ledger.json"
-ENTRY_KINDS = ("gate", "round", "cycle", "commit")
-ROUND_KINDS = ("full", "delta", "validation-only")
+ENTRY_KINDS = ("gate", "round", "cycle", "commit", "profile")
+ROUND_KINDS = ("full", "delta", "closing", "validation-only")
 SCOPE_MODES = ("none", "exact-files", "containment")
+PROFILES = ("light", "balanced", "full")
+RISK_LEVELS = ("low", "medium", "high")
+FLOOR_PROFILES = {"low": "light", "medium": "balanced", "high": "full"}
+RISK_SCHEMA = "kramme-pr-triage-risk-signals/v1"
+RISK_SCRIPT_NAME = "risk-signals.py"
+# The same trusted default-branch lookup kramme:pr:triage-risk uses, so a branch cannot weaken its own profile.
+POLICY_REFS = ("refs/remotes/origin/main", "refs/remotes/origin/master")
 
 EXIT_OK = 0
 EXIT_VALIDATION = 1
@@ -173,30 +189,48 @@ def _validate_entry(entry: Any) -> dict[str, Any]:
         for field in ("commit", "tree"):
             if not isinstance(entry.get(field), str) or not entry[field]:
                 raise ValidationError(f"commit entries require a non-empty `{field}` string")
+    if kind == "profile":
+        raise ValidationError("profile entries are recorded only by the `profile` subcommand")
     return entry
+
+
+def _append_entries(key: str, entries: list[dict[str, Any]]) -> dict[str, Any]:
+    path = ledger_path(key)
+    data = _load_ledger(path)
+    cycles_used = sum(1 for existing in data["entries"] if existing.get("kind") == "cycle")
+    recorded_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    appended: list[dict[str, Any]] = []
+    for raw in entries:
+        entry = dict(raw)
+        entry["sequence"] = len(data["entries"]) + len(appended) + 1
+        entry["recorded_at"] = recorded_at
+        if entry["kind"] == "cycle":
+            cycles_used += 1
+            if cycles_used > int(data.get("max_cycles", 0)):
+                raise ValidationError(
+                    f"cycle {cycles_used} exceeds the budget of {data.get('max_cycles')}; "
+                    "the bounded stop must fire instead"
+                )
+            entry["cycle"] = cycles_used
+        appended.append(entry)
+    data["entries"].extend(appended)
+    _write_ledger(path, data)
+    last = appended[-1]
+    return {"ledger": str(path), "sequence": last["sequence"], "kind": last["kind"], "recorded": len(appended)}
 
 
 def ledger_record(key: str, entry_json: str) -> dict[str, Any]:
     try:
-        entry = json.loads(entry_json)
+        parsed = json.loads(entry_json)
     except json.JSONDecodeError as error:
         raise ValidationError(f"--entry is not valid JSON: {error}") from error
-    entry = _validate_entry(entry)
-    path = ledger_path(key)
-    data = _load_ledger(path)
-    entry = dict(entry)
-    entry["sequence"] = len(data["entries"]) + 1
-    entry["recorded_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    if entry["kind"] == "cycle":
-        cycles_used = sum(1 for existing in data["entries"] if existing.get("kind") == "cycle") + 1
-        if cycles_used > int(data.get("max_cycles", 0)):
-            raise ValidationError(
-                f"cycle {cycles_used} exceeds the budget of {data.get('max_cycles')}; the bounded stop must fire instead"
-            )
-        entry["cycle"] = cycles_used
-    data["entries"].append(entry)
-    _write_ledger(path, data)
-    return {"ledger": str(path), "sequence": entry["sequence"], "kind": entry["kind"]}
+    if isinstance(parsed, list):
+        if not parsed:
+            raise ValidationError("--entry array must contain at least one entry")
+        entries = [_validate_entry(entry) for entry in parsed]
+    else:
+        entries = [_validate_entry(parsed)]
+    return _append_entries(key, entries)
 
 
 def ledger_summary(key: str) -> dict[str, Any]:
@@ -206,6 +240,7 @@ def ledger_summary(key: str) -> dict[str, Any]:
     rounds: dict[str, int] = {kind: 0 for kind in ROUND_KINDS}
     per_gate: dict[str, int] = {}
     commits: list[dict[str, str]] = []
+    profile: str | None = None
     for entry in entries:
         kind = entry.get("kind")
         if kind == "round":
@@ -214,6 +249,8 @@ def ledger_summary(key: str) -> dict[str, Any]:
             per_gate[entry["gate"]] = per_gate.get(entry["gate"], 0) + int(entry["agents_launched"])
         elif kind == "commit":
             commits.append({"commit": entry["commit"], "tree": entry["tree"]})
+        elif kind == "profile" and (profile is None or PROFILES.index(entry["profile"]) > PROFILES.index(profile)):
+            profile = entry["profile"]
     cycles_used = sum(1 for entry in entries if entry.get("kind") == "cycle")
     total_agents = sum(per_gate.values())
     total_rounds = sum(rounds.values())
@@ -222,6 +259,8 @@ def ledger_summary(key: str) -> dict[str, Any]:
     line = f"Review cost: {total_agents} agents across {total_rounds} rounds ({round_parts or 'none'})"
     if gate_parts:
         line += f"; per gate: {gate_parts}"
+    if profile:
+        line += f"; profile {profile}"
     return {
         "work_id": data.get("work_id"),
         "max_cycles": data.get("max_cycles"),
@@ -230,7 +269,126 @@ def ledger_summary(key: str) -> dict[str, Any]:
         "agents_launched": per_gate,
         "total_agents": total_agents,
         "commits": commits,
+        "profile": profile,
         "review_cost_line": line,
+    }
+
+
+def _resolve_commit(root: Path, rev: str, label: str) -> str:
+    if not rev or rev.startswith("-"):
+        raise ValidationError(f"{label} {rev!r} must be a revision without a leading `-`")
+    result = git("rev-parse", "--verify", "--quiet", "--end-of-options", f"{rev}^{{commit}}", cwd=root, check=False)
+    oid = result.stdout.strip()
+    if result.returncode != 0 or not oid:
+        raise ValidationError(f"{label} {rev!r} does not resolve to a commit")
+    return oid
+
+
+def _policy_ref(root: Path) -> str:
+    head = git("symbolic-ref", "--quiet", "refs/remotes/origin/HEAD", cwd=root, check=False)
+    if head.returncode == 0 and head.stdout.strip():
+        return head.stdout.strip()
+    for candidate in POLICY_REFS:
+        if git("show-ref", "--verify", "--quiet", candidate, cwd=root, check=False).returncode == 0:
+            return candidate
+    raise ValidationError("no origin/HEAD, origin/main, or origin/master to read the risk policy from")
+
+
+def _risk_report(root: Path, script: str, merge_base: str, policy_ref: str) -> dict[str, Any]:
+    script_path = Path(script)
+    if script_path.name != RISK_SCRIPT_NAME or script_path.is_symlink() or not script_path.is_file():
+        raise ValidationError(f"--risk-script must be the plugin's regular {RISK_SCRIPT_NAME} file")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(script_path.absolute()),
+            "--merge-base",
+            merge_base,
+            "--head",
+            "HEAD",
+            "--policy-rev",
+            policy_ref,
+        ],
+        cwd=root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ValidationError(f"risk-signals failed: {result.stderr.strip() or result.returncode}")
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        raise ValidationError(f"risk-signals printed malformed JSON: {error}") from error
+    if (
+        not isinstance(report, dict)
+        or report.get("schema") != RISK_SCHEMA
+        or report.get("floor") not in RISK_LEVELS
+        or report.get("hard_floor") not in RISK_LEVELS
+        or not isinstance(report.get("signals"), list)
+    ):
+        raise ValidationError(f"risk-signals output does not match {RISK_SCHEMA}")
+    return report
+
+
+def _higher(first: str, second: str) -> str:
+    return max(first, second, key=PROFILES.index)
+
+
+def select_profile(
+    key: str,
+    base_ref: str,
+    risk_script: str,
+    strict: bool,
+    depth: str | None,
+    raise_to: str | None,
+    reason: str | None,
+) -> dict[str, Any]:
+    if (raise_to is None) != (reason is None or not reason.strip()):
+        raise ValidationError("--raise and a non-empty --reason must be supplied together")
+    path = ledger_path(key)
+    data = _load_ledger(path)
+    root = repository_root()
+    base = _resolve_commit(root, base_ref, "--base-ref")
+    merge_base = git("merge-base", "HEAD", base, cwd=root).stdout.strip()
+    policy_ref = _policy_ref(root)
+    report = _risk_report(root, risk_script, merge_base, policy_ref)
+    floor = report["floor"]
+    profile = FLOOR_PROFILES[floor]
+    reasons = [f"floor {floor} -> {profile}"]
+    for option, value in (("--strict", "full" if strict else None), ("--depth", depth), ("--raise", raise_to)):
+        if value and PROFILES.index(value) > PROFILES.index(profile):
+            profile = value
+            reasons.append(f"{option} {value}" + (f": {reason.strip()}" if option == "--raise" and reason else ""))
+    earlier = [entry["profile"] for entry in data["entries"] if entry.get("kind") == "profile"]
+    highest = max(earlier, key=PROFILES.index) if earlier else profile
+    if PROFILES.index(highest) > PROFILES.index(profile):
+        profile = highest
+        reasons.append(f"kept earlier {profile}; a profile never lowers within a run")
+    signals = [signal.get("id") for signal in report["signals"] if isinstance(signal, dict)]
+    raw_totals = report.get("totals")
+    totals: dict[str, Any] = raw_totals if isinstance(raw_totals, dict) else {}
+    entry = {
+        "kind": "profile",
+        "profile": profile,
+        "floor": floor,
+        "hard_floor": report["hard_floor"],
+        "signals": signals,
+        "reasons": reasons,
+        "merge_base": merge_base,
+        "policy_ref": policy_ref,
+    }
+    _append_entries(key, [entry])
+    return {
+        "profile": profile,
+        "floor": floor,
+        "hard_floor": report["hard_floor"],
+        "signals": signals,
+        "reasons": reasons,
+        "code_lines": totals.get("code_lines"),
+        "code_files": totals.get("code_files"),
+        "merge_base": merge_base,
+        "policy_ref": policy_ref,
     }
 
 
@@ -353,9 +511,18 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--max-cycles", required=True, type=int)
     record = ledger_sub.add_parser("record")
     record.add_argument("--archive-key", required=True)
-    record.add_argument("--entry", required=True, help="one JSON object")
+    record.add_argument("--entry", required=True, help="one JSON object or a non-empty JSON array of objects")
     summary = ledger_sub.add_parser("summary")
     summary.add_argument("--archive-key", required=True)
+
+    profile = subparsers.add_parser("profile", help="choose and record the review profile from the risk floor")
+    profile.add_argument("--archive-key", required=True)
+    profile.add_argument("--base-ref", required=True, help="fetched base, e.g. refs/remotes/origin/main")
+    profile.add_argument("--risk-script", required=True, help="the plugin's scripts/risk-signals.py")
+    profile.add_argument("--strict", action="store_true")
+    profile.add_argument("--depth", choices=PROFILES[1:])
+    profile.add_argument("--raise", dest="raise_to", choices=PROFILES[1:])
+    profile.add_argument("--reason")
 
     boundary = subparsers.add_parser("commit-boundary", help="stage and commit one verified remediation batch")
     boundary.add_argument("--archive-key", required=True)
@@ -385,6 +552,16 @@ def main(argv: list[str] | None = None) -> int:
                 payload = ledger_record(key, args.entry)
             else:
                 payload = ledger_summary(key)
+        elif args.command == "profile":
+            payload = select_profile(
+                require_archive_key(args.archive_key),
+                args.base_ref,
+                args.risk_script,
+                args.strict,
+                args.depth,
+                args.raise_to,
+                args.reason,
+            )
         else:
             payload, exit_code = commit_boundary(
                 require_archive_key(args.archive_key),

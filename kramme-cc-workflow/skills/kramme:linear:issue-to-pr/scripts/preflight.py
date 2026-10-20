@@ -36,9 +36,11 @@ Codes = Tuple[int, ...]
 
 SCHEMA_VERSION = 1
 STATE_TOOL = "kramme:linear:issue-to-pr/preflight"
-SUPPORTED_FLAGS = ["--continue", "--strict", "--cycles <1-5>", "--ship"]
+SUPPORTED_FLAGS = ["--continue", "--strict", "--cycles <1-5>", "--depth <balanced|full>", "--ship"]
 BOOLEAN_FLAGS = {"--continue": "continue_mode", "--strict": "strict_review", "--ship": "ship_mode"}
+VALUE_FLAGS = ("--cycles", "--depth")
 DEFAULT_CYCLES = 2
+DEPTHS = ("balanced", "full")
 ISSUE_ID_RE = re.compile(r"[A-Za-z0-9]+-[0-9]+")
 CYCLES_RE = re.compile(r"[1-5]")
 BRANCH_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
@@ -87,7 +89,7 @@ class JsonArgumentParser(argparse.ArgumentParser):
 def parse_arguments(raw: str) -> JsonDict:
     tokens = [token for token in ASCII_WHITESPACE_RE.split(raw) if token]
     parsed: JsonDict = {name: False for name in BOOLEAN_FLAGS.values()}
-    parsed.update(cycles=DEFAULT_CYCLES, cycles_explicit=False)
+    parsed.update(cycles=DEFAULT_CYCLES, cycles_explicit=False, depth=None)
     seen: set[str] = set()
     positionals: list[str] = []
     index = 0
@@ -97,7 +99,7 @@ def parse_arguments(raw: str) -> JsonDict:
         if not token.startswith("-"):
             positionals.append(token)
             continue
-        if token not in BOOLEAN_FLAGS and token != "--cycles":
+        if token not in BOOLEAN_FLAGS and token not in VALUE_FLAGS:
             raise Stop("unknown_flag", f"Unknown flag {token!r}.", {"flag": token})
         if token in seen:
             raise Stop("duplicate_flag", f"{token} was supplied more than once.", {"flag": token})
@@ -108,6 +110,12 @@ def parse_arguments(raw: str) -> JsonDict:
                 raise Stop("cycles_value_invalid", "--cycles takes one ASCII digit from 1 to 5.", {"value": value})
             index += 1
             parsed.update(cycles=int(value), cycles_explicit=True)
+        elif token == "--depth":
+            value = tokens[index] if index < len(tokens) else ""
+            if value not in DEPTHS:
+                raise Stop("depth_value_invalid", "--depth takes `balanced` or `full`.", {"value": value})
+            index += 1
+            parsed["depth"] = value
         else:
             parsed[BOOLEAN_FLAGS[token]] = True
     if not positionals:
@@ -231,6 +239,7 @@ def valid_args(args: Any) -> bool:
         and all(isinstance(args.get(key), bool) for key in (*BOOLEAN_FLAGS.values(), "cycles_explicit"))
         and type(args.get("cycles")) is int
         and 1 <= args["cycles"] <= 5
+        and args.get("depth", None) in (None, *DEPTHS)
     )
 
 

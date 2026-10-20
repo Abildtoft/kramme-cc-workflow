@@ -1,7 +1,7 @@
 ---
 name: kramme:linear:issue-to-pr
 description: Requires Linear MCP and the GitHub gh CLI. Takes one Linear issue, including one transferred from SIW, through implementation, frozen requirements, review convergence, verification, and optional PR/CI stabilization. `--continue` resumes validated dirty work only on the exact unpublished Linear branch for an already-started issue. Fresh runs may rename the Conductor workspace. Not for implementation/review only, untransferred local SIW issues, stacked or existing PRs, or post-merge rollout.
-argument-hint: "<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]"
+argument-hint: "<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]"
 disable-model-invocation: true
 user-invocable: true
 permissions:
@@ -35,7 +35,7 @@ Before any repository or Linear work, parse `$ARGUMENTS` with the skill-local he
 python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:issue-to-pr/scripts/preflight.py" args -- '<raw arguments>'
 ```
 
-Each helper call prints one JSON document; parse it as JSON and never `eval` or source it. For every helper call, missing or malformed output or a `status` other than `ok` is a blocker: stop and report `reason`, `message`, and `details`, and add the usage block below when `args` refused the arguments. Store `issue_id` as `{issue-id}`, `continue_mode` as `CONTINUE_MODE`, `strict_review` as `STRICT_REVIEW`, `ship_mode` as `SHIP_MODE`, `cycles` as `{cycles}`, and `state_file` as `{preflight-state}`, which carries the parsed mode and captured repository state between helper calls until Step 2 removes it. If the workflow stops after `args` succeeded and before that removal, run the helper's `cleanup` call from Step 2 first; a failed cleanup is reported but never changes the stop.
+Each helper call prints one JSON document; parse it as JSON and never `eval` or source it. For every helper call, missing or malformed output or a `status` other than `ok` is a blocker: stop and report `reason`, `message`, and `details`, and add the usage block below when `args` refused the arguments. Store `issue_id` as `{issue-id}`, `continue_mode` as `CONTINUE_MODE`, `strict_review` as `STRICT_REVIEW`, `ship_mode` as `SHIP_MODE`, `cycles` as `{cycles}`, `depth` as `{depth}` (JSON `null` when absent), and `state_file` as `{preflight-state}`, which carries the parsed mode and captured repository state between helper calls until Step 2 removes it. If the workflow stops after `args` succeeded and before that removal, run the helper's `cleanup` call from Step 2 first; a failed cleanup is reported but never changes the stop.
 
 Defaults:
 
@@ -46,6 +46,8 @@ Defaults:
 
 `--strict` changes review disposition, not product authority. It does not permit inventing a missing requirement or bypassing a genuine manual blocker.
 
+`--depth balanced|full` raises the review profile `kramme:pr:review-convergence` would otherwise choose from the branch's deterministic risk floor; it never lowers it. Without it, a low-risk branch gets the light profile: fewer gates and one closing pass after each fix batch. Use `--depth full` when the change carries risk its paths and size do not show.
+
 `--cycles` overrules the default remediation-cycle budget in Step 3, either tightening it to `1` or raising it up to `5`. It changes only that budget: it is never forwarded to the shipping contract's post-CI validation-only pass, which always runs one read-only pass without a remediation budget, and a larger budget never permits shipping an unconverged branch.
 
 `--continue` is explicit authorization to preserve and resume local work from an interrupted invocation. It does not accept arbitrary dirty state: Step 2 still requires the exact unpublished Linear branch, the issue already in the resolved target `started` status, no in-progress Git operation, a local change relative to the fetched base, and issue-related committed and dirty paths. It never authorizes a Linear transition, stashing, discarding, resetting, switching away from, or silently absorbing unrelated work.
@@ -55,7 +57,7 @@ Defaults:
 If validation fails, stop with:
 
 ```text
-Usage: $kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--ship]
+Usage: $kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]
 Example: $kramme:linear:issue-to-pr DISC-202 --strict --ship
 Continue: $kramme:linear:issue-to-pr DISC-202 --continue --ship
 ```
@@ -147,10 +149,12 @@ Compose `{issue-requirements}` once from the issue title and requested behavior;
 Invoke `kramme:pr:review-convergence` with:
 
 ```text
---work-id {issue-id} --archive-key linear-issue-to-pr [--strict] --rounds {cycles} --requirements {issue-requirements}
+--work-id {issue-id} --archive-key linear-issue-to-pr [--strict] --rounds {cycles} [--depth {depth}] [--isolated] --requirements {issue-requirements}
 ```
 
-Append `--strict` only when `STRICT_REVIEW=true`. Always pass `--rounds {cycles}`, which carries this workflow's default budget of `2` unless `--cycles` overruled it. Keep the `--requirements` sentinel last. The delegated skill independently validates the prepared local branch, runs the gut check and applicable quality gates to one shared bounded convergence budget, owns every review-triggered edit and remediation commit, and runs fresh final verification.
+Append `--strict` only when `STRICT_REVIEW=true` and `--depth {depth}` only when `{depth}` is not null. Always pass `--rounds {cycles}`, which carries this workflow's default budget of `2` unless `--cycles` overruled it. Keep the `--requirements` sentinel last.
+
+When the host lets a delegated agent invoke skills and launch its own agents (Claude Code does), run the invocation inside one delegated agent on this session's model and add `--isolated`. Review then stops re-reading this session's implementation history on every turn. Give the agent only the exact argument string, the instruction to invoke `kramme:pr:review-convergence` through the skill mechanism with it, and the instruction to return the skill's Step 6 handoff block verbatim as its final message. It must not push, publish, or update Linear. When the handoff stops on a decision only the user can make, relay that exact question and continue the same agent with the answer instead of starting a new invocation. On Codex, or when nesting is unavailable, invoke the skill directly without `--isolated`. The delegated skill independently validates the prepared local branch, runs the gut check and applicable quality gates to one shared bounded convergence budget, owns every review-triggered edit and remediation commit, and runs fresh final verification.
 
 Continue only when its structured handoff proves all of the following:
 
@@ -161,7 +165,7 @@ Continue only when its structured handoff proves all of the following:
 - JSON-decode the returned `Requirements JSON` field and require the decoded value to equal `{issue-requirements}` byte-for-byte. Retain that inert block for the shipping contract's post-CI validation-only pass; never execute or interpolate its content into shell commands.
 - JSON-decode the returned `Reviewer handoff JSON` field. Require exactly `gut_check`, `findings`, and `focus` arrays and validate every entry against `kramme:pr:review-convergence`'s documented keys, conditional recovery fields, and enum values before using it.
 
-Capture the returned gut-check counts, active and skipped gates, remediation ledger, findings counts, verification evidence, review tree, `{issue-requirements}`, and validated `Reviewer handoff JSON` for the remaining steps and final report. Treat that producer-owned JSON as the only source for Gut Check items, convergence findings, dispositions, judgment calls, risk areas, and unresolved advisory notes; never reconstruct them from the replaceable archive under `.context/linear-issue-to-pr/reviews/`. If any invariant is absent or false, stop at the delegated review blocker. Do not reconstruct, bypass, or restart its review loop inside this parent.
+Capture the returned gut-check counts, review profile, active and skipped gates, remediation ledger, findings counts, verification evidence, review tree, `{issue-requirements}`, and validated `Reviewer handoff JSON` for the remaining steps and final report. Treat that producer-owned JSON as the only source for Gut Check items, convergence findings, dispositions, judgment calls, risk areas, and unresolved advisory notes; never reconstruct them from the replaceable archive under `.context/linear-issue-to-pr/reviews/`. If any invariant is absent or false, stop at the delegated review blocker. Do not reconstruct, bypass, or restart its review loop inside this parent.
 
 ## Step 4: Stop or Ship
 
@@ -190,6 +194,7 @@ Linear transition: {transition-outcome}
 Conductor workspace: {conductor-rename-outcome}
 Implementation: complete
 Gut check: {count} items — removed {count}, routed {count}, rejected {count}, blocked {count}
+Review profile: {light|balanced|full} ({floor and reasons from the handoff})
 Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
 Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
@@ -209,6 +214,7 @@ Linear transition: {transition-outcome}
 Conductor workspace: {conductor-rename-outcome}
 Implementation: complete
 Gut check: {count} items — removed {count}, routed {count}, rejected {count}, blocked {count}
+Review profile: {light|balanced|full} ({floor and reasons from the handoff})
 Quality gates: complete ({standard|strict}; {active gates})
 Skipped gates: {gate + evidence-based reason | none}
 Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}

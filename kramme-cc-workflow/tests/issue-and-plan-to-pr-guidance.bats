@@ -38,7 +38,7 @@
     test -f "$rejections_asset"
     test -f "$fix_ci"
     test -f "$fix_ci_scope"
-	    grep -qF "argument-hint: \"<attached plan | PR_PLAN_W##L_*.md> [--continue] [--strict] [--ship]\"" "$skill"
+	    grep -qF "argument-hint: \"<attached plan | PR_PLAN_W##L_*.md> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]\"" "$skill"
 	    grep -qF "A copied plan is also a self-standing execution capsule" "$breakdown"
 	    grep -qF "the index organizes the set but is never an implementation prerequisite" "$breakdown"
 	    grep -qF "### Prerequisite Readiness Evidence" "$plan_template"
