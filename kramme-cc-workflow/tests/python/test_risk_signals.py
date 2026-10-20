@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "kramme:pr:triage-risk"
-SCRIPT_PATH = SKILL_DIR / "scripts" / "risk-signals.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "risk-signals.py"
 SPEC = importlib.util.spec_from_file_location("risk_signals", SCRIPT_PATH)
 assert SPEC is not None
 assert SPEC.loader is not None

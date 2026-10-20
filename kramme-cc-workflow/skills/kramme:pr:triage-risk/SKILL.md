@@ -65,7 +65,7 @@ If the commit count is `0`, stop with: `No committed changes against $BASE_REF. 
 ## Step 3: Collect Deterministic Signals
 
 ```bash
-SIGNALS_SCRIPT="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:triage-risk/scripts/risk-signals.py"
+SIGNALS_SCRIPT="${CLAUDE_PLUGIN_ROOT}/scripts/risk-signals.py"
 [ -f "$SIGNALS_SCRIPT" ] || {
   echo "risk-signals.py not found under CLAUDE_PLUGIN_ROOT; stop." >&2
   exit 1

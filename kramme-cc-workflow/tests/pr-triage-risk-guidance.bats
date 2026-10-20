@@ -30,8 +30,10 @@ setup() {
 }
 
 @test "triage risk takes signals from its script and policy from the default branch" {
-  grep -qF 'SIGNALS_SCRIPT="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:triage-risk/scripts/risk-signals.py"' "$SKILL"
-  test -f "skills/kramme:pr:triage-risk/scripts/risk-signals.py"
+  grep -qF 'SIGNALS_SCRIPT="${CLAUDE_PLUGIN_ROOT}/scripts/risk-signals.py"' "$SKILL"
+  test -f "scripts/risk-signals.py"
+  test -f "scripts/risk_patterns.py"
+  test ! -e "skills/kramme:pr:triage-risk/scripts"
   grep -qF 'POLICY_REF=$(git symbolic-ref --quiet refs/remotes/origin/HEAD 2> /dev/null) || POLICY_REF=' "$SKILL"
   grep -qF 'python3 "$SIGNALS_SCRIPT" --merge-base "$MERGE_BASE" --policy-rev "$POLICY_REF"' "$SKILL"
   if grep -qF -- '--policy-rev "$BASE_REF"' "$SKILL"; then
