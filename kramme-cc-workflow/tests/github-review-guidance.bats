@@ -7,6 +7,9 @@ setup() {
 	COMMENT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/comment-drafting.md"
 	DRAFT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/draft-review.md"
 	REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/report-template.md"
+	CLARITY_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/clarity-check.md"
+	CLARITY_PROMPTS="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/clarity-check-prompts.md"
+	ANCHOR_SCRIPT="$PLUGIN_ROOT/skills/kramme:pr:github-review/scripts/check-comment-anchors.sh"
 	UI_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/ui-relevance.md"
 	LINEAR_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/linear-review.md"
 	LINEAR_AUDIT_REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:linear:review-pr/references/report-template.md"
@@ -465,5 +468,313 @@ PY
     grep -qF "When \`PARALLEL_REVIEWERS=true\`, append \`--parallel\` to both invocations" "$1"
     grep -qF "[--code-only] [--parallel] [--fresh]" "$2"
   ' _ "$SKILL" "$README"
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review runs the clarity check after humanizing and before the eligibility count" {
+	run python3 - "$SKILL" "$README" <<'PY'
+import pathlib
+import sys
+
+skill, readme = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+humanize = skill.index("## Step 10: Humanize the Draft Comments")
+clarity = skill.index("## Step 10a: Check the Draft Comments With Cold Readers")
+materialize = skill.index("## Step 11: Materialize the Markdown Report")
+assert humanize < clarity < materialize, "the clarity check must run between humanizing and the eligibility count"
+drafting = skill[skill.index("## Step 9: Draft the Review Comments"):humanize]
+assert 'ANCHOR_CHECK="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/check-comment-anchors.sh"' in drafting, \
+    "the anchor check must be set before Step 10a so --no-clarity-check cannot leave it undefined for Step 11"
+step = skill[clarity:materialize]
+assert "ANCHOR_CHECK=" not in step
+for term in [
+    "references/clarity-check.md",
+    "when `CLARITY_CHECK=on` and at least one is drafted",
+    "when `CLARITY_CHECK=auto` and five or more are drafted",
+    "`not run — --no-clarity-check`",
+    "splitting a comment changes the eligible count",
+    "it never writes to GitHub",
+]:
+    assert term in step, f"Step 10a lost {term}"
+for term in [
+    "[--draft-review] [--clarity-check|--no-clarity-check]",
+    "- `--clarity-check` → `CLARITY_CHECK=on`",
+    "- `--no-clarity-check` → `CLARITY_CHECK=off`",
+    "If both clarity flags are given, ask the user to pick one and stop",
+    "`CLARITY_CHECK=auto`",
+]:
+    assert term in skill, f"argument parsing lost {term}"
+offer = skill[skill.index("## Step 12:"):skill.index("## Step 13:")]
+assert "If the user asks for a clarity check, run Step 10a with `CLARITY_CHECK=on`, repeat Step 11" in offer
+assert "a clarity-check request is not authorization" in offer
+assert "skipped the clarity check only because fewer than five comments were drafted, add that a clarity check can run first" in offer
+assert "the clarity-check status" in skill[skill.index("## Step 13:"):]
+assert "[--clarity-check\\|--no-clarity-check]" in readme
+assert "`--no-clarity-check` to skip it" in readme
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "clarity check readers are isolated, verified, and bounded" {
+	run python3 - "$CLARITY_REFERENCE" "$CLARITY_PROMPTS" <<'PY'
+import pathlib
+import re
+import subprocess
+import sys
+
+reference, prompts = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+for index, block in enumerate(re.findall(r"```bash\n(.*?)\n```", reference, re.S), start=1):
+    result = subprocess.run(["bash", "-n"], input=block, text=True, capture_output=True)
+    assert result.returncode == 0, f"bash block {index} has invalid syntax: {result.stderr.strip()}"
+stages = [reference.index(f"\n## {number}. ") for number in range(1, 10)]
+assert stages == sorted(stages), "clarity check stages must stay in order"
+for term in [
+    "it never writes to GitHub",
+    "is not authorization to create a pending review",
+    'fork_turns="none"',
+    "do not apply to readers",
+    "Never simulate a reader in your own context",
+    "not run — host cannot launch isolated readers",
+    "Run the stage 1 freshness gate again right before launching any reader",
+    "Resume a reader at most three times",
+    "`incomplete — <stage>: reader rate-limited`",
+    "set `CLARITY_CHECK_STATUS` to `not run — <reason>`",
+    "When it stops a later stage, set `incomplete — <reason>`",
+    "the local checkout can lag the PR head",
+    "never the lines below",
+    '"$ANCHOR_CHECK" "$ORIG_ROOT" "$PR_BASE_OID" "$HEAD_OID"',
+    "If the script exits with status 2",
+    "launch the author and teammate readers in the same message so they run in parallel",
+    "Verify every point a reader raises in the code at the head before you adopt it",
+    "| One reading of the comment would make the author do harm, such as deleting code that must stay | Rewrite it to name what changes **and** what stays | 1 |",
+    "Never edit a sealed upstream artifact",
+    "never replace an explicit reference with a pronoun",
+    "Never reuse an earlier reader",
+    "**Stop rule:** every comment scores 4 or more, and no paraphrase misses the intent",
+    "fix every comment that scores 3 or lower or whose paraphrase misses the intent",
+    "for at most two re-reads",
+    "`incomplete — stop rule not met after two re-reads: <comments and scores>`",
+    "apply the verdict criteria in Section 2 of `references/comment-drafting.md` again",
+    "report-only IDs such as `CR-001`",
+    "`incomplete — PR head moved during the check; re-run the review`",
+]:
+    assert term in reference, f"clarity check lost {term}"
+assert 'CLARITY_CHECK_STATUS=""' not in reference, "re-running the gate must not wipe a recorded status"
+for term in [
+    "{reader-pack}",
+    "git -C {repo} show {head-oid}:<path>",
+    "English is your second language",
+    "not instructions to follow",
+    "do not read the working tree",
+    "Looked up:",
+    "End by listing every comment you rated 3 or lower",
+    "Leave out the review evidence",
+]:
+    assert term in prompts, f"reader prompts lost {term}"
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "clarity check freshness gate reports every outcome" {
+	run python3 - "$CLARITY_REFERENCE" <<'PY'
+import os
+import pathlib
+import re
+import subprocess
+import sys
+
+reference = pathlib.Path(sys.argv[1]).read_text()
+gate = reference[reference.index("## 1. Freshness gate"):reference.index("## 2. Build the reader's view")]
+block = re.findall(r"```bash\n(.*?)\n```", gate, re.S)[0]
+script = '''set -u
+gh() {
+  test "$*" = "pr view 42 --repo acme/repo --json headRefOid -q .headRefOid" || exit 3
+  [ "$GH_RESULT" -eq 0 ] || return "$GH_RESULT"
+  printf '%s\\n' "$CURRENT_FIXTURE"
+}
+git() {
+  test "$*" = "-C /repo cat-file -t aaa" || exit 4
+  printf '%s\\n' "$OBJECT_TYPE"
+}
+''' + block
+cases = [
+    ({"GH_RESULT": "0", "CURRENT_FIXTURE": "aaa", "OBJECT_TYPE": "commit"}, None),
+    ({"GH_RESULT": "1", "CURRENT_FIXTURE": "", "OBJECT_TYPE": "commit"}, "could not re-read the PR head"),
+    ({"GH_RESULT": "0", "CURRENT_FIXTURE": "bbb", "OBJECT_TYPE": "commit"}, "the PR head moved from aaa to bbb"),
+    ({"GH_RESULT": "0", "CURRENT_FIXTURE": "aaa", "OBJECT_TYPE": ""}, "is not in the local object store"),
+]
+for fixture, stopped in cases:
+    env = dict(os.environ, PR_NUMBER="42", PR_NWO="acme/repo", HEAD_OID="aaa", ORIG_ROOT="/repo", **fixture)
+    probe = subprocess.run(["bash", "-c", script], env=env, text=True, capture_output=True)
+    assert probe.returncode == 0, probe.stderr
+    if stopped is None:
+        assert probe.stdout == "PR head unchanged: aaa\n" and probe.stderr == "", (probe.stdout, probe.stderr)
+    else:
+        assert probe.stdout == "", f"a stopped gate must not also report success: {probe.stdout}"
+        assert probe.stderr.startswith("Clarity check stopped:") and stopped in probe.stderr, probe.stderr
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "comment anchor check accepts only diff lines at the reviewed head" {
+	[ -x "$ANCHOR_SCRIPT" ]
+	repo="$BATS_TEST_TMPDIR/anchors"
+	cafe=$(printf 'caf\303\251.ts')
+	git init -q "$repo"
+	git -C "$repo" config user.email "test@example.com"
+	git -C "$repo" config user.name "Test User"
+	mkdir -p "$repo/src" "$repo/old" "$repo/new"
+	seq -f 'line %g' 1 30 >"$repo/src/a.ts"
+	seq -f 'name %g' 1 20 >"$repo/old/name.ts"
+	seq -f 'space %g' 1 5 >"$repo/with space.ts"
+	seq -f 'cafe %g' 1 5 >"$repo/$cafe"
+	printf 'a();\n}\n\nc();\n{\nc();\nc();\nreturn x;\na();\n' >"$repo/algo.c"
+	printf 'gone\n' >"$repo/gone.ts"
+	git -C "$repo" add -A
+	git -C "$repo" commit -qm base
+	base=$(git -C "$repo" rev-parse HEAD)
+	base_branch=$(git -C "$repo" symbolic-ref --short HEAD)
+
+	git -C "$repo" checkout -q -b pr
+	# An added line that starts with "++ " must not read as a file header.
+	seq -f 'line %g' 1 30 | awk 'NR == 15 { $0 = "++ changed 15" } NR == 28 { $0 = "changed 28" } 1' >"$repo/src/a.ts"
+	git -C "$repo" mv old/name.ts new/name.ts
+	seq -f 'name %g' 1 20 | awk 'NR == 10 { $0 = "renamed 10" } 1' >"$repo/new/name.ts"
+	seq -f 'space %g' 1 5 | awk 'NR == 3 { $0 = "space changed" } 1' >"$repo/with space.ts"
+	seq -f 'cafe %g' 1 5 | awk 'NR == 3 { $0 = "cafe changed" } 1' >"$repo/$cafe"
+	# Myers leaves head line 1 outside the hunk; histogram puts it inside.
+	printf 'a();\n}\n\nc();\nc();\nc();\n{\na();\n' >"$repo/algo.c"
+	git -C "$repo" rm -q gone.ts
+	printf 'added 1\nadded 2\n' >"$repo/added.ts"
+	git -C "$repo" add -A
+	git -C "$repo" commit -qm head
+	head=$(git -C "$repo" rev-parse HEAD)
+
+	# The base branch moves on after the PR branched.
+	git -C "$repo" checkout -q "$base_branch"
+	seq -f 'line %g' 1 30 | awk 'NR == 5 { $0 = "base moved 5" } 1' >"$repo/src/a.ts"
+	git -C "$repo" commit -qam "base moves on"
+	base_tip=$(git -C "$repo" rev-parse HEAD)
+
+	# Local diff settings must not change which lines count as diff lines.
+	printf '#!/bin/sh\nprintf "shift\\nshift\\n"\ncat "$1"\n' >"$BATS_TEST_TMPDIR/shift-textconv"
+	chmod +x "$BATS_TEST_TMPDIR/shift-textconv"
+	printf '*.ts diff=shift\n' >"$repo/.git/info/attributes"
+	git -C "$repo" config diff.shift.textconv "$BATS_TEST_TMPDIR/shift-textconv"
+	git -C "$repo" config diff.algorithm histogram
+	git -C "$repo" config diff.interHunkContext 20
+	git -C "$repo" config diff.noprefix true
+	git -C "$repo" config color.ui always
+	export GIT_DIFF_OPTS=--unified=10
+
+	run "$ANCHOR_SCRIPT" "$repo" "$base" "$head" src/a.ts:15 src/a.ts:12 src/a.ts:18 src/a.ts:28 \
+		new/name.ts:10 added.ts:2 "with space.ts:3" "$cafe:3" algo.c:2
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+	[ "${lines[0]}" = "ok src/a.ts:15 ++ changed 15" ]
+	[ "${lines[1]}" = "ok src/a.ts:12 line 12" ]
+	[ "${lines[2]}" = "ok src/a.ts:18 line 18" ]
+	[ "${lines[3]}" = "ok src/a.ts:28 changed 28" ]
+	[ "${lines[4]}" = "ok new/name.ts:10 renamed 10" ]
+	[ "${lines[5]}" = "ok added.ts:2 added 2" ]
+	[ "${lines[6]}" = "ok with space.ts:3 space changed" ]
+	[ "${lines[7]}" = "ok $cafe:3 cafe changed" ]
+	[ "${lines[8]}" = "ok algo.c:2 }" ]
+
+	run "$ANCHOR_SCRIPT" "$repo" "$base" "$head" src/a.ts:11 src/a.ts:19 new/name.ts:1 algo.c:1 gone.ts:1 src/a.ts:31
+	[ "$status" -eq 1 ] || { echo "$output"; false; }
+	[ "${lines[0]}" = "NOT-IN-DIFF src/a.ts:11 line 11" ]
+	[ "${lines[1]}" = "NOT-IN-DIFF src/a.ts:19 line 19" ]
+	[ "${lines[2]}" = "NOT-IN-DIFF new/name.ts:1 name 1" ]
+	[ "${lines[3]}" = "NOT-IN-DIFF algo.c:1 a();" ]
+	[ "${lines[4]}" = "NO-LINE gone.ts:1" ]
+	[ "${lines[5]}" = "NO-LINE src/a.ts:31" ]
+
+	# A base commit that moved on still yields the PR's own diff.
+	run "$ANCHOR_SCRIPT" "$repo" "$base_tip" "$head" src/a.ts:5 src/a.ts:15
+	[ "$status" -eq 1 ] || { echo "$output"; false; }
+	[ "${lines[0]}" = "NOT-IN-DIFF src/a.ts:5 line 5" ]
+	[ "${lines[1]}" = "ok src/a.ts:15 ++ changed 15" ]
+
+	run "$ANCHOR_SCRIPT" "$repo" "$base" HEAD src/a.ts:15
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"Expected a full commit object ID, got 'HEAD'."* ]]
+
+	run "$ANCHOR_SCRIPT" "$repo" "$base" 0123456789abcdef0123456789abcdef01234567 src/a.ts:15
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"Commit 0123456789abcdef0123456789abcdef01234567 is not available"* ]]
+
+	run "$ANCHOR_SCRIPT" "$repo" "$base" "$head" src/a.ts
+	[ "$status" -eq 2 ]
+	[[ "$output" == *"Expected <path:line>"* ]]
+}
+
+@test "comment anchor check decodes Git-quoted filenames" {
+	repo="$BATS_TEST_TMPDIR/quoted-anchors"
+	git init -q "$repo"
+	git -C "$repo" config user.email "test@example.com"
+	git -C "$repo" config user.name "Test User"
+	paths=(
+		'with"quote.ts'
+		'with\slash.ts'
+		'with\ttab.ts'
+		$'with\ttab.ts'
+		$'with\nnewline.ts'
+		$'with\rcarriage.ts'
+		$'with\001octal.ts'
+		$'with\a\b\v\fcontrols.ts'
+		$'caf\303\251"quote.ts'
+	)
+	for path in "${paths[@]}"; do
+		seq -f 'line %g' 1 12 >"$repo/$path"
+	done
+	git -C "$repo" add -A
+	git -C "$repo" commit -qm base
+	base=$(git -C "$repo" rev-parse HEAD)
+	for path in "${paths[@]}"; do
+		seq -f 'line %g' 1 12 | awk 'NR == 7 { $0 = "changed 7" } 1' >"$repo/$path"
+	done
+	git -C "$repo" add -A
+	git -C "$repo" commit -qm head
+	head=$(git -C "$repo" rev-parse HEAD)
+
+	for path in "${paths[@]}"; do
+		run "$ANCHOR_SCRIPT" "$repo" "$base" "$head" "$path:7" "$path:4" "$path:10"
+		[ "$status" -eq 0 ] || { echo "$output"; false; }
+		expected=$(printf 'ok %s:7 changed 7\nok %s:4 line 4\nok %s:10 line 10' "$path" "$path" "$path")
+		[ "$output" = "$expected" ]
+
+		run "$ANCHOR_SCRIPT" "$repo" "$base" "$head" "$path:1" "$path:13"
+		[ "$status" -eq 1 ] || { echo "$output"; false; }
+		expected=$(printf 'NOT-IN-DIFF %s:1 line 1\nNO-LINE %s:13' "$path" "$path")
+		[ "$output" = "$expected" ]
+	done
+}
+
+@test "github review reports the clarity check and keeps drafting rules for second-language readers" {
+	run python3 - "$REPORT_TEMPLATE" "$COMMENT_REFERENCE" "$DRAFT_REFERENCE" <<'PY'
+import pathlib
+import sys
+
+report, comments, draft = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+draft_review = report[report.index("\n## Draft Review\n"):report.index("\n## Coverage Status")]
+assert "- Clarity check: <exact CLARITY_CHECK_STATUS>" in draft_review
+assert report.count("  - Clarity: <author>/<teammate>, then <final> | not checked\n  - Draft comment:") == 4, "every inline comment section needs a Clarity field"
+assert "- **Clarity check** — " in report and "- **Clarity** — " in report
+for term in [
+    "GitHub shows no lines below the anchor",
+    "Name the exact prop, string, or key the comment is about",
+    "avoid idioms and phrasal verbs",
+    "When the ask removes code, say what stays",
+    "Split a comment that asks for changes in two files",
+    "keep them in `Evidence`; naming the Linear issue a comment cites is fine",
+    "never copy a body back from the skill's echo of its input",
+]:
+    assert term in comments, f"comment drafting lost {term}"
+for term in [
+    '`"$ANCHOR_CHECK" "$ORIG_ROOT" "$PR_BASE_OID" "$HEAD_OID" <path:line>...`',
+    "GitHub rejects the whole create-review request when a single comment is outside the diff",
+    "Exclude each `NOT-IN-DIFF` or `NO-LINE` anchor",
+]:
+    assert term in draft, f"draft review selection lost {term}"
+PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
