@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:github-review
 description: "Review a GitHub PR as the assigned reviewer, including linked Linear issues. Writes a local report, deduplicates conversations, and drafts inline comments, replies, and a verdict. With confirmation or --draft-review, creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), replying on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
-argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--parallel] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
+argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--clarity-check|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--parallel] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -20,6 +20,8 @@ First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-se
 
 - First positional token that is a PR number (`123`, `#123`) or a GitHub PR URL → `PR_SELECTOR`. Otherwise leave `PR_SELECTOR` empty.
 - `--draft-review` → `CREATE_DRAFT_REVIEW=true`. After drafting and humanizing the findings, create one unsubmitted pending GitHub review containing every eligible proposed inline comment without asking again. This flag authorizes only that pending-review write; it never authorizes submitting the review, replying to existing threads, resolving threads, approving, or requesting changes.
+- `--clarity-check` → `CLARITY_CHECK=on`. Run the Step 10a clarity check even when fewer than five inline comments are drafted.
+- `--no-clarity-check` → `CLARITY_CHECK=off`. Skip the Step 10a clarity check. If both clarity flags are given, ask the user to pick one and stop.
 - `--base <ref>` → `BASE_OVERRIDE` (use when the PR targets a non-default base and detection is wrong).
 - `--categories <list>` → `UI_CATEGORIES` (comma-separated subset of `a11y,ux,product,visual`), passed through to the UI review pass.
 - `--code-only` → `CODE_ONLY=true`. Skip the UI review pass even when UI files changed.
@@ -30,7 +32,7 @@ First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-se
 - `--inline` → `INLINE_MODE=true`. Return the report in chat instead of writing the artifact file.
 - `--keep-worktree` → `KEEP_WORKTREE=true`. Leave the fetched worktree on disk for manual inspection and report its path.
 
-Defaults: `CREATE_DRAFT_REVIEW=false`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=false`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
+Defaults: `CREATE_DRAFT_REVIEW=false`, `CLARITY_CHECK=auto`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=false`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
 
 ## Step 1: Preflight
 
@@ -265,13 +267,21 @@ If `--keep-worktree` was passed, report the path so the user can inspect or remo
 
 Read `references/report-template.md` and `references/comment-drafting.md`. Follow the latter's finding categories, evidence/comment separation, standalone-context rules, conversation deduplication, reply rules, and verdict criteria to complete the report fields. Include the per-issue requirement coverage and context gaps from `references/linear-review.md`; Linear-derived findings use the same deduplication and drafting flow.
 
+Set `ANCHOR_CHECK="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/check-comment-anchors.sh"`. Steps 10a and 11 use it to confirm that GitHub can anchor each inline comment.
+
 ## Step 10: Humanize the Draft Comments
 
 Follow the humanization section of `references/comment-drafting.md`. Humanization is best-effort; preserve the original bodies and mark `Humanized: no` when the sibling skill is unavailable or its output cannot be mapped safely.
 
+## Step 10a: Check the Draft Comments With Cold Readers
+
+Count the drafted inline comments: fresh actionable items with a `path:line` location and a `Draft comment` body, not replies to existing threads. Run the clarity check when `CLARITY_CHECK=on` and at least one is drafted, or when `CLARITY_CHECK=auto` and five or more are drafted. Otherwise set `CLARITY_CHECK_STATUS` to `not run — --no-clarity-check`, `not run — no inline comments drafted`, or `not run — <N> inline comments drafted, below the default of five; pass --clarity-check to run it`, and continue to Step 11.
+
+To run it, read `references/clarity-check.md` and follow it. Fresh readers who see only what the author will see paraphrase, question, and score each comment. You verify their points in the code, fix and re-anchor the comments, and a new reader confirms the result. The check adds at least three reader runs and about 30–50 minutes. It runs before Step 11 because splitting a comment changes the eligible count, and it never writes to GitHub.
+
 ## Step 11: Materialize the Markdown Report
 
-Read `references/draft-review.md` and complete Section 1 to identify the eligible proposed inline comments and every omission. Do this after humanization so the count and bodies are final.
+Read `references/draft-review.md` and complete Section 1 to identify the eligible proposed inline comments and every omission. Do this after humanization and Step 10a so the count, anchors, and bodies are final.
 
 Set the pre-write status according to the eligible inline-comment count and authorization state:
 
@@ -291,9 +301,9 @@ Otherwise, if `CREATE_DRAFT_REVIEW=false`, tell the user the report is ready, in
 
 > `GITHUB_PR_REVIEW_OVERVIEW.md` is ready. Draft comments are ready: <N> eligible inline comments (<severity counts>), <M> omitted, and <R> existing-thread replies kept separate. Would you like me to create one unsubmitted pending GitHub review containing only those inline comments now?
 
-For `--inline`, replace the filename in the offer with "The inline Markdown report is ready."
+When Step 10a skipped the clarity check only because fewer than five comments were drafted, add that a clarity check can run first. For `--inline`, replace the filename in the offer with "The inline Markdown report is ready."
 
-Stop and wait for the user's answer. A clear affirmative answer sets `CREATE_DRAFT_REVIEW=true` and authorizes this one pending-review write. If the user declines, set `DRAFT_REVIEW_STATUS="declined"`, make no GitHub write, refresh the report, and continue to Step 13. If the user asks to change any draft comments, apply those edits, re-humanize changed bodies when appropriate, recompute the counts, refresh the report first with `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`, and only then make the offer again. Silence or an ambiguous answer is not authorization.
+Stop and wait for the user's answer. A clear affirmative answer sets `CREATE_DRAFT_REVIEW=true` and authorizes this one pending-review write. If the user declines, set `DRAFT_REVIEW_STATUS="declined"`, make no GitHub write, refresh the report, and continue to Step 13. If the user asks to change any draft comments, apply those edits, re-humanize changed bodies when appropriate, recompute the counts, refresh the report first with `DRAFT_REVIEW_STATUS="not created — awaiting authorization"`, and only then make the offer again. If the user asks for a clarity check, run Step 10a with `CLARITY_CHECK=on`, repeat Step 11 to refresh the report with the new bodies and counts, and only then make the offer again; a clarity-check request is not authorization. Silence or an ambiguous answer is not authorization.
 
 If at least one eligible inline comment exists and `CREATE_DRAFT_REVIEW=true`—whether from `--draft-review` or the user's confirmation—clear the temporary pre-write sentinel with `DRAFT_REVIEW_STATUS=""`, then follow Sections 2–4 of `references/draft-review.md` exactly. Those sections use a nonempty `DRAFT_REVIEW_STATUS` to signal a guard failure or final outcome, so never enter them with either pre-write status still set. They check for head drift and an existing pending review, build and validate an inline-comments-only payload with no top-level review body or `event` field, and create the review so GitHub leaves it in `PENDING` state. Never call the submit-review endpoint.
 
@@ -303,7 +313,7 @@ After Sections 2–4 finish, record the resulting draft-review status, review ID
 
 If `INLINE_MODE=true`, return the refreshed full report in chat after the user answers or the pre-authorized creation attempt finishes. Otherwise, the report at `ORIG_ROOT/GITHUB_PR_REVIEW_OVERVIEW.md` is already current from Step 12.
 
-End by telling the user: the recommended verdict, the count of findings per severity, the count of threads awaiting your reply, the report path (or that it was returned inline), and the exact draft-review outcome. If a pending review was created, give its URL and say it remains unsubmitted for inspection. Say that GitHub was not changed only for statuses that confirm no write occurred (`declined` or `not created — ...`). For `write outcome unknown — ...` or `unexpected state — ...`, say a write may have occurred, surface every available review ID/URL, and tell the user to inspect GitHub without retrying.
+End by telling the user: the recommended verdict, the count of findings per severity, the count of threads awaiting your reply, the report path (or that it was returned inline), the clarity-check status, and the exact draft-review outcome. If a pending review was created, give its URL and say it remains unsubmitted for inspection. Say that GitHub was not changed only for statuses that confirm no write occurred (`declined` or `not created — ...`). For `write outcome unknown — ...` or `unexpected state — ...`, say a write may have occurred, surface every available review ID/URL, and tell the user to inspect GitHub without retrying.
 
 Also state which linked Linear issues were reviewed, or why their review was incomplete; when none were found, say so.
 
