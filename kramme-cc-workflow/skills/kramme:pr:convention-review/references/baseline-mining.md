@@ -2,6 +2,8 @@
 
 This protocol defines how the convention review establishes what "established practice" means before judging any change. It is passed to every `kramme:convention-drift-reviewer` instance and wins over the agent's built-in compact protocol. The core discipline: **mine first, judge second** — every judgment is a comparison against evidence gathered here, never against generic best practice.
 
+Mining is read-only. When a probe needs scratch files, put them in a fresh `mktemp -d` directory outside the repository and leave it there; never delete it with `rm -rf`, which the plugin's `block-rm-rf` hook refuses.
+
 ## Evidence Tiers
 
 Evidence is ranked. A higher tier always beats a lower one, in both directions (a documented rule can both justify a finding and kill one).
