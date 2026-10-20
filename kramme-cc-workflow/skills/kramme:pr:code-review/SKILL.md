@@ -14,7 +14,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 Before selecting a workflow, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`. It parses and removes `--subagent-model <model>` before aspect parsing or Team Mode routing. Preserve the original invocation's flag boundaries for `--emphasize`; removing the model pair must not merge later positional aspects into an emphasis span. Its model selection applies to every review subagent in standard, parallel, Team Mode, and loop verification passes.
 
-Before selecting any workflow, read `references/execution-contract.md` in full. Its execution ledger and fail-closed completion gate apply to every mode and rerun. Never replace specialized agents with a parent-only review, silently narrow the scope, cancel reviewers because enough findings exist, or skip stages on zero findings. Partial results are `INCOMPLETE`, never a completed or clean review.
+Before selecting any workflow, read `references/execution-contract.md` in full. Its execution ledger and fail-closed completion gate apply to every mode and rerun. Never replace specialized agents with a parent-only review, silently narrow the scope, cancel reviewers because enough findings exist, or skip stages on zero findings beyond the recorded `skipped` relevance and slop meta-review stages the contract allows. Partial results are `INCOMPLETE`, never a completed or clean review.
 
 Before selecting a workflow, if `$ARGUMENTS` contains `--loop`, set `LOOP_MODE=true` and remove that flag. Otherwise set `LOOP_MODE=false`. Use the remaining arguments as the normalized review arguments throughout this run and for any review rerun.
 
@@ -234,14 +234,15 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    Record the successful `integrity` job before starting `relevance`. Record every following stage's actual execution and saved output under the execution contract.
 
    After collecting findings from all agents:
-   - Launch **kramme:pr-relevance-validator** with all findings, the resolved `BASE_BRANCH`, and `PR_CONTEXT_JSON` if present
+   - If every primary reviewer returned zero findings, do not launch the validator: record `relevance` as `skipped` with `Skipped:` evidence, add `Relevance validation: skipped (no findings)` to the report, and skip Step 9 the same way.
+   - Otherwise launch **kramme:pr-relevance-validator** with all findings, the resolved `BASE_BRANCH`, and `PR_CONTEXT_JSON` if present
    - Validator cross-references each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
    - Filters out pre-existing issues and out-of-scope problems
    - Treat validator output as classifications over the original finding records, not replacement findings. Preserve every raw field, source agent, and standalone marker such as `OVERENGINEERING`; the validator may only add its relevance classification and evidence before returning findings caused by this review scope.
 
 9. **Slop Meta-Review**
 
-   After relevance validation, review agent suggestions for slop. If no validated finding or suggestion remains, skip this step, record `Slop meta-review: skipped (no findings)`, and do not launch the agent — there is nothing to annotate. Otherwise:
+   After relevance validation, review agent suggestions for slop. If no validated finding or suggestion remains, skip this step: record `slop-meta` as `skipped` with `Skipped:` evidence, add `Slop meta-review: skipped (no findings)` to the report, and do not launch the agent — there is nothing to annotate. Otherwise:
    - Launch a second invocation of **kramme:deslop-reviewer**. Open the prompt with `Operate in meta-review mode.` and pass the list of validated findings/suggestions as the only input -- do not pass a diff. The agent's description documents both modes; the input shape and this directive together select meta-review mode.
    - Flags suggestions that would introduce slop if implemented, especially defensive programming that does not match local codebase practice or lacks a concrete failure path
    - Adds slop warnings to flagged suggestions (does not remove them)

@@ -380,7 +380,7 @@ test("shipped report template seals and passes consumer validation", (t) => {
   f.ok("check", "--report", f.report, "--aspects", "all");
 });
 
-test("finding quota and empty primary results cannot skip downstream stages", (t) => {
+test("unfinished downstream stages block sealing; skips must be explicit", (t) => {
   const f = fixture(t);
   f.finish("code-reviewer");
   f.draft();
@@ -397,6 +397,196 @@ test("finding quota and empty primary results cannot skip downstream stages", (t
   f.finish("integrity");
   f.finish("relevance");
   assert.match(f.command("seal", "--report", f.report).stderr, /slop-meta/);
+});
+
+/** @param {ReturnType<typeof fixture>} f @param {string} name @param {string} text */
+function saveOutput(f, name, text) {
+  const file = path.join(f.temp, `${name}.txt`);
+  fs.writeFileSync(file, text);
+  return file;
+}
+
+/** @param {ReturnType<typeof fixture>} f */
+function finishPrimaryAndIntegrity(f) {
+  for (const [id, job] of Object.entries(f.ledger().jobs))
+    if (job.kind === "reviewer" || id === "integrity") f.finish(id);
+}
+
+test("zero-finding runs skip the relevance and slop agents and state it in the report", (t) => {
+  const f = fixture(t);
+  finishPrimaryAndIntegrity(f);
+  const skip = saveOutput(
+    f,
+    "skip",
+    "Skipped: every primary reviewer returned zero findings\n",
+  );
+  f.ok("finish", "--job", "relevance", "--status", "skipped", "--output", skip);
+  f.ok("finish", "--job", "slop-meta", "--status", "skipped", "--output", skip);
+  for (const id of ["previous-context", "aggregation", "final-check"])
+    f.finish(id);
+  assert.equal(f.ledger().jobs.relevance.agentId, undefined);
+  f.draft();
+  assert.match(
+    f.command("seal", "--report", f.report).stderr,
+    /Report must state: Relevance validation: skipped \(no findings\)/,
+  );
+  fs.appendFileSync(
+    f.report,
+    "Relevance validation: skipped (no findings)\nSlop meta-review: skipped (no findings)\n",
+  );
+  f.ok("seal", "--report", f.report);
+  f.ok("check", "--report", f.report, "--aspects", "all");
+});
+
+test("only empty downstream agent stages may be skipped, with explicit evidence", (t) => {
+  const f = fixture(t);
+  const skip = saveOutput(f, "skip", "Skipped: nothing to process\n");
+  assert.match(
+    f.command(
+      "finish",
+      "--job",
+      "code-reviewer",
+      "--status",
+      "skipped",
+      "--output",
+      skip,
+    ).stderr,
+    /Only relevance and slop-meta may be skipped/,
+  );
+  assert.match(
+    f.command(
+      "finish",
+      "--job",
+      "relevance",
+      "--status",
+      "skipped",
+      "--output",
+      skip,
+    ).stderr,
+    /Incomplete dependency/,
+  );
+  finishPrimaryAndIntegrity(f);
+  const vague = saveOutput(f, "vague", "nothing to see\n");
+  assert.match(
+    f.command(
+      "finish",
+      "--job",
+      "relevance",
+      "--status",
+      "skipped",
+      "--output",
+      vague,
+    ).stderr,
+    /must start with `Skipped:`/,
+  );
+  f.ok("finish", "--job", "relevance", "--status", "skipped", "--output", skip);
+  f.finish("slop-meta");
+  for (const id of ["previous-context", "aggregation", "final-check"])
+    f.finish(id);
+  f.draft();
+  fs.appendFileSync(f.report, "Relevance validation: skipped (no findings)\n");
+  assert.match(f.command("seal", "--report", f.report).stderr, /skip it too/);
+});
+
+test("a running agent stage cannot be relabeled as skipped", (t) => {
+  const f = fixture(t);
+  finishPrimaryAndIntegrity(f);
+  f.ok("start", "--job", "relevance", "--agent-id", "validator-1");
+  const skip = saveOutput(f, "skip", "Skipped: nothing to process\n");
+  assert.notEqual(
+    f.command(
+      "finish",
+      "--job",
+      "relevance",
+      "--status",
+      "skipped",
+      "--output",
+      skip,
+    ).status,
+    0,
+  );
+});
+
+test("record applies a whole manifest in one call and seals", (t) => {
+  const f = fixture(t);
+  const done = saveOutput(
+    f,
+    "done",
+    "Completed: zero findings after full inspection\n",
+  );
+  const skip = saveOutput(
+    f,
+    "skip",
+    "Skipped: every primary reviewer returned zero findings\n",
+  );
+  const reviewers = Object.entries(f.ledger().jobs)
+    .filter(([, job]) => job.kind === "reviewer")
+    .map(([id]) => ({
+      job: id,
+      status: "succeeded",
+      output: done,
+      agentId: `host-${id}`,
+    }));
+  const manifest = path.join(f.temp, "manifest.json");
+  fs.writeFileSync(
+    manifest,
+    JSON.stringify([
+      ...reviewers,
+      { job: "integrity", status: "succeeded", output: done },
+      { job: "relevance", status: "skipped", output: skip },
+      { job: "slop-meta", status: "skipped", output: skip },
+      { job: "previous-context", status: "succeeded", output: done },
+      { job: "aggregation", status: "succeeded", output: done },
+      { job: "final-check", status: "succeeded", output: done },
+    ]),
+  );
+  f.ok("record", "--manifest", manifest);
+  f.draft();
+  fs.appendFileSync(
+    f.report,
+    "Relevance validation: skipped (no findings)\nSlop meta-review: skipped (no findings)\n",
+  );
+  f.ok("seal", "--report", f.report);
+  f.ok("check", "--report", f.report, "--aspects", "all");
+});
+
+test("record writes nothing when any manifest entry is invalid", (t) => {
+  const f = fixture(t);
+  const done = saveOutput(f, "done", "Completed: zero findings\n");
+  const manifest = path.join(f.temp, "manifest.json");
+  fs.writeFileSync(
+    manifest,
+    JSON.stringify([
+      {
+        job: "code-reviewer",
+        status: "succeeded",
+        output: done,
+        agentId: "host-1",
+      },
+      { job: "silent-failure-hunter", status: "succeeded", output: done },
+    ]),
+  );
+  assert.match(
+    f.command("record", "--manifest", manifest).stderr,
+    /Actual host agent ID required/,
+  );
+  assert.equal(f.ledger().jobs["code-reviewer"].status, "pending");
+  assert.equal(fs.existsSync(path.join(f.run, "code-reviewer.txt")), false);
+  fs.writeFileSync(
+    manifest,
+    JSON.stringify([
+      { job: "code-reviewer", status: "succeeded", output: done, extra: 1 },
+    ]),
+  );
+  assert.match(
+    f.command("record", "--manifest", manifest).stderr,
+    /optional agentId/,
+  );
+  fs.writeFileSync(manifest, "[]");
+  assert.match(
+    f.command("record", "--manifest", manifest).stderr,
+    /non-empty JSON array/,
+  );
 });
 
 test("timeout leaves partial findings but blocks certification", (t) => {
