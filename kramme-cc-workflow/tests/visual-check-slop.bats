@@ -33,6 +33,12 @@ setup() {
     visual-check-slop-third-party-notices
 }
 
+@test "visual check-slop routes are user-run" {
+  grep -qF 'User-run: invoke it on generated or hand-written HTML' "$SKILL/SKILL.md"
+  grep -qF 'give the user its slash command' "$SKILL/SKILL.md"
+  if grep -qF 'Use before generated or hand-written HTML is shown' "$SKILL/SKILL.md"; then false; fi
+}
+
 @test "visual check-slop runtime checks, fixes, and rechecks a directory" {
   fixture="$BATS_TEST_TMPDIR/screen"
   mkdir -p "$fixture"

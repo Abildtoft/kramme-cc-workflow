@@ -1491,6 +1491,15 @@
       ]
     },
     {
+      "name": "pr-plan-split-user-run-handoff",
+      "path": "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
+      "contains": [
+        "it never invokes `kramme:code:breakdown-findings`, which is user-run",
+        "Next: run /kramme:code:breakdown-findings to write one PR_PLAN_*.md per slice from the handoff above.",
+        "save the handoff to a Markdown file and run `/kramme:code:breakdown-findings <handoff-file>` instead"
+      ]
+    },
+    {
       "name": "pr-plan-reconcile-migration-guidance",
       "path": "README.md",
       "contains": [
@@ -1667,7 +1676,6 @@
     "mechanical_only": [
       "kramme-cc-workflow/skills/kramme:browse/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:audit-security/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:debug:investigate/SKILL.md",
       "kramme-cc-workflow/skills/kramme:deps:audit/SKILL.md",
       "kramme-cc-workflow/skills/kramme:discovery:strategic-inquiry/SKILL.md",
       "kramme-cc-workflow/skills/kramme:docs:adr/SKILL.md",

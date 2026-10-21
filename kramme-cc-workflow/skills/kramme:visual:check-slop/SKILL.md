@@ -1,6 +1,6 @@
 ---
 name: kramme:visual:check-slop
-description: "Runs a bundled deterministic 73-guard check over HTML screens, reports exact AI-style UI findings, and optionally applies safe idempotent fixes with --fix. Use before generated or hand-written HTML is shown, exported, shipped, or committed, or when asked to check a screen for visual slop. Not for broad UX, accessibility, product-value, or screenshot critique; use kramme:pr:product-review or kramme:product:design-critic."
+description: "Runs a bundled deterministic 73-guard check over HTML screens, reports exact AI-style UI findings, and optionally applies safe idempotent fixes with --fix. User-run: invoke it on generated or hand-written HTML before showing, exporting, shipping, or committing it, or to check a screen for visual slop. Not for broad UX, accessibility, product-value, or screenshot critique; use kramme:pr:product-review or kramme:product:design-critic."
 argument-hint: "<file-or-directory> [--fix]"
 disable-model-invocation: true
 user-invocable: true
@@ -72,7 +72,7 @@ The check must precede mutation so the report can distinguish original, auto-fix
 
 4. After a fix run, repeat Step 1. Use the second check as the final verdict. Never claim a clean result from the fix summary alone.
 
-5. Report the outcome. If the user also requested broader critique, hand off to `kramme:pr:product-review` for branch-level UX/accessibility review or `kramme:product:design-critic` for product-design critique.
+5. Report the outcome. If the user also requested broader critique, hand off to `kramme:pr:product-review` for branch-level UX/accessibility review or `kramme:product:design-critic` for product-design critique. When the chosen skill cannot be invoked from this session, give the user its slash command (`/kramme:pr:product-review` or `/kramme:product:design-critic`) instead of reading its files.
 
 ## Output
 
