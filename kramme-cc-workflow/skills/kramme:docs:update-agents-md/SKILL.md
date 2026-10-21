@@ -1,8 +1,8 @@
 ---
 name: kramme:docs:update-agents-md
 description: This skill should be used when the user asks to "update AGENTS.md", "add to AGENTS.md", "maintain agent docs", add the Hard-Cut Greenfield Policy or no-compatibility-code policy, or otherwise add guidelines to agent instructions. Guides discovery of local skills and enforces structured, keyword-based documentation style.
-user-invocable: false
-disable-model-invocation: false
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # Adding to AGENTS.md
