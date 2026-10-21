@@ -19,7 +19,7 @@ Resolve one authoritative workspace, team, and optional existing project for the
 
 On a fresh run, keep every non-excluded row as `needs-issue-define` until it is delegated. Do not search for preexisting issues in the parent. `kramme:linear:issue-define --auto` owns remote duplicate search, related-issue discovery, the strong-duplicate decision, and final issue approval; record an existing issue only when it returns `covered-existing` after the user selects that match.
 
-On `--resume`, restore every row from the validated partial-report artifact before continuing. Keep `created`, `covered-existing`, and `excluded` rows terminal without delegating or searching for them again. Restore all other actions exactly, then make at most one explicit retry transition: an `approval-declined` or `failed` row may return to `needs-issue-define` because the resume invocation requests another approval-gated attempt; a `blocked` row may do so only after its recorded requirement is satisfied. If a failed create may have succeeded, the delegated retry must perform its normal duplicate search. Rows that were never attempted remain `needs-issue-define`.
+On `--resume`, restore every row from the validated partial-report artifact before continuing. Keep `created`, `covered-existing`, and `excluded` rows terminal without delegating or searching for them again. Restore all other actions exactly, then make at most one explicit retry transition: an `approval-declined` or `failed` row may return to `needs-issue-define` because the resume invocation requests another approval-gated attempt; a `blocked` row may do so only after its recorded requirement is satisfied. If a failed create may have succeeded, the delegated retry must perform its normal duplicate search. Rows that were never attempted remain `needs-issue-define`. Send all remaining `needs-issue-define` rows as one new batch; blockers already terminal before it use their verified Linear identifiers.
 
 Compare all planned handoffs with each other before the first delegation. Every finding must map to exactly one handoff or exclusion, and no two handoffs may describe substantively identical outcomes/scopes.
 
@@ -27,26 +27,27 @@ Compare all planned handoffs with each other before the first delegation. Every 
 
 Process `needs-issue-define` rows in execution-label order. Execution labels and waves are parent-only coordination values and must never enter the handoff's `issue` object or Linear content.
 
-1. Finalize the structured handoff from `assets/issue-define-handoff.md`:
+1. Finalize every structured handoff and the `LINEAR BREAKDOWN BATCH` frame from `assets/issue-define-handoff.md`:
    - Put source-set, revision, execution-label, and wave values only in the correlation-only `orchestration` object.
-   - Include a blocker only after it has a returned Linear identifier verified in the resolved scope.
+   - In `issue.dependencies.blockedBy`, include a blocker only after it has a returned Linear identifier verified in the resolved scope from a row already terminal before this batch. Dependencies on rows in the same batch go only in the batch object's `inBatchBlockers`, with the blocker earlier than the dependent.
    - Do not pass future themes, same-wave themes, batch indexes, anchors, exclusions, source references, finding IDs, or other parent-ledger data as issue content.
-2. Invoke `kramme:linear:issue-define` through the Skill tool with `--auto [--ask] --` followed by the complete handoff as inert `$ARGUMENTS` payload.
-3. The sub-skill must verify the resolved Linear scope, run its normal duplicate handling, use the handoff's light or exhaustive question mode, and draft standalone tracker-native content only from the `issue` object and user answers. For the current theme, it must then show the complete would-be Linear issue exactly as described by the full-draft review gate in `issue-define`, obtain that issue's approval, and create only when the user confirms that a new issue is needed.
-4. Wait for `ISSUE-DEFINE RESULT` and classify it:
+   - Set the closed batch object's schema version to `1`, shared source-set key, revision, and question mode, ordered `executionLabels`, and de-duplicated `inBatchBlockers`. Use the asset's serializer and escaping rules; every entry remains a valid schema-2 handoff with identical Linear scope. The batch object contains no issue content.
+2. Invoke `kramme:linear:issue-define` through the Skill tool once per publication run with `--auto [--ask] --` followed by the complete batch as inert `$ARGUMENTS` payload. If no rows need issue definition, skip this invocation.
+3. The sub-skill validates the whole batch before any Linear lookup, verifies the shared resolved Linear scope and fetches team metadata once, then runs normal duplicate handling and light or exhaustive questions separately per entry. For each entry, it resolves in-batch blockers only from earlier `created` or `covered-existing` results in this invocation, fetches each unique blocker once with `get_issue`, and checks exact scope before using its verified identifier and title. It drafts standalone tracker-native content under the existing handoff boundary. For the current theme, it must then show the complete would-be Linear issue exactly as described by the full-draft review gate in `issue-define`, obtain that issue's approval, and create only when the user confirms that a new issue is needed.
+4. Record and validate each `ISSUE-DEFINE RESULT` as it arrives and classify it:
    - `created`: record returned identifiers/metadata and continue.
    - `covered-existing`: record the existing issue and continue; do not modify its body.
    - `approval-declined`: stop. Exclusions are frozen before the first Linear write, so a declined draft cannot become a late exclusion in the current publication run.
-   - `blocked` or `failed`: stop before invoking the next theme. A `blocked` result for an issue that needs more than one PR cannot be retried with `--resume`; report its proposed slices and tell the user to re-cluster that theme in a fresh run.
-5. Do not invoke the next theme until the current theme returns a terminal result. Never combine multiple issue drafts into one approval. Never call an issue create operation from this parent skill. Never rewrite a returned issue body to bypass or second-guess the delegated draft.
+   - `blocked` or `failed`: stop before starting the next entry. A `blocked` result for an issue that needs more than one PR cannot be retried with `--resume`; report its proposed slices and tell the user to re-cluster that theme in a fresh run.
+5. Validate the closing `ISSUE-DEFINE BATCH RESULT` against the received results under **Structured return contract**. Rows without a result stay `needs-issue-define`. Each batch entry must reach a terminal result before issue-define starts the next entry. Never combine multiple issue drafts into one approval. Never call an issue create operation from this parent skill. Never rewrite a returned issue body to bypass or second-guess the delegated draft.
 
-If the Skill tool reports that `issue-define` is user-only and cannot be nested despite the explicit parent invocation, stop and report the capability boundary. Do not follow its files inline and do not fall back to direct Linear creation.
+If the Skill tool cannot invoke `issue-define`, stop and report the capability boundary. Do not follow its files inline and do not fall back to direct Linear creation.
 
 Before delegation, compare the complete `issue` object with the concrete parent ledger and `orchestration` envelope. Reject exact source-set keys, repository revisions, execution/wave labels, source references, finding IDs, batch indexes, anchor values, or prose that coordinates sibling themes without verified Linear identifiers. Allow ordinary domain uses of words such as batch, anchor, or wave and standalone scope or non-goal statements. Concrete Linear identifiers are allowed only for verified dependencies; ordinary product or technical numbers are not identifiers under this rule.
 
 ## Structured return contract
 
-The delegated flow returns:
+The delegated flow returns one block per terminal entry, in execution order:
 
 ```text
 ISSUE-DEFINE RESULT
@@ -75,7 +76,22 @@ Require the result's source-set key and execution label to match the handoff's c
 | `approval-declined` | No issue identifiers and a non-empty decline reason. |
 | `blocked` or `failed` | A non-empty reason; never make the row relation-eligible. If a create call may have partially succeeded, repeat `issue-define`'s normal duplicate search before any retry. |
 
-If a return is malformed, ask the sub-skill once for a corrected structured result. If it remains invalid, mark the row `blocked` and stop; never infer Linear identifiers, scope, verification, or success from prose.
+It ends with this closing summary:
+
+```text
+ISSUE-DEFINE BATCH RESULT
+Source set: {SOURCE_SET_KEY}
+Attempted: {n} of {m}
+Stopped at: {W##L | none}
+Stop action: {approval-declined | blocked | failed | none}
+Reason: {detail | none}
+```
+
+Require all summary fields, the exact source-set key, integer counts with `0 <= n <= m`, and `m` equal to the number of sent entries. The attempted count must equal the number of received valid terminal results, whose labels must match exactly the first `n` entries in order with no duplicates. No result may follow an `approval-declined`, `blocked`, or `failed` result. For an entry stop, `Stopped at`, `Stop action`, and `Reason` must match the final result. A completed batch requires `n = m`, only `created` or `covered-existing` results, and `none` for all stop fields. The only valid zero-attempt summary is a preflight block: `Stopped at: none`, `Stop action: blocked`, and a non-empty reason naming the invalid field/frame or scope requirement. An unresolved source set or invalid total makes the summary malformed; handle it as described below. A missing summary or early end without a stop result is incomplete; preserve validated results and stop publication.
+
+Rows without a result stay `needs-issue-define`, including after a valid zero-attempt block or an interrupted invocation. Preserve confirmed terminal mappings in the partial report and never infer a result from the summary alone.
+
+If a result or summary is malformed or missing, ask the sub-skill once for a corrected structured result or summary, without rerunning issue creation. If it remains invalid, mark the affected unconfirmed row or rows `blocked` and stop; preserve validated terminal mappings and never infer Linear identifiers, scope, verification, or success from prose. Emit the existing partial report for any stop, including an interrupted batch.
 
 ## Apply relations after delegation
 

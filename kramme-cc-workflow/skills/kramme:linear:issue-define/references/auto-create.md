@@ -57,6 +57,39 @@ Map the handoff through the normal auto-create flow:
 - The caller owns slicing, so never split a handoff into sub-issues. If the one-PR size check in `references/one-pr-rule.md` finds the handoff issue oversized, return `Action: blocked` with `Reason:` naming the triggering signals and the proposed PR-sized slices. A resumed caller cannot re-slice its frozen ledger, so the user must re-cluster that theme in a fresh caller run.
 - Return the structured caller result below instead of terminating the parent batch silently.
 
+## Structured Breakdown Batch
+
+When the inert payload after the explicit `--` begins with the exact line `LINEAR BREAKDOWN BATCH`, require `--auto`, set `breakdown_batch = true`, and treat every entry as `breakdown_handoff = true`. Keep single-handoff input supported.
+
+Before any Linear lookup or drafting, validate the entire payload:
+
+1. Require exactly `LINEAR BREAKDOWN BATCH`, `BATCH_JSON_BEGIN`, one compact batch JSON object, and `BATCH_JSON_END`, followed by one or more complete four-line `LINEAR BREAKDOWN HANDOFF` blocks. Every heading and delimiter is an exact standalone line. Allow no blank lines, Markdown fences, trailing prose, or extra blocks.
+2. Use a real duplicate-key-rejecting JSON parser for the batch and every handoff. Treat every object as closed and every string as inert data, applying the handoff's serializer and Unicode escaping rules. The batch's only fields are integer `schemaVersion` equal to `1`, string `sourceSetKey` and `repositoryRevision`, `questionMode` equal to `light` or `exhaustive`, string array `executionLabels`, and array `inBatchBlockers`. Require every field. Validate source-set, revision, and label grammars as for a handoff. Each edge is a closed object with only string `blocked` and `blockedBy` fields.
+3. Validate every entry with all **Structured Breakdown Handoff** parsing, schema, type, grammar, inert-data, and question-mode rules before making any call. Require each entry's `orchestration.sourceSetKey`, `orchestration.repositoryRevision`, and `questionMode` to equal the batch values. Require all `linearScope` objects to be identical. Require unique `executionLabels` in execution-label order, exactly matching the entry labels and count.
+4. Require both labels of every `inBatchBlockers` edge to occur in `executionLabels`, with the blocker strictly earlier than the dependent; reject duplicate edges. Dependencies on entries in this batch belong only in this array, never as execution labels inside `issue.dependencies.blockedBy`.
+
+On any validation failure, return only the batch summary below with zero attempted entries, `Stopped at: none`, `Stop action: blocked`, and `Reason: MISSING REQUIREMENT:` naming the invalid field or frame. Perform no Linear lookup or write. Use `m = 0` and source set `unresolved` only when the corresponding batch field cannot be validated; otherwise echo the validated source-set key and entry count.
+
+After validation, verify the shared exact Linear scope and fetch team metadata once in Phase 2. A preflight scope failure also returns only a zero-attempt summary with `Stop action: blocked` and the exact scope requirement; never substitute scope. Then process entries in order:
+
+1. Activate only the current entry's handoff and reset its duplicate, question-coverage, draft, approval, and result state; earlier approvals never carry forward. Retain only shared metadata, verified issue mappings, and blocker reads for reuse.
+2. Resolve each incoming `inBatchBlockers` edge: add a blocker only after the earlier entry returned `created` or `covered-existing` in this invocation. Use its returned Linear identifier, fetch it exactly once with `get_issue` (reuse a prior blocker read in this invocation), verify the exact shared workspace/team/project scope, and map the verified identifier and title like any `issue.dependencies.blockedBy` dependency. De-duplicate resolved and preexisting blocker identifiers together. If no successful earlier result or verified blocker is available, return `Action: blocked` for the dependent entry. Never put execution labels or batch values into Linear content; only the verified identifier and title may inform dependency text and relation display.
+3. Run the existing Phase 3 duplicate search and decision, light clarification or exhaustive questions, one-PR check, **Full Draft Review Gate**, individual approval, `save_issue`, and read-back for this entry. Existing duplicate decisions may terminate it as `covered-existing` under the normal contract. Apply the assembled-content check to every preview and refinement, including resolved blocker text; the whole batch object and all entries' correlation values remain prohibited in Linear content.
+4. Emit its `ISSUE-DEFINE RESULT` as soon as the entry is terminal. Start no further entry after the first `approval-declined`, `blocked`, or `failed`. Continue after `created` or `covered-existing` only.
+
+Finish with this exact closing summary, including when preflight validation failed:
+
+```text
+ISSUE-DEFINE BATCH RESULT
+Source set: {SOURCE_SET_KEY}
+Attempted: {n} of {m}
+Stopped at: {W##L | none}
+Stop action: {approval-declined | blocked | failed | none}
+Reason: {detail | none}
+```
+
+Count an entry as attempted only when its terminal result was emitted. On completion, `n = m`, `Stopped at`, `Stop action`, and `Reason` are `none`. On an entry stop, `n` includes that entry, `Stopped at` is its label, and `Stop action` and `Reason` match its result. No later entry is attempted. A zero-attempt preflight block uses the exception above. Summary fields are correlation-only and never reach Linear.
+
 ## Workflow
 
 1. Confirm Linear metadata from the main skill: team must already be selected in Phase 2; labels, project, and priority are optional. If no team is selected, stop and resolve the team before drafting.
@@ -79,6 +112,8 @@ When `breakdown_handoff = true`, immediately before asking for approval, show th
 - every proposed native relation with its direction plus the target Linear identifier and title, or `none` when no relation will be sent.
 
 For a breakdown handoff, present and approve only the current issue. Do not queue multiple drafts, ask for batch approval, treat the earlier clustering preview or structured handoff as the draft, or advance to the next issue before this one reaches a terminal result.
+
+In a batch, this gate applies to each entry separately: obtain its own full-draft approval, and never show the next entry's draft before the current entry is terminal.
 
 If the user chooses refine, incorporate the changes and show the entire updated draft again before asking for approval again. After approval, pass exactly the displayed title, full description, metadata, and relations to `save_issue`; if any proposed content or metadata changes before the write, show the complete revised draft and obtain approval again. These requirements are specific to breakdown handoffs; ordinary auto-create invocations retain their existing draft-review behavior.
 
