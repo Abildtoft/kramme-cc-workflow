@@ -31,6 +31,26 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - `/kramme:pr:generate-description` now finds repository PR templates when the agent's shell is zsh. The lookup looped over a variable named `path`, which zsh ties to `PATH`, so every later command in the lookup failed and it reported no template.
 
+## [0.89.0] - 2026-10-20
+
+### Added
+
+- Add draft comment clarity checks (#992)
+- **BREAKING:** Route review convergence depth by the risk floor (#991)
+- Audit linked Linear issues in GitHub PR reviews (#990)
+- Add --parallel to GitHub PR review (#989)
+- Add module-depth guidance across skills (#988)
+- Put the problem before the ask in comments (#983)
+
+### Changed
+
+- **BREAKING:** Merge SIW product audit into spec audit (#987)
+- **BREAKING:** Merge PR description verification into generate-description (#984)
+- **BREAKING:** Merge SIW removal into workflow artifact cleanup (#985)
+- **BREAKING:** Merge SIW discovery into the discovery interview (#986)
+- **BREAKING:** Remove code performance skill (#982)
+- **BREAKING:** Merge UX review into product review (#981)
+
 ## [0.88.0] - 2026-10-13
 
 ### Added
@@ -1116,6 +1136,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.89.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.88.0...v0.89.0
 [0.88.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.87.0...v0.88.0
 [0.87.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.86.0...v0.87.0
 [0.86.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.85.0...v0.86.0
