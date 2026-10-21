@@ -1,21 +1,23 @@
 ---
-name: kramme:visual:diagram
-description: Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, flowchart, schema, or any visual explanation of technical concepts. Also use proactively when about to render a large ASCII table (4+ rows and 3+ columns) — present it as a styled HTML page instead.
-argument-hint: "[topic or description]"
+name: kramme:visual:explain
+description: Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, flowchart, schema, or any visual explanation of technical concepts. Use --onboarding for an interactive onboarding guide that introduces a codebase to newcomers. Also use proactively when about to render a large ASCII table (4+ rows and 3+ columns) — present it as a styled HTML page instead.
+argument-hint: "[topic or description | --onboarding [focus-area or audience]]"
 disable-model-invocation: false
 user-invocable: true
 kramme-platforms: [claude-code, codex]
 ---
 
-# Visual Diagram
+# Visual Explanation
 
 Generate self-contained HTML files for technical diagrams, visualizations, and data tables. When the user explicitly asked for a visual, open the result in the browser; when you're rendering a table proactively (see below), write the file and share the path but don't auto-launch a browser. Never fall back to ASCII art when this skill is loaded.
 
 **Arguments:** "$ARGUMENTS"
 
+**Onboarding mode.** When `$ARGUMENTS` contains `--onboarding`, or the user asks for an onboarding guide that introduces a codebase or subsystem to newcomers, set `ONBOARDING_MODE=true`, treat the remaining argument text as the optional focus area or audience, and read `references/onboarding-mode.md` before Step 1. That file replaces Steps 1 and 2 and the output file name; Step 3 (Style), File Structure, and Quality Checks still apply. Proactive table rendering never uses onboarding mode.
+
 **Proactive table rendering.** When you're about to present tabular data as an ASCII box-drawing table in the terminal (comparisons, audits, feature matrices, status reports, any structured rows/columns), generate an HTML page instead. The threshold: a table with **4+ rows and 3+ columns** belongs in the browser — smaller tables are fine to leave inline. Don't wait for the user to ask — render it as HTML and tell them the file path. Because the user didn't request a visual here, write the file and report the path but don't auto-open a browser tab; reserve auto-open for explicit diagram requests. You can still include a brief text summary in the chat, but the table itself should be the HTML page.
 
-**Resource paths:** Resolve `assets/...` and `references/...` relative to this `SKILL.md` file. Do not assume a host-specific plugin root environment variable.
+**Resource paths:** The shared templates and pattern references live under `${CLAUDE_PLUGIN_ROOT}/shared/visual/`; Step 2 names each one. Resolve this skill's own `references/...` files relative to this `SKILL.md` file.
 
 ## Workflow
 
@@ -154,7 +156,7 @@ Apply these principles to every diagram:
 
 ### 4. Deliver
 
-**Output location:** Write to `~/.kramme-cc-workflow/diagrams/`. Create the directory if it doesn't exist. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions. Re-running with the same descriptive filename overwrites the previous file by design — vary the name only when you want to keep an earlier diagram.
+**Output location:** Write to `~/.kramme-cc-workflow/diagrams/`. Create the directory if it doesn't exist. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions. Re-running with the same descriptive filename overwrites the previous file by design — vary the name only when you want to keep an earlier diagram. In onboarding mode, use the file name and always-open behavior from `references/onboarding-mode.md` instead.
 
 **Open in browser** — only when the user explicitly asked for a visual. For proactively-rendered tables, skip this and just report the path.
 

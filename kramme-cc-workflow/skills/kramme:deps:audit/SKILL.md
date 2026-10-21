@@ -116,7 +116,7 @@ Present these options:
 2. Write `DEPENDENCY_AUDIT.md`, no changes
 3. Write `DEPENDENCY_AUDIT.md`, then apply Phase 2 (low-risk patches + minors) and run `/kramme:verify:run`
 4. Write `DEPENDENCY_AUDIT.md`, then create a SIW workflow with one issue per Phase 4 campaign (via `/kramme:siw:init`)
-5. Generate a visual HTML report via `/kramme:visual:diagram`, no changes
+5. Generate a visual HTML report via `/kramme:visual:explain`, no changes
 
 For option 4: `/kramme:siw:init` is user-invoked (the model cannot invoke it directly) — write the report, then present the exact `/kramme:siw:init` command for the user to run. If `/` invocation is unavailable on the platform, locate and Read that skill's `SKILL.md` from the installed skills directory and follow its steps inline.
 
