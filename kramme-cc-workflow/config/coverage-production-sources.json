@@ -249,6 +249,14 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/debug-root-cause-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:debug:investigate/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:debug:triage-to-issue/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/test-audit-guidance.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:test:audit/SKILL.md"]
     },

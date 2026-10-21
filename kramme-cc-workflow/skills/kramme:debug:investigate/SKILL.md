@@ -65,117 +65,15 @@ Store as `BUG_DESCRIPTION`.
 
 ---
 
-## Step 2: Reproduce
+## Steps 2–5: Reproduce, Isolate, Trace, and Document
 
-1. **Search the codebase** for the error message or relevant symbols using Grep.
-
-2. **Check for existing tests** that cover the affected area — run them.
-
-3. If reproduction is found, log: `[REPRODUCE] Confirmed via {method}`
-
-4. If **no reproduction path found**:
-
-If `AUTO_MODE=true`, do not ask for reproduction steps. Continue with static investigation only, log `[REPRODUCE] unconfirmed via available local evidence`, and do not implement a fix later unless the root cause becomes High confidence and a regression test can be written from code evidence.
-
-Otherwise:
-
-Ask the user, using a structured-question capability when the harness provides one. If not, ask the same question in plain text with a numbered list and wait for the response:
-
-```
-Header: Reproduction
-Question: How can this bug be reproduced?
-Options:
-1. Run specific test — I'll provide the test command
-2. Steps to follow — I'll describe the reproduction steps
-3. Cannot reproduce — the bug is intermittent or environment-specific
-```
-
-5. Log: `[REPRODUCE] {method} → {result: confirmed/unconfirmed}`
-
----
-
-## Step 3: Isolate
-
-1. From the error location (Step 2), **identify affected files**.
-
-2. **Read surrounding code** to understand module boundaries and data flow.
-
-3. **Grep for all callers and call sites** of the affected function/method.
-
-4. **Classify the scope:**
-   - Single function — bug is contained
-   - Module interaction — bug arises from how modules communicate
-   - Data flow — bug is in the data transformation pipeline
-
-5. If **multiple candidate areas** found:
-
-If `AUTO_MODE=true`, investigate all candidates and keep a short evidence note for each before narrowing. Otherwise:
-
-Ask the user, using a structured-question capability when the harness provides one. If not, ask the same question in plain text with a numbered list and wait for the response:
-
-```
-Header: Multiple Candidate Areas
-Question: The bug could originate in several areas. Where should I focus first?
-Options:
-1. "{area 1}: {evidence}"
-2. "{area 2}: {evidence}"
-3. "Investigate all candidates"
-```
-
-6. Log: `[ISOLATE] Scope narrowed to {files/functions}`
-
----
-
-## Step 4: Trace Root Cause
-
-1. **Read identified code paths** in full. Follow execution from trigger to error.
-
-2. **Check for regression** — if the bug may have been introduced recently:
-
-If `AUTO_MODE=true`, use git bisect only when both a known-good commit and an automated failing command are available without user input. Otherwise continue manual trace and note that bisect was skipped. If `AUTO_MODE` is false:
-
-Ask the user, using a structured-question capability when the harness provides one. If not, ask the same question in plain text with a numbered list and wait for the response:
-
-```
-Header: Regression Investigation
-Question: This looks like it may be a regression. Use git bisect to find the introducing commit?
-Options:
-1. Yes, run git bisect
-2. No, continue manual trace
-```
-
-3. **If bisecting:**
-   - Read the bisect guide from `references/bisect-guide.md`.
-   - Identify known-good commit: ask user, or find recent tag/release.
-   - If a failing test exists, automate: `git bisect run <test-command>`.
-   - Otherwise, guide manual bisect steps.
-   - **Always run `git bisect reset` when finished — and before any fallback or early exit — to restore the working tree.**
-
-4. **Consult investigation patterns:**
-   - Read common patterns from `references/investigation-patterns.md`.
-   - Match symptoms to known patterns.
-   - Apply recommended checks for the matching pattern.
-
-5. **Trace data flow** from origin to error point. Track variable values through assignments and transformations.
-
-6. Log: `[ROOT CAUSE] {description} at {file}:{line}`
-
----
-
-## Step 5: Document Findings
-
-Read the log template from `assets/investigation-log.md` and fill it in from the timeline logs (`[REPRODUCE]`, `[ISOLATE]`, `[ROOT CAUSE]`) and findings gathered so far. Capture evidence — code snippets, test output, bisect results — under the relevant sections.
-
-Store the completed log for inclusion in the final summary.
+Read `${CLAUDE_PLUGIN_ROOT}/shared/debug/references/root-cause-investigation.md` and follow it with `BUG_DESCRIPTION` from Step 1 and `UNATTENDED` set to the value of `AUTO_MODE`. Its Reproduce, Isolate, Trace Root Cause, and Document Findings sections are Steps 2–5 of this workflow, and its Assess Confidence section supplies the rating Step 6 uses. The procedure uses the bisect guide at `${CLAUDE_PLUGIN_ROOT}/shared/debug/references/bisect-guide.md`, the pattern catalog at `${CLAUDE_PLUGIN_ROOT}/shared/debug/references/investigation-patterns.md`, and the log template at `${CLAUDE_PLUGIN_ROOT}/shared/debug/assets/investigation-log.md`. Keep its timeline markers, completed log, confidence rating, and reproduction status for Steps 6–8. The procedure never edits code; fixing starts in Step 6.
 
 ---
 
 ## Step 6: Propose Fix
 
-1. **Assess confidence:**
-   - **High** — root cause is clear, fix is straightforward, side effects are minimal
-   - **Medium** — root cause is likely correct, fix may have side effects
-   - **Low** — root cause is uncertain, multiple possible explanations
+1. **Use the confidence rating** (High / Medium / Low) from the shared procedure's Assess Confidence section.
 
 2. If confidence is **Low**: present findings to user before proceeding. In `AUTO_MODE`, skip directly to Step 8 with `Fix Applied: No`.
 
