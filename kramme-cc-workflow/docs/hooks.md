@@ -65,6 +65,18 @@ The shared safety wrapper now launches the parser as the `git_command_parser` mo
 
 `skill-usage-stats` records local JSONL usage events when a prompt contains a `/kramme:*` skill invocation or when a Skill tool event names a `kramme:*` skill.
 
+Each record's `platform` field names the host that produced the event. The recorder resolves it in this order:
+
+1. A non-empty `platform` field in the hook payload.
+2. A non-empty `KRAMME_AGENT_PLATFORM` environment variable.
+3. `codex` when the payload has a non-empty `turn_id` or a `transcript_path` named `rollout-*.jsonl`.
+4. `claude-code` when `CLAUDECODE` is `1`.
+5. Otherwise an empty string.
+
+Codex markers are checked before `CLAUDECODE` because a Codex process started from a Claude Code shell inherits `CLAUDECODE=1`.
+
+For Codex prompts, the recorder ignores everything up to the last Conductor `</system_instruction>` block and accepts both `$kramme:*` and `/kramme:*` invocations. Claude Code prompts keep the `/kramme:*` rule. The converted Codex plugin ships this hook and its recorder, but Codex has no Skill tool, so only the `UserPromptSubmit` entry fires there. Codex may also require you to trust plugin hooks before they run.
+
 Records are stored outside the repository at:
 
 ```text
@@ -79,13 +91,24 @@ Generate a report:
 node scripts/skill-usage.js report --since 30d
 node scripts/skill-usage.js report --kind explicit --json
 node scripts/skill-usage.js report --json --strict
+node scripts/skill-usage.js report --platform codex --since 30d
 ```
+
+`--platform` accepts `claude-code`, `codex`, `unknown` (records with an empty `platform`), or `all` (the default).
 
 Scan existing transcript files for historical explicit invocations:
 
 ```bash
 node scripts/skill-usage.js scan ~/.claude/projects --json
 ```
+
+Scan Codex sessions the same way:
+
+```bash
+node scripts/skill-usage.js scan ~/.codex/sessions --since 30d --json
+```
+
+Scan treats a file whose first line is a Codex `session_meta` record as a Codex rollout and streams it line by line. Only the first `session_meta` classifies the file, because forked threads replay parent history after a second one. Subagent threads (`thread_source` `subagent`, or a `source` object with a `subagent` key) are skipped without reading further. In top-level threads, scan counts explicit invocations in user messages only. It skips injected `# AGENTS.md instructions for` and `<environment_context>` messages and ignores text before the last Conductor `</system_instruction>`. It also ignores developer and assistant messages and the user text that `event_msg` and `compacted` records repeat. Each thread id is one session, and `--since` filters by message timestamp. Large tool output can exceed the 1 MiB line limit, so whole-history Codex scans usually report a few overlong-line diagnostics. Once the Codex hook records events, do not add `scan` totals to `report --platform codex` totals for the same period; both count the same sessions.
 
 Reports and scans tolerate degraded input by default. They retain valid totals, write skipped-line and read-failure diagnostics to stderr, and exit successfully. Healthy `--json` output remains an array. When diagnostics occur, JSON output is an object with `summary` and `diagnostics` fields instead. Add `--strict` to render the same result but exit nonzero when any input was skipped or could not be read. Individual JSONL records larger than 1 MiB are skipped with diagnostics so malformed or truncated lines cannot make memory use unbounded.
 

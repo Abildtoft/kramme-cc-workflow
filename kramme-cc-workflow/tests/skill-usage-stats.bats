@@ -20,10 +20,11 @@ run_usage_hook() {
 
 create_usage_plugin_root() {
 	local plugin_root="$1"
-	mkdir -p "$plugin_root/hooks/lib" "$plugin_root/scripts"
+	mkdir -p "$plugin_root/hooks/lib" "$plugin_root/scripts/lib"
 	cp "$HOOK" "$plugin_root/hooks/skill-usage-stats.sh"
 	cp "$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh" "$plugin_root/hooks/lib/check-enabled.sh"
 	cp "$SCRIPT" "$plugin_root/scripts/skill-usage.js"
+	cp "$BATS_TEST_DIRNAME/../scripts/lib/skill-usage-hosts.js" "$plugin_root/scripts/lib/skill-usage-hosts.js"
 }
 
 @test "records explicit slash skill invocations from prompts" {
@@ -352,4 +353,40 @@ create_usage_plugin_root() {
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r 'length')" = "1" ]
 	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
+}
+
+@test "usage hook records Codex prompts after the Conductor block as codex" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	create_usage_plugin_root "$PLUGIN_ROOT"
+	PAYLOAD="$(jq -cn '{hook_event_name: "UserPromptSubmit", session_id: "thread-1", turn_id: "turn-1", transcript_path: null, cwd: "/tmp/repo", model: "gpt-5", permission_mode: "default", prompt: "<system_instruction>\nRun /kramme:conductor:hidden\n</system_instruction>\n$kramme:pr:create now"}')"
+
+	run bash -c 'printf "%s" "$1" | env -u CLAUDECODE -u KRAMME_AGENT_PLATFORM CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
+		"$PAYLOAD" \
+		"$PLUGIN_ROOT" \
+		"$USAGE_FILE"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+
+	[ "$(wc -l <"$USAGE_FILE" | tr -d ' ')" = "1" ]
+	[ "$(jq -r '.skill' "$USAGE_FILE")" = "kramme:pr:create" ]
+	[ "$(jq -r '.platform' "$USAGE_FILE")" = "codex" ]
+}
+
+@test "usage hook records Claude Code prompts as claude-code" {
+	if ! command -v node >/dev/null 2>&1; then
+		skip "node is required for skill usage tests"
+	fi
+
+	run bash -c 'printf "%s" "$1" | env -u KRAMME_AGENT_PLATFORM CLAUDECODE=1 bash "$2"' _ \
+		'{"hook_event_name":"UserPromptSubmit","prompt":"Run /kramme:qa","session_id":"session-1"}' \
+		"$HOOK"
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+
+	[ "$(jq -r '.skill' "$USAGE_FILE")" = "kramme:qa" ]
+	[ "$(jq -r '.platform' "$USAGE_FILE")" = "claude-code" ]
 }

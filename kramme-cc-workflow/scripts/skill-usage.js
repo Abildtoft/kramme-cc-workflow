@@ -5,6 +5,12 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const {
+  PLATFORM_CODEX,
+  detectPlatform,
+  openCodexRollout,
+  stripConductorInstructions,
+} = require("./lib/skill-usage-hosts");
 
 const STATE_DIR = path.join(
   process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state"),
@@ -21,6 +27,9 @@ const PLUGIN_SKILL_PREFIX = "kramme-cc-workflow:";
 const SKILLS_DIR = path.join(__dirname, "..", "skills");
 const SLASH_SKILL_PATTERN =
   /(?:^|\s|>)\/((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)/g;
+// Codex users invoke skills as `$kramme:...`; the slash form also works there.
+const CODEX_SKILL_PATTERN =
+  /(?:^|\s|>)[$/]((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)/g;
 const DIRECT_SKILL_PATTERN =
   /^\/?((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)(?:\s|$)/;
 /** @type {Map<string, string> | null} */
@@ -48,6 +57,7 @@ const SCAN_PRUNED_DIRS = new Set([
  * @property {string} [file]
  * @property {string} [since]
  * @property {string} [kind]
+ * @property {string} [platform]
  * @property {string} [limit]
  * @property {boolean} [strict]
  *
@@ -77,6 +87,10 @@ const SCAN_PRUNED_DIRS = new Set([
  * @typedef {{ skippedLines: number, readFailures: number }} UsageDiagnostics
  * @typedef {Map<string, Omit<UsageSummaryRow, "sessions"> & { sessions: Set<string> }>} UsageAccumulator
  * @typedef {{ line: string | null, byteLength: number, overlong: boolean, firstNonWhitespaceByte: number | null }} BoundedLine
+ * @typedef {Object} CodexRolloutScan
+ * @property {boolean} skipFile
+ * @property {(boundedLine: BoundedLine) => void} readLine
+ * @property {(diagnostics: UsageDiagnostics) => void} finish
  */
 
 async function main() {
@@ -115,7 +129,7 @@ async function main() {
 function printHelp(exitCode) {
   const help = `Usage:
   scripts/skill-usage.js record [--file <path>]
-  scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--json] [--limit <n>] [--strict]
+  scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--platform <claude-code|codex|unknown|all>] [--json] [--limit <n>] [--strict]
   scripts/skill-usage.js scan <file-or-dir...> [--since <duration|date>] [--json] [--limit <n>] [--strict]
 
 Records are stored in:
@@ -129,11 +143,13 @@ per file.
 
 Environment:
   KRAMME_SKILL_USAGE_FILE  Override the usage JSONL file path.
+  KRAMME_AGENT_PLATFORM    Override the detected platform of recorded events.
 
 Examples:
   scripts/skill-usage.js report --since 30d
   scripts/skill-usage.js report --kind explicit --json
   scripts/skill-usage.js scan ~/.claude/projects --json
+  scripts/skill-usage.js scan ~/.codex/sessions --since 30d --json
 `;
   const stream = exitCode === 0 ? process.stdout : process.stderr;
   stream.write(help);
@@ -179,6 +195,14 @@ function parseArgs(args) {
     }
     if (arg.startsWith("--kind=")) {
       parsed.kind = arg.slice("--kind=".length);
+      continue;
+    }
+    if (arg === "--platform") {
+      parsed.platform = args[++i];
+      continue;
+    }
+    if (arg.startsWith("--platform=")) {
+      parsed.platform = arg.slice("--platform=".length);
       continue;
     }
     if (arg === "--limit") {
@@ -268,6 +292,7 @@ function reportIoFailure(operation, error, file) {
 function buildUsageRecords(input) {
   const value = asRecord(input);
   const recordedAt = new Date().toISOString();
+  const platform = detectPlatform(value, process.env);
   /** @type {Omit<UsageRecord, "skill" | "kind" | "source">} */
   const base = {
     schemaVersion: 1,
@@ -279,7 +304,7 @@ function buildUsageRecords(input) {
         value.conversationId,
     ),
     cwd: stringValue(value.cwd ?? value.workspace ?? value.project_dir),
-    platform: stringValue(value.platform ?? process.env.KRAMME_AGENT_PLATFORM),
+    platform,
     event: stringValue(
       value.hook_event_name ?? value.hookEventName ?? value.event ?? value.type,
     ),
@@ -287,7 +312,7 @@ function buildUsageRecords(input) {
 
   /** @type {UsageRecord[]} */
   const records = [];
-  for (const skill of extractPromptSkills(value)) {
+  for (const skill of extractPromptSkills(value, platform)) {
     records.push({
       ...base,
       skill,
@@ -308,8 +333,8 @@ function buildUsageRecords(input) {
   return dedupeRecords(records);
 }
 
-/** @param {Record<string, unknown>} input @returns {string[]} */
-function extractPromptSkills(input) {
+/** @param {Record<string, unknown>} input @param {string} platform @returns {string[]} */
+function extractPromptSkills(input, platform) {
   const payload = asRecord(input.payload);
   const messages = Array.isArray(input.messages)
     ? input.messages[input.messages.length - 1]
@@ -328,10 +353,13 @@ function extractPromptSkills(input) {
     payload.message,
     payloadMessages,
   ];
+  const texts = roots.flatMap((root) => collectStrings(root));
   return unique(
-    roots
-      .flatMap((root) => collectStrings(root))
-      .flatMap((text) => extractSlashSkillNames(text)),
+    platform === PLATFORM_CODEX
+      ? texts.flatMap((text) =>
+          extractCodexSkillNames(stripConductorInstructions(text)),
+        )
+      : texts.flatMap((text) => extractSlashSkillNames(text)),
   );
 }
 
@@ -413,6 +441,17 @@ function extractSlashSkillNames(text) {
   /** @type {string[]} */
   const names = [];
   for (const match of text.matchAll(SLASH_SKILL_PATTERN)) {
+    const name = canonicalSkillName(match[1]);
+    if (name) names.push(name);
+  }
+  return names;
+}
+
+/** @param {string} text @returns {string[]} */
+function extractCodexSkillNames(text) {
+  /** @type {string[]} */
+  const names = [];
+  for (const match of text.matchAll(CODEX_SKILL_PATTERN)) {
     const name = canonicalSkillName(match[1]);
     if (name) names.push(name);
   }
@@ -547,6 +586,8 @@ async function report(args) {
   const file = usageFile(parsed);
   const since = parseSince(parsed.since);
   const kind = parsed.kind || "all";
+  const platform = parsed.platform || "all";
+  const recordedPlatform = platform === "unknown" ? "" : platform;
   const limit = parsed.limit == null ? null : Number(parsed.limit);
 
   if (!["all", "explicit", "tool"].includes(kind)) {
@@ -565,6 +606,7 @@ async function report(args) {
     diagnostics,
     (record) => {
       if (kind !== "all" && record.kind !== kind) return;
+      if (platform !== "all" && record.platform !== recordedPlatform) return;
       if (since) {
         const recordedAt = Date.parse(record.recordedAt);
         if (!Number.isFinite(recordedAt) || recordedAt < since.getTime()) {
@@ -577,7 +619,7 @@ async function report(args) {
   );
 
   const summary = finishUsageSummary(accumulator, limit);
-  renderResult(summary, diagnostics, parsed.json, file, since, kind);
+  renderResult(summary, diagnostics, parsed.json, file, since, kind, platform);
   applyStrictMode(parsed, diagnostics);
 }
 
@@ -623,6 +665,7 @@ async function scan(args) {
     parsed._.join(","),
     since,
     "explicit",
+    "all",
   );
   applyStrictMode(parsed, diagnostics);
 }
@@ -789,6 +832,8 @@ async function scanFile(file, diagnostics, onRecord) {
   let scanMode = SCAN_MODE_BUFFERING;
   /** @type {string[]} */
   let bufferedLines = [];
+  /** @type {CodexRolloutScan | null} */
+  let codexScan = null;
 
   /** @param {string} line */
   const processJsonLine = (line) => {
@@ -816,6 +861,10 @@ async function scanFile(file, diagnostics, onRecord) {
 
   try {
     for await (const boundedLine of readBoundedLines(file)) {
+      if (codexScan) {
+        codexScan.readLine(boundedLine);
+        continue;
+      }
       observedBytes += boundedLine.byteLength;
       const line = boundedLine.line || "";
       const isNonEmpty = boundedLine.overlong || line !== "";
@@ -826,6 +875,12 @@ async function scanFile(file, diagnostics, onRecord) {
             (boundedLine.overlong &&
               boundedLine.firstNonWhitespaceByte === 0x5b) ||
             line.trim() === "[";
+          codexScan = boundedLine.overlong
+            ? null
+            : openCodexRolloutScan(line, file, onRecord);
+          // Leaving the loop closes the stream, so skipped threads are never parsed.
+          if (codexScan?.skipFile) break;
+          if (codexScan) continue;
         }
       }
 
@@ -846,12 +901,22 @@ async function scanFile(file, diagnostics, onRecord) {
       }
     }
   } catch (error) {
+    if (codexScan) {
+      codexScan.finish(diagnostics);
+      recordReadFailure(diagnostics, file, error);
+      return;
+    }
     if (scanMode === SCAN_MODE_BUFFERING) startStreamingJsonLines();
     if (parsedJsonLines > 0) {
       recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
     }
     recordReadFailure(diagnostics, file, error);
+    return;
+  }
+
+  if (codexScan) {
+    codexScan.finish(diagnostics);
     return;
   }
 
@@ -889,6 +954,61 @@ async function scanFile(file, diagnostics, onRecord) {
   for (const skill of extractSlashSkillNames(content)) {
     onRecord(scannedRecord({ skill, file }));
   }
+}
+
+/**
+ * Returns a line reader when the first line opens a Codex rollout. Top-level
+ * threads count explicit invocations in user messages, keyed by thread id.
+ * @param {string} firstLine
+ * @param {string} file
+ * @param {(record: ScannedUsageRecord) => void} onRecord
+ * @returns {CodexRolloutScan | null}
+ */
+function openCodexRolloutScan(firstLine, file, onRecord) {
+  let rollout;
+  try {
+    rollout = openCodexRollout(JSON.parse(firstLine));
+  } catch {
+    return null;
+  }
+  if (!rollout) return null;
+  const { skipFile, sessionId, prompts } = rollout;
+  let malformedLines = 0;
+  let overlongLines = 0;
+  return {
+    skipFile,
+    readLine(boundedLine) {
+      if (boundedLine.overlong) {
+        overlongLines += 1;
+        return;
+      }
+      if (!boundedLine.line) return;
+      let parsed;
+      try {
+        parsed = JSON.parse(boundedLine.line);
+      } catch {
+        malformedLines += 1;
+        return;
+      }
+      for (const { text, recordedAt } of prompts(parsed)) {
+        for (const skill of unique(extractCodexSkillNames(text))) {
+          onRecord(
+            scannedRecord({
+              skill,
+              file,
+              recordedAt,
+              sessionId,
+              platform: PLATFORM_CODEX,
+            }),
+          );
+        }
+      }
+    },
+    finish(diagnostics) {
+      recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
+      recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
+    },
+  };
 }
 
 /** @param {unknown} input @param {string} file @returns {ScannedUsageRecord[]} */
@@ -944,14 +1064,20 @@ function recordsFromScannedObject(input, file) {
   );
 }
 
-/** @param {{ skill: string, file: string, recordedAt?: string, sessionId?: string }} input @returns {ScannedUsageRecord} */
-function scannedRecord({ skill, file, recordedAt = "", sessionId = "" }) {
+/** @param {{ skill: string, file: string, recordedAt?: string, sessionId?: string, platform?: string }} input @returns {ScannedUsageRecord} */
+function scannedRecord({
+  skill,
+  file,
+  recordedAt = "",
+  sessionId = "",
+  platform = "",
+}) {
   return {
     schemaVersion: 1,
     recordedAt,
     sessionId,
     cwd: "",
-    platform: "",
+    platform,
     event: "scan",
     skill,
     kind: "explicit",
@@ -1135,8 +1261,9 @@ function recordReadFailure(diagnostics, file, error) {
  * @param {string} file
  * @param {Date | null} since
  * @param {string} kind
+ * @param {string} platform
  */
-function renderResult(summary, diagnostics, json, file, since, kind) {
+function renderResult(summary, diagnostics, json, file, since, kind, platform) {
   if (json) {
     const result = hasDiagnostics(diagnostics)
       ? { summary, diagnostics }
@@ -1145,7 +1272,7 @@ function renderResult(summary, diagnostics, json, file, since, kind) {
     return;
   }
 
-  renderTable(summary, file, since, kind);
+  renderTable(summary, file, since, kind, platform);
   if (hasDiagnostics(diagnostics)) {
     process.stdout.write(
       `diagnostics skippedLines=${diagnostics.skippedLines} readFailures=${diagnostics.readFailures}\n`,
@@ -1187,8 +1314,8 @@ function parseSince(value) {
   return parsed;
 }
 
-/** @param {UsageSummaryRow[]} rows @param {string} file @param {Date | null} since @param {string} kind */
-function renderTable(rows, file, since, kind) {
+/** @param {UsageSummaryRow[]} rows @param {string} file @param {Date | null} since @param {string} kind @param {string} platform */
+function renderTable(rows, file, since, kind, platform) {
   if (rows.length === 0) {
     process.stdout.write("No skill usage records found.\n");
     return;
@@ -1235,6 +1362,7 @@ function renderTable(rows, file, since, kind) {
     `file=${file}`,
     since ? `since=${since.toISOString()}` : null,
     kind !== "all" ? `kind=${kind}` : null,
+    platform !== "all" ? `platform=${platform}` : null,
   ].filter(Boolean);
 
   process.stdout.write(
