@@ -86,6 +86,10 @@ const SCAN_PRUNED_DIRS = new Set([
  * @typedef {{ skippedLines: number, readFailures: number }} UsageDiagnostics
  * @typedef {Map<string, Omit<UsageSummaryRow, "sessions"> & { sessions: Set<string> }>} UsageAccumulator
  * @typedef {{ line: string | null, byteLength: number, overlong: boolean, firstNonWhitespaceByte: number | null }} BoundedLine
+ * @typedef {Object} CodexRolloutScan
+ * @property {boolean} skipFile
+ * @property {(boundedLine: BoundedLine) => void} readLine
+ * @property {(diagnostics: UsageDiagnostics) => void} finish
  */
 
 async function main() {
@@ -813,6 +817,8 @@ async function scanFile(file, diagnostics, onRecord) {
   let scanMode = SCAN_MODE_BUFFERING;
   /** @type {string[]} */
   let bufferedLines = [];
+  /** @type {CodexRolloutScan | null} */
+  let codexScan = null;
 
   /** @param {string} line */
   const processJsonLine = (line) => {
@@ -840,6 +846,10 @@ async function scanFile(file, diagnostics, onRecord) {
 
   try {
     for await (const boundedLine of readBoundedLines(file)) {
+      if (codexScan) {
+        codexScan.readLine(boundedLine);
+        continue;
+      }
       observedBytes += boundedLine.byteLength;
       const line = boundedLine.line || "";
       const isNonEmpty = boundedLine.overlong || line !== "";
@@ -850,6 +860,12 @@ async function scanFile(file, diagnostics, onRecord) {
             (boundedLine.overlong &&
               boundedLine.firstNonWhitespaceByte === 0x5b) ||
             line.trim() === "[";
+          codexScan = boundedLine.overlong
+            ? null
+            : openCodexRolloutScan(line, file, onRecord);
+          // Leaving the loop closes the stream, so skipped threads are never parsed.
+          if (codexScan?.skipFile) break;
+          if (codexScan) continue;
         }
       }
 
@@ -870,12 +886,22 @@ async function scanFile(file, diagnostics, onRecord) {
       }
     }
   } catch (error) {
+    if (codexScan) {
+      codexScan.finish(diagnostics);
+      recordReadFailure(diagnostics, file, error);
+      return;
+    }
     if (scanMode === SCAN_MODE_BUFFERING) startStreamingJsonLines();
     if (parsedJsonLines > 0) {
       recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
       recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
     }
     recordReadFailure(diagnostics, file, error);
+    return;
+  }
+
+  if (codexScan) {
+    codexScan.finish(diagnostics);
     return;
   }
 
@@ -913,6 +939,61 @@ async function scanFile(file, diagnostics, onRecord) {
   for (const skill of extractSlashSkillNames(content)) {
     onRecord(scannedRecord({ skill, file }));
   }
+}
+
+/**
+ * Returns a line reader when the first line opens a Codex rollout. Top-level
+ * threads count explicit invocations in user messages, keyed by thread id.
+ * @param {string} firstLine
+ * @param {string} file
+ * @param {(record: ScannedUsageRecord) => void} onRecord
+ * @returns {CodexRolloutScan | null}
+ */
+function openCodexRolloutScan(firstLine, file, onRecord) {
+  let rollout;
+  try {
+    rollout = openCodexRollout(JSON.parse(firstLine));
+  } catch {
+    return null;
+  }
+  if (!rollout) return null;
+  const { skipFile, sessionId, prompts } = rollout;
+  let malformedLines = 0;
+  let overlongLines = 0;
+  return {
+    skipFile,
+    readLine(boundedLine) {
+      if (boundedLine.overlong) {
+        overlongLines += 1;
+        return;
+      }
+      if (!boundedLine.line) return;
+      let parsed;
+      try {
+        parsed = JSON.parse(boundedLine.line);
+      } catch {
+        malformedLines += 1;
+        return;
+      }
+      for (const { text, recordedAt } of prompts(parsed)) {
+        for (const skill of unique(extractCodexSkillNames(text))) {
+          onRecord(
+            scannedRecord({
+              skill,
+              file,
+              recordedAt,
+              sessionId,
+              platform: PLATFORM_CODEX,
+            }),
+          );
+        }
+      }
+    },
+    finish(diagnostics) {
+      recordSkippedLines(diagnostics, file, overlongLines, "overlong JSONL");
+      recordSkippedLines(diagnostics, file, malformedLines, "malformed JSONL");
+    },
+  };
 }
 
 /** @param {unknown} input @param {string} file @returns {ScannedUsageRecord[]} */
@@ -968,14 +1049,20 @@ function recordsFromScannedObject(input, file) {
   );
 }
 
-/** @param {{ skill: string, file: string, recordedAt?: string, sessionId?: string }} input @returns {ScannedUsageRecord} */
-function scannedRecord({ skill, file, recordedAt = "", sessionId = "" }) {
+/** @param {{ skill: string, file: string, recordedAt?: string, sessionId?: string, platform?: string }} input @returns {ScannedUsageRecord} */
+function scannedRecord({
+  skill,
+  file,
+  recordedAt = "",
+  sessionId = "",
+  platform = "",
+}) {
   return {
     schemaVersion: 1,
     recordedAt,
     sessionId,
     cwd: "",
-    platform: "",
+    platform,
     event: "scan",
     skill,
     kind: "explicit",
