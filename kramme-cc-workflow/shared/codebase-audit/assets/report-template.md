@@ -1,9 +1,19 @@
 # Codebase Weakness Report Template
 
-Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--output` path. Replace all placeholders.
+Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--output <path>`. Replace all placeholders.
 
 ```markdown
 # Codebase Weakness Report
+
+{Team mode only; omit this block for --solo runs.}
+
+## Team Review
+
+- **Mode:** Team
+- **Reviewers:** {active research reviewer names}, Challenge
+- **Research breadth:** {raw candidates N, reviewed-and-cleared areas N, coverage gaps N}
+- **Cross-validation:** {kept N, dropped N, merged N, disputed N, added N, coverage-gapped N}
+- **Coverage status:** {complete | degraded with reason}
 
 **Date:** {YYYY-MM-DD} **Project:** {project} **Scope:** {scope description} **Files reviewed:** {count} **Output:** {path}
 
