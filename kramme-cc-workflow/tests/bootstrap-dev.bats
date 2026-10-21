@@ -42,7 +42,7 @@ case "$1" in
 	script="$2"
 	for dependency in \
 		"@ianvs/prettier-plugin-sort-imports" \
-		"@types/node" \
+		"@types/node/package.json" \
 		"prettier" \
 		"prettier-plugin-packagejson" \
 		"prettier-plugin-sh" \
@@ -221,6 +221,31 @@ SH
 		MOCK_NODE_VERSION=20.0.0 \
 		PATH="$TEST_BIN" \
 		/bin/bash "$BOOTSTRAP_SCRIPT" --check
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"missing: Node dependencies"* ]]
+}
+
+@test "Node dependency check accepts type declarations without a runtime entry point" {
+	local node_bin dependency
+	node_bin="$(command -v node)"
+	write_check_tools
+	ln -sf "$node_bin" "$TEST_BIN/node"
+	for dependency in @ianvs/prettier-plugin-sort-imports prettier prettier-plugin-packagejson prettier-plugin-sh typescript yaml; do
+		mkdir -p "$TEST_REPO/node_modules/$dependency"
+		printf 'module.exports = {};\n' >"$TEST_REPO/node_modules/$dependency/index.js"
+	done
+	mkdir -p "$TEST_REPO/node_modules/@types/node"
+	printf '{"name":"@types/node","types":"index.d.ts"}\n' >"$TEST_REPO/node_modules/@types/node/package.json"
+	printf 'export {};\n' >"$TEST_REPO/node_modules/@types/node/index.d.ts"
+
+	run env BOOTSTRAP_DEV_OS=Linux PATH="$TEST_BIN" /bin/bash "$BOOTSTRAP_SCRIPT" --check
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"ok: Node dependencies"* ]]
+
+	rm "$TEST_REPO/node_modules/@types/node/package.json"
+	run env BOOTSTRAP_DEV_OS=Linux PATH="$TEST_BIN" /bin/bash "$BOOTSTRAP_SCRIPT" --check
 
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"missing: Node dependencies"* ]]
