@@ -1,6 +1,6 @@
-# Review Subagent Models
+# Subagent Models
 
-Select reviewer models once before launching any agents. This policy applies to every review subagent: primary reviewers, team members, refutation/justification passes, relevance validators, slop meta-reviewers, and independent loop verifiers.
+Select reviewer models once before launching any agents. This policy applies to every review subagent: primary reviewers, team members, refutation/justification passes, relevance validators, slop meta-reviewers, and independent loop verifiers. Non-review skills that load this file apply it to the roles named in Non-Review Subagent Roles below.
 
 ## Parse the Override Argument
 
@@ -52,3 +52,16 @@ Select reviewer models once before launching any agents. This policy applies to 
 - GitHub review and review convergence keep delegated review orchestrators on the current orchestrator model. Apply this policy to the reviewers those skills launch, and pass the override to the child review skills; do not apply it to the delegated orchestrators themselves.
 
 This policy selects models only. It does not authorize extra agents, replace required reviewers with an orchestrator-only pass, weaken completion gates, or change implementation/resolver agents. Explicit different-provider adversarial reviews retain their own provider/model policy.
+
+## Non-Review Subagent Roles
+
+This section extends the policy above to subagents launched by skills that are not Pull Request reviews. It changes nothing for review subagents. A skill opts in by naming this section in its `SKILL.md` and naming the role of each subagent it launches:
+
+- **Lens or scan agents** run one audit lens, scanner, rater, or challenge pass over the repository or a report.
+- **Recon or exploration agents** gather read-only repository context for the orchestrator.
+- **Drafting agents** write a draft artifact, such as a plan or a report section, that the orchestrator checks before using it.
+- **Filter or validator agents** classify, deduplicate, or check other agents' output without producing new findings.
+
+Every role uses the controls above. Parse `--subagent-model <model>` under Parse the Override Argument when the skill advertises the flag in its `argument-hint`, and read `KRAMME_REVIEW_SUBAGENT_LEVEL` under Read the Level Setting; the flag wins over a conversational choice, which wins over the setting. `same` remains the default for every role: the subagent inherits the orchestrator's model. `lower` steps every role down one class with the ladder in Select the Class, and a role never steps down twice. A different default for any role requires a recorded repository decision. Select once per invocation before the first launch, keep the selection with the run's state, and reuse it for every role, retry, and resumed run. Launch and report under Apply the Selection, naming each role's selected model and its source.
+
+The orchestrator's own model and reasoning effort, any agent that edits files, commits, or applies fixes, and explicit different-provider or cross-model modes keep their own policies. A skill that already documents its own model flag keeps it until that skill adopts this section.
