@@ -2,6 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-27
+- Last amended: 2026-10-21
 - Deciders: repository maintainers
 - First adoption review: 2026-11-27
 
@@ -54,3 +55,7 @@ Rejected because provider defaults, user configuration, MCP servers, and broad t
 ### Require Conductor for every adversarial review
 
 Rejected because canonical behavior should work in ordinary local Claude Code and Codex workspaces. Conductor remains the supported cloud-session adapter where its workspace runtime is present.
+
+## Amendment
+
+On 2026-10-21 the [model-invocable orchestration children record](2026-08-29-model-invocable-orchestration-children.md) let `kramme:pr:review-convergence` invoke this skill through the Skill tool as its Gate 5. A model invocation is not consent by itself: the user's own `--adversarial-review` request for that convergence run is the repository-scoped consent, and it covers only that run. Internal callers never forward the flag, and no other parent may invoke the skill automatically. Every read-only, provider-difference, isolation, and fail-closed rule above is unchanged.

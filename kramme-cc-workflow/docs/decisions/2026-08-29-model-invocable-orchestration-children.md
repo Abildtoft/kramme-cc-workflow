@@ -2,13 +2,15 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-29
-- Amended: 2026-10-15
+- Amended: 2026-10-15, 2026-10-21
 - Deciders: repository maintainers
 - First safety review: 2026-11-29
 
 ## Context
 
 Claude Code rejects Skill-tool invocation of any skill with `disable-model-invocation: true`, even when a directly invoked parent skill supplies the call. This made `kramme:pr:create --auto` unable to invoke its required `kramme:git:recreate-commits` and `kramme:pr:generate-description` phases.
+
+A 2026-10-21 review of every skill that hands work to another skill found parents whose instructions still invoke a model-disabled child. Claude Code rejects those calls, and the parent then reads the child's `SKILL.md` and follows it outside the child's own model contract or loses the step. Between 2026-10-06 and 2026-10-20 it rejected 36 calls from `kramme:code:plan-to-pr` to `kramme:code:work-from-plan`, plus calls from `kramme:pr:github-review-reply` to `kramme:pr:resolve-review` and from `kramme:pr:github-review` to the former `kramme:pr:ux-review`.
 
 ## Decision
 
@@ -27,6 +29,23 @@ Permit a narrow exception to the default rule that side-effecting skills are mod
 
 Each child must narrowly route model use, document its least-side-effect model contract, and retain its existing confirmation and validation gates. Focused tests must pin the parent arguments.
 
+### Hand-off repair exceptions
+
+Amended 2026-10-21. The exception list above gains these exact edges. Direct user invocation of each child is unchanged.
+
+- `kramme:code:work-from-plan` is model-invocable only as the implementation delegate of `kramme:code:plan-to-pr`, after that parent has validated, archived, and claimed the plan on its deterministic plan branch. The parent passes exactly the validated archived plan path as the only argument, plus its continue-mode, prerequisite-readiness, and context-preparation facts as inert parent-owned context. The child implements only a `direct` route on the current branch inside the plan's In Scope paths and returns every other route as the blocker. Under this delegation it never invokes `kramme:linear:issue-implement`, creates SIW files, requests the source index or other plans of the set, creates or switches branches, commits, pushes, or changes the plan archive; the parent keeps the commit boundary and the archive state. A model caller never passes inline plan text or any other plan path. Focused tests pin the parent's exact hand-off sentence and the child's contract.
+- `kramme:pr:resolve-review` is model-invocable only in `--implement-only` mode with a caller-scoped structured findings payload, and only from two parents. `kramme:pr:github-review-reply` invokes it only after its user enabled implementation (`--implement`, `--auto`, or an explicit request to address the feedback), passing only the items it classified `needs-code-change`, never the Pull Request URL as the source, and never `--source online`. `kramme:pr:review-convergence` invokes it only during normal-mode batch remediation, at most once per batch while the worktree is clean, passing only that batch's accepted code-changing findings, and never in validation-only mode. In this mode the child makes no GitHub write, writes no review file, drafts no reply, and creates no commit; it keeps its scope, validity, and verification checks and reports through `.context/resolve-review/implement-only-summary.json`. Each parent keeps reply, resolution, disposition, and commit ownership. A model caller never passes `--team`, `--granular`, `--source`, `--severity`, a URL, or a request without findings. Focused tests pin both parents' exact hand-offs.
+- `kramme:pr:adversarial-review` is model-invocable only as Gate 5 of `kramme:pr:review-convergence`, and only when that convergence run's `--adversarial-review` came from the user, typed on the invocation or explicitly requested in the same session. That request is the repository-scoped consent the adversarial-review decision requires, and it covers only that convergence run. The internal callers `kramme:linear:issue-to-pr` and `kramme:code:plan-to-pr` never forward the flag, and convergence rejects it in internal caller mode. Convergence passes exactly the sentinel-last frozen `--requirements` block, with optional `--provider` and `--model` values before it, and never `--base`. The child stays read-only and fails closed on any provider, authentication, isolation, parse, coverage, or tree-integrity failure. A model caller never adds the review on its own initiative, infers consent from CLI presence or an earlier run, or selects the host provider. Focused tests pin Gate 5's arguments and the absence of the flag from both internal callers.
+
+These hand-off repairs need no side-effect exception:
+
+- `kramme:pr:product-review` with `--inline` and `kramme:linear:review-pr` are read-only: neither edits source, commits, or writes to GitHub or Linear, and product-review writes no report file with `--inline`. They become model-invocable so `kramme:pr:github-review` can delegate to them, with descriptions that route model use as narrowly as the read-only convergence gates above.
+- `kramme:debug:triage-to-issue` stops invoking `kramme:debug:investigate`; both skills load one plugin-level root-cause procedure, so investigate stays model-disabled and triage stays report-only.
+- `kramme:code:migrate` recommends `/kramme:deps:audit` to the user, `kramme:pr:plan-split` gives the user an explicit `/kramme:code:breakdown-findings` command, and `kramme:siw:spec-audit --apply` owns its auto-fix procedure instead of delegating to a separate skill. Those targets stay model-disabled or are removed.
+- `kramme:docs:update-agents-md` becomes user-invocable and model-disabled, so the user routes in `kramme:docs:adr` and `kramme:docs:feature-spec` point at a command the user can run.
+
+`kramme:pr:code-review --loop` is not an authorized parent of `kramme:pr:resolve-review`. Its closeout loop fixes accepted findings directly and may recommend `/kramme:pr:resolve-review` to the user.
+
 ## Consequences
 
 - `kramme:pr:create --auto` can use the existing child skills through Claude Code's Skill tool without duplicating their workflows.
@@ -34,9 +53,19 @@ Each child must narrowly route model use, document its least-side-effect model c
 - One skill owns the started-state transition mechanics. `kramme:linear:issue-to-pr` keeps the authorization, status resolution, and confirmation gate, and the parent's Conductor rename now runs after that gate rather than after a verified write.
 - The children become visible to the model, and their routing and argument contracts are advisory rather than a platform-enforced authorization check.
 - Additional side-effecting children remain model-disabled unless an accepted ADR names the exact parent-child exception.
+- The 2026-10-21 repairs make five more skills visible to the model. Claude Code lists every model-invocable skill's name and description in each session within a small share of the context window and drops descriptions of the least-used skills when the list overflows, so each new child's description stays short and names its parent.
+- Parents no longer depend on reading a model-disabled child's `SKILL.md` to finish a delegated step.
 
 ## Alternatives Considered
 
 ### Duplicate the child workflows inside `pr:create`
 
 Rejected because parallel workflow text would drift and make ownership unclear.
+
+### Keep the children model-disabled and rely on the read-the-skill fallback
+
+Rejected because Claude Code rejects every such call first, the fallback runs the child's workflow outside the child's own model-invocation contract, and a parent that cannot locate the installed file loses the step.
+
+### Make the children model-invocable without naming their parents
+
+Rejected because file edits and cross-provider data transfer would then be reachable from any routing decision rather than only from parents whose arguments are pinned by tests.
