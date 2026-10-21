@@ -1,0 +1,370 @@
+---
+name: kramme:pr:generate-description
+description: "Write a structured PR title and body from git diff, commit log, and Linear context when requested or delegated by a PR workflow. With --check, report drift between an open PR's title and body and its branch diff: false claims, missing major changes, stale scope, missing risk callouts. Model callers pass --no-update and stay read-only; only a direct user invocation may update an existing PR."
+argument-hint: "[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
+disable-model-invocation: false
+user-invocable: true
+---
+
+# PR Description Generator
+
+## Parse Arguments
+
+Parse `$ARGUMENTS` for flags:
+
+- `--auto`: Preferred hands-off mode for explicit user invocation. Skip clarification prompts (Phase 2.5) and the save-to-file prompt (Phase 4). If a PR already exists for the current branch, update its title/body directly. If no PR exists yet, generate the title and description for copy-paste without pausing for user input.
+- `--no-update`: Output-only automation mode for orchestrators that need generated title/body content but must not mutate an existing PR. Valid with `--auto`; it skips prompts but keeps `DIRECT_UPDATE=false` even if `gh pr view` finds a PR.
+- `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
+- `--base-commit <oid>`: Pin diff computation to a caller-validated full commit OID while retaining branch metadata from `--base`.
+- `--linear-issue <ISSUE-ID>`: Use a caller-validated Linear identifier as the authoritative issue context. Validate `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, and do not replace it with a branch-name substring.
+- `--check`: Check mode. Compare the open PR's current title and body against the branch diff and report drift instead of generating a description. Report-only unless a direct user confirms an update: with `--no-update` it never prompts, and without it a direct user invocation is offered a confirmed (y/N) update after Important or Critical drift.
+- `--strict`: Check mode only. Also report Suggestion-level drift, including body claims that cannot be tied to a diff hunk and accuracy-adjacent clarity-check failures. Default check mode is loose: only contradictions, material omissions, and missing risk callouts surface.
+
+If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments. If `--base-commit <oid>` is present, require a full 40-character lowercase commit OID, set `BASE_COMMIT_OVERRIDE=<oid>`, and remove the flag and value. If `--linear-issue <ISSUE-ID>` is present, set `LINEAR_ISSUE_OVERRIDE` to the validated normalized value and remove the flag and value. Reject a missing or invalid value before Phase 1. If `--check` is present, set `CHECK_MODE=true`; if `--strict` is present, set `STRICT_MODE=true`; remove both flags.
+
+Check mode accepts only `--base <ref>`, `--strict`, and `--no-update`. Before Phase 1, reject `--check` combined with `--auto` (which would imply an unconfirmed update), `--base-commit`, or `--linear-issue`, and reject `--strict` without `--check`.
+
+### Sub-Skill Invocation Contract
+
+When another skill invokes this one as an orchestration step to generate a description, it must pass `--auto` (and should pass `--base <ref> --base-commit <oid>` when it already resolved and pinned the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
+
+Every model-initiated invocation must include `--no-update`. Omitting `--no-update` is reserved for a direct user invocation because that mode may mutate an existing Pull Request. Model invocation changes routing only; it never supplies permission to publish generated content.
+
+A model caller that needs a drift report passes `--check --no-update` instead of `--auto`; check mode then stops after its read-only report. Only a direct user invocation of `--check` may reach the confirmation prompt and the update behind it.
+
+## Instructions
+
+### When to Use This Skill
+
+**Use this skill when:**
+
+- You're ready to create a Pull Request
+- You want a well-structured, focused description for your changes
+- You need to document what changed, why it changed, and how to test it
+- You want to analyze multiple sources (git diff, commits, Linear issues) to create reviewer-relevant context
+- You pushed commits to a branch with an open PR, or are about to request review, and want to know whether the description still matches the diff (`--check`)
+- A reviewer said the PR description is unclear or wrong, and you want a structured drift report before rewriting it (`--check`)
+
+**When NOT to use this skill:**
+
+- You only need a tiny manual wording edit to an existing PR description
+- You're creating a draft PR that doesn't need a full description yet
+- The changes are trivial (typo fixes, formatting) and don't warrant detailed documentation
+- You want a full code review; use `kramme:pr:code-review`, which checks description accuracy as one signal among many
+
+### Context
+
+High-quality PR descriptions are essential for:
+
+- Code reviewers to understand the context and intent of changes
+- Future developers investigating the history of a feature
+- Product/project managers tracking feature delivery
+- Creating an audit trail of technical decisions
+
+This skill automates the process of gathering context from multiple sources (git history, Linear issues, code changes) and generating a structured, focused description following best practices for Pull Requests.
+
+Read the guideline keyword glossary from `references/guideline-keywords.md`.
+
+## Workflow
+
+### Check Mode
+
+**If `CHECK_MODE=true`**, read `references/check-mode.md` and follow it instead of Phases 1 through 4. It owns the drift rubric, the report, and the confirmed update, and it reuses Phase 1 step 1, Phases 2 through 3.5, and `references/direct-update.md` only after the user confirms an update. Its base resolution runs `${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.89.0/scripts/resolve-base.sh`, and its working-tree snapshot and pre-publication revalidation run `${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.89.0/scripts/review-tree-fingerprint.sh`.
+
+### Phase 1: Branch Setup
+
+1. Read `references/base-branch-resolution.md` and follow it to confirm the current branch and compute `BASE_BRANCH`. Run its base resolver from `${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.89.0/scripts/resolve-base.sh`.
+
+2. **If `AUTO_MODE=true` and `OUTPUT_ONLY` is not true**, check whether a PR exists for the current branch:
+
+   ```bash
+   gh pr view --json number,url
+   ```
+
+   **If a PR exists**, set `DIRECT_UPDATE=true` and capture the PR URL for Phase 4.
+
+   **If no PR exists**, continue in generated-output mode:
+   - Keep `NON_INTERACTIVE=true` if auto mode is enabled
+   - Leave `DIRECT_UPDATE=false`
+   - Present the generated title and body for copy-paste in Phase 4
+
+   **If `OUTPUT_ONLY=true`**, skip the PR existence check for direct-update purposes, leave `DIRECT_UPDATE=false`, and continue in generated-output mode. The caller is responsible for any later PR creation or update.
+
+### Phase 2: Context Gathering
+
+Read the context-gathering procedure from `references/context-gathering.md` and apply every step in that document before continuing. It covers:
+
+- **2.1 Git Changes Analysis** — diff between current branch and `origin/$BASE_BRANCH`, file categorization, optional GitHub tool use.
+- **2.1.5 GitHub PR Template Analysis** — supported GitHub template locations, template selection, and template-following constraints.
+- **2.2 Commit History Analysis** — commit log and message bodies, narrative arc extraction.
+- **2.3 Linear Issue Context** — branch-name parsing, optional Linear integration lookup, divergence tracking.
+- **2.4 Code Structure Analysis** — scope (frontend/backend/full-stack), change characteristics, breaking-change indicators.
+- **2.5 Conversation History and Specification Files Analysis** — SIW spec files, conversation review, decision capture. Spec files and conversation context are for YOUR analysis only and **NEVER** referenced in the final PR body.
+
+### Phase 2.5: Analysis and Clarification
+
+**Skip this phase entirely if `NON_INTERACTIVE=true`.** Proceed directly to Phase 3.
+
+**ALWAYS** pause after gathering context and before generating the description:
+
+1. **Present initial analysis**:
+   - Summarize what you've found:
+     - Change type (feature, bug fix, refactor, etc.)
+     - Scope (frontend-only, backend-only, full-stack)
+     - Key technical decisions identified
+     - **Any divergences from Linear issue description**
+     - Any breaking changes detected
+     - Release impact when the diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, integration contract, or data contract
+
+2. **Ask clarification questions**:
+   - **ALWAYS** ask the user if there's anything specific they want emphasized
+   - **ALWAYS** ask if there are any concerns or considerations reviewers should know about
+   - **CAN** ask about:
+     - Specific areas that need more detailed explanation
+     - Known limitations or trade-offs to document
+     - Performance or security implications to highlight
+     - Future work or follow-up tasks to mention
+
+3. **Example clarification prompt**:
+
+   ```
+   I've analyzed the changes and identified this as a [type] that [brief summary].
+
+   Key decisions I found:
+   - [Decision 1]
+   - [Decision 2]
+
+   Divergences from Linear issue (if any):
+   - [Divergence 1 and why]
+   - [Divergence 2 and why]
+
+   Before generating the description:
+   - Is there anything specific you'd like me to emphasize or explain in detail?
+   - Are there any concerns, limitations, or trade-offs reviewers should be aware of?
+   - Should I highlight any particular aspects of the implementation?
+   - Should I explain any divergences from the original Linear issue in more detail?
+   ```
+
+4. **Wait for user response** before proceeding to Phase 3
+
+### Phase 3: Description Generation
+
+Before drafting, evaluate whether any **MISSING REQUIREMENT** conditions hold (see the Output markers section below). Emit a `MISSING REQUIREMENT: …` line in the skill's conversation output whenever:
+
+- The branch name has no detectable issue ID and commits reference none — non-blocking; confirm the intended ticket or proceed without one.
+- The diff contains a database migration but no rationale is present in commits, Linear, or conversation — blocking for direct update; request the migration's purpose/rollback plan.
+- The diff toggles a feature flag's default but no rollout context is available — blocking for direct update; request the rollout plan.
+- The diff changes a versioned artifact surface or durable public contract such as a public API, package, CLI, integration contract, or data contract, and a breaking change is present, but no SemVer rationale or migration/upgrade note is available — blocking for direct update; request the intended version impact and consumer migration guidance.
+- One or more selectable GitHub PR templates are present, no default template is selected, and no template can be selected from user input, existing PR body, branch name, or change type — blocking for direct update; request which template to follow.
+
+The "no Linear ID" condition is the only non-blocking `MISSING REQUIREMENT:` marker. Treat every other `MISSING REQUIREMENT:` marker emitted by this skill or its references as blocking, including future marker types not yet listed here. This stable classification lets non-interactive callers stop safely without duplicating and drifting behind this list.
+
+Surface the marker even when `NON_INTERACTIVE=true`; in that mode, report the gap in the run output so the caller can collect the missing context before publication.
+
+If any blocking missing requirement is present, set `DIRECT_UPDATE=false` even when `--auto` found an existing PR. Generate copy-paste output that names the missing context, and leave publication to the caller or user after they provide it. Do not publish a PR body that invents migration rationale, rollback plans, or rollout context.
+
+(Phase 1 already aborts hard when the base branch cannot be resolved, so there is no Phase 3 trigger for that case.)
+
+**ALWAYS** generate a structured PR title and description after that check.
+
+#### 3.0 Title Generation
+
+Generate a PR title using [Conventional Commits](https://www.conventionalcommits.org/) format: `<type>(<scope>): <description>`
+
+**Types** (based on Phase 2.4 analysis):
+
+| `feat` | `fix` | `refactor` | `docs` | `test` | `build`/`ci` | `chore` | `perf` | `style` | `revert` |
+
+**Rules**:
+
+- **Scope**: Optional. Use component/module name, lowercase, hyphenated (e.g., `auth`, `platform-picker`). Omit if changes span multiple areas.
+- **Description**: Imperative mood ("add", not "added"), specific, under 50 chars. Total title under 72 chars. No trailing period.
+
+**Examples**: `feat(auth): add OAuth2 support` · `fix: resolve null pointer in user lookup` · `refactor(api): extract validation utilities`
+
+#### 3.0.5 Repository PR Template Contract
+
+If Phase 2 found a GitHub PR template, treat it as the body structure contract before applying default section templates.
+
+- Follow the selected template's heading order, checklist items, and required prompts.
+- Map generated Summary, Changes, Breaking changes, How it works, Rollout, Review notes, Test plan, and Screenshots / Videos content into the closest matching template sections instead of creating duplicate default sections.
+- Preserve mandatory checkboxes and compliance prompts; check a box only when the diff or gathered context supports it.
+- Remove instructional HTML comments only when the generated content fully answers them; otherwise keep the prompt or emit a marker outside the PR body.
+- If no GitHub PR template is found, use the default sections from `assets/section-templates.md`, including each one only when it carries information for this PR.
+
+#### 3.1 Summary Section
+
+**ALWAYS** include:
+
+1. **What changed** (1-3 sentences, high-level, user/business-focused)
+   - **ALWAYS** make this opening answer to “What does this PR do?” the simplest part of the description—almost ELI10: use everyday language that an intelligent ten-year-old unfamiliar with the codebase could follow
+   - **ALWAYS** lead with the user-visible or business outcome, not files, classes, APIs, or implementation mechanics
+   - **PREFER** short sentences and familiar words; later sections may be more technical, but they stay plain too
+   - **EXAMPLE**: "People can now export their survey results as a PDF"
+
+2. **Why it changed** (1-3 sentences, business context)
+   - Pull from Linear issue description if available
+   - **EXAMPLE**: "People asked for this so they can share results with stakeholders who don't have system access"
+
+3. **Pointer sentence** (only when needed): if the PR breaks something, needs rollout steps, or departs from the linked issue, say so in one sentence so a reader who stops after the Summary cannot miss it.
+
+4. **Link to Linear issue** (if available): **ALWAYS** use a magic word with the issue ID or full Linear URL, as described in `references/platform-notes.md`.
+   - **PREFER** `Fixes` or `Closes` when the PR completes the work for the issue
+   - **PREFER** `Related to` when the PR is partial work or tangentially related
+
+Read the section templates and worked examples from `assets/section-templates.md`. It defines when to include each default section (Summary, Changes, Breaking changes, How it works, Rollout, Review notes, Test plan, and Screenshots / Videos) and gives an example of each.
+
+Before drafting, read the What to Keep, What to Cut, and Length rules in `references/best-practices.md` and the examples in `references/pr-examples.md`, which set the calibration. Clear is the goal, not short and not exhaustive: include every keep-list item that applies, cut what the cut list names, and group a large or batched PR by theme instead of listing everything.
+
+When drafting the Test Plan, apply the Test Plan section in `assets/section-templates.md` and the Test Plans rules in `references/best-practices.md`.
+
+#### 3.1.5 GitHub UI Duplication Guard
+
+Before drafting the body, decide what the PR description adds beyond GitHub's review UI.
+
+**ALWAYS** include context GitHub cannot infer from the diff browser:
+
+- Why the change exists
+- Non-obvious implementation decisions and trade-offs
+- Scope boundaries and deliberate exclusions
+- Risks, release impact, rollout constraints, migrations, feature-flag defaults, SemVer implications, or partial coverage
+- Manual test scenarios reviewers or QA should perform
+- Where to start reviewing, only when the diff has a non-obvious entry point or coupled files that should be reviewed together
+
+**NEVER** include description content whose main value is already provided by GitHub:
+
+- A changed-file list, file tree, or file-by-file inventory
+- File counts, line counts, or `git diff --stat` summaries
+- A commit-by-commit changelog
+- Branch, author, or review metadata already visible in the PR chrome
+- A generic "Changes by Area" section that only groups modified files by Frontend/Backend/Tests
+- Local environment failure notes such as missing `node_modules`, unavailable Postgres, missing services, or other reasons a command could not run on the agent machine; CI is the source of truth for build, lint, typecheck, formatting, and automated test status
+
+If a section would merely prove that files changed, omit it or replace it with one or two review-relevant notes that explain behavior, coupling, risk, or review order.
+
+#### 3.1.6 Release Impact Contract
+
+When the diff changes a versioned artifact surface or durable public contract, make the release story explicit in the PR body:
+
+- State the release impact in reviewer language: public API behavior, package/CLI surface, integration contract, or schema/data contract.
+- Name the SemVer implication when the repo publishes a versioned artifact (`patch`, `minor`, or `major`) and explain breaking-change rationale when applicable.
+- Include migration or upgrade notes for breaking changes, removed behavior, required env/config changes, or consumer action.
+- Mention the curated changelog/release-note entry when the PR is expected to feed one, but do not paste a raw commit log.
+
+Put SemVer implications and consumer migration notes for a breaking change in `## Breaking changes`, steps that must happen at deploy time in `## Rollout`, and any other release impact in `## Review notes`. If there is no versioned artifact or durable public contract change, say so briefly only when reviewers might otherwise infer a release impact.
+
+#### 3.2 Section Selection
+
+Include a default section only when its "Include when" rule in `assets/section-templates.md` holds for this PR. Never write a default section whose only content is "None", "N/A", or "Not applicable"; a repository template's required prompts are the exception and always get an answer.
+
+#### 3.5 Screenshots and Videos Section
+
+Include a placeholder section for visual aids only when the diff changes something a reviewer can see in the UI: a `## Screenshots / Videos` heading with a one-line HTML comment naming what to capture. Remind the author in the run output to add the images. Omit the section for changes with no visible UI.
+
+### Phase 3.5: Readability Pass and Verification
+
+Run these three steps in order on the drafted title and body, before Phase 4 presents or publishes anything. None of them prompts the user.
+
+1. Read `references/red-flags.md` once. Apply the `Regeneration Triggers` section from the already-loaded reference and regenerate when any condition matches.
+2. Read `${CODEX_HOME:-$HOME/.codex}/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/0.89.0/shared/writing/references/plain-language-rubric.md` and `references/readability-pass.md`, then follow the pass. It edits the draft for a reviewer who is new to the change, then has a fresh agent read only the title and body using `references/cold-read-prompt.md`, and applies what that reader flags once.
+3. Run the consolidated checklist in `references/verification-checklist.md`. No other phase has its own checklist; that reference is the single source of truth. If the checklist leads to an edit, repeat the keep-list audit from the readability pass, but not the cold read.
+
+### Phase 4: Output Formatting
+
+Use the selected GitHub template or `assets/section-templates.md` as the Markdown structure. Never include meta-commentary, placeholders such as `[TODO]` or `[Fill this in]`, AI attribution, AI badges, or AI co-author lines. Keep the cold-read result, its open questions, and the screenshot reminder in the run output, outside the description.
+
+#### If `DIRECT_UPDATE=true`: Update PR directly
+
+Read `references/direct-update.md` and follow it. If the update fails, fall back to presenting the description for copy-paste using the default flow below.
+
+#### Default: Present for copy-paste
+
+**ALWAYS** present the final PR title and description in a clear, copy-paste-ready format:
+
+```markdown
+Here is your generated PR:
+
+**Title:** `<type>(<scope>): <description>`
+
+---
+
+[DESCRIPTION CONTENT HERE]
+
+---
+```
+
+**NOTE**: The title is formatted with backticks for easy copying. The description follows the standard markdown format.
+
+#### Optional: Save to a markdown file
+
+**Skip this step if `NON_INTERACTIVE=true`.**
+
+After presenting the description, ask: "Would you like me to save this description to a markdown file?"
+
+If yes, prepare the save-only namespace with this self-contained procedure. It is intentionally separate from `references/direct-update.md`, whose private update storage must remain outside the repository:
+
+```bash
+REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
+SAVE_NAMESPACE="$REPO_ROOT/.kramme-cc-workflow"
+SAVE_DIR="$SAVE_NAMESPACE/pr-description"
+PR_DESCRIPTION_FILE="$SAVE_DIR/PR_DESCRIPTION.md"
+if [ -L "$SAVE_NAMESPACE" ] || [ -L "$SAVE_DIR" ] || [ -L "$PR_DESCRIPTION_FILE" ]; then
+  echo "Error: PR description save path is indirect; no file was written." >&2
+  exit 1
+fi
+mkdir -p "$SAVE_DIR" || exit 1
+if [ ! -d "$SAVE_DIR" ] || [ -L "$SAVE_DIR" ]; then
+  echo "Error: PR description save directory is invalid; no file was written." >&2
+  exit 1
+fi
+GIT_EXCLUDE=$(git rev-parse --git-path info/exclude) || exit 1
+mkdir -p "$(dirname "$GIT_EXCLUDE")" || exit 1
+touch "$GIT_EXCLUDE" || exit 1
+if ! grep -qxF ".kramme-cc-workflow/" "$GIT_EXCLUDE"; then
+  printf '\n.kramme-cc-workflow/\n' >> "$GIT_EXCLUDE" || {
+    echo "Error: Could not update Git's local exclude file; the description was not saved." >&2
+    exit 1
+  }
+fi
+printf '%s\n' "$PR_DESCRIPTION_FILE"
+```
+
+Capture the single printed absolute path, require it to remain below the validated `SAVE_DIR`, and write the description there with the runtime's native file-write capability. Confirm the absolute path after saving.
+
+## Best Practices
+
+Read the best practices guidelines from `references/best-practices.md`. Covers context gathering, what to keep and cut, length, writing style, section rules, and test plan rules.
+
+## Anti-Patterns
+
+Read the anti-pattern examples from `references/anti-patterns.md`. Includes title anti-patterns, vague-summary patterns (rejects titles like `Fix bug`, `Fix build`, `Phase 1`, `Add convenience functions`), and paired WRONG/CORRECT examples covering vague and over-trimmed descriptions, repeated facts, empty sections, mega-bullets, self-reported scope, file lists, missing tests, tone, hidden breaking changes, and AI attribution.
+
+## Examples
+
+Read the complete PR examples from `references/pr-examples.md`. Includes 4 examples sized to their changes: a small fix, a typical feature with a migration, a breaking change with a staged rollout, and a batch of small changes grouped by theme.
+
+## Platform-Specific Notes
+
+Read the platform-specific notes from `references/platform-notes.md`. Covers magic words for issue linking, team abbreviations, and GitHub conventions.
+
+## Notes
+
+- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh pr edit`. Check mode updates a PR only after a direct user invocation without `--no-update` answers `y` to its prompt, and then only the exact PR it checked. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
+- **NOTE**: After generation, review the description and adjust as needed before using it
+- **NOTE**: This skill is self-contained. If a downstream installation needs custom PR-title policy, adapt this skill locally instead of depending on repo-root instruction files.
+- **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context
+- **NOTE**: Spec files (siw/SPEC.md, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, etc.) and conversation history are for context gathering ONLY
+  - Use them to understand what happened during implementation
+  - **NEVER** reference them in the PR description - reviewers don't have access to them
+  - Only reference Linear issues when documenting divergences or original requirements
+  - **WRONG**: "As mentioned in LOG.md..." or "Based on our earlier discussion..."
+  - **RIGHT**: "Linear issue WAN-123 requested X, but implemented Y because..."
+
+## Output markers
+
+Use these uppercase markers when reasoning about the description generation. They do NOT appear in the final PR body — they go in the skill's conversation output so the user can track decisions.
+
+- **UNVERIFIED** — a claim in the draft body you couldn't confirm from the diff. `UNVERIFIED: the migration is reversible — no down-migration present in the diff`.
+- **NOTICED BUT NOT TOUCHING** — diff contents you deliberately left out of the description. `NOTICED BUT NOT TOUCHING: a test-only rename in an adjacent file — not part of this PR's narrative`.
+- **CONFUSION** — diff evidence that contradicts the commit log or Linear issue. `CONFUSION: commits say "add feature flag", but the diff toggles it on by default`.
+- **MISSING REQUIREMENT** — context the user must provide before a faithful description can be generated. The exact no-Linear-ID advisory is non-blocking; every other marker is blocking. Example: `MISSING REQUIREMENT: no Linear ID in branch name and no issue mentioned in commits — confirm the intended ticket or proceed without one`.

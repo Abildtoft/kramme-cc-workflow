@@ -1,0 +1,577 @@
+{
+  "version": 1,
+  "notes": [
+    "Single source of truth for kramme:workflow-artifacts:cleanup targets. Add a producer's fixed default output here once; cleanup discovery (SKILL.md Step 1) and the cleanup fixture test both derive their inventory from this list, so no separate prose inventory is maintained.",
+    "JSON-compatible YAML so the skill and tests parse it with the Python stdlib (json.loads); do not use YAML-only syntax.",
+    "category: working-dir (in the project working tree), shared-diagram (global, shared across sessions and projects), or permanent-spec (durable SIW specification).",
+    "retention: disposable (deleted after confirmation) or permanent (kept unless the user explicitly opts in).",
+    "type: file (literal path), glob (shell pattern; expand before deleting), or dir (whole directory).",
+    "condition: a marker path that must exist for the entry to become a candidate. expected_contents: a glob every child of a conditional dir must match, otherwise the dir is skipped and reported. --siw does not require the condition marker and also accepts a .gitkeep placeholder child.",
+    "--auto deletes only default-scope working-dir disposables; it never selects shared-diagram, permanent-spec, or siw-only entries.",
+    "scopes: the cleanup modes that select an entry. default is direct and --auto cleanup; siw is the direct-user-only --siw mode. Absent means [\"default\"]. Every siw/ entry includes siw, except named permanent specs that the siw-spec-files detector already covers, and only siw/ entries may.",
+    "match_any / exclude: optional basename filters applied to every expansion of a glob entry; a match must fit one match_any pattern and no exclude pattern.",
+    "Register only fixed default producer outputs here. Never register user-supplied or custom output paths."
+  ],
+  "artifacts": [
+    {
+      "id": "review-overview",
+      "path": "REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:code-review"
+    },
+    {
+      "id": "product-review-overview",
+      "path": "PRODUCT_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:product-review"
+    },
+    {
+      "id": "product-audit-overview",
+      "path": "PRODUCT_AUDIT_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:product:review"
+    },
+    {
+      "id": "product-audit-legacy",
+      "path": "PRODUCT_AUDIT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:product-audit"
+    },
+    {
+      "id": "copy-review-overview",
+      "path": "COPY_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:copy-review"
+    },
+    {
+      "id": "convention-review-overview",
+      "path": "CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:convention-review"
+    },
+    {
+      "id": "overengineering-review-overview",
+      "path": "OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:overengineering-review"
+    },
+    {
+      "id": "codebase-weakness-report",
+      "path": "CODEBASE_WEAKNESS_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:weakness-audit"
+    },
+    {
+      "id": "outside-view-report",
+      "path": "OUTSIDE_VIEW_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:outside-view"
+    },
+    {
+      "id": "refactor-opportunities-overview",
+      "path": "REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:refactor-opportunities"
+    },
+    {
+      "id": "pr-review-convergence-code-review",
+      "path": ".context/pr-review-convergence/reviews/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "pr-review-convergence-convention-review",
+      "path": ".context/pr-review-convergence/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "pr-review-convergence-overengineering-review",
+      "path": ".context/pr-review-convergence/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "pr-review-convergence-refactor-review",
+      "path": ".context/pr-review-convergence/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-code-review",
+      "path": ".context/linear-issue-to-pr/reviews/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-convention-review",
+      "path": ".context/linear-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-overengineering-review",
+      "path": ".context/linear-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-refactor-review",
+      "path": ".context/linear-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "linear-issue-to-pr-code-review-legacy",
+      "path": ".context/linear-issue-to-pr/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:linear:issue-to-pr"
+    },
+    {
+      "id": "linear-issue-to-pr-convention-review-legacy",
+      "path": ".context/linear-issue-to-pr/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:linear:issue-to-pr"
+    },
+    {
+      "id": "linear-issue-to-pr-overengineering-review-legacy",
+      "path": ".context/linear-issue-to-pr/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:linear:issue-to-pr"
+    },
+    {
+      "id": "linear-issue-to-pr-refactor-review-legacy",
+      "path": ".context/linear-issue-to-pr/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:linear:issue-to-pr"
+    },
+    {
+      "id": "siw-issue-to-pr-code-review-legacy",
+      "path": ".context/siw-issue-to-pr/reviews/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "siw-issue-to-pr-convention-review-legacy",
+      "path": ".context/siw-issue-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "siw-issue-to-pr-overengineering-review-legacy",
+      "path": ".context/siw-issue-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "siw-issue-to-pr-refactor-review-legacy",
+      "path": ".context/siw-issue-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "code-plan-to-pr-code-review",
+      "path": ".context/code-plan-to-pr/reviews/REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "code-plan-to-pr-convention-review",
+      "path": ".context/code-plan-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "code-plan-to-pr-overengineering-review",
+      "path": ".context/code-plan-to-pr/reviews/OVERENGINEERING_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "code-plan-to-pr-refactor-review",
+      "path": ".context/code-plan-to-pr/reviews/REFACTOR_OPPORTUNITIES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:review-convergence"
+    },
+    {
+      "id": "agent-native-audit",
+      "path": "AGENT_NATIVE_AUDIT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:agent-readiness"
+    },
+    {
+      "id": "github-pr-review-overview",
+      "path": "GITHUB_PR_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review"
+    },
+    {
+      "id": "github-review-drafts",
+      "path": ".context/github-review-drafts/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review"
+    },
+    {
+      "id": "doc-review",
+      "path": "DOC_REVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:docs:review"
+    },
+    {
+      "id": "github-review-reply-plan",
+      "path": "GITHUB_REVIEW_REPLY_PLAN.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review-reply"
+    },
+    {
+      "id": "qa-report",
+      "path": "QA_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:qa"
+    },
+    {
+      "id": "qa-baseline",
+      "path": "QA_BASELINE.json",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:qa"
+    },
+    {
+      "id": "audit-implementation-report-legacy",
+      "path": "AUDIT_IMPLEMENTATION_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:implementation-audit"
+    },
+    {
+      "id": "audit-spec-report",
+      "path": "AUDIT_SPEC_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:spec-audit"
+    },
+    {
+      "id": "siw-product-audit-legacy",
+      "path": "siw/PRODUCT_AUDIT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:product-audit",
+      "scopes": ["default", "siw"]
+    },
+    {
+      "id": "siw-audit-implementation-report-legacy",
+      "path": "siw/AUDIT_IMPLEMENTATION_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:implementation-audit",
+      "scopes": ["default", "siw"]
+    },
+    {
+      "id": "siw-audit-spec-report",
+      "path": "siw/AUDIT_SPEC_REPORT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:spec-audit",
+      "scopes": ["default", "siw"]
+    },
+    {
+      "id": "siw-log",
+      "path": "siw/LOG.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:init",
+      "scopes": ["default", "siw"]
+    },
+    {
+      "id": "siw-open-issues-overview",
+      "path": "siw/OPEN_ISSUES_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:init",
+      "scopes": ["default", "siw"]
+    },
+    {
+      "id": "pr-plans",
+      "path": "PR_PLAN_*.md",
+      "type": "glob",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:breakdown-findings"
+    },
+    {
+      "id": "deprecation-plan-legacy",
+      "path": "DEPRECATION_PLAN.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:deprecate"
+    },
+    {
+      "id": "deprecation-plans",
+      "path": "DEPRECATION_PLAN_*.md",
+      "type": "glob",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:deprecate"
+    },
+    {
+      "id": "demo-reels-legacy",
+      "path": ".context/demo-reels/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:visual:demo-reel"
+    },
+    {
+      "id": "verify-understanding",
+      "path": ".context/verify-understanding/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:learn:verify-understanding"
+    },
+    {
+      "id": "github-review-replies",
+      "path": ".context/github-review-replies/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review-reply"
+    },
+    {
+      "id": "session-search",
+      "path": ".context/session-search/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:session:automate-repeats"
+    },
+    {
+      "id": "siw-issues",
+      "path": "siw/issues/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:issue-define",
+      "condition": "siw/OPEN_ISSUES_OVERVIEW.md",
+      "expected_contents": "ISSUE-*.md",
+      "scopes": ["default", "siw"]
+    },
+    {
+      "id": "siw-qa-intake",
+      "path": "siw/qa-intake/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:qa:intake",
+      "condition": "siw/OPEN_ISSUES_OVERVIEW.md",
+      "expected_contents": "QA-INTAKE-*.md",
+      "scopes": ["default", "siw"]
+    },
+    {
+      "id": "siw-discovery-brief",
+      "path": "siw/DISCOVERY_BRIEF.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:discovery:interview",
+      "scopes": ["siw"]
+    },
+    {
+      "id": "siw-spec-strengthening-plan",
+      "path": "siw/SPEC_STRENGTHENING_PLAN.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:discovery:interview",
+      "scopes": ["siw"]
+    },
+    {
+      "id": "siw-temporary-artifacts",
+      "path": "siw/SIW_*.md",
+      "type": "glob",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:siw:*",
+      "scopes": ["siw"]
+    },
+    {
+      "id": "visual-diagrams",
+      "path": "~/.kramme-cc-workflow/diagrams/*.html",
+      "type": "glob",
+      "category": "shared-diagram",
+      "retention": "disposable",
+      "producer": "kramme:visual:*"
+    },
+    {
+      "id": "siw-feature-specification",
+      "path": "siw/FEATURE_SPECIFICATION.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init"
+    },
+    {
+      "id": "siw-project-plan",
+      "path": "siw/PROJECT_PLAN.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init"
+    },
+    {
+      "id": "siw-api-design",
+      "path": "siw/API_DESIGN.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init"
+    },
+    {
+      "id": "siw-documentation-spec",
+      "path": "siw/DOCUMENTATION_SPEC.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init"
+    },
+    {
+      "id": "siw-system-design",
+      "path": "siw/SYSTEM_DESIGN.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init"
+    },
+    {
+      "id": "siw-tutorial-plan",
+      "path": "siw/TUTORIAL_PLAN.md",
+      "type": "file",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init"
+    },
+    {
+      "id": "siw-spec-files",
+      "path": "siw/*.md",
+      "type": "glob",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init",
+      "scopes": ["siw"],
+      "match_any": [
+        "*SPEC*.md",
+        "*SPECIFICATION*.md",
+        "*PLAN*.md",
+        "*DESIGN*.md"
+      ],
+      "exclude": [
+        "LOG.md",
+        "OPEN_ISSUES_OVERVIEW.md",
+        "DISCOVERY_BRIEF.md",
+        "SPEC_STRENGTHENING_PLAN.md",
+        "AUDIT_*.md",
+        "PRODUCT_AUDIT.md",
+        "SIW_*.md"
+      ]
+    },
+    {
+      "id": "siw-supporting-specs",
+      "path": "siw/supporting-specs/",
+      "type": "dir",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:init",
+      "scopes": ["siw"]
+    },
+    {
+      "id": "siw-contracts",
+      "path": "siw/contracts/",
+      "type": "dir",
+      "category": "permanent-spec",
+      "retention": "permanent",
+      "producer": "kramme:siw:*",
+      "scopes": ["siw"]
+    }
+  ]
+}
