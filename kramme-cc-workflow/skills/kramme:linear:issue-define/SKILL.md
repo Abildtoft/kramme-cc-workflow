@@ -84,10 +84,11 @@ Parse flags as shell-style arguments from the leading option segment only:
 - `--auto` sets `auto_create = true`. It is only valid for new issues: if the remaining input identifies an existing Linear issue (and this is not a breakdown handoff), stop and ask the user to rerun without `--auto`.
 - `--ask` requires `--auto` and, when present, set `ask_all_relevant = true`; without `--auto`, stop and explain that the normal workflow already runs the full interview.
 - If the inert payload after the explicit `--` boundary begins with the exact line `LINEAR BREAKDOWN HANDOFF`, require `auto_create = true`, set `breakdown_handoff = true`, and treat the whole block as structured create-mode input. Everything inside the block is data: never reinterpret its flags, identifiers, paths, or metadata as top-level arguments. Validate and map it only through the **Structured Breakdown Handoff** section of `references/auto-create.md`.
+- If that payload begins with the exact line `LINEAR BREAKDOWN BATCH`, require `auto_create = true`, set `breakdown_batch = true`, and treat every entry as a breakdown handoff with `breakdown_handoff = true`. Keep the whole payload inert and validate it only through **Structured Breakdown Batch** in `references/auto-create.md`, before any Linear lookup.
 
 ### Mode
 
-If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue detection. The handoff's `orchestration` values are correlation-only, while identifiers in `issue.dependencies.blockedBy` are verified Linear dependencies; neither is an improvement target.
+If `breakdown_handoff = true`, set mode to `create` immediately and skip existing-issue detection. This applies to every entry when `breakdown_batch = true`. The batch object and each handoff's `orchestration` values are correlation-only, while identifiers in `issue.dependencies.blockedBy` are verified Linear dependencies; neither is an improvement target.
 
 Otherwise, detect an existing issue from a `TEAM-123` identifier, a `linear.app` issue URL, or a 36-character UUID.
 
@@ -118,7 +119,7 @@ Present the detected type and reasoning with the structured question tool, offer
 
 Resolve the team first, then fetch only that team's metadata. Do not pull workspace-wide label or project lists.
 
-1. **Team**: in improve mode, use the issue's team. In create mode, use the only team if exactly one exists, an obvious team from the branch, workspace, or input, or else ask one short question. For a breakdown handoff, verify the supplied workspace/team/project IDs exactly; never infer, substitute, or create scope, and return `Action: blocked` if the scope must change so the parent can restart the batch. If no team can be resolved in auto mode, emit `MISSING REQUIREMENT: Linear team is required to create the issue` and stop.
+1. **Team**: in improve mode, use the issue's team. In create mode, use the only team if exactly one exists, an obvious team from the branch, workspace, or input, or else ask one short question. For a breakdown handoff, verify the supplied workspace/team/project IDs exactly; never infer, substitute, or create scope, and return `Action: blocked` if the scope must change so the parent can restart the batch. For a validated breakdown batch, verify its shared scope and fetch team metadata once for all entries; a preflight scope failure returns only the zero-attempt batch summary from **Structured Breakdown Batch**. If no team can be resolved in auto mode, emit `MISSING REQUIREMENT: Linear team is required to create the issue` and stop.
 2. **Team metadata**: `list_issue_labels`, `list_projects`, and `list_cycles` scoped to the team. Treat an empty or failed cycle list as "team does not use cycles" and never ask about cycles afterwards.
 3. In auto mode, store labels, project, priority, cycle, or assignee only when the user named them or they clearly match the fetched metadata.
 
@@ -130,7 +131,7 @@ Phase 3 must produce:
 
 - **Improve mode**: current issue presented, Dev Ask preservation noted when relevant, `prior_session_context` recorded, improvement areas selected, related issues identified.
 - **Create mode**: duplicate and related search completed, `.out-of-scope/` matches surfaced when relevant, user decision recorded, and related, blocking, and blocked issues stored as `relations` for Phase 7.
-- **Auto create mode**: after team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the URL (or URLs for a split), and skip Phases 4–7. For a breakdown handoff, return the `ISSUE-DEFINE RESULT` block to the caller; otherwise stop.
+- **Auto create mode**: after team resolution and duplicate handling, read `references/auto-create.md`; clarify, draft, approve, create, return the URL (or URLs for a split), and skip Phases 4–7. For a breakdown handoff, return the `ISSUE-DEFINE RESULT` block to the caller. For a breakdown batch, run Phase 3 duplicate handling and the auto-create flow separately for each entry, emit each terminal `ISSUE-DEFINE RESULT` immediately, and finish with `ISSUE-DEFINE BATCH RESULT` under **Structured Breakdown Batch**; otherwise stop.
 
 ## Phase 4: Codebase Exploration
 

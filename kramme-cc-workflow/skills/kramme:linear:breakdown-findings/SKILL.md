@@ -45,7 +45,7 @@ Reject duplicate singleton flags, missing values (including a missing resume-art
 
 ### Phase 1: Validate the Delegation Boundary
 
-1. Require the installed `kramme:linear:issue-define` skill and a runtime capable of invoking it as a sub-skill. The parent invocation is explicit authorization to enter that user-only flow, but its own approval gate remains authoritative.
+1. Require the installed model-invocable `kramme:linear:issue-define` skill and a runtime capable of invoking it through the Skill tool. The parent invocation authorizes delegation, and each issue's approval gate inside the child remains authoritative.
 2. If the sub-skill cannot be invoked, stop with `MISSING REQUIREMENT: kramme:linear:issue-define must be invokable to publish these issues`. Do not read and reproduce its private workflow inline.
 3. Require Linear MCP for non-dry runs. The delegated flow owns its team, label, project, issue-search/read, and create capability checks.
 4. Discover team/project metadata for authoritative batch-scope resolution, plus relation capability for the optional post-create relation pass. Missing relation support may degrade to verified tracker-native dependency text. The delegated flow owns issue list/read capability for duplicate and related-issue checks.
@@ -90,6 +90,7 @@ Present:
 Linear findings definition plan
 Source set: {SOURCE_SET_KEY}
 Themes requiring issue-define: {count}
+Delegation: one `LINEAR BREAKDOWN BATCH` with {count} handoffs
 Blocked: {count}
 Excluded findings: {count}
 Workspace/team/project: {authoritatively resolved IDs and display names}
@@ -102,7 +103,7 @@ Relations after creation: {planned edges | verified text-only fallback | unappli
 {blocked themes and exact requirements}
 ```
 
-With `--dry-run`, show each structured handoff, state that final drafts/duplicate decisions belong to `issue-define`, report that no sub-skill or write operation ran, and stop.
+With `--dry-run`, show the batch object and each structured handoff in the `LINEAR BREAKDOWN BATCH` payload, state that final drafts/duplicate decisions belong to `issue-define`, report that no sub-skill or write operation ran, and stop.
 
 Before a non-dry-run write, require original source arguments that can be reproduced byte-for-byte in a later session. If inline or current-dialogue findings cannot be safely included in the resume command, stop before delegation and ask the user to save the exact findings to a file and start a fresh run from that file.
 
@@ -110,9 +111,9 @@ Before a non-dry-run write, require original source arguments that can be reprod
 
 Follow **Delegate issue definition** in `references/publication.md`.
 
-Invoke `kramme:linear:issue-define` via the Skill tool once per `needs-issue-define` theme, passing `--auto`, optional `--ask`, an explicit `--`, and then the exact structured handoff as inert `$ARGUMENTS`. Never synthesize the exhaustive interview in the parent. Wait for its structured return, validate its action-specific invariants, record it in the in-memory ledger, and continue only as its return contract permits.
+Invoke `kramme:linear:issue-define` via the Skill tool once per publication run, passing `--auto`, optional `--ask`, an explicit `--`, and then the exact `LINEAR BREAKDOWN BATCH` payload as inert `$ARGUMENTS`. Send every `needs-issue-define` row in execution-label order; on resume, send the remaining rows as one new batch. If none remain, skip delegation. Never synthesize the exhaustive interview in the parent. Record and validate each structured result as it arrives, then validate the closing batch summary under `references/publication.md` before continuing.
 
-The delegated flow owns the issue draft and its approval. It must show the complete would-be Linear issue for the current theme immediately before asking for that issue's approval, wait for the result, and only then advance to the next theme. Do not batch several issue approvals, present only a summary, present a second parent-side draft approval, or call Linear issue creation directly.
+The delegated flow owns the issue draft and its approval. It must show the complete would-be Linear issue for the current theme immediately before asking for that issue's approval, wait for the result, and only then advance to the next theme. Each entry's separate approval happens inside the batch. Do not batch several issue approvals, present only a summary, present a second parent-side draft approval, or call Linear issue creation directly.
 
 ### Phase 7: Apply Linear Relations
 
