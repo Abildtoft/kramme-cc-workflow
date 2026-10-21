@@ -136,6 +136,6 @@ setup() {
 	grep -qF "imports another module's implementation files instead of its public entry point" "skills/kramme:test:audit/references/audit-rubric.md"
 	grep -qF "need the same fix invariant at three or more sites" "skills/kramme:debug:find-sibling-bugs/SKILL.md"
 	grep -qF "### Deepening Candidate" "skills/kramme:debug:find-sibling-bugs/assets/report-template.md"
-	grep -qF "roughly 7–9 top-level chunks" "skills/kramme:visual:onboarding/references/exploration-dimensions.md"
+	grep -qF "roughly 7–9 top-level chunks" "skills/kramme:visual:explain/references/onboarding-exploration-dimensions.md"
 	grep -qF "Then run a **depth check** on that interface." "skills/kramme:code:api-design/SKILL.md"
 }

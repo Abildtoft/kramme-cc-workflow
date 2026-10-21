@@ -1,25 +1,22 @@
----
-name: kramme:visual:onboarding
-description: "Generate an interactive HTML onboarding guide for newcomers to a codebase — architecture overview, domain model, key flows, conventions, and getting-started walkthrough."
-argument-hint: "[focus-area or audience]"
-disable-model-invocation: false
-user-invocable: true
-kramme-platforms: [claude-code, codex]
----
+# Onboarding Mode
 
-# Visual Onboarding Guide
+Read this file only when `ONBOARDING_MODE=true`. It replaces `SKILL.md` Steps 1 (Think) and 2 (Structure) and the Deliver step's file name and open rule. Step 3 (Style), File Structure, and Quality Checks in `SKILL.md` still apply.
 
 Generate a comprehensive onboarding guide for newcomers to a codebase as a single HTML file (diagram and chart libraries load from CDN, so rendering needs network access).
 
-Use this for a full newcomer guide to a codebase or subsystem. For a single diagram of one system or flow, use `kramme:visual:diagram` instead.
+## Arguments
 
-**Arguments:** "$ARGUMENTS"
+The argument text left after removing `--onboarding` is the optional focus area or audience.
+
+- If it specifies a **focus area** ("frontend", "API", "auth"): scope exploration to that subsystem.
+- If it specifies an **audience** ("backend dev", "designer"): adjust technical depth.
+- If empty: full codebase for a generic developer audience.
 
 ## Prerequisites
 
 Read `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/css-patterns.md` before generating — it holds the always-needed layout, depth-tier, zoom, and collapsible patterns. Load the other references (`libraries.md`, `responsive-nav.md`) and the asset templates only when the workflow step below calls for them.
 
-**Aesthetic:** a warm, inviting editorial style — friendly textbook, not cold reference. Expressive typography, a clear palette, atmospheric backgrounds, obvious hierarchy, and motion only where it aids orientation. Keep it from reading as the stock generated editorial page: no italic accent words in headlines, numbered "01/02/03" section labels, or pill-shaped badges. Respect `prefers-reduced-motion` and `prefers-color-scheme`.
+**Aesthetic:** a warm, inviting editorial style — friendly textbook, not cold reference. Expressive typography, a clear palette, atmospheric backgrounds, obvious hierarchy, and motion only where it aids orientation. Keep it from reading as the stock generated editorial page: no italic accent words in headlines, numbered "01/02/03" section labels, or pill-shaped badges. Respect `prefers-reduced-motion` and `prefers-color-scheme`. This aesthetic replaces Step 1's "pick an aesthetic" choice.
 
 ## Workflow
 
@@ -36,15 +33,9 @@ Read `${CLAUDE_PLUGIN_ROOT}/shared/visual/references/css-patterns.md` before gen
 
 4. **Deliver.** Run the Verification Checkpoint, then produce and open the page per the **Output** section below.
 
-## Arguments
-
-- If `$ARGUMENTS` specifies a **focus area** ("frontend", "API", "auth"): scope exploration to that subsystem.
-- If `$ARGUMENTS` specifies an **audience** ("backend dev", "designer"): adjust technical depth.
-- If empty: full codebase for a generic developer audience.
-
 ## Data Gathering
 
-Read the exploration dimensions guide from `references/exploration-dimensions.md`. Read the agent prompt template from `references/explore-agent.md`.
+Read the exploration dimensions guide from `references/onboarding-exploration-dimensions.md`. Read the agent prompt template from `references/onboarding-explore-agent.md`.
 
 Launch **2-3 Explore agents** in parallel (Task tool, `subagent_type: Explore`), splitting six dimensions:
 
@@ -95,10 +86,4 @@ Before generating HTML, produce a structured fact sheet:
 
 Write to `~/.kramme-cc-workflow/diagrams/onboarding-{project-name}.html`, deriving `{project-name}` from the package manifest's `name`, falling back to the repository directory name. Create the directory if needed. Re-running for the same project overwrites the existing file.
 
-Open in the default browser:
-
-- macOS: `open <path>`
-- Linux: `xdg-open <path>`
-- Windows: `start <path>`
-
-If no browser opens (e.g., a headless environment), skip it. Always report the final file path to the user.
+Open it in the default browser with the platform commands from `SKILL.md` Step 4 (Deliver); onboarding is always an explicit request. If no browser opens (e.g., a headless environment), skip it. Always report the final file path to the user.
