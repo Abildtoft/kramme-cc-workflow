@@ -1,15 +1,17 @@
 ---
 name: kramme:code:refactor-opportunities
-description: "Scan the full codebase, current PR, a named file/folder, or a named feature for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check. Flags themes whose combined blast radius exceeds 500 lines as automation candidates."
+description: "Scan the full codebase, current PR, a named file/folder, or a named feature for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check. Flags themes whose combined blast radius exceeds 500 lines as automation candidates. User-only --ranked runs a multi-agent audit that ranks the biggest maintainability, readability, and correctness weaknesses into CODEBASE_WEAKNESS_REPORT.md."
 disable-model-invocation: false
 user-invocable: true
-argument-hint: "[full | pr | path <file-or-folder> | feature <name>]"
+argument-hint: "[full | pr | path <file-or-folder> | feature <name>] [--ranked [--solo] [--output <path>] [--max-findings N]]"
 kramme-platforms: [claude-code, codex]
 ---
 
 # Refactor Opportunities
 
 Systematically scan the codebase for refactoring candidates, categorize findings by severity, and produce a prioritized report.
+
+With `--ranked`, it instead ranks the biggest weaknesses into `CODEBASE_WEAKNESS_REPORT.md`.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -20,12 +22,15 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 - **Current PR**: say `pr`, `current PR`, `diff`, or `changes`, or pass `--scope pr`. Scan the files changed by the current branch against the resolved base branch, plus staged, unstaged, and untracked files. Changed files are context; active findings must be caused by the PR changes, not merely pre-existing debt in touched files.
 - **Named path**: pass `path <file-or-folder>`, `--scope path <file-or-folder>`, or a bare path-shaped argument that resolves to an existing file, folder, glob match, or file list. Scan only the matching files.
 - **Named feature**: pass `feature <name>`, `--scope feature <name>`, or `--feature <name>`. A bare argument that is neither a reserved keyword nor path-shaped is also treated as a feature name; use the explicit `feature <name>` form when the feature name collides with a reserved keyword (`full`, `full codebase`, `repo`, `everything`, `all`, `pr`, `current PR`, `diff`, `changes`). Resolve the feature to its implementation, tests, routes, schemas, docs, and adjacent modules before scanning.
+- **Ranked weakness audit**: `--ranked` runs the ranked mode in `references/ranked-mode.md` over the `full`, `path`, or `feature` scope with optional `--solo`, `--output <path>`, `--max-findings N`, and `--base <ref>`, and writes `CODEBASE_WEAKNESS_REPORT.md` instead of `REFACTOR_OPPORTUNITIES_OVERVIEW.md`. `--ranked` and its options are mode flags, not scope selectors.
 - **Disambiguation** (apply in order; first match wins):
   1. A typed mode form (`--scope <mode>`, `--feature <name>`, `path <…>`, `feature <…>`) selects that mode directly.
   2. A bare argument that exactly matches a reserved full-codebase alias (`full`, `full codebase`, `repo`, `everything`, `all`) or PR alias (`pr`, `current PR`, `diff`, `changes`) selects the corresponding mode. To name a feature whose name collides with a reserved keyword, use the explicit `feature <name>` form.
   3. A bare argument is _path-shaped_ when it contains `/`, `.`, or a glob meta-character (`*`, `?`, `[`); a path-shaped argument that resolves selects `path`, and one that does not resolve triggers a clarification ask (do not fall back to `feature`).
   4. Any other bare argument is treated as a feature name.
 - If two distinct scope selectors are provided (e.g. `--scope pr` plus a bare path, or `path <…>` plus `feature <…>`), pause and ask which single scope to use. `--base <ref>` is a PR-mode parameter, not a selector, and does not trigger this rule.
+
+**User-only `--ranked`.** Ranked mode launches nine research reviewers and a challenge reviewer and is this skill's most expensive path. Honor `--ranked` only when the user's own message typed `--ranked` or explicitly asked in this session for a ranked weakness audit. A model-initiated invocation, including Gate 4 of `kramme:pr:review-convergence` or any other skill, must never add `--ranked`; when one does without that user request, stop before launching any agent, say that ranked mode is user-only, and print the `/kramme:code:refactor-opportunities --ranked` command for the user to run.
 
 ## Prerequisites — When NOT to flag a refactor
 
@@ -42,7 +47,7 @@ These rejections are pre-filters — apply them before recording a finding, not 
 
 ### Phase 1 — Orientation
 
-1. Parse `$ARGUMENTS` per the **Inputs** section into a single `SCOPE_MODE`, applying the multi-selector rule from **Inputs** before resolving. The per-mode target is computed in _Resolve the effective scan scope_ below.
+1. Parse `$ARGUMENTS` per the **Inputs** section into a single `SCOPE_MODE`, applying the multi-selector rule from **Inputs** before resolving. The per-mode target is computed in _Resolve the effective scan scope_ below. When `--ranked` is honored, set `RANKED_MODE=true`; with `pr` scope, stop with the rejection sentence in `references/ranked-mode.md`.
 2. Use the Read tool to examine `package.json` / `pyproject.toml` / build config to understand the stack and directory layout.
 3. Discover project instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) if present and read the relevant ones to understand project-specific conventions.
 4. **Read accepted ADRs.** Look for `docs/decisions/` (or other common ADR locations: `doc/adr/`, `docs/adr/`, `architecture/decisions/`). If found, read every ADR whose status reads `ACCEPTED` (case-insensitive) and store their decisions as `KNOWN_ADRS` — title, status, and a one-line summary of what was decided and what was rejected. Skip ADRs marked `PROPOSED`, `SUPERSEDED`, or `DEPRECATED` — only accepted decisions are decision-of-record. These bound the design space the scan operates in. If no ADR directory exists, proceed silently with `KNOWN_ADRS = []`.
@@ -94,6 +99,14 @@ These rejections are pre-filters — apply them before recording a finding, not 
    Store the pairs whose files both still exist as `CO_CHANGE` (count and the two paths). If the history is too short or the command fails, proceed silently with `CO_CHANGE = []`.
 
 9. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/<base-branch> (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, tests, and docs)`. Report it to the user before proceeding.
+
+When `RANKED_MODE=true`, read `references/ranked-mode.md` now and follow it in place of Phases 2-4. Phase 1's `KNOWN_ADRS`, `KNOWN_OUT_OF_SCOPE`, `HOT_SPOTS`, and `CO_CHANGE` carry into it.
+
+Ranked mode uses these shared resources; resolve their paths here and pass them through the adapter to reviewers as needed:
+
+- `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/references/audit-workflow.md` — team and solo audit execution, filtering, ranking, and reporting.
+- `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/references/audit-rubric.md` — evidence standards and scoring.
+- `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/assets/report-template.md` — the weakness report schema.
 
 ### Phase 2 — Parallel Scan
 

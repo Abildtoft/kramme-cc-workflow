@@ -1667,7 +1667,6 @@
     "mechanical_only": [
       "kramme-cc-workflow/skills/kramme:browse/SKILL.md",
       "kramme-cc-workflow/skills/kramme:code:audit-security/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:code:weakness-audit/SKILL.md",
       "kramme-cc-workflow/skills/kramme:debug:investigate/SKILL.md",
       "kramme-cc-workflow/skills/kramme:deps:audit/SKILL.md",
       "kramme-cc-workflow/skills/kramme:discovery:strategic-inquiry/SKILL.md",
