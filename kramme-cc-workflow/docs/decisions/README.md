@@ -41,6 +41,7 @@ Nothing here changes a rule in the table above.
 | Decision under consideration | Record |
 | --- | --- |
 | Whether to expand the committed eval cap to `kramme:pr:resolve-review`. Tests the revisit condition in `2026-07-06-skill-quality-regime.md` against a prototype and recommends reaffirming the cap. | [2026-08-08-eval-scope-review.md](2026-08-08-eval-scope-review.md) |
+| Whether review filter roles (relevance validation and slop meta-review) should default to one model class below the orchestrator while every defect-finding reviewer stays on its model. Narrows the lower-class default that the 2026-10-20 risk-routing record deferred; decision review 2026-11-21. | [2026-10-21-filter-role-model-default.md](2026-10-21-filter-role-model-default.md) |
 
 ## Adding Decisions
 
