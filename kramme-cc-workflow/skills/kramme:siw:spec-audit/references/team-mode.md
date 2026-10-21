@@ -29,7 +29,7 @@ Then stop.
 
 Same as `/kramme:siw:spec-audit` Steps 1-2:
 
-1. Parse `$ARGUMENTS` — extract `--auto`, optional `--product` mode, optional `--apply` / `--apply-now` auto-fix mode, `--model` flag (default: `opus`), optional `--inline` output mode, abort before reading specs if `INLINE_MODE=true` and `APPLY_MODE=true`, then resolve spec file paths or auto-detect from `siw/`
+1. Read and follow `references/spec-resolution.md` to parse `$ARGUMENTS` and validate modes before resolving spec files or auto-detecting from `siw/`. Reject `--dry-run` here: it requires an existing report path, and `--apply <report>` cannot combine with `--team`. Keep the standard `--inline` / `--apply` incompatibility and all other flag validation.
 2. Read every spec file end-to-end
 3. Extract structural elements (overview, scope, success criteria, requirements, design decisions, tasks, testing, edge cases, out of scope, technical architecture)
 4. If `PRODUCT_MODE=true`, read `references/product-mode.md` and run P1-P3

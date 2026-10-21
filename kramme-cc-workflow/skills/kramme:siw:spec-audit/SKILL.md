@@ -1,7 +1,7 @@
 ---
 name: kramme:siw:spec-audit
-description: Audit specifications for implementation readiness — coherence, completeness, clarity, scope consistency, actionability, testability, rationale documentation, and technical design. Add --product to also judge product correctness — target user, problem/solution fit, user states, critical moments, scope, success criteria, prioritization, and strategy fit. Supports --inline and --apply. Use --team for multi-agent cross-validation and codebase pattern review.
-argument-hint: "[spec-file-path(s) | 'siw'] [--product] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]"
+description: Audit specifications for implementation readiness — coherence, completeness, clarity, scope consistency, actionability, testability, rationale documentation, and technical design. Add --product to also judge product correctness — target user, problem/solution fit, user states, critical moments, scope, success criteria, prioritization, and strategy fit. --apply auto-fixes mechanical findings, also in an existing report. Supports --inline and --team cross-validation with codebase pattern review.
+argument-hint: "[spec-file-path(s) | 'siw' | audit-report-path] [--product] [--auto] [--apply [--dry-run] [--threshold 60-100] [--allow-dirty]] [--model opus|sonnet|haiku] [--inline] [--team]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,6 +16,12 @@ Check every section of the specification against every quality dimension before 
 
 Both workflows score fix confidence with the shared rubric at `${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md`. Set the `{fix-confidence rubric path}` placeholder in every auditor and teammate prompt to that absolute path, because agents cannot resolve it on their own.
 
+## Apply Mode
+
+If `$ARGUMENTS` contains `--apply` or `--apply-now` and a path to an existing spec audit report (a Markdown file whose first level-1 heading is `# Spec Audit Report`), validate the arguments with `references/spec-resolution.md` §1.1, follow the Apply-Only Entry of `references/apply-now.md`, and stop after its summary; Team Mode and Steps 2-7 do not run. Without a report path, `--apply` audits first and runs the same procedure at Step 6.
+
+`--dry-run` requires an existing report path. Argument validation rejects audit-first dry runs before resolving specs or writing a report, including in Team Mode. Use `--inline` without `--apply` to preview a new audit.
+
 ## Team Mode
 
 If `$ARGUMENTS` contains `--team`, remove that flag, read `references/team-mode.md`, and follow that workflow instead of the standard workflow below. Pass the remaining arguments through as the team-mode arguments.
@@ -27,7 +33,7 @@ If `$ARGUMENTS` contains `--product`, set `PRODUCT_MODE=true`, read `references/
 ## Process Overview
 
 ```
-/kramme:siw:spec-audit [spec-file-path(s) | 'siw'] [--product] [--auto] [--apply] [--model opus|sonnet|haiku] [--inline] [--team]
+/kramme:siw:spec-audit [spec-file-path(s) | 'siw' | audit-report-path] [--product] [--auto] [--apply [--dry-run] [--threshold 60-100] [--allow-dirty]] [--model opus|sonnet|haiku] [--inline] [--team]
     |
     v
 [Step 1: Resolve Spec Files] -> Parse args or auto-detect from siw/
@@ -312,7 +318,7 @@ Spec audit report written to: {path}
 
 If there are no findings, skip the rest of Step 6.
 
-If `APPLY_MODE=true`, read and follow `references/apply-now.md`, then skip issue creation entirely.
+If `APPLY_MODE=true`, read and follow the After-Audit Entry of `references/apply-now.md`, which contains the canonical auto-fix procedure, then skip issue creation entirely.
 
 Product findings (`PROD-NNN`) are never auto-applied. Apply now leaves them in the report for `/kramme:siw:resolve-audit`; issue creation handles them alongside spec findings.
 
@@ -332,7 +338,7 @@ header: "Resolve Spec Findings"
 question: "Found {S} actionable spec findings and {P} product findings. Auto-fix safe spec findings now or keep the report only?"
 options:
   - label: "Apply now"
-    description: "Run the canonical auto-fix procedure against the audit report"
+    description: "Run this skill's canonical auto-fix procedure against the audit report"
   - label: "Keep report only"
     description: "Make no spec edits or issue files"
 ```
@@ -348,7 +354,7 @@ header: "Resolve Spec Findings"
 question: "Found {S} actionable spec findings and {P} product findings. Auto-fix safe spec findings, create SIW issues, or keep the report only?"
 options:
   - label: "Apply now"
-    description: "Run the canonical auto-fix procedure against the audit report; create no G-* issues"
+    description: "Run this skill's canonical auto-fix procedure against the audit report; create no G-* issues"
   - label: "Create SIW issues"
     description: "Choose which findings become SIW issues"
   - label: "Keep report only"

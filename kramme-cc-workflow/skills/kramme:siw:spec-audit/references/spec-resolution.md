@@ -10,6 +10,7 @@ Use this when `SKILL.md` reaches Step 1. Resolve `$ARGUMENTS` into mode flags an
 
 - If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--apply` or `--apply-now`, set `APPLY_MODE=true` and remove the flag before processing remaining arguments.
+- If `$ARGUMENTS` contains `--dry-run`, set `DRY_RUN=true`; if it contains `--allow-dirty`, set `ALLOW_DIRTY=true`; if it contains `--threshold N`, set `CONFIDENCE_THRESHOLD=N` (default 80). Remove each flag before processing remaining arguments. If `N` is non-numeric or outside 60-100, abort with: `Threshold {N} out of range. --threshold must be an integer between 60 and 100.`
 - If `$ARGUMENTS` contains `--inline`, set `INLINE_MODE=true` and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--team`, use Team Mode and remove the flag before processing remaining arguments.
 - If `$ARGUMENTS` contains `--product`, set `PRODUCT_MODE=true` and remove the flag before processing remaining arguments.
@@ -33,9 +34,11 @@ Use this when `SKILL.md` reaches Step 1. Resolve `$ARGUMENTS` into mode flags an
 
 `--apply` means:
 
-- write the audit report as usual, then run the same procedure as `/kramme:siw:apply-spec-audit-fixes` against that report for findings that clear the canonical auto-fix gates
+- write the audit report as usual, then run the canonical auto-fix procedure in `references/apply-now.md` against that report for findings that clear its auto-fix gates
+- with a spec audit report path instead of spec paths (`--apply <report>`), skip the audit and run `references/apply-now.md` against that existing report
 - skip Step 6 issue creation entirely — do **not** create `G-*` issues, do **not** update `siw/OPEN_ISSUES_OVERVIEW.md`, and do **not** touch `siw/issues/`
 - if combined with `--auto`, pass the same approval behavior to the auto-fix procedure
+- `--threshold 60-100` and `--allow-dirty` modify either apply form; `--dry-run` previews fixes only with an existing report path, as defined in `references/apply-now.md`
 
 `--inline` means:
 
@@ -48,6 +51,37 @@ If `INLINE_MODE=true` and `APPLY_MODE=true` (from `--apply` or `--apply-now`), a
 Error: --inline cannot be combined with --apply or --apply-now.
 
 --inline is read-only. Re-run without --inline to apply spec updates.
+```
+
+If `DRY_RUN`, `ALLOW_DIRTY`, or a `--threshold` value is set without `APPLY_MODE=true`, abort before reading specs:
+
+```
+Error: --dry-run, --threshold, and --allow-dirty modify --apply. Add --apply or drop them.
+```
+
+**Spec audit report detection:** A remaining path argument is a spec audit report when it names an existing Markdown file whose first level-1 heading is `# Spec Audit Report`. Detect reports only by that heading; never by file name alone. When a report path is present:
+
+- Without `APPLY_MODE=true`, abort:
+
+  ```
+  Error: {path} is a spec audit report, not a specification. Add --apply to fix it, or pass specification paths.
+  ```
+
+- With other spec paths, the `siw` keyword, a second report, `--team`, `--product`, or `--model`, abort (the `--inline` abort above already covers `--inline`):
+
+  ```
+  Error: --apply <report> fixes an existing audit report without re-auditing. Pass only the report path with apply flags.
+  ```
+
+- Otherwise set `APPLY_ONLY=true` and `APPLY_REPORT_PATH={path}`, skip Sections 1.2-1.4, and return to the `SKILL.md` Apply Mode section.
+
+If `DRY_RUN=true` and no existing spec audit report path was detected, abort here before resolving spec files, launching auditors, or writing a report. This also applies with `--auto`, `--apply-now`, and in Team Mode:
+
+```
+Error: --dry-run requires --apply <existing-report-path>.
+
+Preview fixes with: /kramme:siw:spec-audit --apply <report> --dry-run
+For a read-only audit of specifications, use --inline without --apply.
 ```
 
 **Detection rules for remaining arguments:**

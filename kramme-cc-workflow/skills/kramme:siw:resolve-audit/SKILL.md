@@ -99,8 +99,8 @@ Ignore:
 - Fully implemented section
 - Summary totals
 - Non-actionable uncertain rows unless explicitly requested
-- Findings marked `**Status:** [Auto-fixed]` (already resolved by /kramme:siw:apply-spec-audit-fixes)
-- Findings marked `**Status:** [Applied directly]` (already resolved by /kramme:siw:spec-audit --apply)
+- Findings marked `**Status:** [Auto-fixed]` (already resolved by `/kramme:siw:spec-audit --apply`)
+- Findings marked `**Status:** [Applied directly]` (legacy marker from older `/kramme:siw:spec-audit --apply` runs)
 
 ## Step 3: Select Scope
 
