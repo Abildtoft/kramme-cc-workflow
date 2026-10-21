@@ -412,6 +412,8 @@ PR creation, review, iteration, and resolution.
 
 Migration: `/kramme:pr:update-split-plans` has moved to `/kramme:code:breakdown-findings --reconcile`. Update saved prompts and automation to pass the same plan paths, `--all`, `--worktree`, `--source`, `--base`, and `--auto` options to the replacement command. Former no-scope calls must add `--all` to preserve the removed command's active-plan-only default; zero-scope reconcile intentionally retains `kramme:code:breakdown-findings`'s existing all-indexed behavior.
 
+Reconcile can infer `DONE` from a proven merged plan branch only while the selected in-scope source state still matches the landed implementation. Later scoped changes or reversions require review and block automatic completion and dependent unblocking, including with `--auto`.
+
 Migration: `/kramme:ci:design-pipeline` has been removed. Ask directly for CI/CD pipeline design or gate planning. `/kramme:pr:fix-ci` remains available for failures in an existing Pull Request pipeline.
 
 #### Browser & QA
