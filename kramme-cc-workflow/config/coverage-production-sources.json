@@ -13,6 +13,7 @@
       "kramme-cc-workflow/scripts/convert-plugin/frontmatter.js",
       "kramme-cc-workflow/scripts/convert-plugin/legacy-install-cleanup.js",
       "kramme-cc-workflow/scripts/convert-plugin/loader.js",
+      "kramme-cc-workflow/scripts/lib/skill-usage-hosts.js",
       "kramme-cc-workflow/scripts/schemas/skill-contracts.js"
     ],
     "contract_only": {

@@ -1,7 +1,7 @@
 # Script Helper Library
 
-This directory contains shared shell helpers used by standalone scripts in
-`kramme-cc-workflow/scripts/`. Keep script-specific policy in the calling
+This directory contains shared shell and Node helpers used by standalone
+scripts in `kramme-cc-workflow/scripts/`. Keep script-specific policy in the calling
 script; keep behavior shared by multiple scripts here.
 
 ## Files
@@ -9,6 +9,7 @@ script; keep behavior shared by multiple scripts here.
 | File | Responsibility |
 | --- | --- |
 | `shell-helpers.sh` | Provides required-argument validation, shell assignment quoting, JSON object emit/decode with a single Python guard, and timeout-wrapped command execution. |
+| `skill-usage-hosts.js` | Host detection and Codex rollout parsing for `scripts/skill-usage.js`. |
 
 ## Usage
 
@@ -24,19 +25,30 @@ source "$SCRIPT_DIR/lib/shell-helpers.sh"
 Scripts in a subdirectory should adjust the source path from their own
 `SCRIPT_DIR`, for example `"$SCRIPT_DIR/../lib/shell-helpers.sh"`.
 
+Node scripts require helpers relative to their own file, for example
+`require("./lib/skill-usage-hosts")`. Node helpers use only Node core modules
+because they ship unchanged into the converted Codex plugin.
+
 ## Boundary Rules
 
-- Helpers must not change shell options such as `errexit`, `nounset`, or
+- Shell helpers must not change shell options such as `errexit`, `nounset`, or
   `pipefail`; callers own those policies.
-- Helpers must handle their own expected failure paths instead of relying on
+- Shell helpers must handle their own expected failure paths instead of relying on
   `set -e`.
 - Keep command-line policy and user-facing success output in the calling
   script.
 
 ## Verification
 
-Run shell lint after changing this library:
+Run shell lint after changing a shell helper:
 
 ```bash
 make -C kramme-cc-workflow lint-shell
+```
+
+Run the focused tests and type check after changing `skill-usage-hosts.js`:
+
+```bash
+make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/skill-usage-hosts.test.js
+make -C kramme-cc-workflow lint-js
 ```
