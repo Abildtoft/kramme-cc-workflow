@@ -404,6 +404,14 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/codebase-audit-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:refactor-opportunities/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:weakness-audit/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/pr-create-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
