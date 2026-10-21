@@ -89,6 +89,30 @@ PY
   [[ "$policy" == *'do not convert the setting into a forwarded `--subagent-model` flag'* ]]
 }
 
+@test "non-review roles share the model controls without changing review defaults or duplicating the ladder" {
+  local policy
+  policy="$(cat "$POLICY")"
+  [[ "$policy" == *'## Non-Review Subagent Roles'* ]]
+  [[ "$policy" == *'**Lens or scan agents**'* ]]
+  [[ "$policy" == *'**Recon or exploration agents**'* ]]
+  [[ "$policy" == *'**Drafting agents**'* ]]
+  [[ "$policy" == *'**Filter or validator agents**'* ]]
+  [[ "$policy" == *'It changes nothing for review subagents'* ]]
+  [[ "$policy" == *'`same` remains the default for every role'* ]]
+  [[ "$policy" == *'a role never steps down twice'* ]]
+  [[ "$policy" == *'any agent that edits files, commits, or applies fixes'* ]]
+  [[ "$policy" == *'explicit different-provider or cross-model modes'* ]]
+  run python3 - "$POLICY" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+section = Path(sys.argv[1]).read_text().split('## Non-Review Subagent Roles\n', 1)[1]
+assert not re.search(r'^\s*\|\s*(Claude|Codex)\s*\|', section, re.MULTILINE)
+PY
+  [ "$status" -eq 0 ]
+}
+
 @test "wrappers and reruns forward the override without changing requirements or adversarial models" {
   local policy team skill
   policy="$(cat "$POLICY")"
