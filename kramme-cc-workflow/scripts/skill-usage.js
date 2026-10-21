@@ -57,6 +57,7 @@ const SCAN_PRUNED_DIRS = new Set([
  * @property {string} [file]
  * @property {string} [since]
  * @property {string} [kind]
+ * @property {string} [platform]
  * @property {string} [limit]
  * @property {boolean} [strict]
  *
@@ -128,7 +129,7 @@ async function main() {
 function printHelp(exitCode) {
   const help = `Usage:
   scripts/skill-usage.js record [--file <path>]
-  scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--json] [--limit <n>] [--strict]
+  scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--platform <claude-code|codex|unknown|all>] [--json] [--limit <n>] [--strict]
   scripts/skill-usage.js scan <file-or-dir...> [--since <duration|date>] [--json] [--limit <n>] [--strict]
 
 Records are stored in:
@@ -142,11 +143,13 @@ per file.
 
 Environment:
   KRAMME_SKILL_USAGE_FILE  Override the usage JSONL file path.
+  KRAMME_AGENT_PLATFORM    Override the detected platform of recorded events.
 
 Examples:
   scripts/skill-usage.js report --since 30d
   scripts/skill-usage.js report --kind explicit --json
   scripts/skill-usage.js scan ~/.claude/projects --json
+  scripts/skill-usage.js scan ~/.codex/sessions --since 30d --json
 `;
   const stream = exitCode === 0 ? process.stdout : process.stderr;
   stream.write(help);
@@ -192,6 +195,14 @@ function parseArgs(args) {
     }
     if (arg.startsWith("--kind=")) {
       parsed.kind = arg.slice("--kind=".length);
+      continue;
+    }
+    if (arg === "--platform") {
+      parsed.platform = args[++i];
+      continue;
+    }
+    if (arg.startsWith("--platform=")) {
+      parsed.platform = arg.slice("--platform=".length);
       continue;
     }
     if (arg === "--limit") {
@@ -575,6 +586,8 @@ async function report(args) {
   const file = usageFile(parsed);
   const since = parseSince(parsed.since);
   const kind = parsed.kind || "all";
+  const platform = parsed.platform || "all";
+  const recordedPlatform = platform === "unknown" ? "" : platform;
   const limit = parsed.limit == null ? null : Number(parsed.limit);
 
   if (!["all", "explicit", "tool"].includes(kind)) {
@@ -593,6 +606,7 @@ async function report(args) {
     diagnostics,
     (record) => {
       if (kind !== "all" && record.kind !== kind) return;
+      if (platform !== "all" && record.platform !== recordedPlatform) return;
       if (since) {
         const recordedAt = Date.parse(record.recordedAt);
         if (!Number.isFinite(recordedAt) || recordedAt < since.getTime()) {
@@ -605,7 +619,7 @@ async function report(args) {
   );
 
   const summary = finishUsageSummary(accumulator, limit);
-  renderResult(summary, diagnostics, parsed.json, file, since, kind);
+  renderResult(summary, diagnostics, parsed.json, file, since, kind, platform);
   applyStrictMode(parsed, diagnostics);
 }
 
@@ -651,6 +665,7 @@ async function scan(args) {
     parsed._.join(","),
     since,
     "explicit",
+    "all",
   );
   applyStrictMode(parsed, diagnostics);
 }
@@ -1246,8 +1261,9 @@ function recordReadFailure(diagnostics, file, error) {
  * @param {string} file
  * @param {Date | null} since
  * @param {string} kind
+ * @param {string} platform
  */
-function renderResult(summary, diagnostics, json, file, since, kind) {
+function renderResult(summary, diagnostics, json, file, since, kind, platform) {
   if (json) {
     const result = hasDiagnostics(diagnostics)
       ? { summary, diagnostics }
@@ -1256,7 +1272,7 @@ function renderResult(summary, diagnostics, json, file, since, kind) {
     return;
   }
 
-  renderTable(summary, file, since, kind);
+  renderTable(summary, file, since, kind, platform);
   if (hasDiagnostics(diagnostics)) {
     process.stdout.write(
       `diagnostics skippedLines=${diagnostics.skippedLines} readFailures=${diagnostics.readFailures}\n`,
@@ -1298,8 +1314,8 @@ function parseSince(value) {
   return parsed;
 }
 
-/** @param {UsageSummaryRow[]} rows @param {string} file @param {Date | null} since @param {string} kind */
-function renderTable(rows, file, since, kind) {
+/** @param {UsageSummaryRow[]} rows @param {string} file @param {Date | null} since @param {string} kind @param {string} platform */
+function renderTable(rows, file, since, kind, platform) {
   if (rows.length === 0) {
     process.stdout.write("No skill usage records found.\n");
     return;
@@ -1346,6 +1362,7 @@ function renderTable(rows, file, since, kind) {
     `file=${file}`,
     since ? `since=${since.toISOString()}` : null,
     kind !== "all" ? `kind=${kind}` : null,
+    platform !== "all" ? `platform=${platform}` : null,
   ].filter(Boolean);
 
   process.stdout.write(
