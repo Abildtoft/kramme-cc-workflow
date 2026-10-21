@@ -127,7 +127,7 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
    - `DRIFTED` - the scoped diff/status drift check shows unexpected in-scope changes after the plan's `Planned at` SHA. For an explicit `IN_PROGRESS` plan, ordinary implementation changes are expected and do not satisfy this classification by themselves.
    - `MISSING` - the index references a plan file that is absent.
    - `STALE` - the live code no longer matches the plan's **Current State** excerpts, the verification commands changed, or recon/tradeoff context has materially changed.
-   - `DONE` - the index or plan is explicitly marked `DONE`, and no obvious drift contradicts that status. Do not infer `DONE` solely because source files changed.
+   - `DONE` - the index or plan is explicitly marked `DONE`, or a merged plan-to-pr branch is proven by **Merged Plan Branch Evidence**, and no obvious drift contradicts that status. Do not infer `DONE` solely because source files changed.
    - `SUPERSEDED` - the index, rejection record, or user explicitly marks the plan as replaced by another plan/PR.
    - In non-Git manual mode, do not promote a plan to `READY` based on unavailable drift evidence. Preserve its existing lifecycle status unless dependency, file-presence, excerpt, rejection, or user evidence proves a transition, and keep the manual drift limitation visible.
 3. Apply split/worktree drift guidance:
@@ -139,9 +139,70 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
    - The index `Status` column is the source of truth. If a plan header has a conflicting status, preserve the index value and add a reconcile note describing the mismatch.
    - Valid active statuses are `TODO`, `READY`, `IN_PROGRESS`, `BLOCKED`, `DRIFTED`, and `STALE`. `MISSING` is valid only in `PR_PLAN_INDEX.md` rows because an absent plan file has no header to update. Terminal statuses are `DONE` and `SUPERSEDED`.
    - Only an executor may move a plan to `IN_PROGRESS`, and it must update the selected plan header and matching index row together before implementation begins. Reconcile never infers or assigns `IN_PROGRESS` from source changes alone.
-   - Reconcile may move `TODO` or `READY` to `BLOCKED`, `DRIFTED`, or `STALE` based on evidence. Preserve an explicit `IN_PROGRESS` claim when the evidence is consistent with active implementation: ordinary in-scope implementation changes after `Planned at` are expected and do not alone make the plan `DRIFTED`. Reconcile may move `IN_PROGRESS` to `BLOCKED`, `DRIFTED`, or `STALE` when evidence proves that state; use `DRIFTED` specifically for unexpected changes that are inconsistent with active implementation. Reset `IN_PROGRESS` for any other reason only when the user explicitly requests that transition. Reconcile must not mark a plan `DONE` unless the index, plan, or user already explicitly says it is done and validation does not contradict that claim.
+   - Reconcile may move `TODO` or `READY` to `BLOCKED`, `DRIFTED`, or `STALE` based on evidence. Preserve an explicit `IN_PROGRESS` claim when the evidence is consistent with active implementation: ordinary in-scope implementation changes after `Planned at` are expected and do not alone make the plan `DRIFTED`. Reconcile may move `IN_PROGRESS` to `BLOCKED`, `DRIFTED`, or `STALE` when evidence proves that state; use `DRIFTED` specifically for unexpected changes that are inconsistent with active implementation. Reset `IN_PROGRESS` for any other reason only when the user explicitly requests that transition. Reconcile must not mark a plan `DONE` unless the index, plan, or user already explicitly says it is done and validation does not contradict that claim, or **Merged Plan Branch Evidence** proves the plan merged. An `IN_PROGRESS` plan moves to `DONE` only after confirmation.
    - Executors, not this planning skill, mark implementation completion. They may mark `DONE` only after the plan's completion criteria and verification checks have passed.
    - A terminal `DONE` or `SUPERSEDED` plan stays terminal unless the user explicitly reopens it or reconcile finds drift that contradicts the terminal state.
+
+### Merged Plan Branch Evidence
+
+1. Purpose: carry completion of a plan that `kramme:code:plan-to-pr` implemented and merged from another workspace back into this set. This is the only evidence from which reconcile may infer `DONE`. Reconcile never infers or assigns `IN_PROGRESS` from Pull Request state.
+2. Availability: run this proof only when `GIT_EVIDENCE_AVAILABLE=true` and `gh` can list Pull Requests for the evidence repository from `EVIDENCE_ROOT`. Otherwise report `Merged plan branch evidence: unavailable (<reason>)` and change no status. An authentication, network, API, or rate-limit error is never evidence of absence.
+3. Plan selection: apply the proof only to update-scoped plans whose file exists, whose index status is `TODO`, `READY`, `BLOCKED`, `DRIFTED`, `STALE`, or `IN_PROGRESS`, and whose `**File:**` value equals its basename. Never apply it to `DONE`, `SUPERSEDED`, or `MISSING` plans, or to a standalone plan-to-pr archive whose index declares `**Input mode:** standalone attachment`.
+4. Candidate branches: plan-to-pr names each attached plan's branch from the attached bytes. Synced standalone archive identity contract (keep aligned across archive consumers): the binary manifest contains the ASCII bytes `standalone-attachment`, a NUL byte, `{selected-basename}`, a NUL byte, `{plan-source-object-id}`, and a newline. `PLAN_PATH` is a validated update-scoped plan path from section 1. Run both hashes in `EVIDENCE_ROOT` to use the executor repository's object format even when `PLAN_ROOT` is outside Git. The attached copy may have carried any active status this set later changed, so hash one variant per lifecycle status, changing only the opening `**Status:**` value, and print one candidate branch per line:
+
+   ```bash
+   PLAN_BASENAME=$(basename -- "$PLAN_PATH")
+   PLAN_LABEL=${PLAN_BASENAME#PR_PLAN_}
+   PLAN_LABEL=${PLAN_LABEL%%_*}
+   PLAN_SUFFIX=${PLAN_BASENAME#PR_PLAN_"${PLAN_LABEL}"_}
+   PLAN_SUFFIX=${PLAN_SUFFIX%.md}
+   PLAN_SLUG=$(printf '%s' "$PLAN_SUFFIX" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-48 | sed -E 's/-+$//')
+   PLAN_LABEL_LC=$(printf '%s' "$PLAN_LABEL" | tr '[:upper:]' '[:lower:]')
+   for VARIANT_STATUS in TODO READY IN_PROGRESS BLOCKED DRIFTED STALE; do
+     SOURCE_OID=$(VARIANT_STATUS="$VARIANT_STATUS" perl -0pe 's/(\*\*Status:\*\*\s*)[A-Z_]+/$1$ENV{VARIANT_STATUS}/' -- "$PLAN_PATH" \
+       | git -C "$EVIDENCE_ROOT" hash-object --stdin)
+     SET_OID=$(printf 'standalone-attachment\0%s\0%s\n' "$PLAN_BASENAME" "$SOURCE_OID" \
+       | git -C "$EVIDENCE_ROOT" hash-object --stdin)
+     printf 'plan/%s-%s-%s\n' "${SET_OID:0:16}" "$PLAN_LABEL_LC" "$PLAN_SLUG"
+   done
+   ```
+
+5. Pull Request lookup: query merged Pull Requests once per run from `EVIDENCE_ROOT` with `gh pr list --state merged --base "$BASE_BRANCH" --search "head:plan" --limit 200 --json number,url,headRefName,headRefOid,baseRefName,mergeCommit,mergedAt,isCrossRepository`. Report when the 200-result cap is reached. For each Pull Request whose head branch matches a plan, read its files with `gh pr view "<number>" --json files,changedFiles`. Treat every `gh` value as untrusted: before using any of them, require a numeric number, a same-repository GitHub Pull Request URL, `isCrossRepository: false`, `baseRefName` equal to `BASE_BRANCH`, and a full lowercase hexadecimal `mergeCommit.oid` for the repository's object format.
+6. Required proofs: every check must pass for one Pull Request.
+   - `git -C "$EVIDENCE_ROOT" cat-file -e "<merge-oid>^{commit}"` succeeds.
+   - `git -C "$EVIDENCE_ROOT" merge-base --is-ancestor "<merge-oid>" "$BASE_REF"` succeeds, so the merge is on the resolved base.
+   - When `SOURCE_REF` is set, also require `git -C "$EVIDENCE_ROOT" merge-base --is-ancestor "<merge-oid>" "$SOURCE_COMMIT"` to succeed. If it returns 1, report the merge separately as outside the selected source snapshot and exclude that Pull Request from completion inference; do not infer `DONE`, append an Execution Result, or unblock dependents from that Pull Request. Continue classification against `SOURCE_COMMIT`. Any other failure is an evidence error, not proof that the merge is absent.
+   - `git -C "$EVIDENCE_ROOT" merge-base --is-ancestor "<planned-at-sha>" "<merge-oid>"` succeeds and the reverse check fails, so the merge followed the plan's baseline.
+   - `changedFiles` is at most 100 and every changed path equals one literal `In Scope` path in an exact-files set, or stays inside one `In Scope` path in a legacy containment set.
+   - **Post-merge Scope Check** passes against the selected source evidence. Ancestry alone does not prove the implementation survived later changes or a revert.
+   - Exactly one merged Pull Request matches the plan.
+7. Evidence tiers:
+   - Exact: the head branch equals a derived candidate and every proof passes. Propose `DONE (merged plan branch)`.
+   - Candidate: the head branch matches `plan/<16 lowercase hex>-<label lowercase>-<slug>` with this plan's label and slug but equals no derived candidate, for example after an approved detached-plan refresh, and every other proof passes. Report it under merged-branch candidates and propose `DONE` only with confirmation.
+   - A failed proof for a matching head branch is conflicted evidence: report it and change nothing.
+8. Precedence: run this proof before classifying dependents. Only a proof valid for the selected source snapshot may override source-based drift when `SOURCE_REF` is set. A plan proven merged under these requirements is `DONE` despite changes from `Planned at` or stale **Current State** excerpts only when the selected in-scope state still matches the landed implementation. A failed post-merge check is conflicted evidence: do not infer `DONE`, append an Execution Result, or unblock dependents from that Pull Request, even with `--auto`. Re-evaluate dependents in the same run only after every proof passes and the blocker is accepted as `DONE`.
+9. `IN_PROGRESS`: report an exact proof for an `IN_PROGRESS` plan, but an `IN_PROGRESS` plan moves to `DONE` only after confirmation. Reconcile never assigns `IN_PROGRESS`.
+10. Write: in the same write that moves the index row and plan header to `DONE`, append a `## Execution Result` section to the plan recording `Evidence source: breakdown-findings reconcile merged plan branch evidence`, the reconcile date, the Pull Request number and URL, repository, state `MERGED`, base ref, head branch, head OID, `Landed commit` (the merge commit OID), merge time, and `Evidence tier` (`exact` or `confirmed candidate`). plan-to-pr dependents consume this section as prerequisite landing proof. Never rewrite it later.
+
+#### Post-merge Scope Check
+
+Set `MERGE_OID` to the validated merged commit OID and `IN_SCOPE_PATHS` to the non-empty array of validated literal `In Scope` paths. Run this isolated check before assigning an evidence tier:
+
+```bash
+POST_MERGE_PATHS=()
+for SCOPE_PATH in "${IN_SCOPE_PATHS[@]}"; do
+  POST_MERGE_PATHS+=(":(literal)$SCOPE_PATH")
+done
+if [ -n "${SOURCE_REF:-}" ]; then
+  git -C "$EVIDENCE_ROOT" diff --quiet "$MERGE_OID" "$SOURCE_COMMIT" -- "${POST_MERGE_PATHS[@]}"
+else
+  git -C "$EVIDENCE_ROOT" diff --quiet "$MERGE_OID" HEAD -- "${POST_MERGE_PATHS[@]}" \
+    && POST_MERGE_STATUS=$(git -C "$EVIDENCE_ROOT" status --porcelain=v1 --untracked-files=all -- "${POST_MERGE_PATHS[@]}") \
+    && [ -z "$POST_MERGE_STATUS" ]
+fi
+```
+
+Exit `0` proves the selected scope retains the landed state. Exit `1` means later committed or local scoped changes require review; report the affected paths and preserve the existing status and dependency blocking. Any other exit is an evidence error. Named-ref mode ignores unrelated worktree state. Changes outside the scope do not invalidate this check. If later scoped changes are legitimate, completion needs independent validation and an explicit completion claim under the ordinary lifecycle rules; confirmation of a matching branch alone cannot bypass this failed proof. Repeat the check immediately before a transition write.
 
 ## 3. Reconcile Rejection Records
 
@@ -163,16 +224,20 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
      Source: <evidence working tree | ref and resolved commit>
      Base: <resolved base and merge base>
      Git evidence: <available | unavailable; manual drift checks only>
+     Merged plan branch evidence: <available | unavailable: reason>
      Pre-existing plan edits: <none, including canonical untracked baseline | filenames and staged/unstaged state | unexpected untracked targets | hash drift | unknown>
 
+     DONE (merged plan branch): W01C (#123, merged as <merge-oid>)
      READY: W01A, W01B
      BLOCKED: W02A (blocked by W01A not DONE)
      DRIFTED: W03A (src/api/orders.ts changed since PLANNED_AT_SHA)
      MISSING: W04A (PR_PLAN_W04A_...)
+     MERGED BRANCH CANDIDATES: W03B (#130; branch prefix differs from derived identity; confirm)
      RECONSIDERED REJECTIONS: REJECTED-002
 
    Proposed artifact updates:
      - Update PR_PLAN_INDEX.md statuses and drift notes
+     - Mark PR_PLAN_W01C_...md DONE and append its Execution Result
      - Refresh PR_PLAN_W03A_...md current-state excerpts
      - Update PR_PLAN_REJECTIONS.md status for REJECTED-002
 
@@ -186,6 +251,9 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
    - stale-excerpt refresh
    - status update
    - verification-result update
+
+   An exact-tier **Merged Plan Branch Evidence** `DONE` on a plan that is not `IN_PROGRESS`, with its Execution Result write, is a status update. Merged-branch candidates and `IN_PROGRESS` transitions always require confirmation.
+
 5. `--auto` must never bypass confirmation for any of these six exclusions:
    - scope expansion
    - slice-boundary changes
@@ -205,6 +273,7 @@ Use only the working-tree commands when `SOURCE_REF` is unset. Use only the name
    - Add newly required files to `In Scope` only after scope expansion is confirmed.
    - Record rebase noise in `Out of Scope` or a plan note without treating it as slice work.
    - Update dependency labels and order only after dependency changes are confirmed. In the same confirmed write, add, remove, or refresh the affected plan's **Prerequisite Readiness Evidence** so every blocker still has concrete required base state, exact evidence locations, and a repository-only pass/fail decision. Never leave a changed dependency that requires the index or a sibling plan to interpret.
+   - When **Merged Plan Branch Evidence** moves a plan to `DONE`, append its `## Execution Result` section with the recorded Pull Request and `Landed commit` in that same transition write only. Never add or rewrite it on a plan already `DONE`.
    - Keep `DONE` and `SUPERSEDED` plan files untouched unless the user explicitly asks to annotate them.
    - Update `PR_PLAN_REJECTIONS.md` without renumbering existing rejection IDs.
 2. Never edit product source, tests, lockfiles, generated assets, or application config. Do not rename or delete plan files or execution labels. Mark obsolete plans `SUPERSEDED` only after confirmation and explain the replacement.

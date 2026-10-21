@@ -323,7 +323,10 @@
     {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/plan-to-pr-validation.bats",
-      "skills": ["kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md"]
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md"
+      ]
     },
     {
       "kind": "guidance",

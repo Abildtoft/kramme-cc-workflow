@@ -564,3 +564,37 @@
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "reconcile infers DONE only from a proven merged plan branch" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    reconcile="skills/kramme:code:breakdown-findings/references/reconcile-workflow.md"
+    index_template="skills/kramme:code:breakdown-findings/assets/index-template.md"
+
+    grep -qFx "### Merged Plan Branch Evidence" "$reconcile"
+    grep -qF "This is the only evidence from which reconcile may infer \`DONE\`." "$reconcile"
+    grep -qF "Reconcile never infers or assigns \`IN_PROGRESS\` from Pull Request state." "$reconcile"
+    grep -qF "Synced standalone archive identity contract (keep aligned across archive consumers): the binary manifest contains the ASCII bytes \`standalone-attachment\`, a NUL byte, \`{selected-basename}\`, a NUL byte, \`{plan-source-object-id}\`, and a newline." "$reconcile"
+    grep -qF "gh pr list --state merged --base \"\$BASE_BRANCH\"" "$reconcile"
+    grep -qF "isCrossRepository: false" "$reconcile"
+    grep -qF "merge-base --is-ancestor \"<merge-oid>\" \"\$BASE_REF\"" "$reconcile"
+    grep -qF "merge-base --is-ancestor \"<merge-oid>\" \"\$SOURCE_COMMIT\"" "$reconcile"
+    grep -qF "do not infer \`DONE\`, append an Execution Result, or unblock dependents from that Pull Request" "$reconcile"
+    grep -qF "Only a proof valid for the selected source snapshot may override source-based drift" "$reconcile"
+    grep -qF "merge-base --is-ancestor \"<planned-at-sha>\" \"<merge-oid>\"" "$reconcile"
+    grep -qF "Exactly one merged Pull Request matches the plan." "$reconcile"
+    grep -qF "Otherwise report \`Merged plan branch evidence: unavailable (<reason>)\` and change no status." "$reconcile"
+    grep -qF "never evidence of absence" "$reconcile"
+    grep -qF "an \`IN_PROGRESS\` plan moves to \`DONE\` only after confirmation" "$reconcile"
+    grep -qF "Merged-branch candidates and \`IN_PROGRESS\` transitions always require confirmation." "$reconcile"
+    grep -qF "\`Landed commit\` (the merge commit OID)" "$reconcile"
+    grep -qF "Never add or rewrite it on a plan already \`DONE\`." "$reconcile"
+    grep -qF "Do not infer \`DONE\` solely because source files changed." "$reconcile"
+
+    grep -qF "or a merged plan branch from \`kramme:code:plan-to-pr\` is proven and recorded with its Pull Request and landed commit" "$index_template"
+    grep -qF "Generation and reconcile never infer or assign it from source changes alone" "$index_template"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}

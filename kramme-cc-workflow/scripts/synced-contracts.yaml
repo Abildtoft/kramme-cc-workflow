@@ -31,7 +31,8 @@
       "paths": [
         "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/attachment-input.md",
         "kramme-cc-workflow/skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md",
-        "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
+        "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md",
+        "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/reconcile-workflow.md"
       ]
     },
     {
@@ -1472,7 +1473,13 @@
         "expected generated working-artifact baseline, not pre-existing edits solely because they are untracked",
         "pre-write content hash still matches",
         "pre-existing tracked edits, unexpected untracked targets, baseline hash drift, or unknown cleanliness",
-        "update the matching existing plan header's `Status:` field in the same write"
+        "update the matching existing plan header's `Status:` field in the same write",
+        "### Merged Plan Branch Evidence",
+        "never evidence of absence",
+        "Landed commit",
+        "#### Post-merge Scope Check",
+        "Ancestry alone does not prove the implementation survived later changes or a revert.",
+        "Reconcile never infers or assigns `IN_PROGRESS` from Pull Request state."
       ]
     },
     {

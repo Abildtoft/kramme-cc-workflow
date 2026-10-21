@@ -1412,3 +1412,108 @@ EOF
 	run python3 "$VALIDATOR" --repo-root "$REPO" "$REPO/.context/attachments/client-id/input.md"
 	assert_error WORKTREE_DRIFT
 }
+
+extract_reconcile_recipe() {
+	python3 - "$BATS_TEST_DIRNAME/../skills/kramme:code:breakdown-findings/references/reconcile-workflow.md" "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text()
+section = source.split(sys.argv[2], 1)[1]
+block = section.split("```bash", 1)[1].split("```", 1)[0]
+lines = block.strip("\n").splitlines()
+indent = min(len(line) - len(line.lstrip()) for line in lines if line.strip())
+pathlib.Path(sys.argv[3]).write_text("\n".join(line[indent:] for line in lines) + "\n")
+PY
+}
+
+@test "reconcile merged-branch recipe uses the evidence repository object format outside Git" {
+	local recipe="$TMP_DIR/merged-branch-recipe.sh"
+	extract_reconcile_recipe "### Merged Plan Branch Evidence" "$recipe"
+
+	local object_format attachment reconciled validator_branch
+	for object_format in sha1 sha256; do
+		REPO="$TMP_DIR/repo-$object_format"
+		git init --object-format="$object_format" "$REPO" >/dev/null
+		init_test_git_repo "$REPO"
+		printf '.context/\n' >"$REPO/.gitignore"
+		git -C "$REPO" add .gitignore
+		git -C "$REPO" commit -m "ignore workflow state" >/dev/null
+		BASE_COMMIT="$(git -C "$REPO" rev-parse HEAD)"
+		attachment="$REPO/.context/attachments/client/PR_PLAN_W01A_VALIDATE_PLAN_STATE.md"
+		reconciled="$TMP_DIR/plans-$object_format/PR_PLAN_W01A_VALIDATE_PLAN_STATE.md"
+		write_plan "$attachment" W01A TODO
+
+		run python3 "$VALIDATOR" --repo-root "$REPO" "$attachment"
+		assert_success
+		validator_branch="$(json_get facts.plan_branch)"
+
+		mkdir -p "$(dirname "$reconciled")"
+		perl -pe 's/(\*\*Status:\*\* )TODO/${1}BLOCKED/' "$attachment" >"$reconciled"
+		grep -qF '**Status:** BLOCKED' "$reconciled"
+
+		run env PLAN_ROOT="$(dirname "$reconciled")" EVIDENCE_ROOT="$REPO" PLAN_PATH="$reconciled" bash "$recipe"
+		assert_success
+		[ "${#lines[@]}" -eq 6 ]
+		printf '%s\n' "${lines[@]}" | grep -qFx "$validator_branch"
+	done
+}
+
+@test "reconcile rejects reverted merged scope in working-tree and named-ref evidence" {
+	local recipe="$TMP_DIR/post-merge-scope.sh" landed reverted
+	extract_reconcile_recipe "#### Post-merge Scope Check" "$recipe"
+	printf 'implemented\n' >"$REPO/tracked.txt"
+	git -C "$REPO" add tracked.txt
+	git -C "$REPO" commit -m "Implement plan" >/dev/null
+	landed="$(git -C "$REPO" rev-parse HEAD)"
+
+	# Execute the documented check with one validated literal scope path.
+	local check='IN_SCOPE_PATHS=(tracked.txt); source "$1"'
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID="$landed" SOURCE_REF= bash -c "$check" -- "$recipe"
+	assert_success
+
+	# A change outside the plan scope does not invalidate its landing evidence.
+	printf 'unrelated\n' >"$REPO/other.txt"
+	git -C "$REPO" add other.txt
+	git -C "$REPO" commit -m "Change another file" >/dev/null
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID="$landed" SOURCE_REF= bash -c "$check" -- "$recipe"
+	assert_success
+
+	git -C "$REPO" revert --no-edit "$landed" >/dev/null
+	reverted="$(git -C "$REPO" rev-parse HEAD)"
+	# Historical ancestry and the original planned-at drift check still pass.
+	git -C "$REPO" merge-base --is-ancestor "$landed" "$reverted"
+	git -C "$REPO" diff --quiet "$BASE_COMMIT" -- tracked.txt
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID="$landed" SOURCE_REF= bash -c "$check" -- "$recipe"
+	[ "$status" -eq 1 ]
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID="$landed" SOURCE_REF=main SOURCE_COMMIT="$reverted" bash -c "$check" -- "$recipe"
+	[ "$status" -eq 1 ]
+
+	# Named-ref evidence uses its selected commit even when the worktree differs.
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID="$landed" SOURCE_REF="$landed" SOURCE_COMMIT="$landed" bash -c "$check" -- "$recipe"
+	assert_success
+}
+
+@test "reconcile rejects uncommitted scoped changes and propagates evidence errors" {
+	local recipe="$TMP_DIR/post-merge-scope.sh"
+	extract_reconcile_recipe "#### Post-merge Scope Check" "$recipe"
+	local check='IN_SCOPE_PATHS=(tracked.txt); source "$1"'
+
+	printf 'local change\n' >"$REPO/tracked.txt"
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID="$BASE_COMMIT" SOURCE_REF= bash -c "$check" -- "$recipe"
+	[ "$status" -eq 1 ]
+	git -C "$REPO" add tracked.txt
+	# Even when the worktree restores the landed bytes, the index contradicts it.
+	printf 'base\n' >"$REPO/tracked.txt"
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID="$BASE_COMMIT" SOURCE_REF= bash -c "$check" -- "$recipe"
+	[ "$status" -eq 1 ]
+
+	# Deletions followed by untracked replacements must not pass either.
+	git -C "$REPO" rm -f tracked.txt >/dev/null
+	printf 'base\n' >"$REPO/tracked.txt"
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID="$BASE_COMMIT" SOURCE_REF= bash -c "$check" -- "$recipe"
+	[ "$status" -eq 1 ]
+
+	run env EVIDENCE_ROOT="$REPO" MERGE_OID=invalid SOURCE_REF= bash -c "$check" -- "$recipe"
+	[ "$status" -gt 1 ]
+}
