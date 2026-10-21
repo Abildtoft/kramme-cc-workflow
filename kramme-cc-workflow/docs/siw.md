@@ -102,11 +102,11 @@ Discovery and audits move specifications toward `planning-ready`. `issue-define`
 
 - `--product` adds the Product dimension: target users, problem/solution fit, user states, critical moments, product scope, success criteria, prioritization, and strategy alignment. Use it when the question is also whether the specification proposes the right product for the right users. Product findings (`PROD-NNN`) share the report but are never auto-fixed; resolve them with `/kramme:siw:resolve-audit`.
 - `--inline` returns a read-only report.
-- `--apply` delegates mechanical fixes to the canonical safe-fix procedure.
+- `--apply` auto-fixes mechanical findings after the audit; `--apply <report>` fixes an existing report without re-auditing. `--threshold 60-100` and `--allow-dirty` modify either form. `--dry-run` requires `--apply <report>` and previews fixes without changing files; audit-first dry runs are rejected before auditing. Use `--inline` without `--apply` for a read-only audit.
 - `--team` performs cross-validated multi-agent analysis when the runtime supports it.
 - `--auto` selects the documented non-interactive behavior but does not bypass safety gates.
 
-Use `/kramme:siw:apply-spec-audit-fixes` for deterministic report findings such as broken cross-references, terminology inconsistencies, numbering mistakes, formatting problems, and wording whose specific replacement already exists in the spec.
+Use `/kramme:siw:spec-audit --apply <report>` for deterministic report findings such as broken cross-references, terminology inconsistencies, numbering mistakes, formatting problems, and wording whose specific replacement already exists in the spec.
 
 Use `/kramme:siw:resolve-audit` for findings requiring a choice. It presents an executive summary, alternatives, and a recommendation before creating the selected local SIW issue. Explicitly supplied legacy implementation-audit reports remain readable for migration recovery, but SIW no longer produces new implementation-audit reports.
 
@@ -172,8 +172,7 @@ An explicitly abandoned preparation run may skip transfer and use `/kramme:workf
 | --- | --- | --- |
 | `/kramme:discovery:interview --siw` | `[topic \| spec paths \| siw] [--apply] [--decision-tree]` | Discover or strengthen requirements |
 | `/kramme:siw:init` | `[spec paths \| folder \| discover] [--auto]` | Create the local preparation container |
-| `/kramme:siw:spec-audit` | `[spec paths \| siw] [--product] [--auto] [--apply] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality, plus product quality with `--product` |
-| `/kramme:siw:apply-spec-audit-fixes` | `[report] [--auto] [--dry-run] [--threshold 60-100] [--allow-dirty]` | Apply deterministic audit fixes |
+| `/kramme:siw:spec-audit` | `[spec paths \| report \| siw] [--product] [--auto] [--apply [--dry-run] [--threshold 60-100] [--allow-dirty]] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality, plus product quality with `--product` |
 | `/kramme:siw:resolve-audit` | `[report] [finding IDs] [--auto]` | Resolve decision findings into local issues |
 | `/kramme:siw:issue-define` | `[issue ID \| description and context]` | Define or refine one local issue |
 | `/kramme:siw:generate-phases` | `[spec path] [--auto]` | Generate the initial phased issue set |

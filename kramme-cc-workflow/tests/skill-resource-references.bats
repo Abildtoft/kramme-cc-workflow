@@ -416,7 +416,6 @@ write_plugin_fixture() {
 	local dimensions="$skills/kramme:siw:spec-audit/references/dimension-instructions.md"
 	local team_mode="$skills/kramme:siw:spec-audit/references/team-mode.md"
 	local apply_now="$skills/kramme:siw:spec-audit/references/apply-now.md"
-	local auto_fix_skill="$skills/kramme:siw:apply-spec-audit-fixes/SKILL.md"
 	local work_contexts="$skills/kramme:siw:init/references/work-context-profiles.md"
 
 	[ ! -e "$skills/kramme:siw:product-audit" ]
@@ -426,7 +425,7 @@ write_plugin_fixture() {
 	grep -qF "whether implementation can proceed correctly without guessing" "$spec_skill"
 	grep -qF 'read `references/product-mode.md` before Step 2' "$spec_skill"
 	grep -qF 'Product findings use `PROD-NNN` IDs in the same report' "$product_mode"
-	grep -qF 'are never auto-applied by `--apply` or `/kramme:siw:apply-spec-audit-fixes`' "$product_mode"
+	grep -qF 'are never auto-applied by `--apply`, including `--apply <report>` runs' "$product_mode"
 	grep -qF 'Read `references/product-element-extraction.md`' "$product_mode"
 	grep -qF 'Read `references/product-reviewer-prompt.md`' "$product_mode"
 	grep -qF 'Do not merge a `PROD-NNN` finding into a `SPEC-NNN` finding' "$product_mode"
@@ -439,12 +438,12 @@ write_plugin_fixture() {
 	grep -qF 'Copy every `PROD-NNN` finding from the previous active run into the new report unchanged' "$product_mode"
 	grep -qF 'Keep the carried findings in severity totals and the overall assessment' "$product_mode"
 	grep -qF 'If `PRODUCT_MODE=false` and the previous report'"'"'s active run contains `PROD-NNN` findings, read `references/product-mode.md` and follow P7' "$spec_skill"
-	grep -qF 'add --product if the report contains PROD-NNN findings' "$skills/kramme:siw:apply-spec-audit-fixes/assets/auto-fix-summary.md"
-	grep -qF 'no open `PROD-NNN` finding is Critical or Major' "$skills/kramme:siw:apply-spec-audit-fixes/references/report-update.md"
+	grep -qF 'add --product if the report contains PROD-NNN findings' "$skills/kramme:siw:spec-audit/assets/auto-fix-summary.md"
+	grep -qF 'no open `PROD-NNN` finding is Critical or Major' "$skills/kramme:siw:spec-audit/references/apply-report-update.md"
 	# The retired report name stays excluded from spec detection and cleanable.
 	grep -qF '`AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.' "$skills/kramme:siw:spec-audit/references/spec-resolution.md"
 	grep -qF '"id": "siw-product-audit-legacy"' "$skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
-	grep -qF 'Never extract, score, or edit `### PROD-NNN:` findings.' "$auto_fix_skill"
+	grep -qF 'Never extract, score, or edit `### PROD-NNN:` findings.' "$apply_now"
 	grep -qF "## Dimension: Rationale Documentation" "$dimensions"
 	grep -qF "those questions belong to the opt-in Product dimension (\`--product\`)" "$dimensions"
 	grep -qF "Do not judge whether the product is worth building" "$dimensions"
@@ -458,6 +457,26 @@ write_plugin_fixture() {
 	grep -qF "| Internal Tool | Internal Tool | Varies | Actionability, Clarity | None |" "$work_contexts"
 	grep -qF "| Tech Debt / Refactor | Refactor | Maintenance | Technical Design, Testability | Scope |" "$work_contexts"
 	! grep -qF "## Dimension: Value Proposition" "$dimensions"
+}
+
+@test "SIW spec audit owns the canonical apply procedure" {
+	local skills="$BATS_TEST_DIRNAME/../skills"
+	local spec_skill="$skills/kramme:siw:spec-audit/SKILL.md"
+	local apply_now="$skills/kramme:siw:spec-audit/references/apply-now.md"
+	local spec_resolution="$skills/kramme:siw:spec-audit/references/spec-resolution.md"
+	local hint
+
+	[ ! -e "$skills/kramme:siw:apply-spec-audit-fixes" ]
+	! grep -rqF "siw:apply-spec-audit-fixes" "$skills" || false
+	hint="$(sed -n '/^argument-hint:/p' "$spec_skill")"
+	[[ "$hint" == *"audit-report-path"* ]]
+	[[ "$hint" == *"--threshold 60-100"* ]]
+	[[ "$hint" == *"--allow-dirty"* ]]
+	grep -qF '## Apply Mode' "$spec_skill"
+	grep -qF '## Apply-Only Entry' "$apply_now"
+	grep -qF 'Critical findings in Completeness, Scope, or Rationale Documentation dimensions always require decisions; treat the legacy `Value Proposition` label in older reports as Rationale Documentation.' "$apply_now"
+	grep -qF 'Treat `**Status:** [Applied directly]` as a legacy read marker only.' "$apply_now"
+	grep -qF 'is a spec audit report, not a specification' "$spec_resolution"
 }
 
 @test "parent-relative runtime resource references cannot escape a skill" {

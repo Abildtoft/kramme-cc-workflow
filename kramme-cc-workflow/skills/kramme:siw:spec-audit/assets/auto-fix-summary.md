@@ -6,8 +6,8 @@ Results: Fixed: {N} (avg confidence: {avg_score}) Failed verification: {N} (recl
 
 {If CONFIDENCE_THRESHOLD != 80:} Note: Using custom threshold {CONFIDENCE_THRESHOLD}. Default is 80.
 
-- To see what default would fix: /kramme:siw:apply-spec-audit-fixes --dry-run
-- To restore conservative mode: /kramme:siw:apply-spec-audit-fixes --threshold 90
+- To see what default would fix: /kramme:siw:spec-audit --apply {report_path} --dry-run
+- To restore conservative mode: /kramme:siw:spec-audit --apply {report_path} --threshold 90
 
 {If requires-decision findings or open PROD findings remain:} Next steps:
 

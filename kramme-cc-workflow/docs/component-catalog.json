@@ -383,11 +383,6 @@
       "path": "kramme-cc-workflow/skills/kramme:setup/SKILL.md"
     },
     {
-      "name": "kramme:siw:apply-spec-audit-fixes",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:siw:apply-spec-audit-fixes/SKILL.md"
-    },
-    {
       "name": "kramme:siw:generate-phases",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md"

@@ -17,7 +17,7 @@ Next Steps:
 - Fix critical findings in the spec before starting implementation {If preserved critical caps exist:}
 - Resolve preserved-critical findings reported as Minor with `Severity Note` before starting implementation or running auto-fix
 - Address major findings to reduce implementation risk
-- Auto-fix mechanical findings (cross-refs, terminology, formatting): /kramme:siw:apply-spec-audit-fixes
+- Auto-fix mechanical findings (cross-refs, terminology, formatting): /kramme:siw:spec-audit --apply {report_path}
 - Resolve remaining findings, including PROD-NNN product findings that are never auto-fixed, with executive summaries and issue creation: /kramme:siw:resolve-audit {report_path}
 - Or let the model choose each resolution automatically: /kramme:siw:resolve-audit {report_path} --auto
 - Re-run after spec revisions to verify quality: /kramme:siw:spec-audit {add --product if product mode ran}

@@ -511,18 +511,18 @@ EOF
   ! grep -qF '"name": "copy-review-ui-relevant-file-types"' "$registry"
 }
 
-@test "spec-audit fix-confidence rubric is one shared resource for both SIW audit skills" {
+@test "spec-audit fix-confidence rubric is one shared resource for audit and apply mode" {
   local skills="$BATS_TEST_DIRNAME/../skills"
-  local auto_fix_skill="$skills/kramme:siw:apply-spec-audit-fixes/SKILL.md"
+  local apply_now="$skills/kramme:siw:spec-audit/references/apply-now.md"
   local shared_rubric="$BATS_TEST_DIRNAME/../shared/siw/references/fix-confidence-rubric.md"
   local shared_reference='${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md'
 
   test -f "$shared_rubric"
-  [ ! -e "$skills/kramme:siw:apply-spec-audit-fixes/references/classification-rubric.md" ]
+  [ ! -e "$skills/kramme:siw:apply-spec-audit-fixes" ]
   [ ! -e "$skills/kramme:siw:spec-audit/references/fix-confidence-rubric.md" ]
-  grep -qF "$shared_reference" "$auto_fix_skill"
+  grep -qF "$shared_reference" "$apply_now"
   grep -qF "$shared_reference" "$skills/kramme:siw:spec-audit/SKILL.md"
-  grep -qF 'Critical findings in Completeness, Scope, or Rationale Documentation dimensions always require decisions; treat the legacy `Value Proposition` label in older reports as Rationale Documentation.' "$auto_fix_skill"
+  grep -qF 'Critical findings in Completeness, Scope, or Rationale Documentation dimensions always require decisions; treat the legacy `Value Proposition` label in older reports as Rationale Documentation.' "$apply_now"
   grep -qF 'Severity is Critical AND dimension is Completeness, Scope, or Rationale Documentation (`Value Proposition` in legacy reports)' "$shared_rubric"
 }
 

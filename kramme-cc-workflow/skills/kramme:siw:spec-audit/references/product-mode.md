@@ -2,7 +2,7 @@
 
 Use this when `PRODUCT_MODE=true`, and read P7 even when it is false if the report being replaced holds `PROD-NNN` findings. Product mode adds the **Product** dimension to the audit: product judgment about whether the specification proposes the right product for the right users. The eight readiness dimensions still run unchanged; Rationale Documentation keeps checking only whether product rationale is documented, while the Product dimension judges whether that rationale is right.
 
-Product findings use `PROD-NNN` IDs in the same report as `SPEC-NNN` findings. They are judgment calls: they carry no `Fix Confidence`, are never auto-applied by `--apply` or `/kramme:siw:apply-spec-audit-fixes`, and route to `/kramme:siw:resolve-audit` or SIW issue creation.
+Product findings use `PROD-NNN` IDs in the same report as `SPEC-NNN` findings. They are judgment calls: they carry no `Fix Confidence`, are never auto-applied by `--apply`, including `--apply <report>` runs, and route to `/kramme:siw:resolve-audit` or SIW issue creation.
 
 `SKILL.md` names the step where each section below runs.
 
