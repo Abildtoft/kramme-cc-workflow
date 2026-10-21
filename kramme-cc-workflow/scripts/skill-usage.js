@@ -5,6 +5,12 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const {
+  PLATFORM_CODEX,
+  detectPlatform,
+  openCodexRollout,
+  stripConductorInstructions,
+} = require("./lib/skill-usage-hosts");
 
 const STATE_DIR = path.join(
   process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state"),
@@ -21,6 +27,9 @@ const PLUGIN_SKILL_PREFIX = "kramme-cc-workflow:";
 const SKILLS_DIR = path.join(__dirname, "..", "skills");
 const SLASH_SKILL_PATTERN =
   /(?:^|\s|>)\/((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)/g;
+// Codex users invoke skills as `$kramme:...`; the slash form also works there.
+const CODEX_SKILL_PATTERN =
+  /(?:^|\s|>)[$/]((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)/g;
 const DIRECT_SKILL_PATTERN =
   /^\/?((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)(?:\s|$)/;
 /** @type {Map<string, string> | null} */
@@ -268,6 +277,7 @@ function reportIoFailure(operation, error, file) {
 function buildUsageRecords(input) {
   const value = asRecord(input);
   const recordedAt = new Date().toISOString();
+  const platform = detectPlatform(value, process.env);
   /** @type {Omit<UsageRecord, "skill" | "kind" | "source">} */
   const base = {
     schemaVersion: 1,
@@ -279,7 +289,7 @@ function buildUsageRecords(input) {
         value.conversationId,
     ),
     cwd: stringValue(value.cwd ?? value.workspace ?? value.project_dir),
-    platform: stringValue(value.platform ?? process.env.KRAMME_AGENT_PLATFORM),
+    platform,
     event: stringValue(
       value.hook_event_name ?? value.hookEventName ?? value.event ?? value.type,
     ),
@@ -287,7 +297,7 @@ function buildUsageRecords(input) {
 
   /** @type {UsageRecord[]} */
   const records = [];
-  for (const skill of extractPromptSkills(value)) {
+  for (const skill of extractPromptSkills(value, platform)) {
     records.push({
       ...base,
       skill,
@@ -308,8 +318,8 @@ function buildUsageRecords(input) {
   return dedupeRecords(records);
 }
 
-/** @param {Record<string, unknown>} input @returns {string[]} */
-function extractPromptSkills(input) {
+/** @param {Record<string, unknown>} input @param {string} platform @returns {string[]} */
+function extractPromptSkills(input, platform) {
   const payload = asRecord(input.payload);
   const messages = Array.isArray(input.messages)
     ? input.messages[input.messages.length - 1]
@@ -328,10 +338,13 @@ function extractPromptSkills(input) {
     payload.message,
     payloadMessages,
   ];
+  const texts = roots.flatMap((root) => collectStrings(root));
   return unique(
-    roots
-      .flatMap((root) => collectStrings(root))
-      .flatMap((text) => extractSlashSkillNames(text)),
+    platform === PLATFORM_CODEX
+      ? texts.flatMap((text) =>
+          extractCodexSkillNames(stripConductorInstructions(text)),
+        )
+      : texts.flatMap((text) => extractSlashSkillNames(text)),
   );
 }
 
@@ -413,6 +426,17 @@ function extractSlashSkillNames(text) {
   /** @type {string[]} */
   const names = [];
   for (const match of text.matchAll(SLASH_SKILL_PATTERN)) {
+    const name = canonicalSkillName(match[1]);
+    if (name) names.push(name);
+  }
+  return names;
+}
+
+/** @param {string} text @returns {string[]} */
+function extractCodexSkillNames(text) {
+  /** @type {string[]} */
+  const names = [];
+  for (const match of text.matchAll(CODEX_SKILL_PATTERN)) {
     const name = canonicalSkillName(match[1]);
     if (name) names.push(name);
   }
