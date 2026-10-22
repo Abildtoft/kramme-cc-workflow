@@ -41,6 +41,7 @@ Use this when `DIRECT_UPDATE=true`, and for check mode's confirmed update from `
    PR_TITLE_FILE="{pr-title-file}"
    PR_BODY_FILE="{pr-body-file}"
    PR_BACKUP="{pr-backup}"
+   PR_NUMBER="{pr-number}"
    if [ ! -d "$UPDATE_DIR" ] || [ -L "$UPDATE_DIR" ]; then
      echo "Error: PR update storage changed or became indirect; no update was made." >&2
      exit 1
@@ -57,18 +58,33 @@ Use this when `DIRECT_UPDATE=true`, and for check mode's confirmed update from `
    trap 'exit 129' HUP
    trap 'exit 130' INT
    trap 'exit 143' TERM
-   if ! env GH_PROMPT_DISABLED=1 gh pr view --json title,body > "$PR_BACKUP"; then
+   case "$PR_NUMBER" in
+     '' | *[!0-9]* | 0*)
+       echo "Error: PR number must be a positive integer without a leading zero; no update was made." >&2
+       exit 1
+       ;;
+   esac
+   if ! env GH_PROMPT_DISABLED=1 gh pr view "$PR_NUMBER" --json number,url,title,body > "$PR_BACKUP"; then
      rm -f -- "$PR_BACKUP"
      echo "Error: Could not back up the existing PR; no update was made." >&2
      exit 1
    fi
-   env GH_PROMPT_DISABLED=1 gh pr edit \
-     --title "$(cat "$PR_TITLE_FILE")" \
-     --body-file "$PR_BODY_FILE"
+   PR_HOST=$(jq -er '.url | capture("^https://(?<host>[A-Za-z0-9][A-Za-z0-9.-]*)/").host' "$PR_BACKUP") || {
+     echo "Error: Could not determine the backed-up PR hostname; no update was made." >&2
+     exit 1
+   }
+   env GH_PROMPT_DISABLED=1 gh api --method PATCH "repos/{owner}/{repo}/pulls/$PR_NUMBER" \
+     --hostname "$PR_HOST" \
+     -f title="$(cat "$PR_TITLE_FILE")" \
+     -F body=@"$PR_BODY_FILE" \
+     --silent
    ```
 
-   - `"$(cat ...)"` substitutes the literal file contents into one argv element; `gh` does not re-evaluate the argument as shell.
-   - `--body-file` reads the body straight from disk; nothing in it flows through the shell.
+   - `-f title="$(cat ...)"` passes the title as one raw-string argv element; `gh` does not re-evaluate it as shell.
+   - `-F body=@"$PR_BODY_FILE"` makes `gh` read the body straight from disk as a string; nothing in it flows through the shell or undergoes type conversion.
+   - `--silent` keeps the updated PR JSON, including its body, out of the transcript.
+
+   Use REST because the PR edit subcommand also loads Projects (classic) data and can fail where that API is deprecated. Keep `{owner}` and `{repo}` literal so `gh api` resolves them from the current repository. Always pass `--hostname` derived from the backed-up PR URL: repository placeholders do not select the API host, and the CLI's default host or `GH_HOST` may point elsewhere.
 
 ### Step 3 for a check-mode confirmed update
 
@@ -101,6 +117,12 @@ trap cleanup_pr_payload EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+case "$PR_NUMBER" in
+  '' | *[!0-9]* | 0*)
+    echo "Error: PR number must be a positive integer without a leading zero; no update was made." >&2
+    exit 1
+    ;;
+esac
 
 if ! env GH_PROMPT_DISABLED=1 gh pr view "$PR_NUMBER" \
   --json number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state \
@@ -142,9 +164,15 @@ if [ "$LATEST_PR_SNAPSHOT_FINGERPRINT" != "$PR_SNAPSHOT_FINGERPRINT" ] \
   exit 1
 fi
 
-env GH_PROMPT_DISABLED=1 gh pr edit "$PR_NUMBER" \
-  --title "$(cat "$PR_TITLE_FILE")" \
-  --body-file "$PR_BODY_FILE"
+PR_HOST=$(jq -er '.url | capture("^https://(?<host>[A-Za-z0-9][A-Za-z0-9.-]*)/").host' "$PR_BACKUP") || {
+  echo "Error: Could not determine the backed-up PR hostname; no update was made." >&2
+  exit 1
+}
+env GH_PROMPT_DISABLED=1 gh api --method PATCH "repos/{owner}/{repo}/pulls/$PR_NUMBER" \
+  --hostname "$PR_HOST" \
+  -f title="$(cat "$PR_TITLE_FILE")" \
+  -F body=@"$PR_BODY_FILE" \
+  --silent
 ```
 
 **After updating**, confirm success and include the private backup path:

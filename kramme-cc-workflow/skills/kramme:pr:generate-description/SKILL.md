@@ -81,7 +81,7 @@ Read the guideline keyword glossary from `references/guideline-keywords.md`.
    gh pr view --json number,url
    ```
 
-   **If a PR exists**, set `DIRECT_UPDATE=true` and capture the PR URL for Phase 4.
+   **If a PR exists**, set `DIRECT_UPDATE=true` and capture its number as `{pr-number}` and its URL for Phase 4.
 
    **If no PR exists**, continue in generated-output mode:
    - Keep `NON_INTERACTIVE=true` if auto mode is enabled
@@ -349,7 +349,7 @@ Read the platform-specific notes from `references/platform-notes.md`. Covers mag
 
 ## Notes
 
-- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh pr edit`. Check mode updates a PR only after a direct user invocation without `--no-update` answers `y` to its prompt, and then only the exact PR it checked. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
+- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh api --method PATCH repos/{owner}/{repo}/pulls/<number> --hostname <pr-host>`, using the hostname from the backed-up PR URL. Check mode updates a PR only after a direct user invocation without `--no-update` answers `y` to its prompt, and then only the exact PR it checked. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
 - **NOTE**: After generation, review the description and adjust as needed before using it
 - **NOTE**: This skill is self-contained. If a downstream installation needs custom PR-title policy, adapt this skill locally instead of depending on repo-root instruction files.
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context

@@ -80,7 +80,7 @@ git commit -m "..."
 gh stack submit --auto # pushes all branches, opens chained draft PRs, links the stack
 ```
 
-`gh stack submit --auto` derives a single-commit PR's title and description from that commit. For a multi-commit branch, it humanizes the branch name for the title but supplies no commit-derived description; a repository PR template may still populate the body. Treat authoring every layer's real title and description as required follow-up: use `gh pr edit` or run `kramme:pr:generate-description` for each PR. As parents merge, GitHub re-targets the remaining PRs automatically; run `gh stack sync` to cascade-rebase and update local branches.
+`gh stack submit --auto` derives a single-commit PR's title and description from that commit. For a multi-commit branch, it humanizes the branch name for the title but supplies no commit-derived description; a repository PR template may still populate the body. Treat authoring every layer's real title and description as required follow-up: use `gh api --method PATCH repos/{owner}/{repo}/pulls/<number> --hostname <pr-host>`, deriving `<pr-host>` from that PR's URL and stopping if it cannot be determined, or run `kramme:pr:generate-description` for each PR. As parents merge, GitHub re-targets the remaining PRs automatically; run `gh stack sync` to cascade-rebase and update local branches.
 
 Fallback when `gh stack` is unavailable: chain worktrees manually, each branch rooted on the previous:
 
