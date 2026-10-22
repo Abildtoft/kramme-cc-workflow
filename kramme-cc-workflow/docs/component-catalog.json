@@ -238,11 +238,6 @@
       "path": "kramme-cc-workflow/skills/kramme:linear:select-next/SKILL.md"
     },
     {
-      "name": "kramme:nx:setup-portless",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:nx:setup-portless/SKILL.md"
-    },
-    {
       "name": "kramme:pr:adversarial-review",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:pr:adversarial-review/SKILL.md"

@@ -600,13 +600,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 Migration: `/kramme:session:context-setup` has been removed. `/kramme:code:work-from-plan`, `/kramme:code:plan-to-pr`, and `/kramme:linear:issue-implement` retain a shared preparation checklist for relevant source, tests, implementation patterns, and types, with focused context loading. `kramme:code:forward-progress` covers context recovery while preserving valid work. Ask directly for rules-file updates when needed; the separate setup ritual, markers, and mandatory repair gate are retired.
 
-#### Nx
-
-Nx workspace tooling and configuration.
-
-| Skill | Invocation | Arguments | Description |
-| --- | --- | --- | --- |
-| `/kramme:nx:setup-portless` | User | — | Set up portless in an Nx workspace with dev:local/dev:full targets. Use when adding portless to an Nx project or wiring up Nx targets for local HTTPS development. |
+Migration: `/kramme:nx:setup-portless` has been removed together with the `nx` skill domain. Ask directly for portless setup or Nx `dev:local`/`dev:full` target wiring; no dedicated replacement preserves its target templates or certificate-trust steps.
 
 ### Background Skills
 
