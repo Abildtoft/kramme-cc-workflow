@@ -2,6 +2,59 @@
 
 load 'test_helper/common'
 
+write_metadata_gh_stub() {
+	write_file "$1" <<'PY'
+#!/usr/bin/env python3
+import json
+import os
+from pathlib import Path
+import sys
+
+args = sys.argv[1:]
+with Path(os.environ["GH_CALL_LOG"]).open("a") as log:
+    log.write(json.dumps(args) + "\n")
+assert os.environ.get("GH_PROMPT_DISABLED") == "1"
+failure = os.environ.get("TEST_FAILURE", "")
+if args[:2] == ["pr", "view"]:
+    assert args[2:4] == ["42", "--json"]
+    assert args[4:] in [
+        ["number,url,title,body"],
+        ["number,url,title,body,baseRefName,headRefName,baseRefOid,headRefOid,state"],
+    ]
+    if failure == "backup":
+        sys.exit(1)
+    print(os.environ["PR_JSON_DRIFT" if failure == "snapshot" else "PR_JSON_BASE"])
+elif args[:1] == ["api"]:
+    body_field = args[args.index("-F") + 1]
+    assert body_field.startswith("body=@")
+    body = Path(body_field[len("body=@"):]).read_text()
+    with Path(os.environ["EDIT_LOG"]).open("a") as log:
+        log.write(json.dumps({"argv": args, "body": body}) + "\n")
+    if failure == "update":
+        sys.exit("simulated PATCH failure")
+else:
+    sys.exit("unexpected gh invocation: " + repr(args))
+PY
+	chmod +x "$1"
+}
+
+assert_metadata_patch() {
+	python3 - "$1" "$2" "$3" "${4-example.test}" <<'PY'
+import json
+from pathlib import Path
+import sys
+
+requests = [json.loads(line) for line in Path(sys.argv[1]).read_text().splitlines()]
+assert len(requests) == 1, requests
+assert requests[0]["argv"] == [
+    "api", "--method", "PATCH", "repos/{owner}/{repo}/pulls/42",
+    "--hostname", sys.argv[4],
+    "-f", "title=fix: update description", "-F", "body=@" + sys.argv[2], "--silent",
+], requests[0]
+assert requests[0]["body"] == Path(sys.argv[3]).read_text(), requests[0]
+PY
+}
+
 @test "generate-description prose guidance is covered by contracts" {
 	run bash -c '
 	    set -e
@@ -45,7 +98,7 @@ load 'test_helper/common'
     grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$direct"
     grep -qF "Capture the single printed line as agent-tracked \`{update-dir}\`" "$direct"
     grep -qF "UPDATE_DIR=\"{update-dir}\"" "$direct"
-    grep -qF "gh pr view --json title,body > \"\$PR_BACKUP\"" "$direct"
+    grep -qF "gh pr view \"\$PR_NUMBER\" --json number,url,title,body > \"\$PR_BACKUP\"" "$direct"
     grep -qF "Generated PR payload files are missing or indirect" "$direct"
     grep -qF "mandatory title/body JSON backup" "$checklist"
     grep -qF "same shell invocation as validation and cleanup" "$checklist"
@@ -142,7 +195,7 @@ load 'test_helper/common'
     grep -qF "LATEST_BASE_COMMIT\" != \"\$BASE_COMMIT" "$update"
     grep -qF "LATEST_WORKTREE_FINGERPRINT\" != \"\$WORKTREE_FINGERPRINT" "$update"
     grep -qF "Generated PR payload storage is missing or indirect" "$update"
-    grep -qF "gh pr edit \"\$PR_NUMBER\"" "$update"
+    grep -qF "gh api --method PATCH \"repos/{owner}/{repo}/pulls/\$PR_NUMBER\"" "$update"
     if grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$update"; then exit 1; fi
 
     output_only_line=$(grep -nF "**Skip this phase if \`OUTPUT_ONLY=true\`.**" "$check" | cut -d: -f1)
@@ -170,9 +223,9 @@ load 'test_helper/common'
     storage_line=$(grep -nF "UPDATE_DIR=\$(mktemp -d" "$update" | cut -d: -f1)
     payload_line=$(grep -nF "Generated PR payload storage is missing or indirect" "$update" | cut -d: -f1)
     cleanup_line=$(awk -v s="$check_step_line" "NR > s && index(\$0, \"trap cleanup_pr_payload EXIT\") { print NR; exit }" "$update")
-    backup_line=$(grep -nF "if ! env GH_PROMPT_DISABLED=1 gh pr view \"\$PR_NUMBER\"" "$update" | cut -d: -f1)
+    backup_line=$(awk -v s="$check_step_line" "NR > s && index(\$0, \"if ! env GH_PROMPT_DISABLED=1 gh pr view\") { print NR; exit }" "$update")
     snapshot_line=$(grep -nF "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"\$PR_SNAPSHOT_FINGERPRINT" "$update" | cut -d: -f1)
-    edit_line=$(grep -nF "gh pr edit \"\$PR_NUMBER\"" "$update" | cut -d: -f1)
+    edit_line=$(awk -v s="$check_step_line" "NR > s && index(\$0, \"gh api --method PATCH\") { print NR; exit }" "$update")
     [ "$storage_line" -lt "$check_step_line" ]
     [ "$check_step_line" -lt "$payload_line" ]
     [ "$payload_line" -lt "$cleanup_line" ]
@@ -189,6 +242,160 @@ load 'test_helper/common'
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "metadata update guidance uses REST across generation and stack workflows" {
+	local skills="${BATS_TEST_DIRNAME}/../skills"
+	local relative
+	for relative in \
+		kramme:pr:generate-description/references/direct-update.md \
+		kramme:pr:generate-description/SKILL.md \
+		kramme:pr:generate-description/references/verification-checklist.md \
+		kramme:pr:stack/SKILL.md \
+		kramme:pr:stack/references/cli-agent-rules.md \
+		kramme:pr:plan-split/references/strategies.md; do
+		if grep -nF 'gh pr edit' "$skills/$relative"; then
+			false
+		fi
+	done
+	for relative in \
+		kramme:pr:generate-description/references/direct-update.md \
+		kramme:pr:stack/SKILL.md \
+		kramme:pr:stack/references/cli-agent-rules.md \
+		kramme:pr:plan-split/references/strategies.md; do
+		grep -qF 'gh api --method PATCH' "$skills/$relative"
+		grep -qF -- '--hostname' "$skills/$relative"
+	done
+	grep -qF 'capture its number as `{pr-number}`' "$skills/kramme:pr:generate-description/SKILL.md"
+	grep -qF "write the title and body to temporary files with the runtime's file writer" "$skills/kramme:pr:stack/SKILL.md"
+	grep -qF -- '-F body=@<body-file> --silent' "$skills/kramme:pr:stack/SKILL.md"
+}
+
+@test "generation-mode update uses a pinned REST target and fails closed before publication" {
+	local update="${BATS_TEST_DIRNAME}/../skills/kramme:pr:generate-description/references/direct-update.md"
+	local block="$BATS_TEST_TMPDIR/generated-update.sh"
+	local fake_bin="$BATS_TEST_TMPDIR/bin"
+	local update_dir="$BATS_TEST_TMPDIR/update"
+	local title_file="$update_dir/new-title.txt"
+	local body_file="$update_dir/new-body.md"
+	local backup_file="$update_dir/pr-metadata.backup.json"
+	local edit_log="$BATS_TEST_TMPDIR/edits.log"
+	local gh_call_log="$BATS_TEST_TMPDIR/gh-calls.log"
+	local expected_body="$BATS_TEST_TMPDIR/expected-body.md"
+	local pr_json='{"number":42,"url":"https://example.test/pr/42","title":"old","body":""}'
+
+	awk '
+		/^3\. \*\*Back up every field/ { in_step = 1; next }
+		in_step && $0 == "   ```bash" { capture = 1; next }
+		capture && $0 == "   ```" { exit }
+		capture { sub(/^   /, ""); print }
+	' "$update" >"$block"
+	[ -s "$block" ]
+
+	mkdir -p "$update_dir"
+	write_metadata_gh_stub "$fake_bin/gh"
+	export PR_JSON_BASE="$pr_json"
+	export EDIT_LOG="$edit_log"
+	export GH_CALL_LOG="$gh_call_log"
+	python3 - "$block" "$update_dir" "$title_file" "$body_file" "$backup_file" <<'PY'
+from pathlib import Path
+import sys
+
+block = Path(sys.argv[1])
+values = {
+    "{update-dir}": sys.argv[2],
+    "{pr-title-file}": sys.argv[3],
+    "{pr-body-file}": sys.argv[4],
+    "{pr-backup}": sys.argv[5],
+    "{pr-number}": "${TEST_PR_NUMBER-42}",
+}
+text = block.read_text()
+for placeholder, value in values.items():
+    text = text.replace(placeholder, value)
+block.write_text(text)
+PY
+
+	run_publication() {
+		local failure="$1"
+		printf '%s' 'fix: update description' >"$title_file"
+		cp "$expected_body" "$body_file"
+		rm -f "$backup_file"
+		: >"$edit_log"
+		: >"$gh_call_log"
+		case "$failure" in
+			missing-title) rm -f "$title_file" ;;
+			missing-body) rm -f "$body_file" ;;
+		esac
+		run env PATH="$fake_bin:$PATH" GH_HOST=wrong-host.test TEST_FAILURE="$failure" TEST_PR_NUMBER="${2-42}" bash "$block"
+	}
+
+	write_file "$expected_body" <<'EOF'
+# Updated body
+
+Keep `code`, $(printf BODY_MUST_STAY_LITERAL), "quotes", and café.
+
+EOF
+	run_publication ""
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+	[ -z "$output" ]
+	assert_metadata_patch "$edit_log" "$body_file" "$expected_body"
+	[ "$(wc -l <"$gh_call_log")" -eq 2 ]
+	[ "$(cat "$backup_file")" = "$pr_json" ]
+	[ ! -e "$title_file" ]
+	[ ! -e "$body_file" ]
+
+	local failure
+	for failure in backup missing-title missing-body; do
+		run_publication "$failure"
+		[ "$status" -ne 0 ] || { echo "unexpected success for $failure"; false; }
+		[[ "$output" == *"no update was made"* ]]
+		[ ! -s "$edit_log" ]
+		[ ! -e "$backup_file" ]
+		if [ "$failure" = backup ]; then
+			[ ! -e "$title_file" ]
+			[ ! -e "$body_file" ]
+		else
+			[ ! -s "$gh_call_log" ]
+		fi
+	done
+
+	local number
+	for number in '' invalid -1 0 01 042; do
+		run_publication "" "$number"
+		[ "$status" -ne 0 ] || { echo "unexpected success for PR number '$number'"; false; }
+		[[ "$output" == *"no update was made"* ]]
+		[ ! -s "$gh_call_log" ]
+		[ ! -e "$title_file" ]
+		[ ! -e "$body_file" ]
+	done
+
+	run_publication update
+	[ "$status" -ne 0 ]
+	assert_metadata_patch "$edit_log" "$body_file" "$expected_body"
+	[ "$(cat "$backup_file")" = "$pr_json" ]
+	[ ! -e "$title_file" ]
+	[ ! -e "$body_file" ]
+
+	local host
+	for host in github.com github.enterprise.test; do
+		export PR_JSON_BASE="${pr_json/example.test/$host}"
+		run_publication ""
+		[ "$status" -eq 0 ] || { echo "$output"; false; }
+		assert_metadata_patch "$edit_log" "$body_file" "$expected_body" "$host"
+	done
+
+	local url
+	for url in '' 'http://github.enterprise.test/pr/42' 'https:///pr/42'; do
+		export PR_JSON_BASE
+		PR_JSON_BASE=$(printf '%s' "$pr_json" | jq --arg url "$url" '.url = $url')
+		run_publication ""
+		[ "$status" -ne 0 ] || { echo "unexpected success for URL '$url'"; false; }
+		[[ "$output" == *"Could not determine the backed-up PR hostname"* ]]
+		[ ! -s "$edit_log" ]
+		[ -s "$backup_file" ]
+		[ ! -e "$title_file" ]
+		[ ! -e "$body_file" ]
+	done
+}
+
 @test "check-mode confirmed update publication fails closed for every captured drift" {
 	local update="${BATS_TEST_DIRNAME}/../skills/kramme:pr:generate-description/references/direct-update.md"
 	local block="$BATS_TEST_TMPDIR/confirmed-update.sh"
@@ -199,6 +406,8 @@ load 'test_helper/common'
 	local body_file="$update_dir/new-body.md"
 	local backup_file="$update_dir/pr-metadata.backup.json"
 	local edit_log="$BATS_TEST_TMPDIR/edits.log"
+	local gh_call_log="$BATS_TEST_TMPDIR/gh-calls.log"
+	local expected_body="$BATS_TEST_TMPDIR/expected-body.md"
 	local current_head="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	local base_commit="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	local base_ref="refs/remotes/origin/main"
@@ -220,6 +429,7 @@ load 'test_helper/common'
 	export TEST_BASE_REF="$base_ref"
 	export TEST_BRANCH="feature"
 	export EDIT_LOG="$edit_log"
+	export GH_CALL_LOG="$gh_call_log"
 	export WORKTREE_MANIFEST="tree-stable"
 	pr_json='{"number":42,"url":"https://example.test/pr/42","title":"old","body":"old body","baseRefName":"main","headRefName":"feature","baseRefOid":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","headRefOid":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","state":"OPEN"}'
 	export PR_JSON_BASE="$pr_json"
@@ -263,28 +473,7 @@ branch)
 esac
 EOF
 
-	write_file "$fake_bin/gh" <<'EOF'
-#!/usr/bin/env bash
-set -eu
-case "${1:-} ${2:-}" in
-"pr view")
-  if [ "${TEST_FAILURE:-}" = "backup" ]; then
-    exit 1
-  elif [ "${TEST_FAILURE:-}" = "snapshot" ]; then
-    printf '%s\n' "$PR_JSON_DRIFT"
-  else
-    printf '%s\n' "$PR_JSON_BASE"
-  fi
-  ;;
-"pr edit")
-  printf 'edit\n' >>"$EDIT_LOG"
-  ;;
-*)
-  printf 'unexpected gh invocation: %s\n' "$*" >&2
-  exit 2
-  ;;
-esac
-EOF
+	write_metadata_gh_stub "$fake_bin/gh"
 
 	write_file "$plugin_root/scripts/review-tree-fingerprint.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -310,13 +499,13 @@ values = {
     "{pr-title-file}": sys.argv[3],
     "{pr-body-file}": sys.argv[4],
     "{pr-backup}": sys.argv[5],
-    "{pr-number}": "42",
+    "{pr-number}": "${TEST_PR_NUMBER-42}",
     "{pr-state}": "OPEN",
     "{current-branch}": "feature",
     "{current-head}": sys.argv[6],
     "{base-ref}": sys.argv[7],
     "{base-commit}": sys.argv[8],
-    "{pr-snapshot-fingerprint}": sys.argv[9],
+    "{pr-snapshot-fingerprint}": "${TEST_PR_SNAPSHOT_FINGERPRINT-" + sys.argv[9] + "}",
     "{worktree-fingerprint}": sys.argv[10],
 }
 text = block.read_text()
@@ -328,24 +517,87 @@ PY
 	run_publication() {
 		local failure="$1"
 		printf '%s' 'fix: update description' >"$title_file"
-		printf '%s\n' 'Updated body' >"$body_file"
+		cp "$expected_body" "$body_file"
+		rm -f "$backup_file"
 		: >"$edit_log"
+		: >"$gh_call_log"
+		case "$failure" in
+			missing-title) rm -f "$title_file" ;;
+			missing-body) rm -f "$body_file" ;;
+		esac
 		run env \
 			PATH="$fake_bin:$PATH" \
+			GH_HOST=wrong-host.test \
 			CLAUDE_PLUGIN_ROOT="$plugin_root" \
 			TEST_FAILURE="$failure" \
+			TEST_PR_NUMBER="${2-42}" \
+			TEST_PR_SNAPSHOT_FINGERPRINT="$(printf '%s' "$PR_JSON_BASE" | "$REAL_GIT" hash-object --stdin)" \
 			bash "$block"
 	}
 
+	write_file "$expected_body" <<'EOF'
+# Updated body
+
+Keep `code`, $(printf BODY_MUST_STAY_LITERAL), "quotes", and café.
+
+EOF
 	run_publication ""
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
-	[ "$(wc -l <"$edit_log")" -eq 1 ]
+	[ -z "$output" ]
+	assert_metadata_patch "$edit_log" "$body_file" "$expected_body"
+	[ "$(wc -l <"$gh_call_log")" -eq 2 ]
+	[ "$(cat "$backup_file")" = "$pr_json" ]
+	[ ! -e "$title_file" ]
+	[ ! -e "$body_file" ]
 
 	local failure
-	for failure in backup snapshot head base worktree; do
+	for failure in backup snapshot head base worktree missing-title missing-body; do
 		run_publication "$failure"
-		[ "$status" -ne 0 ]
+		[ "$status" -ne 0 ] || { echo "unexpected success for $failure"; false; }
 		[ ! -s "$edit_log" ]
+		if [ "$failure" = backup ]; then
+			[ ! -e "$backup_file" ]
+			[ ! -e "$title_file" ]
+			[ ! -e "$body_file" ]
+		fi
+	done
+
+	local number
+	for number in '' invalid -1 0 01 042; do
+		run_publication "" "$number"
+		[ "$status" -ne 0 ] || { echo "unexpected success for PR number '$number'"; false; }
+		[[ "$output" == *"no update was made"* ]]
+		[ ! -s "$gh_call_log" ]
+		[ ! -e "$title_file" ]
+		[ ! -e "$body_file" ]
+	done
+
+	run_publication update
+	[ "$status" -ne 0 ]
+	assert_metadata_patch "$edit_log" "$body_file" "$expected_body"
+	[ "$(cat "$backup_file")" = "$pr_json" ]
+	[ ! -e "$title_file" ]
+	[ ! -e "$body_file" ]
+
+	local host
+	for host in github.com github.enterprise.test; do
+		export PR_JSON_BASE="${pr_json/example.test/$host}"
+		run_publication ""
+		[ "$status" -eq 0 ] || { echo "$output"; false; }
+		assert_metadata_patch "$edit_log" "$body_file" "$expected_body" "$host"
+	done
+
+	local url
+	for url in '' 'http://github.enterprise.test/pr/42' 'https:///pr/42'; do
+		export PR_JSON_BASE
+		PR_JSON_BASE=$(printf '%s' "$pr_json" | jq --arg url "$url" '.url = $url')
+		run_publication ""
+		[ "$status" -ne 0 ] || { echo "unexpected success for URL '$url'"; false; }
+		[[ "$output" == *"Could not determine the backed-up PR hostname"* ]]
+		[ ! -s "$edit_log" ]
+		[ -s "$backup_file" ]
+		[ ! -e "$title_file" ]
+		[ ! -e "$body_file" ]
 	done
 }
 

@@ -1186,8 +1186,9 @@
         "LATEST_BASE_COMMIT\" != \"$BASE_COMMIT",
         "LATEST_WORKTREE_FINGERPRINT\" != \"$WORKTREE_FINGERPRINT",
         "Generated PR payload storage is missing or indirect",
-        "gh pr edit \"$PR_NUMBER\"",
-        "--body-file \"$PR_BODY_FILE\""
+        "gh api --method PATCH \"repos/{owner}/{repo}/pulls/$PR_NUMBER\"",
+        "--hostname \"$PR_HOST\"",
+        "-F body=@\"$PR_BODY_FILE\""
       ]
     },
     {
@@ -1221,6 +1222,7 @@
       "contains": [
         "When drafting the Test Plan, apply the Test Plan section in `assets/section-templates.md` and the Test Plans rules in `references/best-practices.md`.",
         "Read `references/direct-update.md` and follow it.",
+        "capture its number as `{pr-number}`",
         "Run the consolidated checklist in `references/verification-checklist.md`.",
         "GitHub PR Template Analysis",
         "Repository PR Template Contract",
@@ -1317,9 +1319,11 @@
         "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
         "Capture the single printed line as agent-tracked `{update-dir}`",
         "UPDATE_DIR=\"{update-dir}\"",
-        "gh pr view --json title,body > \"$PR_BACKUP\"",
+        "gh pr view \"$PR_NUMBER\" --json number,url,title,body > \"$PR_BACKUP\"",
         "Generated PR payload files are missing or indirect",
-        "--body-file \"$PR_BODY_FILE\""
+        "Could not determine the backed-up PR hostname; no update was made.",
+        "--hostname \"$PR_HOST\"",
+        "-F body=@\"$PR_BODY_FILE\""
       ]
     },
     {

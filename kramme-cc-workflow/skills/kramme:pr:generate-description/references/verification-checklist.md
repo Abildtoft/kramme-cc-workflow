@@ -1,6 +1,6 @@
 # Verification Checklist
 
-Run this before presenting copy-paste output, before `gh pr edit`, and before saving to file.
+Run this before presenting copy-paste output, before the REST update, and before saving to file.
 
 ## Title
 
@@ -35,9 +35,9 @@ Run this before presenting copy-paste output, before `gh pr edit`, and before sa
 
 ## Output routing
 
-- [ ] `DIRECT_UPDATE=true`: no blocking missing requirements are present, then completed `references/direct-update.md` in order: captured one validated private `/tmp` directory as agent state, wrote title/body through the runtime's native writer, revalidated regular non-symlink payloads, created the mandatory title/body JSON backup, and ran `gh pr edit` in the same shell invocation as validation and cleanup. The success message always includes the retained metadata-backup path.
+- [ ] `DIRECT_UPDATE=true`: no blocking missing requirements are present, then completed `references/direct-update.md` in order: captured one validated private `/tmp` directory as agent state, wrote title/body through the runtime's native writer, revalidated regular non-symlink payloads, created the mandatory title/body JSON backup, and ran `gh api --method PATCH` with `--hostname` from that backup's PR URL in the same shell invocation as validation and cleanup. The success message always includes the retained metadata-backup path.
 - [ ] `DIRECT_UPDATE=false`: presented copy-paste output; only asked about saving when `NON_INTERACTIVE=false`.
-- [ ] Check-mode confirmed update (checked at publication, after the `y` and step 3 in `references/check-mode.md` Phase C5, not before generation finishes): the user answered `y`, no blocking missing requirement is present, and `references/direct-update.md` ran steps 1 and 2 followed by `Step 3 for a check-mode confirmed update`, which revalidated the PR snapshot, state, branch, head, base, and local work before `gh pr edit`.
+- [ ] Check-mode confirmed update (checked at publication, after the `y` and step 3 in `references/check-mode.md` Phase C5, not before generation finishes): the user answered `y`, no blocking missing requirement is present, and `references/direct-update.md` ran steps 1 and 2 followed by `Step 3 for a check-mode confirmed update`, which revalidated the PR snapshot, state, branch, head, base, and local work before the REST update.
 - [ ] A user-confirmed save used the self-contained local-exclude and symlink-rejection procedure in `SKILL.md`; it did not depend on the private direct-update flow.
 - [ ] Any `MISSING REQUIREMENT`, `UNVERIFIED`, `CONFUSION`, or `NOTICED BUT NOT TOUCHING` markers are emitted in the run output, not embedded in the PR body.
 - [ ] Workflow artifact setup did not modify tracked files solely to ignore generated PR-description files.
