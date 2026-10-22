@@ -12,7 +12,7 @@ Plan and execute framework/library version migrations with phased upgrades, code
 
 This workflow owns its migration-specific official-source discipline. Use `kramme:code:deprecate` after the migration when the old path still needs an explicit announcement / migration / removal plan.
 
-Skip for: patch or minor version bumps with no breaking changes, isolated single-package upgrades, runtime-only changes (e.g. bumping `.nvmrc` without language/API changes), and routine dependency updates — use `kramme:deps:audit` or `kramme:pr:create` directly instead.
+Skip for: patch or minor version bumps with no breaking changes, isolated single-package upgrades, runtime-only changes (e.g. bumping `.nvmrc` without language/API changes), and routine dependency updates — recommend that the user run `/kramme:deps:audit` for an upgrade plan, or `/kramme:pr:create` to ship a bump that is already applied, instead.
 
 Wherever this skill says "ask the user", ask via the structured question tool when available, otherwise in plain prose, and wait for an explicit choice before proceeding.
 
@@ -184,7 +184,7 @@ Create a phased plan:
 **Phase 0: Pre-Migration** (Quick)
 
 - Resolve this repository's workbench with `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh --strict --workbench`, then create migration branch `migrate/{slug}` from its fetched `BASE_REF`. `--workbench` ignores an existing Pull Request target on the entry branch because this migration starts independent work. `{slug}` follows the same derivation rules as the plan filename below. This naming is mandatory: Step 0 resume detection looks for `migrate/*` branches. If the current `HEAD` contains commits absent from `BASE_REF`, stop and ask whether those commits belong in the migration source; do not silently drop them or branch from production `main` when the configured workbench is `development`.
-- Run `/kramme:deps:audit` if available
+- Record a read-only dependency snapshot for the ecosystems being migrated: run the package manager's outdated and vulnerability reports (for npm, `npm outdated --json` and `npm audit --json`) and keep the output with the baseline; a non-zero exit that still prints a report is a result, not a failure. Never run update, install, or `audit fix` commands in this step; when the package manager has no such report, note the gap and continue. Do not invoke `kramme:deps:audit`; if the user wants a prioritized upgrade plan beyond this migration, recommend that they run `/kramme:deps:audit` separately.
 - Capture test baseline (pass/fail counts)
 - Verification: branch exists, baseline captured
 

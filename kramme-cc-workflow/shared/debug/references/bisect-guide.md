@@ -1,6 +1,6 @@
 # Git Bisect Automation Guide
 
-Reference for Step 4: automating regression finding with `git bisect`.
+Reference for the Trace Root Cause step of the shared root-cause procedure: automating regression finding with `git bisect`.
 
 ## Basic Workflow
 

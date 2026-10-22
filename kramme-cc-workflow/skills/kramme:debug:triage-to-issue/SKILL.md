@@ -8,7 +8,7 @@ user-invocable: true
 
 # Triage a Bug to an Implementation-Ready Issue
 
-One command, one ticket. Take a bug description, run a root-cause investigation, design a TDD fix plan, and file a refactor-durable issue an autonomous (AUTO-mode) agent can pick up and implement. The workflow combines `kramme:debug:investigate`, an inline RED-GREEN plan, and the issue conventions from `kramme:linear:issue-define`.
+One command, one ticket. Take a bug description, run a root-cause investigation, design a TDD fix plan, and file a refactor-durable issue an autonomous (AUTO-mode) agent can pick up and implement. The workflow combines the shared root-cause investigation procedure (the same one `kramme:debug:investigate` uses), an inline RED-GREEN plan, and the issue conventions from `kramme:linear:issue-define`.
 
 ## When to use
 
@@ -40,6 +40,9 @@ options:
 ```
 
 3. Otherwise, proceed without asking.
+
+4. If the captured input is a **Linear issue reference** (for example `TEAM-123`), fetch it via Linear MCP `get_issue` (Claude Code `mcp__linear__get_issue`; Codex `get_issue`) and extract its description, steps to reproduce, and expected vs. actual behavior. If Linear MCP is unavailable or the fetch fails, ask the user to paste the issue content and wait before continuing, even with `--yes` or `--auto`; an issue ID alone is not a bug description. Apply this resolution to references supplied in `$ARGUMENTS` or in the answer to the empty-input question.
+5. Store the resolved description as `BUG_DESCRIPTION`; for a free-text description or error message, use the captured text unchanged.
 
 Emit `PLAN: triage to issue — investigate, design TDD plan, draft, gate, file`.
 
@@ -80,18 +83,13 @@ If Linear is the selected sink, resolve required Linear metadata before continui
 
 ### Phase 3 — Investigation
 
-Invoke `kramme:debug:investigate` via the Skill tool with the captured bug description as `$ARGUMENTS`. If Skill invocation is unavailable or blocked (the sub-skill is not model-invocable on this platform), locate and Read the sub-skill's `SKILL.md` from the installed skills directory and follow its steps inline.
+Read `${CLAUDE_PLUGIN_ROOT}/shared/debug/references/root-cause-investigation.md` and follow it with `BUG_DESCRIPTION` from Phase 1. It uses the bisect guide at `${CLAUDE_PLUGIN_ROOT}/shared/debug/references/bisect-guide.md`, the pattern catalog at `${CLAUDE_PLUGIN_ROOT}/shared/debug/references/investigation-patterns.md`, and the log template at `${CLAUDE_PLUGIN_ROOT}/shared/debug/assets/investigation-log.md`. `kramme:debug:investigate` runs the same procedure before its own fix steps; do not invoke that skill or read its files.
 
-**Report-only contract.** Triage instructs investigate to stop after root-cause identification and never apply a fix. Do **not** pass `--auto` to investigate — its AUTO mode implements fixes at High confidence, which would violate this skill's "No fix was applied" invariant.
+**Report-only contract.** The shared procedure ends at the root cause and its confidence rating. Triage never proposes, applies, or verifies a fix, never writes or runs new tests, and never edits code in this session, which keeps this skill's "No fix was applied" invariant.
 
-Answer investigate's intermediate gates with these defaults (always under `--yes`/`--auto`; interactively, you may surface them to the user instead):
+Set `UNATTENDED=true` when `--yes` or `--auto` was passed. Interactively, set `UNATTENDED=false` so the procedure can surface its reproduction, candidate-area, and bisect questions; answering them with the procedure's unattended defaults is still acceptable.
 
-- **Step 2 (Reproduction method):** attempt reproduction from local evidence (existing tests, grep). If no reproduction path is found, do not block on the user — continue with static investigation and mark reproduction unconfirmed.
-- **Step 3 (Multiple candidate areas):** choose **"Investigate all candidates"**.
-- **Step 4 (Git bisect):** run bisect only when a known-good commit and an automated failing command are available without user input; otherwise continue the manual trace.
-- **Step 6 — Propose Fix:** always choose **"Report findings only, do not change code"**. This stops investigate at Step 8 (Summary) and returns the investigation log without applying any fix.
-
-Capture from the returned log:
+Capture from the completed log:
 
 - The `[ROOT CAUSE]` line — the mechanism description.
 - The `Root Cause Analysis` block — `What / Where / Why / When introduced`.
@@ -237,7 +235,7 @@ THINGS I DIDN'T TOUCH
 
 POTENTIAL CONCERNS
 - {confidence rating from Phase 3 if Medium or Low}
-- {entries from investigate's epilogue (NOTICED BUT NOT TOUCHING / POTENTIAL CONCERNS sections), if present}
+- {out-of-scope observations the investigation recorded as NOTICED BUT NOT TOUCHING, if present}
 ```
 
 ---
@@ -255,7 +253,7 @@ Adopt the kramme plugin-wide vocabulary verbatim, one per line, uppercase, no de
 - `CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` — end-of-turn triplet.
 - `RED FLAG` — used in Phase 10 when the durability grep finds matches in prose.
 
-Reuse from `kramme:debug:investigate`:
+Reuse from the shared root-cause procedure:
 
 - `[REPRODUCE]`, `[ISOLATE]`, `[ROOT CAUSE]`, `[VERIFY]` — these markers may appear in the captured investigate output. Keep them in working notes but do **not** include `:\d+` content from these markers in the issue body.
 
@@ -263,6 +261,6 @@ Reuse from `kramme:debug:investigate`:
 
 ## Integration points
 
-- **`kramme:debug:investigate`** — source of the investigation phase (Steps 1–6 + Step 8 reporting). The orchestrator stops it at the propose-fix gate via the "Report only" option.
+- **Shared root-cause procedure** (`${CLAUDE_PLUGIN_ROOT}/shared/debug/references/root-cause-investigation.md`) — the investigation phase. `kramme:debug:investigate` runs the same procedure and then offers fixes; triage stops at the root cause.
 - **`kramme:linear:issue-define`** — source of issue-creation conventions (title format, template selection, metadata). This skill issues the create call directly through `save_issue` without `id` (Claude Code `mcp__linear__save_issue`; Codex `save_issue`) for predictable interception, but the body shape mirrors the `Simple Bug Template` and `Comprehensive Template` from issue-define's assets. Both skills enforce the same durability constraint: issue-define via its `**Affected area:**` field (module / behavior / contract, not paths or line numbers), this skill via the durability grep.
 - **`kramme:linear:issue-implement`** — downstream implementation consumer. A local SIW ticket reaches it through `kramme:siw:transfer-to-linear` without re-investigation.

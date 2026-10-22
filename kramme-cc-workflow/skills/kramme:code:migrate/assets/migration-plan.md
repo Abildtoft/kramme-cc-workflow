@@ -18,7 +18,7 @@
 **Effort:** Quick
 
 - [ ] Resolve the repository workbench and create migration branch `migrate/{framework}-{target}` from its fetched base ref; record the selected base branch and commit.
-- [ ] Run dependency audit (`/kramme:deps:audit` if available)
+- [ ] Record a read-only dependency snapshot (outdated and vulnerability reports; no updates applied). For a prioritized upgrade plan, the user can run `/kramme:deps:audit` separately.
 - [ ] Capture test baseline: run full suite, record pass/fail counts
 - [ ] Document starting state
 

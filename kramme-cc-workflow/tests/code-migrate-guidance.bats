@@ -8,6 +8,7 @@ SKILL="skills/kramme:code:migrate/SKILL.md"
 GROUNDING="skills/kramme:code:migrate/references/source-grounding.md"
 SOURCES="skills/kramme:code:migrate/references/sources.yaml"
 CODEMODS="skills/kramme:code:migrate/references/codemod-registry.md"
+PLAN_TEMPLATE="skills/kramme:code:migrate/assets/migration-plan.md"
 
 @test "migration loads a self-contained source-grounding contract" {
   test -f "$GROUNDING"
@@ -50,4 +51,14 @@ CODEMODS="skills/kramme:code:migrate/references/codemod-registry.md"
 @test "migration codemod guidance avoids unreviewed remote script execution" {
   grep -qF 'npm install --location=global @getgrit/cli' "$CODEMODS"
   ! grep -qF 'curl -fsSL https://docs.grit.io/install | bash' "$CODEMODS"
+}
+
+@test "migration records a read-only dependency snapshot and leaves the audit skill to the user" {
+  if grep -qF 'Run `/kramme:deps:audit` if available' "$SKILL"; then false; fi
+  if grep -qF '(`/kramme:deps:audit` if available)' "$PLAN_TEMPLATE"; then false; fi
+  grep -qF 'Record a read-only dependency snapshot' "$SKILL"
+  grep -qF 'Never run update, install, or `audit fix` commands in this step' "$SKILL"
+  grep -qF 'Do not invoke `kramme:deps:audit`' "$SKILL"
+  grep -qF 'recommend that the user run `/kramme:deps:audit`' "$SKILL"
+  grep -qF 'Record a read-only dependency snapshot' "$PLAN_TEMPLATE"
 }

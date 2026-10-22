@@ -20,3 +20,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:05f43a612b1bbb64b35a61a729856a80a614a14fbf4499ac05ba71764a34472f"
+  - id: addy-debugging-and-error-recovery
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/debugging-and-error-recovery/SKILL.md
+    title: "Addy Osmani agent-skills - debugging and error recovery"
+    rationale: "Phase 3 runs the shared root-cause procedure (reproduce, isolate, trace, and git-bisect guidance) adapted from this source; kramme:debug:investigate declares the same source for the same shared content."
+    usage: inspiration
+    last_reviewed_at: 2026-06-10
+    baseline_hash: "sha256:2539c0078466755c192123c34758aa432da5d29529340037113eeaecb6647b0e"
