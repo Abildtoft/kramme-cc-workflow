@@ -279,6 +279,96 @@ codex_home_dir() {
   fi
 }
 
+cached_versions() {
+  local version_dir
+  local versions=""
+
+  for version_dir in "$1"/*; do
+    [ -d "$version_dir" ] || continue
+    versions="${versions:+$versions, }${version_dir##*/}"
+  done
+  printf '%s' "$versions"
+}
+
+# Cache presence only: deliberately do not read Codex config.toml.
+detect_codex_plugin() {
+  local codex_home
+  local versions
+
+  codex_home="$(codex_home_dir)"
+  if [ -z "$codex_home" ]; then
+    echo "not checked (HOME and CODEX_HOME unset)"
+    return
+  fi
+  versions="$(cached_versions "$codex_home/plugins/cache/kramme-cc-workflow/kramme-cc-workflow")"
+  if [ -n "$versions" ]; then
+    echo "installed (cached $versions)"
+  else
+    echo "not installed"
+  fi
+}
+
+detect_claude_plugin_cache() {
+  local plugins_root
+  local cache_dir
+  local version_dir
+  local versions
+  local installed_paths=""
+  local installed_path
+  local registered=""
+
+  if [ -n "${CLAUDE_CODE_PLUGIN_CACHE_DIR:-}" ]; then
+    plugins_root="$CLAUDE_CODE_PLUGIN_CACHE_DIR"
+  elif [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+    plugins_root="$CLAUDE_CONFIG_DIR/plugins"
+  elif [ -n "${HOME:-}" ]; then
+    plugins_root="$HOME/.claude/plugins"
+  else
+    echo "not checked (HOME, CLAUDE_CONFIG_DIR, and CLAUDE_CODE_PLUGIN_CACHE_DIR unset)"
+    return
+  fi
+  plugins_root="${plugins_root%/}"
+  cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
+  versions="$(cached_versions "$cache_dir")"
+  if [ -z "$versions" ]; then
+    echo "none"
+    return
+  fi
+  # Registrations may belong to different scopes or projects. They do not
+  # identify the copy loaded in the current session.
+  if [ -r "$plugins_root/installed_plugins.json" ] && command -v jq > /dev/null 2>&1; then
+    installed_paths="$(jq -er '.plugins["kramme-cc-workflow@kramme-cc-workflow"][]? | .installPath | strings' \
+      "$plugins_root/installed_plugins.json" 2> /dev/null)" || installed_paths=""
+  fi
+  for version_dir in "$cache_dir"/*; do
+    [ -d "$version_dir" ] || continue
+    while IFS= read -r installed_path; do
+      if [ "$installed_path" = "$version_dir" ]; then
+        registered="${registered:+$registered, }${version_dir##*/}"
+        break
+      fi
+    done <<< "$installed_paths"
+  done
+  printf '%s%s\n' "$versions" "${registered:+ (registered $registered)}"
+}
+
+detect_plugin_copy() {
+  local manifest
+  local line
+  local version_pattern='"version"[[:space:]]*:[[:space:]]*"([^"]+)"'
+
+  for manifest in "$PLUGIN_ROOT/.claude-plugin/plugin.json" "$PLUGIN_ROOT/.codex-plugin/plugin.json"; do
+    [ -f "$manifest" ] && [ -r "$manifest" ] || continue
+    while IFS= read -r line || [ -n "$line" ]; do
+      if [[ "$line" =~ $version_pattern ]]; then
+        printf '%s (%s)\n' "$PLUGIN_ROOT" "${BASH_REMATCH[1]}"
+        return
+      fi
+    done < "$manifest"
+  done
+  printf '%s (version unknown)\n' "$PLUGIN_ROOT"
+}
+
 # Records from converter releases that copied skills into the Codex home.
 detect_codex_legacy_records() {
   local home
@@ -396,6 +486,8 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   tool_status "markitdown" "uvx markitdown or pip install markitdown" "markitdown --version"
   printf ','
   tool_status "surf" "install surf-cli if using visual diagram image generation" "surf --version"
+  printf ','
+  tool_status "codex" "npm install -g @openai/codex" "codex --version"
   printf '],'
   printf '"integrations":['
   detect_connector_note "Linear" "Connector authentication is not reliably inspectable from shell."
@@ -440,6 +532,12 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   repo_value "codexLegacyRecords" "$(detect_codex_legacy_records)"
   printf ','
   repo_value "codexToolMapBlock" "$(detect_codex_tool_map)"
+  printf ','
+  repo_value "codexPlugin" "$(detect_codex_plugin)"
+  printf ','
+  repo_value "claudePluginCache" "$(detect_claude_plugin_cache)"
+  printf ','
+  repo_value "pluginCopy" "$(detect_plugin_copy)"
   printf ']'
   printf '}\n'
   exit 0
@@ -466,6 +564,7 @@ tool_status "trash" "brew install trash (macOS) or apt install trash-cli (Linux)
 tool_status "uvx" "brew install uv or pipx install uv" "uvx --version"
 tool_status "markitdown" "uvx markitdown or pip install markitdown" "markitdown --version"
 tool_status "surf" "install surf-cli if using visual diagram image generation" "surf --version"
+tool_status "codex" "npm install -g @openai/codex" "codex --version"
 echo
 echo "Integrations"
 detect_connector_note "Linear" "Connector authentication is not reliably inspectable from shell."
@@ -491,3 +590,6 @@ repo_value ".worktreeinclude" "$(detect_file ".worktreeinclude")"
 repo_value "Hook config" "$(detect_file "${PLUGIN_ROOT}/hooks/hooks.json")"
 repo_value "Codex legacy records" "$(detect_codex_legacy_records)"
 repo_value "Codex tool map block" "$(detect_codex_tool_map)"
+repo_value "Codex plugin" "$(detect_codex_plugin)"
+repo_value "Claude plugin cache" "$(detect_claude_plugin_cache)"
+repo_value "Plugin copy" "$(detect_plugin_copy)"

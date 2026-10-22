@@ -7,8 +7,10 @@ setup() {
 	REAL_JQ="$(command -v jq)"
 	FAKE_BIN="$BATS_TEST_TMPDIR/bin"
 	mkdir -p "$FAKE_BIN"
-	# Keep the Codex-home probes off the developer's real ~/.codex.
+	# Keep host probes off the developer's real Codex and Claude directories.
 	export CODEX_HOME="$BATS_TEST_TMPDIR/no-codex"
+	export CLAUDE_CONFIG_DIR="$BATS_TEST_TMPDIR/no-claude"
+	unset CLAUDE_CODE_PLUGIN_CACHE_DIR
 }
 
 link_core_tools() {
@@ -91,6 +93,7 @@ setup_all_tools_path() {
 	create_fake_tool "uvx" "uvx 0.5.0"
 	create_fake_tool "markitdown" "markitdown 0.1.0"
 	create_fake_tool "surf" "surf 0.2.0"
+	create_fake_tool "codex" "codex-cli 0.162.1"
 }
 
 assert_json_query() {
@@ -322,6 +325,285 @@ assert_text_row() {
 assert_context_value() {
 	printf '%s' "$output" | "$REAL_JQ" -e --arg key "$1" --arg value "$2" \
 		'.context[] | select(.key == $key and .value == $value)' >/dev/null
+}
+
+@test "reports the optional codex CLI and its version in both formats" {
+	setup_all_tools_path
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.optional[] | select(.name == "codex" and .status == "ok" and .version == "codex-cli 0.162.1")'
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"[ok]      codex"*"(codex-cli 0.162.1)"* ]]
+}
+
+@test "reports a missing codex CLI with its install hint in both formats" {
+	setup_core_path
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_json_query '.optional[] | select(.name == "codex" and .status == "missing" and .install == "npm install -g @openai/codex")'
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"[missing] codex"*"install: npm install -g @openai/codex"* ]]
+}
+
+@test "reports a cached native codex plugin without exposing or changing config" {
+	setup_all_tools_path
+	local codex_home="$BATS_TEST_TMPDIR/codex home"
+	local cache_dir="$codex_home/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	mkdir -p "$cache_dir/0.88.0"
+	printf 'api_key = "setup-test-decoy"\n' >"$codex_home/config.toml"
+	cp "$codex_home/config.toml" "$BATS_TEST_TMPDIR/config.before"
+	local before_listing
+	before_listing="$(find "$codex_home" -print | LC_ALL=C sort)"
+
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value codexPlugin "installed (cached 0.88.0)"
+	[[ "$output" != *"setup-test-decoy"* ]]
+
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	assert_text_row "Codex plugin" "installed (cached 0.88.0)"
+	[[ "$output" != *"setup-test-decoy"* ]]
+	cmp -s "$codex_home/config.toml" "$BATS_TEST_TMPDIR/config.before"
+	[ "$(find "$codex_home" -print | LC_ALL=C sort)" = "$before_listing" ]
+}
+
+@test "reports no native codex plugin for missing, empty, or file-only caches" {
+	setup_all_tools_path
+	local codex_home="$BATS_TEST_TMPDIR/codex"
+	local cache_dir="$codex_home/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value codexPlugin "not installed"
+	[ ! -e "$codex_home" ]
+
+	mkdir -p "$cache_dir"
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value codexPlugin "not installed"
+
+	touch "$cache_dir/not-a-version"
+	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT"
+	[ "$status" -eq 0 ]
+	assert_text_row "Codex plugin" "not installed"
+}
+
+@test "lists native codex cache versions in glob order through the HOME fallback" {
+	setup_all_tools_path
+	local test_home="$BATS_TEST_TMPDIR/home"
+	local cache_dir="$test_home/.codex/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	mkdir -p "$cache_dir/0.88.0" "$cache_dir/0.87.0"
+	touch "$cache_dir/not-a-version"
+
+	run env -u CODEX_HOME HOME="$test_home" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value codexPlugin "installed (cached 0.87.0, 0.88.0)"
+}
+
+@test "skips native plugin probes when both host homes are unavailable" {
+	setup_all_tools_path
+
+	run env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u HOME PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value codexPlugin "not checked (HOME and CODEX_HOME unset)"
+	assert_context_value claudePluginCache "not checked (HOME, CLAUDE_CONFIG_DIR, and CLAUDE_CODE_PLUGIN_CACHE_DIR unset)"
+
+	run env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u HOME PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	assert_text_row "Codex plugin" "not checked (HOME and CODEX_HOME unset)"
+	assert_text_row "Claude plugin cache" "not checked (HOME, CLAUDE_CONFIG_DIR, and CLAUDE_CODE_PLUGIN_CACHE_DIR unset)"
+}
+
+@test "lists Claude cache versions and registrations without changing the cache" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local claude_root="$BATS_TEST_TMPDIR/claude home"
+	local cache_dir="$claude_root/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	mkdir -p "$cache_dir/0.88.0/.in_use" "$cache_dir/0.87.0/.in_use"
+	touch "$cache_dir/0.87.0/.in_use/1234" "$cache_dir/not-a-version"
+	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.88.0","version":"0.88.0"}]}}\n' \
+		"$cache_dir" >"$claude_root/plugins/installed_plugins.json"
+	cp "$claude_root/plugins/installed_plugins.json" "$BATS_TEST_TMPDIR/installed.before"
+	local before_listing
+	before_listing="$(find "$claude_root" -print | LC_ALL=C sort)"
+
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "0.87.0, 0.88.0 (registered 0.88.0)"
+
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	assert_text_row "Claude plugin cache" "0.87.0, 0.88.0 (registered 0.88.0)"
+	cmp -s "$claude_root/plugins/installed_plugins.json" "$BATS_TEST_TMPDIR/installed.before"
+	[ "$(find "$claude_root" -print | LC_ALL=C sort)" = "$before_listing" ]
+}
+
+@test "reports all registered scopes without choosing an active Claude version" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local claude_root="$BATS_TEST_TMPDIR/claude"
+	local cache_dir="$claude_root/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	mkdir -p "$cache_dir/0.87.0" "$cache_dir/0.88.0" "$cache_dir/0.89.0"
+	"$REAL_JQ" -n --arg cache "$cache_dir" '{plugins: {
+		"kramme-cc-workflow@kramme-cc-workflow": [
+			{scope: "project", projectPath: "/another/project", installPath: ($cache + "/0.87.0")},
+			{scope: "user", installPath: ($cache + "/0.88.0")},
+			{scope: "local", projectPath: "/another/project", installPath: ($cache + "/0.88.0")}
+		],
+		"unrelated@other-marketplace": [{installPath: ($cache + "/0.89.0")}]
+	}}' >"$claude_root/plugins/installed_plugins.json"
+
+	run env CLAUDE_CONFIG_DIR="$claude_root" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "0.87.0, 0.88.0, 0.89.0 (registered 0.87.0, 0.88.0)"
+
+	run env CLAUDE_CONFIG_DIR="$claude_root" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
+	[ "$status" -eq 0 ]
+	assert_text_row "Claude plugin cache" "0.87.0, 0.88.0, 0.89.0 (registered 0.87.0, 0.88.0)"
+}
+
+@test "honors the Claude plugin-root override for cache and registration probes" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local plugins_root="$BATS_TEST_TMPDIR/custom plugins"
+	local cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local default_cache="$CLAUDE_CONFIG_DIR/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	mkdir -p "$cache_dir/0.88.0" "$default_cache/0.87.0"
+	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.88.0"}]}}\n' \
+		"$cache_dir" >"$plugins_root/installed_plugins.json"
+	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.87.0"}]}}\n' \
+		"$default_cache" >"$CLAUDE_CONFIG_DIR/plugins/installed_plugins.json"
+	local before_listing
+	before_listing="$(find "$plugins_root" -print | LC_ALL=C sort)"
+	cp "$plugins_root/installed_plugins.json" "$BATS_TEST_TMPDIR/installed.before"
+
+	run env CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root/" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "0.88.0 (registered 0.88.0)"
+
+	run env -u HOME -u CLAUDE_CONFIG_DIR CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
+	[ "$status" -eq 0 ]
+	assert_text_row "Claude plugin cache" "0.88.0 (registered 0.88.0)"
+	cmp -s "$plugins_root/installed_plugins.json" "$BATS_TEST_TMPDIR/installed.before"
+	[ "$(find "$plugins_root" -print | LC_ALL=C sort)" = "$before_listing" ]
+}
+
+@test "still lists Claude cache versions when jq is missing or registration JSON is invalid" {
+	setup_core_path
+	local plugins_root="$BATS_TEST_TMPDIR/plugins"
+	local cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
+	mkdir -p "$cache_dir/0.88.0"
+	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.88.0"}]}}\n' \
+		"$cache_dir" >"$plugins_root/installed_plugins.json"
+
+	run env CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "0.88.0"
+
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	printf 'invalid json\n' >"$plugins_root/installed_plugins.json"
+	run env CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "0.88.0"
+}
+
+@test "uses HOME for Claude cache versions and requires an exact registered path" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local test_home="$BATS_TEST_TMPDIR/home"
+	local cache_dir="$test_home/.claude/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	mkdir -p "$cache_dir/0.88.0"
+
+	run env -u CLAUDE_CONFIG_DIR HOME="$test_home" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "0.88.0"
+
+	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.88.0-superseded"}]}}\n' "$cache_dir" >"$test_home/.claude/plugins/installed_plugins.json"
+	run env -u CLAUDE_CONFIG_DIR HOME="$test_home" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "0.88.0"
+}
+
+@test "reports no Claude cache versions for missing, empty, or file-only caches" {
+	setup_all_tools_path
+	local claude_root="$BATS_TEST_TMPDIR/claude"
+	local cache_dir="$claude_root/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "none"
+	[ ! -e "$claude_root" ]
+
+	mkdir -p "$cache_dir"
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudePluginCache "none"
+
+	touch "$cache_dir/not-a-version"
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT"
+	[ "$status" -eq 0 ]
+	assert_text_row "Claude plugin cache" "none"
+}
+
+@test "reports the running plugin directory and Claude manifest version" {
+	setup_all_tools_path
+	local plugin_root
+	local version
+	plugin_root="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
+	version="$("$REAL_JQ" -r '.version' "$plugin_root/.claude-plugin/plugin.json")"
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+
+	[ "$status" -eq 0 ]
+	assert_context_value pluginCopy "$plugin_root ($version)"
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
+
+	[ "$status" -eq 0 ]
+	assert_text_row "Plugin copy" "$plugin_root ($version)"
+}
+
+@test "falls back to the Codex manifest or an unknown plugin copy version" {
+	setup_all_tools_path
+	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
+	local copied_script="$plugin_root/skills/kramme:setup/scripts/check-environment.sh"
+	mkdir -p "${copied_script%/*}" "$plugin_root/.claude-plugin" "$plugin_root/.codex-plugin"
+	cp "$SCRIPT" "$copied_script"
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginCopy "$plugin_root (version unknown)"
+
+	printf '{}' >"$plugin_root/.claude-plugin/plugin.json"
+	printf '{"version":"1.2.3"}' >"$plugin_root/.codex-plugin/plugin.json"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginCopy "$plugin_root (1.2.3)"
+
+	printf '{"version":"4.5.6"}' >"$plugin_root/.claude-plugin/plugin.json"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginCopy "$plugin_root (4.5.6)"
 }
 
 @test "reports legacy codex install records and tool map block without changing them" {
