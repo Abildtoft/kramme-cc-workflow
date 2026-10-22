@@ -12,7 +12,7 @@ SKILLS=(
 	"skills/kramme:pr:resolve-review/SKILL.md"
 	"skills/kramme:skill:create/SKILL.md"
 	"skills/kramme:skill:review/SKILL.md"
-	"skills/kramme:verify:before-completion/SKILL.md"
+	"skills/kramme:verify:run/SKILL.md"
 )
 
 assert_core_principle() {
@@ -70,7 +70,7 @@ assert_core_principle() {
 	for skill in \
 		"kramme-cc-workflow/skills/kramme:code:agent-readiness/SKILL.md" \
 		"kramme-cc-workflow/skills/kramme:code:api-design/SKILL.md" \
-		"kramme-cc-workflow/skills/kramme:verify:before-completion/SKILL.md"; do
+		"kramme-cc-workflow/skills/kramme:verify:run/SKILL.md"; do
 		jq -e --arg skill "$skill" \
 			'.skill_contract_coverage.mechanical_only | index($skill) == null' \
 			"$registry" >/dev/null

@@ -227,7 +227,7 @@
         "kramme-cc-workflow/skills/kramme:pr:resolve-review/SKILL.md",
         "kramme-cc-workflow/skills/kramme:skill:create/SKILL.md",
         "kramme-cc-workflow/skills/kramme:skill:review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:verify:before-completion/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md"
       ]
     },
     {
