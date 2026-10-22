@@ -24,7 +24,7 @@ The outer loop is what the human owns: setting the constraints, accepting or rej
 
 The boundary the repository draws most consistently is publication. `closeout-loop.md:15` states it plainly: "Do not push changes unless the user explicitly asked for push, ship, or PR update." An agent may converge a review loop across several rounds of edits without ever crossing that line.
 
-The second outer-loop boundary is the truth of a completion claim. `skills/kramme:verify:before-completion/SKILL.md:14` states the principle as "Evidence before claims, always." The agent runs the project's checks and gates its claim on their output, so the human's acceptance decision rests on evidence rather than on the agent's self-assessment.
+The second outer-loop boundary is the truth of a completion claim. The Evidence Before Claims section in `skills/kramme:verify:run/SKILL.md:255` states: "A claim that work is done, fixed, or passing needs evidence that covers the current working tree." The agent runs the project's checks and gates its claim on their output, so the human's acceptance decision rests on evidence rather than on the agent's self-assessment.
 
 Hooks provide a third boundary, outside the agent's instructions entirely. `hooks/hooks.json` registers two PreToolUse hooks on the `Bash` matcher. `confirm-review-responses.sh` gates staged files matching patterns in `hooks/confirm-review-artifacts.txt` (`docs/hooks.md:28`); `block-rm-rf.sh` sits at the same layer but blocks outright instead of asking. Both are enforced by the harness, not by the agent's own compliance.
 

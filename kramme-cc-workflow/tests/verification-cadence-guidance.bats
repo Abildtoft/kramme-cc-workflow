@@ -5,7 +5,7 @@ load 'test_helper/common'
 setup() {
   REPO_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   RUN_SKILL="$REPO_DIR/skills/kramme:verify:run/SKILL.md"
-  COMPLETION_SKILL="$REPO_DIR/skills/kramme:verify:before-completion/SKILL.md"
+  CLAIMS_REF="$REPO_DIR/skills/kramme:verify:run/references/completion-claims.md"
   CONVERGENCE_SKILL="$REPO_DIR/skills/kramme:pr:review-convergence/SKILL.md"
   IMPLEMENT_SKILL="$REPO_DIR/skills/kramme:linear:issue-implement/SKILL.md"
   IMPLEMENT_WORKFLOWS="$REPO_DIR/skills/kramme:linear:issue-implement/references/implementation-workflows.md"
@@ -36,14 +36,75 @@ setup() {
   grep -qF 'Let a running check finish before editing the tree for an unrelated fix.' "$RUN_SKILL"
 }
 
-@test "before-completion accepts a green run on an unchanged tree" {
-  grep -qF '## Reusing a Green Run' "$COMPLETION_SKILL"
-  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh"' "$COMPLETION_SKILL"
-  grep -qF 'both IDs are non-empty and equal' "$COMPLETION_SKILL"
-  grep -qF '**After the branch is pushed**: CI can supply the full sweep' "$COMPLETION_SKILL"
-  grep -qF 'Never run two overlapping full sweeps on the same tree.' "$COMPLETION_SKILL"
-  run grep -qF "If you haven't run the verification command in this message, you cannot claim it passes." "$COMPLETION_SKILL"
+@test "verify run gates completion claims on current-tree evidence" {
+  grep -qF '## Evidence Before Claims' "$RUN_SKILL"
+  grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh"' "$RUN_SKILL"
+  grep -qF 'both IDs are non-empty and equal' "$RUN_SKILL"
+  grep -qF '**After the branch is pushed**: CI can supply the full sweep' "$RUN_SKILL"
+  grep -qF 'Never run two overlapping full sweeps on the same tree.' "$RUN_SKILL"
+  grep -qF 'references/completion-claims.md' "$RUN_SKILL"
+  run grep -qF "If you haven't run the verification command in this message, you cannot claim it passes." "$RUN_SKILL"
   [ "$status" -eq 1 ]
+  run grep -qF 'git stash pop' "$RUN_SKILL"
+  [ "$status" -eq 1 ]
+  [ ! -e "$REPO_DIR/skills/kramme:verify:before-completion" ]
+}
+
+@test "red-green check restores by commit ID and retains both sessions' stashes" {
+  local fixture="$BATS_TEST_TMPDIR/repo"
+  local other_worktree="$BATS_TEST_TMPDIR/other-session"
+  local blocks_dir="$BATS_TEST_TMPDIR/commands"
+  local other_stash_sha
+
+  init_test_git_repo "$fixture" --file fix.txt
+  cd "$fixture"
+  printf 'unrelated base\n' > unrelated.txt
+  git add unrelated.txt
+  git commit -m "Add unrelated fixture" >/dev/null
+  git worktree add -b other-session "$other_worktree" >/dev/null
+  printf 'fixed\n' > fix.txt
+  cat > regression-test.sh <<'TEST'
+#!/usr/bin/env bash
+test "$(cat fix.txt)" = fixed
+TEST
+  bash regression-test.sh
+
+  mkdir -p "$blocks_dir"
+  awk -v directory="$blocks_dir" '
+    /^## Red-green check for a regression test$/ { in_section = 1; next }
+    in_section && /^```bash$/ { block++; capturing = 1; next }
+    capturing && /^```$/ { capturing = 0; next }
+    capturing {
+      gsub(/<files changed by the fix>/, "fix.txt")
+      print > (directory "/" block ".bash")
+    }
+  ' "$CLAIMS_REF"
+  [ -s "$blocks_dir/1.bash" ]
+  [ -s "$blocks_dir/2.bash" ]
+  [ ! -e "$blocks_dir/3.bash" ]
+
+  source "$blocks_dir/1.bash"
+  [ "$(cat fix.txt)" = base ]
+  [ -f regression-test.sh ]
+  run bash regression-test.sh
+  [ "$status" -eq 1 ]
+
+  printf 'other session work\n' > "$other_worktree/unrelated.txt"
+  git -C "$other_worktree" stash push --message another-session -- unrelated.txt
+  other_stash_sha=$(git rev-parse refs/stash)
+  [ "$(git rev-parse 'stash@{1}')" = "$RG_SHA" ]
+
+  git stash apply "$RG_SHA"
+  bash regression-test.sh
+  run source "$blocks_dir/2.bash"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"$RG_TAG"* ]]
+  [[ "$output" == *"$RG_SHA"* ]]
+  [ "$(cat fix.txt)" = fixed ]
+  [ -f regression-test.sh ]
+  [ "$(cat unrelated.txt)" = 'unrelated base' ]
+  [ "$(git stash list --format='%H')" = "$other_stash_sha"$'\n'"$RG_SHA" ]
+  [ "$(git show "$other_stash_sha:unrelated.txt")" = 'other session work' ]
 }
 
 @test "review convergence skips its final sweep on an already verified tree" {

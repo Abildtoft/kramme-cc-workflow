@@ -355,7 +355,9 @@ More review skills cover product, convention, UX, and GitHub-reviewer flows. Whi
 /kramme:code:work-from-plan # route and execute a standalone implementation plan
 ```
 
-All skills are listed in the reference below. Background skills (commit messages, verification guards) run automatically.
+The optional regression red-green check in `/kramme:verify:run` restores the fix by stash commit ID and retains the stash entry, reporting its tag and commit ID for later identification. It leaves cleanup to the user because other workspaces share the stash list.
+
+All skills are listed in the reference below. Background skills, such as commit-message guidance, run automatically.
 
 ## Skills
 
@@ -611,7 +613,6 @@ Auto-triggered by the host based on context. These don't appear in the `/` menu.
 | --- | --- | --- | --- |
 | `kramme:code:forward-progress` | Background | — | Keeps multi-stage implementations and pipelines moving by separating capability work and correctness evidence from advisory workflow bookkeeping. Use when stale markers, receipts, hashes, dashboards, or progress metadata would cause valid work to be repeated or completed stages to be rewound. Not for bypassing controls that protect identity, authority, integrity, concurrency, resumability, scope, CI, or publication safety. |
 | `kramme:git:commit-message` | Background | — | Create commit messages for branch commits. Use when committing code changes or writing commit messages. Follows the repository's commit-subject convention (plain English when none is found), with a pre-commit checklist and AI-attribution rules. Not for PR titles or merge commits. |
-| `kramme:verify:before-completion` | Background | — | Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires verification evidence for the current working tree before any success claim, reusing a green run only when the tree is unchanged; evidence before assertions always |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -953,6 +954,7 @@ material and its skill-local notices.
 
 ### Other sources
 
+- `kramme:verify:run` evidence-before-claims rule and red-green check: Inspired by [obra/superpowers](https://github.com/obra/superpowers)' verification-before-completion skill.
 - `kramme:debug:triage-to-issue`: The hands-off bug-to-issue workflow is adapted from Matt Pocock's [triage-issue](https://github.com/mattpocock/skills/tree/383b6a06d59c4ce0ffcb14112bfd91265a86cf91/skills/triage-issue), while its vertical RED-GREEN cycle guidance is adapted from Pocock's [TDD skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd).
 - Module-depth guidance in `kramme:code:agent-readiness`, `kramme:code:refactor-opportunities`, `kramme:code:api-design`, `kramme:pr:code-review` with `kramme:architecture-strategist`, `kramme:pr:triage-risk`, and the spec, issue, and plan templates: Informed by AI Hero's [How To Make Codebases AI Agents Love](https://www.aihero.dev/how-to-make-codebases-ai-agents-love). The shared architecture glossary adapts the vocabulary of Matt Pocock's [codebase-design skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/codebase-design).
 - `kramme:docs:update-agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).

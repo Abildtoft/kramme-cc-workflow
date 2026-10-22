@@ -12,10 +12,6 @@ Copied or adapted scripts and support files in `kramme:code:optimize`, `kramme:s
 
 Portions of `kramme:pr:stack` are adapted from [`github/gh-stack`](https://github.com/github/gh-stack), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:pr:stack/references/github-gh-stack-LICENSE`.
 
-## Jesse Vincent — `obra/superpowers`
-
-Portions of `kramme:verify:before-completion` are adapted from [`obra/superpowers`](https://github.com/obra/superpowers), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:verify:before-completion/references/obra-superpowers-LICENSE`.
-
 ## Matt Pocock — `skills`
 
 The wizard template in `kramme:workflow:wizard` is adapted from [`mattpocock/skills`](https://github.com/mattpocock/skills), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:workflow:wizard/assets/mattpocock-skills-LICENSE`.
