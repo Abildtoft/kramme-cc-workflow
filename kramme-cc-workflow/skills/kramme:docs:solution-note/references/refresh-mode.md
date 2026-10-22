@@ -1,12 +1,4 @@
----
-name: kramme:docs:solution-refresh
-description: "Audit docs/solutions/ notes for stale solved-problem knowledge. Compares referenced files, commands, and claims against the current codebase; classifies notes as keep, update, consolidate, or delete; and requires confirmation before stale-note deletion or consolidation. Use when solution notes may have aged, code references moved, or related bugs changed the lesson. Not for creating new solution notes, ADRs, glossary entries, feature specs, or broad documentation rewrites."
-argument-hint: "[solution-note-path|--all] [--apply]"
-disable-model-invocation: true
-user-invocable: true
----
-
-# Solution Refresh
+# Refresh Mode (--refresh)
 
 Audit existing solution notes in `docs/solutions/` and classify each as keep, update, consolidate, or delete. Refresh verifies that reusable solved-problem knowledge still matches the codebase.
 
@@ -21,7 +13,7 @@ Use this skill when:
 
 Route elsewhere if:
 
-- **Creating a new solution note** -> use `/kramme:docs:solution-note`.
+- **Creating a new solution note** -> run `/kramme:docs:solution-note` without `--refresh`.
 - **Architecture decision drift** -> use `/kramme:docs:adr` for new decisions or supersession.
 - **Domain vocabulary drift** -> use `/kramme:docs:ubiquitous-language`.
 - **General docs rewrite** -> edit the target docs directly or use a docs-specific workflow.
@@ -30,12 +22,12 @@ Route elsewhere if:
 
 - **Produced by**: this skill does not create a separate report by default; it emits an inline refresh report and may update existing `docs/solutions/*.md` notes when confirmed.
 - **Consumed by**: maintainers and future agents deciding whether a solution note can be trusted.
-- **Refreshed by**: rerun this skill after referenced files move, tests change, repeated bugs invalidate the lesson, or `last_checked` is old enough to reduce confidence.
+- **Refreshed by**: rerun `/kramme:docs:solution-note --refresh` after referenced files move, tests change, repeated bugs invalidate the lesson, or `last_checked` is old enough to reduce confidence.
 - **Retired by**: confirmed delete or consolidate actions in Phase 5.
 
 ## Argument parsing
 
-1. Parse `$ARGUMENTS` for an optional target and flags.
+1. Parse the arguments remaining after `--refresh` is removed from `$ARGUMENTS` for an optional target and flags.
 2. Recognize:
    - `--all`: audit every markdown file under `docs/solutions/` (default when no path is supplied).
    - `--apply`: allow confirmed edits after the classification report.

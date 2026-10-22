@@ -1,7 +1,7 @@
 ---
 name: kramme:docs:solution-note
-description: "Create a reusable solved-problem note in docs/solutions/ after a bug fix, migration, repeated workflow, tricky refactor, or implementation lesson. Captures problem context, failed approaches, final approach, code references, verification, and reuse cautions so future sessions can apply the pattern. Use when the lesson should outlive chat or PR context. Not for long-lived architecture decisions (use kramme:docs:adr), domain vocabulary (use kramme:docs:ubiquitous-language), feature specs, or rejected enhancement scope."
-argument-hint: "[problem, lesson, or context]"
+description: "Create a reusable solved-problem note in docs/solutions/ after a bug fix, migration, repeated workflow, tricky refactor, or implementation lesson: failed approaches, final approach, code references, verification, and reuse cautions. With --refresh, audit existing notes against the codebase as keep, update, consolidate, or delete, confirming deletions and consolidations. Not for ADRs (kramme:docs:adr), domain vocabulary (kramme:docs:ubiquitous-language), feature specs, or rejected enhancements."
+argument-hint: "[problem, lesson, or context] | --refresh [solution-note-path|--all] [--apply]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -9,6 +9,12 @@ user-invocable: true
 # Solution Note
 
 Create a reusable solved-problem note in `docs/solutions/<slug>.md`. A solution note records what failed, what worked, when to reuse it, and when not to.
+
+## Refresh mode
+
+If `$ARGUMENTS` contains `--refresh`, remove that flag, read `references/refresh-mode.md`, and follow it instead of the creation workflow below.
+
+Without `--refresh`, if `$ARGUMENTS` contains `--apply` or `--all`, emit `CONFUSION` and stop; those flags apply only to refresh mode. Otherwise, follow the creation workflow below.
 
 ## When to use
 
@@ -32,8 +38,8 @@ Route elsewhere if:
 
 - **Produced by**: Phase 4 writes `docs/solutions/<slug>.md` from `assets/solution-note-template.md`.
 - **Consumed by**: future agents, maintainers, review workflows, debugging sessions, migration plans, and refactor passes that search `docs/solutions/` for prior solved problems.
-- **Refreshed by**: `/kramme:docs:solution-refresh` when referenced files move, code behavior changes, verification ages, or a related bug proves the note incomplete.
-- **Retired by**: `/kramme:docs:solution-refresh` after explicit user confirmation to delete or consolidate stale notes.
+- **Refreshed by**: `/kramme:docs:solution-note --refresh` when referenced files move, code behavior changes, verification ages, or a related bug proves the note incomplete.
+- **Retired by**: `/kramme:docs:solution-note --refresh` after explicit user confirmation to delete or consolidate stale notes.
 
 ## Argument parsing and slug rule
 
@@ -77,7 +83,7 @@ Emit `MISSING REQUIREMENT` and ask for the missing item when any load-bearing in
 If `docs/solutions/` already exists:
 
 1. Search for notes with similar slug words, problem names, or code references.
-2. If an existing note likely covers the same lesson, emit `CONFUSION` and ask whether to update that note, create a new narrower note, or stop. When that note has become inaccurate or incomplete, recommend updating it rather than adding a second note that contradicts it.
+2. If an existing note likely covers the same lesson, emit `CONFUSION` and ask whether to update that note, create a new narrower note, or stop. When that note has become inaccurate or incomplete, recommend updating it (or audit it with `--refresh`) rather than adding a second note that contradicts it.
 3. If the existing note is adjacent but not the same, emit `NOTICED BUT NOT TOUCHING` with its path and why the new note remains separate.
 
 Never overwrite an existing solution note without explicit user confirmation.

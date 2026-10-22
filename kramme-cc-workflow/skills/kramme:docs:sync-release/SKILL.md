@@ -15,7 +15,7 @@ Compare one evidenced change scope with the documentation contracts it may affec
 Use this skill for release-scoped synchronization across installation, usage, architecture, testing, and public-contract documentation.
 
 - Review one Markdown draft for document quality with `kramme:docs:review`.
-- Refresh reusable notes under `docs/solutions/` with `kramme:docs:solution-refresh`.
+- Refresh reusable notes under `docs/solutions/` with `kramme:docs:solution-note --refresh`.
 - Record or supersede a long-lived architecture decision with `kramme:docs:adr`.
 - Write a changelog or release-note narrative with the repository's changelog workflow.
 - Update a domain glossary or feature specification with its dedicated docs workflow.

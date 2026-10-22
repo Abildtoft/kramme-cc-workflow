@@ -285,6 +285,11 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/solution-note-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:docs:solution-note/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/find-sibling-bugs-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md"
