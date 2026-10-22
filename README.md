@@ -207,6 +207,8 @@ After installation in either Claude Code or Codex, start with the smallest usefu
 /kramme:setup
 ```
 
+The setup report includes cached plugin versions and the path and manifest version of the running checker. For Claude Code, it also lists cached versions registered across installation scopes and projects when `jq` can read the registration file; these records do not identify the active session's version. The Claude probe honors `CLAUDE_CODE_PLUGIN_CACHE_DIR` before `CLAUDE_CONFIG_DIR/plugins` or `~/.claude/plugins`. The check never installs plugins or changes host configuration.
+
 For an existing code change, run `/kramme:pr:code-review`. Contributors can start with the [closest focused test](kramme-cc-workflow/docs/code-map.md#source-to-test-map); for a documentation edit, run:
 
 ```bash
