@@ -426,6 +426,41 @@
   ],
   "required_file_contracts": [
     {
+      "name": "git-commit-conventions-resolver",
+      "path": "kramme-cc-workflow/shared/git/references/commit-conventions.md",
+      "contains": [
+        "1. **User request**",
+        "2. **Repository instructions**",
+        "3. **Commit-message tooling**",
+        "4. **Base history**",
+        "5. **Default**",
+        "**80% or more of at least 10 classified subjects**",
+        "### Ticket IDs",
+        "### Required Work Labels",
+        "## No AI Attribution"
+      ]
+    },
+    {
+      "name": "git-commit-conventions-commit-message-consumer",
+      "path": "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md",
+      "contains": [
+        "${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md",
+        "Resolve once per repository per session",
+        "## Repository conventions first",
+        "Subject follows the resolved convention"
+      ]
+    },
+    {
+      "name": "git-commit-conventions-recreate-commits-consumer",
+      "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+      "contains": [
+        "${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md",
+        "the `BASE_REF` value Step 1 printed",
+        "Include a subject in the resolved convention",
+        "Conventional Commits title (`<type>(<scope>): <description>`"
+      ]
+    },
+    {
       "name": "work-from-plan-invocation-shape",
       "path": "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md",
       "frontmatter": {
@@ -1685,7 +1720,6 @@
       "kramme-cc-workflow/skills/kramme:docs:to-markdown/SKILL.md",
       "kramme-cc-workflow/skills/kramme:docs:track-rejected-enhancements/SKILL.md",
       "kramme-cc-workflow/skills/kramme:docs:ubiquitous-language/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md",
       "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md",
       "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",
       "kramme-cc-workflow/skills/kramme:product:design-critic/SKILL.md",
