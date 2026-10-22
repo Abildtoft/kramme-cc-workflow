@@ -8,7 +8,7 @@ user-invocable: true
 
 # Verify Affected Code
 
-Discover the project's verification commands, run the selected tier against affected code, and report results with the working-tree ID they cover. This is a verification command only: it never modifies files or auto-fixes issues.
+Discover the project's verification commands, run the selected tier against affected code, and report results with the working-tree ID they cover. It also states the evidence every completion claim needs; its checks never modify files or auto-fix issues, and only the optional red-green check in `references/completion-claims.md` temporarily removes and restores a fix.
 
 ## Instructions
 
@@ -250,6 +250,25 @@ Base ref: <BASE_REF> (commit <resolved BASE_REF commit OID>)
 
 Callers compare `Verified tree` against a fresh `worktree-tree-id.sh` result to decide whether this run still covers the current content.
 
+## Evidence Before Claims
+
+A claim that work is done, fixed, or passing needs evidence that covers the current working tree. Before you make such a claim, or commit, push, or open a Pull Request because of it:
+
+1. Name the check whose result would prove the claim.
+2. Run it now, or show that a green run from this session still covers the tree under step 6. For a command run outside this skill, capture `"${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh"` immediately before it; reuse that result only when both IDs are non-empty and equal, the base evidence and ignored inputs are unchanged, and the run covered every check the claim needs.
+3. Read the whole result, including its exit status and failure count, then state the claim with that evidence and the tree ID, or report the actual state when the result contradicts the claim.
+
+When no check can prove the claim, because none exists or it cannot run here, say which change remains unverified and why. For claims about user experience (UX), developer experience (DX), or agent experience (AX), choose evidence that fits the affected workflow, check established behavior outside the intended change with relevant regression coverage, verify intentional changes against their new expectations, and report material tradeoffs and verification limits; unchanged or inapplicable dimensions need no invented work. Before claiming that a regression test protects a fix, that a delegated agent finished, or that requirements are met, read `references/completion-claims.md`.
+
+Match the tier to the moment, following the project's documented cadence when it has one:
+
+- **While iterating**: `--fast`, or a focused check that covers the change.
+- **Before the first push or Pull Request**: the full sweep once, with `--full`.
+- **After a failure**: the Narrowed Retry by the Caller procedure above.
+- **After the branch is pushed**: CI can supply the full sweep when its successful jobs on that commit demonstrably cover every required check; cite those jobs. Skipped jobs and status-only checks prove nothing, so run missing checks locally when coverage is absent, incomplete, or unknown.
+
+Never run two overlapping full sweeps on the same tree.
+
 ## Important Notes
 
 - Always prefer explicitly documented commands from the applicable project instruction files over defaults
@@ -259,4 +278,4 @@ Callers compare `Verified tree` against a fresh `worktree-tree-id.sh` result to 
 - If a test suite/target doesn't exist, mark it as SKIPPED, don't fail
 - Always verify targets exist before running them to avoid confusing errors
 - Integration and E2E suites often mutate state (databases, queues) or require running services. Treat them as potentially side-effecting: skip them when the environment isn't prepared, and confirm with the user before running them when in doubt. E2E can also be skipped for faster iteration.
-- This skill only discovers and runs checks. To gate completion claims on fresh evidence (before committing or opening a PR), that policy lives in the `kramme:verify:before-completion` skill.
+- Completion claims follow Evidence Before Claims above.
