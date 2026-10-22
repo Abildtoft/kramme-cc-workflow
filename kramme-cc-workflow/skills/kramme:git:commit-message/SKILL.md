@@ -1,6 +1,6 @@
 ---
 name: kramme:git:commit-message
-description: Create commit messages for branch commits. Use when committing code changes or writing commit messages. Covers plain-English commit format, a pre-commit checklist, and AI-attribution rules. Not for PR titles or merge commits, which use Conventional Commits.
+description: Create commit messages for branch commits. Use when committing code changes or writing commit messages. Follows the repository's commit-subject convention (plain English when none is found), with a pre-commit checklist and AI-attribution rules. Not for PR titles or merge commits.
 user-invocable: false
 disable-model-invocation: false
 ---
@@ -25,7 +25,9 @@ If `CURRENT_BRANCH` is empty, or equals `main`, `master`, `CONFIGURED_BASE`, `CO
 
 ## Format
 
-Write clear, descriptive commit messages in plain English:
+Read `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` and resolve the branch-commit convention before writing a subject. Run its signal block with `{history-ref}` set to `refs/remotes/origin/<name>`, using the first non-empty of `CONFIGURED_BASE`, `CONDUCTOR_BASE`, and `REMOTE_DEFAULT` as `<name>`, or `auto` when none is set. Apply the reference's safe-substitution rule. Resolve once per repository per session and reuse the decision for later commits, unless the user explicitly requests a different format.
+
+Plain English is the default when no repository convention is found:
 
 ```
 Add user authentication endpoint
@@ -34,9 +36,9 @@ Implement login and logout functionality with JWT tokens.
 Sessions expire after 24 hours of inactivity.
 ```
 
-## Why not Conventional Commits on branch commits
+## Repository conventions first
 
-Some external guides (e.g. Addy Osmani's `git-workflow-and-versioning`) require `type(scope): message` on every commit. **Reject that here.** Conventional Commits are used only for PR titles (which become the merge commit on squash-merge) — not for the intermediate commits that make up a branch's history. Branch commits are narrative: they tell a reviewer the story of the change. A rigid `feat:`/`fix:`/`chore:` prefix forces every step into one of a handful of buckets that rarely describe the actual work. When a branch commit is a genuine step ("extract validator", "wire the reducer", "fix null-safety on input"), the prefix adds noise, not signal. Keep Conventional Commit discipline at the PR-title boundary where changelog automation actually reads it.
+Plain English stays the default narrative format. Never impose Conventional Commits on a repository that does not use them; follow a repository that does. Explicit branch-commit instructions outrank squash-merged PR-title history, as the shared reference specifies. Keep each subject descriptive of the step it introduces, with any required ticket or caller work label composed under the resolved convention.
 
 ## Pre-commit checklist
 
@@ -44,7 +46,7 @@ Before running `git commit`, confirm all five:
 
 - [ ] **One logical change, independently reviewable.** If the diff spans two concerns, split it now — not "in a follow-up".
 - [ ] **Verified the change.** Tests, typecheck, or lint ran against the staged state; failures were resolved or are deliberately called out in the body.
-- [ ] **Subject under 72 characters.** Plain-English (unless the user explicitly asked for another format), imperative mood, no trailing period, no Conventional Commit prefix, and never a placeholder such as `WIP`, `temp`, `fixup`, or `misc`.
+- [ ] **Subject follows the resolved convention:** imperative mood, about 72 characters or fewer when the convention's prefix allows, no trailing period, and never a placeholder such as `WIP`, `temp`, `fixup`, or `misc`.
 - [ ] **Body explains the _why_** when non-obvious — motivation, previous behavior, constraint that forced the shape. Omit the body if the subject is self-explanatory.
 - [ ] **Repository left in a working state.** This commit should not break the target workbench branch if it were the tip.
 
@@ -71,7 +73,7 @@ Commit messages should focus solely on what changed and why, regardless of how t
 
 Use these uppercase markers when reasoning about commit decisions. One marker per line, no decoration:
 
-- **STACK DETECTED** — the repo's commit conventions and any CI hooks observed. `STACK DETECTED: plain-English branch commits, husky pre-commit runs eslint + tsc`.
+- **STACK DETECTED** — the repo's commit conventions and any CI hooks observed. `STACK DETECTED: plain-English branch commits, tier 2 (AGENTS.md requires plain English), ticket source: none, husky pre-commit runs eslint + tsc`.
 - **UNVERIFIED** — claims about the change you couldn't confirm. `UNVERIFIED: haven't run the full test suite after the amend — only typecheck was run`.
 - **NOTICED BUT NOT TOUCHING** — adjacent issues observed while staging. `NOTICED BUT NOT TOUCHING: unrelated lint warning in an adjacent file — not part of this commit`.
 - **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — end-of-turn summary when a commit (or commit series) is complete.

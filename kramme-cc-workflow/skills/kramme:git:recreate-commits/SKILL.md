@@ -140,6 +140,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
    An empty `PUSH_LEASE_OID` with no Pull Request means the branch is local-only. Otherwise the helper requires the configured upstream branch name to match the current local branch, rejects the base branch and push refspecs that rename the destination, resolves Git's effective push remote (including `branch.<name>.pushRemote` and `remote.pushDefault`), freezes exactly one push URL and remote ref, captures the effective destination's exact pre-reset OID, and stops if that destination contains commits absent from `ORIGINAL_TIP`. Do not replace this with an argumentless `git push`, a remote name with multiple push URLs, or a later tracking-ref lookup: repository configuration can widen the push to unrelated refs or repositories, and a tracking ref can move after the safety decision.
 
 2. **Analyze the diff**
+   - Resolve the commit convention once by reading `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` and running its signal block with `{history-ref}` set to the `BASE_REF` value Step 1 printed. Apply its safe-substitution rule, then reuse the decision for every rebuilt commit.
    - Study the full diff from `$RESET_POINT..HEAD` (this is `$AFTER_COMMIT..HEAD` when `--after` was given, otherwise `$MERGE_BASE..HEAD`).
    - Form a clear understanding of the final intended state.
 
@@ -205,7 +206,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
      - Sub-file (fine/atomic) commits: `git checkout -p "$ORIGINAL_TIP" -- <path>` (or `git restore -p --source "$ORIGINAL_TIP" <path>`) and stage only the hunks that belong to this commit.
    - Each commit must:
      - Introduce a single coherent idea.
-     - Include a clear, plain-English commit message and description.
+     - Include a subject in the resolved convention and a body that explains why when non-obvious, per the shared reference.
      - Add comments when needed to explain intent.
 
 6. **Verify correctness**
@@ -270,7 +271,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 ## Misc
 
 1. Never add yourself as an author or contributor on any branch or commit.
-2. If you open or update a pull request, write a plain-English, imperative title and a body that summarizes the storyline — what changed and why, grouped by the commit narrative.
+2. If you open or update a Pull Request, write a Conventional Commits title (`<type>(<scope>): <description>`, as `kramme:pr:generate-description` writes it) and a body that summarizes the storyline — what changed and why, grouped by the commit narrative.
 3. In the pull request body, include a link to the original (pre-recreation) branch or its `BACKUP_REF` so reviewers can compare.
 
 Never add AI attribution to any commit subject or body. Do not include generated-with banners (e.g. `🤖 Generated with ...`) or `Co-Authored-By:` trailers that name an AI assistant.
@@ -279,7 +280,7 @@ Never add AI attribution to any commit subject or body. Do not include generated
 
 Use these uppercase markers when reasoning about the recreation plan and reporting progress. One marker per line, no decoration:
 
-- **STACK DETECTED** — base branch and scope detected at the start of the run. `STACK DETECTED: origin/<resolved-base>, diff scope HEAD~12..HEAD, medium granularity selected`.
+- **STACK DETECTED** — base branch, diff scope, and resolved commit convention detected at the start of the run. `STACK DETECTED: origin/<resolved-base>, diff scope HEAD~12..HEAD, medium granularity selected, conventional-ticket subjects, tier 4 (base history 28/30), ticket CP-12 from caller`.
 - **UNVERIFIED** — claims about the final state that haven't been confirmed by `git diff`. `UNVERIFIED: the test suite passes at each commit — only the final state was diffed`.
 - **NOTICED BUT NOT TOUCHING** — adjacent cleanups that could have slipped in but didn't. `NOTICED BUT NOT TOUCHING: a stale comment in an untouched file — outside the recreation scope`.
 - **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — required end-of-run summary (see Step 8).

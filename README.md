@@ -615,7 +615,7 @@ Auto-triggered by the host based on context. These don't appear in the `/` menu.
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `kramme:code:forward-progress` | Background | — | Keeps multi-stage implementations and pipelines moving by separating capability work and correctness evidence from advisory workflow bookkeeping. Use when stale markers, receipts, hashes, dashboards, or progress metadata would cause valid work to be repeated or completed stages to be rewound. Not for bypassing controls that protect identity, authority, integrity, concurrency, resumability, scope, CI, or publication safety. |
-| `kramme:git:commit-message` | Background | — | Create commit messages for branch commits. Use when committing code changes or writing commit messages. Covers plain-English commit format, a pre-commit checklist, and AI-attribution rules. Not for PR titles or merge commits, which use Conventional Commits. |
+| `kramme:git:commit-message` | Background | — | Create commit messages for branch commits. Use when committing code changes or writing commit messages. Follows the repository's commit-subject convention (plain English when none is found), with a pre-commit checklist and AI-attribution rules. Not for PR titles or merge commits. |
 | `kramme:verify:before-completion` | Background | — | Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires verification evidence for the current working tree before any success claim, reusing a green run only when the tree is unchanged; evidence before assertions always |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
