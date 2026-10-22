@@ -17,3 +17,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-09-28
     baseline_hash: "sha256:cfeb0da3906db50af3151e6f431ea5ce8c082412d5331d9ca8e31c9208530791"
+  - id: claude-plugin-loading
+    url: https://code.claude.com/docs/en/plugins/loading.md
+    title: "Claude Code plugin loading reference"
+    rationale: "Documents the plugin-root override and installation records by scope; the checker reports cached and registered copies without inferring the active session."
+    usage: inspiration
+    last_reviewed_at: 2026-10-22
+    baseline_hash: "sha256:186db8f211a9294bf61b5dadead619da1d71324e54758109463a26827c40aac9"
