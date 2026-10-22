@@ -122,15 +122,37 @@ When `IN_STACK=true`, swap the git commands but keep every gate:
 - **Step 5 replacement:** the validated push procedure becomes `gh stack push` — it pushes all stack branches with `--force-with-lease --atomic`. All Step 5 gates and modes apply unchanged.
 - **Step 7 addition:** report every branch the rebase touched, not just the current one (`gh stack view --json` shows the updated heads and PR states).
 
-### Step 2: Fetch Latest
+### Step 2: Fetch Latest, Exit Early, and Pin the Lease
 
-The resolve script in Step 1 already fetched `origin/<base-branch>`. If meaningful time has passed since Step 1 (e.g., after a long conflict round or user pause), refresh it before rebasing:
-
-```bash
-git fetch origin <base-branch>
-```
+The resolve script in Step 1 already fetched `origin/<base-branch>`; refresh with `git fetch origin <base-branch>` if meaningful time has passed before rebasing.
 
 Report how far the base moved (`git rev-list --count HEAD..origin/<base-branch>`) in the `REBASE PREFLIGHT` line so a large jump is visible at the Step 5 confirmation.
+
+When `IN_STACK=false`, run this read-only preflight before rebasing; it never rewrites or pushes:
+
+```bash
+BASE_TIP=$(git rev-parse --verify "origin/<base-branch>^{commit}")
+if git merge-base --is-ancestor "$BASE_TIP" HEAD \
+  && [ "$(git rev-list --count --merges "$BASE_TIP..HEAD")" -eq 0 ]; then
+  echo "ALREADY_CONTAINS_BASE=true"
+  exit 0
+fi
+LEASE_BRANCH=$(git symbolic-ref --quiet --short HEAD) || exit 1
+git check-ref-format --branch "$LEASE_BRANCH" > /dev/null || exit 1
+REMOTE_REFS=$(git ls-remote --heads origin "refs/heads/$LEASE_BRANCH") || {
+  echo "Could not read origin/$LEASE_BRANCH; stop before rebasing." >&2
+  exit 1
+}
+PRE_REBASE_REMOTE_OID=$(printf '%s\n' "$REMOTE_REFS" | awk -v ref="refs/heads/$LEASE_BRANCH" '$2 == ref { print $1 }')
+if [ -n "$PRE_REBASE_REMOTE_OID" ] && ! git merge-base --is-ancestor "$PRE_REBASE_REMOTE_OID" HEAD 2> /dev/null; then
+  echo "origin/$LEASE_BRANCH has commits the local branch lacks; integrate them before rebasing." >&2
+  exit 1
+fi
+printf 'LEASE_BRANCH=%q\nPRE_REBASE_REMOTE_OID=%q\n' "$LEASE_BRANCH" "$PRE_REBASE_REMOTE_OID"
+```
+
+- On `ALREADY_CONTAINS_BASE=true`, report `REBASE PREFLIGHT: <branch> already contains origin/<base-branch>; nothing to rebase or push`, keep `PUSH_COMPLETED=false`, and skip to Step 7. Merge commits above the base still require rebasing to linearize them.
+- Otherwise, retain both shell-escaped assignments exactly as printed for Step 5 and report `lease pinned to <short-oid>` in `REBASE PREFLIGHT`, or `branch not on origin; absence lease` when `PRE_REBASE_REMOTE_OID` is empty: the lease requires the branch to stay absent. If the preflight fails, stop before rebasing. A stack (`IN_STACK=true`) skips this block and keeps `gh stack push`.
 
 ### Step 3: Rebase
 
@@ -207,14 +229,24 @@ Otherwise, present a summary of what was auto-resolved. In normal and `--force-p
 
 ### Step 5: Force Push
 
-Initialize `PUSH_COMPLETED=false`. Set it to true only after the applicable validated push command returns success. A rejected lease, failed stack push, declined confirmation, or any stop before pushing must leave it false.
+Initialize `PUSH_COMPLETED=false`. Set it to true only after the applicable validated push command returns success. A rejected lease, failed stack push, declined confirmation, or any stop before pushing must leave it false. All force-push paths in this step must use this validated push procedure:
 
-All force-push paths in this step must use this validated push procedure:
+Reuse the variables captured in Step 2. If this runs in a separate shell, prepend the exact shell-escaped assignments emitted by Step 2's `printf %q`, without adding quotes or interpolating raw branch names into shell source. Never recapture the remote OID after rebasing.
 
 ```bash
+: "${LEASE_BRANCH:?Missing Step 2 branch lease}"
+: "${PRE_REBASE_REMOTE_OID?Missing Step 2 remote lease}"
 CURRENT_BRANCH=$(git branch --show-current)
 git check-ref-format --branch "$CURRENT_BRANCH" > /dev/null
-git push --force-with-lease origin "$CURRENT_BRANCH"
+[ "$CURRENT_BRANCH" = "$LEASE_BRANCH" ] || {
+  echo "The branch changed after the lease was pinned; stop before pushing." >&2
+  exit 1
+}
+[[ "$PRE_REBASE_REMOTE_OID" =~ ^([0-9a-f]{40}|[0-9a-f]{64})?$ ]] || {
+  echo "The pinned lease is not an object ID; stop before pushing." >&2
+  exit 1
+}
+git push --no-follow-tags --force-with-lease="refs/heads/$CURRENT_BRANCH:$PRE_REBASE_REMOTE_OID" origin "refs/heads/$CURRENT_BRANCH:refs/heads/$CURRENT_BRANCH"
 ```
 
 If `AUTO_MODE=true`, use the validated push procedure immediately after the rebase completes. Do this even if conflicts were auto-resolved, red flags were bypassed, or verification is unavailable/failing. Report the conflicts, bypassed red flags, and verification status after the push attempt. After this push attempt, skip the remaining confirmation gates and proceed to Step 6.
@@ -240,20 +272,16 @@ If no earlier branch in this step has already pushed or stopped, use `AskUserQue
 
 > "Ready to force push rebased branch. This will overwrite the remote branch history. Continue?"
 >
-> Options:
->
 > - **Yes, force push** - Push with `--force-with-lease`
 > - **Do not push** - Keep local rebase but don't push
 
-If confirmed, use the validated push procedure.
-
-**Note:** `--force-with-lease` refuses to overwrite remote commits you haven't fetched, providing safety against overwriting others' work.
+If confirmed, use the validated push procedure. **Note:** The lease is pinned to the remote tip captured before the rebase, so a later fetch advancing `origin/<branch>` cannot widen it. A bare `--force-with-lease` compares against that moving tracking ref.
 
 ### Step 6: Stabilize CI (when requested)
 
 If `FIX_CI_MODE` is not true, skip to Step 7.
 
-Require `PUSH_COMPLETED=true` before delegating. If it is false, do not invoke `kramme:pr:fix-ci`; report that the rebase remains local or the push failed and therefore no remote CI run can be stabilized by this workflow, then skip to Step 7.
+Require `PUSH_COMPLETED=true` before delegating. If it is false, do not invoke `kramme:pr:fix-ci`; report "nothing was rebased or pushed, so CI stabilization was not started; run `/kramme:pr:fix-ci` directly if needed" for an early exit, or explain that the rebase remains local or the push failed and therefore no remote CI run can be stabilized by this workflow, then skip to Step 7.
 
 Invoke the sibling skill through the platform skill mechanism rather than reproducing its polling or remediation loop:
 
@@ -272,8 +300,6 @@ Show the commit log relative to the `BASE_BRANCH` resolved in Step 1; it should 
 git log --oneline "origin/$BASE_BRANCH..HEAD"
 ```
 
-Confirm the rebase and push separately from optional CI stabilization:
-
-> "Branch rebased onto `origin/<base-branch>` and pushed."
+Confirm the rebase and push separately from optional CI stabilization: report "Branch rebased onto `origin/<base-branch>` and pushed." after success, or "Branch already contains `origin/<base-branch>`; nothing was rebased or pushed." for the early exit.
 
 When `FIX_CI_MODE=true` and `PUSH_COMPLETED=true`, also report whether the delegated workflow reached green CI and addressed review feedback, name any later blocker separately, and include its `CI remediation JSON` line. The commit log may include fixes or consolidation produced by that workflow. When `FIX_CI_MODE=true` and `PUSH_COMPLETED=false`, report that CI stabilization was not started and do not require or fabricate a remediation handoff.
