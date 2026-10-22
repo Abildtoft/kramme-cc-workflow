@@ -428,3 +428,146 @@ load_assignments() {
 	grep -F 'Do not add `--auto`, `--fix-ci`, or an invented `--base` override.' "$rebase_skill"
 	grep -F 'No other parent workflow is authorized by this model-invocation exception.' "$rebase_skill"
 }
+
+@test "rebase pins its force-with-lease to the remote OID captured before rebasing" {
+	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local capture_line
+	local ancestry_stop_line
+	local rebase_line
+
+	grep -F 'REMOTE_REFS=$(git ls-remote --heads origin "refs/heads/$LEASE_BRANCH") || {' "$rebase_skill"
+	grep -F 'PRE_REBASE_REMOTE_OID=$(printf' "$rebase_skill"
+	grep -F 'if [ -n "$PRE_REBASE_REMOTE_OID" ] && ! git merge-base --is-ancestor "$PRE_REBASE_REMOTE_OID" HEAD 2> /dev/null; then' "$rebase_skill"
+	grep -F 'origin/$LEASE_BRANCH has commits the local branch lacks; integrate them before rebasing.' "$rebase_skill"
+	grep -F '[ "$CURRENT_BRANCH" = "$LEASE_BRANCH" ] ||' "$rebase_skill"
+	grep -F '[[ "$PRE_REBASE_REMOTE_OID" =~ ^([0-9a-f]{40}|[0-9a-f]{64})?$ ]] ||' "$rebase_skill"
+	grep -F 'git push --no-follow-tags --force-with-lease="refs/heads/$CURRENT_BRANCH:$PRE_REBASE_REMOTE_OID" origin "refs/heads/$CURRENT_BRANCH:refs/heads/$CURRENT_BRANCH"' "$rebase_skill"
+	! grep -F 'git push --force-with-lease origin "$CURRENT_BRANCH"' "$rebase_skill"
+
+	capture_line=$(grep -nF 'PRE_REBASE_REMOTE_OID=$(printf' "$rebase_skill" | cut -d: -f1)
+	ancestry_stop_line=$(grep -nF 'origin/$LEASE_BRANCH has commits the local branch lacks; integrate them before rebasing.' "$rebase_skill" | cut -d: -f1)
+	rebase_line=$(grep -nFx 'git rebase --autostash origin/<base-branch>' "$rebase_skill" | cut -d: -f1)
+	[ -n "$capture_line" ]
+	[ -n "$ancestry_stop_line" ]
+	[ -n "$rebase_line" ]
+	[ "$capture_line" -lt "$ancestry_stop_line" ]
+	[ "$ancestry_stop_line" -lt "$rebase_line" ]
+}
+
+@test "rebase exits early when the branch already contains the base tip" {
+	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local early_exit_line
+	local rebase_line
+
+	grep -F 'When `IN_STACK=false`, run this read-only preflight before rebasing' "$rebase_skill"
+	grep -F 'ALREADY_CONTAINS_BASE=true' "$rebase_skill"
+	grep -F 'git rev-list --count --merges "$BASE_TIP..HEAD"' "$rebase_skill"
+	grep -F 'nothing to rebase or push' "$rebase_skill"
+	grep -F 'keep `PUSH_COMPLETED=false`, and skip to Step 7.' "$rebase_skill"
+	grep -F 'nothing was rebased or pushed, so CI stabilization was not started' "$rebase_skill"
+	grep -F 'Branch already contains `origin/<base-branch>`; nothing was rebased or pushed.' "$rebase_skill"
+	grep -F 'A stack (`IN_STACK=true`) skips this block and keeps `gh stack push`.' "$rebase_skill"
+
+	early_exit_line=$(grep -nF '  echo "ALREADY_CONTAINS_BASE=true"' "$rebase_skill" | cut -d: -f1)
+	rebase_line=$(grep -nFx 'git rebase --autostash origin/<base-branch>' "$rebase_skill" | cut -d: -f1)
+	[ -n "$early_exit_line" ]
+	[ -n "$rebase_line" ]
+	[ "$early_exit_line" -lt "$rebase_line" ]
+}
+
+@test "a pinned lease rejects a remote update that a later fetch made visible" {
+	local remote="$BATS_TEST_TMPDIR/remote.git"
+	local publisher="$BATS_TEST_TMPDIR/publisher"
+	local contender="$BATS_TEST_TMPDIR/contender"
+	local observed
+	local contender_head
+	local rewritten_head
+	local remote_head
+
+	init_test_git_repo "$publisher" --origin "$remote"
+	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
+	git -C "$publisher" checkout -b feature >/dev/null
+	printf 'published\n' >>"$publisher/tracked.txt"
+	git -C "$publisher" commit -am "published work" >/dev/null
+	git -C "$publisher" push -u origin feature >/dev/null
+	observed=$(git -C "$publisher" ls-remote --heads origin refs/heads/feature | awk '{print $1}')
+	git -C "$publisher" merge-base --is-ancestor "$observed" HEAD
+
+	git clone "$remote" "$contender" >/dev/null
+	git -C "$contender" config user.name "Other User"
+	git -C "$contender" config user.email "other@example.com"
+	git -C "$contender" config commit.gpgsign false
+	git -C "$contender" checkout feature >/dev/null
+	printf 'remote\n' >>"$contender/tracked.txt"
+	git -C "$contender" commit -am "remote work" >/dev/null
+	git -C "$contender" push origin HEAD:refs/heads/feature >/dev/null
+	contender_head=$(git -C "$contender" rev-parse HEAD)
+
+	git -C "$publisher" fetch origin
+	[ "$(git -C "$publisher" rev-parse origin/feature)" = "$contender_head" ]
+	git -C "$publisher" commit --amend -m "rebased published work" >/dev/null
+	rewritten_head=$(git -C "$publisher" rev-parse HEAD)
+	[ "$rewritten_head" != "$observed" ]
+
+	run "${CONDUCTOR_REAL_GIT_PATH:-git}" -C "$publisher" push \
+		--no-follow-tags \
+		--force-with-lease=refs/heads/feature:"$observed" \
+		origin refs/heads/feature:refs/heads/feature
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"stale info"* ]]
+
+	remote_head=$(git -C "$publisher" ls-remote --heads origin refs/heads/feature | awk '{print $1}')
+	[ "$remote_head" = "$contender_head" ]
+	[ "$remote_head" != "$rewritten_head" ]
+}
+
+@test "rebase lease handoff preserves apostrophes and shell syntax in branch names" {
+	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local remote="$BATS_TEST_TMPDIR/remote.git"
+	local publisher="$BATS_TEST_TMPDIR/publisher"
+	local branch="topic/o'brien-"'$(touch${IFS}branch-name-executed)'
+	local preflight
+	local push
+	local assignments
+	local original_head
+	local rebased_head
+
+	preflight=$(awk '
+		/^### Step 2:/ { section = 1 }
+		section && /^```bash$/ { block = 1; next }
+		block && /^```$/ { exit }
+		block { print }
+	' "$rebase_skill" | sed 's/<base-branch>/main/g')
+	push=$(awk '
+		/^### Step 5:/ { section = 1 }
+		section && /^```bash$/ { block = 1; next }
+		block && /^```$/ { exit }
+		block { print }
+	' "$rebase_skill")
+	[ -n "$preflight" ]
+	[ -n "$push" ]
+
+	init_test_git_repo "$publisher" --origin "$remote"
+	cd "$publisher"
+	git checkout -b "$branch" >/dev/null
+	printf 'feature\n' >>tracked.txt
+	git commit -am "feature work" >/dev/null
+	git push origin "refs/heads/$branch:refs/heads/$branch" >/dev/null
+	original_head=$(git rev-parse HEAD)
+	git checkout main >/dev/null
+	printf 'base advance\n' >base.txt
+	git add base.txt
+	git commit -m "advance base" >/dev/null
+	git push origin main >/dev/null
+	git checkout "$branch" >/dev/null
+
+	assignments=$(bash -c "$preflight")
+	git rebase --autostash origin/main
+	rebased_head=$(git rev-parse HEAD)
+	[ "$rebased_head" != "$original_head" ]
+
+	run bash -c "$assignments"$'\n'"$push"
+	[ "$status" -eq 0 ]
+	[ "$(git ls-remote --heads origin "refs/heads/$branch" | awk '{print $1}')" = "$rebased_head" ]
+	[ ! -e branch-name-executed ]
+}
