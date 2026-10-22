@@ -148,11 +148,6 @@
       "path": "kramme-cc-workflow/skills/kramme:docs:solution-note/SKILL.md"
     },
     {
-      "name": "kramme:docs:solution-refresh",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:docs:solution-refresh/SKILL.md"
-    },
-    {
       "name": "kramme:docs:sync-release",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:docs:sync-release/SKILL.md"
