@@ -381,6 +381,11 @@
     grep -qF "return through Step 4" "$skill"
     grep -qF "Narrowed Retry by the Caller procedure" "$skill"
     grep -qF "do not reset the budget, edit again, or return a clean handoff" "$skill"
+    grep -qF "### Resolver Hand-off" "$policy"
+    grep -qF "invoke \`kramme:pr:resolve-review --implement-only\` at most once per batch" "$policy"
+    grep -qF "never invoke it when \`VALIDATION_ONLY=true\`" "$policy"
+    grep -qF "because \`--implement-only\` never commits" "$policy"
+    if grep -qF "use \`kramme:pr:resolve-review\` with the inline report" "$policy"; then exit 1; fi
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
