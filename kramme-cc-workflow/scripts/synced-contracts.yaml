@@ -466,7 +466,7 @@
       "frontmatter": {
         "name": "kramme:code:work-from-plan",
         "argument-hint": "[plan path | inline plan]",
-        "disable-model-invocation": "true",
+        "disable-model-invocation": "false",
         "user-invocable": "true"
       },
       "contains": [
@@ -475,7 +475,8 @@
         "MISSING REQUIREMENT",
         "kramme:siw:transfer-to-linear",
         "kramme:linear:issue-implement",
-        "Read `references/direct-execution.md`"
+        "Read `references/direct-execution.md`",
+        "No other parent workflow is authorized by this model-invocation exception"
       ]
     },
     {
