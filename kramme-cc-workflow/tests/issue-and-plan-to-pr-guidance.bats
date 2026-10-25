@@ -497,7 +497,7 @@
 	    skill_contract="then recommend \`/kramme:siw:transfer-to-linear\`; after migration, implementation belongs to \`kramme:linear:issue-implement\`"
 	    routing_contract="Route the SIW project through \`kramme:siw:transfer-to-linear\`, then use \`kramme:linear:issue-implement\`"
 
-	    grep -qF "stops local SIW issues with a transfer recommendation" "$skill"
+	    grep -qF "stop local SIW issues with a transfer-to-Linear recommendation" "$skill"
 	    printf "%s\n" "$skill_route" | grep -qF "$skill_contract"
 	    printf "%s\n" "$routing_route" | grep -qF "$routing_contract"
 	    grep -qF "A local SIW ticket reaches it through \`kramme:siw:transfer-to-linear\`" "$triage"
@@ -594,6 +594,30 @@
 
     grep -qF "or a merged plan branch from \`kramme:code:plan-to-pr\` is proven and recorded with its Pull Request and landed commit" "$index_template"
     grep -qF "Generation and reconcile never infer or assign it from source changes alone" "$index_template"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "plan-to-PR invokes its guarded work-from-plan child with only the archived plan" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:code:plan-to-pr/SKILL.md"
+    child="skills/kramme:code:work-from-plan/SKILL.md"
+    adr="docs/decisions/2026-08-29-model-invocable-orchestration-children.md"
+
+    grep -qF "disable-model-invocation: false" "$child"
+    grep -qF "delegated by kramme:code:plan-to-pr" "$child"
+    grep -qF "### Model Invocation Contract" "$child"
+    grep -qF "Invoke automatically only as the implementation delegate of \`kramme:code:plan-to-pr\`" "$child"
+    grep -qF "No other parent workflow is authorized by this model-invocation exception" "$child"
+    grep -qF "without invoking \`kramme:linear:issue-implement\`" "$child"
+    grep -qF "any route other than \`direct\` ends this run" "$child"
+    grep -qF "Then invoke \`kramme:code:work-from-plan\` with exactly \`{active-plan}\` as its only argument" "$parent"
+    grep -qF "route \`direct\`" "$parent"
+    grep -qF "### Hand-off repair exceptions" "$adr"
+    grep -qF "is model-invocable only as the implementation delegate of \`kramme:code:plan-to-pr\`" "$adr"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
