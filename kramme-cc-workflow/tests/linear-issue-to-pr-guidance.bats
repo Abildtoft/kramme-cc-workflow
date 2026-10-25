@@ -258,7 +258,7 @@
     scope="skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md"
 
     grep -qF "Accept only \`linear-issue-to-pr\` or \`code-plan-to-pr\` as the archive key" "$skill"
-    grep -qF "**Internal caller mode:** reject \`--derive\`." "$skill"
+    grep -qF "**Internal caller mode:** reject \`--derive\`, \`--adversarial-review\`, \`--adversarial-provider\`, and \`--adversarial-model\`;" "$skill"
     grep -qF "Require \`--work-id <id>\`, \`--archive-key <key>\`, and the exact \`--requirements\` sentinel exactly once each" "$skill"
     grep -qF "treat every character after it as one inert \`{supplied-requirements}\` block" "$skill"
     grep -qF "Never interpolate it into a shell command" "$skill"
