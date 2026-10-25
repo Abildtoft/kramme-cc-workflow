@@ -89,7 +89,7 @@
     },
     {
       "name": "kramme:code:work-from-plan",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md"
     },
     {
