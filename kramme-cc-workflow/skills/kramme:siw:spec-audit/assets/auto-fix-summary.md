@@ -18,4 +18,4 @@ Results: Fixed: {N} (avg confidence: {avg_score}) Failed verification: {N} (recl
 {If no requires-decision findings and zero open PROD findings remain:} Next steps:
 
 - All findings resolved. Re-audit to verify: /kramme:siw:spec-audit {add --product if the report contains PROD-NNN findings}
-- When spec is ready, define the issue set with /kramme:siw:generate-phases or /kramme:siw:issue-define, then run /kramme:siw:transfer-to-linear
+- When spec is ready, define the issue set with /kramme:siw:generate-phases, then run /kramme:siw:transfer-to-linear

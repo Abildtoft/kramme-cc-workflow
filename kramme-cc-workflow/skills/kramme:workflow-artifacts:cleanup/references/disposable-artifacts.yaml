@@ -440,7 +440,7 @@
       "type": "dir",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:siw:issue-define",
+      "producer": "kramme:siw:generate-phases",
       "condition": "siw/OPEN_ISSUES_OVERVIEW.md",
       "expected_contents": "ISSUE-*.md",
       "scopes": ["default", "siw"]

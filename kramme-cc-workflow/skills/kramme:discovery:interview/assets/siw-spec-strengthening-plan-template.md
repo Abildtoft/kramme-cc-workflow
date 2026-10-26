@@ -46,4 +46,3 @@ If the interview revealed that a previously-assumed goal is actually a non-goal,
 
 - `/kramme:siw:spec-audit` — validate improvements
 - `/kramme:siw:generate-phases` — ready to plan implementation
-- `/kramme:siw:issue-define` — ready to define specific work items

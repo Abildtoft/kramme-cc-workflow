@@ -20,6 +20,8 @@ Break down a specification into atomic, committable issues organized into phases
 
 **Implementation is a separate Linear workflow.** After this command completes and the issue set is approved, use `/kramme:siw:transfer-to-linear` before implementation.
 
+**Adding work before transfer.** To add issues to an existing SIW issue set, including a single new issue, record the work in the specification, then rerun this command and choose **Append**. After transfer, define new issues in Linear with `/kramme:linear:issue-define`.
+
 ### Artifact Readiness Contract
 
 Use this shared vocabulary when gating inputs and describing outputs:
@@ -169,7 +171,7 @@ options:
 
 **If "Abort":** Stop the workflow.
 
-**If "Append":** preserve all existing issue IDs exactly as written. New issues use the next unused number within their prefix group based on both `siw/OPEN_ISSUES_OVERVIEW.md` and on-disk `siw/issues/ISSUE-{prefix}-*.md` files. Do not backfill gaps.
+**If "Append":** preserve all existing issue IDs exactly as written. New issues use the next unused number within their prefix group based on both `siw/OPEN_ISSUES_OVERVIEW.md` and on-disk `siw/issues/ISSUE-{prefix}-*.md` files. Do not backfill gaps. Read every existing issue file before Phase 3 and decompose only specification work that no existing issue already covers; never draft a second issue for covered work, and list the covered sections under THINGS I DIDN'T TOUCH in Phase 7.
 
 **If "Replace":** Verify nothing is at risk, but defer deletion to Phase 6 so no mutation happens before the final serialized publication boundary.
 
@@ -219,6 +221,7 @@ Analyze the spec to find natural phase boundaries:
   - **Internal Tool**: 3-4 phases. Prioritize getting to a working tool fast. Phase 1 is the happy-path core workflow.
   - **Tech Debt / Refactor**: 2-4 phases ordered by risk. Phase 1 tackles the highest-risk transformation with rollback capability. Include explicit rollback verification in phase acceptance criteria.
   - **Documentation / Process**: Phases map to document sections or workflow stages. Each phase produces a reviewable deliverable.
+- When the selected spec set describes one coherent change that fits a single XS-L task, plan exactly one General issue (`G-NNN`) and no phases instead of applying the default phase counts above.
 - Identify cross-cutting concerns for the "General" category (setup, tooling, docs)
 
 ### 3.1.5 Detect Prefactoring Needs

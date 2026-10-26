@@ -13,7 +13,7 @@ Before creating documents, classify the initialized artifact using the Artifact 
 
 When `linked_spec_files` exists, base the classification on `linked_spec_readiness_context`. If the available linked-source context does not prove scope, success criteria, technical context/dependencies, and absence of blocking open questions, do not infer `planning-ready`; classify the artifact as `product-only` or `requirements-only` and route to discovery/spec hardening.
 
-For `product-only` or `requirements-only`, generated tracking files must point to `/kramme:discovery:interview --siw` and must not imply issue definition or transfer is ready. For `planning-ready`, choose either the phased path (`/kramme:siw:generate-phases`, then transfer after issues exist) or the single-issue path (`/kramme:siw:issue-define`, then transfer after the issue exists).
+For `product-only` or `requirements-only`, generated tracking files must point to `/kramme:discovery:interview --siw` and must not imply issue definition or transfer is ready. For `planning-ready`, route to `/kramme:siw:generate-phases` (a single issue when the spec is one coherent change), then transfer after the issues exist.
 
 ## Phase 4: Create Documents
 
@@ -69,15 +69,10 @@ Set `{readiness_next_steps}` from readiness:
   1. Harden the spec with `/kramme:discovery:interview --siw`
   2. Create phases or issues only after the artifact is planning-ready
   ```
-- `planning-ready` and phased work:
+- `planning-ready`:
   ```markdown
-  1. Generate phase issues with `/kramme:siw:generate-phases`
+  1. Generate the initial issue set with `/kramme:siw:generate-phases`
   2. Transfer the approved issue set with `/kramme:siw:transfer-to-linear`
-  ```
-- `planning-ready` and one coherent issue:
-  ```markdown
-  1. Define the first issue with `/kramme:siw:issue-define`
-  2. Transfer the approved issue with `/kramme:siw:transfer-to-linear`
   ```
 
 ### 4.3 Create siw/OPEN_ISSUES_OVERVIEW.md
@@ -105,8 +100,7 @@ Create `siw/OPEN_ISSUES_OVERVIEW.md`:
 Set `{open_issues_empty_message}` from readiness:
 
 - `product-only` or `requirements-only`: `Harden the spec with /kramme:discovery:interview --siw before creating issues`
-- `planning-ready` and phased work: `Use /kramme:siw:generate-phases to create phase issues`
-- `planning-ready` and one coherent issue: `Use /kramme:siw:issue-define to create first issue (G-001)`
+- `planning-ready`: `Use /kramme:siw:generate-phases to create the initial issues`
 
 ### 4.4 Create siw/issues/ Directory
 

@@ -178,7 +178,6 @@
         "kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/SKILL.md",
@@ -506,8 +505,7 @@
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/siw-issue-reservation.bats",
       "skills": [
-        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md"
       ]
     },
     {
@@ -555,7 +553,6 @@
         "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md",
         "kramme-cc-workflow/skills/kramme:test:audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:explain/SKILL.md"
       ]

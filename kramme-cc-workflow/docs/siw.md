@@ -23,7 +23,7 @@ SIW does:
 - create or link specifications;
 - audit product and specification quality;
 - apply mechanical audit fixes and turn decision findings into local issues;
-- define individual issues or generate phased issue sets;
+- generate the initial issue set, from a single issue to phased sets;
 - migrate specifications, decisions, milestones, dependencies, and issues into Linear;
 - explicitly remove local SIW artifacts after migration is verified.
 
@@ -37,13 +37,13 @@ For an initiative too foggy to fit in one planning session, start with `/kramme:
 /kramme:discovery:interview --siw "build a notification system" # optional deep discovery
 /kramme:siw:init siw/DISCOVERY_BRIEF.md                         # create the SIW container and spec
 /kramme:siw:spec-audit --apply                                  # validate and safely fix the spec; add --product to pressure-test product quality
-/kramme:siw:generate-phases                                     # create the initial phased issue set
+/kramme:siw:generate-phases                                     # create the initial issue set
 /kramme:siw:transfer-to-linear --dry-run                        # review the migration plan
 /kramme:siw:transfer-to-linear                                  # make Linear the source of truth
 /kramme:workflow-artifacts:cleanup --siw                        # retire local files after verification
 ```
 
-Use `/kramme:siw:issue-define` instead of `generate-phases` when one coherent issue is enough. Use `/kramme:siw:resolve-audit` when audit findings require decisions rather than mechanical edits.
+`generate-phases` plans a single issue when the spec describes one coherent change that fits a single XS–L task. Larger changes receive a phased breakdown. To add work before transfer, update the spec and rerun it with **Append**; after transfer, use `/kramme:linear:issue-define`. Use `/kramme:siw:resolve-audit` when audit findings require decisions rather than mechanical edits.
 
 ## Files and Lifecycle
 
@@ -84,7 +84,7 @@ Retained SIW skills use four readiness states:
 - `planning-ready`: supports issue definition or phase decomposition;
 - `implementation-ready`: an issue has bounded scope, dependencies, acceptance criteria, mode, and verification.
 
-Discovery and audits move specifications toward `planning-ready`. `issue-define` and `generate-phases` produce `implementation-ready` local issues. Transfer preserves that issue context in Linear; it does not implement the work.
+Discovery and audits move specifications toward `planning-ready`. `generate-phases` produces `implementation-ready` local issues. Transfer preserves that issue context in Linear; it does not implement the work.
 
 ## Specification Refinement
 
@@ -112,13 +112,11 @@ Use `/kramme:siw:resolve-audit` for findings requiring a choice. It presents an 
 
 ## Initial Issue Definition
 
-### One issue
-
-`/kramme:siw:issue-define` creates or refines one `G-*` or `P*-*` issue through a guided interview and codebase exploration. It keeps the issue file, overview, and log synchronized.
-
-### Phased issue set
+### Issue set
 
 `/kramme:siw:generate-phases` decomposes a planning-ready specification into atomic XS/S/M/L issues with acceptance criteria, verification, dependencies, parallelization guidance, and `AUTO` or justified `HITL` mode.
+
+When the specification describes one coherent change that fits a single XS–L task, `generate-phases` plans exactly one General issue (`G-NNN`) and no phases. Larger coherent changes still use the normal phase decomposition. To add work to an existing issue set before transfer, record it in the specification and rerun `generate-phases` with **Append**, which drafts issues only for work no existing issue covers. The single-issue SIW definition command was removed on 2026-10-21; refine an existing local issue by editing its file directly and keep its `siw/OPEN_ISSUES_OVERVIEW.md` row and `siw/LOG.md` entry in sync.
 
 Issue IDs are stable after publication. Preserve gaps rather than renumbering; Linear identifiers become authoritative after transfer.
 
@@ -174,8 +172,7 @@ An explicitly abandoned preparation run may skip transfer and use `/kramme:workf
 | `/kramme:siw:init` | `[spec paths \| folder \| discover] [--auto]` | Create the local preparation container |
 | `/kramme:siw:spec-audit` | `[spec paths \| report \| siw] [--product] [--auto] [--apply [--dry-run] [--threshold 60-100] [--allow-dirty]] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality, plus product quality with `--product` |
 | `/kramme:siw:resolve-audit` | `[report] [finding IDs] [--auto]` | Resolve decision findings into local issues |
-| `/kramme:siw:issue-define` | `[issue ID \| description and context]` | Define or refine one local issue |
-| `/kramme:siw:generate-phases` | `[spec path] [--auto]` | Generate the initial phased issue set |
+| `/kramme:siw:generate-phases` | `[spec path] [--auto]` | Generate the initial issue set |
 | `/kramme:siw:transfer-to-linear` | `[siw-dir] [--project ...] [--team ...] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | Migrate planning artifacts into Linear |
 | `/kramme:workflow-artifacts:cleanup` | `--siw` | Retire local SIW files after transfer or abandonment |
 
@@ -199,7 +196,7 @@ See [the decision record](decisions/2026-08-26-siw-ends-at-linear-transfer.md) f
 
 ## Troubleshooting
 
-- **Existing SIW files:** read `siw/LOG.md` and `siw/OPEN_ISSUES_OVERVIEW.md`, then choose discovery/audit, issue definition, phase generation, or transfer directly.
+- **Existing SIW files:** read `siw/LOG.md` and `siw/OPEN_ISSUES_OVERVIEW.md`, then choose discovery/audit, issue generation, or transfer directly.
 - **Spec is not planning-ready:** run discovery or the relevant audit before issue creation.
 - **Multiple spec candidates:** pass the intended main spec explicitly; auto mode stops rather than guessing.
 - **Transfer interrupted:** keep the local SIW directory, re-authorize Linear if needed, and resume with `--retry` using the emitted ledger.

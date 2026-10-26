@@ -21,5 +21,5 @@ Next Steps:
 - Resolve remaining findings, including PROD-NNN product findings that are never auto-fixed, with executive summaries and issue creation: /kramme:siw:resolve-audit {report_path}
 - Or let the model choose each resolution automatically: /kramme:siw:resolve-audit {report_path} --auto
 - Re-run after spec revisions to verify quality: /kramme:siw:spec-audit {add --product if product mode ran}
-- When spec is ready, define the issue set with /kramme:siw:generate-phases or /kramme:siw:issue-define, then run /kramme:siw:transfer-to-linear
+- When spec is ready, define the issue set with /kramme:siw:generate-phases, then run /kramme:siw:transfer-to-linear
 - Clean up report when done: /kramme:workflow-artifacts:cleanup

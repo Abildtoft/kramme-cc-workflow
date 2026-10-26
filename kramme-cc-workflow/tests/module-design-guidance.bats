@@ -115,7 +115,6 @@ setup() {
 	local template
 	for template in \
 		skills/kramme:siw:generate-phases/references/issue-template.md \
-		skills/kramme:siw:issue-define/references/issue-templates.md \
 		skills/kramme:linear:issue-define/assets/comprehensive-template.md; do
 		grep -qF "### Interface Impact" "$template"
 		grep -qF "new | changed | implementation-only" "$template"

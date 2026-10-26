@@ -16,7 +16,7 @@ Find a route through an initiative that is too large or uncertain for one agent 
 - Treat the map as an index, not a store. Keep each decision's detail in exactly one resolved ticket; keep only its linked gist on the map.
 - Resolve one ticket per session. Charting a new map also consumes the session and must not continue into ticket resolution.
 - Use Wayfinder only while consequential questions or fog prevent a planning-ready spec or bounded implementation plan.
-- Hand clear work to `/kramme:siw:init`, `/kramme:siw:generate-phases`, `/kramme:siw:issue-define`, or `/kramme:code:work-from-plan`; do not reproduce those workflows here.
+- Hand clear work to `/kramme:siw:init`, `/kramme:siw:generate-phases`, `/kramme:linear:issue-define`, or `/kramme:code:work-from-plan`; do not reproduce those workflows here.
 - Use the local `.context` backend in this version. Do not create or mutate Linear, GitHub, Jira, or other tracker records.
 
 ## Workflow
@@ -72,7 +72,7 @@ Run this step only in work mode.
 5. Classify the exit:
    - route a planning-ready multi-step initiative to `/kramme:siw:init` and later SIW decomposition;
    - route one bounded, implementation-ready plan to `/kramme:code:work-from-plan`;
-   - route a single SIW work item to `/kramme:siw:issue-define` after the SIW container exists.
+   - route a single work item to `/kramme:siw:generate-phases` with Append when an SIW container already tracks the initiative, after recording the work in the tracked specification; otherwise route it to `/kramme:linear:issue-define`.
 6. Recommend the next workflow and stop. Do not create SIW files or invoke implementation in the same session.
 
 ## Artifact Lifecycle

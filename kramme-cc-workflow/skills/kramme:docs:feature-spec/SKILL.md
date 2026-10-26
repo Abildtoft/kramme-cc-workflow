@@ -219,7 +219,7 @@ On approval:
 
 - Confirm the file path.
 - State the artifact readiness: `planning-ready` when all six areas are concrete, relevant technical context/dependencies or planning detail are present, and no blocking open questions remain; otherwise name the remaining `product-only` or `requirements-only` gap.
-- Optionally point to next-step skills: `/kramme:siw:init <spec-file>` when the spec should be promoted to local tracking. After SIW is initialized, the next step is `/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for one coherent issue. For a single-sitting change, point straight to implementation only when the approved spec plus current context is already `implementation-ready`.
+- Optionally point to next-step skills: `/kramme:siw:init <spec-file>` when the spec should be promoted to local tracking. After SIW is initialized, the next step is `/kramme:siw:generate-phases`, which also plans a single issue for one coherent change. For a single-sitting change, point straight to implementation only when the approved spec plus current context is already `implementation-ready`.
 
 ## Conventions — output markers used in this skill
 

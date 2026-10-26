@@ -13,6 +13,7 @@ Task Sizing Grammar:
 
 Work Context: {work_context.work_type}
 - Verify phase count and granularity match the work type
+- A plan with exactly one General issue and no phases is valid when the spec describes one coherent change; do not flag the missing phases
 - For prototypes, do not flag broad task scope or missing test tasks
 - For refactors, verify each task has rollback safety
 - For documentation/process work, interpret "end-to-end" as the smallest reviewable deliverable for that workflow rather than schema + API + UI
