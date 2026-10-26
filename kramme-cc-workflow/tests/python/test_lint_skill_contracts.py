@@ -813,6 +813,7 @@ class CheckRegistryTest(unittest.TestCase):
                 "readme_skill_sync",
                 "component_catalog",
                 "routing_distinctness",
+                "invocation_graph",
                 "mechanical",
             ],
         )

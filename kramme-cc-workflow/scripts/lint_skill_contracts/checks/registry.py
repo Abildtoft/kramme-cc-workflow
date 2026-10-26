@@ -12,6 +12,7 @@ from .basic import (
 from .component_catalog import check_component_catalog
 from .epilogue import check_epilogue_forbidden
 from .hooks_json import check_hooks_json
+from .invocation_graph import check_invocation_graph
 from .marker_manifest import check_marker_manifests
 from .mechanical import check_mechanical
 from .readme_sync import check_readme_skill_sync
@@ -33,6 +34,7 @@ CHECKS: tuple[tuple[str, CheckFunc], ...] = (
     ("readme_skill_sync", check_readme_skill_sync),
     ("component_catalog", check_component_catalog),
     ("routing_distinctness", check_routing_distinctness),
+    ("invocation_graph", check_invocation_graph),
     ("mechanical", check_mechanical),
 )
 
