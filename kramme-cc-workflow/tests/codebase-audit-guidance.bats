@@ -99,3 +99,70 @@ raise SystemExit(0 if ok else "CODEBASE_WEAKNESS_REPORT.md must have one entry p
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "shared breakdown-ready schema defines provenance, required fields, and scales" {
+	local schema="shared/findings/references/breakdown-ready-findings.md"
+	local phrase
+	for phrase in '## Report Provenance' '## Breakdown-Ready Finding Data' '**Scanned commit:**' '**Base branch:**' \
+		'**Generated:**' '**Severity:**' '**Confidence:**' '**Locations:**' '**Evidence:**' '**Suggested fix:**' \
+		'**Effort:**' 'Schema: `breakdown-ready-findings v1`.' \
+		'| `kramme:code:agent-readiness` | Critical / Important / Suggestion | critical / high / suggestion |'; do
+		grep -qF -- "$phrase" "$schema"
+	done
+}
+
+@test "audit producers name the shared schema and emit both sections" {
+	local schema_path='${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md'
+	local skill template
+	for skill in kramme:code:refactor-opportunities kramme:code:agent-readiness kramme:code:outside-view; do
+		grep -qF "$schema_path" "skills/$skill/SKILL.md"
+	done
+	for template in \
+		"skills/kramme:code:refactor-opportunities/assets/report-template.md" \
+		"shared/codebase-audit/assets/report-template.md" \
+		"skills/kramme:code:agent-readiness/assets/audit-report.md" \
+		"skills/kramme:code:outside-view/assets/report-template.md"; do
+		grep -qF '## Report Provenance' "$template"
+		grep -qF '## Breakdown-Ready Finding Data' "$template"
+	done
+	grep -qF '### RO-001:' "skills/kramme:code:refactor-opportunities/assets/report-template.md"
+	run grep -qF '## Detailed Findings' "shared/codebase-audit/assets/report-template.md"
+	[ "$status" -eq 1 ]
+	grep -qF 'Suggested fix:' "skills/kramme:code:agent-readiness/references/dimension-agent.md"
+	run grep -qF 'Findings (with IDs, severity, details)' "skills/kramme:code:agent-readiness/SKILL.md"
+	[ "$status" -eq 1 ]
+}
+
+@test "both breakdown intakes read the shared schema, provenance, and the dependency audit" {
+	local schema_path='${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md'
+	local skill
+	for skill in kramme:code:breakdown-findings kramme:linear:breakdown-findings; do
+		grep -qF "$schema_path" "skills/$skill/SKILL.md"
+		grep -qF "$schema_path" "skills/$skill/references/source-intake.md"
+		grep -qF '## Report Provenance' "skills/$skill/references/source-intake.md"
+	done
+	grep -qF '`DEPENDENCY_AUDIT.md`' "skills/kramme:code:breakdown-findings/references/auto-detect-sources.md"
+	grep -qF '`DEPENDENCY_AUDIT.md`' "skills/kramme:linear:breakdown-findings/references/source-intake.md"
+	grep -qxF 'DEPENDENCY_AUDIT.md' hooks/confirm-review-artifacts.txt
+}
+
+@test "breakdown provenance handles non-git reports and dirty source compatibility" {
+	local schema="shared/findings/references/breakdown-ready-findings.md"
+	local source
+	for source in \
+		"skills/kramme:code:outside-view/SKILL.md" \
+		"skills/kramme:code:refactor-opportunities/SKILL.md" \
+		"skills/kramme:code:agent-readiness/SKILL.md"; do
+		grep -qF 'none (not a git repository)' "$source"
+	done
+	grep -qF 'dirty (<N> paths)' "$schema"
+	grep -qF 'Do not combine sources when any provenance says `dirty (<N> paths)`' "$schema"
+	grep -qF 'if any source says `dirty (<N> paths)`' "skills/kramme:code:breakdown-findings/references/source-intake.md"
+	grep -qF 'if any source says `dirty (<N> paths)`' "skills/kramme:linear:breakdown-findings/references/source-intake.md"
+}
+
+@test "linear breakdown preserves schema suggestion severity" {
+	local source="skills/kramme:linear:breakdown-findings/references/source-intake.md"
+	grep -qF 'SUGGESTION' "$source"
+	grep -qF 'map schema severity `suggestion` to normalized `SUGGESTION`' "$source"
+}
