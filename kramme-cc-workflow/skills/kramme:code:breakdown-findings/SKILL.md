@@ -34,7 +34,7 @@ These rules cover sources, recon, generated plans, indexes, rejection records, a
 
 ## Workflow
 
-Load `references/source-intake.md` now, after mode selection and safety rules, and follow it through Phases 0 and 1.
+Load `references/source-intake.md` now, after mode selection and safety rules, and follow it through Phases 0 and 1. Sources that follow `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` are read through that schema.
 
 ### Phase 0: Check for Prior Artifacts
 

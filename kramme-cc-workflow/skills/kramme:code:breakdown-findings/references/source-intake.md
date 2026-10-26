@@ -42,7 +42,7 @@ Resolve the remaining source arguments in this order:
 
 - Findings-mode reports may be combined.
 - A pre-clustered handoff must be the only source. Ask for one handoff or a new merged handoff when it is mixed with anything else.
-- Stop and report mutually exclusive scopes, base commits, or generated-at contexts rather than blending them.
+- Stop and report mutually exclusive scopes, base commits, generated-at contexts, or dirty working trees rather than blending them. Read each source's scanned commit, working-tree state, and generated-at date from its `## Report Provenance` section when present; if any source says `dirty (<N> paths)`, stop and ask for clean reruns because the schema has no exact dirty-tree identity.
 
 ### Normalize findings
 
@@ -56,7 +56,7 @@ For every findings-mode source, extract one normalized list containing:
 - effort (`S`, `M`, or `L`), fix risk (`LOW`, `MED`, or `HIGH`), confidence (`HIGH`, `MED`, or `LOW`), and leverage (`EXCEPTIONAL`, `HIGH`, `MED`, or `LOW`);
 - suggested verification and scope notes.
 
-Prefix inferred values with `UNVERIFIED:`. Prefer `Breakdown-Ready Finding Data` or `Breakdown-Ready Action Data` sections; use summary tables only to fill gaps. Merge duplicates when location and problem match, preserving all source references, strongest supported severity/impact, and most conservative effort/risk/confidence. Preserve contradictions and surface a `CONFUSION:` during clustering.
+Prefix inferred values with `UNVERIFIED:`. Prefer `## Breakdown-Ready Finding Data` blocks defined by `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`, mapping their fields as its Consumer Contract says; also accept older free-form `Breakdown-Ready Finding Data` or `Breakdown-Ready Action Data` sections; use summary tables only to fill gaps. Merge duplicates when location and problem match, preserving all source references, strongest supported severity/impact, and most conservative effort/risk/confidence. Preserve contradictions and surface a `CONFUSION:` during clustering.
 
 Report: `Found N findings from M sources: {source set}. Proceeding to cluster.`
 

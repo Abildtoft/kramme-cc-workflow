@@ -52,7 +52,7 @@ Reject duplicate singleton flags, missing values (including a missing resume-art
 
 ### Phase 2: Ingest and Normalize Findings
 
-Read `references/source-intake.md` completely and follow it.
+Read `references/source-intake.md` completely and follow it. Sources that follow `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` are read through that schema.
 
 Produce one compatible normalized findings set or validated pre-clustered handoff, stable source IDs, deterministic `SOURCE_SET_KEY`, and parsed/merged/invalid counts.
 
