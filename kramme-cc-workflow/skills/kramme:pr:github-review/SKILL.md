@@ -16,7 +16,7 @@ This skill does not write to GitHub until the user authorizes it. It always mate
 
 Parse `$ARGUMENTS` before any network or git call.
 
-First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to parse and remove `--subagent-model <model>` before the PR selector and other flags. Keep `SUBAGENT_MODEL_OVERRIDE` for both delegated review passes.
+If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to parse and remove `--subagent-model <model>` and validate the setting before the PR selector and other flags. Otherwise do not read it: this skill launches no reviewer, each delegated review skill applies the policy to its own reviewers, and Step 10a readers run on the session's model. Keep `SUBAGENT_MODEL_OVERRIDE`, empty when the file was not read, for both delegated review passes.
 
 - First positional token that is a PR number (`123`, `#123`) or a GitHub PR URL → `PR_SELECTOR`. Otherwise leave `PR_SELECTOR` empty.
 - `--draft-review` → `CREATE_DRAFT_REVIEW=true`. After drafting and humanizing the findings, create one unsubmitted pending GitHub review containing every eligible proposed inline comment without asking again. This flag authorizes only that pending-review write; it never authorizes submitting the review, replying to existing threads, resolving threads, approving, or requesting changes.

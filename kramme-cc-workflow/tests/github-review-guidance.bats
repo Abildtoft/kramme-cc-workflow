@@ -523,6 +523,24 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "github review reads the model policy only when an override or level is set" {
+	run python3 - "$SKILL" <<'PY'
+import pathlib
+import sys
+
+body = pathlib.Path(sys.argv[1]).read_text().split("---", 2)[2]
+step0 = body[body.index("## Step 0: Parse Arguments"):body.index("```bash")]
+for phrase in [
+    "If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply",
+    "Otherwise do not read it:",
+    "Keep `SUBAGENT_MODEL_OVERRIDE`, empty when the file was not read,",
+]:
+    assert phrase in step0, phrase
+PY
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "github review runs the clarity check after humanizing and before the eligibility count" {
 	run python3 - "$SKILL" "$README" <<'PY'
 import pathlib
