@@ -420,8 +420,7 @@
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/codebase-audit-guidance.bats",
       "skills": [
-        "kramme-cc-workflow/skills/kramme:code:refactor-opportunities/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:code:weakness-audit/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:code:refactor-opportunities/SKILL.md"
       ]
     },
     {

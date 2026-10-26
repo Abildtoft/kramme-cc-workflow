@@ -1,6 +1,6 @@
 ---
 name: kramme:code:outside-view
-description: "Rate a codebase with unprimed raters; cluster complaints, compare with CODEBASE_WEAKNESS_REPORT.md, and track gestalt in OUTSIDE_VIEW_REPORT.md. Cross-model is opt-in and isolated. Use for unknown-unknown quality issues, especially in AI-engineered code. Not for evidence-ranked findings (kramme:code:weakness-audit), PR review, or implementation."
+description: "Rate a codebase with unprimed raters; cluster complaints, compare with CODEBASE_WEAKNESS_REPORT.md, and track gestalt in OUTSIDE_VIEW_REPORT.md. Cross-model is opt-in and isolated. Use for unknown-unknown quality issues, especially in AI-engineered code. Not for evidence-ranked findings (kramme:code:refactor-opportunities --ranked), PR review, or implementation."
 argument-hint: "[--raters N] [--output <path>] [--compare <report-path>] [--cross-model]"
 disable-model-invocation: true
 user-invocable: true
@@ -87,8 +87,8 @@ Only now does the orchestrator enter the project's frame.
    - **filtered** — matches a filtered candidate, near miss, or unverified impression.
    - **blind spot** — absent from the comparison report entirely.
 2. Using the complete blind-spot fingerprint list in `Run History`, count how many consecutive runs each current blind-spot fingerprint has appeared in.
-3. For every blind spot recurring in 2 or more runs, emit a **promotion candidate**: name the concrete place the pattern should be encoded — a weakness-audit rubric signal, a deslop pattern, a lint or CI gate, or a documentation fix. Promotion always targets the structured system, never this skill's rater prompts.
-4. If no comparison report exists, mark the delta section `no comparison available` and recommend running `/kramme:code:weakness-audit` before the next outside-view run.
+3. For every blind spot recurring in 2 or more runs, emit a **promotion candidate**: name the concrete place the pattern should be encoded — a ranked-audit rubric signal in `kramme:code:refactor-opportunities`, a deslop pattern, a lint or CI gate, or a documentation fix. Promotion always targets the structured system, never this skill's rater prompts.
+4. If no comparison report exists, mark the delta section `no comparison available` and recommend running `/kramme:code:refactor-opportunities --ranked` before the next outside-view run.
 
 ### 6. Write Report
 
@@ -113,7 +113,7 @@ Reply with:
 ## Artifact Lifecycle
 
 - **Produces/updates:** `OUTSIDE_VIEW_REPORT.md` by default, or the path passed with `--output`. The report carries its own run history forward across overwrites.
-- **Consumed by:** the user for entropy tracking; `/kramme:code:weakness-audit` runs that act on promotion candidates; future outside-view runs for persona rotation and recurrence counting.
+- **Consumed by:** the user for entropy tracking; `/kramme:code:refactor-opportunities --ranked` runs that act on promotion candidates; future outside-view runs for persona rotation and recurrence counting.
 - **Refresh trigger:** re-run on a regular cadence (after a merge cycle or before a maintenance cycle), and after acting on promotion candidates to confirm the blind spot closed.
 - **Retired by:** `/kramme:workflow-artifacts:cleanup` when the report is no longer useful, or manual deletion.
 

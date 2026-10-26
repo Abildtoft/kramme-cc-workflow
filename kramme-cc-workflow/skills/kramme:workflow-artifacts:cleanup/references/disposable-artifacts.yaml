@@ -75,7 +75,7 @@
       "type": "file",
       "category": "working-dir",
       "retention": "disposable",
-      "producer": "kramme:code:weakness-audit"
+      "producer": "kramme:code:refactor-opportunities"
     },
     {
       "id": "outside-view-report",

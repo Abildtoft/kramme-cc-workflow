@@ -7,7 +7,6 @@ setup() {
 	cd "$BATS_TEST_DIRNAME/.."
 	REFACTOR_SKILL="skills/kramme:code:refactor-opportunities/SKILL.md"
 	RANKED_MODE="skills/kramme:code:refactor-opportunities/references/ranked-mode.md"
-	WEAKNESS_SKILL="skills/kramme:code:weakness-audit/SKILL.md"
 	AUDIT_WORKFLOW="shared/codebase-audit/references/audit-workflow.md"
 	AUDIT_RUBRIC="shared/codebase-audit/references/audit-rubric.md"
 	AUDIT_TEMPLATE="shared/codebase-audit/assets/report-template.md"
@@ -47,29 +46,56 @@ setup() {
 	done
 }
 
-@test "audit entrypoints use one shared workflow rubric and report schema" {
-	local skill resource
-	for skill in "$REFACTOR_SKILL" "$WEAKNESS_SKILL"; do
-		for resource in "$AUDIT_WORKFLOW" "$AUDIT_RUBRIC" "$AUDIT_TEMPLATE"; do
-			grep -qF "\${CLAUDE_PLUGIN_ROOT}/$resource" "$skill"
-			[ -f "$resource" ]
-		done
+@test "ranked mode uses the shared workflow rubric and report schema" {
+	local resource
+	for resource in "$AUDIT_WORKFLOW" "$AUDIT_RUBRIC" "$AUDIT_TEMPLATE"; do
+		grep -qF "\${CLAUDE_PLUGIN_ROOT}/$resource" "$REFACTOR_SKILL"
+		[ -f "$resource" ]
 	done
 	grep -qF "\${CLAUDE_PLUGIN_ROOT}/$AUDIT_WORKFLOW" "$RANKED_MODE"
 	[ ! -e skills/kramme:code:refactor-opportunities/references/ranked-rubric.md ]
 	[ ! -e skills/kramme:code:refactor-opportunities/assets/ranked-report-template.md ]
-	[ ! -e skills/kramme:code:weakness-audit/references/audit-rubric.md ]
-	[ ! -e skills/kramme:code:weakness-audit/assets/report-template.md ]
 }
 
-@test "audit adapters preserve mode gates and rejection handling" {
-	grep -qxF 'disable-model-invocation: true' "$WEAKNESS_SKILL"
-	grep -qF 'Optional `--team` is accepted as a no-op compatibility flag' "$WEAKNESS_SKILL"
-	grep -qF 'Agent Teams must be enabled' skills/kramme:code:weakness-audit/references/team-mode.md
+@test "ranked adapter preserves mode gates and rejection handling" {
 	grep -qF 'Reject `--team`' "$RANKED_MODE"
 	grep -qF 'Phase 3 steps 4-5' "$RANKED_MODE"
 	grep -qF 'before final ranking' "$RANKED_MODE"
 	grep -qF 'Phase 4 step 9' "$RANKED_MODE"
 	grep -qF 'Run this section only when `AUDIT_MODE=team`' "$AUDIT_WORKFLOW"
 	grep -qF 'Run this section only when `AUDIT_MODE=solo`; launch no reviewers.' "$AUDIT_WORKFLOW"
+}
+
+@test "ranked mode preserves the explicit history baseline" {
+	grep -qF '[--ranked [--solo] [--output <path>] [--max-findings N] [--base <ref>]]' <(sed -n '/^argument-hint:/p' "$REFACTOR_SKILL")
+	grep -qF 'resolve an explicit `--base <ref>` with `git rev-parse' "$REFACTOR_SKILL"
+	grep -qF 'store it as `HISTORY_BASE_REF`' "$REFACTOR_SKILL"
+	grep -qF '"${HISTORY_BASE_REF:-HEAD}"' "$REFACTOR_SKILL"
+	grep -qF "Use Phase 1's \`HISTORY_BASE_REF\` for churn, co-change, and other history signals" "$RANKED_MODE"
+	grep -qF 'never changes the ranked file scope' "$RANKED_MODE"
+}
+
+@test "weakness audit is retired and its consumers route to ranked mode" {
+	[ ! -e "skills/kramme:code:weakness-audit" ]
+	run grep -rqF 'weakness-audit' skills shared
+	[ "$status" -eq 1 ]
+	grep -qF '/kramme:code:refactor-opportunities --ranked' "skills/kramme:code:outside-view/SKILL.md"
+	grep -qF 'kramme:code:refactor-opportunities --ranked' "skills/kramme:code:outside-view/assets/report-template.md"
+	grep -qF '$kramme:code:refactor-opportunities --ranked' "skills/kramme:code:breakdown-findings/references/source-intake.md"
+	grep -qF 'kramme:code:refactor-opportunities --ranked' "skills/kramme:discovery:strategic-inquiry/SKILL.md"
+	grep -qF '`/kramme:code:weakness-audit` → `/kramme:code:refactor-opportunities --ranked`' ../README.md
+	run python3 - "skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml" <<'PY'
+import json
+import pathlib
+import sys
+
+entries = [
+    entry
+    for entry in json.loads(pathlib.Path(sys.argv[1]).read_text())["artifacts"]
+    if entry["path"] == "CODEBASE_WEAKNESS_REPORT.md"
+]
+ok = len(entries) == 1 and entries[0]["producer"] == "kramme:code:refactor-opportunities"
+raise SystemExit(0 if ok else "CODEBASE_WEAKNESS_REPORT.md must have one entry produced by refactor-opportunities")
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
