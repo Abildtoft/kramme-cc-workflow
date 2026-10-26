@@ -13,6 +13,7 @@ Verify:
 - Every blocked plan names blocker labels in the title, index row, dependency map, and Dependencies and Sequencing section.
 - Every blocked plan includes one **Prerequisite Readiness Evidence** entry per blocker with required base state, exact evidence locations, and a pass/fail decision that needs no sibling artifact.
 - Every plan remains executable when copied by itself into a fresh workspace based on a branch where its stated prerequisites have landed: every **In Scope** entry names one repository-relative file, no entry resolves to an existing directory, and a missing path authorizes exactly one intended file.
+- When drafting was delegated, every final plan came from a draft that passed the orchestrator's rubric review, no drafter wrote a root `PR_PLAN_*.md` artifact, every reused passed draft matched its recorded content and live-state fingerprints, and every blocker's landing marker appears in its producer's Completion Criteria and in each dependent's **Prerequisite Readiness Evidence**.
 - Every generated plan and `PR_PLAN_INDEX.md` contains exactly one opening metadata field `**Scope contract:** exact files`.
 - Every generated plan header and matching index row starts at `TODO`, and the index lifecycle lists `IN_PROGRESS` as executor-owned rather than generation- or reconcile-inferred.
 - Every same-wave group is marked as parallel in the index and summary.
