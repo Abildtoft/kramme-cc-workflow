@@ -9,6 +9,7 @@ script; keep behavior shared by multiple scripts here.
 | File | Responsibility |
 | --- | --- |
 | `shell-helpers.sh` | Provides required-argument validation, shell assignment quoting, JSON object emit/decode with a single Python guard, and timeout-wrapped command execution. |
+| `skill-usage-cost.js` | Transcript indexing, per-session cost and token summaries, and rendering for `scripts/skill-usage.js cost`. |
 | `skill-usage-hosts.js` | Host detection and Codex rollout parsing for `scripts/skill-usage.js`. |
 
 ## Usage
@@ -50,5 +51,12 @@ Run the focused tests and type check after changing `skill-usage-hosts.js`:
 
 ```bash
 make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/skill-usage-hosts.test.js
+make -C kramme-cc-workflow lint-js
+```
+
+Run the focused tests and type check after changing `skill-usage-cost.js`:
+
+```bash
+make -C kramme-cc-workflow test-node-file NODE_TEST_FILE=tests/node/skill-usage-cost.test.js
 make -C kramme-cc-workflow lint-js
 ```
