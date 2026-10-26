@@ -16,7 +16,7 @@ kramme:{domain}:{action}[:{qualifier}...]
 | --- | --- | --- |
 | `code` | Code quality, refactoring | `code:refactor-pass`, `code:agent-readiness` |
 | `pr` | Pull request workflows | `pr:fix-ci`, `pr:create`, `pr:code-review` |
-| `siw` | Structured Implementation Workflow | `siw:init`, `siw:spec-audit`, `siw:issue-define` |
+| `siw` | Structured Implementation Workflow | `siw:init`, `siw:spec-audit`, `siw:generate-phases` |
 | `git` | Git operations | `git:commit-message` |
 | `visual` | Visual output, diagrams | `visual:explain`, `visual:check-slop` |
 | `docs` | Documentation, conversion | `docs:to-markdown`, `docs:update-agents-md` |

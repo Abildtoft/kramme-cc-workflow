@@ -72,7 +72,7 @@ Classify the source artifact before choosing a route:
 - `planning-ready`: has stable requirements and enough technical/contextual detail to generate SIW phases or define issues, but is not itself an implementation issue.
 - `implementation-ready`: names a bounded unit of work with clear scope, dependencies, affected modules or files, acceptance criteria, and local verification.
 
-Only `implementation-ready` artifacts can route to `direct` implementation. `product-only` and `requirements-only` artifacts must be rejected for direct execution and routed to `/kramme:docs:feature-spec`, `/kramme:discovery:interview` (with `--siw` for tracked SIW work), or another spec-hardening step depending on the missing layer. `planning-ready` artifacts route to `recommend-siw`; an implementation-ready local SIW issue routes to transfer rather than local execution. For tracked SIW specs, recommend the next planning step (`/kramme:siw:generate-phases` for phased work or `/kramme:siw:issue-define` for one coherent issue).
+Only `implementation-ready` artifacts can route to `direct` implementation. `product-only` and `requirements-only` artifacts must be rejected for direct execution and routed to `/kramme:docs:feature-spec`, `/kramme:discovery:interview` (with `--siw` for tracked SIW work), or another spec-hardening step depending on the missing layer. `planning-ready` artifacts route to `recommend-siw`; an implementation-ready local SIW issue routes to transfer rather than local execution. For tracked SIW specs, recommend `/kramme:siw:generate-phases` as the next planning step; it plans a single issue for one coherent change.
 
 ## Step 3: Route The Plan
 
@@ -84,7 +84,7 @@ Read `references/routing.md`, classify artifact readiness, then classify the pla
 - `direct`: the plan is bounded enough to implement on the current branch.
 - `blocked`: required context is missing or contradictory.
 
-If the source is `product-only` or `requirements-only`, do not choose `direct`, even if the requested change sounds small. Explain the missing readiness layer and recommend the smallest hardening step instead. If the source is `planning-ready` but lacks issue-level scope or verification, choose `recommend-siw` even when the artifact already lives under `siw/`; a tracked spec still needs `/kramme:siw:generate-phases` or `/kramme:siw:issue-define` before transfer.
+If the source is `product-only` or `requirements-only`, do not choose `direct`, even if the requested change sounds small. Explain the missing readiness layer and recommend the smallest hardening step instead. If the source is `planning-ready` but lacks issue-level scope or verification, choose `recommend-siw` even when the artifact already lives under `siw/`; a tracked spec still needs `/kramme:siw:generate-phases` before transfer.
 
 Show the route decision before editing files:
 

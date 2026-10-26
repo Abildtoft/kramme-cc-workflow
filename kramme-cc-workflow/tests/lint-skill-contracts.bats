@@ -63,8 +63,6 @@ siw_spec_exclusion_expected_paths() {
     "kramme-cc-workflow/skills/kramme:discovery:interview/references/siw-mode.md" \
     "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:issue-define/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:issue-define/references/classification-and-prefix.md" \
     "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md" \
     "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md" \
     "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md" \
@@ -1754,20 +1752,34 @@ EOF
 }
 
 
-@test "siw issue creators share the same final-boundary reservation protocol" {
-  local issue_define_text generate_phases_text publication_recovery_text generate_phases_contract_text tracker_schema_text
-  issue_define_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define/SKILL.md")"
+@test "siw issue creation keeps one reservation protocol after the single-issue skill removal" {
+  local generate_phases_text publication_recovery_text generate_phases_contract_text tracker_schema_text triage_text
   generate_phases_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/SKILL.md")"
   publication_recovery_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/references/publication-recovery.md")"
   generate_phases_contract_text="${generate_phases_text}"$'\n'"${publication_recovery_text}"
-  tracker_schema_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define/references/tracker-schema.md")"
+  tracker_schema_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/references/tracker-schema.md")"
+  triage_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:debug:triage-to-issue/SKILL.md")"
 
   [ -x "$RESERVATION_HELPER" ]
 
   [[ "$generate_phases_text" == *'Before approving replacement, read `references/publication-recovery.md`'* ]]
   [[ "$generate_phases_text" == *'Before Phase 6 performs its first mutation, read `references/publication-recovery.md`'* ]]
 
-  for skill_text in "$issue_define_text" "$generate_phases_contract_text"; do
+  [ ! -e "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define" ]
+  ! grep -rqF "siw:issue-define" "$BATS_TEST_DIRNAME/../skills" || false
+
+  [[ "$generate_phases_text" == *'plan exactly one General issue'* ]]
+  [[ "$generate_phases_text" == *'no existing issue already covers'* ]]
+  [[ "$triage_text" == *'this skill owns its SIW write path'* ]]
+  [[ "$triage_text" == *'never reuse or overwrite an existing issue number'* ]]
+  [[ "$triage_text" == *'normalized form'*'existing open issue headings'* ]]
+  [[ "$triage_text" == *'scripts/siw-issue-reservation.sh'* ]]
+  [[ "$triage_text" == *'new-owner'*'acquire siw'*'reserve siw'* ]]
+  [[ "$triage_text" == *'publish-receipt siw'*'release siw'*'release-publication siw'* ]]
+  [[ "$triage_text" == *'preserving its existing 5-, 6-, or 7-column schema'* ]]
+  [[ "$triage_text" == *'Mixed — see issue files for exact guidance'* ]]
+
+  for skill_text in "$generate_phases_contract_text"; do
     [[ "$skill_text" == *'scripts/siw-issue-reservation.sh'* ]]
     [[ "$skill_text" == *'serializes its own invocations'* ]]
     [[ "$skill_text" == *'operation claim is reclaimed only after its recorded process no longer exists'* ]]
@@ -1790,12 +1802,6 @@ EOF
     [[ "$skill_text" == *"never clean up a different owner's token"* ]]
   done
 
-  [[ "$issue_define_text" == *'Phase 6 may advance it if another creator publishes first'* ]]
-  [[ "$issue_define_text" == *'reserve siw <issue-prefix> <owner-token> 100 issue-create'* ]]
-  [[ "$issue_define_text" == *'In IMPROVE MODE no ID reservation exists'*'run only `release-publication`'* ]]
-  [[ "$issue_define_text" == *'IMPROVE_BASE_HASH'* ]]
-  [[ "$issue_define_text" == *'Compare both its path and hash with the stored interview base'* ]]
-  [[ "$issue_define_text" == *'Conflicting edits always require approval'* ]]
   [[ "$publication_recovery_text" == *'Build the complete provisional-to-final map'* ]]
   [[ "$publication_recovery_text" == *'reserve-batch siw <prefix> <owner-token> 100 <provisional-id>...'* ]]
   [[ "$publication_recovery_text" == *'release-batch siw <owner-token> <final-issue-id>...'* ]]
@@ -1813,7 +1819,7 @@ EOF
   [[ "$publication_recovery_text" == *'failed multi-ID reservation attempt must unwind every exact reservation created by that attempt'* ]]
   [[ "$publication_recovery_text" == *'Once replacement deletion starts, never abandon any replacement reservation'* ]]
   [[ "$publication_recovery_text" == *'batches all issue-file digests within each immutable operation snapshot'* ]]
-  [[ "$tracker_schema_text" == *'Phase 6 Step 3'* ]]
+  [[ "$tracker_schema_text" == *'Phase 6.2'* ]]
   [[ "$tracker_schema_text" != *'ask the user whether'* ]]
 }
 

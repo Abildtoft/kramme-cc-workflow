@@ -20,13 +20,9 @@ Next Steps:
   {If product-only or requirements-only:}
   1. Run /kramme:discovery:interview --siw to harden the spec before phase or issue creation
 
-  {If planning-ready and the work should be phased:}
-  1. Run /kramme:siw:generate-phases to decompose spec into phase-based issues
+  {If planning-ready:}
+  1. Run /kramme:siw:generate-phases to create the initial issue set (a single issue when the spec is one coherent change)
   2. Run /kramme:siw:transfer-to-linear after reviewing the issue set
-
-  {If planning-ready and the work is one coherent issue:}
-  1. Run /kramme:siw:issue-define to create the first issue
-  2. Run /kramme:siw:transfer-to-linear after reviewing the issue
 
 Tips:
   - Until transfer, the spec file is permanent; keep it updated as the local source of truth

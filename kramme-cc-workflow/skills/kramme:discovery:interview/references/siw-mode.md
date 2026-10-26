@@ -8,7 +8,7 @@ Use it when:
 - **Refinement** (spec exists): the spec feels incomplete, vague, or disconnected from the real goal.
 - **Realignment**: mid-project, the spec and the actual need have drifted apart.
 
-Do not use it for implementation planning (use `/kramme:siw:generate-phases`), issue definition (use `/kramme:siw:issue-define`), or spec quality auditing (use `/kramme:siw:spec-audit`).
+Do not use it for implementation planning or issue definition (use `/kramme:siw:generate-phases`), or spec quality auditing (use `/kramme:siw:spec-audit`).
 
 ## Artifact Readiness Contract
 
@@ -16,7 +16,7 @@ Use this shared vocabulary when synthesizing handoff artifacts:
 
 - `product-only`: the artifact clarifies problem, users, desired outcomes, or strategy fit, but lacks testable requirements.
 - `requirements-only`: scope, boundaries, and success criteria are present, but the artifact still needs SIW planning before execution.
-- `planning-ready`: discovery has resolved enough product and technical uncertainty for `/kramme:siw:init`, `/kramme:siw:generate-phases`, or `/kramme:siw:issue-define` to create tracked implementation work.
+- `planning-ready`: discovery has resolved enough product and technical uncertainty for `/kramme:siw:init` or `/kramme:siw:generate-phases` to create tracked implementation work.
 - `implementation-ready`: an issue-level artifact is scoped for execution with dependencies and verification. Discovery never produces implementation-ready artifacts directly.
 
 If unresolved `MISSING REQUIREMENT` items remain, classify the output as `product-only` or `requirements-only` and route to another discovery/refinement pass instead of implementation.

@@ -142,7 +142,7 @@ Tasks will be tracked in individual issue files. See `siw/OPEN_ISSUES_OVERVIEW.m
 {If Implementation Phases were identified: Add note: "Suggested task breakdown from discovery:
 
 - {phase/step 1}
-- {phase/step 2} Use /kramme:siw:issue-define to create formal issues."}
+- {phase/step 2} Use /kramme:siw:generate-phases to create formal issues."}
 
 ## Design Decisions
 
