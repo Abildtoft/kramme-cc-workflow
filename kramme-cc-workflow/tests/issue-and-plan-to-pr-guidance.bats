@@ -622,3 +622,54 @@
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "breakdown findings delegates drafting in bounded batches" {
+	run bash -c '
+		set -e
+		cd "'"$BATS_TEST_DIRNAME"'/.."
+		skill="skills/kramme:code:breakdown-findings/SKILL.md"
+		generation="skills/kramme:code:breakdown-findings/references/generation-workflow.md"
+		checks="skills/kramme:code:breakdown-findings/references/generation-checks.md"
+		registry="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+
+		grep -qFx "## Delegated Drafting" "$generation"
+		grep -qF "For each confirmed theme (inside each drafter when **Delegated Drafting** below applies):" "$generation"
+		grep -qF "more than four plans" "$generation"
+		grep -qF "Phase 1.5 runs once per invocation." "$generation"
+		grep -qF "landing marker" "$generation"
+		grep -qF "three to six plans" "$generation"
+		grep -qF "at most six drafters at a time" "$generation"
+		grep -qF "never one drafter per plan" "$generation"
+		grep -qF "Non-Review Subagent Roles" "$generation"
+		grep -qF "Breakdown accepts no \`--subagent-model\` flag." "$generation"
+		grep -qF "never write a root \`PR_PLAN_*.md\` artifact, route every user question through the orchestrator" "$generation"
+		grep -qF "git check-ignore -q -- .context/breakdown-findings/" "$generation"
+		grep -qF ".context/breakdown-findings/<run-key>/" "$generation"
+		grep -qF "live-state fingerprint" "$generation"
+		grep -qF "draft content hash" "$generation"
+		grep -qF "Redraft only failing plans" "$generation"
+		grep -qF "after two redraft rounds for the same plan, stop" "$generation"
+		grep -qF "A different run key never reuses drafts." "$generation"
+		grep -qF "If more than one matches, stop and present the candidate run keys and theme maps" "$generation"
+		grep -qF "its recorded draft content hash matches the current file" "$generation"
+		grep -qF "the current live-state fingerprint matches the manifest" "$generation"
+		[ "$(grep -cF "After drafting every plan" "$generation")" -eq 1 ]
+		plan_write=$(grep -nF "After the complete draft set passes, write every finalized plan" "$generation" | cut -d: -f1)
+		delegated=$(grep -nFx "## Delegated Drafting" "$generation" | cut -d: -f1)
+		phase_four=$(grep -nF "## Phase 4: Generate Index and Rejection Record" "$generation" | cut -d: -f1)
+		[ "$plan_write" -lt "$delegated" ]
+		[ "$delegated" -lt "$phase_four" ]
+
+		grep -qF "Planning mode is read-only for product code." "$skill"
+		grep -qF "Delegated drafting may also write scratch drafts below the Git-ignored \`.context/breakdown-findings/\` directory" "$skill"
+		grep -qF "\${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md" "$skill"
+		grep -qF "Non-Review Subagent Roles" "$skill"
+
+		grep -qF "When drafting was delegated, every final plan came from a draft that passed the orchestrator'"'"'s rubric review" "$checks"
+		grep -qF "every reused passed draft matched its recorded content and live-state fingerprints" "$checks"
+
+		grep -qF "\"path\": \".context/breakdown-findings/\"" "$registry"
+	'
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
