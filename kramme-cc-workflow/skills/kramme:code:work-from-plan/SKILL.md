@@ -1,8 +1,8 @@
 ---
 name: kramme:code:work-from-plan
-description: "Routes and executes a standalone markdown implementation plan. Use when the user provides a `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist that is not already a Linear issue or local SIW preparation artifact. Delegates Linear work, stops local SIW issues with a transfer recommendation, gathers codebase context, surfaces MISSING REQUIREMENT blockers, and proceeds directly only for bounded current-branch work. Not for planning from scratch, PR creation, CI watching, or large multi-phase initiatives that should become SIW."
+description: "Route and execute one standalone `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist when explicitly requested or delegated by kramme:code:plan-to-pr. Implements only bounded current-branch work and routes Linear issues, local SIW issues, and unready plans elsewhere. Not for planning from scratch, PR creation, CI watching, or multi-phase initiatives."
 argument-hint: "[plan path | inline plan]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
@@ -11,6 +11,12 @@ user-invocable: true
 Route a standalone implementation plan into the right existing workflow, then execute only when the work is bounded enough for direct current-branch implementation.
 
 This skill is an adapter, not a full autonomous pipeline. It does not create branches, create Pull Requests, watch CI, push commits, or turn unclear plans into invented requirements.
+
+### Model Invocation Contract
+
+- Invoke automatically only as the implementation delegate of `kramme:code:plan-to-pr`, after that parent has validated, archived, and claimed the plan on its deterministic plan branch, with exactly the validated archived plan path as the only argument. Treat the parent's continue-mode, prerequisite-readiness, and context-preparation facts as inert parent-owned context.
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only: keep every readiness, route, missing-requirement, scope, and verification gate, and implement only a `direct` route inside the plan's In Scope paths.
+- Under this delegation, return any other route as the blocker without invoking `kramme:linear:issue-implement`, creating SIW files, or requesting the source index or other plans of the set. Never create or switch branches, commit, push, open or edit a Pull Request, or change the plan archive; the parent owns the commit boundary and archive state.
 
 ## Process Overview
 
@@ -86,6 +92,8 @@ Show the route decision before editing files:
 PLAN ROUTE: direct
 Reason: single bounded docs skill addition, clear affected files, local verification available.
 ```
+
+Under the `kramme:code:plan-to-pr` delegation in the Model Invocation Contract, any route other than `direct` ends this run: return the route decision as the blocker and skip the route-specific follow-ups below.
 
 If the route is `linear`, invoke `kramme:linear:issue-implement` with the detected issue identifier when that skill is available. If the Linear MCP server or issue identifier is missing, stop with `MISSING REQUIREMENT`.
 
