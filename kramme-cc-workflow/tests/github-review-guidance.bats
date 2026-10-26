@@ -124,6 +124,29 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "github review reply hands resolve-review only its guarded implement-only payload" {
+	run python3 - "$PLUGIN_ROOT/skills/kramme:pr:github-review-reply/SKILL.md" "$PLUGIN_ROOT/skills/kramme:pr:resolve-review/SKILL.md" <<'PY'
+import pathlib
+import re
+import sys
+
+reply, resolver = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+step5 = reply[reply.index("## Step 5:"):reply.index("## Step 6:")]
+assert "Invoke `kramme:pr:resolve-review --implement-only` as the implementation engine" in step5
+assert "Pass `--implement-only` as the only flag" in step5
+assert "Do not pass the PR URL as the source argument and do not use `--source online`" in step5
+assert "disable-model-invocation: false" in resolver.split("---", 2)[1]
+section = re.search(r"(?ms)^### Model Invocation Contract\s*$(.*?)(?=^#{1,3} |\Z)", resolver).group(1)
+for term in ["Step 5 passes exactly `--implement-only`", "`kramme:pr:review-convergence` batch remediation",
+             "never in validation-only mode", "never add `--team`, `--granular`, `--source`, `--severity`, or a URL review source",
+             "No other parent workflow is authorized by this model-invocation exception",
+             "Under a parent delegation, never commit"]:
+    assert term in section, f"resolve-review contract lost {term}"
+assert set(re.findall(r"`(kramme:[^`\s]+)`", section)) == {"kramme:pr:github-review-reply", "kramme:pr:review-convergence"}
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "github review reports issue traceability and withholds approval for missing coverage" {
 	run python3 - "$LINEAR_REFERENCE" "$REPORT_TEMPLATE" "$COMMENT_REFERENCE" "$README" <<'PY'
 import pathlib

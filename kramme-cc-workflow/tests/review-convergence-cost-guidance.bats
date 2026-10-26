@@ -47,11 +47,14 @@ PY
 	require_phrases "$POLICY" \
 		"do not remediate between gates" \
 		"**Batch remediation.**" \
+		'invoke `kramme:pr:resolve-review --implement-only` at most once per batch, before any direct edit and while the worktree is clean' \
+		'Never pass `--team`, `--granular`, `--source`, `--severity`, a Pull Request URL, or a request without findings' \
 		"**Delta round.**" \
 		"**Confirmation pass.**" \
 		"never close the loop on a delta round" \
 		"a fingerprint re-emitted by a delta round or confirmation pass after its batch counts as persisting" \
 		"Every fingerprint fixed by a batch was confirmed absent by the final full pass"
+	! grep -qF 'with the inline report' "$POLICY"
 }
 
 @test "convergence records review cost through the run-state script" {

@@ -299,7 +299,7 @@
     },
     {
       "name": "kramme:pr:resolve-review",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:resolve-review/SKILL.md"
     },
     {

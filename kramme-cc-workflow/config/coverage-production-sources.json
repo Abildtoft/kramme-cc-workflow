@@ -300,8 +300,10 @@
       "suite": "kramme-cc-workflow/tests/github-review-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:linear:review-pr/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:resolve-review/SKILL.md"
       ]
     },
     {
