@@ -7,6 +7,16 @@ Use this structure when writing `OUTSIDE_VIEW_REPORT.md` or a custom `--output` 
 
 **Date:** {YYYY-MM-DD} **Project:** {project} **Raters:** {N successful in-repo + cross-model?} **Model diversity:** {alternative model id | none + reason} **Output:** {path}
 
+## Report Provenance
+
+- **Producer:** kramme:code:outside-view
+- **Scope:** full repository
+- **Scanned commit:** {full git rev-parse HEAD at run start, or none (not a git repository)}
+- **Working tree:** {clean / dirty (N paths) / none (not a git repository)}
+- **Base branch:** none
+- **Generated:** {YYYY-MM-DD}
+- **Schema:** breakdown-ready-findings v1
+
 ## Scorecard
 
 | Rater | Frame        | Model   |  Score | One sentence to the owner |
@@ -34,7 +44,7 @@ Use this structure when writing `OUTSIDE_VIEW_REPORT.md` or a custom `--output` 
 
 ## Delta vs Structured Audit
 
-**Compared against:** {report path + its date, or "no comparison available — run /kramme:code:refactor-opportunities --ranked before the next outside-view run"}
+**Compared against:** {report path + its date + its scanned commit (flag when it differs from this run's), or "no comparison available — run /kramme:code:refactor-opportunities --ranked before the next outside-view run"}
 
 | Cluster | Status | Structured-audit reference |
 | --- | --- | --- |
@@ -45,6 +55,19 @@ Use this structure when writing `OUTSIDE_VIEW_REPORT.md` or a custom `--output` 
 {Clusters absent from the structured audit, with recurrence counts from Run History.}
 
 - **OV-00N ({title})** — seen in {k} consecutive runs. {Promotion candidate: name the concrete target — a ranked-audit rubric signal in `kramme:code:refactor-opportunities`, a deslop pattern, a lint or CI gate, or a documentation fix — or "watch: first appearance, no promotion yet".}
+
+## Breakdown-Ready Finding Data
+
+{One block per promotion candidate above, or "None.". Complaint clusters without a promotion candidate stay out of this section.}
+
+### OV-00N: {title}
+
+- **Severity:** suggestion
+- **Confidence:** LOW
+- **Locations:** {examples cited, as path or path:line; …, or none — holistic}
+- **Evidence:** {recurrence count, support, and one representative quote}
+- **Suggested fix:** {the promotion target}
+- **Effort:** UNVERIFIED: {S / M / L}
 
 ## Coverage Notes
 
