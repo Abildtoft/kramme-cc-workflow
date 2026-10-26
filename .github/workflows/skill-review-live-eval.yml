@@ -1,0 +1,84 @@
+name: Live Skill Review Eval
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: skill-review-live-eval
+  cancel-in-progress: false
+
+jobs:
+  live-eval:
+    # Keep secrets and executable eval code on the trusted default branch.
+    if: ${{ github.ref == 'refs/heads/main' && vars.ANTHROPIC_EVAL_MODEL != '' && vars.ANTHROPIC_EVAL_ORGANIZATIONS != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout trusted main
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install eval dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Restore prior progress
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js restore
+
+      - name: Run live eval
+        id: eval
+        env:
+          ANTHROPIC_EVAL_KEYS_JSON: ${{ secrets.ANTHROPIC_EVAL_KEYS_JSON }}
+          ANTHROPIC_EVAL_MODEL: ${{ vars.ANTHROPIC_EVAL_MODEL }}
+          ANTHROPIC_EVAL_ORGANIZATIONS: ${{ vars.ANTHROPIC_EVAL_ORGANIZATIONS }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          config="$RUNNER_TEMP/eval-organizations.json"
+          node -e 'require("node:fs").writeFileSync(process.argv[1], process.env.ANTHROPIC_EVAL_ORGANIZATIONS, { mode: 0o600 });' "$config"
+          node kramme-cc-workflow/evals/skill-review/run-live-eval.js --organizations "$config" > "$RUNNER_TEMP/live-eval-report.json"
+          result=$?
+          node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js summary "$RUNNER_TEMP/live-eval-report.json"
+          if [ "$result" -eq 2 ]; then
+            echo "Credits exhausted; evaluation is incomplete and progress is saved."
+            exit 0
+          fi
+          exit "$result"
+
+      - name: Stage validated checkpoint
+        if: ${{ always() }}
+        run: node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js stage "$RUNNER_TEMP/eval-checkpoint"
+
+      - name: Upload progress
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: claude-eval-checkpoint
+          path: ${{ runner.temp }}/eval-checkpoint/
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Upload report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: claude-eval-report
+          path: ${{ runner.temp }}/live-eval-report.json
+          retention-days: 90
+          if-no-files-found: ignore
