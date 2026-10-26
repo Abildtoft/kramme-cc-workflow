@@ -59,6 +59,7 @@ const SCAN_PRUNED_DIRS = new Set([
  * @property {string} [kind]
  * @property {string} [platform]
  * @property {string} [limit]
+ * @property {string} [projects]
  * @property {boolean} [strict]
  *
  * @typedef {Object} UsageRecord
@@ -121,6 +122,11 @@ async function main() {
     return;
   }
 
+  if (command === "cost") {
+    await cost(args);
+    return;
+  }
+
   console.error(`Unknown command: ${command}`);
   printHelp(1);
 }
@@ -131,6 +137,7 @@ function printHelp(exitCode) {
   scripts/skill-usage.js record [--file <path>]
   scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--platform <claude-code|codex|unknown|all>] [--json] [--limit <n>] [--strict]
   scripts/skill-usage.js scan <file-or-dir...> [--since <duration|date>] [--json] [--limit <n>] [--strict]
+  scripts/skill-usage.js cost [--file <path>] [--projects <dir>] [--since <duration|date>] [--json] [--limit <n>] [--strict]
 
 Records are stored in:
   ${DEFAULT_USAGE_FILE}
@@ -141,6 +148,11 @@ JSONL inputs stream incrementally with individual records limited to 1 MiB.
 Whole-document JSON and plaintext compatibility input is limited to 1 MiB
 per file.
 
+Cost groups Claude Code sessions in the usage file by entry skill and reads
+their transcripts under --projects (default: $CLAUDE_CONFIG_DIR/projects or
+~/.claude/projects). Costs are API-equivalent estimates from Claude Code
+cost-state records, not billed spend. Codex sessions are excluded.
+
 Environment:
   KRAMME_SKILL_USAGE_FILE  Override the usage JSONL file path.
   KRAMME_AGENT_PLATFORM    Override the detected platform of recorded events.
@@ -150,6 +162,7 @@ Examples:
   scripts/skill-usage.js report --kind explicit --json
   scripts/skill-usage.js scan ~/.claude/projects --json
   scripts/skill-usage.js scan ~/.codex/sessions --since 30d --json
+  scripts/skill-usage.js cost --since 30d
 `;
   const stream = exitCode === 0 ? process.stdout : process.stderr;
   stream.write(help);
@@ -211,6 +224,14 @@ function parseArgs(args) {
     }
     if (arg.startsWith("--limit=")) {
       parsed.limit = arg.slice("--limit=".length);
+      continue;
+    }
+    if (arg === "--projects") {
+      parsed.projects = args[++i];
+      continue;
+    }
+    if (arg.startsWith("--projects=")) {
+      parsed.projects = arg.slice("--projects=".length);
       continue;
     }
     parsed._.push(arg);
@@ -666,6 +687,59 @@ async function scan(args) {
     since,
     "explicit",
     "all",
+  );
+  applyStrictMode(parsed, diagnostics);
+}
+
+/** @param {string[]} args */
+async function cost(args) {
+  // Loaded here so the per-prompt `record` hook path never pays for it.
+  const costReport = require("./lib/skill-usage-cost");
+  const parsed = parseArgs(args);
+  const file = usageFile(parsed);
+  const since = parseSince(parsed.since);
+  const limit = parsed.limit == null ? null : Number(parsed.limit);
+  if (limit != null && (!Number.isInteger(limit) || limit < 1)) {
+    throw new Error(`Invalid --limit value: ${parsed.limit}`);
+  }
+  const claudeDir =
+    process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+  const projectsDir = path.resolve(
+    parsed.projects || path.join(claudeDir, "projects"),
+  );
+
+  const diagnostics = createDiagnostics();
+  const sessions = costReport.createSessionGrouper();
+  // Codex rollouts have no Claude Code cost-state records.
+  await readUsageRecords(
+    file,
+    diagnostics,
+    (record) => {
+      if (record.platform !== PLATFORM_CODEX) sessions.add(record);
+    },
+    !parsed.file && !process.env.KRAMME_SKILL_USAGE_FILE,
+  );
+
+  /** @type {import("./lib/skill-usage-cost").CostDeps} */
+  const deps = {
+    readLines: readBoundedLines,
+    skipped: (input, count, reason) =>
+      recordSkippedLines(diagnostics, input, count, reason),
+    readFailure: (input, error) => recordReadFailure(diagnostics, input, error),
+  };
+  const transcripts = await costReport.indexTranscripts(projectsDir, deps);
+  const summaries = [];
+  for (const { sessionId, entrySkill } of sessions.entries(since)) {
+    const entry = transcripts.get(sessionId);
+    summaries.push({
+      entrySkill,
+      summary: await costReport.summarizeSession(entry, deps),
+    });
+  }
+
+  const rows = costReport.buildCostRows(summaries).slice(0, limit ?? undefined);
+  process.stdout.write(
+    costReport.renderCost(rows, diagnostics, parsed.json, since),
   );
   applyStrictMode(parsed, diagnostics);
 }

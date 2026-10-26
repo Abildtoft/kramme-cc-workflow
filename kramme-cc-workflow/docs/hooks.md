@@ -118,6 +118,29 @@ Each scan tracks physical directory and file identities across all supplied root
 
 The hook is silent and fail-open. If Node.js is unavailable, if the payload cannot be parsed, or if recording fails, the hook returns `{}` and does not block the session.
 
+### Estimate cost per entry skill
+
+`cost` joins the usage file with local Claude Code transcripts to show where session budget goes, per entry skill and per subagent type:
+
+```bash
+node scripts/skill-usage.js cost --since 30d
+node scripts/skill-usage.js cost --since 2026-10-06 --json
+node scripts/skill-usage.js cost --projects /path/to/claude/projects --limit 10
+```
+
+Costs are API-equivalent estimates taken from Claude Code's `cost-state` records, including on subscription plans. They are not billed spend. The command is read-only, local, and offline. It reads only the transcripts of sessions named in the usage file, from `--projects`, which defaults to `$CLAUDE_CONFIG_DIR/projects` or `~/.claude/projects`.
+
+- **Entry skill.** A session's entry skill is its earliest `explicit` record. Sessions with only `tool` records form a `(tool only)` row. `--since` applies to the entry record, or to the earliest record of a tool-only session. Records with `platform` `codex` are excluded because Codex rollouts have no `cost-state` records.
+- **Session cost.** The last `cost-state` `totalCostUSD` in `<project>/<session-id>.jsonl`. Snapshots are cumulative and already include subagent usage. A session with `hasUnknownModelCost` counts toward `unknownModelCostSessions`.
+- **Limit hits.** A session counts in `limitHitSessions` when its main transcript has an assistant record with `isApiErrorMessage: true` whose text contains "hit your session limit". The same phrase in user or queue records, and hits inside subagent transcripts, do not count.
+- **Weighted tokens.** Each assistant `message.id` counts once per file, because Claude Code repeats the same usage on every content-block line. Weights are input + 1.25 × cache creation + 0.1 × cache read + 5 × output tokens. Subagent weights come from `<session-id>/subagents/agent-*.jsonl` and nested workflow directories, and the paired `agent-*.meta.json` supplies `agentType` and whether `model` overrides the parent model.
+
+JSON rows have `entrySkill`, `sessions`, `sessionsWithTranscript`, `sessionsWithCost`, `totalCostUSD`, `medianCostUSD`, `maxCostUSD`, `unknownModelCostSessions`, `limitHitSessions`, `mainWeightedTokens`, `subagentWeightedTokens`, `subagentShare`, and `agentTypes` (`agentType`, `launches`, `modelOverrides`, `weightedTokens`, and `share` of the row's weighted tokens). Rows are sorted by total cost. The table shows the top three agent types without the `kramme-cc-workflow:` prefix and ends with a totals line.
+
+`cost` follows the same diagnostics and `--strict` contract as `report`. Unreadable transcript, subagent, or meta files are read failures. Malformed or overlong lines and invalid meta files are skipped lines; a subagent with invalid meta reports as `(unknown)`. Claude Code deletes old transcripts after its cleanup period, so a missing transcript is not a diagnostic; it shows as `sessions` minus `sessionsWithTranscript`. Large tool results exceed the 1 MiB line limit, so real histories usually report a few overlong-line diagnostics.
+
+Stdout carries only skill names, agent types, counts, costs, and token weights. Prompts, subagent task descriptions, and paths stay off stdout; stderr diagnostics keep the `file=<path>` format.
+
 ## block-rm-rf
 
 `block-rm-rf` requires both `jq` and `python3` at runtime. If either binary is missing, the hook fails closed and blocks the Bash tool call until the dependency is installed or the hook is explicitly disabled.
