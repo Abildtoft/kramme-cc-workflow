@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:rebase
 description: Rebase current branch onto its Pull Request target or configured workbench, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch or when delegated by kramme:pr:fix-ci with --force-push. Optionally delegates post-push CI stabilization to kramme:pr:fix-ci. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch.
-argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>]"
+argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>] [--all-open]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -13,7 +13,7 @@ Rebase the current branch onto the latest base branch and force push.
 ### Model Invocation Contract
 
 - Invoke automatically only as a delegated child of `kramme:pr:fix-ci`, with the exact `--force-push` argument selected by that parent. Do not add `--auto`, `--fix-ci`, or an invented `--base` override.
-- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain every branch, stack, conflict, red-flag, verification, lease, and publication gate, and never push outside the validated current branch or its resolved local stack.
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain every branch, stack, conflict, red-flag, verification, lease, and publication gate, and never push outside the validated current branch or its resolved local stack. A model caller never passes `--all-open`; batch mode is direct-user-only.
 
 ## Why rebase — dev branches are costs
 
@@ -27,6 +27,7 @@ A feature branch drifts from its base branch while it stays open, accumulating i
 - `--force-push` - Safe unattended push mode. Skip only the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase, while keeping all conflict, red-flag, and verification gates.
 - `--fix-ci` - After a successful rebase push, delegate to `kramme:pr:fix-ci` to watch CI, address failures and review feedback, push fixes, and repeat until the Pull Request is green. This does not bypass any rebase push gate.
 - `--base <branch>` - Override auto-detected base branch (e.g., `--base develop`)
+- `--all-open` - Batch mode: rebase every open PR of yours whose branch is checked out in a clean local worktree and behind its base (or carrying merge commits above it), after one confirmation. Never resolves conflicts; skipped rows are explained in one result table.
 
 `--force-push` is the safe replacement for the old `--auto` behavior. It only bypasses the final confirmation prompt when the rebase completes without unresolved risk.
 
@@ -55,6 +56,8 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--force-push`, set `FORCE_PUSH_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--fix-ci`, set `FIX_CI_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
 
 If both `--auto` and `--force-push` are present, `--auto` wins because it is the broader dangerous mode. Continue with `AUTO_MODE=true` and ignore `FORCE_PUSH_MODE`.
+
+If `$ARGUMENTS` contains `--all-open`, set `ALL_OPEN_MODE=true`. Stop with a usage error when `--auto`, `--fix-ci`, or `--base` accompanies it. Otherwise read `references/batch-mode.md` and follow it instead of Steps 1-7, with `{batch-script}` = `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:rebase/scripts/batch-rebase.sh` and `{stack-resolver}` = `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh`.
 
 ### Step 1: Validate Prerequisites
 

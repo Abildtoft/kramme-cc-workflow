@@ -395,7 +395,7 @@ load_assignments() {
 	local default_delegate_line
 	local auto_delegate_line
 
-	grep -F 'argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>]"' "$rebase_skill"
+	grep -F 'argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>] [--all-open]"' "$rebase_skill"
 	grep -F 'set `FIX_CI_MODE=true`' "$rebase_skill"
 	grep -F 'Set it to true only after the applicable validated push command returns success.' "$rebase_skill"
 
