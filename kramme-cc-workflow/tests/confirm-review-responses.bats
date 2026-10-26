@@ -957,6 +957,13 @@ REVIEW_SUMMARY.md"
 	[[ "$output" == *"AGENT_NATIVE_AUDIT.md"* ]]
 }
 
+@test "blocks git commit when DEPENDENCY_AUDIT.md is staged" {
+	mock_git_staged "DEPENDENCY_AUDIT.md"
+	run run_hook "git commit -m 'dependency audit staged'"
+	is_blocked
+	[[ "$output" == *"DEPENDENCY_AUDIT.md"* ]]
+}
+
 @test "blocks git commit when legacy DEPRECATION_PLAN.md is staged" {
 	mock_git_staged "DEPRECATION_PLAN.md"
 	run run_hook "git commit -m 'legacy deprecation plan staged'"

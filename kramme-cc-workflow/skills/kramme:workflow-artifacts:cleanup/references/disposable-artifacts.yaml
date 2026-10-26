@@ -94,6 +94,14 @@
       "producer": "kramme:code:refactor-opportunities"
     },
     {
+      "id": "dependency-audit",
+      "path": "DEPENDENCY_AUDIT.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:deps:audit"
+    },
+    {
       "id": "pr-review-convergence-code-review",
       "path": ".context/pr-review-convergence/reviews/REVIEW_OVERVIEW.md",
       "type": "file",
