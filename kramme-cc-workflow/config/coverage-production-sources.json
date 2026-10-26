@@ -453,6 +453,11 @@
       ]
     },
     {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/pr-rebase-batch.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md"]
+    },
+    {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/pr-walkthrough.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:pr:walkthrough/SKILL.md"]
@@ -674,6 +679,9 @@
       ],
       "kramme-cc-workflow/skills/kramme:pr:create/scripts/verify-clean-worktree.sh": [
         "kramme-cc-workflow/tests/pr-create-guidance.bats"
+      ],
+      "kramme-cc-workflow/skills/kramme:pr:rebase/scripts/batch-rebase.sh": [
+        "kramme-cc-workflow/tests/pr-rebase-batch.bats"
       ],
       "kramme-cc-workflow/skills/kramme:session:automate-repeats/scripts/discover-sessions.sh": [
         "kramme-cc-workflow/tests/session-search-scripts.bats"
