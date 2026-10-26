@@ -157,6 +157,10 @@ Key signals: {list of detected files/configs}
 Launching 3 agents covering 5 dimensions...
 ```
 
+### 1.4 Record Provenance
+
+Record provenance before launching agents: use the full `git rev-parse HEAD` (or `none (not a git repository)`), the working-tree state from `git status --porcelain` (`clean` or `dirty (N paths)`, or `none (not a git repository)` when unavailable), and the date from `date +%F`.
+
 ---
 
 ## Step 2: Launch Parallel Dimension Analysis
@@ -210,7 +214,7 @@ From each agent, extract:
 - Per-dimension scores (1-5)
 - Evidence bullet points
 - Context Pointer examples and gaps where relevant
-- Findings (with IDs, severity, details)
+- Findings (title, severity, confidence, locations, details, impact, suggested fix, effort; sub-agents emit no IDs)
 - Improvement actions (with impact and effort)
 
 ### 3.2 Validate Completeness
@@ -307,15 +311,17 @@ If **Abort**: stop and inform the user.
 
 ### 6.2 Write Report File
 
-Read the report template from `assets/audit-report.md`.
+Read the report template from `assets/audit-report.md` and the shared schema `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`.
 
 Populate and write `AGENT_NATIVE_AUDIT.md` in the project root with:
 
+- Report Provenance
 - Scorecard summary table
 - Score changes (if compare mode)
 - Dimension details with evidence, findings, and improvement actions
 - Context Pointer evidence folded into Traversable and Self-Documenting details
 - All findings summary table with severity counts
+- Every `AN-NNN` finding as a `## Breakdown-Ready Finding Data` block (Important maps to `high`; Quick Win, Moderate, and Significant map to `S`, `M`, and `L`)
 - Refactoring plan with 4 phases
 
 ```
