@@ -7,6 +7,8 @@ Scan every category below. For each finding, record:
 - **Severity** — high (actively harmful), medium (degrades maintainability), low (cosmetic / nice-to-have)
 - **Description** — what the problem is, in one sentence
 - **Suggested fix** — concrete action, not vague advice
+- **Confidence** — HIGH (callers, tests, or history traced and the evidence is direct), MED (clear code evidence, likely impact), or LOW (plausible, lightly evidenced)
+- **Effort** — S, M, or L as defined in the shared breakdown-ready schema
 - **PR relevance** — only when the caller set `SCOPE_MODE=pr`: one sentence tying the issue to an added/modified hunk, new/untracked file, deleted code with surviving references, an unchanged line within ~5 lines of a changed hunk with a concrete causal chain, or unchanged code directly affected by a changed caller/API contract. "File was touched" is not a valid relevance claim.
 
 ---
