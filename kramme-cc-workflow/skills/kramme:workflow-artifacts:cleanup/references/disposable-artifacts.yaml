@@ -379,6 +379,14 @@
       "producer": "kramme:code:breakdown-findings"
     },
     {
+      "id": "breakdown-findings-drafts",
+      "path": ".context/breakdown-findings/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:breakdown-findings"
+    },
+    {
       "id": "deprecation-plan-legacy",
       "path": "DEPRECATION_PLAN.md",
       "type": "file",
