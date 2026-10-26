@@ -22,6 +22,7 @@ from .checks.basic import (
 from .checks.component_catalog import check_component_catalog
 from .checks.epilogue import check_epilogue_forbidden
 from .checks.hooks_json import check_hooks_json
+from .checks.invocation_graph import check_invocation_graph
 from .checks.marker_manifest import (
     allow_empty_field_keys,
     check_marker_manifests,
@@ -134,6 +135,7 @@ __all__ = [
     "check_component_catalog_drift",
     "check_epilogue_forbidden",
     "check_hooks_json",
+    "check_invocation_graph",
     "check_marker_manifests",
     "check_mechanical",
     "check_ordered_heading_contracts",

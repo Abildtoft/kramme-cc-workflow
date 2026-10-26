@@ -1356,6 +1356,10 @@ EOF
   [[ "$loop_text" == *"do not launch a separate wrapper skill"* ]]
   [[ "$loop_text" == *"when remaining findings are clearly manual/advisory and reported as such"* ]]
 
+  # The loop is not an authorized model parent of the resolver.
+  [[ "$loop_text" == *'Do not invoke `kramme:pr:resolve-review` from this loop'* ]]
+  [[ "$loop_text" != *'/kramme:pr:resolve-review --severity'* ]]
+
   # The description must not re-advertise a model switch the skill cannot enforce.
   [[ "$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/SKILL.md")" != *"second-model"* ]]
 
@@ -3479,6 +3483,82 @@ EOF
   [[ "$output" == *"::warning::routing distinctness: nearest-pair burndown: kramme-cc-workflow/skills/epsilon/SKILL.md and kramme-cc-workflow/skills/zeta/SKILL.md score 0.30 (warn at 0.30, fail at 0.60)"* ]]
   [[ "$output" != *"kramme-cc-workflow/skills/alpha/SKILL.md and kramme-cc-workflow/skills/beta/SKILL.md"* ]]
   [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+write_invocation_skill() {
+  local name="$1"
+  local body="$2"
+  local disable_model_invocation="${3:-false}"
+  local user_invocable="${4:-true}"
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/$name/SKILL.md" <<EOF
+---
+name: $name
+description: Test skill.
+disable-model-invocation: $disable_model_invocation
+user-invocable: $user_invocable
+---
+$body
+EOF
+}
+
+write_invocation_registry() {
+  local allowlist="${1:-[]}"
+  write_file "$TMP_ROOT/registry.yaml" <<EOF
+{
+  "invocation_graph": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "scan_globs": ["kramme-cc-workflow/skills/*/**/*.md"],
+    "allowlist": $allowlist
+  }
+}
+EOF
+}
+
+@test "invocation graph fails a hand-off to a model-disabled skill" {
+  write_invocation_skill "kramme:test:parent" 'Then invoke `kramme:test:child` with the plan.'
+  write_invocation_skill "kramme:test:child" "Body." true
+  write_invocation_registry
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::invocation graph: kramme-cc-workflow/skills/kramme:test:parent/SKILL.md:7 hands off to kramme:test:child (invoke), but kramme:test:child sets disable-model-invocation: true"* ]]
+  [[ "$output" == *"add an invocation_graph.allowlist entry with a reason"* ]]
+}
+
+@test "invocation graph fails a slash command for a hidden skill" {
+  write_invocation_skill "kramme:test:parent" 'Record the rule with `/kramme:test:child`.'
+  write_invocation_skill "kramme:test:child" "Body." false false
+  write_invocation_registry
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::invocation graph: kramme-cc-workflow/skills/kramme:test:parent/SKILL.md:7 tells the user to run /kramme:test:child, but kramme:test:child sets user-invocable: false"* ]]
+}
+
+@test "invocation graph allowlist suppresses a reasoned hand-off and warns on unused entries" {
+  write_invocation_skill "kramme:test:parent" 'Then invoke `kramme:test:child` with the plan.'
+  write_invocation_skill "kramme:test:child" "Body." true
+  write_invocation_registry '[
+    {"source": "kramme-cc-workflow/skills/kramme:test:parent/SKILL.md", "target": "kramme:test:child", "reason": "The user runs this step."},
+    {"source": "kramme-cc-workflow/skills/kramme:test:parent/SKILL.md", "target": "kramme:test:gone", "reason": "Removed skill."}
+  ]'
+
+  run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"hands off to"* ]]
+  [[ "$output" == *"::warning::invocation graph: allowlist entry kramme-cc-workflow/skills/kramme:test:parent/SKILL.md -> kramme:test:gone matches no finding; remove it"* ]]
+  [[ "$output" == *"skill contract lint passed."* ]]
+}
+
+@test "deps audit hands SIW creation to the user" {
+  local skill_text
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:deps:audit/SKILL.md")"
+
+  [[ "$skill_text" == *'Never read that skill'"'"'s `SKILL.md` and run its steps yourself.'* ]]
+  [[ "$skill_text" != *"follow its steps inline"* ]]
 }
 
 @test "mechanical long-skill warning reports near-threshold candidates" {

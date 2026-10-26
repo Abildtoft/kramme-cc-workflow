@@ -17,7 +17,7 @@ Set up the three-document system for preparing complex specifications and initia
 - **DOES**: Create siw/ folder, spec file, siw/LOG.md, siw/OPEN_ISSUES_OVERVIEW.md, siw/issues/, and optionally siw/supporting-specs/
 - **DOES NOT**: Define issues, implement features, or make code changes
 
-**Issue definition is a separate workflow.** After this command completes, invoke `/kramme:siw:generate-phases` to create the initial issue set; it plans a single issue when the spec describes one coherent change. **Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:discovery:interview --siw`.
+**Issue definition is a separate workflow.** After this command completes, recommend that the user run `/kramme:siw:generate-phases` to create the initial issue set; it plans a single issue when the spec describes one coherent change. **Spec hardening is a separate workflow.** To strengthen an existing SIW spec, use `/kramme:discovery:interview --siw`.
 
 ### Artifact Readiness Contract
 

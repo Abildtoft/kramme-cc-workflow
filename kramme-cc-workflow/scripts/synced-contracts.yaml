@@ -1786,6 +1786,15 @@
     ],
     "recorded_boundaries": []
   },
+  "invocation_graph": {
+    "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",
+    "scan_globs": [
+      "kramme-cc-workflow/skills/*/**/*.md",
+      "kramme-cc-workflow/shared/**/*.md",
+      "kramme-cc-workflow/agents/*.md"
+    ],
+    "allowlist": []
+  },
   "mechanical": {
     "require_skill_contract_coverage": true,
     "skill_glob": "kramme-cc-workflow/skills/*/SKILL.md",

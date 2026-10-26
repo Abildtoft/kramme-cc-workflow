@@ -30,9 +30,8 @@ Apply this workflow only when the caller passed `--loop`. The review this skill 
    - Treat Suggestions and FYI as optional unless the user asked for a stricter cleanup pass.
 
 3. **Resolve accepted findings**
-   - For verified `gated_auto` Critical or Important findings, use `/kramme:pr:resolve-review --severity critical,important` when it fits the report's recommended action. The severity filter keeps this loop from processing suggestion-severity advisory findings it never triaged.
-   - If `--inline` was used, pass the inline review content to `/kramme:pr:resolve-review` or make the smallest scoped fix directly; do not rely on local review-file discovery.
-   - For verified findings that need hand edits, make the smallest scoped fix directly.
+   - Fix each verified `gated_auto` Critical or Important finding with the smallest scoped change that follows its recommended action. Leave Suggestion and FYI findings this loop never triaged untouched.
+   - Do not invoke `kramme:pr:resolve-review` from this loop; it is not an authorized model parent of that skill. When eligible findings remain for a later pass, recommend `/kramme:pr:resolve-review` to the user in the final report.
    - Do not resolve manual findings without enough product, ownership, or reviewer context.
 
 4. **Verify, rerun, and gate termination**
