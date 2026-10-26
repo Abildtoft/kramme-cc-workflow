@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:github-review
 description: "Review a GitHub PR as the assigned reviewer, including linked Linear issues. Writes a local report, deduplicates conversations, and drafts inline comments, replies, and a verdict. With confirmation or --draft-review, creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), replying on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
-argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--clarity-check|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--parallel] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
+argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--clarity-check|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -16,7 +16,7 @@ This skill does not write to GitHub until the user authorizes it. It always mate
 
 Parse `$ARGUMENTS` before any network or git call.
 
-First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to parse and remove `--subagent-model <model>` before the PR selector and other flags. Keep `SUBAGENT_MODEL_OVERRIDE` for both delegated review passes.
+If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to parse and remove `--subagent-model <model>` and validate the setting before the PR selector and other flags. Otherwise do not read it: this skill launches no reviewer, each delegated review skill applies the policy to its own reviewers, and Step 10a readers run on the session's model. Keep `SUBAGENT_MODEL_OVERRIDE`, empty when the file was not read, for both delegated review passes.
 
 - First positional token that is a PR number (`123`, `#123`) or a GitHub PR URL → `PR_SELECTOR`. Otherwise leave `PR_SELECTOR` empty.
 - `--draft-review` → `CREATE_DRAFT_REVIEW=true`. After drafting and humanizing the findings, create one unsubmitted pending GitHub review containing every eligible proposed inline comment without asking again. This flag authorizes only that pending-review write; it never authorizes submitting the review, replying to existing threads, resolving threads, approving, or requesting changes.
@@ -25,14 +25,15 @@ First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-se
 - `--base <ref>` → `BASE_OVERRIDE` (use when the PR targets a non-default base and detection is wrong).
 - `--categories <list>` → `UI_CATEGORIES` (comma-separated subset of `a11y,ux,product,visual`), passed through to the UI review pass.
 - `--code-only` → `CODE_ONLY=true`. Skip the UI review pass even when UI files changed.
-- `--parallel` → `PARALLEL_REVIEWERS=true`. Each delegated review launches all of its applicable reviewers at once instead of one after another.
+- `--sequential` → `PARALLEL_REVIEWERS=false`. Each delegated review launches its reviewers one after another.
+- `--parallel` → `PARALLEL_REVIEWERS=true`, the default. It stays accepted so saved prompts keep working. If both `--sequential` and `--parallel` are given, ask the user to pick one and stop.
 - `--fresh` → `SKIP_THREADS=true`. Ignore the existing review conversation and produce a clean first-pass assessment only.
 - `--include-bots` → `INCLUDE_BOTS=true`. Include bot/app comments when mapping the conversation (default: human only).
 - `--all-threads` → `INCLUDE_RESOLVED=true`. Include already-resolved threads in the map (default: unresolved and awaiting-you threads only).
 - `--inline` → `INLINE_MODE=true`. Return the report in chat instead of writing the artifact file.
 - `--keep-worktree` → `KEEP_WORKTREE=true`. Leave the fetched worktree on disk for manual inspection and report its path.
 
-Defaults: `CREATE_DRAFT_REVIEW=false`, `CLARITY_CHECK=auto`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=false`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
+Defaults: `CREATE_DRAFT_REVIEW=false`, `CLARITY_CHECK=auto`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=true`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
 
 ## Step 1: Preflight
 
@@ -208,7 +209,7 @@ If `CODE_ONLY=true`, set `RUN_UI=false` and skip the rest of this step without l
 
 Keep delegated review orchestrators on this session's model unless the user explicitly chooses otherwise. Each review skill applies its own model-selection policy to its reviewers; do not lower the orchestrator first and cause a second step-down. Forward any explicit user reviewer-model choice with the review handoff.
 
-When `SUBAGENT_MODEL_OVERRIDE` is non-empty, include `--subagent-model <model>` in both the code-review and product-review invocations below; otherwise omit it. When `PARALLEL_REVIEWERS=true`, append `--parallel` to both invocations so each review launches its reviewers simultaneously; otherwise omit it and let each review use its default sequential launch.
+When `SUBAGENT_MODEL_OVERRIDE` is non-empty, include `--subagent-model <model>` in both the code-review and product-review invocations below; otherwise omit it. When `PARALLEL_REVIEWERS=true` (the default), append `--parallel` to both invocations so each review launches its reviewers at once; nobody reads the delegated reports while they run. With `--sequential`, omit it and let each review use its sequential launch.
 
 Run all review commands **with the worktree as the working directory** (you are already `cd`'d there). Each delegated review resolves git state against the PR head only while the session's working directory is the worktree — keep it there until the worktree is removed in Step 8. Invoke each delegated review by its exact skill name: `kramme:pr:code-review` is model-invocable, and `kramme:pr:product-review` and `kramme:linear:review-pr` name this skill as a permitted caller in their model-invocation contracts. If one cannot be invoked, record that dimension as not covered under **Coverage handling** below; never reconstruct it by reading another skill's files.
 
