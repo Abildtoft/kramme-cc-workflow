@@ -1,14 +1,20 @@
 ---
 name: kramme:pr:product-review
-description: Review the product, UX, and UI experience of PR and local changes with specialized agents for product thinking, usability heuristics, visual consistency, and accessibility. The product reviewer runs by default over every changed file, covering user value, flow completeness, missing states, copy and defaults, permission behavior, and adjacent-flow regressions; UX and visual reviewers join when UI files changed. Supports --inline output and --team cross-validation.
+description: Review the product, UX, visual, and accessibility experience of PR and local changes with specialized reviewers; UX and visual reviewers join when UI files changed. Use when explicitly requested or delegated by kramme:pr:github-review. Supports --inline and --team.
 argument-hint: "[--subagent-model <model>] [app-url|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline] [--no-diff-comments]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 # Product Review for Pull Request and Local Changes
 
 Review the product, UX, and UI experience of a PR's changes, including local staged/unstaged/untracked work, using specialized agents.
+
+### Model Invocation Contract
+
+- Invoke automatically only when the user explicitly asks in this session for a product, UX, visual, or accessibility review, or when an active `kramme:pr:github-review` invocation delegates its UI review pass. For a user request, apply the user's options as a direct invocation would.
+- The `kramme:pr:github-review` delegation passes `--base "$BASE_REF" --inline --no-diff-comments` plus the user's `--categories`, `--subagent-model`, and `--parallel` choices when supplied. A delegating caller never adds `--team`, an app URL, or `auto`, and never drops `--inline` or `--no-diff-comments`.
+- No other parent workflow may delegate to this skill. Every reviewer stays read-only; model invocation never edits source, posts to GitHub, or chooses dispositions.
 
 **Arguments:** "$ARGUMENTS"
 

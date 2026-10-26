@@ -1,14 +1,23 @@
 ---
 name: kramme:pr:resolve-review
-description: Resolve findings from code reviews or Conductor diff comments by implementing fixes and documenting changes. Implements fixes as commits on the current branch. Manual-class findings are deferred with a recommended resolution and any genuinely distinct alternatives, not a bare deferral. Use --team to resolve independent findings in parallel by file area.
+description: Resolve review findings from code reviews, GitHub, or Conductor diff comments by implementing in-scope fixes on the current branch and recording outcomes. Use when explicitly requested or delegated by kramme:pr:github-review-reply or kramme:pr:review-convergence. --team parallelizes by file area.
 argument-hint: "[--team] [--implement-only] [--granular] [--severity ...] [--source local|online|conductor] [review|url|instructions]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 # Resolve Review Findings
 
 **Not for:** resolving a single inline comment with no structured review, landing unrelated fixes that just happened to be mentioned by a reviewer, or making changes to a branch the user has not asked you to modify.
+
+### Model Invocation Contract
+
+- Invoke automatically only when the user clearly asked in this session to resolve review findings, or when an active parent explicitly delegates remediation under the recorded hand-off repair exception:
+  - `kramme:pr:github-review-reply` Step 5 passes exactly `--implement-only` plus its caller-scoped structured findings payload (a stable `source_id`, location, and comment body per item), only after its user enabled implementation and only for items it classified `needs-code-change`, never a PR URL as the review source.
+  - `kramme:pr:review-convergence` batch remediation passes exactly `--implement-only` plus a caller-scoped payload of the batch's accepted code-changing findings, at most once per batch while the worktree is clean, and never in validation-only mode.
+- Do not infer authorization from the presence of a review report, Conductor diff comment, or GitHub thread.
+- Delegating parents never add `--team`, `--granular`, `--source`, `--severity`, or a URL review source, and never delegate without findings. A direct user request keeps every flag and discovery mode unchanged.
+- No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only: keep the scope-creep, validity, action-class, dependency, checkpoint, and validation gates. Under a parent delegation, never commit, post to GitHub, resolve threads, draft replies, or push; the delegating parent keeps reply, resolution, disposition, and commit ownership.
 
 ## Team Mode
 

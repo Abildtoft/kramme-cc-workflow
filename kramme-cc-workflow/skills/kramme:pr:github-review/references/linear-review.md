@@ -36,7 +36,7 @@ For each distinct in-scope identifier, invoke:
 /kramme:linear:review-pr <PR_URL> <ISSUE-ID>
 ```
 
-Supply both arguments explicitly so the child does not infer a different PR or ask which single issue to select from multiple candidates. Each invocation reviews one primary issue; keep separate results when the PR implements several issues. If slash invocation is unavailable, read the sibling skill's `SKILL.md` from the installed skills directory and follow it. If the sibling is unavailable, record the coverage gap rather than inventing a replacement audit.
+Supply both arguments explicitly so the child does not infer a different PR or ask which single issue to select from multiple candidates. Each invocation reviews one primary issue; keep separate results when the PR implements several issues. If the child cannot be invoked or is unavailable, record the coverage gap rather than inventing a replacement audit or reading another skill's files.
 
 Keep the parent's working directory in `WORKTREE_DIR` before and after each handoff. The child owns its checkout-free inspection state and cleanup. Preserve its immutable-object inspection, no-execution, requirement extraction, bidirectional traceability, referenced-context, and trusted CI evidence rules. Never run PR-head code as part of this Linear pass. The child emits its report inline and writes no durable report file.
 
