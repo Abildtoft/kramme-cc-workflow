@@ -6,6 +6,8 @@ setup() {
   REPO_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   RUN_SKILL="$REPO_DIR/skills/kramme:verify:run/SKILL.md"
   CACHE_REF="$REPO_DIR/skills/kramme:verify:run/references/discovery-cache.md"
+  RESOLVE_SKILL="$REPO_DIR/skills/kramme:pr:resolve-review/SKILL.md"
+  RESOLVE_TEAM="$REPO_DIR/skills/kramme:pr:resolve-review/references/team-mode.md"
   CLAIMS_REF="$REPO_DIR/skills/kramme:verify:run/references/completion-claims.md"
   CONVERGENCE_SKILL="$REPO_DIR/skills/kramme:pr:review-convergence/SKILL.md"
   IMPLEMENT_SKILL="$REPO_DIR/skills/kramme:linear:issue-implement/SKILL.md"
@@ -43,6 +45,14 @@ setup() {
   grep -qF 'Reject `--fast` combined with `--full`, and `--base-commit` without `--base`.' "$RUN_SKILL"
   grep -qF 'RESOLVE_ARGS+=(--base-commit "$PINNED_BASE_COMMIT")' "$RUN_SKILL"
   grep -qF 'A pinned commit becomes `BASE_REF` without a Pull Request lookup or fetch' "$RUN_SKILL"
+}
+
+@test "resolve review validates with the fast tier" {
+  grep -qF 'Run `kramme:verify:run --fast` and fix any new lint/format/test issues' "$RESOLVE_SKILL"
+  grep -qF 'the full sweep runs once before the first push or Pull Request, or CI supplies it after the push' "$RESOLVE_SKILL"
+  grep -qF 'Run `kramme:verify:run --fast` to check for integration issues' "$RESOLVE_TEAM"
+  run grep -nE 'kramme:verify:run`' "$RESOLVE_SKILL" "$RESOLVE_TEAM"
+  [ "$status" -eq 1 ]
 }
 
 @test "verify run keeps long checks from losing their exit status" {

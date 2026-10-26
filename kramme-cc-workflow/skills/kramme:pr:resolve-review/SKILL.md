@@ -268,7 +268,7 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
 
 ### Step 4: Validate and summarize
 
-- **Validate** — Run `kramme:verify:run` and fix any new lint/format/test issues it reports. If validation fails after multiple attempts and `CHECKPOINT_SHA` exists, offer to roll back (see Step 2.5).
+- **Validate** — Run `kramme:verify:run --fast` and fix any new lint/format/test issues it reports. The fast tier covers review fixes; the full sweep runs once before the first push or Pull Request, or CI supplies it after the push. If validation fails after multiple attempts and `CHECKPOINT_SHA` exists, offer to roll back (see Step 2.5).
 - **Implement-only mode** (`IMPLEMENT_ONLY=true`) — Make no GitHub writes, write no review file, and draft no replies. Still run the scope-creep and validity checks (Step 2) and the validation above. Instead of the file output below, write `.context/resolve-review/implement-only-summary.json` atomically (write a temporary file, then rename it into place) and return a short chat summary naming that path. Use this schema:
 
   ```json
