@@ -169,6 +169,70 @@ PY
   grep -qF 'Never add AI attribution to any commit subject or body' "$RECREATE_COMMITS"
 }
 
+@test "committing orchestrators load the resolver and keep their work tokens and attribution ban" {
+  local plan_to_pr="$PLUGIN_ROOT/skills/kramme:code:plan-to-pr/SKILL.md"
+  local issue_to_pr="$PLUGIN_ROOT/skills/kramme:linear:issue-to-pr/SKILL.md"
+  local issue_implement="$PLUGIN_ROOT/skills/kramme:linear:issue-implement/SKILL.md"
+  local pr_create="$PLUGIN_ROOT/skills/kramme:pr:create/SKILL.md"
+  local review_convergence="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/SKILL.md"
+  local review_policy="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/references/review-convergence.md"
+
+  for skill in "$plan_to_pr" "$issue_to_pr" "$issue_implement" "$pr_create" "$review_policy"; do
+    grep -qF '${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md' "$skill"
+  done
+
+  grep -qF 'Before creating any commit, read `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md`' "$issue_implement"
+  grep -qF 'with `{history-ref}` set to `auto`' "$issue_implement"
+  grep -qF 'use `{issue-id}` as the caller-supplied ticket' "$issue_implement"
+  grep -qF 'Never add AI/Claude attribution to commits or code' "$issue_implement"
+  grep -qF 'parse its `base_branch` as `{base-branch}` and its `base_ref` as `{base-source-ref}`' "$review_convergence"
+  grep -qF 'Before the first remediation commit, read `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md`' "$review_policy"
+  grep -qF 'with `{history-ref}` set to `{base-source-ref}`' "$review_policy"
+  grep -qF 'resolved commit message including {work-id}' "$review_policy"
+  ! grep -qF 'plain-English message including {work-id}' "$review_policy"
+
+  python3 - "$plan_to_pr" "$issue_to_pr" "$pr_create" <<'PY'
+import pathlib
+import sys
+
+plan_to_pr, issue_to_pr, pr_create = (pathlib.Path(path).read_text() for path in sys.argv[1:])
+
+commit_step = plan_to_pr.split("### Implementation Commit Boundary", 1)[1].split("\n6. ", 1)[0]
+for rule in (
+    "with `{history-ref}` set to the validated `{base-source-ref}`",
+    "Commit with a subject in that convention that contains `{execution-label}`",
+    "appends ` ({execution-label})`",
+):
+    assert rule in commit_step, rule
+assert "require its commit subject to contain `{execution-label}`" in plan_to_pr
+assert "plain-English message containing" not in plan_to_pr
+assert "- Never add AI attribution or modify external systems before `--ship`" in plan_to_pr
+
+commit_step = issue_to_pr.split("### Implementation Commit Boundary", 1)[1].split("\n## ", 1)[0]
+for rule in (
+    "with `{history-ref}` set to `auto`, passing `{issue-id}` as the caller-supplied ticket",
+    "includes `{issue-id}`",
+    "Require `git status --porcelain` to be empty",
+    "If hooks change content, rerun the focused verification before review",
+):
+    assert rule in commit_step, rule
+assert "plain-English message" not in issue_to_pr
+assert "- Never add AI attribution to code, commits, or the Pull Request" in issue_to_pr
+
+section = pr_create.split("### Commit Messages", 1)[1].split("\n### ", 1)[0]
+for rule in (
+    "`recreate-commits` resolves the convention and applies it to the rewritten commits",
+    "this skill does not resolve or apply it itself",
+    '"Include uncommitted changes for PR creation" commit is a placeholder',
+    "`Co-Authored-By: Claude`",
+    "this skill must not undo it",
+):
+    assert rule in section, rule
+assert "### No AI Attribution" not in pr_create
+assert "**NEVER include AI attribution**" in pr_create
+PY
+}
+
 @test "resolver and both consumer contracts are registered" {
   assert_required_contracts_registered \
     git-commit-conventions-resolver \
