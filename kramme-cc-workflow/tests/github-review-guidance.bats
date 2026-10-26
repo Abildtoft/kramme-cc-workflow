@@ -85,12 +85,41 @@ review = skill[skill.index("## Step 6:"):skill.index("## Step 7:")]
 assert '/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"' in review
 assert "separately for each in-scope issue" in review
 assert "before Step 7" in review, "issue findings must participate in conversation deduplication"
-for term in ["read the sibling skill's `SKILL.md`", "never updates Linear", "Never run PR-head code",
+for term in ["record the coverage gap rather than inventing a replacement audit", "never updates Linear", "Never run PR-head code",
              "head and base OIDs match `HEAD_OID` and `PR_BASE_OID`", "discard that result's findings",
              "`BASE_REF` commit to equal `PR_BASE_OID`", "another reviewed in-scope issue",
              "do not suppress contradictions", "ENG-217/LREQ-001", "`review-scope`"]:
     assert term in reference, f"linked-issue audit lost its {term} contract"
+assert "read the sibling skill" not in skill and "read the sibling skill" not in reference
 assert "**Reviewed head:**" in audit_report and "**Reviewed base:**" in audit_report, "child output must expose both snapshot OIDs for aggregation"
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review delegates only to read-only children that name it as a parent" {
+	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/kramme:pr:product-review/SKILL.md" "$PLUGIN_ROOT/skills/kramme:linear:review-pr/SKILL.md" <<'PY'
+import pathlib
+import re
+import sys
+
+skill, product, linear = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+review = skill[skill.index("## Step 6:"):skill.index("## Step 7:")]
+assert '/kramme:pr:code-review --base "$BASE_REF" --inline --no-diff-comments' in review
+assert '/kramme:pr:product-review --base "$BASE_REF" --inline --no-diff-comments' in review
+assert '/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"' in review
+assert "never reconstruct it by reading another skill's files" in review
+contract = re.compile(r"(?ms)^### Model Invocation Contract\s*$(.*?)(?=^#{1,3} |\Z)")
+for child in [product, linear]:
+    frontmatter = child.split("---", 2)[1]
+    assert "disable-model-invocation: false" in frontmatter
+    section = contract.search(child).group(1)
+    assert "`kramme:pr:github-review`" in section
+    assert "No other parent workflow may delegate to this skill" in section
+    assert set(re.findall(r"`(kramme:[^`\s]+)`", section)) == {"kramme:pr:github-review"}
+product_section = contract.search(product).group(1)
+assert '--base "$BASE_REF" --inline --no-diff-comments' in product_section
+assert "never adds `--team`, an app URL, or `auto`" in product_section
+assert "exactly two arguments" in contract.search(linear).group(1)
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }

@@ -1,14 +1,20 @@
 ---
 name: kramme:linear:review-pr
-description: Requires Linear MCP and the GitHub CLI. Reviews an existing Pull Request against the Linear issue it implements, tracing requirements to diff, code, and test evidence and reporting omissions, deviations, undocumented additions, and unverifiable criteria. Use before merge to validate issue-to-implementation completeness. Not for general code quality, PR-description accuracy, or implementing the issue.
+description: Requires Linear MCP and the GitHub CLI. Read-only check that an existing Pull Request implements its Linear issue, tracing requirements to diff, code, and test evidence and reporting gaps and undocumented additions. Use when explicitly requested or delegated by kramme:pr:github-review.
 argument-hint: "[PR-number|PR-url] [ISSUE-ID]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
 # Review a Pull Request Against Its Linear Issue
 
 Audit whether an existing GitHub Pull Request implements the intended Linear issue completely and only within its authorized scope. Return an inline report; never edit code, update the issue, submit a GitHub review, or write a durable report file.
+
+### Model Invocation Contract
+
+- Invoke automatically only when the user explicitly asks in this session to check a Pull Request against its Linear issue, or when an active `kramme:pr:github-review` invocation delegates its linked-issue pass. That delegation passes exactly two arguments: the resolved Pull Request URL and one in-scope issue identifier.
+- A model caller never relies on issue inference or the multiple-candidate question; it supplies both arguments. The review stays read-only for every caller under the Review Contract below.
+- No other parent workflow may delegate to this skill.
 
 ## Review Contract
 

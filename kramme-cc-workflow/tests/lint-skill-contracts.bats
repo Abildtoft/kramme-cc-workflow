@@ -3747,7 +3747,7 @@ EOF
     'kramme:pr:product-review'
   )
   local finding_ids=('CONV-NNN' 'OE-NNN' 'PROD-NNN')
-  local model_invocations=('false' 'false' 'true')
+  local model_invocations=('false' 'false' 'false')
   local location_fields=(
     'Location: path/to/file.ext:line'
     'Location: path/to/file.ext:line`; `scope:` locations are unanchored and ineligible'

@@ -17,7 +17,8 @@
 
     grep -qF "name: kramme:linear:review-pr" "$skill"
     grep -qF "argument-hint: \"[PR-number|PR-url] [ISSUE-ID]\"" "$skill"
-    grep -qF "disable-model-invocation: true" "$skill"
+    grep -qF "disable-model-invocation: false" "$skill"
+    grep -qF "### Model Invocation Contract" "$skill"
     grep -qF "Perform both directions of traceability" "$skill"
     grep -qF "## Step 7: Pass A — Trace Requirements Into the PR" "$skill"
     grep -qF "## Step 8: Pass B — Trace PR Changes Back to Linear Scope" "$skill"

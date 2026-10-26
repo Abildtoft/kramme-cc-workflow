@@ -224,7 +224,7 @@
     },
     {
       "name": "kramme:linear:review-pr",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:linear:review-pr/SKILL.md"
     },
     {
@@ -289,7 +289,7 @@
     },
     {
       "name": "kramme:pr:product-review",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md"
     },
     {
