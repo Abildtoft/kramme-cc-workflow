@@ -34,7 +34,7 @@ Use this structure when writing `OUTSIDE_VIEW_REPORT.md` or a custom `--output` 
 
 ## Delta vs Structured Audit
 
-**Compared against:** {report path + its date, or "no comparison available — run /kramme:code:weakness-audit before the next outside-view run"}
+**Compared against:** {report path + its date, or "no comparison available — run /kramme:code:refactor-opportunities --ranked before the next outside-view run"}
 
 | Cluster | Status | Structured-audit reference |
 | --- | --- | --- |
@@ -44,7 +44,7 @@ Use this structure when writing `OUTSIDE_VIEW_REPORT.md` or a custom `--output` 
 
 {Clusters absent from the structured audit, with recurrence counts from Run History.}
 
-- **OV-00N ({title})** — seen in {k} consecutive runs. {Promotion candidate: name the concrete target — a weakness-audit rubric signal, a deslop pattern, a lint or CI gate, or a documentation fix — or "watch: first appearance, no promotion yet".}
+- **OV-00N ({title})** — seen in {k} consecutive runs. {Promotion candidate: name the concrete target — a ranked-audit rubric signal in `kramme:code:refactor-opportunities`, a deslop pattern, a lint or CI gate, or a documentation fix — or "watch: first appearance, no promotion yet".}
 
 ## Coverage Notes
 

@@ -2,7 +2,7 @@
 
 Loaded from `SKILL.md` only when `--ranked` was honored. Ranked mode audits full, path, or feature scopes. With `pr` scope, stop with: `For PR review run /kramme:pr:code-review, or run this skill with pr and without --ranked.`
 
-Reuse Phase 1's `SCOPE_MODE`, `SCOPE_TARGET`, resolved file list, conventions, glossary, `KNOWN_ADRS`, `KNOWN_OUT_OF_SCOPE`, `HOT_SPOTS`, and `CO_CHANGE`. The shared workflow writes `CODEBASE_WEAKNESS_REPORT.md` by default and parses `--output <path>` and `--max-findings N`. `--base <ref>` is only change-history context. Reject `--team`.
+Reuse Phase 1's `SCOPE_MODE`, `SCOPE_TARGET`, resolved file list, conventions, glossary, `KNOWN_ADRS`, `KNOWN_OUT_OF_SCOPE`, `HOT_SPOTS`, and `CO_CHANGE`. The shared workflow writes `CODEBASE_WEAKNESS_REPORT.md` by default and parses `--output <path>` and `--max-findings N`. Use Phase 1's `HISTORY_BASE_REF` for churn, co-change, and other history signals, and pass it to reviewers as the history baseline; it defaults to `HEAD` when no `--base` was supplied. `--base <ref>` is only change-history context and never changes the ranked file scope. Reject `--team`.
 
 Set `AUDIT_MODE=solo` when `--solo` was passed, otherwise `AUDIT_MODE=team`. Remove `--ranked` and `--solo` before passing the remaining report options through.
 

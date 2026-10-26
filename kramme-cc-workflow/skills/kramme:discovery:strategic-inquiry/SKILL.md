@@ -1,6 +1,6 @@
 ---
 name: kramme:discovery:strategic-inquiry
-description: "Generate ranked strategic questions and evidence-backed briefs on hidden assumptions, contradictions, absences, and load-bearing decisions. Writes STRATEGIC_INQUIRY.md or returns inline. Use to surface blind spots. Not for defect or quality audits; use kramme:code:weakness-audit, kramme:pr:code-review, or kramme:product:review."
+description: "Generate ranked strategic questions and evidence-backed briefs on hidden assumptions, contradictions, absences, and load-bearing decisions. Writes STRATEGIC_INQUIRY.md or returns inline. Use to surface blind spots. Not for defect or quality audits; use kramme:code:refactor-opportunities --ranked, kramme:pr:code-review, or kramme:product:review."
 argument-hint: "[focus, e.g. 'onboarding', src/auth, or omit for whole repo] [--max-questions N] [--output <path>] [--inline]"
 disable-model-invocation: true
 user-invocable: true

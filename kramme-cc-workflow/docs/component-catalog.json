@@ -83,11 +83,6 @@
       "path": "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md"
     },
     {
-      "name": "kramme:code:weakness-audit",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:code:weakness-audit/SKILL.md"
-    },
-    {
       "name": "kramme:code:work-from-plan",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md"
