@@ -690,6 +690,9 @@
       "kramme-cc-workflow/skills/kramme:setup/scripts/check-environment.sh": [
         "kramme-cc-workflow/tests/check-environment.bats"
       ],
+      "kramme-cc-workflow/skills/kramme:verify:run/scripts/discovery-cache.sh": [
+        "kramme-cc-workflow/tests/verify-run-discovery-cache.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:workflow:wizard/assets/template.sh": [
         "kramme-cc-workflow/tests/skill-resource-references.bats"
       ]
