@@ -234,7 +234,7 @@
     },
     {
       "name": "kramme:pr:adversarial-review",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:adversarial-review/SKILL.md"
     },
     {

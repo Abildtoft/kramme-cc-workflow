@@ -14,7 +14,11 @@ import sys
 
 text = pathlib.Path(sys.argv[1]).read_text()
 required = {
-    "user-only": "disable-model-invocation: true",
+    "guarded model invocation": "disable-model-invocation: false",
+    "contract": "### Model Invocation Contract",
+    "single parent": "No other parent workflow is authorized by this model-invocation exception",
+    "user consent": "came from the user",
+    "no base override": "A model caller never passes `--base`",
     "provider difference": "require it to differ from `HOST_PROVIDER`",
     "repository consent": "repository-scoped authorization",
     "no same-provider fallback": "Never replace a failed requested provider with the host provider",
@@ -81,6 +85,8 @@ required_skill = [
     "--adversarial-model",
     "ADVERSARIAL_REVIEW",
     "reject an explicit provider equal to `HOST_PROVIDER` during this parse step",
+    "internal callers never hold the user's cross-provider consent",
+    "A model that invokes this skill never adds it on its own initiative",
 ]
 required_policy = [
     "Gate 5: Adversarial Model Review",
@@ -88,11 +94,28 @@ required_policy = [
     "different-provider review",
     "restart the next quality round at applicability evaluation followed by Gate 1",
     "final adversarial review matches the final verified tree",
+    "never pass `--base`",
+    "exists only because the user requested `--adversarial-review`",
 ]
 missing = [phrase for phrase in required_skill if phrase not in skill]
 missing += [phrase for phrase in required_policy if phrase not in policy]
 raise SystemExit("missing convergence contracts: " + ", ".join(missing) if missing else 0)
 PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "internal convergence callers never forward the adversarial opt-in" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    for caller in skills/kramme:linear:issue-to-pr/SKILL.md skills/kramme:linear:issue-to-pr/references/shipping-contract.md skills/kramme:code:plan-to-pr/SKILL.md skills/kramme:code:plan-to-pr/references/shipping-contract.md; do
+      if grep -qF -- "--adversarial-review" "$caller"; then echo "$caller forwards --adversarial-review"; exit 1; fi
+    done
+    grep -qF "never forwards \`--adversarial-review\`" skills/kramme:linear:issue-to-pr/references/delegated-skills.md
+    grep -qF "### Hand-off repair exceptions" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
+    grep -qF "is model-invocable only as Gate 5 of \`kramme:pr:review-convergence\`" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
+  '
+
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
