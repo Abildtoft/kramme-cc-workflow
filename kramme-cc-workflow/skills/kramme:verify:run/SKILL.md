@@ -1,7 +1,7 @@
 ---
 name: kramme:verify:run
 description: Run verification checks (tests, formatting, builds, linting, type checking) for affected code based on the project's configuration. Defaults to the full pre-push sweep; --fast selects the iteration tier. Reuses a green run only when its tree, scope, and inputs still match.
-argument-hint: "[--fast | --full] [--force]"
+argument-hint: "[--fast | --full] [--force] [--base <branch> [--base-commit <oid>]]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -9,6 +9,15 @@ user-invocable: true
 # Verify Affected Code
 
 Discover the project's verification commands, run the selected tier against affected code, and report results with the working-tree ID they cover. It also states the evidence every completion claim needs; its checks never modify files or auto-fix issues, and only the optional red-green check in `references/completion-claims.md` temporarily removes and restores a fix.
+
+## Discovery Cache
+
+Before step 1, run `"${CLAUDE_PLUGIN_ROOT}/skills/kramme:verify:run/scripts/discovery-cache.sh" key`; it keys repository-root discovery inputs and this skill's own files by content hash. Unless `--force` is present and while `enabled` is true, run its `read <key>`:
+
+- **Hit** (exit 0): the record's checks, tiers, base branch, and skipped notes replace steps 1-3, the root-file base lookups in step 5, and the static suite list from Test Suite Discovery. Still read nested instruction files for the affected paths, resolve the base (step 5), and run Nx affected discovery, target-existence checks, and Skill Security Scan Discovery every run.
+- **Miss** (exit 3, or exit 4 for a rejected record, which you report): run steps 1-3, then save the result with `write <key> <record-file>` before running checks. `--force` also discovers fresh and saves.
+
+Report one line: `Discovery: cached (<first 12 key characters>)`, `Discovery: fresh (saved)`, `Discovery: fresh (cache disabled: <reason>)`, or `Discovery: fresh (not saved: <reason>)` when `write` refuses the record. Read `references/discovery-cache.md` for the record format and trust rule before writing a record.
 
 ## Instructions
 
@@ -51,11 +60,11 @@ If no configuration specifies commands, detect the project type:
 
 If none of these match and no commands were found in steps 1-2, report "No verification commands found" with the locations checked, then stop. Do not invent commands.
 
-This skill relies on `git`, plus the toolchain for the detected project type (`nx`, `dotnet`, `npm`, `pytest`/`ruff`, `go`, or `cargo`) and `jq` for the JSON-inspection snippets below. If a required tool is missing, mark the checks that need it as `SKIPPED` with the reason (same handling as a missing target) rather than failing the run.
+This skill relies on `git`, plus the toolchain for the detected project type (`nx`, `dotnet`, `npm`, `pytest`/`ruff`, `go`, or `cargo`) and `jq` for the JSON-inspection snippets below and the discovery cache helper. If a required tool is missing, mark the checks that need it as `SKIPPED` with the reason (same handling as a missing target) rather than failing the run.
 
 ### 4. Select the Tier
 
-Parse `$ARGUMENTS` for `--fast`, `--full`, and `--force`. Reject `--fast` combined with `--full`.
+Parse `$ARGUMENTS` for `--fast`, `--full`, `--force`, `--base <branch>`, and `--base-commit <oid>`. Reject `--fast` combined with `--full`, and `--base-commit` without `--base`.
 
 - **Fast tier**: the project's documented iteration loop. Without one, run formatting, linting, type checking, and unit tests scoped to affected code, and skip build, component, integration, and E2E suites.
 - **Full tier**: the project's documented pre-push or pre-PR sweep. Without one, run every applicable check in step 8.
@@ -68,13 +77,15 @@ For affected detection and format checks, determine the base branch:
 
 Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
-1. **Check the applicable project instruction files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalent) for a specified base branch. If one is specified, set `BASE_BRANCH_OVERRIDE` to that value.
-2. **Check `nx.json`** for `defaultBase` setting (Nx projects). If present and no project instruction already specified a base, set `BASE_BRANCH_OVERRIDE` to that value.
-3. **Resolve with the shared plugin script.** Let the script perform PR-target and remote-default fallback detection; do not duplicate that logic in this skill.
+1. **Use `--base` when passed.** Set `BASE_BRANCH_OVERRIDE` to it, skip items 2 and 3, and set `PINNED_BASE_COMMIT` to any `--base-commit` value.
+2. **Check the applicable project instruction files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalent) for a specified base branch. If one is specified, set `BASE_BRANCH_OVERRIDE` to that value.
+3. **Check `nx.json`** for `defaultBase` setting (Nx projects). If present and no project instruction already specified a base, set `BASE_BRANCH_OVERRIDE` to that value.
+4. **Resolve with the shared plugin script.** Let the script perform PR-target and remote-default fallback detection; do not duplicate that logic in this skill.
 
 ```bash
 RESOLVE_ARGS=(--strict)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && RESOLVE_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
+[ -n "${PINNED_BASE_COMMIT:-}" ] && RESOLVE_ARGS+=(--base-commit "$PINNED_BASE_COMMIT")
 
 RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}") || {
   echo "Base resolution failed; see the message above and stop." >&2
@@ -83,7 +94,7 @@ RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}")
 eval "$RESOLVED"
 ```
 
-The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`. Use `BASE_REF` for affected comparisons (for example Nx `--base=$BASE_REF`), because it is the fetched remote-tracking ref that the resolver guarantees exists. Use `BASE_BRANCH` only for display or tools that truly require a branch name.
+The script exports `BASE_REF`, `BASE_BRANCH`, and `MERGE_BASE`. Use `BASE_REF` for affected comparisons (for example Nx `--base=$BASE_REF`), because it is the fetched remote-tracking ref that the resolver guarantees exists. Use `BASE_BRANCH` only for display or tools that truly require a branch name. A pinned commit becomes `BASE_REF` without a Pull Request lookup or fetch, after the resolver confirms it resolves locally, so reuse compares that commit OID.
 
 ### 6. Reuse a Green Run on the Same Tree
 
