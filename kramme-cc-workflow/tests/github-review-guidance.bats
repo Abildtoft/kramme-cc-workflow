@@ -511,14 +511,19 @@ PY
 	[ "$status" -eq 0 ]
 }
 
-@test "github review forwards --parallel to both delegated review passes" {
+@test "github review runs delegated reviewers in parallel unless --sequential" {
 	run bash -c '
     set -e
-    grep -qF "[--code-only] [--parallel] [--fresh]" "$1"
-    grep -qF -- "- \`--parallel\` → \`PARALLEL_REVIEWERS=true\`" "$1"
-    grep -qF "\`PARALLEL_REVIEWERS=false\`" "$1"
-    grep -qF "When \`PARALLEL_REVIEWERS=true\`, append \`--parallel\` to both invocations" "$1"
-    grep -qF "[--code-only] [--parallel] [--fresh]" "$2"
+    grep -qF "[--code-only] [--sequential] [--fresh]" "$1"
+    grep -qF -- "- \`--sequential\` → \`PARALLEL_REVIEWERS=false\`" "$1"
+    grep -qF -- "- \`--parallel\` → \`PARALLEL_REVIEWERS=true\`, the default." "$1"
+    grep -qF "If both \`--sequential\` and \`--parallel\` are given, ask the user to pick one and stop." "$1"
+    grep -qF "\`CODE_ONLY=false\`, \`PARALLEL_REVIEWERS=true\`," "$1"
+    grep -qF "When \`PARALLEL_REVIEWERS=true\` (the default), append \`--parallel\` to both invocations" "$1"
+    grep -qF "With \`--sequential\`, omit it" "$1"
+    if grep -qF "[--parallel]" "$1"; then exit 1; fi
+    grep -qF "[--code-only] [--sequential] [--fresh]" "$2"
+    grep -qF "pass \`--sequential\` to run them one at a time" "$2"
   ' _ "$SKILL" "$README"
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
