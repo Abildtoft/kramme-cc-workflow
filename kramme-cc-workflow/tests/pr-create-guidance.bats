@@ -14,6 +14,31 @@ pathlib.Path(sys.argv[2]).write_text(f"{block}\n")
 PY
 }
 
+extract_single_commit_fast_path_block() {
+	python3 - "$1" "$2" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text()
+section = source.split("\n## Single-Commit Fast Path\n", 1)[1].split("\n## ", 1)[0]
+block = section.split("```bash", 1)[1].split("```", 1)[0].strip()
+pathlib.Path(sys.argv[2]).write_text(f"{block}\n")
+PY
+}
+
+init_single_commit_fixture() {
+	repo="$BATS_TEST_TMPDIR/repo"
+	block="$BATS_TEST_TMPDIR/fast-path.sh"
+	MESSAGE_FILE="$BATS_TEST_TMPDIR/message.txt"
+	extract_single_commit_fast_path_block \
+		"$BATS_TEST_DIRNAME/../skills/kramme:git:recreate-commits/SKILL.md" "$block"
+	init_test_git_repo "$repo"
+	cd "$repo"
+	RESET_POINT=$(git rev-parse HEAD)
+	git checkout -q -b feature
+	printf 'Add the feature in one step\n\nExplain why the feature exists.\n' >"$MESSAGE_FILE"
+}
+
 file_mode() {
 	if [ "$(uname -s)" = "Darwin" ]; then
 		stat -f '%Lp' "$1"
@@ -193,6 +218,111 @@ file_mode() {
 	  '
 
 	[ "$status" -eq 0 ]
+}
+
+@test "recreate-commits single-commit fast path runs only after every pre-reset gate" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+
+    [ "$(grep -c "^## Single-Commit Fast Path$" "$recreate")" -eq 1 ]
+    grep -qF "If the Step 4 storyline is exactly one commit and no \`{branch_name}-clean\` branch is in use, follow \`## Single-Commit Fast Path\` instead of the reset and rebuild bullets below, then continue with Step 6." "$recreate"
+    heading_line=$(grep -n "^## Single-Commit Fast Path$" "$recreate" | cut -d: -f1)
+    routing_line=$(grep -nF "follow \`## Single-Commit Fast Path\`" "$recreate" | cut -d: -f1)
+    latest_stack_line=$(grep -nF "LATEST_STACK_RESOLVED=" "$recreate" | tail -1 | cut -d: -f1)
+    verify_line=$(grep -nF "scripts/verify-rewrite-state.sh\" \\" "$recreate" | tail -1 | cut -d: -f1)
+    reset_line=$(grep -nF "git reset --hard \"\$RESET_POINT\"" "$recreate" | head -1 | cut -d: -f1)
+    [ "$latest_stack_line" -lt "$routing_line" ]
+    [ "$verify_line" -lt "$routing_line" ]
+    [ "$routing_line" -lt "$reset_line" ]
+    [ "$latest_stack_line" -lt "$heading_line" ]
+    [ "$verify_line" -lt "$heading_line" ]
+
+    section=$(awk "/^## Single-Commit Fast Path\$/{found=1; next} found && /^## /{exit} found" "$recreate")
+    grep -qF "git commit --amend --file=\"\$MESSAGE_FILE\"" <<<"$section"
+    grep -qF "git reset --soft \"\$RESET_POINT\"" <<<"$section"
+    grep -qF "git rev-list --no-merges --count" <<<"$section"
+    grep -qF "HEAD moved after revalidation; stop before rewording." <<<"$section"
+    grep -qF "git diff \"\$ORIGINAL_TIP\" HEAD" <<<"$section"
+    grep -qF "git reset --hard \"\$BACKUP_REF\"" <<<"$section"
+    grep -qF "Never move or delete \`BACKUP_REF\`" <<<"$section"
+    grep -qF "never with a \`{branch_name}-clean\` branch" <<<"$section"
+    grep -qF "has already run before this point" <<<"$section"
+    ! grep -qF "git push" <<<"$section"
+    ! grep -qF "git reset --hard \"\$RESET_POINT\"" <<<"$section"
+	'
+
+	[ "$status" -eq 0 ]
+}
+
+@test "recreate-commits fast path rewords one commit in place and keeps its author and tree" {
+	init_single_commit_fixture
+	printf 'feature\n' >feature.txt
+	git add feature.txt
+	GIT_AUTHOR_NAME="Original Author" GIT_AUTHOR_EMAIL="original@example.com" \
+		git commit -q -m "Include uncommitted changes for PR creation"
+	ORIGINAL_TIP=$(git rev-parse HEAD)
+	git branch feature-recreate-backup "$ORIGINAL_TIP"
+
+	ORIGINAL_TIP="$ORIGINAL_TIP" RESET_POINT="$RESET_POINT" MESSAGE_FILE="$MESSAGE_FILE" \
+		run bash "$block"
+	[ "$status" -eq 0 ]
+
+	[ "$(git rev-parse HEAD^)" = "$RESET_POINT" ]
+	[ "$(git rev-list --count "$RESET_POINT..HEAD")" -eq 1 ]
+	[ -z "$(git diff "$ORIGINAL_TIP" HEAD)" ]
+	[ "$(git log -1 --format='%an <%ae>')" = "Original Author <original@example.com>" ]
+	[ "$(git log -1 --format='%s')" = "Add the feature in one step" ]
+	[ "$(git rev-parse feature-recreate-backup)" = "$ORIGINAL_TIP" ]
+	[ "$(git symbolic-ref --short HEAD)" = "feature" ]
+}
+
+@test "recreate-commits fast path squashes a range containing a merge into one commit" {
+	init_single_commit_fixture
+	printf 'one\n' >one.txt
+	git add one.txt
+	git commit -q -m "First feature step"
+	git checkout -q -b side "$RESET_POINT"
+	printf 'side\n' >side.txt
+	git add side.txt
+	git commit -q -m "Side work"
+	git checkout -q feature
+	git merge -q --no-ff --no-edit side
+	ORIGINAL_TIP=$(git rev-parse HEAD)
+	git branch feature-recreate-backup "$ORIGINAL_TIP"
+	[ "$(git rev-list --count "$RESET_POINT..HEAD")" -eq 3 ]
+
+	ORIGINAL_TIP="$ORIGINAL_TIP" RESET_POINT="$RESET_POINT" MESSAGE_FILE="$MESSAGE_FILE" \
+		run bash "$block"
+	[ "$status" -eq 0 ]
+
+	[ "$(git rev-list --count "$RESET_POINT..HEAD")" -eq 1 ]
+	[ "$(git rev-list --parents -n 1 HEAD | wc -w | tr -d ' ')" -eq 2 ]
+	[ "$(git rev-parse HEAD^)" = "$RESET_POINT" ]
+	[ "$(git rev-parse 'HEAD^{tree}')" = "$(git rev-parse "$ORIGINAL_TIP^{tree}")" ]
+	[ -z "$(git diff "$ORIGINAL_TIP" HEAD)" ]
+	[ "$(git log -1 --format='%s')" = "Add the feature in one step" ]
+	[ "$(git rev-parse feature-recreate-backup)" = "$ORIGINAL_TIP" ]
+}
+
+@test "recreate-commits fast path refuses when HEAD moved after revalidation" {
+	init_single_commit_fixture
+	printf 'feature\n' >feature.txt
+	git add feature.txt
+	git commit -q -m "Include uncommitted changes for PR creation"
+	ORIGINAL_TIP=$(git rev-parse HEAD)
+	printf 'later\n' >later.txt
+	git add later.txt
+	git commit -q -m "Concurrent work"
+	moved_head=$(git rev-parse HEAD)
+
+	ORIGINAL_TIP="$ORIGINAL_TIP" RESET_POINT="$RESET_POINT" MESSAGE_FILE="$MESSAGE_FILE" \
+		run bash "$block"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"HEAD moved after revalidation; stop before rewording."* ]]
+	[ "$(git rev-parse HEAD)" = "$moved_head" ]
+	[ "$(git log -1 --format='%s')" = "Concurrent work" ]
 }
 
 @test "absence lease rejects a concurrently created remote branch" {

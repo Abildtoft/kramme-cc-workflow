@@ -200,6 +200,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 
      Any failure stops the workflow. Do not rely only on the earlier backup-time or stack-membership validation: diff analysis and commit planning create a real window in which the checkout or authorization boundary can change.
 
+   - If the Step 4 storyline is exactly one commit and no `{branch_name}-clean` branch is in use, follow `## Single-Commit Fast Path` instead of the reset and rebuild bullets below, then continue with Step 6.
    - Reset the branch to the reset point: `git reset --hard "$RESET_POINT"`. (`RESET_POINT` is `AFTER_COMMIT` when `--after` was given, otherwise the merge base.)
    - Rebuild the changes commit by commit. To guarantee a byte-identical end state, source the final content from `$ORIGINAL_TIP` rather than retyping it (retyping is how extra lines and drift creep in):
      - Whole-file commits: `git checkout "$ORIGINAL_TIP" -- <paths>`, then commit.
@@ -267,6 +268,31 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
    ```
 
    Label casing must match exactly: `CHANGES MADE`, `THINGS I DIDN'T TOUCH`, `POTENTIAL CONCERNS`. All three blocks must be present even if one is "None".
+
+## Single-Commit Fast Path
+
+Use this path only when the Step 4 storyline is exactly one commit on the current branch; never with a `{branch_name}-clean` branch. A one-commit plan's final tree is `$ORIGINAL_TIP`'s tree by definition, so the working tree is never reset. Every Step 5 gate — the confirmation or authorization, the stack revalidation, and `verify-rewrite-state.sh` — has already run before this point.
+
+Create `MESSAGE_FILE` with `mktemp "${TMPDIR:-/tmp}/kramme-recreate-message.XXXXXX"`, write the planned message (subject and body resolved under the shared commit conventions from Step 2) to that path with the runtime's file writer, and run the block below with the Step 1 `ORIGINAL_TIP` and `RESET_POINT` values and that path. Delete the file afterwards.
+
+```bash
+[ "$(git rev-parse HEAD)" = "$ORIGINAL_TIP" ] || {
+  echo "HEAD moved after revalidation; stop before rewording." >&2
+  exit 1
+}
+if [ "$(git rev-list --count "$RESET_POINT..HEAD")" -eq 1 ] \
+  && [ "$(git rev-list --no-merges --count "$RESET_POINT..HEAD")" -eq 1 ] \
+  && [ "$(git rev-parse HEAD^)" = "$RESET_POINT" ]; then
+  git commit --amend --file="$MESSAGE_FILE"
+else
+  git reset --soft "$RESET_POINT" && git commit --file="$MESSAGE_FILE"
+fi
+```
+
+- One non-merge commit directly on the reset point is reworded in place; amend keeps its author and tree. Any other range, including one that contains a merge, is squashed: `verify-rewrite-state.sh` proved a clean index and worktree, so after the soft reset the index still holds `$ORIGINAL_TIP`'s tree and the new commit carries it.
+- A rejected amend leaves HEAD unchanged. Recover from any failure after the soft reset with `git reset --hard "$BACKUP_REF"`.
+- Never move or delete `BACKUP_REF`. Step 6's empty `git diff "$ORIGINAL_TIP" HEAD` check, Step 7's restack and publication rules, and Step 8's summary apply unchanged.
+- In Step 8's `CHANGES MADE`, name the path taken: "reworded the single commit in place" or "squashed N commits into one".
 
 ## Misc
 
