@@ -69,7 +69,7 @@ PY
     test -f "$skill/assets/section-templates.md"
     test -f "$skill/references/verification-checklist.md"
     test -f "$skill/references/anti-patterns.md"
-    test -f "$skill/references/red-flags.md"
+    test ! -e "$skill/references/red-flags.md"
     test -f "$skill/references/direct-update.md"
 
     if grep -qF "find . .github docs -maxdepth 2" "$skill/references/context-gathering.md"; then exit 1; fi
@@ -90,9 +90,10 @@ PY
     if grep -qF "DEFAULT_TEMPLATE_REF=\"\$BASE_REF\"" "$skill/references/context-gathering.md"; then exit 1; fi
     if grep -qF "### Automated verification" "$skill/assets/section-templates.md"; then exit 1; fi
     if grep -qF "add PR-specific signal beyond CI" "$skill/assets/section-templates.md"; then exit 1; fi
-    [ "$(grep -cF "\`references/red-flags.md\`" "$skill/SKILL.md")" -eq 1 ]
-    grep -qF "Apply the \`Regeneration Triggers\` section from the already-loaded reference" "$skill/SKILL.md"
-    if grep -qF "Red Flags" "$skill/references/red-flags.md"; then exit 1; fi
+    if grep -rqF "red-flags.md" "$skill"; then exit 1; fi
+    if grep -qF "Regeneration Triggers" "$skill/SKILL.md"; then exit 1; fi
+    grep -qF "regenerate when an item labeled **Regenerate** fails" "$skill/SKILL.md"
+    [ "$(grep -cF -- "- [ ] **Regenerate:**" "$checklist")" -eq 5 ]
     if grep -qF "use proper heading hierarchy" "$skill/SKILL.md"; then exit 1; fi
     if grep -qF "using tables for structured data" "$skill/SKILL.md"; then exit 1; fi
     grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$direct"
@@ -117,7 +118,7 @@ PY
 		pr-generate-description-section-template-rules \
 		pr-generate-description-output-cleanliness \
 		pr-generate-description-antipattern-examples \
-		pr-generate-description-red-flag-examples \
+		pr-generate-description-cold-read-gate \
 		pr-generate-description-direct-update-safety \
 		pr-generate-description-save-and-checklist-contract \
 		pr-generate-description-direct-update-checklist
@@ -610,12 +611,11 @@ EOF
     examples="$skill/references/pr-examples.md"
     checklist="$skill/references/verification-checklist.md"
     practices="$skill/references/best-practices.md"
-    triggers="$skill/references/red-flags.md"
     pass="$skill/references/readability-pass.md"
     prompt="$skill/references/cold-read-prompt.md"
     rubric="shared/writing/references/plain-language-rubric.md"
 
-    if grep -nE "Things I didn.t touch|### Changes made|### Potential concerns|## Technical Details|Reviewer landmarks|Area Notes" "$templates" "$examples" "$checklist" "$practices" "$triggers"; then exit 1; fi
+    if grep -nE "Things I didn.t touch|### Changes made|### Potential concerns|## Technical Details|Reviewer landmarks|Area Notes" "$templates" "$examples" "$checklist" "$practices"; then exit 1; fi
     if grep -nxE "(None|Not applicable|N/A)\.?" "$templates" "$examples"; then exit 1; fi
     if grep -nF "is a valid value" "$checklist"; then exit 1; fi
 
@@ -655,25 +655,91 @@ EOF
 
     grep -qF "Keep the list to about eight bullets" "$templates"
     grep -qF "Most test plans need two to six scenarios" "$templates"
-    grep -qF "has more than ten bullets, or the Test plan more than eight scenarios" "$triggers"
+    grep -qF "or \`## Changes\` has more than about eight bullets, or the Test plan more than about six scenarios" "$checklist"
     grep -qF "A body past about 900 words is rarely read in full" "$practices"
     grep -qF "WRONG: Every Small Change Listed" "$skill/references/anti-patterns.md"
     grep -qF "## Example 4: Batch of Small Changes" "$examples"
 
     pass_line=$(grep -nF "### Phase 3.5: Readability Pass" "$skill/SKILL.md" | cut -d: -f1)
-    triggers_line=$(grep -nF "Apply the \`Regeneration Triggers\` section" "$skill/SKILL.md" | cut -d: -f1)
     rubric_line=$(grep -nF "\${CLAUDE_PLUGIN_ROOT}/$rubric" "$skill/SKILL.md" | cut -d: -f1)
+    gate_line=$(grep -nF "Decide with \`When to Skip the Cold Read\`" "$skill/SKILL.md" | cut -d: -f1)
     checklist_line=$(grep -nF "Run the consolidated checklist in \`references/verification-checklist.md\`." "$skill/SKILL.md" | cut -d: -f1)
     output_line=$(grep -nF "### Phase 4: Output Formatting" "$skill/SKILL.md" | cut -d: -f1)
     update_line=$(grep -nF "Read \`references/direct-update.md\` and follow it." "$skill/SKILL.md" | cut -d: -f1)
-    [ "$pass_line" -lt "$triggers_line" ]
-    [ "$triggers_line" -lt "$rubric_line" ]
-    [ "$rubric_line" -lt "$checklist_line" ]
+    [ "$pass_line" -lt "$rubric_line" ]
+    [ "$rubric_line" -lt "$gate_line" ]
+    [ "$gate_line" -lt "$checklist_line" ]
     [ "$checklist_line" -lt "$output_line" ]
     [ "$output_line" -lt "$update_line" ]
     if grep -nF "### Phase 5" "$skill/SKILL.md"; then exit 1; fi
 
     if grep -nF "comprehensive description" "skills/kramme:pr:create/SKILL.md"; then exit 1; fi
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "generate-description gates the cold read and merges its checks into one checklist" {
+	run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:pr:generate-description"
+    checklist="$skill/references/verification-checklist.md"
+    pass="$skill/references/readability-pass.md"
+    contract="exactly one line starting \`Cold read:\`"
+
+    [ "$(grep -cxF "## When to Skip the Cold Read" "$pass")" -eq 1 ]
+    skip_line=$(grep -nxF "## When to Skip the Cold Read" "$pass" | cut -d: -f1)
+    part1_line=$(grep -nxF "## Part 1: Edit for the Reader" "$pass" | cut -d: -f1)
+    part2_line=$(grep -nxF "## Part 2: Cold Read" "$pass" | cut -d: -f1)
+    [ "$part1_line" -lt "$skip_line" ]
+    [ "$skip_line" -lt "$part2_line" ]
+    grep -qF "at most 3 changed files and at most 150 changed lines (insertions plus deletions)" "$pass"
+    grep -qF "The draft has no \`## Breaking changes\` or \`## Rollout\` section." "$pass"
+    grep -qF "no database migration, no feature-flag default change, and no change to a versioned artifact surface or durable public contract" "$pass"
+    grep -qF "No blocking \`MISSING REQUIREMENT:\` marker was emitted." "$pass"
+    grep -qF "If any condition fails, run Part 2." "$pass"
+    grep -qF "Cold read: skipped (small diff: 2 files, 40 lines)" "$pass"
+    grep -qF "Also skip when the host can'"'"'t launch an agent without the conversation history" "$pass"
+
+    grep -qF "Every run, whether the cold read ran or was skipped, puts $contract" "$pass"
+    grep -qF "Cold read: no changes" "$pass"
+    grep -qF "at most three open questions" "$pass"
+    grep -qF "record $contract for the run output" "$skill/SKILL.md"
+    grep -qF "carries $contract" "$skill/SKILL.md"
+    grep -qF "has $contract" "$checklist"
+
+    grep -qF "check the draft against every section of \`references/verification-checklist.md\` except Output routing and Cold read" "$pass"
+    if grep -nE "^[1-9]\\. \\*\\*" "$pass"; then exit 1; fi
+    [ "$(grep -cE "^[1-9]\\. \\*\\*" "$checklist")" -eq 9 ]
+    previous=0
+    for item in "1. **Plain opening.**" "2. **Said once.**" "3. **Every heading earns its place.**" "4. **One job per line.**" "5. **Terms.**" "6. **Facts, not self-report.**" "7. **Claims can be tested.**" "8. **Sized to the change.**" "9. **Keep-list audit.**"; do
+      line=$(grep -nF -- "$item" "$checklist" | cut -d: -f1)
+      [ -n "$line" ]
+      [ "$line" -gt "$previous" ]
+      previous=$line
+    done
+
+    previous=0
+    for heading in "## Title" "## Summary and sections" "## Readability" "## How it works and Test Plan" "## Boundary, tone, and operational hygiene" "## Output routing" "## Cold read"; do
+      line=$(grep -nxF "$heading" "$checklist" | cut -d: -f1)
+      [ -n "$line" ]
+      [ "$line" -gt "$previous" ]
+      previous=$line
+    done
+    if grep -qxF "## Readability pass" "$checklist"; then exit 1; fi
+    if grep -qF "Removed repeated phrasing or duplicated facts" "$checklist"; then exit 1; fi
+
+    grep -qF "**Regenerate:** The Summary says what changes in plain words, with concrete nouns" "$checklist"
+    grep -qF "**Regenerate:** A migration, feature-flag default change, or breaking change in the diff appears" "$checklist"
+    grep -qF "**Regenerate:** The GitHub UI Duplication Guard from Phase 3.1.5 was applied" "$checklist"
+    grep -qF "\"Changes by Area\" section" "$checklist"
+    grep -qF "**Regenerate:** No references to spec files" "$checklist"
+    grep -qF "**Regenerate:** No AI-attribution badges" "$checklist"
+    [ "$(grep -cF "Not applicable" "$checklist")" -eq 1 ]
+
+    grep -qF "the Readability items in \`references/verification-checklist.md\`, using the fixed reader contract in Part 1 of \`references/readability-pass.md\`" "$skill/references/check-mode.md"
+    grep -qF "Readability item 2 of \`references/verification-checklist.md\`" "$pass"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }

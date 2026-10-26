@@ -265,13 +265,13 @@ Include a placeholder section for visual aids only when the diff changes somethi
 
 Run these three steps in order on the drafted title and body, before Phase 4 presents or publishes anything. None of them prompts the user.
 
-1. Read `references/red-flags.md` once. Apply the `Regeneration Triggers` section from the already-loaded reference and regenerate when any condition matches.
-2. Read `${CLAUDE_PLUGIN_ROOT}/shared/writing/references/plain-language-rubric.md` and `references/readability-pass.md`, then follow the pass. It edits the draft for a reviewer who is new to the change, then has a fresh agent read only the title and body using `references/cold-read-prompt.md`, and applies what that reader flags once.
+1. Read `${CLAUDE_PLUGIN_ROOT}/shared/writing/references/plain-language-rubric.md` and `references/readability-pass.md`, then follow Part 1 of the pass. It edits the draft for a reviewer who is new to the change, checking it against `references/verification-checklist.md`: regenerate when an item labeled **Regenerate** fails, and fix other failures in place.
+2. Decide with `When to Skip the Cold Read` in `references/readability-pass.md` whether the cold read runs. If it runs, follow Part 2: a fresh agent reads only the title and body using `references/cold-read-prompt.md`, and you apply what that reader flags once. Either way, record exactly one line starting `Cold read:` for the run output.
 3. Run the consolidated checklist in `references/verification-checklist.md`. No other phase has its own checklist; that reference is the single source of truth. If the checklist leads to an edit, repeat the keep-list audit from the readability pass, but not the cold read.
 
 ### Phase 4: Output Formatting
 
-Use the selected GitHub template or `assets/section-templates.md` as the Markdown structure. Never include meta-commentary, placeholders such as `[TODO]` or `[Fill this in]`, AI attribution, AI badges, or AI co-author lines. Keep the cold-read result, its open questions, and the screenshot reminder in the run output, outside the description.
+Use the selected GitHub template or `assets/section-templates.md` as the Markdown structure. Never include meta-commentary, placeholders such as `[TODO]` or `[Fill this in]`, AI attribution, AI badges, or AI co-author lines. The run output, outside the description, carries exactly one line starting `Cold read:` (the outcome, or `Cold read: skipped (<reason>)`), followed by at most three open questions and, when it applies, the screenshot reminder.
 
 #### If `DIRECT_UPDATE=true`: Update PR directly
 

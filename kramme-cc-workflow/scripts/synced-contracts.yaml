@@ -1327,8 +1327,12 @@
         "GitHub PR template lookup completed against the repository default branch",
         "`## Screenshots / Videos` appears only for UI-facing changes",
         "Local setup or infrastructure failures such as missing `node_modules`, failed package installs, unavailable Postgres, absent Docker services, and port conflicts are omitted from the PR body",
-        "## Readability pass",
-        "Removed repeated phrasing or duplicated facts"
+        "## Readability",
+        "2. **Said once.** No fact appears twice at the same level of detail.",
+        "8. **Sized to the change.**",
+        "An item labeled **Regenerate** means the draft is wrong at its root",
+        "**Regenerate:** No AI-attribution badges",
+        "exactly one line starting `Cold read:`"
       ]
     },
     {
@@ -1343,9 +1347,15 @@
       ]
     },
     {
-      "name": "pr-generate-description-red-flag-examples",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/red-flags.md",
-      "contains": ["The body mentions local setup failures"]
+      "name": "pr-generate-description-cold-read-gate",
+      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/readability-pass.md",
+      "contains": [
+        "## When to Skip the Cold Read",
+        "at most 3 changed files",
+        "at most 150 changed lines",
+        "Never simulate the cold read in your own context",
+        "Every run, whether the cold read ran or was skipped, puts exactly one line starting `Cold read:` in the run output"
+      ]
     },
     {
       "name": "pr-generate-description-direct-update-safety",
