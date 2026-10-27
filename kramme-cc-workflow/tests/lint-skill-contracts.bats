@@ -292,13 +292,15 @@ contracts = {
 }
 contract_name = "pr-review-collect-review-diff-nul-block"
 shared_args = ["--strict", "--format", "nul"]
+# Review producers opt into stack context; the other consumers read an empty field.
+review_args = [*shared_args, "--stack-context"]
 expected_args = {
-    "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md": shared_args,
-    "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md": review_args,
+    "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md": review_args,
     "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md": shared_args,
-    "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md": review_args,
     "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md": [
-        *shared_args,
+        *review_args,
         "--exclude-review-artifacts",
         "--require-local-artifact",
         "OVERENGINEERING_REVIEW_OVERVIEW.md",
@@ -306,8 +308,9 @@ expected_args = {
     "kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md": [
         *shared_args,
         "--exclude-review-artifacts",
+        "--stack-context",
     ],
-    "kramme-cc-workflow/skills/kramme:pr:triage-risk/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/kramme:pr:triage-risk/SKILL.md": review_args,
     "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md": [
         *shared_args,
         "--exclude-review-artifacts",
@@ -341,7 +344,7 @@ if 'collect-review-diff.sh" "${COLLECT_ARGS[@]}"' not in nul_block:
     raise SystemExit("synchronized block does not pass collector arguments directly")
 if nul_block.count("collect-review-diff.sh") != 1:
     raise SystemExit("synchronized block must invoke collect-review-diff.sh exactly once")
-expected_fields = ["BASE_REF", "BASE_BRANCH", "MERGE_BASE", "CHANGED_FILES"]
+expected_fields = ["BASE_REF", "BASE_BRANCH", "MERGE_BASE", "CHANGED_FILES", "STACK_CONTEXT"]
 read_fields = re.findall(r"IFS= read -r -d '' (\w+)", nul_block)
 if read_fields != expected_fields:
     raise SystemExit("NUL cohort does not read fields in collector output order")
@@ -383,7 +386,7 @@ code_review_contract = next(
     for item in registry["required_file_contracts"]
     if item["name"] == "pr-code-review-invocation-shape"
 )
-if "COLLECT_ARGS=(--strict --format nul)" not in code_review_contract["contains"]:
+if "COLLECT_ARGS=(--strict --format nul --stack-context)" not in code_review_contract["contains"]:
     raise SystemExit("code-review required-text contract still expects legacy JSON")
 
 for consumer_path in expected_paths:

@@ -65,7 +65,8 @@ if ! {
   IFS= read -r -d '' BASE_REF \
     && IFS= read -r -d '' BASE_BRANCH \
     && IFS= read -r -d '' MERGE_BASE \
-    && IFS= read -r -d '' CHANGED_FILES
+    && IFS= read -r -d '' CHANGED_FILES \
+    && IFS= read -r -d '' STACK_CONTEXT
 } < "$REVIEW_DIFF_FIELDS"; then
   rm -f "$REVIEW_DIFF_FIELDS"
   echo "Decoded review-diff fields were incomplete; stop." >&2
@@ -74,7 +75,7 @@ fi
 rm -f "$REVIEW_DIFF_FIELDS"
 ```
 
-If `CHANGED_FILES` is empty, stop with: `No changes detected against $BASE_REF. If this is wrong, re-run with --base <branch>.`
+`STACK_CONTEXT` stays empty because this skill does not pass `--stack-context`. If `CHANGED_FILES` is empty, stop with: `No changes detected against $BASE_REF. If this is wrong, re-run with --base <branch>.`
 
 Collect supporting intent without requiring it:
 

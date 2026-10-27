@@ -81,10 +81,11 @@ PY
 # emit_json_object <missing-python-message> (<kind>:<key> <value>)...
 #
 # Emits one compact JSON object built from ordered key/value pairs on
-# stdout. <kind> is "str" for a plain string value or "lines" to split the
-# value on newlines into a JSON array of strings. Values are passed as
-# separate argv entries, never interpolated into the Python source, so
-# shell metacharacters in a value are inert. Requires python3.
+# stdout. <kind> is "str" for a plain string value, "lines" to split the
+# value on newlines into a JSON array of strings, or "json" to embed a value
+# that is already a JSON document. Values are passed as separate argv
+# entries, never interpolated into the Python source, so shell
+# metacharacters in a value are inert. Requires python3.
 emit_json_object() {
   local missing_python_message="$1"
   shift
@@ -103,7 +104,10 @@ fields = {}
 for index in range(0, len(args), 2):
     kind, _, key = args[index].partition(":")
     value = args[index + 1]
-    fields[key] = value.splitlines() if kind == "lines" else value
+    if kind == "json":
+        fields[key] = json.loads(value)
+    else:
+        fields[key] = value.splitlines() if kind == "lines" else value
 
 json.dump(fields, sys.stdout, separators=(",", ":"))
 sys.stdout.write("\n")

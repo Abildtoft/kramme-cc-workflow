@@ -56,10 +56,10 @@ Before selecting files or launching agents:
 
 ### Step 3: Resolve Base Branch and Identify UI-Relevant Changed Files
 
-Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It resolves in this order: explicit `--base`, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
+Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It resolves in this order: explicit `--base`, the stack base of a gh-stack layer that has no open Pull Request or needs a restack, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
 ```bash
-COLLECT_ARGS=(--strict --format nul)
+COLLECT_ARGS=(--strict --format nul --stack-context)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
 REVIEW_DIFF_FIELDS=$(mktemp "${TMPDIR:-/tmp}/review-diff.XXXXXX") || {
@@ -76,7 +76,8 @@ if ! {
   IFS= read -r -d '' BASE_REF \
     && IFS= read -r -d '' BASE_BRANCH \
     && IFS= read -r -d '' MERGE_BASE \
-    && IFS= read -r -d '' CHANGED_FILES
+    && IFS= read -r -d '' CHANGED_FILES \
+    && IFS= read -r -d '' STACK_CONTEXT
 } < "$REVIEW_DIFF_FIELDS"; then
   rm -f "$REVIEW_DIFF_FIELDS"
   echo "Decoded review-diff fields were incomplete; stop." >&2
@@ -85,7 +86,7 @@ fi
 rm -f "$REVIEW_DIFF_FIELDS"
 ```
 
-The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES` without evaluating collected values. Use `CHANGED_FILES` for the file filtering below.
+The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, newline-delimited `CHANGED_FILES`, and the `STACK_CONTEXT` JSON document without evaluating collected values. Use `CHANGED_FILES` for the file filtering below. When the `STACK_CONTEXT` state is `stacked` or `unknown`, read `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/stacked-pr-review.md` and apply its orchestrator rules in Steps 7, 8, and 11.
 
 Read `references/ui-relevance-heuristics.md`, then filter for UI-relevant files using this contract marker: UI relevance path contract: `ui-relevance-path-contract-v1`.
 
@@ -229,6 +230,7 @@ For each applicable agent, launch the reviewer using the platform's agent-invoca
 - Unstaged local diff: `git diff`
 - Untracked local files list: `git ls-files --others --exclude-standard` (agents should treat these as new files and review full file content)
 - The `app_url` and browser MCP type (if visual mode)
+- When `STACK_CONTEXT` reports `stacked`: the stack context JSON and the `Reviewer rules` section of the stacked Pull Request reference
 - No report threshold: each agent reports every finding with its confidence, and Step 8 applies the threshold
 
 Read `references/shared-working-tree.md` and instruct every reviewer that it is **read-only**. Every reviewer in this audit reads the same working tree, which usually holds uncommitted work, so a file one reviewer edits becomes false evidence for the others and produces fabricated findings that cite real files and real lines. No reviewer may create, edit, delete, move, or rename files, mutate git state, or run a command that rewrites files as a side effect, including formatters, `--fix` linters, codemods, dependency installs, and test runners that update snapshots or golden files. In visual mode, browser evidence stays read-only: never save a screenshot, recording, or trace into the repository working tree. Recommended code changes belong in the finding text; applying them is `/kramme:pr:resolve-review`'s job.
@@ -277,7 +279,7 @@ Parse both manifests using the record contract in `references/shared-working-tre
 After collecting findings from all agents:
 
 - Drop findings whose confidence is below `custom_threshold`, or below the category default when no threshold was given (a11y 90; ux, product, and visual 70)
-- Launch **kramme:pr-relevance-validator** with the remaining findings and the resolved `BASE_BRANCH`
+- Launch **kramme:pr-relevance-validator** with the remaining findings, the resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE`, and `STACK_CONTEXT` when it reports `stacked`
 - Cross-reference each finding against the full audit scope (PR diff + staged/unstaged/untracked local changes)
 - Filter pre-existing issues and out-of-scope problems
 - Return only findings caused by this combined scope
@@ -319,6 +321,8 @@ If `INLINE_MODE=true`:
 - Do **not** create or update `PRODUCT_REVIEW_OVERVIEW.md`
 
 Otherwise, write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/product-review-report-format.md`. Include every section even if empty (with count of 0), except those the format marks as omittable.
+
+In both modes, add the stacked Pull Request reference's `Stack:` line under the report title when the stack context is `stacked` or `unknown`.
 
 When file output is used, `PRODUCT_REVIEW_OVERVIEW.md` is a working artifact — it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow-artifacts:cleanup` when that skill is installed.
 

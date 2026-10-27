@@ -7,6 +7,8 @@ Use this structure verbatim when writing `REVIEW_OVERVIEW.md` (or the inline rep
 
 Review producer: kramme:pr:code-review
 
+Stack: {stack summary, per the stacked Pull Request reference; omit this line when the branch is not stacked}
+
 ## Relevance Filter
 
 - X findings validated as PR-caused

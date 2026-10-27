@@ -539,9 +539,10 @@
         "set `LOOP_MODE=true` and remove that flag",
         "If `--base <branch>` flag",
         "If `--parallel` appears anywhere in `$ARGUMENTS`",
-        "COLLECT_ARGS=(--strict --format nul)",
+        "COLLECT_ARGS=(--strict --format nul --stack-context)",
         "\"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh\" \"${COLLECT_ARGS[@]}\"",
-        "IFS= read -r -d '' CHANGED_FILES"
+        "IFS= read -r -d '' CHANGED_FILES",
+        "IFS= read -r -d '' STACK_CONTEXT"
       ]
     },
     {

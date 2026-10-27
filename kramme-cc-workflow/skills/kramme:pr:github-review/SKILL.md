@@ -222,6 +222,15 @@ eval "$RESOLVED"
 
 The script exports `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`. If `CHANGED_FILES` is empty, the PR has no diff against its base: note there are no code changes to review (no fresh findings), skip Steps 5–6, but still run Step 7 to surface the existing conversation unless `--fresh` is set, then clean up. Mark any linked Linear issues as not covered because there is no implementation diff; never count them as verified.
 
+Describe where the PR sits in any Pull Request stack. The worktree's HEAD is detached, so name the PR's head branch:
+
+```bash
+STACK_CONTEXT=$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-context.py" --head "$HEAD_REF") \
+  || STACK_CONTEXT='{"state":"unknown","summary":"Stack status unknown: the stack context helper failed."}'
+```
+
+When the `STACK_CONTEXT` state is `stacked` or `unknown`, read `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/stacked-pr-review.md`. The delegated reviews in Step 6 resolve the same context for their own reviewers. This skill applies the reference's orchestrator rules to the report header and its reviewer rules while drafting in Step 9: a finding in code that a lower layer introduced belongs to that layer's Pull Request, so name that Pull Request in the report instead of drafting an inline comment here, and check the upstack Pull Requests before drafting a comment that calls new code unused or premature.
+
 ## Step 5: Classify Scope
 
 If `CODE_ONLY=true`, set `RUN_UI=false` and skip the rest of this step without loading another resource. Otherwise read `references/ui-relevance.md` and follow its `ui-relevance-path-contract-v1` classifier against `CHANGED_FILES` to set `RUN_UI`.

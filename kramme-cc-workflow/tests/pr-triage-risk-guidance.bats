@@ -21,7 +21,7 @@ setup() {
 }
 
 @test "triage risk resolves the base with the shared collector and triages committed work only" {
-  grep -qF 'COLLECT_ARGS=(--strict --format nul)' "$SKILL"
+  grep -qF 'COLLECT_ARGS=(--strict --format nul --stack-context)' "$SKILL"
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" "${COLLECT_ARGS[@]}" \' "$SKILL"
   grep -qF "IFS= read -r -d '' MERGE_BASE" "$SKILL"
   grep -qF 'Triage covers committed work only, because committed work is what a Pull Request carries.' "$SKILL"
