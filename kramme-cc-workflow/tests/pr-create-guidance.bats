@@ -126,9 +126,8 @@ file_mode() {
     grep -qF "Automatic stack-wide rewriting additionally requires \`--authorize-history-rewrite\`" ../README.md
     grep -qF "A non-auto stacked invocation may instead use separate interactive confirmations" ../README.md
     grep -qF "## Step 4.5: Reject Stacked Branches" "$create"
-    grep -qF "STACK_RESOLVED=\$(\"\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")" "$create"
-    grep -qF "if [ \"\$STACK_MEMBERSHIP\" != \"none\" ]; then" "$create"
-    grep -qF "use kramme:pr:stack instead" "$create"
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh" "$create"
+    grep -qF "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." "$create"
     grep -qF "Both locally tracked and server-side stacks stop here" "$create"
     grep -qF "any later stack detection is state drift" "$create"
     ! grep -qF "leaves any stacked rewrite to the nested skill" "$create"
@@ -144,6 +143,7 @@ file_mode() {
 		pr-create-origin-push-url-helper \
 		pr-create-push-failure-rollback \
 		pr-create-remote-absence-contract \
+		pr-create-preflight-helper \
 		recreate-commits-deferred-push-contract \
 		pr-generate-description-subskill-contract \
 		recreate-commits-push-target-helper \
@@ -915,6 +915,7 @@ file_mode() {
     grep -qF "references/pre-validation-checks.md" "$create"
     grep -qF "references/branch-and-platform-handling.md" "$create"
     grep -qF "references/state-and-rollback.md" "$create"
+    grep -qF "references/abort-and-rollback.md" "$create"
     grep -qF "references/confirmation-and-creation.md" "$create"
     grep -qF "## Step 3.5: Reject an Existing Pull Request" "$create"
     grep -qF "Inspect the agent-tracked value directly" "$create"
@@ -1202,6 +1203,68 @@ file_mode() {
     grep -qF "Before classifying \`{entry-branch}\` as a feature" "$branch"
     grep -qF "Do not publish a Pull Request from a production branch" "$branch"
   '
+	[ "$status" -eq 0 ]
+}
+
+@test "pr-create runs Steps 1-4.5 through the read-only preflight helper" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    prevalidation="skills/kramme:pr:create/references/pre-validation-checks.md"
+    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
+
+    test -f "skills/kramme:pr:create/scripts/pr-create-preflight.py"
+    [ "$(grep -c "^## Preflight Helper$" "$create")" -eq 1 ]
+    helper_line=$(grep -n "^## Preflight Helper$" "$create" | cut -d: -f1)
+    step_one_line=$(grep -n "^## Step 1: Pre-Validation$" "$create" | cut -d: -f1)
+    [ "$helper_line" -lt "$step_one_line" ]
+    grep -qF "python3 \"\${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py\"" "$create"
+    grep -qF "parse it as JSON and never \`eval\` or source it" "$create"
+    grep -qF "rerun the helper with the same flags plus \`--feature-branch \"{validated-candidate}\"\`" "$create"
+    grep -qF "starting at \"If they differ, freeze the one effective push endpoint\"" "$create"
+    grep -qF "If they differ, freeze the one effective push endpoint" "$branch"
+    grep -qF "read \`references/pre-validation-checks.md\` only to word the error" "$create"
+    grep -qF "rerun the helper to capture the rebased entry state" "$create"
+    grep -qF "apply any protected, workbench, or production branch named in repository instructions" "$create"
+    grep -qF "scripts/pr-create-preflight.py\` performs these checks" "$prevalidation"
+    grep -qF "scripts/pr-create-preflight.py\` performs entry capture" "$branch"
+    grep -qF "git rev-parse --git-path rebase-merge --git-path rebase-apply --git-path MERGE_HEAD" "$prevalidation"
+    ! grep -qF ".git/rebase-merge" "$prevalidation" || exit 1
+    ! grep -qF ".git/MERGE_HEAD" "$prevalidation" || exit 1
+  '
+
+	assert_required_contracts_registered pr-create-preflight-helper
+
+	[ "$status" -eq 0 ]
+}
+
+@test "the fresh path resolves stack membership at the helper, the reset, each push, and creation" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+    publication="skills/kramme:pr:create/references/confirmation-and-creation.md"
+
+    ! grep -qF "STACK_RESOLVED=\$(" "$create" || exit 1
+    grep -qF "The helper resolves stack membership for the current feature branch" "$create"
+
+    skip_line=$(grep -nF "skip this initial resolution and set \`IN_STACK=false\`" "$recreate" | cut -d: -f1)
+    initial_line=$(grep -nF "STACK_RESOLVED=\$(" "$recreate" | grep -vF "LATEST_STACK_RESOLVED" | head -1 | cut -d: -f1)
+    latest_line=$(grep -nF "LATEST_STACK_RESOLVED=" "$recreate" | head -1 | cut -d: -f1)
+    drift_line=$(grep -nF "Under \`REQUIRE_UNSTACKED=true\`, any local or server-side membership is state drift" "$recreate" | cut -d: -f1)
+    reset_line=$(grep -nF "git reset --hard \"\$RESET_POINT\"" "$recreate" | head -1 | cut -d: -f1)
+    [ "$skip_line" -lt "$initial_line" ]
+    [ "$latest_line" -lt "$drift_line" ]
+    [ "$drift_line" -lt "$reset_line" ]
+    grep -qF "stop before the reset, even when \`--auto\` or \`--authorize-history-rewrite\` was passed" "$recreate"
+
+    ! grep -qF "LATEST_STACK_RESOLVED" "$publication" || exit 1
+    ! grep -qF "STACK_REVALIDATION_FAILED" "$publication" || exit 1
+    [ "$(grep -cF "FINAL_STACK_RESOLVED=" "$publication")" -eq 3 ]
+  '
+
 	[ "$status" -eq 0 ]
 }
 

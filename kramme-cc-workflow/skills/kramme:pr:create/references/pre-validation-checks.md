@@ -2,6 +2,8 @@
 
 **ALWAYS perform these checks before proceeding. Abort on any failure.**
 
+`scripts/pr-create-preflight.py` performs these checks in its single Step 1–4.5 call and reports the first failure as a `blocked` reason. Read this reference to word that blocker; the rules below remain the helper's contract.
+
 ## 1.1 GitHub CLI Check
 
 ```bash
@@ -80,19 +82,20 @@ Then run /kramme:pr:create again.
 
 ## 1.4 Rebase/Merge In Progress Check
 
-Check for these paths:
+Resolve each marker through Git, because `.git` is a file in a linked worktree such as a Conductor workspace and the markers live under `.git/worktrees/<name>/`:
 
-- `.git/rebase-merge/`
-- `.git/rebase-apply/`
-- `.git/MERGE_HEAD`
+```bash
+git rev-parse --git-path rebase-merge --git-path rebase-apply --git-path MERGE_HEAD \
+  --git-path CHERRY_PICK_HEAD --git-path REVERT_HEAD
+```
 
-**If any exist:**
+**If any returned path exists:**
 
 ```
-Error: [Rebase/Merge] operation in progress.
+Error: [Rebase/Merge/Cherry-pick/Revert] operation in progress.
 
-To continue: git [rebase/merge] --continue
-To abort: git [rebase/merge] --abort
+To continue: git [rebase/merge/cherry-pick/revert] --continue
+To abort: git [rebase/merge/cherry-pick/revert] --abort
 
 Resolve the in-progress operation, then run /kramme:pr:create again.
 ```

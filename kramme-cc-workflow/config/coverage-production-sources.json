@@ -85,6 +85,7 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/schema.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/strings.py",
       "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/scripts/preflight.py",
+      "kramme-cc-workflow/skills/kramme:pr:create/scripts/pr-create-preflight.py",
       "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
       "kramme-cc-workflow/scripts/risk-signals.py",
       "kramme-cc-workflow/scripts/risk_patterns.py"
@@ -414,6 +415,11 @@
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/python/test_issue_to_pr_preflight.py",
       "skills": ["kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/python/test_pr_create_preflight.py",
+      "skills": ["kramme-cc-workflow/skills/kramme:pr:create/SKILL.md"]
     },
     {
       "kind": "guidance",

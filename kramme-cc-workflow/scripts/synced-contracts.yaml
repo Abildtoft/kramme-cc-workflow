@@ -1204,6 +1204,20 @@
       ]
     },
     {
+      "name": "pr-create-preflight-helper",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "contains": [
+        "## Preflight Helper",
+        "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py\"",
+        "it never creates branches, commits, stashes, pushes, or changes configuration, and never prints the origin URL",
+        "parse it as JSON and never `eval` or source it",
+        "`feature_branch_required` (exit 3)",
+        "`remote_classification_required` (exit 3)",
+        "never guess the state",
+        "`references/abort-and-rollback.md` — Step 10: abort and rollback; read only when Step 10 runs."
+      ]
+    },
+    {
       "name": "pr-generate-description-subskill-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
       "contains": [

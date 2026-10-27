@@ -29,6 +29,7 @@ Orchestrate the creation of a clean, well-documented PR by validating git state,
 /kramme:pr:create
     |
     v
+Preflight helper: Steps 1–4.5 in one read-only call
 Step 1  Pre-Validation .................... abort on any failure
     |
 Step 2  Capture entry state + pin base ({base-source-ref}, {base-ref}, {base-branch})
@@ -65,9 +66,11 @@ The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool
 
 ## References
 
-- `references/pre-validation-checks.md` — Step 1: repository safety checks.
-- `references/branch-and-platform-handling.md` — Steps 2–3: entry-state capture, immutable-base resolution, ref validation, mutation-free feature-branch selection, and authoritative remote-tip classification.
-- `references/state-and-rollback.md` — Steps 5 and 10: state capture, stash handling, abort/rollback.
+- `scripts/pr-create-preflight.py` — Steps 1–4.5 in one read-only call; see `## Preflight Helper`.
+- `references/pre-validation-checks.md` — Step 1: repository safety checks the helper performs; read only to word a Step 1 blocker.
+- `references/branch-and-platform-handling.md` — Steps 2–3: entry-state capture, immutable-base resolution, ref validation, mutation-free feature-branch selection, and authoritative remote-tip classification. The helper performs the mechanical parts; read it to name a new feature branch, to classify a differing existing remote, or for the rebase-first branch guard.
+- `references/state-and-rollback.md` — Steps 5 and 9.0: state capture, stash handling, excluded-work restoration.
+- `references/abort-and-rollback.md` — Step 10: abort and rollback; read only when Step 10 runs.
 - `references/confirmation-and-creation.md` — Steps 8–9: preview, confirmation, edit loop, absence- or OID-leased publication, exact-tip reuse, `gh pr create`, draft mode, and success output.
 
 ## Step 0: Parse Arguments
@@ -105,19 +108,39 @@ Without `--draft`, the PR is created ready for review.
 
 ---
 
+## Preflight Helper
+
+Steps 1–4.5 are mechanical checks. Run them in one call, adding `--base "{BASE_BRANCH_OVERRIDE}"`, `--linear-issue {LINEAR_ISSUE_OVERRIDE}`, and `--auto` only when Step 0 set them:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py" [--base "{BASE_BRANCH_OVERRIDE}"] [--linear-issue {LINEAR_ISSUE_OVERRIDE}] [--auto]
+```
+
+The helper is read-only apart from the base fetch the shared resolver performs: it never creates branches, commits, stashes, pushes, or changes configuration, and never prints the origin URL. It prints one JSON document; parse it as JSON and never `eval` or source it. Use its `facts` as the agent-tracked values for the rest of the invocation: `entry_branch` (`null` means `<detached>`) as `{entry-branch}`, `entry_commit` as `{entry-commit}`, `base_source_ref` as `{base-source-ref}`, `base_ref` as `{base-ref}`, `base_branch` as `{base-branch}`, `feature_branch` as `{feature-branch}`, `linear_issue_id` as `{linear-issue-id}`, `observed_origin_oid` (`null` means `<absent>`) as `{observed-origin-oid}`, `branch_action` as `{branch-action}`, and `worktree_status` as `{worktree-status}`. Initialize `{feature-branch-created}=false`. Route on `status`:
+
+- `ok` (exit 0) — Steps 1–4.5 passed. `remote_mode` `fresh` sets `FRESH_REMOTE_MODE=true`; `recovery` sets `REMOTE_RECOVERY_MODE=true`. Continue with Step 5.
+- `blocked` (exit 1) — stop and report `reason`, `message`, and `details`. For a Step 1 reason, read `references/pre-validation-checks.md` only to word the error and its recovery steps.
+- `feature_branch_required` (exit 3) — the entry is detached or on `{base-branch}`. Name a branch from `facts.changed_paths` or the Linear issue per "Detached HEAD or currently on the base" in `references/branch-and-platform-handling.md`, apply its ref trust boundary, then rerun the helper with the same flags plus `--feature-branch "{validated-candidate}"`.
+- `remote_classification_required` (exit 3) — origin already has the current branch and every other check, including Step 4.5, passed. When `branch_action` is `null`, the remote tip differs from `{entry-commit}`: classify it with the frozen-endpoint procedure in `references/branch-and-platform-handling.md`, starting at "If they differ, freeze the one effective push endpoint". When it is `reuse-existing-exact-tip`, the tip matches but `--auto` must include dirty work. Then finalize the mode in Step 4.4.
+- `error` (exit 2), or missing or malformed output — stop and report it; never guess the state.
+
+The helper's protected-branch guard covers `main`, `master`, `kramme.baseBranch`, the `origin/HEAD` target, and `CONDUCTOR_DEFAULT_BRANCH`. Before continuing, also apply any protected, workbench, or production branch named in repository instructions to `{entry-branch}` and `{feature-branch}`.
+
+---
+
 ## Step 1: Pre-Validation
 
-Read the pre-validation checks from `references/pre-validation-checks.md`. Run all checks (GitHub CLI install/authentication, git repo, merge conflicts, rebase/merge in progress, remote configuration) and abort on any failure.
+The helper performs the checks in `references/pre-validation-checks.md` (GitHub CLI install/authentication, git repo, merge conflicts, a rebase, merge, cherry-pick, or revert in progress, remote configuration) and blocks on any failure.
 
 ---
 
 ## Steps 2-3: Branch Handling
 
-Read the branch and base selection instructions from `references/branch-and-platform-handling.md`. Run its base resolver from `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`. Capture `{entry-branch}` / `{entry-commit}`, resolve one validated remote `{base-source-ref}`, pin its full commit OID as immutable `{base-ref}`, retain `{base-branch}` as metadata, select a validated `{feature-branch}`, capture `{observed-origin-oid}`, and record `{branch-action}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
+The helper performs the mechanical parts of `references/branch-and-platform-handling.md`: it captures `{entry-branch}` / `{entry-commit}`, runs `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh` to resolve one validated remote `{base-source-ref}`, pins its full commit OID as immutable `{base-ref}`, retains `{base-branch}` as metadata, validates the current or supplied `{feature-branch}`, captures `{observed-origin-oid}`, and records `{branch-action}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
 
 ### Optional rebase-first
 
-When `REBASE_FIRST=true`, after Step 2 resolves `{base-branch}` and before Step 3 selects or validates the feature branch, apply the protected/workbench/production branch guard in `references/branch-and-platform-handling.md` to `{entry-branch}`. Stop if that branch differs from `{base-branch}` and matches a protected role. Then invoke `kramme:pr:rebase` with `--force-push --base {base-branch}` through the Skill tool. The delegated skill owns conflict handling and the lease-protected push. Require a successful completion, then restart this workflow at Step 1 to capture the rebased entry state; do not reuse pre-rebase OIDs or remote classification. Any conflict, lease failure, or incomplete rebase is a hard blocker.
+When `REBASE_FIRST=true`, run the helper first. Its Step 2 resolves `{base-branch}`, and its guard rejects an `{entry-branch}` that differs from `{base-branch}` and matches a protected role; also apply the protected/workbench/production branch guard in `references/branch-and-platform-handling.md` for branches named in repository instructions. Continue to the rebase only on `ok` or `remote_classification_required`; `feature_branch_required` stops because rebase-first needs a current feature branch. Then invoke `kramme:pr:rebase` with `--force-push --base {base-branch}` through the Skill tool. The delegated skill owns conflict handling and the lease-protected push. Require a successful completion, then rerun the helper to capture the rebased entry state and use only the rerun's facts; do not reuse pre-rebase OIDs or remote classification. Any conflict, lease failure, or incomplete rebase is a hard blocker.
 
 ### Conductor workspaces
 
@@ -126,6 +149,8 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 ---
 
 ## Step 3.5: Reject an Existing Pull Request
+
+The helper performs this step with the rules below; they remain its contract and apply to any branch you name before a rerun.
 
 After branch handling selects `{feature-branch}`, revalidate it before state capture, history rewriting, or any shell command in this file that interpolates it. The branch reference already requires the same boundary before its own commands; this is defense in depth.
 
@@ -144,6 +169,8 @@ Require this command to succeed. Authentication, network, repository, rate-limit
 ---
 
 ## Step 4: Changes Detection
+
+The helper performs Steps 4.1–4.3, reports `worktree_status` and `ahead_count`, and blocks with `no_changes` when both are empty.
 
 ### 4.1 Check for Uncommitted Changes
 
@@ -186,6 +213,8 @@ Nothing to create a PR for. Make some changes first, then run /kramme:pr:create 
 
 ## Step 4.4: Finalize the Remote Mode
 
+The helper sets `remote_mode` to `fresh`, or to `recovery` only after the clean-worktree proof below passes; it blocks a dirty exact tip without `--auto`. Apply the rest of this step after classifying an existing remote.
+
 Initialize `FRESH_REMOTE_MODE=false`. Initialize `REMOTE_RECOVERY_MODE=false`. Initialize `REMOTE_FAST_FORWARD_MODE=false`. Initialize `REMOTE_APPEND_MODE=false`.
 
 If `{branch-action}` is `use-current` or `create-from-entry-head`, require `{observed-origin-oid}=<absent>` and set `FRESH_REMOTE_MODE=true`.
@@ -220,19 +249,7 @@ Require exactly one of `FRESH_REMOTE_MODE`, `REMOTE_RECOVERY_MODE`, `REMOTE_FAST
 
 ## Step 4.5: Reject Stacked Branches
 
-Resolve stack membership before state preservation or history rewriting:
-
-```bash
-STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
-  echo "Stack membership could not be determined; stop before preparing the Pull Request." >&2
-  exit 1
-}
-eval "$STACK_RESOLVED"
-if [ "$STACK_MEMBERSHIP" != "none" ]; then
-  echo "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." >&2
-  exit 1
-fi
-```
+The helper resolves stack membership for the current feature branch with `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh` before state preservation or history rewriting. An unresolved result blocks with `stack_unresolved`; anything but `none` blocks with `stacked_branch`: "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." A branch that Step 5 will create (`create-from-entry-head`) does not exist yet, so the helper reports `none` without resolving it; the reset-time revalidation in `recreate-commits` and Step 8's in-shell guards resolve it after creation.
 
 Both locally tracked and server-side stacks stop here. Do not pass stack authorization through to the nested rewrite: this workflow publishes at most one lease-protected branch and creates one default-base Pull Request, so it cannot safely own restacking, whole-stack publication, or per-branch Pull Request bases.
 
