@@ -212,3 +212,34 @@ raise SystemExit("unregistered run directories: " + ", ".join(missing) if missin
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "audit fan-outs select subagent models through the shared policy before work" {
+	run python3 - "$PWD" <<'PY'
+import pathlib
+import sys
+
+root = pathlib.Path(sys.argv[1])
+policy = "${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md"
+first_step = {
+    "kramme:code:refactor-opportunities": "## Workflow",
+    "kramme:code:agent-readiness": "## Step 1: Detect Codebase Context",
+    "kramme:code:outside-view": "### 1. Minimal Orient",
+}
+errors = []
+for skill, step in first_step.items():
+    text = (root / f"skills/{skill}/SKILL.md").read_text()
+    hint = next(line for line in text.splitlines() if line.startswith("argument-hint:"))
+    if "[--subagent-model <model>]" not in hint:
+        errors.append(f"{skill}: argument hint lacks the model flag")
+    if policy not in text or "## Non-Review Subagent Roles" not in text:
+        errors.append(f"{skill}: does not load the non-review model policy")
+    elif text.index(policy) > text.index(step):
+        errors.append(f"{skill}: model policy is read after work starts")
+    if "`subagent_model` key slot" not in text:
+        errors.append(f"{skill}: selection is not recorded in the resume key")
+raise SystemExit("\n".join(errors) if errors else 0)
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+	grep -qF 'with the model selected under **Subagent models**' "skills/kramme:code:refactor-opportunities/references/ranked-mode.md"
+	grep -qF 'keeps its own provider and isolation policy' "skills/kramme:code:outside-view/SKILL.md"
+}

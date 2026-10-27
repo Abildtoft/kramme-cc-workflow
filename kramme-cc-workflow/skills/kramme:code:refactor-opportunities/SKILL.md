@@ -3,7 +3,7 @@ name: kramme:code:refactor-opportunities
 description: "Scan the full codebase, current PR, a named file/folder, or a named feature for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check. Flags themes whose combined blast radius exceeds 500 lines as automation candidates. User-only --ranked runs a multi-agent audit that ranks the biggest maintainability, readability, and correctness weaknesses into CODEBASE_WEAKNESS_REPORT.md."
 disable-model-invocation: false
 user-invocable: true
-argument-hint: "[full | pr | path <file-or-folder> | feature <name>] [--ranked [--solo] [--output <path>] [--max-findings N] [--base <ref>]]"
+argument-hint: "[--subagent-model <model>] [full | pr | path <file-or-folder> | feature <name>] [--ranked [--solo] [--output <path>] [--max-findings N] [--base <ref>]]"
 kramme-platforms: [claude-code, codex]
 ---
 
@@ -14,6 +14,8 @@ Systematically scan the codebase for refactoring candidates, categorize findings
 With `--ranked`, it instead ranks the biggest weaknesses into `CODEBASE_WEAKNESS_REPORT.md`.
 
 **Arguments:** "$ARGUMENTS"
+
+**Subagent models.** Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section with the Phase 2 scan agents and, under `--ranked`, every research reviewer and the challenge reviewer named as lens or scan roles. It parses and removes `--subagent-model <model>` (a model flag, not a scope selector), reads `KRAMME_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selected model and its source before launching, set it on every launch, and record it in the resumable fan-out `subagent_model` key slot.
 
 ## Inputs
 
@@ -116,7 +118,7 @@ Ranked mode uses these shared resources; resolve their paths here and pass them 
 
 Read `references/checklist.md` for the full checklist of categories and recording format. For findings in the Structural & Architectural and Coupling & Dependencies categories — anywhere depth, seams, wrappers, speculative indirection, or scattered concepts are at issue — read `${CLAUDE_PLUGIN_ROOT}/shared/architecture/references/architecture-language.md` and use that vocabulary in the finding. Specifically, before flagging a wrapper as shallow, apply the **deletion test**; before flagging an interface as a speculative seam, apply the **adapter-count rule** ("one adapter = hypothetical seam, two adapters = real seam"); before proposing a **deepening candidate**, gather the scattering evidence and interface sketch the glossary requires. A finding that does not satisfy these tests is not yet a finding.
 
-Launch parallel Explore agents to cover the codebase efficiently. Split work by **category group**, not by directory, so each agent builds cross-cutting expertise:
+Launch parallel Explore agents to cover the codebase efficiently. Launch each with the model selected under **Subagent models**. Split work by **category group**, not by directory, so each agent builds cross-cutting expertise:
 
 - **Agent 1 — Structure & Dead Code**: categories 1 (Dead Code), 8 (Coupling & Dependencies), 9 (Structural & Architectural). Pass it `CO_CHANGE` and the resolved glossary path; it treats each co-change pair as a deepening-candidate lead to confirm or reject from the code.
 - **Agent 2 — Logic & Complexity**: categories 3 (Complexity), 4 (Abstraction Issues), 7 (Error Handling)

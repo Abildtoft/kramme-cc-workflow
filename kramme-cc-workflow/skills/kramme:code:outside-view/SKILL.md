@@ -1,7 +1,7 @@
 ---
 name: kramme:code:outside-view
 description: "Rate a codebase with unprimed raters; cluster complaints, compare with CODEBASE_WEAKNESS_REPORT.md, and track gestalt in OUTSIDE_VIEW_REPORT.md. Cross-model is opt-in and isolated. Use for unknown-unknown quality issues, especially in AI-engineered code. Not for evidence-ranked findings (kramme:code:refactor-opportunities --ranked), PR review, or implementation."
-argument-hint: "[--raters N] [--output <path>] [--compare <report-path>] [--cross-model]"
+argument-hint: "[--subagent-model <model>] [--raters N] [--output <path>] [--compare <report-path>] [--cross-model]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -29,8 +29,11 @@ Structured audits measure conformance to a rubric, and heavily AI-engineered cod
 - **Output path**: optional `--output <path>`. Default is `OUTSIDE_VIEW_REPORT.md` in the project root. Refuse paths outside the working tree unless the user explicitly confirms the exact resolved destination.
 - **Comparison report**: optional `--compare <report-path>`. Default is `CODEBASE_WEAKNESS_REPORT.md` in the project root when it exists; skip the delta step when no comparison report is available.
 - **Cross-model rater**: disabled by default. Enable it with the explicit repository-scoped opt-in `--cross-model`; the run still skips the rater unless a different model family and a verified isolation profile are available.
+- **Rater model**: optional `--subagent-model <model>`, handled by **Subagent models** below.
 
 ## Workflow
+
+**Subagent models.** Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section for the in-repo raters, named as lens or scan roles. It parses and removes `--subagent-model <model>`, reads `KRAMME_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selected model and its source before Step 3, launch every in-repo rater with that model, and record it in each Scorecard Model cell and in the resumable fan-out `subagent_model` key slot. The opt-in cross-model rater keeps its own provider and isolation policy in `references/personas.md`; this policy never selects, replaces, or lowers it, and model diversity is still judged only by that rater.
 
 ### 1. Minimal Orient
 
