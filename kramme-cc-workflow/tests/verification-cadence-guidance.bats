@@ -12,7 +12,7 @@ setup() {
   CONVERGENCE_SKILL="$REPO_DIR/skills/kramme:pr:review-convergence/SKILL.md"
   IMPLEMENT_SKILL="$REPO_DIR/skills/kramme:linear:issue-implement/SKILL.md"
   IMPLEMENT_WORKFLOWS="$REPO_DIR/skills/kramme:linear:issue-implement/references/implementation-workflows.md"
-  ISSUE_SHIPPING="$REPO_DIR/skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+  SHARED_SHIPPING="$REPO_DIR/shared/implementation/references/pr-shipping-contract.md"
   PLAN_SHIPPING="$REPO_DIR/skills/kramme:code:plan-to-pr/references/shipping-contract.md"
 }
 
@@ -147,7 +147,7 @@ TEST
 }
 
 @test "shipping contracts reuse green CI instead of a local final-tree sweep" {
-  for shipping in "$ISSUE_SHIPPING" "$PLAN_SHIPPING"; do
+  for shipping in "$SHARED_SHIPPING" "$PLAN_SHIPPING"; do
     grep -qF 'Passing check buckets alone do not prove full verification coverage.' "$shipping"
     grep -qF 'Map every applicable check from the project'"'"'s full verification tier' "$shipping"
     grep -qF 'invoke `kramme:verify:run` with `--full` on the final tree' "$shipping"

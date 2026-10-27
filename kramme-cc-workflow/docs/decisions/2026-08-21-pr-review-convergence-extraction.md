@@ -2,7 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-21
-- Last amended: 2026-08-30
+- Last amended: 2026-10-27
 - Deciders: repository maintainers
 - First adoption review: 2026-11-21
 
@@ -66,3 +66,5 @@ Rejected because the convergence primitive does not perform Linear lookup and al
 The 2026-08-26 SIW boundary decision removed the SIW issue-to-PR caller and its review archive. Linear and archived-plan callers continue to use the shared convergence primitive.
 
 On 2026-08-29, `kramme:code:plan-to-pr` recorded 7 invocations in 7 sessions in both the 30-day and 90-day reports. After its archived-plan lifecycle absorbed prepared-branch preflight, the frozen convergence handoff, final verification, optional shipping, and structured blocker recovery, the hidden caller-specific orchestrator had no remaining runtime caller or distinct outcome. Removing it keeps archived-plan composition in `kramme:code:plan-to-pr` and shared review mechanics in `kramme:pr:review-convergence` without changing the user-facing route.
+
+On 2026-10-27, the common shipping steps moved to `shared/implementation/references/pr-shipping-contract.md`, whose named caller hooks carry each caller's identity, archive key, requirements, pre-publication work, scope proof, invocations, and blocked handoff. `kramme:linear:issue-to-pr` binds those hooks in its own shipping reference; `kramme:code:plan-to-pr` keeps its own copy until it binds the same hooks. This reverses the consequence that callers retain separate shipping contracts, for the same reason the extraction rejected parallel review loops: the two copies had already drifted, leaving one caller without validation of the CI remediation and final-tree reviewer handoffs. Intake and scope remain caller-specific.

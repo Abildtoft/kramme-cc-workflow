@@ -10,7 +10,7 @@ setup() {
 	MINING="$PLUGIN_ROOT/skills/kramme:pr:convention-review/references/baseline-mining.md"
 	OVERENGINEERING="$PLUGIN_ROOT/skills/kramme:pr:overengineering-review/SKILL.md"
 	REFACTOR="$PLUGIN_ROOT/skills/kramme:code:refactor-opportunities/SKILL.md"
-	LINEAR_SHIPPING="$PLUGIN_ROOT/skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+	SHARED_SHIPPING="$PLUGIN_ROOT/shared/implementation/references/pr-shipping-contract.md"
 	PLAN_SHIPPING="$PLUGIN_ROOT/skills/kramme:code:plan-to-pr/references/shipping-contract.md"
 	LINEAR_SKILL="$PLUGIN_ROOT/skills/kramme:linear:issue-to-pr/SKILL.md"
 	PLAN_SKILL="$PLUGIN_ROOT/skills/kramme:code:plan-to-pr/SKILL.md"
@@ -81,7 +81,7 @@ PY
 	require_phrases "$POLICY" \
 		"that pass is a delta round scoped to \`{VALIDATION_BASE_COMMIT}..HEAD\`" \
 		"Gate 5, when requested, still attests the full tree"
-	require_phrases "$LINEAR_SHIPPING" \
+	require_phrases "$SHARED_SHIPPING" \
 		"--validation-only --verified-tree {verified-tree}" \
 		"a \`Validation scope\` line"
 	require_phrases "$PLAN_SHIPPING" \
@@ -196,7 +196,7 @@ PY
 		"[--depth {depth}] [--isolated] --requirements {issue-requirements}" \
 		"run the invocation inside one delegated agent on this session's model and add \`--isolated\`" \
 		'On Codex, or when nesting is unavailable, invoke the skill directly without `--isolated`.'
-	require_phrases "$LINEAR_SHIPPING" 'Also pass `--depth {prior-depth}`'
+	require_phrases "$SHARED_SHIPPING" 'Also pass `--depth {prior-depth}`' 'Never forward `--rounds` or `--cycles` here'
 	require_phrases "$PLAN_SHIPPING" 'Also pass `--depth {prior-depth}`' 'Never forward `--rounds` or `--cycles` here'
 	require_phrases "$POLICY" 'When `ISOLATED=true`, the caller already runs this whole invocation inside one delegated agent'
 }
