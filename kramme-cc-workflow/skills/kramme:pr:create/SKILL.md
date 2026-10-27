@@ -391,7 +391,9 @@ Triggered by an "Abort" choice in Step 8 when `FRESH_REMOTE_MODE=true`, by a cri
 
 ## Important Constraints
 
-### No AI Attribution
+### Commit Messages
+
+`${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` defines the rules for every commit this workflow publishes. `recreate-commits` resolves the convention and applies it to the rewritten commits; this skill does not resolve or apply it itself. The temporary "Include uncommitted changes for PR creation" commit is a placeholder that `recreate-commits` replaces.
 
 Never add `Generated with [Claude Code]`, `Co-Authored-By: Claude`, or any mention of AI assistance to commits. `recreate-commits` enforces this for commit messages; this skill must not undo it.
 

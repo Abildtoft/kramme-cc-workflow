@@ -381,9 +381,9 @@ Read the Success Output template from `references/display-templates.md`.
 
 ## Important Constraints
 
-### No AI Attribution
+### Commit Messages
 
-Never add AI/Claude attribution to commits or code.
+Before creating any commit, read `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` and run its signal block with `{history-ref}` set to `auto`, applying the reference's safe-substitution rule. Resolve the convention once per invocation and reuse it for every commit. When this skill is delegated by `kramme:linear:issue-to-pr`, use `{issue-id}` as the caller-supplied ticket; otherwise use the reference's normal ticket-source order. Compose the subject and body under that reference, keeping `{issue-id}` in the ticket slot or as its required work label when the convention has no ticket slot. Never add AI/Claude attribution to commits or code.
 
 ### Linear Writes
 

@@ -24,7 +24,7 @@ Orchestrate the established Linear implementation, shared review-convergence, an
 - Invoking this user-only skill explicitly authorizes moving the selected Linear issue to the team's resolved `started` workflow status once the new-PR preflight passes. Prefer a status named In Progress, but preserve the team's actual status name. A non-backlog issue still requires the separate confirmation in Step 2 before implementation or any Linear write proceeds.
 - This workflow owns that authorization, the status resolution, and the confirmation gate, but not the write. `kramme:linear:issue-implement --set-in-progress` applies the status-only write and its read-back verification under the Step 2 status handoff, before its own branch setup, so one skill owns the transition mechanics.
 - The same explicit invocation authorizes one best-effort rename of the current Conductor workspace after the Linear state gate passes. This optional host adapter changes presentation state only, never blocks implementation, and never renames a session, workspace directory, or Git branch itself.
-- Never add AI attribution to code, commits, or the Pull Request.
+- Never add AI attribution to code, commits, or the Pull Request; every commit this workflow writes follows `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md`.
 - Do not create, edit, pause, resume, or clear a Codex goal. When invoked inside `/goal`, let the goal layer own persistence while this skill owns the workflow.
 
 ## Step 1: Parse Arguments
@@ -132,7 +132,7 @@ Before starting Step 3, establish one explicit committed implementation boundary
 2. If the worktree is clean, continue.
 3. If paths remain, continue only when every path is an in-scope implementation change produced after the delegated `--auto` workflow's clean-tree branch setup or preserved in the validated `--continue` resume handoff. Stop on an unrelated, generated-review, or ambiguous path instead of committing it.
 4. Run the smallest focused verification that covers the remaining implementation changes. Stage only the classified paths with `git add -- <path>...`; never use `git add -A` at this boundary.
-5. Commit the verified batch with a plain-English message that includes `{issue-id}`, and require `git status --porcelain` to be empty. If hooks change content, rerun the focused verification before review.
+5. Resolve the commit convention by reading `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` and running its signal block with `{history-ref}` set to `auto`, passing `{issue-id}` as the caller-supplied ticket. Commit the verified batch with a subject in that convention and a message that includes `{issue-id}`: the reference places it in the ticket slot or, when the convention has none, appends it as a required work label. Require `git status --porcelain` to be empty. If hooks change content, rerun the focused verification before review.
 
 This boundary does not consume a review-remediation cycle because it closes the delegated implementation phase before any quality gate emits a finding.
 
