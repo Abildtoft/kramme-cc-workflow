@@ -19,6 +19,7 @@ Verify:
 - Every same-wave group is marked as parallel in the index and summary.
 - Every conflict between findings is surfaced as an open question.
 - Every generated artifact lists the complete source set, and every merged finding preserves all relevant `SRC-##` references.
+- Every auto-detected sibling worktree report in the source set was shown in the `SOURCES: sibling worktree reports` block with its scanned commit and relation to `HEAD`, and the user selected it; an explicitly supplied report path is already user-selected and does not require this block.
 - Duplicate, already-resolved, and non-actionable findings are excluded rather than planned.
 - Every plan has all template sections populated with concrete content and no `N/A`.
 - Every plan includes a `Planned at` commit SHA or a clear `not-a-git-repo` caveat with a `MISSING REQUIREMENT:` concern in the final summary.
