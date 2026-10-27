@@ -106,6 +106,9 @@
       "kramme-cc-workflow/skills/kramme:code:plan-to-pr/scripts/validate-plan-state.py": [
         "kramme-cc-workflow/tests/plan-to-pr-validation.bats"
       ],
+      "kramme-cc-workflow/skills/kramme:pr:github-review/scripts/check-submit-confirmation.py": [
+        "kramme-cc-workflow/tests/github-review-guidance.bats"
+      ],
       "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/render_walkthrough.py": [
         "kramme-cc-workflow/tests/pr-walkthrough.bats"
       ],
