@@ -13,31 +13,44 @@
 # the same objects a later `git add` would write.
 #
 # Ignored files (build output, caches, local env files) are excluded, so a
-# change that only touches ignored inputs keeps the same ID.
+# change that only touches ignored inputs keeps the same ID. Callers can also
+# exclude generated artifacts that are intentionally untracked.
 
 set -euo pipefail
 
 usage() {
   cat >&2 << 'USAGE'
-Usage: worktree-tree-id.sh
+Usage: worktree-tree-id.sh [--exclude PATH]...
 
 Prints the tree object ID of the working tree's content, including staged,
-unstaged, and untracked non-ignored changes. Equals HEAD^{tree} when clean.
+unstaged, and untracked non-ignored changes. PATH entries are omitted from the
+temporary index. Equals HEAD^{tree} when clean and no exclusions are given.
 USAGE
 }
 
-case "${1-}" in
-  "") ;;
-  -h | --help)
-    usage
-    exit 0
-    ;;
-  *)
-    echo "worktree-tree-id.sh: unknown argument: $1" >&2
-    usage
-    exit 2
-    ;;
-esac
+EXCLUDES=()
+while (($# > 0)); do
+  case "$1" in
+    --exclude)
+      if (($# < 2)) || [[ -z "$2" ]]; then
+        echo "worktree-tree-id.sh: --exclude requires a path" >&2
+        usage
+        exit 2
+      fi
+      EXCLUDES+=("$2")
+      shift 2
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "worktree-tree-id.sh: unknown argument: $1" >&2
+      usage
+      exit 2
+      ;;
+  esac
+done
 
 if ! git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
   echo "worktree-tree-id.sh: not inside a git working tree" >&2
@@ -64,6 +77,22 @@ if ! GIT_INDEX_FILE="$TMP_INDEX" git -c core.splitIndex=false -c core.fsmonitor=
   add --all -- . > /dev/null; then
   echo "worktree-tree-id.sh: could not stage the working tree into a temporary index" >&2
   exit 1
+fi
+
+if ((${#EXCLUDES[@]} > 0)); then
+  for excluded in "${EXCLUDES[@]}"; do
+    case "$excluded" in
+      "$REPO_ROOT"/*) excluded="${excluded#"$REPO_ROOT"/}" ;;
+      /*)
+        echo "worktree-tree-id.sh: excluded path is outside the repository: $excluded" >&2
+        exit 2
+        ;;
+    esac
+    if ! GIT_INDEX_FILE="$TMP_INDEX" git update-index --force-remove -- "$excluded" > /dev/null 2>&1; then
+      echo "worktree-tree-id.sh: could not exclude path: $excluded" >&2
+      exit 1
+    fi
+  done
 fi
 
 if ! TREE_ID=$(GIT_INDEX_FILE="$TMP_INDEX" git write-tree); then

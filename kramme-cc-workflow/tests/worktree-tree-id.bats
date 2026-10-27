@@ -83,6 +83,16 @@ teardown() {
   [ "$("$TREE_ID")" = "$clean_id" ]
 }
 
+@test "tree id can exclude generated artifacts without changing the real index" {
+	local clean_id excluded_id
+	clean_id="$($TREE_ID)"
+	printf 'report\n' > generated-report.md
+	excluded_id="$($TREE_ID --exclude generated-report.md)"
+
+	[ "$excluded_id" = "$clean_id" ]
+	[ "$(git ls-files --others --exclude-standard)" = "generated-report.md" ]
+}
+
 @test "tree id is independent of the invoking subdirectory" {
   local root_id
   mkdir -p nested/dir
