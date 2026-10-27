@@ -1214,7 +1214,12 @@
         "`feature_branch_required` (exit 3)",
         "`remote_classification_required` (exit 3)",
         "never guess the state",
-        "`references/abort-and-rollback.md` — Step 10: abort and rollback; read only when Step 10 runs."
+        "`references/abort-and-rollback.md` — Step 10: abort and rollback; read only when Step 10 runs.",
+        "### 6.0 Keep Well-Formed Commits",
+        "The invocation did not include the literal `--require-generated-description` flag",
+        "none carries a flag (`merge`, `autosquash`, `placeholder`, or `ai-attribution`)",
+        "`{history-ref}` set to `{base-source-ref}`",
+        "History: kept {N} existing commits; no rewrite"
       ]
     },
     {

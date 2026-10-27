@@ -41,7 +41,7 @@ Step 4  Changes detection + remote mode ... fresh rewrite; exact recovery; safe 
     |
 Step 4.5 Reject stacked branches
     |
-    +-- Fresh remote: Steps 5–6 preserve state + recreate commits
+    +-- Fresh remote: Steps 5–6 preserve state + recreate (or keep well-formed) commits
     |
     +-- Existing exact tip, clean: skip rewrite and preserve existing commits
     |
@@ -62,7 +62,7 @@ Step 9  Success output
 
 ## Workflow rule — do not stop mid-flow
 
-The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool. Exact-tip recovery and clean remote fast-forward mode skip Step 6 and invoke only Step 7 because both preserve the existing local commit history. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
+The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool, except that Step 6.0 may keep well-formed fresh-branch commits and skip `recreate-commits`. Exact-tip recovery and clean remote fast-forward mode skip Step 6 and invoke only Step 7 because both preserve the existing local commit history. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
 
 ## References
 
@@ -89,7 +89,7 @@ Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REBASE_FIRST=false`, `BASE_BRA
 
 `--auto` means:
 
-- use the recommended commit structure (`Narrative`)
+- keep unpublished fresh-branch commits that pass Step 6.0; otherwise use the recommended commit structure (`Narrative`)
 - invoke downstream skills in non-interactive mode
 - include all uncommitted changes by selecting **Commit and include**, including on a safely reusable existing remote
 - require a usable generated title and description; never publish placeholder fallback content
@@ -267,11 +267,41 @@ Otherwise, require either `FRESH_REMOTE_MODE=true` with `{observed-origin-oid}=<
 
 This step applies when `FRESH_REMOTE_MODE=true` or `REMOTE_APPEND_MODE=true`. Clean existing-remote modes already skipped here from Step 5 and preserve the existing local commit history.
 
+### 6.0 Keep Well-Formed Commits
+
+The existing commits may be kept without a rewrite only when all of these hold:
+
+- `FRESH_REMOTE_MODE=true`.
+- `{uncommitted-disposition}` is `none` or `excluded-and-stashed`, so no temporary include commit exists.
+- The invocation did not include the literal `--require-generated-description` flag. `kramme:code:plan-to-pr` and `kramme:linear:issue-to-pr` always pass it, and their shipping contracts promise a narrative rewrite.
+- The helper's `unpublished_commits` lists all `ahead_count` commits and none carries a flag (`merge`, `autosquash`, `placeholder`, or `ai-attribution`).
+- Every subject follows the convention resolved by `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md`, running its signal block with `{history-ref}` set to `{base-source-ref}`.
+- With several commits, none only fixes an earlier commit in the range, for example "Fix lint", "Address review feedback", or "Fix typo".
+
+When they all hold and `AUTO_MODE=true`, skip the rest of Step 6, do not invoke `recreate-commits`, and record `History: kept {N} existing commits; no rewrite` for Step 9. When they hold and `AUTO_MODE=false`, offer **Keep existing commits (recommended)** as the first Step 6.1 option; choosing it skips Step 6.2 the same way. Otherwise continue with Step 6.1 unchanged.
+
 ### 6.1 Confirm Commit Restructuring Approach
 
 If `AUTO_MODE=true`, skip this question and choose **Narrative (recommended)**.
 
-Otherwise use AskUserQuestion:
+Otherwise use AskUserQuestion. Use the qualified prompt when Step 6.0 passed; use the default prompt otherwise.
+
+When Step 6.0 qualified:
+
+```yaml
+header: "Commit style"
+question: "How should commits be structured for the PR?"
+options:
+  - label: "Keep existing commits (recommended)"
+    description: "Publish the existing commits unchanged"
+  - label: "Narrative"
+    description: "Reorganize into logical story: setup, core implementation, tests, polish"
+  - label: "Single squash"
+    description: "Combine all changes into one well-documented commit"
+multiSelect: false
+```
+
+Otherwise:
 
 ```yaml
 header: "Commit style"
@@ -396,7 +426,7 @@ Read `references/confirmation-and-creation.md` and execute Step 8 from that file
 
 ## Step 9: Success Output
 
-Before printing the final success message, execute Step 9.0 from `references/state-and-rollback.md` only when `FRESH_REMOTE_MODE=true` so any excluded uncommitted changes are restored or explicitly reported. Existing-remote modes skip Step 9.0; clean modes created no stash, and remote append committed all dirty work for inclusion. Then use Step 9 in `references/confirmation-and-creation.md` for the final success message. Preserve the draft-specific wording when `DRAFT_MODE=true`.
+When Step 6.0 kept the commits, add its recorded `History:` line below the `Uncommitted work:` line. Before printing the final success message, execute Step 9.0 from `references/state-and-rollback.md` only when `FRESH_REMOTE_MODE=true` so any excluded uncommitted changes are restored or explicitly reported. Existing-remote modes skip Step 9.0; clean modes created no stash, and remote append committed all dirty work for inclusion. Then use Step 9 in `references/confirmation-and-creation.md` for the final success message. Preserve the draft-specific wording when `DRAFT_MODE=true`.
 
 ---
 
@@ -410,7 +440,7 @@ Triggered by an "Abort" choice in Step 8 when `FRESH_REMOTE_MODE=true`, by a cri
 
 ### Commit Messages
 
-`${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` defines the rules for every commit this workflow publishes. `recreate-commits` resolves the convention and applies it to the rewritten commits; this skill does not resolve or apply it itself. The temporary "Include uncommitted changes for PR creation" commit is a placeholder that `recreate-commits` replaces.
+`${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` defines the rules for every commit this workflow publishes. `recreate-commits` resolves the convention and applies it to the rewritten commits; this skill resolves it only for Step 6.0's decision to keep existing commits. The temporary "Include uncommitted changes for PR creation" commit is a placeholder that `recreate-commits` replaces.
 
 Never add `Generated with [Claude Code]`, `Co-Authored-By: Claude`, or any mention of AI assistance to commits. `recreate-commits` enforces this for commit messages; this skill must not undo it.
 
@@ -428,7 +458,7 @@ This skill creates PRs with `gh pr create --assignee @me`. This is intentional �
 
 ### Complete Every Applicable Step
 
-For a fresh remote branch, invoke both sub-skills:
+For a fresh remote branch, invoke both sub-skills unless Step 6.0 keeps the existing commits:
 
 1. `kramme:git:recreate-commits` for clean commit history
 2. `kramme:pr:generate-description` for a clear, reviewer-focused description

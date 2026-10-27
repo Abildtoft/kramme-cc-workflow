@@ -1286,6 +1286,39 @@ file_mode() {
 	[ "$status" -eq 0 ]
 }
 
+@test "pr-create keeps well-formed commits only on direct fresh runs without an include commit" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+
+    keep_line=$(grep -n "^### 6.0 Keep Well-Formed Commits$" "$create" | cut -d: -f1)
+    confirm_line=$(grep -n "^### 6.1 Confirm Commit Restructuring Approach$" "$create" | cut -d: -f1)
+    [ "$keep_line" -lt "$confirm_line" ]
+    section=$(awk "/^### 6.0 Keep Well-Formed Commits\$/{found=1; next} found && /^### /{exit} found" "$create")
+    grep -qF -- "- \`FRESH_REMOTE_MODE=true\`." <<<"$section"
+    grep -qF "\`{uncommitted-disposition}\` is \`none\` or \`excluded-and-stashed\`" <<<"$section"
+    grep -qF "did not include the literal \`--require-generated-description\` flag" <<<"$section"
+    grep -qF "none carries a flag (\`merge\`, \`autosquash\`, \`placeholder\`, or \`ai-attribution\`)" <<<"$section"
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md" <<<"$section"
+    grep -qF "\"Fix lint\", \"Address review feedback\", or \"Fix typo\"" <<<"$section"
+    grep -qF "History: kept {N} existing commits; no rewrite" <<<"$section"
+    grep -qF "**Keep existing commits (recommended)**" "$create"
+    grep -qF "When Step 6.0 qualified:" "$create"
+    grep -qF "label: \"Keep existing commits (recommended)\"" "$create"
+    grep -qF "label: \"Narrative\"" "$create"
+    grep -qF "Otherwise:" "$create"
+    grep -qF "keep unpublished fresh-branch commits that pass Step 6.0" "$create"
+    grep -qF "kramme:pr:create --auto --base {base-branch} --require-generated-description" \
+      "skills/kramme:code:plan-to-pr/references/shipping-contract.md"
+    grep -qF "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description" \
+      "skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    grep -qF "keeps unpublished commits that already follow the repository'\''s commit conventions" ../README.md
+  '
+
+	[ "$status" -eq 0 ]
+}
+
 @test "generate-description skips its resolver for a caller-pinned base" {
 	guidance="$BATS_TEST_DIRNAME/../skills/kramme:pr:generate-description/references/base-branch-resolution.md"
 	block="$BATS_TEST_TMPDIR/pinned-base.sh"
