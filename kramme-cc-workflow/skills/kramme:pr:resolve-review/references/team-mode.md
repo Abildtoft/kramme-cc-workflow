@@ -130,7 +130,7 @@ While agents work:
 
 After all agents complete:
 
-1. Run `kramme:verify:run` to check for integration issues
+1. Run `kramme:verify:run --fast` to check for integration issues
 2. If verification fails, identify which agent's changes caused the issue and either:
    - Ask the responsible agent to fix it (resume its session)
    - Fix it directly as the lead
