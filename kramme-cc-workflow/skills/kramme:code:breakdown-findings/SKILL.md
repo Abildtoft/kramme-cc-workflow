@@ -1,7 +1,7 @@
 ---
 name: kramme:code:breakdown-findings
-description: Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. Reconcile generic or split/worktree plan sets against working-tree or named-ref evidence. Accepts structured findings, report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage.
-argument-hint: "[--auto] [--resume|--reconcile] [--all | plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]"
+description: Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. --split plans mergeable PR slices from the current branch diff. Reconcile generic or split/worktree plan sets against working-tree or named-ref evidence. Accepts structured findings, report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage.
+argument-hint: "[--auto] [--resume|--reconcile|--split] [--all | plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -10,7 +10,7 @@ user-invocable: true
 
 Cluster validated review, audit, scan, or QA findings into PR-sized themes. Generate one self-contained `PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md` in the project root per theme plus `PR_PLAN_INDEX.md` and the durable `PR_PLAN_REJECTIONS.md`. For decision-ready SIW audit analysis that should become local issues, route to `kramme:siw:resolve-audit`.
 
-Accepted sources are auto-detected reports, one or more file paths of any filename, inline findings, suitable current-dialogue findings, or one marked/inferred pre-clustered handoff.
+Accepted sources are auto-detected reports, one or more file paths of any filename, inline findings, suitable current-dialogue findings, or one marked/inferred pre-clustered handoff. With `--split`, the current branch diff is the source: split mode proposes mergeable PR slices and plans them as a pre-clustered handoff.
 
 **Arguments:** "$ARGUMENTS"
 
@@ -20,8 +20,9 @@ Parse `$ARGUMENTS` as shell-style arguments. Recognize modes only in the leading
 
 - In generation or resume mode, for leading `--auto`, set `AUTO_MODE=true`. For generation it skips only the clustering confirmation; it never bypasses prior-artifact, missing/incompatible-source, contradiction, or open-question gates.
 - For leading `--reconcile`, set `RECONCILE_MODE=true` and route Phase 0 directly to Phase 6. For leading `--resume`, set `RESUME_MODE=true` and regenerate only missing plans after source-set verification. If both appear, stop and ask the user to choose: resume fills missing files from the original generation; reconcile classifies and refreshes an existing set.
+- For leading `--split`, set `SPLIT_MODE=true` and plan PR slices from the current branch diff. In split mode accept only `--auto` and `--base <ref>`, in any order; `--auto` sets `AUTO_MODE=true` and skips only the slice confirmation. Store the base as `BASE_BRANCH_OVERRIDE`, and reject a missing `--base` value or any other option. Reject `--split` with `--resume`, `--reconcile`, `--all`, `--worktree`, `--source`, plan paths, `--`, or any source token, with a usage message saying split mode reads only the current branch diff.
 - In reconcile mode, parse all remaining pre-`--` tokens as scope/evidence options. A zero-scope invocation is valid and means every plan referenced by `PR_PLAN_INDEX.md`; otherwise accept either `--all` or `PR_PLAN_W##L_*.md` paths, and `--auto`, `--worktree <path>`, `--source <ref>`, and `--base <ref>` in any order. `--auto` may appear before or after explicit plan paths. In reconcile mode, set `AUTO_MODE=true` when `--auto` is present. Store values as `WORKTREE_OVERRIDE`, `SOURCE_REF`, and `BASE_BRANCH_OVERRIDE`. Reject `--all` with explicit paths, missing values, unknown options, or content after `--`.
-- In generation/resume mode, once a source token or `--` appears, treat everything after it as source content. A `PR_PLAN_W##L_*.md` path is a source token. Reject leading `--all`, `--worktree`, `--source`, or `--base` with a usage message saying they require `--reconcile`.
+- In generation/resume mode, once a source token or `--` appears, treat everything after it as source content. A `PR_PLAN_W##L_*.md` path is a source token. Reject leading `--all`, `--worktree`, or `--source` with a usage message saying they require `--reconcile`, and leading `--base` with one saying it requires `--reconcile` or `--split`.
 
 ## Hard Safety Rules
 
@@ -36,9 +37,13 @@ These rules cover sources, recon, generated plans, indexes, rejection records, a
 
 Load `references/source-intake.md` now, after mode selection and safety rules, and follow it through Phases 0 and 1. Sources that follow `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` are read through that schema. Source resolution, compatibility, normalization, theme sizing, and execution labels come from `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md`, shared with `kramme:linear:breakdown-findings`.
 
+With `SPLIT_MODE=true`, follow `references/source-intake.md` through Phase 0 only, then read `references/split-mode.md` in place of Phase 1 source resolution. It either stops at KEEP AS ONE without writing anything or yields a marked pre-clustered handoff; with that handoff as the source, continue at the generation-workflow load below.
+
 ### Phase 0: Check for Prior Artifacts
 
 Apply the reference's prior-artifact guard and its reconcile/resume routing before reading findings or writing anything. Never silently overwrite, rename, or delete an existing plan artifact.
+
+With `RESUME_MODE=true`, stop before writing when `PR_PLAN_INDEX.md` records a branch-split source: a branch diff is not a durable source, so ask the user to clear the set and run a fresh `--split`, or to use `--reconcile` to refresh the existing plans.
 
 ### Phase 1: Locate and Normalize Findings
 
@@ -55,6 +60,8 @@ Run the generation reference's bounded read-only recon. Carry forward only relev
 For findings-mode input, read `references/clustering.md` and apply its overlap/exclusion/conflict, dependency graph, and confirmation rules, with theme sizing and execution labels from the shared findings intake reference. Print the exact marker `PLAN: Proposed themes`. Unless `AUTO_MODE=true`, wait for `Proceed? (yes / adjust)`. Auto mode prints `AUTO: proceeding with the proposed clustering` and continues only when no unresolved contradiction would make the result misleading.
 
 For a pre-clustered handoff, preserve the declared 1:1 theme boundaries. Do not re-cluster or apply automatic splitting. Build the declared dependency graph and assign labels using `references/clustering.md`, then print the mapping with `PLAN:`. Only `HANDOFF_CONFIDENCE=marked` may skip `Proceed? (yes / adjust)` after the validity gate.
+
+Split-mode slices arrive as a marked pre-clustered handoff that the user already confirmed in `references/split-mode.md` (or `--auto` accepted), so do not ask `Proceed? (yes / adjust)` again. The oversized-theme confirmation below still applies.
 
 Stop before generation and request confirmation or a corrected handoff when a delegated theme has 9+ files, crosses architectural layers, changes a public API, includes migrations/backfills, depends on generated artifacts, or lacks credible whole-scope verification. `AUTO_MODE=true does not bypass this confirmation`. Never split, merge, or resize a delegated theme yourself.
 

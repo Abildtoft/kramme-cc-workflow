@@ -309,7 +309,7 @@ load_assignments() {
 
 @test "stack command examples preserve operand and placeholder boundaries" {
 	local stack_skill="$REPO_ROOT/skills/kramme:pr:stack/SKILL.md"
-	local strategies="$REPO_ROOT/skills/kramme:pr:plan-split/references/strategies.md"
+	local strategies="$REPO_ROOT/skills/kramme:code:breakdown-findings/references/split-strategies.md"
 
 	grep -F 'git check-ref-format --branch "$branch"' "$stack_skill"
 	grep -F 'gh stack init --base "$BASE_BRANCH" "${STACK_BRANCHES[@]}"' "$stack_skill"
