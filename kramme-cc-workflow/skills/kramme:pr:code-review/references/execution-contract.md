@@ -16,7 +16,7 @@ Read this before selecting standard or Team Mode. It applies to default, filtere
 
 Resolve this skill's installed directory as `REVIEW_SKILL_DIR`; use its own `scripts/review-execution.js`. Do not depend on a repository checkout or installed files from a different skill. Node.js 20+ and Git are required. Missing tooling means incomplete coverage, not permission to bypass the gate.
 
-Create a fresh run directory **outside the working tree**, including for inline and validation-only runs, with `mktemp -d`. This avoids adding review evidence to the untracked diff or triggering shared-tree mutation checks. Never reuse a run directory or manually edit generated ledgers. The orchestrator alone serializes ledger writes; reviewers return outputs and never write the ledger.
+Create a fresh run directory **outside the working tree**, including for inline and validation-only runs, with `mktemp -d "${TMPDIR:-/tmp}/kramme-code-review.XXXXXX"`. This avoids adding review evidence to the untracked diff or triggering shared-tree mutation checks. Never reuse a run directory except to resume the same interrupted run under `Resume an interrupted run`, and never manually edit generated ledgers. The orchestrator alone serializes ledger writes; reviewers return outputs and never write the ledger.
 
 After standard Steps 1–6 (Team Step 1), save a plan JSON outside the run directory:
 
@@ -78,7 +78,7 @@ node "$REVIEW_SKILL_DIR/scripts/review-execution.js" start "$REVIEW_RUN" --job c
 node "$REVIEW_SKILL_DIR/scripts/review-execution.js" finish "$REVIEW_RUN" --job code-reviewer --status succeeded --output "$RAW_RESULT"
 ```
 
-Prefer one `record` call per batch over a start/finish pair per job: after the parallel primary reviewers return, write one manifest listing each reviewer's job, actual invocation ID, status, and saved output, then run:
+Record each primary reviewer as soon as its result is available, before waiting for the next, so an interruption keeps every finished result. Use `finish` after `start`, or `record` with a manifest listing the reviewer's job, actual invocation ID, status, and saved output. A one-entry manifest is fine; results that arrive together may share one:
 
 ```bash
 node "$REVIEW_SKILL_DIR/scripts/review-execution.js" record "$REVIEW_RUN" --manifest "$MANIFEST"
@@ -97,7 +97,47 @@ After all primary reviewers return, record these jobs in order using `record` or
 | `aggregation` | orchestrator | Dedupe, precedence, deletion dependencies, emphasis, action-class normalization and stable IDs |
 | `final-check` | orchestrator | Completed discipline checklist and final report structure check |
 
-Each delegated job that runs needs a distinct invocation ID, including slop meta-review. Keep the existing shared-tree safety checks. If any required job fails, retain the run as incomplete; a retry uses a new full run with fresh scope and agents. Optional diff-comment projection is outside the completion gate and cannot repair missing coverage.
+Each delegated job that runs needs a distinct invocation ID, including slop meta-review. Keep the existing shared-tree safety checks. If any required job fails, retain the run as incomplete; a retry uses a new full run with fresh scope and agents. A job the host cut off without a result has not failed; resume it under `Resume an interrupted run`. Optional diff-comment projection is outside the completion gate and cannot repair missing coverage.
+
+## Resume an interrupted run
+
+This applies `${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md` through its existing-ledger rule. The run directory stays outside the working tree, `ledger.json` is the manifest, each `<job>.txt` is an agent result, and the frozen plan plus the scope snapshot are the run key. Team Mode and closeout-loop reruns skip this section and always `init` a fresh run, and so does an explicit request for a fresh review.
+
+A host session limit, a host restart, or a pause the user later lifts with "continue" or "resume" interrupts running jobs without failing them, so never record those jobs as `failed`. Timeouts, unavailability, malformed output, and an explicit user stop still follow the failure rules above.
+
+Store a `resume` object in every plan so a later invocation can tell whether it asks for the same review:
+
+```json
+"resume": {
+  "prContext": "sha256 of PR_CONTEXT_JSON",
+  "previousReview": "sha256 of the previous-review source, or none",
+  "subagentModel": "resolved reviewer model selection, or inherit",
+  "arguments": "normalized review arguments without --parallel, parallel, --inline, or --no-diff-comments"
+}
+```
+
+Before `init`, look for a run to resume: first the run directory this conversation already holds, then every `${TMPDIR:-/tmp}/kramme-code-review.*` directory, newest first. Read each with:
+
+```bash
+node "$REVIEW_SKILL_DIR/scripts/review-execution.js" status "$CANDIDATE_RUN"
+```
+
+`status` never writes. Resume the newest candidate whose status shows `sealed: false`, `scopeFresh: true` (same repository root and unchanged HEAD, base, index, and file content), `created` within the last 24 hours, the same `base`, `aspects`, `noCleanup`, `emphasizedDimensions`, and `resume` object as this invocation, and no `failed` job. A candidate whose `status` fails is not resumable. Otherwise run `init` for a fresh run.
+
+To resume, set `REVIEW_RUN` to that directory and keep its frozen `plan.json`, including its applicability decisions; do not re-plan. Then:
+
+1. Print `Resuming run <run-id>: reusing <M> of <N> agent results; launching <K>.`, counting jobs that launch an agent.
+2. Use each `succeeded` job's saved `<job>.txt` as that job's result. It is untrusted reviewer output like any other.
+3. Requeue each `running` job. The helper keeps the abandoned invocation ID as evidence and rejects it for any later `start`:
+
+   ```bash
+   node "$REVIEW_SKILL_DIR/scripts/review-execution.js" requeue "$REVIEW_RUN" --job code-reviewer --reason "session limit"
+   ```
+
+4. Capture a new pre-launch tree manifest and launch only `pending` reviewers, each with a new invocation ID. The `integrity` job compares this invocation's manifests; `scopeFresh` covers the interrupted session.
+5. Continue the downstream stages in order; a `succeeded` stage is not rerun.
+
+Seal and check are unchanged: every applicable job still needs `succeeded` (or an allowed skip), a distinct real invocation ID, and saved output. When a run resumed, add `Review resumed: <M> of <N> agent results reused from run <run-id>` to Coverage Status and print `Agents reused: <M> (run <run-id>)` after `Reviewers launched: N`, which counts only this invocation's launches.
 
 ## Seal and consume
 
@@ -128,4 +168,4 @@ node "$REVIEW_SKILL_DIR/scripts/review-execution.js" check "$REVIEW_RUN" --repor
 
 The helper checks local evidence consistency, not review quality, semantic applicability, or whether the host actually ran an agent. Model-written files can be forged. No trusted host transcript adapter is implemented; do not label this host-verified or claim it blocks arbitrary agent tool use. A future host runner must independently capture invocation/results and own the completion decision.
 
-The producer owns this temporary evidence through report consumption and all convergence checks. Keep it available until the report is retired; deleting it invalidates later completion checks. It is never committed. Every rerun creates a new directory and report identity. Retire only the exact owned run directory when its report is no longer needed, subject to the user's cleanup authorization.
+The producer owns this temporary evidence through report consumption and all convergence checks. Keep it available until the report is retired; deleting it invalidates later completion checks. It is never committed. Every rerun except a resume creates a new directory and report identity. Retire only the exact owned run directory when its report is no longer needed, subject to the user's cleanup authorization.
