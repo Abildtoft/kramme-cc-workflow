@@ -131,7 +131,7 @@ During execution:
 - Keep the implementation bounded to the plan's stated scope.
 - Use existing project patterns before adding abstractions.
 - Run focused verification for each meaningful slice when possible.
-- Invoke `kramme:verify:run` for final verification when available; otherwise run the discovered project commands directly.
+- Invoke `kramme:verify:run --fast` for final implementation verification when available; the fast iteration tier covers implementation claims. Otherwise run the discovered project commands directly. Do not run the full pre-push or pre-PR sweep here. It runs once before publication: in `kramme:pr:review-convergence` when `kramme:code:plan-to-pr` delegates, otherwise before the user's first push or Pull Request.
 - Stop and re-route to SIW if the work expands beyond the original bounded plan.
 
 ## Step 6: Closeout

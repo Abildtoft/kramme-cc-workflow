@@ -222,7 +222,7 @@ Next: $kramme:pr:create --auto --require-generated-description
 Then: $kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}
 ```
 
-If `SHIP_MODE=true`, read `references/shipping-contract.md` and follow it completely. On success, produce this structured completion result:
+If `SHIP_MODE=true`, resolve `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/pr-shipping-contract.md` as `{pr-shipping-contract}`, read `references/shipping-contract.md` for this workflow's hook bindings, then read `{pr-shipping-contract}` and follow it completely with those bindings. On success, produce this structured completion result:
 
 ```text
 Completion disposition: success
@@ -241,6 +241,7 @@ Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optio
 Verification: initial tree {verified-tree} passed; final tree {final-tree} {unchanged|passed CI on final head|passed fresh verification}
 CI: {green|none configured}; review feedback addressed; final tree {final-tree}
 CI coverage: {complete mapped CI evidence | local full sweep | incomplete}
+CI remediation: {entry count from the validated CI remediation JSON | none}
 Pull Request: {url}
 Blocker: none
 Recovery: none

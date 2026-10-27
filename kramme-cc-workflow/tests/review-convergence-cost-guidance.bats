@@ -11,7 +11,6 @@ setup() {
 	OVERENGINEERING="$PLUGIN_ROOT/skills/kramme:pr:overengineering-review/SKILL.md"
 	REFACTOR="$PLUGIN_ROOT/skills/kramme:code:refactor-opportunities/SKILL.md"
 	SHARED_SHIPPING="$PLUGIN_ROOT/shared/implementation/references/pr-shipping-contract.md"
-	PLAN_SHIPPING="$PLUGIN_ROOT/skills/kramme:code:plan-to-pr/references/shipping-contract.md"
 	LINEAR_SKILL="$PLUGIN_ROOT/skills/kramme:linear:issue-to-pr/SKILL.md"
 	PLAN_SKILL="$PLUGIN_ROOT/skills/kramme:code:plan-to-pr/SKILL.md"
 	TRIAGE="$PLUGIN_ROOT/skills/kramme:pr:triage-risk/SKILL.md"
@@ -82,9 +81,6 @@ PY
 		"that pass is a delta round scoped to \`{VALIDATION_BASE_COMMIT}..HEAD\`" \
 		"Gate 5, when requested, still attests the full tree"
 	require_phrases "$SHARED_SHIPPING" \
-		"--validation-only --verified-tree {verified-tree}" \
-		"a \`Validation scope\` line"
-	require_phrases "$PLAN_SHIPPING" \
 		"--validation-only --verified-tree {verified-tree}" \
 		"a \`Validation scope\` line"
 }
@@ -197,7 +193,6 @@ PY
 		"run the invocation inside one delegated agent on this session's model and add \`--isolated\`" \
 		'On Codex, or when nesting is unavailable, invoke the skill directly without `--isolated`.'
 	require_phrases "$SHARED_SHIPPING" 'Also pass `--depth {prior-depth}`' 'Never forward `--rounds` or `--cycles` here'
-	require_phrases "$PLAN_SHIPPING" 'Also pass `--depth {prior-depth}`' 'Never forward `--rounds` or `--cycles` here'
 	require_phrases "$POLICY" 'When `ISOLATED=true`, the caller already runs this whole invocation inside one delegated agent'
 }
 
