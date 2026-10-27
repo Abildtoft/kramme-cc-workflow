@@ -171,9 +171,9 @@ Capture the returned gut-check counts, review profile, active and skipped gates,
 
 If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:create`. Report that implementation, review, and verification are complete using the Step 5 review-ready template, whose `Next:` and `Then:` lines carry the exact handoff commands.
 
-If `SHIP_MODE=true`, read the shipping contract from `references/shipping-contract.md` and follow it completely. That reference owns the complete order; in summary:
+If `SHIP_MODE=true`, resolve `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/pr-shipping-contract.md` as `{pr-shipping-contract}`, read `references/shipping-contract.md` for this workflow's hook bindings, then read `{pr-shipping-contract}` and follow it completely with those bindings. That contract owns the complete order; in summary:
 
-1. Recheck that no Pull Request appeared for the issue branch.
+1. Recheck that no Pull Request appeared for the issue branch and that the remote branch is still absent.
 2. Invoke `kramme:workflow-artifacts:cleanup --auto` to retire current-project disposable workflow artifacts.
 3. Require a clean, unambiguous worktree.
 4. Record the verified tree identity.
