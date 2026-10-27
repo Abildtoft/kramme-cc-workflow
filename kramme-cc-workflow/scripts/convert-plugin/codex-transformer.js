@@ -259,6 +259,14 @@ function sharedRuntimeFor(plugin) {
       {
         sourceFile: path.join(
           plugin.root,
+          "scripts",
+          "resolve-stack-context.py",
+        ),
+        targetPath: path.join("scripts", "resolve-stack-context.py"),
+      },
+      {
+        sourceFile: path.join(
+          plugin.root,
           "hooks",
           "confirm-review-artifacts.txt",
         ),

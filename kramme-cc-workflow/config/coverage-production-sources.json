@@ -88,7 +88,8 @@
       "kramme-cc-workflow/skills/kramme:pr:create/scripts/pr-create-preflight.py",
       "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
       "kramme-cc-workflow/scripts/risk-signals.py",
-      "kramme-cc-workflow/scripts/risk_patterns.py"
+      "kramme-cc-workflow/scripts/risk_patterns.py",
+      "kramme-cc-workflow/scripts/resolve-stack-context.py"
     ],
     "contract_only": {
       "kramme-cc-workflow/scripts/generate-component-reference.py": [
