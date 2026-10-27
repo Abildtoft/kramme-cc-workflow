@@ -1,7 +1,7 @@
 ---
 name: kramme:code:agent-readiness
 description: "Audit a codebase for agent-nativeness — score how well-optimized it is for AI coding agents across 5 dimensions and generate a prioritized refactoring plan."
-argument-hint: "[--auto]"
+argument-hint: "[--subagent-model <model>] [--auto]"
 disable-model-invocation: true
 user-invocable: true
 kramme-platforms: [claude-code, codex]
@@ -18,6 +18,8 @@ Audit a codebase for agent-nativeness — how well-optimized it is for AI coding
 - Per-package audits inside a monorepo — this skill audits root-level configuration. Run per-package separately if needed.
 
 **What it touches:** writes one report file (`AGENT_NATIVE_AUDIT.md`) at the project root. Read-only otherwise.
+
+**Subagent models.** First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section for the three dimension agents, named as lens or scan roles. It parses and removes `--subagent-model <model>`, reads `KRAMME_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selection before Step 2, set it on all three launches, and record it in the resumable fan-out `subagent_model` key slot.
 
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 
@@ -195,7 +197,7 @@ For each agent:
 
 ### Launch
 
-Launch all 3 agents simultaneously using the Task tool with `subagent_type: Explore`.
+Launch all 3 agents simultaneously using the Task tool with `subagent_type: Explore` and the model selected under **Subagent models**.
 
 Each agent prompt must include:
 
