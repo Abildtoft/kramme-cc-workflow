@@ -735,16 +735,13 @@
       "name": "pr-create-stack-publication-boundary",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "contains": [
-        "STACK_REVALIDATION_FAILED=false",
-        "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
-        "The branch joined a local or server-side stack after initial validation; stop before publication.",
-        "If `STACK_REVALIDATION_FAILED=true`",
         "Do not publish or create a default-base Pull Request from stale unstacked authorization.",
         "FINAL_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
         "The branch joined a local or server-side stack before the fast-forward push",
         "The branch joined a local or server-side stack before the fresh push",
         "The branch joined a local or server-side stack before Pull Request creation",
-        "If this final stack guard fails"
+        "If this final stack guard fails",
+        "Stack membership is re-resolved by the `FINAL_STACK_RESOLVED` guard in the same shell as each push and as `gh pr create` below"
       ]
     },
     {
@@ -889,7 +886,7 @@
         "The model must never invent `--force-backup`",
         "only with the exact retry-safe value supplied by `kramme:pr:create`",
         "[--require-unstacked] [--no-push] [--authorize-history-rewrite]",
-        "If `REQUIRE_UNSTACKED=true`, require `STACK_MEMBERSHIP=none` immediately after this resolution",
+        "When `REQUIRE_UNSTACKED=true` and `--no-push` was passed (the `kramme:pr:create` delegation), skip this initial resolution and set `IN_STACK=false`",
         "stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed",
         "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches",
         "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
@@ -909,7 +906,9 @@
         "--no-follow-tags",
         "--force-with-lease=\"${PUSH_REMOTE_REF}:${PUSH_LEASE_OID}\"",
         "-- \"$PUSH_REMOTE_URL\" \"HEAD:${PUSH_REMOTE_REF}\"",
-        "without the captured ref-specific `--force-with-lease`"
+        "without the captured ref-specific `--force-with-lease`",
+        "the mandatory Step 5 revalidation re-resolves membership immediately before the reset",
+        "Under `REQUIRE_UNSTACKED=true`, any local or server-side membership is state drift"
       ]
     },
     {

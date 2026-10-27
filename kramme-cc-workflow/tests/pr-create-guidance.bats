@@ -161,7 +161,8 @@ file_mode() {
     recreate="skills/kramme:git:recreate-commits/SKILL.md"
 
     grep -qF "If \`IN_STACK=true\` and \`--auto\` was passed without \`--authorize-history-rewrite\`, stop before the reset" "$recreate"
-    grep -qF "If \`REQUIRE_UNSTACKED=true\`, require \`STACK_MEMBERSHIP=none\` immediately after this resolution" "$recreate"
+    grep -qF "When \`REQUIRE_UNSTACKED=true\` and \`--no-push\` was passed (the \`kramme:pr:create\` delegation), skip this initial resolution and set \`IN_STACK=false\`" "$recreate"
+    grep -qF "Under \`REQUIRE_UNSTACKED=true\`, any local or server-side membership is state drift" "$recreate"
     grep -qF "stop before the reset, even when \`--auto\` or \`--authorize-history-rewrite\` was passed" "$recreate"
     grep -qF "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches" "$recreate"
     grep -qF "The branch joined a local or server-side stack after initial validation; stop before rewriting history." "$recreate"
@@ -181,11 +182,10 @@ file_mode() {
     grep -qF "[ \"\$(git symbolic-ref --quiet --short HEAD)\" = \"\$ORIGINAL_BRANCH\" ]" "$recreate"
     grep -qF "verify-rewrite-state.sh" "$recreate"
     publication="skills/kramme:pr:create/references/confirmation-and-creation.md"
-    grep -qF "STACK_REVALIDATION_FAILED=false" "$publication"
     grep -qF "Do not publish or create a default-base Pull Request from stale unstacked authorization." "$publication"
-    publication_stack_line=$(grep -nF "LATEST_STACK_RESOLVED=" "$publication" | head -1 | cut -d: -f1)
-    first_push_line=$(grep -nF "git push --no-follow-tags" "$publication" | head -1 | cut -d: -f1)
-    [ "$publication_stack_line" -lt "$first_push_line" ]
+    authorization_line=$(grep -nF "Do not publish or create a default-base Pull Request from stale unstacked authorization." "$publication" | cut -d: -f1)
+    first_guard_line=$(grep -nF "FINAL_STACK_RESOLVED=" "$publication" | head -1 | cut -d: -f1)
+    [ "$authorization_line" -lt "$first_guard_line" ]
     grep -qF "The current branch changed after push-target resolution; stop before pushing." "$recreate"
     grep -qF "without the captured ref-specific \`--force-with-lease\`" "$recreate"
     grep -qF -- "--no-follow-tags" "$recreate"
@@ -1221,4 +1221,35 @@ file_mode() {
   '
 
 	[ "$status" -eq 0 ]
+}
+
+@test "generate-description skips its resolver for a caller-pinned base" {
+	guidance="$BATS_TEST_DIRNAME/../skills/kramme:pr:generate-description/references/base-branch-resolution.md"
+	block="$BATS_TEST_TMPDIR/pinned-base.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+	python3 - "$guidance" "$block" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text()
+section = source.split("When both `BASE_BRANCH_OVERRIDE` and `BASE_COMMIT_OVERRIDE` are set", 1)[1]
+block = section.split("```bash", 1)[1].split("```", 1)[0]
+pathlib.Path(sys.argv[2]).write_text(block)
+PY
+	! grep -qF "resolve-base.sh" "$block" || false
+	grep -qF "Otherwise, resolve the base/target branch with the shared plugin script." "$guidance"
+	init_test_git_repo "$repo"
+	cd "$repo"
+	pinned=$(git rev-parse HEAD)
+	git remote add origin https://github.com/acme/repo.git
+
+	for base in refs/remotes/origin/main refs/heads/main origin/main; do
+		BASE_BRANCH_OVERRIDE="$base" BASE_COMMIT_OVERRIDE="$pinned" run bash "$block"
+		[ "$status" -eq 0 ]
+		[ "$output" = "Base branch: main" ]
+	done
+
+	BASE_BRANCH_OVERRIDE=main BASE_COMMIT_OVERRIDE="$(printf 'a%.0s' $(seq 40))" run bash "$block"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Pinned base commit does not resolve locally"* ]]
 }
