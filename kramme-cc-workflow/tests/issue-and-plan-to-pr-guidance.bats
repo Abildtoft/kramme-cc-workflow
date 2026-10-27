@@ -800,3 +800,47 @@
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "breakdown findings plans branch splits with --split" {
+	run bash -c '
+		set -e
+		cd "'"$BATS_TEST_DIRNAME"'/.."
+		dir="skills/kramme:code:breakdown-findings"
+		skill="$dir/SKILL.md"
+		split="$dir/references/split-mode.md"
+
+		test -f "$split"
+		test -f "$dir/references/split-strategies.md"
+		grep -qF "argument-hint: \"[--auto] [--resume|--reconcile|--split]" "$skill"
+		grep -qF "For leading \`--split\`, set \`SPLIT_MODE=true\`" "$skill"
+		grep -qF "In split mode accept only \`--auto\` and \`--base <ref>\`" "$skill"
+		grep -qF "Reject \`--split\` with \`--resume\`, \`--reconcile\`, \`--all\`, \`--worktree\`, \`--source\`, plan paths, \`--\`, or any source token" "$skill"
+		grep -qF "leading \`--base\` with one saying it requires \`--reconcile\` or \`--split\`" "$skill"
+		grep -qF "With \`SPLIT_MODE=true\`, follow \`references/source-intake.md\` through Phase 0 only, then read \`references/split-mode.md\` in place of Phase 1 source resolution." "$skill"
+		grep -qF "records a branch-split source" "$skill"
+		grep -qF "The oversized-theme confirmation below still applies." "$skill"
+
+		grep -qF "\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "$split"
+		grep -qF -- "--tolerate-fetch-failure" "$split"
+		grep -qF "Nothing to split." "$split"
+		grep -qF "references/split-strategies.md" "$split"
+		grep -qF "If the recommendation is **KEEP AS ONE**, write nothing." "$split"
+		grep -qF "Proceed to generate plans for these N slices? (yes / adjust)" "$split"
+		grep -qF "AUTO: proceeding to generate plans for these N slices" "$split"
+		grep -qF "PRE-CLUSTERED HANDOFF — themes are fixed; do not re-cluster." "$split"
+		grep -qF "**Reference branch (source of the changes):**" "$split"
+		grep -qF "**One worktree per plan:**" "$split"
+		grep -qF "**Implementation branch:**" "$split"
+		grep -qF "**Stack strategy exception:**" "$split"
+		grep -qF "**Example setup**" "$split"
+		grep -qF "Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills):" "$split"
+		grep -qF "reconcile each slice against its own evidence" "$split"
+		grep -qF "Omit the plan path only when the evidence root or source represents the complete indexed plan set" "$split"
+		! grep -qF "workflow-artifacts" "$split"
+
+		test ! -e "skills/kramme:pr:plan-split"
+		! grep -rqF "kramme:pr:plan-split" skills
+	'
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}

@@ -24,13 +24,13 @@ Read `references/cli-agent-rules.md` before running any `gh stack` command — e
 ## When to use
 
 - New work that naturally lands as an ordered sequence of small, dependently-reviewable PRs (foundation → API → UI).
-- An existing local branch chain (e.g. built from a `kramme:pr:plan-split` Stack plan) that should become a linked GitHub stack.
+- An existing local branch chain (e.g. built from a `kramme:code:breakdown-findings --split` Stack plan) that should become a linked GitHub stack.
 - Maintaining an existing stack: syncing after merges, restacking after edits, checking status.
 
 ## When NOT to use
 
 - A single independent change — use `kramme:pr:create`; a one-PR stack is ceremony without benefit.
-- Deciding _how_ to split a large existing branch — run `kramme:pr:plan-split` first; its Stack strategy hands the slice plan back to this skill.
+- Deciding _how_ to split a large existing branch — run `kramme:code:breakdown-findings --split` first; its Stack strategy hands the slice plan back to this skill.
 - Unrelated parallel work — stacks are strictly linear (one parent, one child per branch). Parallel workstreams get separate branches or separate stacks.
 - Cross-fork contributions — stacks cannot span forks.
 
@@ -173,7 +173,7 @@ gh stack submit --auto
 
 ## Adopt an existing chain
 
-- **Local ordered branches** (e.g. built from a plan-split Stack plan): validate every member with `git check-ref-format --branch`, store them in `STACK_BRANCHES`, resolve `BASE_BRANCH` through the Create step's `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh` JSON procedure (including `BASE_BRANCH_OVERRIDE` when supplied), then run `gh stack init --base "$BASE_BRANCH" "${STACK_BRANCHES[@]}"` (bottom to top — existing branches are adopted), followed by `gh stack submit --auto`. Stop if the resolved trunk is unclear or conflicts with the chain's known parent.
+- **Local ordered branches** (e.g. built from a `kramme:code:breakdown-findings --split` Stack plan): validate every member with `git check-ref-format --branch`, store them in `STACK_BRANCHES`, resolve `BASE_BRANCH` through the Create step's `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh` JSON procedure (including `BASE_BRANCH_OVERRIDE` when supplied), then run `gh stack init --base "$BASE_BRANCH" "${STACK_BRANCHES[@]}"` (bottom to top — existing branches are adopted), followed by `gh stack submit --auto`. Stop if the resolved trunk is unclear or conflicts with the chain's known parent.
 - **PRs or branches already on GitHub, or branches managed by external tools** (jj, Sapling, git-town, worktree chains): validate each branch/PR operand from Step 0, store them in `STACK_ITEMS`, then run `gh stack link "${STACK_ITEMS[@]}"` bottom to top. It pushes branches, creates missing PRs with correct chained bases, repairs wrong bases, and links the stack — no local tracking required.
 
 ## Status report
