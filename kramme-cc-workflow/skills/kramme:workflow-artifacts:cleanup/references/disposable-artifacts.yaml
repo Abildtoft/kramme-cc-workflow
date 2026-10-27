@@ -7,7 +7,7 @@
     "retention: disposable (deleted after confirmation) or permanent (kept unless the user explicitly opts in).",
     "type: file (literal path), glob (shell pattern; expand before deleting), or dir (whole directory).",
     "condition: a marker path that must exist for the entry to become a candidate. expected_contents: a glob every child of a conditional dir must match, otherwise the dir is skipped and reported. --siw does not require the condition marker and also accepts a .gitkeep placeholder child.",
-    "--auto deletes only default-scope working-dir disposables; it never selects shared-diagram, permanent-spec, or siw-only entries.",
+    "--auto selects only default-scope working-dir disposables for deletion; it never selects shared-diagram, permanent-spec, or siw-only entries.",
     "scopes: the cleanup modes that select an entry. default is direct and --auto cleanup; siw is the direct-user-only --siw mode. Absent means [\"default\"]. Every siw/ entry includes siw, except named permanent specs that the siw-spec-files detector already covers, and only siw/ entries may.",
     "match_any / exclude: optional basename filters applied to every expansion of a glob entry; a match must fit one match_any pattern and no exclude pattern.",
     "Register only fixed default producer outputs here. Never register user-supplied or custom output paths."
@@ -441,6 +441,30 @@
       "category": "working-dir",
       "retention": "disposable",
       "producer": "kramme:session:automate-repeats"
+    },
+    {
+      "id": "code-refactor-opportunities-runs",
+      "path": ".context/code-refactor-opportunities/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:refactor-opportunities"
+    },
+    {
+      "id": "code-agent-readiness-runs",
+      "path": ".context/code-agent-readiness/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:agent-readiness"
+    },
+    {
+      "id": "code-outside-view-runs",
+      "path": ".context/code-outside-view/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:code:outside-view"
     },
     {
       "id": "siw-issues",

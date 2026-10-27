@@ -166,3 +166,49 @@ PY
 	grep -qF 'SUGGESTION' "$source"
 	grep -qF 'map schema severity `suggestion` to normalized `SUGGESTION`' "$source"
 }
+
+@test "shared resumable fan-out contract defines identity, persistence, re-entry, and cleanup" {
+	local contract="shared/agents/references/resumable-fanout.md"
+	local phrase
+	for phrase in 'git check-ignore -q -- .context/<skill-slug>/' 'scripts/worktree-tree-id.sh' \
+		'git hash-object --stdin' 'Write `manifest.json` before launching any agent' \
+		'<!-- fanout-result: <id> complete -->' 'reuse its roster exactly' 'within the last 24 hours' \
+		'A complete run is never resumed.' 'Never use `rm -rf`.' \
+		'`Agents launched: N` counts only agents launched by this invocation.' 'Agents reused: <M> (run <run-id>)'; do
+		grep -qF -- "$phrase" "$contract"
+	done
+}
+
+@test "audit fan-outs adopt the resumable contract and register their run directories" {
+	local contract_path='${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md'
+	local tree_path='${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh'
+	local skill
+	for skill in kramme:code:refactor-opportunities kramme:code:agent-readiness kramme:code:outside-view; do
+		grep -qF "$contract_path" "skills/$skill/SKILL.md"
+		grep -qF "$tree_path" "skills/$skill/SKILL.md"
+	done
+	grep -qF 'the challenge reviewer is stage 2' "skills/kramme:code:refactor-opportunities/references/ranked-mode.md"
+	grep -qF 'never relaunch a rater that has a result' "skills/kramme:code:outside-view/SKILL.md"
+	grep -qF 'Raters never receive the run directory path' "skills/kramme:code:outside-view/SKILL.md"
+	grep -qF 'the resolved `OUTPUT_PATH`' "skills/kramme:code:outside-view/SKILL.md"
+	grep -qF 'the execution mode (`team` or `solo`)' "skills/kramme:code:refactor-opportunities/SKILL.md"
+	grep -qF -- '--exclude AGENT_NATIVE_AUDIT.md' "skills/kramme:code:agent-readiness/SKILL.md"
+	grep -qF -- '--exclude "$OUTPUT_PATH"' "skills/kramme:code:outside-view/SKILL.md"
+	grep -qF -- '--exclude <each report output path this skill can write>' "skills/kramme:code:refactor-opportunities/SKILL.md"
+	grep -qF 'End the run with `Agents launched: N`' "skills/kramme:code:refactor-opportunities/SKILL.md"
+	run python3 - "skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml" <<'PY'
+import json
+import pathlib
+import sys
+
+entries = {entry["path"]: entry for entry in json.loads(pathlib.Path(sys.argv[1]).read_text())["artifacts"]}
+wanted = (".context/code-refactor-opportunities/", ".context/code-agent-readiness/", ".context/code-outside-view/")
+missing = [
+    path
+    for path in wanted
+    if entries.get(path, {}).get("type") != "dir" or entries[path].get("retention") != "disposable"
+]
+raise SystemExit("unregistered run directories: " + ", ".join(missing) if missing else 0)
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}

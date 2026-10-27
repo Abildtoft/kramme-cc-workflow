@@ -14,8 +14,12 @@ In team mode, use parallel read-only subagents (the Claude Code Agent tool or Co
 Parallel subagents are unavailable. Re-run with --ranked --solo for the lower-coverage fallback.
 ```
 
+Launch through the resumable fan-out resolved in `SKILL.md`: the active research reviewers the shared Team Workflow selects are stage 1 (their `launch` records the reviewer role and any tiny-scope omission) and the challenge reviewer is stage 2. When resuming, reuse the recorded reviewer set instead of selecting it again. Evaluate the shared workflow's research quorum over persisted stage 1 results. `--solo` launches no agents and keeps no run directory.
+
 ## Shared Workflow
 
 Read `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/references/audit-workflow.md` and follow it. Supply Phase 3 steps 4-5 as the caller's rejection policy: filter against `KNOWN_OUT_OF_SCOPE` and `KNOWN_ADRS`, reopening only with concrete new evidence. The Governance & conventions reviewer retains its evidence-backed ADR exception. These filters run at the shared workflow's Filter Hard stage, before final ranking.
+
+After the shared workflow writes the report, mark the run complete. When results were reused, add the `Agents reused:` line from the resumable fan-out contract after its `Agents launched: N` line.
 
 After the workflow returns, apply Phase 4 step 9 to any declined candidate to close the rejection loop.

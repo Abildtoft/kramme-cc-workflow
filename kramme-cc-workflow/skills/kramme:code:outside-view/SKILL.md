@@ -48,6 +48,8 @@ This step is deliberately shallow. The orchestrator must stay outside the projec
 
 ### 2. Select Raters
 
+Read and apply `${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md` with skill slug `code-outside-view`, computing the tree with `${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh --exclude "$OUTPUT_PATH"`; key inputs are `RATER_COUNT`, the resolved `OUTPUT_PATH`, and `CROSS_MODEL`. When it resumes a run, skip selection and reuse the recorded rater set.
+
 Read `references/personas.md`, then assemble the rater set:
 
 1. Rater 1 is always the bare probe, verbatim.
@@ -57,6 +59,8 @@ Read `references/personas.md`, then assemble the rater set:
 ### 3. Elicit
 
 Run each rater in a fresh subagent context with only its persona frame and the elicitation contract below. Run raters concurrently when subagent execution is available; otherwise run them sequentially, each starting from a clean context, and record reduced isolation in the report. Never show one rater another rater's output, prior reports, or any hint of expected findings.
+
+Every rater is a stage 1 roster entry whose `launch` records its persona id and the exact prompt wording (and the isolation profile for the cross-model rater). On resume, never re-rotate personas or re-word prompts, and never relaunch a rater that has a result, including a failed one: a rater runs at most once per run unless its session was interrupted before it returned. Raters never receive the run directory path or any result file. Count the quorum over persisted results.
 
 Every rater receives this contract in addition to its frame:
 
@@ -101,7 +105,7 @@ Only now does the orchestrator enter the project's frame.
 3. Carry the previous report's `Run History` forward verbatim and append a row for this run (date from `date +%F`, mean score, per-rater scores, top clusters, every blind-spot `fingerprint: title`, persona ids, and model diversity).
 4. Summarize rater footprints in Coverage Notes: what each rater reported examining, and which top-level areas of the repository no rater visited. Footprints are self-reported after the fact — never assign areas to raters, and never mark a run as complete coverage; the footprint exists so the reader can judge how much weight the run deserves.
 5. Repeat the canonical containment, parent-symlink, leaf-symlink, and regular-file checks from step 1 immediately before writing. Stop without changing the existing report if any check fails.
-6. Write the report to `OUTPUT_PATH`, overwriting the previous report.
+6. Write the report to `OUTPUT_PATH`, overwriting the previous report. Then mark the run complete.
 
 ### 7. Summarize
 
