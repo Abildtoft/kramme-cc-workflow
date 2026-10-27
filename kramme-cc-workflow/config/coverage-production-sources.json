@@ -314,6 +314,15 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/text-clarify-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/gut-check-guidance.bats",
       "skills": ["kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md"]
     },
