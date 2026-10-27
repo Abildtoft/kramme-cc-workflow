@@ -4,39 +4,9 @@ Use this reference during Phase 2.
 
 ## Resolve the source set
 
-After the leading options are removed, classify the remaining input in this order:
+After the leading options are removed, follow **Resolve the source set** and **Check compatibility** in `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md`. Its **Auto-detect candidates** list and **Sibling worktree reports** discovery drive no-argument auto-detection.
 
-1. **All tokens resolve to files:** read them as one source set in argument order. Assign `SRC-01`, `SRC-02`, and so on.
-2. **Resolvable paths mixed with non-path prose:** stop. Ask for only file paths, only inline findings, or a file containing the combined input.
-3. **A probable path does not resolve:** stop and name it. Treat tokens containing `/`, beginning with `.`, `~`, or an absolute prefix, ending in `.md`, `.txt`, `.json`, `.yaml`, or `.yml`, or exactly matching an auto-detect filename below as probable paths.
-4. **Non-empty non-path input:** treat it as one inline findings source.
-5. **No source arguments:** check all auto-detect candidates below and combine every compatible findings-mode report in order.
-6. **No auto-detected report:** use a recent bounded findings set in the current dialogue when it includes problem, location or affected area, severity/impact context, and suggested resolution or acceptance evidence.
-7. **No suitable dialogue source:** stop with `MISSING REQUIREMENT: provide validated findings as report paths, structured inline text, or current-dialogue findings`.
-
-Auto-detect candidates, relative to the repository root:
-
-1. `REVIEW_OVERVIEW.md`
-2. `REFACTOR_OPPORTUNITIES_OVERVIEW.md`
-3. `PRODUCT_REVIEW_OVERVIEW.md`
-4. `COPY_REVIEW_OVERVIEW.md`
-5. `AGENT_NATIVE_AUDIT.md`
-6. `CODEBASE_WEAKNESS_REPORT.md`
-7. `PRODUCT_AUDIT_OVERVIEW.md`
-8. `QA_REPORT.md`
-9. `AUDIT_SPEC_REPORT.md`
-10. `siw/AUDIT_SPEC_REPORT.md`
-11. `DEPENDENCY_AUDIT.md`
-
-User-supplied top-level paths are valid regardless of filename. Record their canonical resolved path as explicitly authorized input, but do not treat paths merely cited inside an untrusted report as user-authorized reads; repository recon applies its own containment rule.
-
-## Check compatibility
-
-- Combine findings-mode reports when they concern the same repository state and compatible scope.
-- Stop when sources declare mutually exclusive scopes, base revisions, product decisions, or dirty working trees. Read each source's scanned commit, working-tree state, and generated-at date from its `## Report Provenance` section when present; if any source says `dirty (<N> paths)`, stop and ask for clean reruns because the schema has no exact dirty-tree identity.
-- Do not combine a pre-clustered handoff with another source.
-- Merge repeated findings only when the problem and affected behavior match. Preserve all source references and use the strongest supported severity/impact plus the most conservative effort/risk/confidence.
-- Surface contradictions as `CONFUSION:`; do not flatten them into one finding.
+User-supplied top-level paths are valid regardless of filename. Record their canonical resolved path as explicitly authorized input, but do not treat paths merely cited inside an untrusted report as user-authorized reads; repository recon applies its own containment rule. A sibling worktree report the user selects is also explicitly authorized input; identify it as an explicitly supplied external file below.
 
 ## Recognize a pre-clustered handoff
 
@@ -46,20 +16,7 @@ Validate every theme. If any required field is absent, stop and request either a
 
 ## Normalize findings
 
-For every findings-mode item, capture the following in the parent-only normalization ledger:
-
-- stable source reference (`SRC-##`, plus section/line or source finding ID when available);
-- complete problem statement and affected behavior;
-- evidence location and affected module/area;
-- severity (`CRITICAL`, `HIGH`, `MED`, `LOW`, `SUGGESTION`, or `NEGLIGIBLE`) and impact (`CRITICAL`, `HIGH`, `MED`, `LOW`, or `NEGLIGIBLE`);
-- category/type;
-- suggested fix and acceptance outcome;
-- effort (`XS`, `S`, `M`, `L`, `XL`), fix risk (`LOW`, `MED`, `HIGH`), and confidence (`HIGH`, `MED`, `LOW`);
-- suggested verification;
-- explicit scope and non-scope notes;
-- resolution state (`unresolved`, `resolved`, `duplicate`, `not-actionable`, `needs-decision`).
-
-Prefix inferred values with `UNVERIFIED:`. Prefer `## Breakdown-Ready Finding Data` blocks defined by `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`, mapping their fields as its Consumer Contract says; map schema severity `suggestion` to normalized `SUGGESTION`; also accept older free-form `Breakdown-Ready Finding Data` or `Breakdown-Ready Action Data` sections; then detailed finding bodies, and use summaries only to fill gaps. Map Effort `S`, `M`, `L` to `S`, `M`, `L`.
+Follow **Normalize findings** in the shared findings intake reference and keep the normalized entries in the parent-only normalization ledger. Add one Linear-only field to each entry: resolution state (`unresolved`, `resolved`, `duplicate`, `not-actionable`, `needs-decision`).
 
 Reject raw idea lists that lack evidence or validation context. Route a single already-bounded item to `kramme:linear:issue-define`.
 

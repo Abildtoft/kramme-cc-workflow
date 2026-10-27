@@ -28,36 +28,7 @@ Never delete or rename artifacts. Never overwrite existing artifacts except for 
 
 ## Phase 1: Resolve Findings Sources
 
-Resolve the remaining source arguments in this order:
-
-1. If one or more arguments are present and every argument resolves as a file path, read the files as one ordered source set and assign `SRC-01`, `SRC-02`, and so on. Explicit source paths are already user-selected; sibling-worktree confirmation applies only to candidates discovered during no-argument auto-detection.
-2. If resolvable paths are mixed with non-path prose, stop with: `Mixed source arguments are ambiguous: {arguments}. Provide only file paths, paste inline findings without path arguments, or save the inline findings to a file and pass all files together.`
-3. Treat an unresolved token as a probable missing path when it contains `/`, begins with `.`, `~`, or an absolute-path prefix, ends in `.md`, `.txt`, `.json`, `.yaml`, or `.yml`, or exactly matches a candidate in `references/auto-detect-sources.md`. Stop with: `Findings source path not found: {argument}. Provide the correct path, paste the findings text, or rerun with no arguments for auto-detection.` Multi-line prose that cites paths remains inline findings.
-4. Treat any other non-empty source text as one source named `inline findings`.
-5. With no source argument, read `references/auto-detect-sources.md` and use every matching findings-mode report at the project root in candidate order. Then apply its **Sibling worktree reports** discovery and add only the reports the user selects. A detected pre-clustered handoff is exclusive and cannot be combined; ask for that handoff alone or a deliberately merged handoff.
-6. If auto-detection finds nothing, inspect the current dialogue. Accept a recent bounded review, audit, scan, or QA set that includes enough structure to extract description, location, severity context, and suggested fix where available, or a valid pre-clustered handoff. Name one accepted dialogue source `current dialogue`; for multiple related findings-mode sets from the current request, preserve their order and assign dialogue `SRC-##` IDs. If candidates span unrelated tasks or include a handoff, list them and ask which compatible set to use. Vague issues, one triage topic, and raw bug ideas are not suitable findings.
-7. If no source is suitable, stop with: `No findings source found. Provide one or more file paths (any markdown files with findings will work), paste findings as the next message, keep a structured findings set in the dialogue, or run report-producing skills first (for example $kramme:pr:code-review, $kramme:code:refactor-opportunities, $kramme:code:agent-readiness, $kramme:code:refactor-opportunities --ranked, $kramme:qa, or $kramme:siw:spec-audit).`
-
-### Validate compatibility
-
-- Findings-mode reports may be combined.
-- A pre-clustered handoff must be the only source. Ask for one handoff or a new merged handoff when it is mixed with anything else.
-- A selected sibling worktree report whose scanned commit differs from the current `HEAD` counts as a confirmed combination only because the user selected it after seeing the gap; every other commit gap, and any dirty working tree, falls under the stop rule below.
-- Stop and report mutually exclusive scopes, base commits, generated-at contexts, or dirty working trees rather than blending them. Read each source's scanned commit, working-tree state, and generated-at date from its `## Report Provenance` section when present; if any source says `dirty (<N> paths)`, stop and ask for clean reruns because the schema has no exact dirty-tree identity.
-
-### Normalize findings
-
-For every findings-mode source, extract one normalized list containing:
-
-- source reference (`SRC-##` plus file, section, or line when available);
-- full problem description and location;
-- severity (`critical`, `high`, `medium`, `low`, or `suggestion`);
-- impact (`critical`, `high`, `medium`, `low`, or `negligible`);
-- category/type and suggested fix when present;
-- effort (`S`, `M`, or `L`), fix risk (`LOW`, `MED`, or `HIGH`), confidence (`HIGH`, `MED`, or `LOW`), and leverage (`EXCEPTIONAL`, `HIGH`, `MED`, or `LOW`);
-- suggested verification and scope notes.
-
-Prefix inferred values with `UNVERIFIED:`. Prefer `## Breakdown-Ready Finding Data` blocks defined by `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`, mapping their fields as its Consumer Contract says; also accept older free-form `Breakdown-Ready Finding Data` or `Breakdown-Ready Action Data` sections; use summary tables only to fill gaps. Merge duplicates when location and problem match, preserving all source references, strongest supported severity/impact, and most conservative effort/risk/confidence. Preserve contradictions and surface a `CONFUSION:` during clustering.
+Follow **Resolve the source set**, **Check compatibility**, and **Normalize findings** in `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md`. Its **Auto-detect candidates** list and **Sibling worktree reports** discovery drive no-argument auto-detection, and a pre-clustered handoff found there is handled by **Pre-clustered Handoff** below.
 
 Report: `Found N findings from M sources: {source set}. Proceeding to cluster.`
 

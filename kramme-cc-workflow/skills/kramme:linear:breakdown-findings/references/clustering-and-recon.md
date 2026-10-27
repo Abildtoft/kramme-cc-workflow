@@ -41,29 +41,17 @@ Keep unresolved decision conflicts as blocked themes. Do not convert uncertainty
 2. Assign every finding to exactly one theme. A singleton finding may be its own theme.
 3. Name themes with concise imperative titles suitable for Linear issues.
 4. Explain why each grouping is cohesive. Do not group unrelated cleanup merely because it is nearby.
-5. Estimate size:
-
-   | Size | Typical edit surface      |
-   | ---- | ------------------------- |
-   | XS   | one file and one behavior |
-   | S    | one or two files          |
-   | M    | three to five files       |
-   | L    | six to eight files        |
-   | XL   | nine or more files; split |
-
-   Increase one level for cross-layer changes, public API or persisted-data changes, generated artifacts, verification-infrastructure changes, migrations, rollouts, or compatibility coordination. Treat a public-contract change plus broad callers, a data migration/backfill, or unrelated subsystems as XL even under nine files.
-
+5. Estimate size with **Size themes** in `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md`.
 6. Aim for S/M. Split every XL theme unless the source is a pre-clustered handoff whose boundary cannot safely change; in that case block publication and ask the user to approve a split or exclude the theme. `kramme:linear:issue-define` blocks any issue that needs more than one PR, so an oversized issue cannot be kept.
 7. Do not place the same likely edited file in independent themes without either splitting ownership by non-overlapping symbols or adding a sequencing dependency.
 
 ## Build sequencing and value metadata
 
 1. Create a dependency graph. A dependency exists only when one theme must land first or materially reduces implementation risk for another.
-2. Assign execution labels `W##L`: zero-padded wave number plus lane letter, such as `W01A`, `W01B`, `W02A`.
-3. Put mutually independent themes in the same wave. Put a theme in a later wave only when exact earlier blocker labels are named.
-4. Assign normalized impact from supported evidence. Derive leverage from impact, effort, risk, confidence, unblock value, and coordination cost. Prefix inferred values with `UNVERIFIED:`.
-5. Order each wave by leverage, then impact, then lower risk/effort. Dependencies always override value ordering.
-6. If dependency direction is unsafe or contradictory, mark both affected themes blocked with `CONFUSION:` rather than choosing an arbitrary order.
+2. Assign execution labels `W##L` with **Assign execution labels** in the shared findings intake reference, putting mutually independent themes in the same wave.
+3. Assign normalized impact from supported evidence. Derive leverage from impact, effort, risk, confidence, unblock value, and coordination cost. Prefix inferred values with `UNVERIFIED:`.
+4. Order each wave by leverage, then impact, then lower risk/effort.
+5. If dependency direction is unsafe or contradictory, mark both affected themes blocked with `CONFUSION:` rather than choosing an arbitrary order.
 
 ## Confirm the plan
 

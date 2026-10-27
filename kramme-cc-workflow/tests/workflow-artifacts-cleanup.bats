@@ -15,7 +15,7 @@ setup() {
 	REGISTRY="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
 	CLEANUP_SKILL="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
 	SIW_MODE_REF="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/references/siw-mode.md"
-	AUTODETECT="$PLUGIN_ROOT/skills/kramme:code:breakdown-findings/references/auto-detect-sources.md"
+	AUTODETECT="$PLUGIN_ROOT/shared/findings/references/findings-intake.md"
 	HELPER="$BATS_TEST_TMPDIR/cleanup_registry.py"
 	cat >"$HELPER" <<'PY'
 import glob
@@ -312,7 +312,12 @@ disposable = {
     for a in json.loads(pathlib.Path(sys.argv[1]).read_text())["artifacts"]
     if a["retention"] == "disposable"
 }
-sources = re.findall(r"^\s*\d+\.\s+`([^`]+)`", pathlib.Path(sys.argv[2]).read_text(), re.M)
+section = re.search(
+    r"^## Auto-detect candidates\n(.*?)(?=^## |\Z)", pathlib.Path(sys.argv[2]).read_text(), re.M | re.S
+)
+assert section, "missing ## Auto-detect candidates section"
+sources = re.findall(r"^\s*\d+\.\s+`([^`]+)`", section.group(1), re.M)
+assert sources, "no auto-detect candidates parsed"
 missing = [s for s in sources if s not in disposable]
 raise SystemExit(
     "auto-detect sources not registered as disposable: " + ", ".join(missing) if missing else 0

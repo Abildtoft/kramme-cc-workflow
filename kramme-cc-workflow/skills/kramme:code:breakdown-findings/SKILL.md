@@ -34,7 +34,7 @@ These rules cover sources, recon, generated plans, indexes, rejection records, a
 
 ## Workflow
 
-Load `references/source-intake.md` now, after mode selection and safety rules, and follow it through Phases 0 and 1. Sources that follow `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` are read through that schema.
+Load `references/source-intake.md` now, after mode selection and safety rules, and follow it through Phases 0 and 1. Sources that follow `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` are read through that schema. Source resolution, compatibility, normalization, theme sizing, and execution labels come from `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md`, shared with `kramme:linear:breakdown-findings`.
 
 ### Phase 0: Check for Prior Artifacts
 
@@ -52,7 +52,7 @@ Run the generation reference's bounded read-only recon. Carry forward only relev
 
 ### Phase 2: Cluster into Themes
 
-For findings-mode input, read `references/clustering.md` and apply its sizing, overlap/exclusion/conflict, dependency graph, execution-label, and confirmation rules. Print the exact marker `PLAN: Proposed themes`. Unless `AUTO_MODE=true`, wait for `Proceed? (yes / adjust)`. Auto mode prints `AUTO: proceeding with the proposed clustering` and continues only when no unresolved contradiction would make the result misleading.
+For findings-mode input, read `references/clustering.md` and apply its overlap/exclusion/conflict, dependency graph, and confirmation rules, with theme sizing and execution labels from the shared findings intake reference. Print the exact marker `PLAN: Proposed themes`. Unless `AUTO_MODE=true`, wait for `Proceed? (yes / adjust)`. Auto mode prints `AUTO: proceeding with the proposed clustering` and continues only when no unresolved contradiction would make the result misleading.
 
 For a pre-clustered handoff, preserve the declared 1:1 theme boundaries. Do not re-cluster or apply automatic splitting. Build the declared dependency graph and assign labels using `references/clustering.md`, then print the mapping with `PLAN:`. Only `HANDOFF_CONFIDENCE=marked` may skip `Proceed? (yes / adjust)` after the validity gate.
 

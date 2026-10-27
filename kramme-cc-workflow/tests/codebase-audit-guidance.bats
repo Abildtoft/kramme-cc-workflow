@@ -81,7 +81,7 @@ setup() {
 	[ "$status" -eq 1 ]
 	grep -qF '/kramme:code:refactor-opportunities --ranked' "skills/kramme:code:outside-view/SKILL.md"
 	grep -qF 'kramme:code:refactor-opportunities --ranked' "skills/kramme:code:outside-view/assets/report-template.md"
-	grep -qF '$kramme:code:refactor-opportunities --ranked' "skills/kramme:code:breakdown-findings/references/source-intake.md"
+	grep -qF '$kramme:code:refactor-opportunities --ranked' "shared/findings/references/findings-intake.md"
 	grep -qF 'kramme:code:refactor-opportunities --ranked' "skills/kramme:discovery:strategic-inquiry/SKILL.md"
 	grep -qF '`/kramme:code:weakness-audit` → `/kramme:code:refactor-opportunities --ranked`' ../README.md
 	run python3 - "skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml" <<'PY'
@@ -138,11 +138,11 @@ PY
 	local skill
 	for skill in kramme:code:breakdown-findings kramme:linear:breakdown-findings; do
 		grep -qF "$schema_path" "skills/$skill/SKILL.md"
-		grep -qF "$schema_path" "skills/$skill/references/source-intake.md"
-		grep -qF '## Report Provenance' "skills/$skill/references/source-intake.md"
+		grep -qF '${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md' "skills/$skill/references/source-intake.md"
 	done
-	grep -qF '`DEPENDENCY_AUDIT.md`' "skills/kramme:code:breakdown-findings/references/auto-detect-sources.md"
-	grep -qF '`DEPENDENCY_AUDIT.md`' "skills/kramme:linear:breakdown-findings/references/source-intake.md"
+	grep -qF "$schema_path" "shared/findings/references/findings-intake.md"
+	grep -qF '## Report Provenance' "shared/findings/references/findings-intake.md"
+	grep -qF '`DEPENDENCY_AUDIT.md`' "shared/findings/references/findings-intake.md"
 	grep -qxF 'DEPENDENCY_AUDIT.md' hooks/confirm-review-artifacts.txt
 }
 
@@ -157,14 +157,12 @@ PY
 	done
 	grep -qF 'dirty (<N> paths)' "$schema"
 	grep -qF 'Do not combine sources when any provenance says `dirty (<N> paths)`' "$schema"
-	grep -qF 'if any source says `dirty (<N> paths)`' "skills/kramme:code:breakdown-findings/references/source-intake.md"
-	grep -qF 'if any source says `dirty (<N> paths)`' "skills/kramme:linear:breakdown-findings/references/source-intake.md"
+	grep -qF 'if any source says `dirty (<N> paths)`' "shared/findings/references/findings-intake.md"
 }
 
-@test "linear breakdown preserves schema suggestion severity" {
-	local source="skills/kramme:linear:breakdown-findings/references/source-intake.md"
-	grep -qF 'SUGGESTION' "$source"
-	grep -qF 'map schema severity `suggestion` to normalized `SUGGESTION`' "$source"
+@test "breakdown intakes preserve schema suggestion severity" {
+	local source="shared/findings/references/findings-intake.md"
+	grep -qF 'severity (`critical`, `high`, `medium`, `low`, or `suggestion`)' "$source"
 }
 
 @test "shared resumable fan-out contract defines identity, persistence, re-entry, and cleanup" {

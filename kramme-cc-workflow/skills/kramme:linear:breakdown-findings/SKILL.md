@@ -52,7 +52,7 @@ Reject duplicate singleton flags, missing values (including a missing resume-art
 
 ### Phase 2: Ingest and Normalize Findings
 
-Read `references/source-intake.md` completely and follow it. Sources that follow `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` are read through that schema.
+Read `references/source-intake.md` completely and follow it. Sources that follow `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` are read through that schema. Source resolution, compatibility, normalization, theme sizing, and execution labels come from `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md`, shared with `kramme:code:breakdown-findings`.
 
 Produce one compatible normalized findings set or validated pre-clustered handoff, stable source IDs, deterministic `SOURCE_SET_KEY`, and parsed/merged/invalid counts.
 
@@ -60,7 +60,7 @@ For `--resume`, also load and validate the exact partial-report artifact as desc
 
 ### Phase 3: Reconcile with the Repository and Cluster
 
-Read `references/clustering-and-recon.md` completely and follow it.
+Read `references/clustering-and-recon.md` completely and follow it. Its sizing and execution-label steps use the shared findings intake reference.
 
 On a fresh run, produce `PLAN: Proposed Linear issue batch` with each execution label, theme title, finding count, size, impact, leverage, dependency, affected area, and exclusion. On `--resume`, rehydrate that exact plan from the validated artifact, match every source reference to the normalized source set, and reconcile only nonterminal themes when the repository revision changed; do not re-cluster, renumber, or offer adjustments that would rewrite the frozen ledger.
 
