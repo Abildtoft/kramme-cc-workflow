@@ -160,7 +160,7 @@ When flagging these patterns, name the specific tell (e.g., "AI-aesthetic: `roun
 
 ### For Mode 1 (Code Review):
 
-1. Detect the base branch and gather the full review scope. If the caller provided a specific base branch (e.g., "Use `develop` as the base"), use it directly. Otherwise, resolve it:
+1. Detect the base branch and gather the full review scope. If the caller supplied a resolved `MERGE_BASE`, set `BASE_REF` to it, skip the base resolution and fetch below, and gather changed files against it: a stacked layer's base can be a local branch or a pinned commit that this resolution cannot reproduce. If the caller provided a specific base branch (e.g., "Use `develop` as the base"), use it directly. Otherwise, resolve it:
    - Query the PR target branch:
 
    ```bash
