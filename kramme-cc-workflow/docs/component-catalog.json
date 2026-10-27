@@ -408,11 +408,6 @@
       "path": "kramme-cc-workflow/skills/kramme:text:clarify/SKILL.md"
     },
     {
-      "name": "kramme:text:humanize",
-      "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:text:humanize/SKILL.md"
-    },
-    {
       "name": "kramme:verify:run",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md"

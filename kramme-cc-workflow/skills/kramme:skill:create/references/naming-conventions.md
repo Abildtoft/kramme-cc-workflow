@@ -20,7 +20,7 @@ kramme:{domain}:{action}[:{qualifier}...]
 | `git` | Git operations | `git:commit-message` |
 | `visual` | Visual output, diagrams | `visual:explain`, `visual:check-slop` |
 | `docs` | Documentation, conversion | `docs:to-markdown`, `docs:update-agents-md` |
-| `text` | Text processing | `text:humanize` |
+| `text` | Text processing | `text:clarify` |
 | `discovery` | Requirements gathering | `discovery:interview` |
 | `hooks` | Plugin hook management | `hooks:toggle` |
 | `verify` | Verification, testing | `verify:run` |
