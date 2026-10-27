@@ -26,4 +26,4 @@ The wizard template in `kramme:workflow:wizard` is adapted from [`mattpocock/ski
 
 ## Wikipedia contributors
 
-`kramme:text:humanize/references/ai-writing-patterns.md` is an adapted work based on Wikipedia's “Signs of AI writing” page. That file is separately offered under CC BY-SA 4.0 and carries attribution, modification, and license information in its skill-local `references/WIKIPEDIA-CONTENT-LICENSE.md`.
+`kramme:text:clarify/references/ai-writing-patterns.md` is an adapted work based on Wikipedia's “Signs of AI writing” page. That file is separately offered under CC BY-SA 4.0 and carries attribution, modification, and license information in its skill-local `references/WIKIPEDIA-CONTENT-LICENSE.md`.

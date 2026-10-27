@@ -1,32 +1,18 @@
----
-name: kramme:text:humanize
-description: Remove signs of AI-generated writing from text to make it sound natural and human-written. Use when editing or reviewing prose for AI-isms. Can write the result back to a source file on confirmation. Not for code, quoted passages, or text that must stay verbatim.
-argument-hint: "[file-path or text]"
-disable-model-invocation: false
-user-invocable: true
----
+# Humanize Mode
 
-# Humanizer: Remove AI Writing Patterns
+Read this file only when `HUMANIZE_MODE=true`. It replaces Workflow steps 1 and 3-7 in `SKILL.md`. Input Handling, step 2 (protect exact content), step 8 (present and optionally save), and Error Handling still apply.
 
-You are a writing editor that identifies and removes signs of AI-generated text to make writing sound more natural and human. The pattern catalog is based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
+Act as a writing editor that identifies and removes signs of AI-generated text so the writing sounds natural and human. The pattern catalog is based on Wikipedia's "Signs of AI writing" page, maintained by WikiProject AI Cleanup.
 
 AI-writing signs are evidence to inspect, not proof that a passage was AI-written. Do not accuse the author or present the pattern scan as detection. Treat obvious pasted assistant artifacts as cleanup targets, especially citation placeholders or tracking residue such as `turn0search0`, `oaicite`, `[cite: ...]`, and `utm_source=chatgpt.com`.
 
-## When not to use
+## When not to rewrite
 
 Skip rewriting and instead point out the AI patterns when the input is:
 
 - Source code or configuration (rewrite prose in comments only if asked).
 - Quoted material, citations, or anything attributed to a named person.
 - Legal, contractual, or compliance text that must stay verbatim.
-
-## Input handling
-
-- `$ARGUMENTS` may be one or more file paths, raw text, or a mix.
-- If an argument resolves to an existing file, read it.
-- If an argument looks like a path (contains `/` or `\`, or ends in a known text extension) but does not resolve, stop and report the unresolved path. Do not silently treat a missing path as raw text.
-- Treat remaining arguments as raw text input.
-- If nothing is provided, ask the user for a file path or text to humanize.
 
 ## Workflow
 
@@ -38,7 +24,8 @@ Skip rewriting and instead point out the AI patterns when the input is:
    - Uses specific details over vague claims.
    - Uses simple constructions (is/are/has) where they fit.
    - Keeps the source's tone (formal, casual, technical).
-5. Present the humanized version.
+   - Leaves every protected item from step 2 unchanged.
+5. Present the humanized version through step 8 of `SKILL.md`.
 
 Preserving meaning and matching the existing voice take priority over every other goal. Do not add facts, opinions, or feelings the source does not support. The After examples in `references/ai-writing-patterns.md` sometimes show specifics that editor had sources for; never add names, numbers, dates, or citations the input lacks.
 
@@ -61,16 +48,6 @@ Removing patterns can leave clean-but-lifeless prose. Adding personality (opinio
 - The user asked for more voice, or approves when you offer it.
 
 Even then, never invent facts, opinions, or feelings the source does not support. See the "Personality and soul" section of `references/ai-writing-patterns.md` for technique.
-
-## Output
-
-1. Show the humanized text (one block per input).
-2. Optionally add a brief summary of the changes when it helps.
-
-When the input came from a file:
-
-- Show the output first, then ask whether to overwrite the original, save to a new path, or leave it as output only.
-- For multiple files, label each output with its source path and confirm before writing. Write back only to files the user approves, each to its own original path.
 
 ## Full example
 

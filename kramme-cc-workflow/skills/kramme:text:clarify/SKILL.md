@@ -1,14 +1,19 @@
 ---
 name: kramme:text:clarify
-description: "Rewrites prose so readers can understand and act on it quickly by front-loading the outcome, improving structure, and using concrete active language while preserving technical meaning. Use for reports, guidance, documentation, research notes, and summaries that need plain-language editing. Not for removing AI-writing patterns, marketing voice, code, quoted or legal text, or content that must remain verbatim."
-argument-hint: "[file-path or text]"
+description: "Rewrites prose so readers can understand and act on it quickly by front-loading the outcome, improving structure, and using concrete active language while preserving technical meaning. Use for reports, guidance, documentation, research notes, and summaries that need plain-language editing. With --humanize, it instead removes AI-writing patterns while keeping the author's voice. Not for marketing voice, code, quoted or legal text, or content that must remain verbatim."
+argument-hint: "[--humanize] [file-path or text]"
 disable-model-invocation: false
 user-invocable: true
 ---
 
 # Clarify Prose
 
-Rewrite prose around the reader's task without reducing its substance, precision, or uncertainty. This skill improves comprehension and actionability; it does not judge whether writing sounds AI-generated or impose a new personality on the author.
+Rewrite prose around the reader's task without reducing its substance, precision, or uncertainty. This skill improves comprehension and actionability; it does not impose a new personality on the author. Only humanize mode looks for AI-writing patterns, and it treats them as evidence to inspect, not as detection.
+
+## Modes
+
+- **Default:** Follow the Workflow below.
+- **Humanize:** A leading `--humanize` token sets `HUMANIZE_MODE=true`; remove it before Input Handling. Read `references/humanize-mode.md` and follow it in place of Workflow steps 1 and 3-7. Steps 2 and 8 apply in both modes.
 
 ## Boundaries
 
@@ -16,13 +21,14 @@ Rewrite prose around the reader's task without reducing its substance, precision
 - **Does:** Preserve facts, qualifications, citations, technical terms, and the source's intended tone.
 - **Does not:** Add unsupported facts, remove necessary nuance, invent an audience, or convert neutral prose into marketing copy.
 - **Does not:** Rewrite source code, configuration, attributed quotations, legal or contractual language, exact interface labels, or other text that must remain verbatim.
+- **Does not:** Judge whether writing is AI-generated. Only humanize mode removes AI-writing patterns, and it never presents them as proof of authorship.
 - **Does not:** Treat vocabulary as forbidden. Prefer a simpler term only when it remains equally accurate.
 
 ## Input Handling
 
-- Treat `$ARGUMENTS` as one existing file path or one block of raw text.
+- This contract applies in both modes. Treat `$ARGUMENTS` as one existing file path or one block of raw text.
 - If the argument resolves to a file, read the complete file before editing it.
-- Treat a nonexistent argument as a path only when the complete single-line value is path-shaped, such as `notes/report.md` or `C:\notes\report.txt`. Multiline input, URLs, and sentences that merely contain slashes, backslashes, filenames, or prose extensions are raw text.
+- Treat a nonexistent argument as a path only when the complete single-line value is path-shaped, such as `notes/report.md` or `C:\notes\report.txt`. Multiline input, URLs, and sentences that merely contain slashes, backslashes, filenames, or prose extensions are raw text. A single-line value such as `Fixed in src/api/orders.ts` is raw text, not a missing path.
 - If a complete single-line value could reasonably be either a missing path or prose, ask one focused disambiguation question instead of guessing.
 - If no argument is present, use a single unambiguous prose passage from the conversation. Otherwise ask for a file path or the text to clarify.
 - If the input is binary, structured data, source code, configuration, or mostly protected content, stop and explain why this skill cannot safely rewrite it. Suggest converting a document to Markdown first when appropriate.
@@ -70,7 +76,7 @@ Rewrite prose around the reader's task without reducing its substance, precision
    - Return the complete clarified text in a copy-ready block.
    - Add a short change summary only when structural edits or protected constraints would help the user review the result.
    - For file input, show the rewrite before writing. Ask whether to overwrite the source, save to a new path, or leave the result inline.
-   - Before an approved write, reread the source. If it changed since Step 1, stop and ask whether to restart from the new version.
+   - Before an approved write, reread the source. If it changed since you first read it, stop and ask whether to restart from the new version.
    - Never overwrite a different existing file or delete a file without explicit approval for that exact path.
 
 ## Error Handling
@@ -94,7 +100,7 @@ Rewrite prose around the reader's task without reducing its substance, precision
 
 ## Source Tracking
 
-`references/sources.yaml` records the conceptual sources behind the reader-focused workflow and rubric. Runtime use of this skill does not require network access or loading those sources.
+`references/sources.yaml` records the conceptual sources behind the reader-focused workflow and rubric, plus the humanize-mode sources. `references/ai-writing-patterns.md` is adapted from Wikipedia's "Signs of AI writing" under CC BY-SA 4.0; its attribution and license notice are in `references/WIKIPEDIA-CONTENT-LICENSE.md`. Runtime use of this skill does not require network access or loading those sources.
 
 ## Output
 

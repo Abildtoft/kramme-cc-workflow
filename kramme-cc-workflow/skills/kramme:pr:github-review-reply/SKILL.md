@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:github-review-reply
-description: Maps GitHub PR review feedback from humans, bots, and apps, including inline review threads, review-summary comments, and general PR comments; facilitates needed code changes; drafts and humanizes action-based responses; and optionally posts replies or resolves addressed inline threads with gh. Use when reviewers left GitHub comments that need triage, implementation, or response. Not for fixing CI, generating internal review findings, or resolving local REVIEW_OVERVIEW.md findings.
-argument-hint: "[--auto] [--implement|--no-implement] [--post] [--resolve] [--inline] [--human-only|--include-bots] [--all] [--only <login>] [pr-url|instructions]"
+description: Maps GitHub PR review feedback from humans, bots, and apps, including inline review threads, review-summary comments, and general PR comments; facilitates needed code changes; drafts action-based responses; and optionally posts replies or resolves addressed inline threads with gh. Use when reviewers left GitHub comments that need triage, implementation, or response. Not for fixing CI, generating internal review findings, or resolving local REVIEW_OVERVIEW.md findings.
+argument-hint: "[--auto] [--implement|--no-implement] [--post] [--resolve] [--inline] [--humanize] [--human-only|--include-bots] [--all] [--only <login>] [pr-url|instructions]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -28,6 +28,7 @@ Parse `$ARGUMENTS` before fetching data.
 - `--implement` - implement code-change items before drafting replies.
 - `--no-implement` - skip implementation and produce a reply plan only.
 - `--inline` - reply in chat only; do not write `GITHUB_REVIEW_REPLY_PLAN.md`.
+- `--humanize` - run drafted reply bodies through `kramme:text:clarify --humanize` before writing the plan. Off by default; `--auto` does not enable it.
 - `--include-bots` - include bot and app review comments. This is the default and the flag is retained for compatibility.
 - `--human-only` - exclude bot/app-only feedback. Keep mixed-origin items only for their human non-author feedback.
 - `--all` - include resolved inline threads, comments already answered by the branch author, and older summary/general comments. Default: unresolved and awaiting-author feedback only.
@@ -35,9 +36,11 @@ Parse `$ARGUMENTS` before fetching data.
 
 The remaining payload may be a PR URL, PR number, or additional instructions such as "only reply to Sarah" or "do not resolve design comments."
 
-Defaults: `AUTO=false`, `IMPLEMENT=plan-only`, `POST=false`, `RESOLVE=false`, `INLINE=false`, `INCLUDE_BOTS=true`, `HUMAN_ONLY=false`, `INCLUDE_ALL=false`.
+Defaults: `AUTO=false`, `IMPLEMENT=plan-only`, `POST=false`, `RESOLVE=false`, `INLINE=false`, `HUMANIZE=false`, `INCLUDE_BOTS=true`, `HUMAN_ONLY=false`, `INCLUDE_ALL=false`.
 
 If `--human-only` is present, set `HUMAN_ONLY=true` and `INCLUDE_BOTS=false`. If both `--human-only` and `--include-bots` are present, stop and ask the user to choose one filter mode; bot and app comments are included by default.
+
+If `--humanize` is present, set `HUMANIZE=true`. It is independent of `--auto`, which does not enable humanization.
 
 If `--auto` is present, set `AUTO=true`, `IMPLEMENT=implement`, `POST=true`, and `RESOLVE=true`. If both `--auto` and `--no-implement` are present, stop and ask the user to choose one mode; `--auto` owns implementation because it posts completion replies and resolves addressed threads.
 
@@ -217,7 +220,7 @@ If any item is classified as `needs-code-change` and `IMPLEMENT` resolved to imp
 
 If implementation is skipped (the plan-only default or `--no-implement`), mark code-change items as `Implementation status: not attempted`. Do not post acknowledgement-only replies for these items unless the user explicitly asks for that.
 
-## Step 6: Draft and Humanize Replies
+## Step 6: Draft Replies
 
 Draft one reply per item unless the item should be skipped.
 
@@ -228,13 +231,14 @@ Draft one reply per item unless the item should be skipped.
 - State the decision first: changed, no change, question, or deferred.
 - Mention concrete evidence only when useful: function names, files, behavior, or tests.
 - Do not include AI attribution or meta-process details.
+- Write plainly: no chatbot openers or sign-offs, filler, or stacked hedges.
 - For implemented items, describe the executed action and validation result.
 - Do not post a "will fix" reply for every `needs-code-change` item. If implementation was skipped or blocked, mark the item as not ready to post unless the user explicitly asks for an acknowledgement reply.
 - For review-summary and general-comment items, draft a top-level PR comment response unless a more specific inline thread is the right place to answer. These items cannot be resolved as review threads.
 
-After the first draft pass, humanize the draft reply bodies before writing the plan or posting anything. Humanization is best-effort: if `kramme:text:humanize` is unavailable, skip it, mark `Humanized: no` on each affected item, and continue.
+Run the humanize pass only when `HUMANIZE=true` or the user asked for it in this session; otherwise mark every item `Humanized: skipped` and continue. When it runs, invoke `kramme:text:clarify --humanize` on the batched raw text after the first draft pass and before writing the plan or posting anything. The pass is best-effort: if `kramme:text:clarify` is unavailable, mark `Humanized: no` on each affected item and continue.
 
-When humanize is available, send all draft reply bodies in a single batched call, separated by a stable delimiter that carries each reply's index. Send only the reply bodies — not reviewer quotes, code snippets, file paths, IDs, command examples, or plan metadata. Map the humanized results back to items by index; for any reply whose mapping is ambiguous, or if the returned count does not match the input, keep the original body for that item rather than risk posting mis-mapped text.
+When the pass runs, send all draft reply bodies in a single batched call, separated by a stable delimiter that carries each reply's index. Send only the reply bodies — not reviewer quotes, code snippets, file paths, IDs, command examples, or plan metadata. Map the humanized results back to items by index; for any reply whose mapping is ambiguous, or if the returned count does not match the input, keep the original body for that item rather than risk posting mis-mapped text.
 
 Apply the humanized output back into each `Draft reply:` field, preserving:
 
@@ -244,7 +248,7 @@ Apply the humanized output back into each `Draft reply:` field, preserving:
 - the one-reply-per-item mapping
 - the classification and resolve decision
 
-If the humanizer changes meaning, adds unsupported warmth, removes necessary technical detail, or weakens a disagreement, keep the original wording for that part and make the smallest manual edit needed to remove AI-sounding phrasing.
+If the humanize pass changes meaning, adds unsupported warmth, removes necessary technical detail, or weakens a disagreement, keep the original wording for that part and make the smallest manual edit needed to remove AI-sounding phrasing.
 
 **Resolve rules:**
 
@@ -297,7 +301,7 @@ Unless `--inline` is set, create or update `GITHUB_REVIEW_REPLY_PLAN.md` in the 
 | Action executed | <specific change, or "none"> |
 | Reply target | one of `inline-reply`, `top-level-comment`, `none` |
 | Resolve after posting | `yes` or `no` |
-| Humanized | `yes` or `no` |
+| Humanized | `yes`, `no`, or `skipped` |
 | Post status | one of `not posted`, `posted`, `posted and resolved`, `posted, resolve failed` |
 
 **Reviewer comment**

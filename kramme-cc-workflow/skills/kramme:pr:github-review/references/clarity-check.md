@@ -96,7 +96,7 @@ Record corrected facts in this skill's report. Never edit a sealed upstream arti
 
 ## 6. Constrained humanize
 
-Send only the bodies changed since Step 10 to `/kramme:text:humanize` in one indexed batch, following Section 3 of `references/comment-drafting.md`, with these stricter constraints:
+Send only the bodies changed since Step 10 to `/kramme:text:clarify --humanize` in one indexed batch, following Section 3 of `references/comment-drafting.md`, with these stricter constraints:
 
 - keep identifiers and code spans exact, as well as the question framing, the claims, and the stated consequence;
 - add no length;
