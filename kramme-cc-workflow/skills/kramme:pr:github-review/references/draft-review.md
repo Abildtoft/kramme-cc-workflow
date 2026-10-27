@@ -13,9 +13,9 @@ Build `DRAFT_REVIEW_COMMENTS` from every fresh actionable item that has a concre
 
 Then confirm the remaining anchors with `"$ANCHOR_CHECK" "$ORIG_ROOT" "$PR_BASE_OID" "$HEAD_OID" <path:line>...`, passing every anchor in one call. It checks each line against the diff GitHub shows for the PR, which runs from the merge base of those two commits to the head. GitHub rejects the whole create-review request when a single comment is outside the diff. Exclude each `NOT-IN-DIFF` or `NO-LINE` anchor as a non-diff location, or move it to the changed line where the fix belongs and check it again. If the script fails with exit status 2, record that error in the report and rely on the exclusion rules above.
 
-For each included item, record `path`, integer `line`, `side: "RIGHT"`, and the exact humanized `body`. The report must name every proposed item omitted from the pending review and why. Never silently claim that all comments were included when any item was omitted.
+For each included item, record `path`, integer `line`, `side: "RIGHT"`, and the exact humanized `body`, and keep the list as `DRAFT_REVIEW_COMMENTS_JSON`, a JSON array built with `jq`, for a confirmed Step 14 submission. The report must name every proposed item omitted from the pending review and why. Never silently claim that all comments were included when any item was omitted.
 
-Do not build or post a top-level review `body`. Keep the recommended verdict rationale, Strengths, and all other summary material in the local report only. If `DRAFT_REVIEW_COMMENTS` is empty, do not offer or create a pending review; use `DRAFT_REVIEW_STATUS="not created — no eligible inline comments"`.
+Do not add a top-level review `body` to the pending review. Keep the recommended verdict rationale, Strengths, `PREPARED_REVIEW_BODY`, and all other summary material in the local report. If `DRAFT_REVIEW_COMMENTS` is empty, do not offer or create a pending review; use `DRAFT_REVIEW_STATUS="not created — no eligible inline comments"`.
 
 ## 2. Fail closed on stale or conflicting state
 
