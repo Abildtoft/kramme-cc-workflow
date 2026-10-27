@@ -242,6 +242,7 @@ function fresh(ledger) {
 function validate(directory, ledger) {
   fresh(ledger);
   const ids = new Set();
+  const abandoned = interruptedIds(ledger);
   requireValue(
     ledger.jobs.relevance?.status !== "skipped" ||
       ledger.jobs["slop-meta"]?.status === "skipped",
@@ -263,7 +264,8 @@ function validate(directory, ledger) {
       requireValue(
         typeof job.agentId === "string" &&
           job.agentId.trim() &&
-          !ids.has(job.agentId),
+          !ids.has(job.agentId) &&
+          !abandoned.has(job.agentId),
         `Missing or reused agent ID: ${id}`,
       );
       ids.add(job.agentId);
@@ -296,18 +298,43 @@ function requireDependencies(ledger, id) {
       "All primary reviewers failed",
     );
 }
+function interruptedIds(ledger) {
+  return new Set(
+    Object.values(ledger.jobs).flatMap((job) =>
+      (job.interrupted ?? []).map((entry) => entry.agentId).filter(Boolean),
+    ),
+  );
+}
+// An interrupted job returns to pending; its abandoned invocation ID stays as evidence and can never be reused.
+function applyRequeue(ledger, id, reason) {
+  const job = ledger.jobs[id];
+  requireValue(Object.hasOwn(ledger.jobs, id), `Unknown job: ${id}`);
+  requireValue(
+    job.status === "running",
+    "Only a running job can be requeued; failed jobs need a fresh run",
+  );
+  requireValue(reason?.trim(), "requeue needs --reason");
+  job.interrupted = [
+    ...(job.interrupted ?? []),
+    { agentId: job.agentId, started: job.started, reason },
+  ];
+  delete job.agentId;
+  delete job.started;
+  job.status = "pending";
+}
 function applyStart(ledger, id, agentId) {
   const job = ledger.jobs[id];
   requireValue(Object.hasOwn(ledger.jobs, id), `Unknown job: ${id}`);
   requireValue(
     job.status === "pending",
-    "Job already started; retain failed evidence and start a fresh run for retries",
+    "Job already started; requeue an interrupted job, or retain failed evidence and start a fresh run for retries",
   );
   requireDependencies(ledger, id);
   if (job.agent !== "orchestrator") {
     requireValue(agentId?.trim(), "Actual host agent ID required");
     requireValue(
-      !Object.values(ledger.jobs).some((other) => other.agentId === agentId),
+      !Object.values(ledger.jobs).some((other) => other.agentId === agentId) &&
+        !interruptedIds(ledger).has(agentId),
       "Use a distinct invocation ID per delegated job",
     );
     job.agentId = agentId;
@@ -368,9 +395,17 @@ function readManifest(file) {
 function main(argv) {
   const [command, directoryArg, ...rest] = argv;
   requireValue(
-    ["init", "start", "finish", "record", "seal", "check"].includes(command) &&
-      directoryArg,
-    "Usage: review-execution.js init|start|finish|record|seal|check RUN_DIR [--key value]",
+    [
+      "init",
+      "start",
+      "finish",
+      "record",
+      "requeue",
+      "status",
+      "seal",
+      "check",
+    ].includes(command) && directoryArg,
+    "Usage: review-execution.js init|start|finish|record|requeue|status|seal|check RUN_DIR [--key value]",
   );
   requireValue(rest.length % 2 === 0, "Options require values");
   const options = {};
@@ -379,6 +414,8 @@ function main(argv) {
     start: ["job", "agent-id"],
     finish: ["job", "output", "status"],
     record: ["manifest"],
+    requeue: ["job", "reason"],
+    status: [],
     seal: ["report"],
     check: ["report", "aspects"],
   }[command];
@@ -421,6 +458,7 @@ function main(argv) {
     const ledger = {
       version: 1,
       runId: crypto.randomUUID(),
+      created: new Date().toISOString(),
       evidence: "self-attested",
       root,
       base: options.base,
@@ -441,6 +479,49 @@ function main(argv) {
     return;
   }
   const { plan, ledger } = load(directory);
+  if (command === "status") {
+    let scopeFresh = true;
+    try {
+      fresh(ledger);
+    } catch {
+      scopeFresh = false;
+    }
+    console.log(
+      JSON.stringify({
+        runId: ledger.runId,
+        root: ledger.root,
+        base: ledger.base,
+        created: ledger.created ?? null,
+        sealed: Boolean(ledger.reportHash),
+        scopeFresh,
+        aspects: plan.aspects,
+        noCleanup: plan.noCleanup ?? false,
+        emphasizedDimensions: plan.emphasizedDimensions ?? [],
+        resume: plan.resume ?? null,
+        jobs: Object.fromEntries(
+          Object.entries(ledger.jobs).map(([id, job]) => [
+            id,
+            {
+              status: job.status,
+              ...(job.agentId ? { agentId: job.agentId } : {}),
+              interrupted: job.interrupted?.length ?? 0,
+            },
+          ]),
+        ),
+      }),
+    );
+    return;
+  }
+  if (command === "requeue") {
+    requireValue(
+      !ledger.reportHash,
+      "Sealed run cannot change; start a fresh run",
+    );
+    fresh(ledger);
+    applyRequeue(ledger, options.job, options.reason);
+    save(path.join(directory, "ledger.json"), ledger);
+    return;
+  }
   if (command === "start" || command === "finish" || command === "record") {
     requireValue(
       !ledger.reportHash,
