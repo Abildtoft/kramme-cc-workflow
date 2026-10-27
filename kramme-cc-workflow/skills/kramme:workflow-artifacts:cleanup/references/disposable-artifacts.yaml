@@ -286,6 +286,14 @@
       "producer": "kramme:pr:github-review"
     },
     {
+      "id": "pr-github-review-runs",
+      "path": ".context/pr-github-review/",
+      "type": "dir",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review"
+    },
+    {
       "id": "doc-review",
       "path": "DOC_REVIEW.md",
       "type": "file",

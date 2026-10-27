@@ -16,6 +16,8 @@ The flow:
 8. Confirmation read by one new reader, giving v4.
 9. Record the outcome for Step 11.
 
+After each stage, save its result as `references/resume.md` describes. When a resumed review re-enters the check, run the stage 1 gate first, then start at the first stage without a saved result. A reader whose output is saved is not rerun. A reader cut off before it returned is relaunched as a new reader with the saved filled prompt, and a confirmation read always uses a new reader. Readers never receive the run directory or any saved result, and every rule under Readers still applies.
+
 ## Readers
 
 - Launch each reader through the host's agent-invocation mechanism, passing only its filled prompt from `references/clarity-check-prompts.md`: no conversation history, no report, and no review evidence. A reader who knows your intent tests nothing. On Codex, spawn it with `fork_turns="none"`, because a full-history fork would hand it the conversation.

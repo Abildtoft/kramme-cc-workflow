@@ -8,6 +8,7 @@ setup() {
 	DRAFT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/draft-review.md"
 	REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/report-template.md"
 	CLARITY_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/clarity-check.md"
+	RESUME_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/resume.md"
 	CLARITY_PROMPTS="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/clarity-check-prompts.md"
 	ANCHOR_SCRIPT="$PLUGIN_ROOT/skills/kramme:pr:github-review/scripts/check-comment-anchors.sh"
 	SUBMIT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/submit-review.md"
@@ -1089,6 +1090,53 @@ assert "## Prepared Review" in report and "_Not posted." in report
 assert "Post the prepared review to PR <number> as request changes" in report
 assert "Report-only by default" in skill.split("---", 2)[1]
 assert "`pr:github-review` is report-only by default" in readme
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review resumes an interrupted run from saved step results" {
+	run python3 - "$SKILL" "$RESUME_REFERENCE" "$CLARITY_REFERENCE" <<'PY'
+import pathlib
+import re
+import sys
+
+skill, resume, clarity = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+assert "${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md" in skill
+entry = skill.index("## Step 2b: Resume an Interrupted Run")
+assert skill.index("## Step 2a:") < entry < skill.index("## Step 3:"), "resume must be decided before the worktree exists"
+assert "references/resume.md" in skill[entry:skill.index("## Step 3:")]
+for step, following in [("## Step 6:", "## Step 7:"), ("## Step 7:", "## Step 8:"), ("## Step 9:", "## Step 10:"),
+                        ("## Step 10:", "## Step 10a:"), ("## Step 10a:", "## Step 11:")]:
+    body = skill[skill.index(step):skill.index(following)]
+    assert re.search(r"Save (this step's result|each pass's result|each completed stage)", body), f"{step} must save its result"
+assert "retire its directory per `references/resume.md`" in skill[skill.index("## Step 13:"):]
+assert ".context/pr-github-review/<run-id>/" in skill[skill.index("## Artifact Lifecycle"):]
+
+for phrase in ["git -C \"$ORIG_ROOT\" check-ignore -q -- .context/pr-github-review/", "resume is off for this run",
+               "`head` (`HEAD_OID`)", "`base` (`PR_BASE_OID`)", "`base_ref` (`BASE_REF_ARG`)",
+               "`skip_threads` (the normalized `--fresh` behavior)", "`pr_context` (a SHA-256 of canonical `{title,body}` JSON)",
+               "`linked_issues` (the sorted issue IDs discovered in Step 2a)", "SUBAGENT_MODEL_LEVEL", "active orchestrator model identity",
+               "Leave out `--draft-review`, `--inline`, `--keep-worktree`, `--sequential`, and `--parallel`",
+               "ensure the head object exists locally", "git cat-file -e \"$HEAD_OID^{commit}\"", "git fetch --quiet origin \"pull/${PR_NUMBER}/head\"",
+               "The title/body hash and linked-issue IDs prevent a resume from reusing passes after those inputs change.",
+               "Step 7 always runs on resume", "a saved `conversation` result is audit evidence only, never a reusable result",
+               "A moved PR head changes `head`, which makes the old run stale.",
+               "`clarity-v2`", "`clarity-author`, `clarity-teammate`", "`clarity-v3`", "`clarity-confirm-<n>`", "`clarity-outcome`",
+               "never pass the run directory or any result file to a clarity reader",
+               "detached at `HEAD_OID`", "in a new worktree it starts fresh",
+               "existing-pending-review guard keeps a resumed run from creating a second pending review",
+               "consider only runs for the same `repo` and `pr`",
+               "After Step 13, set the manifest `status` to `complete`", "Never use `rm -rf`.",
+               "`Agents reused: <M> (run <run-id>)`", "`--fresh` is a separate normalized run input (`skip_threads=true`)"]:
+    assert phrase in resume, f"resume reference must state: {phrase}"
+
+assert resume.index('git cat-file -e "$HEAD_OID^{commit}"') < resume.index("Build the key JSON"), "head fetch must precede key computation"
+
+for phrase in ["run the stage 1 gate first, then start at the first stage without a saved result",
+               "relaunched as a new reader with the saved filled prompt",
+               "a confirmation read always uses a new reader",
+               "Readers never receive the run directory or any saved result"]:
+    assert phrase in clarity, f"clarity check must state: {phrase}"
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }

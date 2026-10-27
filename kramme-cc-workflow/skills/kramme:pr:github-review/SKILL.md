@@ -163,9 +163,13 @@ PR_NWO=$(printf '%s' "$PR_URL" | sed -E 's#^https://github.com/([^/]+/[^/]+)/pul
 
 Read Section 1 of `references/linear-review.md` to discover and deduplicate linked issues from the PR metadata and linking comments. This discovery runs independently of `--fresh`, `--include-bots`, and `--code-only`. No linked issues means no Linear prerequisite; unavailable linked context is a coverage gap, not a reason to stop the code review.
 
+## Step 2b: Resume an Interrupted Run
+
+Read `${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md`, then read and follow `references/resume.md`. It ensures the PR head is available before computing the resume key, finds an interrupted run of this review, decides which of Steps 3–10a still run, and says where each finished step saves its result.
+
 ## Step 3: Fetch the PR Into an Isolated Worktree
 
-Fetch the PR head, confirm it is the `headRefOid` recorded in Step 2, then add a detached worktree at that commit. Nothing in the user's current checkout changes. Step 4 resolves and fetches the base ref inside the worktree so `--base main`, `--base origin/main`, and `--base refs/remotes/origin/main` all follow the shared resolver contract.
+Skip this step when Step 2b reuses a recorded worktree or skips Steps 3–8. Otherwise fetch the PR head, confirm it is the `headRefOid` recorded in Step 2, then add a detached worktree at that commit. Nothing in the user's current checkout changes. Step 4 resolves and fetches the base ref inside the worktree so `--base main`, `--base origin/main`, and `--base refs/remotes/origin/main` all follow the shared resolver contract.
 
 ```bash
 git worktree prune # sweep any orphaned registrations from a prior interrupted run
@@ -240,6 +244,8 @@ When `RUN_UI=false`, do not auto-run `kramme:pr:product-review`; never auto-run 
 
 **Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded. Missing Linear access, unresolved issue scope, or a blocked Linear audit must appear in Coverage Status and the Linear section; withhold an `APPROVE` recommendation while these gaps remain.
 
+Save each pass's result as soon as it finishes, per `references/resume.md`.
+
 ## Step 7: Map the Existing Review Conversation
 
 If `SKIP_THREADS=true`, skip this step entirely and continue to cleanup.
@@ -257,6 +263,8 @@ Threads whose anchor is outdated (the line moved or the hunk changed) are exactl
 Also record the matching fresh finding's location (`path:line`, or none). The verification and the cross-reference drive the next step: drafting informed replies and suppressing fresh findings the conversation already raises.
 
 If there is no prior activity (or `--fresh` was set), this is a clean first-pass review and the report's conversation sections are simply empty.
+
+Save this step's result per `references/resume.md`.
 
 ## Step 8: Clean Up the Worktree
 
@@ -287,15 +295,19 @@ Read `references/report-template.md` and `references/comment-drafting.md`. Follo
 
 Set `ANCHOR_CHECK="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/check-comment-anchors.sh"`. Steps 10a and 11 use it to confirm that GitHub can anchor each inline comment.
 
+Save this step's result per `references/resume.md`.
+
 ## Step 10: Humanize the Draft Comments
 
 Follow the humanization section of `references/comment-drafting.md`. Humanization is best-effort; preserve the original bodies and mark `Humanized: no` when `kramme:text:clarify` is unavailable or its output cannot be mapped safely.
+
+Save this step's result per `references/resume.md`.
 
 ## Step 10a: Check the Draft Comments With Cold Readers
 
 Count the drafted inline comments: fresh actionable items with a `path:line` location and a `Draft comment` body, not replies to existing threads. Run the clarity check when `CLARITY_CHECK=on` and at least one is drafted, or when `CLARITY_CHECK=auto` and five or more are drafted. Otherwise set `CLARITY_CHECK_STATUS` to `not run — --no-clarity-check`, `not run — no inline comments drafted`, or `not run — <N> inline comments drafted, below the default of five; pass --clarity-check to run it`, and continue to Step 11.
 
-To run it, read `references/clarity-check.md` and follow it. Fresh readers who see only what the author will see paraphrase, question, and score each comment. You verify their points in the code, fix and re-anchor the comments, and a new reader confirms the result. The check adds at least three reader runs and about 30–50 minutes. It runs before Step 11 because splitting a comment changes the eligible count, and it never writes to GitHub.
+To run it, read `references/clarity-check.md` and follow it. Fresh readers who see only what the author will see paraphrase, question, and score each comment. You verify their points in the code, fix and re-anchor the comments, and a new reader confirms the result. The check adds at least three reader runs and about 30–50 minutes. It runs before Step 11 because splitting a comment changes the eligible count, and it never writes to GitHub. Save each completed stage per `references/resume.md`.
 
 ## Step 11: Materialize the Markdown Report
 
@@ -335,6 +347,8 @@ End by telling the user: the recommended verdict, the count of findings per seve
 
 Also state which linked Linear issues were reviewed, or why their review was incomplete; when none were found, say so.
 
+Finally, mark the run complete and retire its directory per `references/resume.md`, which also gives the reused-results line.
+
 ## Step 14: Submit the Prepared Review Only on a Confirmed Action
 
 Run this step only when the user's newest message, sent after the Step 13 handoff, asks to post or submit the review. Set `SUBMIT_CHECK="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/check-submit-confirmation.py"`, carry the current report's `SUBMIT_STATUS` into the reference, then read `references/submit-review.md` and follow it exactly. It passes the message verbatim to the checker, takes the review event only from the checker's output, re-checks the head, and submits the review shown in the report once. If the report already records a submission or uncertain write outcome, preserve that terminal status and do not retry. If the checker refuses the message, quote its reason and example phrase and make no GitHub write.
@@ -348,4 +362,5 @@ For any other request after the handoff, such as replying to or resolving thread
 - **Consumed by:** you, when posting the review to GitHub — via the GitHub UI, the report's manual commands, or a Step 14 confirmation.
 - **Refreshed by:** re-running this skill on the same or a different PR (overwrites the file).
 - **Retired by:** `/kramme:workflow-artifacts:cleanup`, or manual deletion.
-- **Temporary worktree:** created under a `mktemp` directory during the run and removed in Step 8 unless `--keep-worktree` is set.
+- **Temporary worktree:** created under a `mktemp` directory during the run and removed in Step 8 unless `--keep-worktree` is set. An interrupted run's worktree is reused or removed when the review resumes.
+- **Resume state:** `.context/pr-github-review/<run-id>/` under `ORIG_ROOT`, only when that directory is Git-ignored. It holds each finished step's result so an interrupted review can continue. It is moved to the Trash after Step 13 and retired by `/kramme:workflow-artifacts:cleanup`.
