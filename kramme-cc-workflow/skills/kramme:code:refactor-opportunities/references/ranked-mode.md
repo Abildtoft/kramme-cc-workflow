@@ -14,7 +14,7 @@ In team mode, use parallel read-only subagents (the Claude Code Agent tool or Co
 Parallel subagents are unavailable. Re-run with --ranked --solo for the lower-coverage fallback.
 ```
 
-Launch through the resumable fan-out resolved in `SKILL.md`: the active research reviewers the shared Team Workflow selects are stage 1 (their `launch` records the reviewer role and any tiny-scope omission) and the challenge reviewer is stage 2. When resuming, reuse the recorded reviewer set instead of selecting it again. Evaluate the shared workflow's research quorum over persisted stage 1 results. `--solo` launches no agents and keeps no run directory.
+Launch through the resumable fan-out resolved in `SKILL.md`: the active research reviewers the shared Team Workflow selects are stage 1 (their `launch` records the reviewer role and any tiny-scope omission) and the challenge reviewer is stage 2. Launch every research reviewer and the challenge reviewer with the model selected under **Subagent models** in `SKILL.md`. When resuming, reuse the recorded reviewer set instead of selecting it again. Evaluate the shared workflow's research quorum over persisted stage 1 results. `--solo` launches no agents and keeps no run directory.
 
 ## Shared Workflow
 
