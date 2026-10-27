@@ -1,6 +1,12 @@
 {
   "javascript": {
     "measured": [
+      "kramme-cc-workflow/evals/skill-review/ci-checkpoint.js",
+      "kramme-cc-workflow/evals/skill-review/claude-predict.js",
+      "kramme-cc-workflow/evals/skill-review/claude-profile.js",
+      "kramme-cc-workflow/evals/skill-review/credit-pool.js",
+      "kramme-cc-workflow/evals/skill-review/eval-state.js",
+      "kramme-cc-workflow/evals/skill-review/run-live-eval.js",
       "kramme-cc-workflow/evals/skill-review/scorer.js",
       "kramme-cc-workflow/scripts/convert-plugin/ask-user-question-parser.js",
       "kramme-cc-workflow/scripts/convert-plugin/codex-cli.js",

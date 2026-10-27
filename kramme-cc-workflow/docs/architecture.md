@@ -19,7 +19,7 @@ This repo packages a personal workflow plugin for Claude Code and includes a Cod
 | Hooks | `hooks/hooks.json`, `hooks/*.sh`, `hooks/lib/` | Claude Code lifecycle hooks for command safety, formatting, review confirmation, and usage stats. |
 | Shared scripts | `scripts/*.sh`, `scripts/*.py`, `scripts/*.js`, `scripts/dev-server/` | Helpers shared by skills, hooks, release workflows, and browser-facing workflows. |
 | Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/` | Loads the Claude plugin, transforms components for Codex, and writes managed output under a Codex home. |
-| Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals and the local SkillOpt adapter for the `kramme:skill:review` pilot. |
+| Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals, an optional live Claude SDK adapter with sequential credit failover/checkpoints, and the local SkillOpt adapter for the `kramme:skill:review` pilot. |
 | Review completion | `skills/kramme:pr:code-review/scripts/review-execution.js`, `evals/review-completion/` | Self-attested execution ledger, scope/report validation, and independently observed completion evaluations; consumed by review convergence. |
 | Tests | `tests/*.bats`, `tests/node/`, `tests/python/`, `tests/test_helper/` | Bats integration suites plus focused Node and Python unit suites, converter contracts, eval harnesses, and skill guidance contracts. |
 
@@ -36,6 +36,8 @@ Browser and visual workflows use the shared dev-server detector in `scripts/dev-
 Shared runtime helpers belong to the main `CodexBundle`, independently of whether hook packaging is eligible. The transformer builds the directory and file metadata once, and the builder copies them into the plugin's `scripts/` and `hooks/` directories, so skills retain their helpers when hooks or hook controls are absent. The plugin-level `shared/` directory travels the same way, and its Markdown receives the rewrite that skill-local references get.
 
 How much independence skills and agents take at runtime is described in [agent-autonomy.md](agent-autonomy.md).
+
+The live eval entry point `evals/skill-review/run-live-eval.js` delegates to the existing runner's prediction-command boundary. Its Claude adapter stages only one reviewer and fixture, runs an isolated read-only SDK session, and persists predictions before stdout. The credit pool advances only on confirmed depletion; ordinary errors stop or use bounded same-key retries. Checkpoints and reports stay under `.context/claude-evals/`. A separate trusted-main scheduled/manual workflow restores validated checkpoint artifacts; no live credentials or paid calls enter the default PR checks. See the [decision](decisions/2026-10-24-sequential-credit-evals.md).
 
 ## State and Generated Output
 

@@ -212,6 +212,8 @@ The first investigation target is `convert-plugin.bats`, the largest contributor
 
 GitHub Actions also runs the standalone skill-review eval as a separate path-filtered, scheduled, and manual workflow. That workflow uploads the aggregate JSON result as the `skill-review-eval` artifact and is meant to catch harness or fixture regressions without treating score movement as a merge gate.
 
+The separate **Live Skill Review Eval** workflow is opt-in through the configured model variable and organization key secret. It runs the Agent SDK against the same pilot, switches organizations on confirmed credit exhaustion, and preserves unfinished runs through checkpoint artifacts. Its daily/manual trusted-main runs are outside required merge gates. Setup and behavior are in the root [README](../../README.md#live-claude-evals-with-separate-organization-credits). Run `make -C kramme-cc-workflow test-skill-review-live-eval` for focused fake-SDK and CLI/workflow tests; all default verification remains credential-free. The archive round-trip test uses `zip` and `unzip` (install on Linux development hosts when absent). Do not deplete an organization's real balance to test rotation.
+
 Before a release candidate or before marking a larger Pull Request ready, run the stronger local gate:
 
 ```bash

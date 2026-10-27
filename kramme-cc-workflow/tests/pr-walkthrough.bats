@@ -735,10 +735,16 @@ BATS
     about:blank >"$TMP_DIR/chrome.out" 2>"$chrome_log" 3>&- &
   WALKTHROUGH_CHROME_PID=$!
 
+  # Cold CI runners can take well over 10s to announce DevTools; fail fast only if Chrome exits.
   devtools_url=""
-  for _ in $(seq 1 200); do
+  devtools_port_file="$TMP_DIR/chrome-profile/DevToolsActivePort"
+  for _ in $(seq 1 600); do
     devtools_url="$(grep -m1 -o 'ws://[^ ]*' "$chrome_log" || true)"
+    if [[ -z "$devtools_url" && -s "$devtools_port_file" ]]; then
+      devtools_url="$(awk 'NR == 1 { port = $0 } NR == 2 { print "ws://127.0.0.1:" port $0 }' "$devtools_port_file")"
+    fi
     [[ -n "$devtools_url" ]] && break
+    kill -0 "$WALKTHROUGH_CHROME_PID" 2>/dev/null || break
     sleep 0.05
   done
   if [[ -z "$devtools_url" ]]; then
