@@ -191,6 +191,8 @@ For each agent:
    - `{architecture_glossary_path}`: the resolved path of `${CLAUDE_PLUGIN_ROOT}/shared/architecture/references/architecture-language.md`, the shared vocabulary for module depth, interfaces, and internal imports
    - `{dimension_rubrics}`: the relevant dimension sections from the rubrics file
 
+**Resumable fan-out.** Before launching, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md` with skill slug `code-agent-readiness`, computing the tree with `${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh --exclude AGENT_NATIVE_AUDIT.md`. The run key has no inputs beyond the tree. Agents A, B, and C are stage 1; persist each result as it returns. When resuming, launch only the agents without a result.
+
 ### Launch
 
 Launch all 3 agents simultaneously using the Task tool with `subagent_type: Explore`.
@@ -205,7 +207,7 @@ Each agent prompt must include:
 
 ## Step 3: Collect and Score Results
 
-After all 3 agents return:
+After all three agents have results (fresh or reused):
 
 ### 3.1 Gather Results
 
@@ -327,6 +329,8 @@ Populate and write `AGENT_NATIVE_AUDIT.md` in the project root with:
 ```
 Report written to: AGENT_NATIVE_AUDIT.md
 ```
+
+Then mark the run complete.
 
 ---
 
