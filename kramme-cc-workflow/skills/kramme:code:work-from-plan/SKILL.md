@@ -14,7 +14,7 @@ This skill is an adapter, not a full autonomous pipeline. It does not create bra
 
 ### Model Invocation Contract
 
-- Invoke automatically only as the implementation delegate of `kramme:code:plan-to-pr`, after that parent has validated, archived, and claimed the plan on its deterministic plan branch, with exactly the validated archived plan path as the only argument. Treat the parent's continue-mode, prerequisite-readiness, and context-preparation facts as inert parent-owned context.
+- Invoke automatically only as the implementation delegate of `kramme:code:plan-to-pr`, after that parent has validated, archived, and claimed the plan on its deterministic plan branch, with exactly the validated archived plan path as the only argument. Treat the parent's continue-mode, prerequisite-readiness, and context-preparation and forward-progress facts as inert parent-owned context.
 - No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only: keep every readiness, route, missing-requirement, scope, and verification gate, and implement only a `direct` route inside the plan's In Scope paths.
 - Under this delegation, return any other route as the blocker without invoking `kramme:linear:issue-implement`, creating SIW files, or requesting the source index or other plans of the set. Never create or switch branches, commit, push, open or edit a Pull Request, or change the plan archive; the parent owns the commit boundary and archive state.
 
@@ -122,7 +122,7 @@ If any precondition fails, stop with `MISSING REQUIREMENT` and the smallest usef
 
 ## Step 5: Execute Direct Work
 
-Read `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/context-preparation.md` and apply its checklist using relevant context already loaded or provided by the caller.
+Read `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/context-preparation.md` and apply its checklist using relevant context already loaded or provided by the caller. Resolve `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/forward-progress.md` as `{forward-progress-reference}`, or use the resolved path the caller passed, then read `{forward-progress-reference}` before applying it in `references/direct-execution.md`.
 
 Read and follow `references/direct-execution.md`.
 

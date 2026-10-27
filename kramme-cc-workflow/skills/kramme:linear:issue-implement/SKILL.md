@@ -367,7 +367,7 @@ If `AUTO_MODE=true`, skip this question and choose **Autonomous Implementation**
 
 ## Step 7: Workflow Execution by Approach
 
-Read the implementation workflow for the selected approach from `references/implementation-workflows.md`. Follow the Guided, Context Setup, or Autonomous workflow based on the user's choice from Step 6.
+Read the implementation workflow for the selected approach from `references/implementation-workflows.md`. Follow the Guided, Context Setup, or Autonomous workflow based on the user's choice from Step 6. Resolve `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/forward-progress.md` as `{forward-progress-reference}`, then read it before applying the convention in that workflow.
 
 ---
 

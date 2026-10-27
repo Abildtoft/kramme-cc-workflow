@@ -601,7 +601,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 | `/kramme:session:automate-repeats` | User | `[session-paths or --recent N] [--effectiveness] [--create\|--auto]` | Reviews recent agent sessions for repeated work, recurring friction, and evidence-backed skill effectiveness, then reports improvements to the existing owner before proposing or scaffolding new automation. Use when asked to inspect recent sessions, find automation opportunities, improve a skill from its runs, determine which skills are working, or turn repeated work into reusable workflows. Not for summarizing one session, general retrospectives, or codebase refactoring. |
 | `/kramme:verify:run` | User, Auto | `[--fast \| --full] [--force] [--base <branch> [--base-commit <oid>]]` | Run verification checks (tests, formatting, builds, linting, type checking) for affected code based on the project's configuration. Defaults to the full pre-push sweep; --fast selects the iteration tier. Reuses a green run only when its tree, scope, and inputs still match. |
 
-Migration: `/kramme:session:context-setup` has been removed. `/kramme:code:work-from-plan`, `/kramme:code:plan-to-pr`, and `/kramme:linear:issue-implement` retain a shared preparation checklist for relevant source, tests, implementation patterns, and types, with focused context loading. `kramme:code:forward-progress` covers context recovery while preserving valid work. Ask directly for rules-file updates when needed; the separate setup ritual, markers, and mandatory repair gate are retired.
+Migration: `/kramme:session:context-setup` has been removed. `/kramme:code:work-from-plan`, `/kramme:code:plan-to-pr`, and `/kramme:linear:issue-implement` retain a shared preparation checklist for relevant source, tests, implementation patterns, and types, with focused context loading. A shared forward-progress reference covers context recovery while preserving valid work. Ask directly for rules-file updates when needed; the separate setup ritual, markers, and mandatory repair gate are retired.
 
 Migration: `/kramme:nx:setup-portless` has been removed together with the `nx` skill domain. Ask directly for portless setup or Nx `dev:local`/`dev:full` target wiring; no dedicated replacement preserves its target templates or certificate-trust steps.
 
@@ -611,7 +611,6 @@ Auto-triggered by the host based on context. These don't appear in the `/` menu.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `kramme:code:forward-progress` | Background | — | Keeps multi-stage implementations and pipelines moving by separating capability work and correctness evidence from advisory workflow bookkeeping. Use when stale markers, receipts, hashes, dashboards, or progress metadata would cause valid work to be repeated or completed stages to be rewound. Not for bypassing controls that protect identity, authority, integrity, concurrency, resumability, scope, CI, or publication safety. |
 | `kramme:git:commit-message` | Background | — | Create commit messages for branch commits. Use when committing code changes or writing commit messages. Follows the repository's commit-subject convention (plain English when none is found), with a pre-commit checklist and AI-attribution rules. Not for PR titles or merge commits. |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
@@ -956,7 +955,7 @@ material and its skill-local notices.
 
 ### From [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 
-- `kramme:code:work-from-plan`, `kramme:code:plan-to-pr`, and `kramme:linear:issue-implement` context preparation, plus `kramme:code:forward-progress` context recovery: Adapted from [context-engineering](https://github.com/addyosmani/agent-skills/tree/main/skills/context-engineering).
+- `kramme:code:work-from-plan`, `kramme:code:plan-to-pr`, and `kramme:linear:issue-implement` context preparation, plus the shared forward-progress reference's context recovery: Adapted from [context-engineering](https://github.com/addyosmani/agent-skills/tree/main/skills/context-engineering).
 - `kramme:docs:feature-spec`: Adapted from [spec-driven-development](https://github.com/addyosmani/agent-skills/tree/main/skills/spec-driven-development).
 - `kramme:docs:adr`: Adapted from [documentation-and-adrs](https://github.com/addyosmani/agent-skills/tree/main/skills/documentation-and-adrs).
 - `kramme:code:deprecate`: Adapted from [deprecation-and-migration](https://github.com/addyosmani/agent-skills/tree/main/skills/deprecation-and-migration).
