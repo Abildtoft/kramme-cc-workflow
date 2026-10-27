@@ -4,22 +4,7 @@ Load this during Phase 2 for findings-mode input. For a pre-clustered handoff, u
 
 ## Rules
 
-1. **Target size**: each theme should map to a realistic single PR (roughly 1-8 findings, touching a bounded set of files). If a theme grows beyond what a single PR can cover, split it into a short series and note the dependency.
-
-   Apply this sizing grammar when sizing themes:
-
-   | Size   | Scope                              |
-   | ------ | ---------------------------------- |
-   | XS     | 1 file, single finding             |
-   | S      | 1-2 files                          |
-   | M      | 3-5 files                          |
-   | L      | 6-8 files                          |
-   | **XL** | **9+ files - split into a series** |
-
-   Aim for S/M themes. Any theme that sizes XL MUST split before generating plans.
-
-   Size is not only file count. Increase the size one level when a theme crosses architectural layers, changes public APIs or persisted data, touches generated snapshots or fixtures, alters verification infrastructure, or requires coordination with migration, rollout, or compatibility constraints. Treat a theme as XL, even under 9 files, when it combines a public contract change with broad call-site updates, a data migration/backfill, or unrelated subsystems that cannot be reviewed as one coherent PR.
-
+1. **Target size**: each theme should map to a realistic single PR (roughly 1-8 findings, touching a bounded set of files). If a theme grows beyond what a single PR can cover, split it into a short series and note the dependency. Size every theme with **Size themes** in `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md`; any theme that sizes XL MUST split before generating plans.
 2. **Avoid overlap**: every finding belongs to exactly one theme. If a finding could fit multiple themes, assign it to the one where it shares the strongest implementation dependency.
 3. **Singleton themes are fine**: if a finding does not cluster with others, it becomes its own single-finding theme.
 4. **Exclusions**: if any finding should be excluded from all plans (e.g., duplicates, already resolved, not actionable), record it with a reason. These go into the index under "Excluded or Included Scope" as one marker-prefixed line per finding. If nothing is excluded, write a plain sentence with no marker.
@@ -39,13 +24,9 @@ Load this during Phase 2 for findings-mode input. For a pre-clustered handoff, u
    - Put dependency blockers first.
    - Among independent same-wave themes, prefer higher leverage, then higher impact, then lower risk/effort.
    - Do not let leverage ordering override a real dependency.
-5. Assign every theme an execution label before generating files:
-   - Use `W##L` where `##` is a zero-padded wave number and `L` is an uppercase lane letter, such as `W01A`, `W01B`, `W02A`.
-   - Same wave number means the plans can run in parallel.
-   - A later wave number means the plan is blocked by at least one earlier-wave plan, and the exact blocker labels must be named in the plan title, index, and summary.
-   - Independent single-plan work still receives `W01A`.
+5. Assign every theme an execution label before generating files, following **Assign execution labels** in the shared findings intake reference. Name the exact blocker labels of a later-wave plan in the plan title, index, and summary.
 6. Keep the theme slug separate from the execution label: derive `{SLUG}` from the theme name only, then prefix it with `{EXECUTION_LABEL}` only in the final filename. Example: execution label `W01A` plus theme slug `define-error-types` becomes `PR_PLAN_W01A_DEFINE_ERROR_TYPES.md`.
-7. Verify no theme is too large (touches 9+ files per the sizing grammar above). Split if needed.
+7. Verify no theme is too large (touches 9+ files per the shared sizing grammar). Split if needed.
 8. Verify no two themes overlap in affected files without an explicit dependency note.
 
 ## User confirmation block
