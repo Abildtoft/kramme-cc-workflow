@@ -127,7 +127,7 @@ Reply with:
 - **Produces/updates:** `OUTSIDE_VIEW_REPORT.md` by default, or the path passed with `--output`. The report carries its own run history forward across overwrites.
 - **Consumed by:** the user for entropy tracking; `/kramme:code:refactor-opportunities --ranked` runs that act on promotion candidates; future outside-view runs for persona rotation and recurrence counting.
 - **Refresh trigger:** re-run on a regular cadence (after a merge cycle or before a maintenance cycle), and after acting on promotion candidates to confirm the blind spot closed.
-- **Retired by:** `/kramme:workflow-artifacts:cleanup` when the report is no longer useful, or manual deletion.
+- **Retired by:** `/kramme:workflow:cleanup-artifacts` when the report is no longer useful, or manual deletion.
 
 ## Discipline
 

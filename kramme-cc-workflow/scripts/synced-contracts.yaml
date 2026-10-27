@@ -104,7 +104,7 @@
         "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md",
         "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md",
-        "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/references/siw-mode.md"
+        "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/references/siw-mode.md"
       ]
     },
     {
@@ -1038,7 +1038,7 @@
         "- `{fix-ci-invocation}`: `kramme:pr:fix-ci --no-consolidate`.",
         "do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume",
         "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description",
-        "kramme:workflow-artifacts:cleanup --auto"
+        "kramme:workflow:cleanup-artifacts --auto"
       ]
     },
     {
@@ -1087,7 +1087,7 @@
         "Before interpolating `{issue-branch}` into any shell command",
         "stop before delegated branch setup",
         "If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:create`.",
-        "Next: $kramme:workflow-artifacts:cleanup --auto",
+        "Next: $kramme:workflow:cleanup-artifacts --auto",
         "Then: $kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description",
         "Then: $kramme:pr:fix-ci --no-consolidate"
       ]
@@ -1622,9 +1622,9 @@
     },
     {
       "name": "workflow-artifact-cleanup-names",
-      "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md",
+      "path": "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/SKILL.md",
       "frontmatter": {
-        "name": "kramme:workflow-artifacts:cleanup",
+        "name": "kramme:workflow:cleanup-artifacts",
         "argument-hint": "[--auto | --siw]",
         "disable-model-invocation": "false",
         "user-invocable": "true"
@@ -1644,7 +1644,7 @@
     },
     {
       "name": "workflow-artifact-cleanup-registry",
-      "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml",
+      "path": "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml",
       "contains": [
         "REVIEW_OVERVIEW.md",
         "CONVENTION_REVIEW_OVERVIEW.md",

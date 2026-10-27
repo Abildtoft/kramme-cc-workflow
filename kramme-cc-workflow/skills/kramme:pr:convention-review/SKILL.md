@@ -251,7 +251,7 @@ Otherwise:
 
 - Write the report to `CONVENTION_REVIEW_OVERVIEW.md` in the project root
 - Include all sections even if empty (with count of 0)
-- Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+- Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`
 
 ### Post Conductor Diff Comments (When Available)
 

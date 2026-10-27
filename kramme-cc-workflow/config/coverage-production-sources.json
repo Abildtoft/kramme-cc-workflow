@@ -194,7 +194,7 @@
         "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/SKILL.md",
         "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:explain/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/SKILL.md"
       ]
     },
     {
@@ -370,7 +370,7 @@
         "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
         "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/SKILL.md"
       ]
     },
     {
@@ -578,7 +578,7 @@
       "suite": "kramme-cc-workflow/tests/workflow-artifacts-cleanup.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/SKILL.md"
       ]
     },
     {

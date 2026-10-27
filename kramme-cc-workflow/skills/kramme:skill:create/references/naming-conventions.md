@@ -24,7 +24,7 @@ kramme:{domain}:{action}[:{qualifier}...]
 | `discovery` | Requirements gathering | `discovery:interview` |
 | `hooks` | Plugin hook management | `hooks:toggle` |
 | `verify` | Verification, testing | `verify:run` |
-| `workflow-artifacts` | Artifact management | `workflow-artifacts:cleanup` |
+| `workflow` | Workflow procedures and artifact management | `workflow:wizard`, `workflow:cleanup-artifacts` |
 | `session` | Session lifecycle | `session:search` |
 | `skill` | Plugin skill tooling | `skill:create` |
 

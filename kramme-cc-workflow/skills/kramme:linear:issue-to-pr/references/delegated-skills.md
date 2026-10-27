@@ -9,7 +9,7 @@ The required implementation and review children are:
 
 When shipping, also require these publication children before the Linear state write, because they are invoked later in the same run:
 
-- `kramme:workflow-artifacts:cleanup` for `--auto`.
+- `kramme:workflow:cleanup-artifacts` for `--auto`.
 - `kramme:pr:create` for `--auto --linear-issue {issue-id} --require-generated-description`.
 - `kramme:pr:fix-ci` for `--no-consolidate`.
 

@@ -418,9 +418,9 @@
       "path": "kramme-cc-workflow/skills/kramme:visual:explain/SKILL.md"
     },
     {
-      "name": "kramme:workflow-artifacts:cleanup",
+      "name": "kramme:workflow:cleanup-artifacts",
       "invocation": "User, Auto",
-      "path": "kramme-cc-workflow/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+      "path": "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/SKILL.md"
     },
     {
       "name": "kramme:workflow:wizard",

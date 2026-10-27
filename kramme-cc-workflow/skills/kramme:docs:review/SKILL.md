@@ -127,7 +127,7 @@ This skill reviews document quality only.
 9. **Deliver output**
    - If `OUTPUT_MODE=inline`, return the report in the final response.
    - If `OUTPUT_MODE=file`, write the report to `OUTPUT_PATH` and return a brief summary with the path and finding counts by severity.
-   - Treat `DOC_REVIEW.md` as a working artifact that should not be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+   - Treat `DOC_REVIEW.md` as a working artifact that should not be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`.
 
 ## Error Handling
 

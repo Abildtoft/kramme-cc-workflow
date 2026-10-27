@@ -16,7 +16,7 @@ Every shared grant applies to the current Linear issue branch only. `--ship` add
 - `{work-branch}`: `{issue-branch}`, the Linear issue branch validated in this skill's Step 2 and selected during implementation.
 - `{pre-publication-hook}`: retire workflow artifacts.
 
-  When the overengineering gate is active, it writes or refreshes `OVERENGINEERING_REVIEW_OVERVIEW.md`, and the PR-refactor gate writes or refreshes `REFACTOR_OPPORTUNITIES_OVERVIEW.md`; a delegated resolver may also create a convention or broad-review overview. `kramme:pr:review-convergence` moves these reports under `.context/linear-issue-to-pr/reviews/` before later scope collection. Invoke `kramme:workflow-artifacts:cleanup --auto` before Pull Request creation so every registered archived or root-level disposable report is retired.
+  When the overengineering gate is active, it writes or refreshes `OVERENGINEERING_REVIEW_OVERVIEW.md`, and the PR-refactor gate writes or refreshes `REFACTOR_OPPORTUNITIES_OVERVIEW.md`; a delegated resolver may also create a convention or broad-review overview. `kramme:pr:review-convergence` moves these reports under `.context/linear-issue-to-pr/reviews/` before later scope collection. Invoke `kramme:workflow:cleanup-artifacts --auto` before Pull Request creation so every registered archived or root-level disposable report is retired.
 
   `--ship` authorizes the cleanup skill's auto-selected current-project disposable set. Preserve permanent specifications and shared diagrams exactly as that skill requires. Never fall back to permanent deletion when safe automatic cleanup refuses to run.
 

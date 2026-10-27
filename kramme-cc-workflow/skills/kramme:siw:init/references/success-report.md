@@ -27,7 +27,7 @@ Next Steps:
 Tips:
   - Until transfer, the spec file is permanent; keep it updated as the local source of truth
   - siw/LOG.md and siw/issues are temporary preparation artifacts
-  - After a verified transfer, update requirements in Linear and use /kramme:workflow-artifacts:cleanup --siw to retire the local SIW files
+  - After a verified transfer, update requirements in Linear and use /kramme:workflow:cleanup-artifacts --siw to retire the local SIW files
 ```
 
 **If external files were linked, also show:**

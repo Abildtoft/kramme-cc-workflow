@@ -335,7 +335,7 @@ If `INLINE_MODE=true`:
 Otherwise:
 
 - Write `PRODUCT_AUDIT_OVERVIEW.md` at the project root
-- Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+- Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`
 
 When using the template:
 

@@ -343,7 +343,7 @@ Otherwise:
 
 - Write the aggregated review summary from Step 11 to `REVIEW_OVERVIEW.md` in the project root, using the template in `references/output-template.md`
 - Include all sections even if empty (with count of 0)
-- Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+- Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`
 
 12b. **Post Conductor diff comments (when available)**
 

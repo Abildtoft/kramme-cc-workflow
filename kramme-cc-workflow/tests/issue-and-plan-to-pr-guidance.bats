@@ -497,7 +497,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    registry="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+    registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
 
     grep -qF "\"path\": \".context/code-plan-to-pr/reviews/REVIEW_OVERVIEW.md\"" "$registry"
     grep -qF "\"path\": \".context/code-plan-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md\"" "$registry"
@@ -661,7 +661,7 @@
 		skill="skills/kramme:code:breakdown-findings/SKILL.md"
 		generation="skills/kramme:code:breakdown-findings/references/generation-workflow.md"
 		checks="skills/kramme:code:breakdown-findings/references/generation-checks.md"
-		registry="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+		registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
 
 		grep -qFx "## Delegated Drafting" "$generation"
 		grep -qF "For each confirmed theme (inside each drafter when **Delegated Drafting** below applies):" "$generation"

@@ -301,7 +301,7 @@ If `INLINE_MODE=true`:
 Otherwise:
 
 - Write `QA_REPORT.md` at the project root
-- Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+- Treat it as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`
 
 ### Step 10: Save Baseline
 
@@ -309,7 +309,7 @@ After regression comparison (or if skipped), save a machine-readable baseline fo
 
 Write `QA_BASELINE.json` at the project root using the shape in `assets/qa-baseline-schema.md`.
 
-This file is a working artifact. It will be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+This file is a working artifact. It will be cleaned up by `/kramme:workflow:cleanup-artifacts`.
 
 ### Step 11: Output Summary
 

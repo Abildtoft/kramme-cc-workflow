@@ -50,4 +50,4 @@ Apply this workflow only when the caller passed `--loop`. The review this skill 
 - This skill produces `REVIEW_OVERVIEW.md` by default unless `--inline` is used.
 - `/kramme:pr:resolve-review` consumes `REVIEW_OVERVIEW.md` when resolving eligible file-backed findings, or explicit inline review content when `--inline` was used.
 - Each rerun refreshes the review report.
-- `/kramme:workflow-artifacts:cleanup` retires `REVIEW_OVERVIEW.md` when the review artifact is no longer needed.
+- `/kramme:workflow:cleanup-artifacts` retires `REVIEW_OVERVIEW.md` when the review artifact is no longer needed.
