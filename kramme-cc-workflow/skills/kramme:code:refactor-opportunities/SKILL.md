@@ -99,14 +99,16 @@ These rejections are pre-filters — apply them before recording a finding, not 
    Store the pairs whose files both still exist as `CO_CHANGE` (count and the two paths). If the history is too short or the command fails, proceed silently with `CO_CHANGE = []`.
 
 9. Build a human-readable `SCOPE_DESCRIPTION` covering mode, resolved target, file count, and source directories — for example `Full codebase (1,247 files across 8 source directories)`, `Current PR against origin/<base-branch> (14 files)`, `Path src/api (37 files)`, or `Feature "billing exports" (22 files across API, UI, tests, and docs)`. Report it to the user before proceeding.
+10. Record provenance before Phase 2 without requiring Git: use the full `git rev-parse HEAD`, or `none (not a git repository)` when Git metadata is unavailable; use `clean` or `dirty (N paths)` from `git status --porcelain`, or `none (not a git repository)` when unavailable; in PR scope also keep `BASE_REF` and `PR_BASE_REF`.
 
-When `RANKED_MODE=true`, read `references/ranked-mode.md` now and follow it in place of Phases 2-4. Phase 1's `KNOWN_ADRS`, `KNOWN_OUT_OF_SCOPE`, `HOT_SPOTS`, and `CO_CHANGE` carry into it.
+When `RANKED_MODE=true`, read `references/ranked-mode.md` now and follow it in place of Phases 2-4. Phase 1's `KNOWN_ADRS`, `KNOWN_OUT_OF_SCOPE`, `HOT_SPOTS`, `CO_CHANGE`, and provenance carry into it.
 
 Ranked mode uses these shared resources; resolve their paths here and pass them through the adapter to reviewers as needed:
 
 - `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/references/audit-workflow.md` — team and solo audit execution, filtering, ranking, and reporting.
 - `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/references/audit-rubric.md` — evidence standards and scoring.
 - `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/assets/report-template.md` — the weakness report schema.
+- `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` — the provenance and finding-data contract the report follows.
 
 ### Phase 2 — Parallel Scan
 
@@ -124,7 +126,7 @@ Each agent must:
 - Read the checklist reference file for its assigned categories.
 - Scan all files in scope for findings in those categories. When `HOT_SPOTS` is non-empty, scan those files first and with extra depth; the rest of the scope is still required, hot spots reorder the scan rather than shrink it.
 - Apply the When-NOT-to-flag pre-filter before recording.
-- Record each finding with: location, category, severity, description, suggested fix.
+- Record each finding with: location, category, severity, confidence, effort, description, suggested fix.
 - When `SCOPE_MODE=pr`, include `PR relevance: <why this is caused by the PR>` on every finding, naming which of the five categories from the **PR relevance gate** (defined in Phase 1) the finding satisfies. "The file was touched" is not enough.
 - When `SCOPE_MODE=pr`, do not record repository-wide cleanup themes just because the changed file reveals them. If the fix would primarily modify untouched files or address a problem that existed unchanged in `PR_BASE_REF`, emit it as `NOTICED BUT NOT TOUCHING` with `Why skipping: pre-existing / outside PR scope`.
 - When the agent spots something outside its assigned categories, emit a `NOTICED BUT NOT TOUCHING` entry instead of silently re-categorizing into its own bucket:
@@ -149,7 +151,7 @@ Each agent must:
    - If every candidate is filtered, report that there are no PR-scoped refactor opportunities. Do not widen the scan to full-repo cleanup.
 4. **Filter against `KNOWN_OUT_OF_SCOPE`.** For each finding, check whether its concept plausibly matches a slug in `KNOWN_OUT_OF_SCOPE`. If yes, read that file and either drop the finding (clean concept match, no new evidence) or annotate it as `_"matches .out-of-scope/<slug>.md (decided <date>) — re-evaluate?"_` when concrete new evidence has accumulated. Default is silent skip; the annotation is the exception. Symmetric to the ADR filter below.
 5. **Filter against `KNOWN_ADRS`.** For each finding, check whether it contradicts an accepted ADR. If the contradiction is theoretical (the ADR rejected this exact refactor and no concrete new evidence has emerged), drop the finding silently — the ADR is decision-of-record. Surface as `_"contradicts ADR-NNNN — but worth reopening because <concrete new evidence>"_` only when real friction has accumulated since the ADR was accepted. The default is silent skip; the annotation is the exception.
-6. Assign final severity. Promote findings that appear in 3+ locations to at least medium.
+6. Assign final severity. Promote findings that appear in 3+ locations to at least medium. Then assign `RO-001`, `RO-002`, ... to every surviving finding and deepening candidate, sorted by severity (high first) and then location. A deepening candidate takes the severity of the strongest finding it absorbs, or `suggestion`, with Category `Deepening candidate`.
 7. Group related findings into **themes** — patterns that share a root cause or would benefit from a coordinated fix.
 8. **Rule of 500 — automation trigger.** For any theme whose combined blast radius exceeds **500 lines**, mark the theme as an automation candidate and recommend a codemod, AST transform, or batch refactor tool instead of manual per-file fixes. Hand edits at that size drift between call sites and produce a diff too large to review line by line.
 9. Determine a **recommended refactor order** considering:
@@ -161,8 +163,8 @@ Each agent must:
 
 ### Phase 4 — Report
 
-1. Read `assets/report-template.md` for the output format.
-2. Produce the report following that template. In the "Patterns & Themes" section, mark each theme's total line count and flag themes ≥500 lines as **automation candidates**.
+1. Read `assets/report-template.md` and `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md` for the output format.
+2. Produce the report following that template. In the "Patterns & Themes" section, mark each theme's total line count and flag themes ≥500 lines as **automation candidates**. Write `## Report Provenance` and one `## Breakdown-Ready Finding Data` block per `RO-NNN` item; in PR scope put the PR relevance sentence in **Scope notes**.
 3. In PR mode, include `PR relevance` for every active finding using the PR-only table column described in the template, and include the count of filtered PR-scope observations in the summary. In non-PR scopes, omit PR relevance entirely. Filtered observations must not be described as findings.
 4. **Depth/seam findings carry extra fields.** Any finding whose category is Structural or Coupling and whose vocabulary comes from the shared glossary must include a one-line **deletion test** result (e.g., "inlining at the 1 call site removes 4 lines, no caller becomes harder to read") and an **adapter count** when claiming a seam is speculative. Deepening candidates carry the glossary's deepening fields instead — evidence, proposed interface, what moves behind it, tests, and benefit — and go in the report's Deepening Candidates section. Findings missing these fields are not yet ready and should be dropped at this point, not paper-clipped together.
 5. **Names follow the project glossary.** When `UBIQUITOUS_LANGUAGE.md` was read in Phase 1, use the canonical domain terms in finding titles and descriptions. Default helper-class language is a tell that the scan didn't read the project's own vocabulary.

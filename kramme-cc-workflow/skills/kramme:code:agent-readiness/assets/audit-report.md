@@ -11,6 +11,16 @@ In Compare mode, insert the **Score Changes** block (shown after the main templa
 
 **Date:** {date} **Project:** {project_name} **Language(s):** {languages} **Framework(s):** {frameworks}
 
+## Report Provenance
+
+- **Producer:** kramme:code:agent-readiness
+- **Scope:** full repository
+- **Scanned commit:** {full git rev-parse HEAD at scan start, or none (not a git repository)}
+- **Working tree:** {clean / dirty (N paths) / none (not a git repository)}
+- **Base branch:** none
+- **Generated:** {YYYY-MM-DD}
+- **Schema:** breakdown-ready-findings v1
+
 ## Scorecard
 
 | Dimension        | Score       | Key Evidence     |
@@ -32,16 +42,11 @@ In Compare mode, insert the **Score Changes** block (shown after the main templa
 
 - {bullet points}
 
-**Findings:**
+**Findings:** (full detail in Breakdown-Ready Finding Data)
 
-#### AN-{NNN}: {title}
+- AN-{NNN} ({severity}): {title}
 
-- **Severity:** {Critical / Important / Suggestion}
-- **Location:** {file path(s)}
-- **Details:** {explanation}
-- **Impact:** {how this affects agent effectiveness}
-
-{Repeat for each finding}
+{Repeat for each finding in this dimension, or "None."}
 
 ---
 
@@ -81,6 +86,21 @@ In Compare mode, insert the **Score Changes** block (shown after the main templa
 | Important  | {N}     |
 | Suggestion | {N}     |
 | **Total**  | **{N}** |
+
+## Breakdown-Ready Finding Data
+
+{One block per AN-NNN finding in ID order, or "None."}
+
+### AN-001: {title}
+
+- **Severity:** {critical / high / suggestion} (native: {Critical / Important / Suggestion})
+- **Confidence:** {HIGH / MED / LOW}
+- **Locations:** {path:line or path:start-end; …, or none — holistic}
+- **Evidence:** {details: what the issue is, with concrete evidence}
+- **Suggested fix:** {smallest concrete change}
+- **Effort:** {S / M / L}
+- **Category:** {dimension}
+- **Impact:** {how this affects agent effectiveness}
 
 ## Refactoring Plan
 

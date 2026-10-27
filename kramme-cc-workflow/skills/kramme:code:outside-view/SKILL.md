@@ -44,6 +44,7 @@ This step is deliberately shallow. The orchestrator must stay outside the projec
 3. If a previous report exists at `OUTPUT_PATH`, read only its `Run History` section and the persona ids used in the most recent run. Do not read its clusters or findings yet.
 4. When `--cross-model` is present, determine `HOST_MODEL_FAMILY` from the active runtime, then follow the capability and isolation gates in `references/personas.md`. Never treat an available CLI as proof of a different model or a safe execution boundary.
 5. Do **not** read `CLAUDE.md`, `AGENTS.md`, ADRs, glossaries, audit rubrics, or prior audit reports in this step. The comparison report is read only in step 5.
+6. Record provenance without requiring Git: use the full `git rev-parse HEAD`, or `none (not a git repository)` when Git metadata is unavailable; use `clean` or `dirty (N paths)` from `git status --porcelain`, or `none (not a git repository)` when unavailable; and use `date +%F` for `Generated`. These commands read no project content.
 
 ### 2. Select Raters
 
@@ -86,17 +87,21 @@ Only now does the orchestrator enter the project's frame.
    - **covered** — matches an active ranked finding.
    - **filtered** — matches a filtered candidate, near miss, or unverified impression.
    - **blind spot** — absent from the comparison report entirely.
+
+   When `COMPARE_PATH` has a `## Report Provenance` section, record its scanned commit, working-tree state, and date in the delta section. Flag differing commits or working-tree states; if either report is dirty, mark the comparison as not reproducible instead of treating the reports as the same repository state.
+
 2. Using the complete blind-spot fingerprint list in `Run History`, count how many consecutive runs each current blind-spot fingerprint has appeared in.
 3. For every blind spot recurring in 2 or more runs, emit a **promotion candidate**: name the concrete place the pattern should be encoded — a ranked-audit rubric signal in `kramme:code:refactor-opportunities`, a deslop pattern, a lint or CI gate, or a documentation fix. Promotion always targets the structured system, never this skill's rater prompts.
 4. If no comparison report exists, mark the delta section `no comparison available` and recommend running `/kramme:code:refactor-opportunities --ranked` before the next outside-view run.
 
 ### 6. Write Report
 
-1. Read `assets/report-template.md`.
-2. Carry the previous report's `Run History` forward verbatim and append a row for this run (date from `date +%F`, mean score, per-rater scores, top clusters, every blind-spot `fingerprint: title`, persona ids, and model diversity).
-3. Summarize rater footprints in Coverage Notes: what each rater reported examining, and which top-level areas of the repository no rater visited. Footprints are self-reported after the fact — never assign areas to raters, and never mark a run as complete coverage; the footprint exists so the reader can judge how much weight the run deserves.
-4. Repeat the canonical containment, parent-symlink, leaf-symlink, and regular-file checks from step 1 immediately before writing. Stop without changing the existing report if any check fails.
-5. Write the report to `OUTPUT_PATH`, overwriting the previous report.
+1. Read `assets/report-template.md` and `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`.
+2. Write `## Report Provenance` and a `## Breakdown-Ready Finding Data` section with one block per promotion candidate (its `OV-NNN` ID; Severity `suggestion`; Confidence `LOW`; Locations from cited examples or `none — holistic`; Evidence = recurrence count, support, and one quote; Suggested fix = the promotion target; Effort marked `UNVERIFIED:`), or `None.`. Complaint clusters without a promotion candidate stay out of it.
+3. Carry the previous report's `Run History` forward verbatim and append a row for this run (date from `date +%F`, mean score, per-rater scores, top clusters, every blind-spot `fingerprint: title`, persona ids, and model diversity).
+4. Summarize rater footprints in Coverage Notes: what each rater reported examining, and which top-level areas of the repository no rater visited. Footprints are self-reported after the fact — never assign areas to raters, and never mark a run as complete coverage; the footprint exists so the reader can judge how much weight the run deserves.
+5. Repeat the canonical containment, parent-symlink, leaf-symlink, and regular-file checks from step 1 immediately before writing. Stop without changing the existing report if any check fails.
+6. Write the report to `OUTPUT_PATH`, overwriting the previous report.
 
 ### 7. Summarize
 

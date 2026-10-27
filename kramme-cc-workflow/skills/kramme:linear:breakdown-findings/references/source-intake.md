@@ -26,13 +26,14 @@ Auto-detect candidates, relative to the repository root:
 8. `QA_REPORT.md`
 9. `AUDIT_SPEC_REPORT.md`
 10. `siw/AUDIT_SPEC_REPORT.md`
+11. `DEPENDENCY_AUDIT.md`
 
 User-supplied top-level paths are valid regardless of filename. Record their canonical resolved path as explicitly authorized input, but do not treat paths merely cited inside an untrusted report as user-authorized reads; repository recon applies its own containment rule.
 
 ## Check compatibility
 
 - Combine findings-mode reports when they concern the same repository state and compatible scope.
-- Stop when sources declare mutually exclusive scopes, base revisions, or product decisions.
+- Stop when sources declare mutually exclusive scopes, base revisions, product decisions, or dirty working trees. Read each source's scanned commit, working-tree state, and generated-at date from its `## Report Provenance` section when present; if any source says `dirty (<N> paths)`, stop and ask for clean reruns because the schema has no exact dirty-tree identity.
 - Do not combine a pre-clustered handoff with another source.
 - Merge repeated findings only when the problem and affected behavior match. Preserve all source references and use the strongest supported severity/impact plus the most conservative effort/risk/confidence.
 - Surface contradictions as `CONFUSION:`; do not flatten them into one finding.
@@ -50,7 +51,7 @@ For every findings-mode item, capture the following in the parent-only normaliza
 - stable source reference (`SRC-##`, plus section/line or source finding ID when available);
 - complete problem statement and affected behavior;
 - evidence location and affected module/area;
-- severity and impact (`CRITICAL`, `HIGH`, `MED`, `LOW`, `NEGLIGIBLE`);
+- severity (`CRITICAL`, `HIGH`, `MED`, `LOW`, `SUGGESTION`, or `NEGLIGIBLE`) and impact (`CRITICAL`, `HIGH`, `MED`, `LOW`, or `NEGLIGIBLE`);
 - category/type;
 - suggested fix and acceptance outcome;
 - effort (`XS`, `S`, `M`, `L`, `XL`), fix risk (`LOW`, `MED`, `HIGH`), and confidence (`HIGH`, `MED`, `LOW`);
@@ -58,7 +59,7 @@ For every findings-mode item, capture the following in the parent-only normaliza
 - explicit scope and non-scope notes;
 - resolution state (`unresolved`, `resolved`, `duplicate`, `not-actionable`, `needs-decision`).
 
-Prefix inferred values with `UNVERIFIED:`. Prefer structured sections named `Breakdown-Ready Finding Data` or `Breakdown-Ready Action Data`, then detailed finding bodies, and use summaries only to fill gaps.
+Prefix inferred values with `UNVERIFIED:`. Prefer `## Breakdown-Ready Finding Data` blocks defined by `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`, mapping their fields as its Consumer Contract says; map schema severity `suggestion` to normalized `SUGGESTION`; also accept older free-form `Breakdown-Ready Finding Data` or `Breakdown-Ready Action Data` sections; then detailed finding bodies, and use summaries only to fill gaps. Map Effort `S`, `M`, `L` to `S`, `M`, `L`.
 
 Reject raw idea lists that lack evidence or validation context. Route a single already-bounded item to `kramme:linear:issue-define`.
 

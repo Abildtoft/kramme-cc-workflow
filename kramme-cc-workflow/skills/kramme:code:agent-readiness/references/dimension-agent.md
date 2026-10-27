@@ -46,8 +46,11 @@ For each assigned dimension, return:
 **Findings:**
 - [{Critical|Important|Suggestion}] {title}
   - Details: {what the issue is}
-  - Location: {file path(s) or pattern}
+  - Location: {file:line or file path(s); a pattern only when no single file applies}
   - Impact: {how this affects agent effectiveness}
+  - Suggested fix: {smallest concrete change}
+  - Confidence: {HIGH|MED|LOW}
+  - Effort: {Quick Win|Moderate|Significant}
 
 The orchestrator will assign final `AN-NNN` IDs after sorting all agents' findings. Reference findings by title within your own output if needed.
 

@@ -15,7 +15,7 @@ Store these as `OUTPUT_PATH` and `MAX_FINDINGS`. The caller resolves the shared 
 
 ## Orientation
 
-Reuse the caller's resolved scope, stack, conventions, accepted ADRs, glossary, and any supplied history signals. Preserve its rejection policy when filtering candidates.
+Reuse the caller's resolved scope, stack, conventions, accepted ADRs, glossary, and any supplied history signals. Preserve its rejection policy when filtering candidates. Use the caller's recorded provenance; refactor-opportunities records it in `SKILL.md` Phase 1 (Producer `kramme:code:refactor-opportunities --ranked`).
 
 Detect prior report artifacts (`CODEBASE_WEAKNESS_REPORT.md`, `OUTSIDE_VIEW_REPORT.md`, `REFACTOR_OPPORTUNITIES_OVERVIEW.md`, `AGENT_NATIVE_AUDIT.md`, `REVIEW_OVERVIEW.md`) only as context. Treat outside-view complaint clusters as unverified leads worth checking against evidence. Do not copy findings without re-validating evidence in the current tree.
 
@@ -157,7 +157,7 @@ Apply any caller-supplied rejection policy at this point. The Governance & conve
 
 1. Score every surviving finding using the scoring worksheet in `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/references/audit-rubric.md`.
 2. Assign stable IDs `WA-001`, `WA-002`, ... after sorting.
-3. Sort by priority score, then severity, then confidence.
+3. Sort by priority score, then severity, then confidence. Map rubric confidence 4-5, 3, and 1-2 to `HIGH`, `MED`, and `LOW`, and effort small, medium, and large to `S`, `M`, and `L`.
 4. Group related findings into themes. A theme should describe a shared root cause, not a bucket of vaguely similar symptoms.
 5. Assign severity:
    - **Critical**: likely incorrect behavior, data loss, production breakage, or repeated failure in an important flow.
@@ -171,8 +171,8 @@ The orchestrator, not a teammate, owns final ranking and report writing. Enforce
 ## Write Report
 
 1. Read `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/assets/report-template.md`.
-2. Write the report to `OUTPUT_PATH`, overwriting any previous report at that path. Include the resolved scope and date in the header so an overwritten report remains understandable.
-3. Include all required sections from the template, including the Team Review block in team mode only; omit that block for `--solo` runs. If no major weakness is found, keep the same header, scorecard, filtered candidates, impressions, and coverage notes. Replace the findings sections with: `No major weaknesses met the evidence bar in this scope.` Explain the scope, evidence reviewed, and residual risks instead of inventing findings.
+2. Write the report to `OUTPUT_PATH`, overwriting any previous report at that path. Include the resolved scope and date in the header so an overwritten report remains understandable. Write `## Report Provenance` and name the detailed findings section `## Breakdown-Ready Finding Data`, per `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`.
+3. Include all required sections from the template, including the Team Review block in team mode only; omit that block for `--solo` runs. If no major weakness is found, keep the same header, provenance, scorecard, filtered candidates, impressions, and coverage notes, and write `None.` under `## Breakdown-Ready Finding Data`. Replace the other findings sections with: `No major weaknesses met the evidence bar in this scope.` Explain the scope, evidence reviewed, and residual risks instead of inventing findings.
 4. Treat the report as a working artifact that should not be committed. It is consumed by the user, by `/kramme:code:breakdown-findings` when turning validated findings into implementation plans, and by `/kramme:code:outside-view` comparisons. It is retired by `/kramme:workflow-artifacts:cleanup` when no longer useful, or manual deletion.
 
 ## Summarize

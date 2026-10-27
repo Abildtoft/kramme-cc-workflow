@@ -17,6 +17,16 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 
 **Date:** {YYYY-MM-DD} **Project:** {project} **Scope:** {scope description} **Files reviewed:** {count} **Output:** {path}
 
+## Report Provenance
+
+- **Producer:** kramme:code:refactor-opportunities --ranked {plus --solo when used}
+- **Scope:** {scope description}
+- **Scanned commit:** {full git rev-parse HEAD at scan start, or none (not a git repository)}
+- **Working tree:** {clean / dirty (N paths) / none (not a git repository)}
+- **Base branch:** none
+- **Generated:** {YYYY-MM-DD}
+- **Schema:** breakdown-ready-findings v1
+
 ## Executive Summary
 
 {Two to four sentences covering overall health, the biggest weakness theme, and the recommended first action.}
@@ -36,20 +46,22 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 | --- | --: | --- | --- | --- | --- | --- | --- |
 | WA-001 | {score} | {severity} | {lens} | {theme} | {file:line} | {impact summary} | {first fix} |
 
-## Detailed Findings
+## Breakdown-Ready Finding Data
 
 ### WA-001: {Finding title}
 
-- **Severity:** {Critical / High / Medium / Low}
-- **Lens:** {Maintainability / Readability / Correctness / Mixed}
-- **Priority score:** {score}
-- **Locations:** {file:line-range list}
-- **Root cause:** {why the weakness exists}
+- **Severity:** {critical / high / medium / low} (native: {Critical / High / Medium / Low})
+- **Confidence:** {HIGH / MED / LOW}
+- **Locations:** {path:line or path:start-end; …}
 - **Evidence:** {specific code/test/history evidence}
+- **Suggested fix:** {smallest useful first fix}
+- **Effort:** {S / M / L}
+- **Category:** {Maintainability / Readability / Correctness / Mixed}
 - **Impact:** {future change cost, likely misunderstanding, or failure path}
-- **Recommended fix:** {smallest useful first fix}
-- **Validation:** {test, check, or review step that proves improvement}
-- **Effort / blast radius:** {small / medium / large; files or areas affected}
+- **Verification:** {test, check, or review step that proves improvement}
+- **Priority score:** {score}
+- **Root cause:** {why the weakness exists}
+- **Blast radius:** {files or areas affected}
 
 {Repeat for each finding.}
 
@@ -82,4 +94,4 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 - **Confidence limits:** {anything that could change the findings, such as missing test commands, unavailable git history, or unresolved feature mapping}
 ```
 
-If no major weakness is found, keep the same header, scorecard, filtered candidates, impressions, and coverage notes. Replace the findings sections with: `No major weaknesses met the evidence bar in this scope.`
+If no major weakness is found, keep the same header, provenance, scorecard, filtered candidates, impressions, and coverage notes, and write `None.` under `## Breakdown-Ready Finding Data`. Replace the other findings sections with: `No major weaknesses met the evidence bar in this scope.`
