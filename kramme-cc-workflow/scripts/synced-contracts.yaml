@@ -1041,6 +1041,16 @@
       ]
     },
     {
+      "name": "code-plan-to-pr-shipping-hooks",
+      "path": "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/shipping-contract.md",
+      "contains": [
+        "{pr-shipping-contract}",
+        "kramme:pr:create --auto --base {base-branch} --require-generated-description",
+        "`--scope-plan {validated-scope-plan}`",
+        "Completion disposition: published_blocked"
+      ]
+    },
+    {
       "name": "pr-review-convergence-owned-review-budget",
       "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/references/review-convergence.md",
       "contains": [

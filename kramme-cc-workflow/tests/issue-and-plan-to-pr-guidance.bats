@@ -391,11 +391,13 @@
     convergence="skills/kramme:pr:review-convergence/SKILL.md"
     review="skills/kramme:pr:review-convergence/references/review-convergence.md"
     shipping="skills/kramme:code:plan-to-pr/references/shipping-contract.md"
+    shared_contract="shared/implementation/references/pr-shipping-contract.md"
 
     test -f "$skill"
     test -f "$convergence"
     test -f "$review"
     test -f "$shipping"
+    test -f "$shared_contract"
     grep -qF "user-invocable: true" "$skill"
     grep -qF "Set \`{work-id}\` to \`{execution-label}\` and \`{archive-key}\` to \`code-plan-to-pr\`." "$skill"
     grep -qF "Use only the already validated \`{active-plan}\` as \`{validated-scope-plan}\`." "$skill"
@@ -426,24 +428,25 @@
     grep -qF "Do not consume a cycle or restart applicability." "$review"
     grep -qF ".context/{archive-key}/reviews/" "$review"
 
-	    grep -qF "kramme:pr:create --auto --base {base-branch} --require-generated-description --authorize-history-rewrite" "$shipping"
+	    grep -qF "kramme:pr:create --auto --base {base-branch} --require-generated-description" "$shipping"
+	    ! grep -qF -- "--authorize-history-rewrite" "$shipping"
 	    grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
 	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$skill")" -eq 3 ]
-	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$shipping")" -eq 2 ]
-		    grep -qF "Do not combine it with \`--auto\`." "$shipping"
+	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$shipping")" -eq 1 ]
+		    grep -qF "Do not combine it with \`--auto\`." "$shared_contract"
 	    grep -qF "Completion disposition: published_blocked" "$shipping"
 	    grep -qF "Work branch: {work-branch}" "$shipping"
 	    grep -qF "Blocker: {exact delegated blocker}" "$shipping"
 	    grep -qF "Publication state: remote branch only" "$shipping"
 	    grep -qF "callers must persist their implementation-complete source state" "$shipping"
-    grep -qF "git rev-parse '\''HEAD^{tree}'\''" "$shipping"
-    grep -qF "headRefOid" "$shipping"
-    grep -qF "gh pr checks --json name,state,bucket,link,workflow" "$shipping"
-    grep -qF "no checks reported" "$shipping"
-    grep -qF "reviewThreads(first: 100, after: \$endCursor)" "$shipping"
-    grep -qF "kramme:verify:run" "$shipping"
-    grep -qF "exact frozen sentinel-last \`--requirements {work-requirements}\` block" "$shipping"
-    grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shipping"
+    grep -qF "git rev-parse '\''HEAD^{tree}'\''" "$shared_contract"
+    grep -qF "headRefOid" "$shared_contract"
+    grep -qF "gh pr checks --json name,state,bucket,link,workflow" "$shared_contract"
+    grep -qF "no checks reported" "$shared_contract"
+    grep -qF "reviewThreads(first: 100, after: \$endCursor)" "$shared_contract"
+    grep -qF "kramme:verify:run" "$shared_contract"
+    grep -qF "exact frozen sentinel-last \`--requirements {work-requirements}\` block" "$shared_contract"
+    grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shared_contract"
 
     scope_validation_line=$(grep -nF "Use only the already validated \`{active-plan}\`" "$skill" | cut -d: -f1)
     pr_preflight_line=$(grep -nF "gh pr list --head \"{work-branch}\"" "$skill" | cut -d: -f1)
@@ -461,6 +464,32 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+
+@test "plan shipping binds every shared contract hook" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:code:plan-to-pr/SKILL.md"
+    shipping="skills/kramme:code:plan-to-pr/references/shipping-contract.md"
+    shared_contract="shared/implementation/references/pr-shipping-contract.md"
+
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/pr-shipping-contract.md" "$parent"
+    grep -qF "CI remediation: {entry count from the validated CI remediation JSON | none}" "$parent"
+    grep -qF "{pr-shipping-contract}" "$shipping"
+
+    hooks=$(awk "/^## Caller Hooks/{in_table=1; next} /^## /{in_table=0} in_table" "$shared_contract" \
+      | grep -oE "^\| \`\{[a-z-]+\}\` \|" | grep -oE "\{[a-z-]+\}")
+    [ "$(printf "%s\n" "$hooks" | wc -l | tr -d " ")" -eq 12 ]
+    for hook in $hooks; do
+      grep -qF -- "- \`$hook\`: " "$shipping" || { echo "unbound hook: $hook"; exit 1; }
+    done
+
+    grep -qF -- "- \`{pre-publication-hook}\`: none." "$shipping"
+    grep -qF -- "- \`{validation-extra-args}\`: the same \`--scope-plan {validated-scope-plan}\`" "$shipping"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
 
 @test "current and legacy review archives are registered without deleting plan handoff state" {
 	run bash -c '
