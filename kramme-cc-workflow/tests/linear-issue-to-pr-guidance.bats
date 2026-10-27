@@ -42,14 +42,14 @@
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     parent="skills/kramme:linear:issue-to-pr/SKILL.md"
-    shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    shared_contract="shared/implementation/references/pr-shipping-contract.md"
     readme="../README.md"
 
     grep -qF "always forwards an explicit remediation-cycle budget" "$parent"
     grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]" "$parent"
     grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} [--depth {depth}] [--isolated] --requirements {issue-requirements}" "$parent"
     grep -qF "Always pass \`--rounds {cycles}\`, which carries this workflow'"'"'s default budget of \`2\` unless \`--cycles\` overruled it" "$parent"
-    grep -qF "neither this workflow'"'"'s default remediation-cycle budget nor a \`--cycles\` override" "$shipping"
+    grep -qF "neither the caller'"'"'s default remediation-cycle budget nor a \`--cycles\` override" "$shared_contract"
     grep -qF "\`issue-to-pr\` and \`plan-to-pr\` instead always forward a budget of two, which their own \`--cycles <1-5>\` flag overrules" "$readme"
   '
 
@@ -509,17 +509,50 @@
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    shared_contract="shared/implementation/references/pr-shipping-contract.md"
 
     grep -qF "kramme:workflow-artifacts:cleanup --auto" "$shipping"
     grep -qF "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description" "$shipping"
     grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
-    grep -qF "invoke \`kramme:pr:review-convergence\` exactly once" "$shipping"
-    grep -qF -- "--work-id {issue-id} --archive-key linear-issue-to-pr --validation-only" "$shipping"
-    grep -qF "the exact frozen sentinel-last \`--requirements {issue-requirements}\` block" "$shipping"
-    grep -qF "Mode: validation-only" "$shipping"
-    grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shipping"
-    grep -qF "invoke \`kramme:verify:run\` with \`--full\`" "$shipping"
+    grep -qF -- "- \`{work-id}\`: \`{issue-id}\`." "$shipping"
+    grep -qF -- "- \`{archive-key}\`: \`linear-issue-to-pr\`." "$shipping"
+    grep -qF -- "- \`{work-requirements}\`: \`{issue-requirements}\`" "$shipping"
+    grep -qF "invoke \`kramme:pr:review-convergence\` exactly once" "$shared_contract"
+    grep -qF -- "--work-id {work-id} --archive-key {archive-key} --validation-only" "$shared_contract"
+    grep -qF "the exact frozen sentinel-last \`--requirements {work-requirements}\` block" "$shared_contract"
+    grep -qF "A hook bound to \`none\` is skipped at the step that names it" "$shared_contract"
+    grep -qF "run \`{post-create-hook}\` when it is not \`none\`" "$shared_contract"
+    grep -qF "When \`{fix-ci-guard}\` is not \`none\`, apply it" "$shared_contract"
+    grep -qF "append \`{validation-extra-args}\` only when it is not \`none\`" "$shared_contract"
+    grep -qF "Mode: validation-only" "$shared_contract"
+    grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shared_contract"
+    grep -qF "invoke \`kramme:verify:run\` with \`--full\`" "$shared_contract"
     ! grep -qF "kramme:pr:overengineering-review --requirements" "$shipping"
+    ! grep -qF "kramme:pr:overengineering-review --requirements" "$shared_contract"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear shipping binds every shared contract hook" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    shared_contract="shared/implementation/references/pr-shipping-contract.md"
+
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/pr-shipping-contract.md" "$parent"
+    grep -qF "{pr-shipping-contract}" "$shipping"
+
+    hooks=$(awk "/^## Caller Hooks/{in_table=1; next} /^## /{in_table=0} in_table" "$shared_contract" \
+      | grep -oE "^\| \`\{[a-z-]+\}\` \|" | grep -oE "\{[a-z-]+\}")
+    [ "$(printf "%s\n" "$hooks" | wc -l | tr -d " ")" -eq 12 ]
+    for hook in $hooks; do
+      grep -qF -- "- \`$hook\`: " "$shipping" || { echo "unbound hook: $hook"; exit 1; }
+    done
+
+    ! grep -qE "kramme:linear|kramme:code:plan-to-pr|workflow-artifacts" "$shared_contract"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -558,7 +591,7 @@
     parent="skills/kramme:linear:issue-to-pr/SKILL.md"
     convergence="skills/kramme:pr:review-convergence/SKILL.md"
     policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
-    shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    shared_contract="shared/implementation/references/pr-shipping-contract.md"
     fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
     readme="../README.md"
 
@@ -584,11 +617,11 @@
     grep -qF "not the replaceable report archive" "$policy"
     grep -qF "CI_REMEDIATION_LEDGER" "$fix_ci"
     grep -qF "CI remediation JSON:" "$fix_ci"
-    grep -qF "Require its \`CI remediation JSON\` field" "$shipping"
-    grep -qF "merge \`findings\` and \`focus\` entries by fingerprint and final disposition" "$shipping"
-    grep -qF "Return the validated \`CI remediation JSON\` and the merged initial/final \`Reviewer handoff JSON\`" "$shipping"
-    grep -qF "retain the initial \`gut_check\` array unchanged because validation-only never runs Gate 0" "$shipping"
-    grep -qF "initial \`gut_check\`, plus fingerprint-merged \`findings\` and \`focus\`" "$shipping"
+    grep -qF "Require its \`CI remediation JSON\` field" "$shared_contract"
+    grep -qF "merge \`findings\` and \`focus\` entries by fingerprint and final disposition" "$shared_contract"
+    grep -qF "Return the validated \`CI remediation JSON\` and the merged initial/final \`Reviewer handoff JSON\`" "$shared_contract"
+    grep -qF "retain the initial \`gut_check\` array unchanged because validation-only never runs Gate 0" "$shared_contract"
+    grep -qF "initial \`gut_check\`, plus fingerprint-merged \`findings\` and \`focus\`" "$shared_contract"
     grep -qF "retain the initial \`gut_check\` array unchanged because validation-only does not rerun Gate 0" "$parent"
     grep -qF "merge only \`findings\` and \`focus\` with the final-tree handoff" "$parent"
     grep -qF "retained rejected or blocked Gut Check items" "$parent"
@@ -600,8 +633,8 @@
     shipping_line=$(grep -nF "## Step 4: Stop or Ship" "$parent" | cut -d: -f1)
     [ "$capture_line" -lt "$shipping_line" ]
 
-    validation_line=$(grep -nF "invoke \`kramme:pr:review-convergence\` exactly once" "$shipping" | cut -d: -f1)
-    merge_line=$(grep -nF "merge \`findings\` and \`focus\` entries by fingerprint and final disposition" "$shipping" | cut -d: -f1)
+    validation_line=$(grep -nF "invoke \`kramme:pr:review-convergence\` exactly once" "$shared_contract" | cut -d: -f1)
+    merge_line=$(grep -nF "merge \`findings\` and \`focus\` entries by fingerprint and final disposition" "$shared_contract" | cut -d: -f1)
     [ "$validation_line" -le "$merge_line" ]
   '
 

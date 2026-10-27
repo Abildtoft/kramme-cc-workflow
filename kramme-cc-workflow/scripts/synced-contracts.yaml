@@ -992,12 +992,12 @@
       ]
     },
     {
-      "name": "linear-issue-to-pr-ci-stabilization-contract",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/references/shipping-contract.md",
+      "name": "pr-shipping-ci-stabilization-contract",
+      "path": "kramme-cc-workflow/shared/implementation/references/pr-shipping-contract.md",
       "contains": [
         "## Step 6: Prove the Initial Shipped Result",
         "## Step 7: Stabilize CI and Review Feedback",
-        "kramme:pr:fix-ci --no-consolidate",
+        "invoke `{fix-ci-invocation}`",
         "Do not combine it with `--auto`",
         "## Step 8: Prove the Final Pull Request State",
         "baseRefName,headRefName,headRefOid",
@@ -1011,13 +1011,16 @@
         "After feedback collection, take the final publication snapshot",
         "Require both GitHub queries to succeed, reading the check query under the exit-status rules in item 2",
         "invoke `kramme:pr:review-convergence` exactly once",
-        "--work-id {issue-id} --archive-key linear-issue-to-pr --validation-only",
-        "the exact frozen sentinel-last `--requirements {issue-requirements}` block",
+        "--work-id {work-id} --archive-key {archive-key} --validation-only",
+        "the exact frozen sentinel-last `--requirements {work-requirements}` block",
+        "A hook bound to `none` is skipped at the step that names it",
+        "run `{post-create-hook}` when it is not `none`",
+        "When `{fix-ci-guard}` is not `none`, apply it",
+        "append `{validation-extra-args}` only when it is not `none`",
         "JSON-decode the returned `Requirements JSON` field",
         "Mode: validation-only",
         "`--auto` carries the invocation through the backup-protected local reset without prompting",
         "has no invocation-owned creation provenance",
-        "do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume",
         "invoke `kramme:verify:run`",
         "gh pr view --json reviewDecision",
         "gh api --paginate \"repos/{owner}/{repo}/pulls/{pr-number}/reviews\"",
@@ -1028,7 +1031,22 @@
         "pageInfo { hasNextPage endCursor }",
         "unavailable `isResolved`",
         "no `CHANGES_REQUESTED`",
-        "direct the next invocation to `kramme:pr:fix-ci --no-consolidate`"
+        "direct the next invocation to `{fix-ci-invocation}`",
+        "Never forward `--rounds` or `--cycles` here",
+        "## Caller Hooks",
+        "an unbound hook is a blocker",
+        "git ls-remote --heads origin \"refs/heads/{work-branch}\""
+      ]
+    },
+    {
+      "name": "linear-issue-to-pr-shipping-hooks",
+      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/references/shipping-contract.md",
+      "contains": [
+        "{pr-shipping-contract}",
+        "- `{fix-ci-invocation}`: `kramme:pr:fix-ci --no-consolidate`.",
+        "do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume",
+        "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description",
+        "kramme:workflow-artifacts:cleanup --auto"
       ]
     },
     {
