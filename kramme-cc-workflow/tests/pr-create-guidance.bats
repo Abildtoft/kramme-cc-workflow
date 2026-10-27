@@ -744,6 +744,7 @@ file_mode() {
     cd "'"$BATS_TEST_DIRNAME"'/.."
     create="skills/kramme:pr:create/SKILL.md"
     state="skills/kramme:pr:create/references/state-and-rollback.md"
+    abort="skills/kramme:pr:create/references/abort-and-rollback.md"
     confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
 
     grep -qF "REMOTE_APPEND_MODE=true" "$create"
@@ -768,14 +769,14 @@ file_mode() {
     grep -qF "still at \`{observed-origin-oid}\` — the update has not been observed" "$confirmation"
 	    grep -qF "Preserve the prepared append branch and recovery refs in every outcome" "$confirmation"
 	    grep -qF "now at \`{publication-commit}\`" "$confirmation"
-	    grep -qF "### 10.0 Refuse Rollback After Local Drift" "$state"
-	    grep -qF "derive \`{rollback-expected-tip}\`" "$state"
-	    grep -qF "Otherwise require \`{recreate-input-tip}\`" "$state"
-	    grep -qF "final guard and reset in one bounded shell invocation" "$state"
-	    grep -qF "git reset --keep \"{original-commit}\"" "$state"
-	    grep -qF "Never substitute \`git reset --hard\` in remote-append mode" "$state"
-	    grep -qF "shell tool'\''s bounded timeout" "$state"
-	    grep -qF "git ls-remote --heads -- \"\$ORIGIN_PUSH_URL\"" "$state"
+	    grep -qF "### 10.0 Refuse Rollback After Local Drift" "$abort"
+	    grep -qF "derive \`{rollback-expected-tip}\`" "$abort"
+	    grep -qF "Otherwise require \`{recreate-input-tip}\`" "$abort"
+	    grep -qF "final guard and reset in one bounded shell invocation" "$abort"
+	    grep -qF "git reset --keep \"{original-commit}\"" "$abort"
+	    grep -qF "Never substitute \`git reset --hard\` in remote-append mode" "$abort"
+	    grep -qF "shell tool'\''s bounded timeout" "$abort"
+	    grep -qF "git ls-remote --heads -- \"\$ORIGIN_PUSH_URL\"" "$abort"
 	    grep -qF "Remote append is auto-only and cannot reach this confirmation" "$confirmation"
 	    grep -qF "reject inline credentials, other credential-bearing URL syntax, executable remote-helper forms, and unsupported transports" "$create"
   '
@@ -783,7 +784,8 @@ file_mode() {
 	assert_required_contracts_registered \
 		pr-create-existing-remote-append-orchestration \
 		pr-create-existing-remote-append-state \
-		pr-create-existing-remote-append-publication
+		pr-create-existing-remote-append-publication \
+		pr-create-abort-and-rollback
 
 	[ "$status" -eq 0 ]
 }
@@ -1039,25 +1041,31 @@ file_mode() {
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     state="skills/kramme:pr:create/references/state-and-rollback.md"
+    abort="skills/kramme:pr:create/references/abort-and-rollback.md"
 
     test -f "$state"
+    test -f "$abort"
     grep -q "^## Step 5: State Preservation" "$state"
     grep -q "^## Step 9.0: Restore Excluded Uncommitted Changes" "$state"
-    grep -q "^## Step 10: Abort and Rollback" "$state"
+    ! grep -q "^## Step 10" "$state"
+    grep -qF "Step 10 (abort path) lives in \`abort-and-rollback.md\`; read it only when Step 10 runs" "$state"
+    grep -q "^## Step 10: Abort and Rollback" "$abort"
     grep -qF "{rollback-origin-ref}" "$state"
     grep -qF "{rollback-origin-oid}" "$state"
     grep -qF "git ls-remote --heads origin \"{rollback-origin-ref}\"" "$state"
+    grep -qF "git ls-remote --heads origin \"{rollback-origin-ref}\"" "$abort"
     grep -qF "continue only when it returns no matching ref" "$state"
     grep -qF "Neither \`--auto\` nor \`--authorize-history-rewrite\` may bypass this fresh-mode remote-absence requirement" "$state"
-    grep -qF "never force-push, delete, or recreate the remote ref during automatic rollback" "$state"
-    grep -qF "Remote state: {unchanged at captured OID/absence | diverged" "$state"
-    grep -qF "Remote restoration is claimed only when the read-only comparison reports \`unchanged\`" "$state"
-    ! grep -qF "Your work has been restored to the pre-skill branch state." "$state"
+    grep -qF "never force-push, delete, or recreate the remote ref during automatic rollback" "$abort"
+    grep -qF "Remote state: {unchanged at captured OID/absence | diverged" "$abort"
+    grep -qF "Remote restoration is claimed only when the read-only comparison reports \`unchanged\`" "$abort"
+    ! grep -qF "Your work has been restored to the pre-skill branch state." "$abort"
   '
 
 	assert_required_contracts_registered \
 		pr-create-remote-absence-contract \
-		pr-create-state-restoration-contract
+		pr-create-state-restoration-contract \
+		pr-create-abort-and-rollback
 
 	[ "$status" -eq 0 ]
 }
@@ -1194,5 +1202,23 @@ file_mode() {
     grep -qF "Before classifying \`{entry-branch}\` as a feature" "$branch"
     grep -qF "Do not publish a Pull Request from a production branch" "$branch"
   '
+	[ "$status" -eq 0 ]
+}
+
+@test "pr-create Step 10 lives in the abort-only reference" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill_dir="skills/kramme:pr:create"
+
+    ! grep -rqF "Step 10 from \`state-and-rollback.md\`" "$skill_dir" || exit 1
+    ! grep -rqF "Step 10 in \`references/state-and-rollback.md\`" "$skill_dir" || exit 1
+    ! grep -rqF "Step 10 from \`references/state-and-rollback.md\`" "$skill_dir" || exit 1
+    [ "$(grep -cF "abort-and-rollback.md" "$skill_dir/references/confirmation-and-creation.md")" -eq 3 ]
+    section=$(awk "/^## Step 10: Abort and Rollback Handling\$/{found=1; next} found && /^## /{exit} found" "$skill_dir/SKILL.md")
+    grep -qF "Read \`references/abort-and-rollback.md\` and execute its Step 10" <<<"$section"
+    [ "$(grep -c "^### 10\.[0-4] " "$skill_dir/references/abort-and-rollback.md")" -eq 5 ]
+  '
+
 	[ "$status" -eq 0 ]
 }
