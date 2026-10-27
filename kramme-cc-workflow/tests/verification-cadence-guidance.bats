@@ -13,7 +13,8 @@ setup() {
   IMPLEMENT_SKILL="$REPO_DIR/skills/kramme:linear:issue-implement/SKILL.md"
   IMPLEMENT_WORKFLOWS="$REPO_DIR/skills/kramme:linear:issue-implement/references/implementation-workflows.md"
   SHARED_SHIPPING="$REPO_DIR/shared/implementation/references/pr-shipping-contract.md"
-  PLAN_SHIPPING="$REPO_DIR/skills/kramme:code:plan-to-pr/references/shipping-contract.md"
+  PLAN_WORK_SKILL="$REPO_DIR/skills/kramme:code:work-from-plan/SKILL.md"
+  PLAN_WORK_DIRECT="$REPO_DIR/skills/kramme:code:work-from-plan/references/direct-execution.md"
 }
 
 @test "verify run selects a tier and reports the verified tree" {
@@ -146,10 +147,17 @@ TEST
   [ "$status" -eq 1 ]
 }
 
-@test "shipping contracts reuse green CI instead of a local final-tree sweep" {
-  for shipping in "$SHARED_SHIPPING" "$PLAN_SHIPPING"; do
-    grep -qF 'Passing check buckets alone do not prove full verification coverage.' "$shipping"
-    grep -qF 'Map every applicable check from the project'"'"'s full verification tier' "$shipping"
-    grep -qF 'invoke `kramme:verify:run` with `--full` on the final tree' "$shipping"
+@test "work-from-plan uses the fast tier and leaves the full sweep to publication" {
+  for work in "$PLAN_WORK_SKILL" "$PLAN_WORK_DIRECT"; do
+    grep -qF 'kramme:verify:run --fast' "$work"
+    grep -qF 'Do not run the full pre-push or pre-PR sweep here.' "$work"
+    run grep -qF 'for final verification when available' "$work"
+    [ "$status" -eq 1 ]
   done
+}
+
+@test "shared shipping contract reuses green CI instead of a local final-tree sweep" {
+  grep -qF 'Passing check buckets alone do not prove full verification coverage.' "$SHARED_SHIPPING"
+  grep -qF 'Map every applicable check from the project'"'"'s full verification tier' "$SHARED_SHIPPING"
+  grep -qF 'invoke `kramme:verify:run` with `--full` on the final tree' "$SHARED_SHIPPING"
 }

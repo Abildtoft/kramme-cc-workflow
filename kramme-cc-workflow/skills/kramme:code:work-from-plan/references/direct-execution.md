@@ -32,7 +32,7 @@ Direct execution is for bounded current-branch work only. It borrows the plannin
 
 5. **Verify**
    - Run the narrowest useful checks after meaningful changes.
-   - Run final verification using `kramme:verify:run` when available.
+   - Run final implementation verification using `kramme:verify:run --fast` when available; the fast iteration tier covers implementation claims. Do not run the full pre-push or pre-PR sweep here. It runs once before publication: in `kramme:pr:review-convergence` when `kramme:code:plan-to-pr` delegates, otherwise before the user's first push or Pull Request.
    - If that skill is unavailable, run the discovered check-only project commands directly.
    - Continue through all relevant checks and report skipped checks with reasons.
 
