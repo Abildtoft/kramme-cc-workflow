@@ -323,6 +323,8 @@ Code review uses a **challenge → delete → simplify** sequence: establish the
 
 When `pr:github-review` drafts five or more inline comments, it also runs a clarity check before writing the report. Fresh readers see only the lines GitHub shows above each comment: one reads as the PR author in a second language, the other as a teammate a day later. Each reader paraphrases, questions, and scores every comment. The skill verifies their points in the code, fixes and re-anchors the comments, and has a new reader confirm the result. The check takes about 30–50 minutes and never writes to GitHub. Pass `--clarity-check` to run it on fewer comments, or `--no-clarity-check` to skip it.
 
+Interrupted reviews resume. After a session-limit reset or restart, ask to continue, or re-run `/kramme:pr:code-review` on the same unchanged tree or `/kramme:pr:github-review` on the same PR head with the same review arguments within 24 hours. Code review reuses every reviewer that finished and relaunches only the ones that did not; a failed reviewer still needs a fresh run. GitHub review reruns only the delegated passes, steps, and clarity-check stages that did not finish, saving them under `.context/pr-github-review/`, which must be git-ignored. Team Mode and `--loop` reruns always start fresh.
+
 More review skills cover product, convention, UX, and GitHub-reviewer flows. Which one should you use?
 
 | Need | Use |
