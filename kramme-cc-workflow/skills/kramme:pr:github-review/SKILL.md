@@ -272,7 +272,7 @@ Set `ANCHOR_CHECK="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/
 
 ## Step 10: Humanize the Draft Comments
 
-Follow the humanization section of `references/comment-drafting.md`. Humanization is best-effort; preserve the original bodies and mark `Humanized: no` when the sibling skill is unavailable or its output cannot be mapped safely.
+Follow the humanization section of `references/comment-drafting.md`. Humanization is best-effort; preserve the original bodies and mark `Humanized: no` when `kramme:text:clarify` is unavailable or its output cannot be mapped safely.
 
 ## Step 10a: Check the Draft Comments With Cold Readers
 
