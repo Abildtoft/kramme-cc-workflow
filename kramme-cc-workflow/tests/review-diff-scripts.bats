@@ -176,7 +176,8 @@ PY
       IFS= read -r -d "" base_ref &&
         IFS= read -r -d "" base_branch &&
         IFS= read -r -d "" merge_base &&
-        IFS= read -r -d "" changed_files
+        IFS= read -r -d "" changed_files &&
+        IFS= read -r -d "" stack_context
     } <"$1"; then
       exit 1
     fi
@@ -184,6 +185,7 @@ PY
     [ "$base_branch" = "main" ]
     [ -n "$merge_base" ]
     [ "$changed_files" = "$2" ]
+    [ -z "$stack_context" ]
   ' _ "$fields" $'committed.txt\nstaged.txt\ntracked.txt\nuntracked.txt'
 	[ "$status" -eq 0 ]
 }
@@ -208,7 +210,8 @@ assert fields[0] == b"refs/remotes/origin/main", fields
 assert fields[1] == b"main", fields
 assert fields[2], fields
 assert fields[3] == os.environ["HOSTILE_FILE"].encode(), fields
-assert fields[4:] == [b""], fields
+assert fields[4] == b"", fields
+assert fields[5:] == [b""], fields
 PY
 	[ ! -e "$pwned" ]
 }
@@ -505,6 +508,131 @@ PY
 	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact
 	[ "$status" -eq 1 ]
 	[[ "$output" == *"--require-local-artifact requires a value"* ]]
+}
+
+# Two local gh-stack layers on main with no Pull Requests: layer-b is checked
+# out on top of layer-a. A github.com remote lets the stack helper consult the
+# mocked gh while origin stays the local bare repository.
+setup_unsubmitted_stack() {
+	git remote add github https://github.com/acme/demo.git
+	git switch -q -c layer-a main
+	printf 'a\n' >a.txt
+	git add a.txt
+	git commit -qm 'Add layer a'
+	git switch -q -c layer-b
+	printf 'b\n' >b.txt
+	git add b.txt
+	git commit -qm 'Add layer b'
+	MOCK_STACK_VIEW=$(printf '{"trunk":"main","currentBranch":"layer-b","branches":[{"name":"layer-a","base":"%s","isMerged":false,"needsRebase":false},{"name":"layer-b","base":"%s","isMerged":false,"needsRebase":false}]}' \
+		"$(git rev-parse main)" "$(git rev-parse layer-a)")
+	export MOCK_STACK_VIEW
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+case "$1 $2" in
+"stack --version") echo "gh stack version 0.2.1" ;;
+"stack view") printf '%s\n' "$MOCK_STACK_VIEW" ;;
+"pr list") echo "[]" ;;
+"pr view")
+	echo "no pull requests found for branch \"$(git branch --show-current)\"" >&2
+	exit 1
+	;;
+*) exit 97 ;;
+esac
+GH
+	chmod +x "$BIN_DIR/gh"
+}
+
+@test "collect-review-diff reviews an unsubmitted gh-stack layer against its parent" {
+	setup_unsubmitted_stack
+
+	run bash -c '
+    "$1" --stack-context --format nul >"$2" || exit 1
+    {
+      IFS= read -r -d "" base_ref &&
+        IFS= read -r -d "" base_branch &&
+        IFS= read -r -d "" merge_base &&
+        IFS= read -r -d "" changed_files &&
+        IFS= read -r -d "" stack_context
+    } <"$2" || exit 1
+    printf "%s\n%s\n%s\n" "$base_ref" "$base_branch" "$changed_files"
+    printf "%s" "$stack_context" >"$3"
+  ' _ "$SCRIPT_DIR/collect-review-diff.sh" "$TMP_DIR/fields" "$TMP_DIR/context.json"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "$(git rev-parse layer-a)"$'\nlayer-a\nb.txt' ]
+	CONTEXT_FILE="$TMP_DIR/context.json" LAYER_A="$(git rev-parse layer-a)" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+context = json.loads(Path(os.environ["CONTEXT_FILE"]).read_text())
+assert (context["state"], context["source"], context["position"], context["size"]) == ("stacked", "gh-stack", 2, 2), context
+assert context["review_base"] == {"branch": "layer-a", "commit": os.environ["LAYER_A"]}, context
+PY
+}
+
+@test "collect-review-diff accepts an unsubmitted bottom layer without a pinned commit" {
+	setup_unsubmitted_stack
+	git switch -q layer-a
+	MOCK_STACK_VIEW=$(printf '{"trunk":"main","currentBranch":"layer-a","branches":[{"name":"layer-a","base":"%s","isMerged":false,"needsRebase":false},{"name":"layer-b","base":"%s","isMerged":false,"needsRebase":false}]}' \
+		"$(git rev-parse main)" "$(git rev-parse layer-a)")
+	export MOCK_STACK_VIEW
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --stack-context
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_BRANCH" = main ]
+	[ "$CHANGED_FILES" = a.txt ]
+	[[ "$STACK_CONTEXT" == *'"review_base":{"branch":"main","commit":null}'* ]]
+}
+
+@test "collect-review-diff keeps an explicit base over the stack base" {
+	setup_unsubmitted_stack
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --stack-context --base main
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_BRANCH" = main ]
+	[ "$CHANGED_FILES" = $'a.txt\nb.txt' ]
+	[[ "$STACK_CONTEXT" == *'"state":"stacked"'* ]]
+}
+
+@test "collect-review-diff embeds the stack context object in JSON output" {
+	setup_unsubmitted_stack
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --stack-context --format json
+
+	[ "$status" -eq 0 ]
+	OUTPUT="$output" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["OUTPUT"])
+assert data["changed_files"] == ["b.txt"], data
+assert data["stack_context"]["parent"]["branch"] == "layer-a", data
+PY
+}
+
+@test "collect-review-diff reports a failed stack helper as an unknown stack" {
+	local real_python
+	real_python="$(command -v python3)"
+	printf '#!/bin/sh\ncase "$1" in */resolve-stack-context.py) echo "helper exploded" >&2; exit 1 ;; esac\nexec "%s" "$@"\n' \
+		"$real_python" >"$BIN_DIR/python3"
+	chmod +x "$BIN_DIR/python3"
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -qm 'feature commit'
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --stack-context
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_BRANCH" = main ]
+	[ "$CHANGED_FILES" = committed.txt ]
+	[[ "$STACK_CONTEXT" == *'"state":"unknown"'* ]]
+	[[ "$STACK_CONTEXT" == *'helper exploded'* ]]
 }
 
 @test "resolve-base backup mode creates recovery branch" {

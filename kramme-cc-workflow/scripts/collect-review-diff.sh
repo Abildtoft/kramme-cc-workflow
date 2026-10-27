@@ -16,23 +16,27 @@ DECODE_JSON=false
 COLLECT_OPTION_SEEN=false
 EXCLUDE_REVIEW_ARTIFACTS=false
 LOCAL_ARTIFACT=""
+BASE_SELECTED=false
+STACK_CONTEXT_MODE=false
+STACK_CONTEXT=""
 REVIEW_ARTIFACT_LIST_FILE="$SCRIPT_DIR/../hooks/confirm-review-artifacts.txt"
 REVIEW_ARTIFACT_PATTERNS=()
 
 usage() {
   cat >&2 << 'USAGE'
-Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json|nul] [--exclude-review-artifacts] [--require-local-artifact <path>]
+Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json|nul] [--exclude-review-artifacts] [--require-local-artifact <path>] [--stack-context]
        collect-review-diff.sh --decode-json
 
 Default output is shell-quoted assignments:
-  BASE_REF BASE_BRANCH MERGE_BASE CHANGED_FILES
+  BASE_REF BASE_BRANCH MERGE_BASE CHANGED_FILES [STACK_CONTEXT]
 
 JSON output fields:
-  base_ref base_branch merge_base changed_files
+  base_ref base_branch merge_base changed_files [stack_context]
 
 NUL output emits the collected fields directly in this order:
-  BASE_REF BASE_BRANCH MERGE_BASE CHANGED_FILES
+  BASE_REF BASE_BRANCH MERGE_BASE CHANGED_FILES STACK_CONTEXT
 Each field has a trailing NUL byte; changed_files remains newline-delimited.
+STACK_CONTEXT is empty unless --stack-context was given.
 This supports one-invocation, non-evaluating reads with shell read -d ''.
 
 Review-preparation options are opt-in; without them the collected scope and
@@ -42,6 +46,15 @@ legacy output formats are unchanged:
                                  collected scope.
   --require-local-artifact PATH  Fail unless PATH is absent or an untracked,
                                  regular, non-symlink local file.
+  --stack-context                Describe the branch's Pull Request stack
+                                 with resolve-stack-context.py and return it
+                                 as the STACK_CONTEXT JSON document. Without
+                                 an explicit --base or --base-commit, review
+                                 a gh-stack layer that has no open Pull
+                                 Request, or that needs a restack, against
+                                 the base its stack context names. A helper
+                                 failure is reported as an unknown stack,
+                                 never as a collection failure.
 
 Decoder mode validates JSON from stdin and emits these four fields once as
 NUL-delimited values, with changed_files joined by newlines.
@@ -49,16 +62,18 @@ USAGE
 }
 
 emit_json() {
-  emit_json_object \
-    "python3 is required for --format json" \
-    "str:base_ref" "$BASE_REF" \
-    "str:base_branch" "$BASE_BRANCH" \
-    "str:merge_base" "$MERGE_BASE" \
+  local fields=(
+    "str:base_ref" "$BASE_REF"
+    "str:base_branch" "$BASE_BRANCH"
+    "str:merge_base" "$MERGE_BASE"
     "lines:changed_files" "$CHANGED_FILES"
+  )
+  [ "$STACK_CONTEXT_MODE" = false ] || fields+=("json:stack_context" "$STACK_CONTEXT")
+  emit_json_object "python3 is required for --format json" "${fields[@]}"
 }
 
 emit_nul() {
-  printf '%s\0' "$BASE_REF" "$BASE_BRANCH" "$MERGE_BASE" "$CHANGED_FILES"
+  printf '%s\0' "$BASE_REF" "$BASE_BRANCH" "$MERGE_BASE" "$CHANGED_FILES" "$STACK_CONTEXT"
 }
 
 emit_output() {
@@ -68,6 +83,7 @@ emit_output() {
       quote_assignment BASE_BRANCH "$BASE_BRANCH"
       quote_assignment MERGE_BASE "$MERGE_BASE"
       quote_assignment CHANGED_FILES "$CHANGED_FILES"
+      [ "$STACK_CONTEXT_MODE" = false ] || quote_assignment STACK_CONTEXT "$STACK_CONTEXT"
       ;;
     json)
       emit_json
@@ -106,6 +122,74 @@ parse_resolved_json() {
   BASE_REF=$(printf '%s\n' "$decoded" | sed -n '1p')
   BASE_BRANCH=$(printf '%s\n' "$decoded" | sed -n '2p')
   MERGE_BASE=$(printf '%s\n' "$decoded" | sed -n '3p')
+}
+
+# Stack context informs review scope and calibration but never blocks a
+# review. If the helper itself fails, record an unknown stack with the reason
+# so the review proceeds against the default base and says why.
+resolve_stack_context() {
+  local helper_output helper_stderr helper_status=0
+
+  helper_stderr=$(mktemp "${TMPDIR:-/tmp}/collect-review-diff-stack.XXXXXX") || {
+    echo "Could not create a temporary file for stack context; stop." >&2
+    exit 1
+  }
+  helper_output=$(python3 "$SCRIPT_DIR/resolve-stack-context.py" 2> "$helper_stderr") || helper_status=$?
+  STACK_CONTEXT=$(
+    HELPER_STATUS="$helper_status" HELPER_STDERR="$(cat "$helper_stderr")" python3 -c '
+import json
+import os
+import sys
+
+status = os.environ["HELPER_STATUS"]
+try:
+    context = json.loads(sys.stdin.read()) if status == "0" else None
+except ValueError:
+    context = None
+if not (isinstance(context, dict) and context.get("state") in ("stacked", "unstacked", "unknown")):
+    detail = " ".join(os.environ["HELPER_STDERR"].split())[-300:] or "exit " + status
+    reason = "the stack context helper failed: " + detail
+    context = {
+        "schema_version": 1,
+        "state": "unknown",
+        "reason": reason,
+        "review_base": None,
+        "summary": "Stack status unknown: " + reason + ".",
+    }
+json.dump(context, sys.stdout, separators=(",", ":"))
+' <<< "$helper_output"
+  ) || {
+    rm -f "$helper_stderr"
+    echo "Could not record the stack context; stop." >&2
+    exit 1
+  }
+  rm -f "$helper_stderr"
+}
+
+# The default base resolution cannot scope a gh-stack layer that has no open
+# Pull Request, or one whose parent changed since its last restack; review it
+# against the base its stack context names. The commit pins the newest
+# downstack commit without fetching. Branch names and object IDs never contain
+# tabs, so a tab-separated pair is unambiguous even when the commit is empty.
+apply_stack_review_base() {
+  local review_base review_branch review_commit
+
+  review_base=$(printf '%s' "$STACK_CONTEXT" | python3 -c '
+import json
+import sys
+
+base = json.load(sys.stdin).get("review_base")
+if isinstance(base, dict) and isinstance(base.get("branch"), str) and base["branch"]:
+    commit = base.get("commit")
+    print(base["branch"] + "\t" + (commit if isinstance(commit, str) else ""))
+') || {
+    echo "Could not read the stack review base; stop." >&2
+    exit 1
+  }
+  [ -n "$review_base" ] || return 0
+  IFS=$'\t' read -r review_branch review_commit <<< "$review_base"
+  RESOLVE_ARGS+=(--base "refs/heads/$review_branch")
+  [ -z "$review_commit" ] || RESOLVE_ARGS+=(--base-commit "$review_commit")
 }
 
 # A generated review report is workflow state, never implementation input.
@@ -188,12 +272,14 @@ while [ $# -gt 0 ]; do
       ;;
     --base)
       COLLECT_OPTION_SEEN=true
+      BASE_SELECTED=true
       require_value "$1" "${2-}"
       RESOLVE_ARGS+=(--base "$2")
       shift 2
       ;;
     --base-commit)
       COLLECT_OPTION_SEEN=true
+      BASE_SELECTED=true
       require_value "$1" "${2-}"
       RESOLVE_ARGS+=(--base-commit "$2")
       shift 2
@@ -218,6 +304,11 @@ while [ $# -gt 0 ]; do
       require_value "$1" "${2-}"
       LOCAL_ARTIFACT="$2"
       shift 2
+      ;;
+    --stack-context)
+      COLLECT_OPTION_SEEN=true
+      STACK_CONTEXT_MODE=true
+      shift
       ;;
     --format)
       COLLECT_OPTION_SEEN=true
@@ -256,6 +347,11 @@ fi
 
 if [ "$EXCLUDE_REVIEW_ARTIFACTS" = true ]; then
   load_review_artifact_patterns
+fi
+
+if [ "$STACK_CONTEXT_MODE" = true ]; then
+  resolve_stack_context
+  [ "$BASE_SELECTED" = true ] || apply_stack_review_base
 fi
 
 RESOLVED=$("$SCRIPT_DIR/resolve-base.sh" --format json "${RESOLVE_ARGS[@]}") || {
