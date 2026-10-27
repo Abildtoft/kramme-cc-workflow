@@ -87,7 +87,7 @@ multiSelect: false
 
 If **"Abort"** selected:
 
-When `FRESH_REMOTE_MODE=true`, execute Step 10 in `references/state-and-rollback.md` (rollback), then stop. In a clean existing-remote mode, stop without rollback because no mutation occurred. Remote append is auto-only and cannot reach this confirmation. Do not push.
+When `FRESH_REMOTE_MODE=true`, execute Step 10 in `references/abort-and-rollback.md` (rollback), then stop. In a clean existing-remote mode, stop without rollback because no mutation occurred. Remote append is auto-only and cannot reach this confirmation. Do not push.
 
 If **"Edit description first"** selected, run the edit loop below before re-prompting:
 
@@ -117,24 +117,7 @@ After each description edit, if `{linear-issue-id}` is present, keep the default
 
 Before any publication step, validate `{feature-branch}` before using it as a git ref. It must be the current branch captured from `git branch --show-current`, pass `git check-ref-format --branch`, contain no shell metacharacters or whitespace, and must not begin with `-`. Stop if validation fails.
 
-Immediately before publication, re-resolve the local and server-side stack boundary:
-
-```bash
-STACK_REVALIDATION_FAILED=false
-LATEST_STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
-  echo "Stack membership could not be revalidated; stop before publication." >&2
-  STACK_REVALIDATION_FAILED=true
-}
-if [ "$STACK_REVALIDATION_FAILED" = false ] && ! (
-  eval "$LATEST_STACK_RESOLVED"
-  [ "$STACK_MEMBERSHIP" = none ]
-); then
-  echo "The branch joined a local or server-side stack after initial validation; stop before publication." >&2
-  STACK_REVALIDATION_FAILED=true
-fi
-```
-
-If `STACK_REVALIDATION_FAILED=true`, treat the unresolved or non-`none` membership as authorization-invalidating state drift. When `FRESH_REMOTE_MODE=true` or `REMOTE_APPEND_MODE=true`, execute Step 10 before stopping so the local rewrite and preserved user state are restored; in a clean existing-remote mode, stop without rollback because this workflow did not rewrite the branch. Do not publish or create a default-base Pull Request from stale unstacked authorization.
+Stack membership is re-resolved by the `FINAL_STACK_RESOLVED` guard in the same shell as each push and as `gh pr create` below. Treat an unresolved or non-`none` membership there as authorization-invalidating state drift and follow that guard's failure handling. Do not publish or create a default-base Pull Request from stale unstacked authorization.
 
 Immediately before any push, repeat the fail-closed open-Pull-Request check. Disable GitHub CLI prompting and run the query with the shell tool's bounded timeout:
 
@@ -142,7 +125,7 @@ Immediately before any push, repeat the fail-closed open-Pull-Request check. Dis
 env GH_PROMPT_DISABLED=1 gh pr list --head "{feature-branch}" --state open --limit 100 --json number,url,state,headRefName
 ```
 
-Require this command to succeed. Continue only when the successful response is an empty list. If an open Pull Request appeared after Step 3.5, execute Step 10 from `state-and-rollback.md` when `FRESH_REMOTE_MODE=true` or `REMOTE_APPEND_MODE=true`; otherwise stop without rollback. In every mode, report the Pull Request URL and stop without pushing. A matching remote head does not prove that this invocation owns the Pull Request, and neither `AUTO_MODE` nor `AUTHORIZE_HISTORY_REWRITE` may adopt or rewrite it.
+Require this command to succeed. Continue only when the successful response is an empty list. If an open Pull Request appeared after Step 3.5, execute Step 10 from `abort-and-rollback.md` when `FRESH_REMOTE_MODE=true` or `REMOTE_APPEND_MODE=true`; otherwise stop without rollback. In every mode, report the Pull Request URL and stop without pushing. A matching remote head does not prove that this invocation owns the Pull Request, and neither `AUTO_MODE` nor `AUTHORIZE_HISTORY_REWRITE` may adopt or rewrite it.
 
 #### Existing exact-tip recovery
 
@@ -233,7 +216,7 @@ env GIT_TERMINAL_PROMPT=0 GCM_INTERACTIVE=Never GIT_SSH_COMMAND="$NONINTERACTIVE
 
 Do not use plain `--force`, an absence lease for a pre-existing remote ref, an implicit destination, or a tracking ref read after the rewrite as the lease baseline. `kramme:git:recreate-commits --no-push` left this fresh remote absent; this is the fresh mode's sole remote update before Pull Request creation. If the final stack guard fails, execute Step 10 before stopping; do not classify that failure as an ambiguous push outcome because no push ran.
 
-If the push command exits non-zero, its remote outcome is ambiguous. Execute Step 10 from `state-and-rollback.md`; that rollback restores local state and re-queries `{rollback-origin-ref}` without modifying it. Then show the full generated description directly in the conversation for copy/paste and use the rollback's observed remote classification:
+If the push command exits non-zero, its remote outcome is ambiguous. Execute Step 10 from `abort-and-rollback.md`; that rollback restores local state and re-queries `{rollback-origin-ref}` without modifying it. Then show the full generated description directly in the conversation for copy/paste and use the rollback's observed remote classification:
 
 ```
 Warning: Failed to push branch to remote.

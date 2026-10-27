@@ -2,6 +2,8 @@
 
 Use this reference for `/kramme:pr:create` Steps 2–3. This phase selects and validates `{base-source-ref}`, pinned `{base-ref}`, `{base-branch}`, and `{feature-branch}` without creating, deleting, or switching branches. It also captures `{observed-origin-oid}` as either `<absent>` or one authoritative remote tip. Step 5 owns the only branch-creation mutation after all pre-mutation checks pass; an existing remote is classified here without rewriting published history.
 
+`scripts/pr-create-preflight.py` performs entry capture, base resolution and pinning, the ref trust boundary for the current or supplied branch, the protected-branch guard, Linear ID extraction, the local and `git ls-remote` classification below, and records `{branch-action}`. Read this reference to name a new feature branch after `feature_branch_required` ("Detached HEAD or currently on the base"), to classify a differing existing remote after `remote_classification_required` (from "If they differ, freeze the one effective push endpoint"), and for the rebase-first branch guard. The rules below remain the helper's contract.
+
 **AUTO MODE:** If `AUTO_MODE=true`, choose documented deterministic defaults instead of asking questions. Stop on ambiguity or a hard blocker.
 
 ## Ref trust boundary

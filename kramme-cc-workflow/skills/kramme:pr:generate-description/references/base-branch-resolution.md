@@ -10,7 +10,34 @@ Synced base/diff scope contract (keep aligned across base-aware and diff-aware s
    git branch --show-current
    ```
 
-2. **ALWAYS** resolve the base/target branch with the shared plugin script. It resolves in this order: explicit `BASE_BRANCH_OVERRIDE` from `--base`, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. When `BASE_COMMIT_OVERRIDE` is present, it retains the branch metadata but pins all diff calculations to that exact commit. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
+2. When both `BASE_BRANCH_OVERRIDE` and `BASE_COMMIT_OVERRIDE` are set, the caller already resolved and pinned the base with the shared resolver. Skip the resolver: require the pinned commit to exist locally, set `BASE_REF` to that commit, and normalize the override to its branch name for `BASE_BRANCH`.
+
+   ```bash
+   git rev-parse --verify --quiet "${BASE_COMMIT_OVERRIDE}^{commit}" > /dev/null || {
+     echo "Pinned base commit does not resolve locally; stop." >&2
+     exit 1
+   }
+   BASE_REF="$BASE_COMMIT_OVERRIDE"
+   BASE_BRANCH="$BASE_BRANCH_OVERRIDE"
+   case "$BASE_BRANCH" in
+     refs/remotes/*/*)
+       BASE_BRANCH=${BASE_BRANCH#refs/remotes/}
+       BASE_BRANCH=${BASE_BRANCH#*/}
+       ;;
+     refs/heads/*)
+       BASE_BRANCH=${BASE_BRANCH#refs/heads/}
+       ;;
+     */*)
+       BASE_REMOTE=${BASE_BRANCH%%/*}
+       if git remote get-url "$BASE_REMOTE" > /dev/null 2>&1; then
+         BASE_BRANCH=${BASE_BRANCH#*/}
+       fi
+       ;;
+   esac
+   echo "Base branch: $BASE_BRANCH"
+   ```
+
+   Otherwise, resolve the base/target branch with the shared plugin script. It resolves in this order: explicit `BASE_BRANCH_OVERRIDE` from `--base`, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. When `BASE_COMMIT_OVERRIDE` is present, it retains the branch metadata but pins all diff calculations to that exact commit. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
    ```bash
    RESOLVE_ARGS=(--strict)

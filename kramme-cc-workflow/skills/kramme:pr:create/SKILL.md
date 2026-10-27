@@ -29,6 +29,7 @@ Orchestrate the creation of a clean, well-documented PR by validating git state,
 /kramme:pr:create
     |
     v
+Preflight helper: Steps 1–4.5 in one read-only call
 Step 1  Pre-Validation .................... abort on any failure
     |
 Step 2  Capture entry state + pin base ({base-source-ref}, {base-ref}, {base-branch})
@@ -40,7 +41,7 @@ Step 4  Changes detection + remote mode ... fresh rewrite; exact recovery; safe 
     |
 Step 4.5 Reject stacked branches
     |
-    +-- Fresh remote: Steps 5–6 preserve state + recreate commits
+    +-- Fresh remote: Steps 5–6 preserve state + recreate (or keep well-formed) commits
     |
     +-- Existing exact tip, clean: skip rewrite and preserve existing commits
     |
@@ -61,13 +62,15 @@ Step 9  Success output
 
 ## Workflow rule — do not stop mid-flow
 
-The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool. Exact-tip recovery and clean remote fast-forward mode skip Step 6 and invoke only Step 7 because both preserve the existing local commit history. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
+The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool, except that Step 6.0 may keep well-formed fresh-branch commits and skip `recreate-commits`. Exact-tip recovery and clean remote fast-forward mode skip Step 6 and invoke only Step 7 because both preserve the existing local commit history. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
 
 ## References
 
-- `references/pre-validation-checks.md` — Step 1: repository safety checks.
-- `references/branch-and-platform-handling.md` — Steps 2–3: entry-state capture, immutable-base resolution, ref validation, mutation-free feature-branch selection, and authoritative remote-tip classification.
-- `references/state-and-rollback.md` — Steps 5 and 10: state capture, stash handling, abort/rollback.
+- `scripts/pr-create-preflight.py` — Steps 1–4.5 in one read-only call; see `## Preflight Helper`.
+- `references/pre-validation-checks.md` — Step 1: repository safety checks the helper performs; read only to word a Step 1 blocker.
+- `references/branch-and-platform-handling.md` — Steps 2–3: entry-state capture, immutable-base resolution, ref validation, mutation-free feature-branch selection, and authoritative remote-tip classification. The helper performs the mechanical parts; read it to name a new feature branch, to classify a differing existing remote, or for the rebase-first branch guard.
+- `references/state-and-rollback.md` — Steps 5 and 9.0: state capture, stash handling, excluded-work restoration.
+- `references/abort-and-rollback.md` — Step 10: abort and rollback; read only when Step 10 runs.
 - `references/confirmation-and-creation.md` — Steps 8–9: preview, confirmation, edit loop, absence- or OID-leased publication, exact-tip reuse, `gh pr create`, draft mode, and success output.
 
 ## Step 0: Parse Arguments
@@ -86,7 +89,7 @@ Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REBASE_FIRST=false`, `BASE_BRA
 
 `--auto` means:
 
-- use the recommended commit structure (`Narrative`)
+- keep unpublished fresh-branch commits that pass Step 6.0; otherwise use the recommended commit structure (`Narrative`)
 - invoke downstream skills in non-interactive mode
 - include all uncommitted changes by selecting **Commit and include**, including on a safely reusable existing remote
 - require a usable generated title and description; never publish placeholder fallback content
@@ -105,19 +108,39 @@ Without `--draft`, the PR is created ready for review.
 
 ---
 
+## Preflight Helper
+
+Steps 1–4.5 are mechanical checks. Run them in one call, adding `--base "{BASE_BRANCH_OVERRIDE}"`, `--linear-issue {LINEAR_ISSUE_OVERRIDE}`, and `--auto` only when Step 0 set them:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py" [--base "{BASE_BRANCH_OVERRIDE}"] [--linear-issue {LINEAR_ISSUE_OVERRIDE}] [--auto]
+```
+
+The helper is read-only apart from the base fetch the shared resolver performs: it never creates branches, commits, stashes, pushes, or changes configuration, and never prints the origin URL. It prints one JSON document; parse it as JSON and never `eval` or source it. Use its `facts` as the agent-tracked values for the rest of the invocation: `entry_branch` (`null` means `<detached>`) as `{entry-branch}`, `entry_commit` as `{entry-commit}`, `base_source_ref` as `{base-source-ref}`, `base_ref` as `{base-ref}`, `base_branch` as `{base-branch}`, `feature_branch` as `{feature-branch}`, `linear_issue_id` as `{linear-issue-id}`, `observed_origin_oid` (`null` means `<absent>`) as `{observed-origin-oid}`, `branch_action` as `{branch-action}`, and `worktree_status` as `{worktree-status}`. Initialize `{feature-branch-created}=false`. Route on `status`:
+
+- `ok` (exit 0) — Steps 1–4.5 passed. `remote_mode` `fresh` sets `FRESH_REMOTE_MODE=true`; `recovery` sets `REMOTE_RECOVERY_MODE=true`. Continue with Step 5.
+- `blocked` (exit 1) — stop and report `reason`, `message`, and `details`. For a Step 1 reason, read `references/pre-validation-checks.md` only to word the error and its recovery steps.
+- `feature_branch_required` (exit 3) — the entry is detached or on `{base-branch}`. Name a branch from `facts.changed_paths` or the Linear issue per "Detached HEAD or currently on the base" in `references/branch-and-platform-handling.md`, apply its ref trust boundary, then rerun the helper with the same flags plus `--feature-branch "{validated-candidate}"`.
+- `remote_classification_required` (exit 3) — origin already has the current branch and every other check, including Step 4.5, passed. When `branch_action` is `null`, the remote tip differs from `{entry-commit}`: classify it with the frozen-endpoint procedure in `references/branch-and-platform-handling.md`, starting at "If they differ, freeze the one effective push endpoint". When it is `reuse-existing-exact-tip`, the tip matches but `--auto` must include dirty work. Then finalize the mode in Step 4.4.
+- `error` (exit 2), or missing or malformed output — stop and report it; never guess the state.
+
+The helper's protected-branch guard covers `main`, `master`, `kramme.baseBranch`, the `origin/HEAD` target, and `CONDUCTOR_DEFAULT_BRANCH`. Before continuing, also apply any protected, workbench, or production branch named in repository instructions to `{entry-branch}` and `{feature-branch}`.
+
+---
+
 ## Step 1: Pre-Validation
 
-Read the pre-validation checks from `references/pre-validation-checks.md`. Run all checks (GitHub CLI install/authentication, git repo, merge conflicts, rebase/merge in progress, remote configuration) and abort on any failure.
+The helper performs the checks in `references/pre-validation-checks.md` (GitHub CLI install/authentication, git repo, merge conflicts, a rebase, merge, cherry-pick, or revert in progress, remote configuration) and blocks on any failure.
 
 ---
 
 ## Steps 2-3: Branch Handling
 
-Read the branch and base selection instructions from `references/branch-and-platform-handling.md`. Run its base resolver from `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh`. Capture `{entry-branch}` / `{entry-commit}`, resolve one validated remote `{base-source-ref}`, pin its full commit OID as immutable `{base-ref}`, retain `{base-branch}` as metadata, select a validated `{feature-branch}`, capture `{observed-origin-oid}`, and record `{branch-action}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
+The helper performs the mechanical parts of `references/branch-and-platform-handling.md`: it captures `{entry-branch}` / `{entry-commit}`, runs `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh` to resolve one validated remote `{base-source-ref}`, pins its full commit OID as immutable `{base-ref}`, retains `{base-branch}` as metadata, validates the current or supplied `{feature-branch}`, captures `{observed-origin-oid}`, and records `{branch-action}` without creating, deleting, or switching branches. Keep these values for the entire invocation.
 
 ### Optional rebase-first
 
-When `REBASE_FIRST=true`, after Step 2 resolves `{base-branch}` and before Step 3 selects or validates the feature branch, apply the protected/workbench/production branch guard in `references/branch-and-platform-handling.md` to `{entry-branch}`. Stop if that branch differs from `{base-branch}` and matches a protected role. Then invoke `kramme:pr:rebase` with `--force-push --base {base-branch}` through the Skill tool. The delegated skill owns conflict handling and the lease-protected push. Require a successful completion, then restart this workflow at Step 1 to capture the rebased entry state; do not reuse pre-rebase OIDs or remote classification. Any conflict, lease failure, or incomplete rebase is a hard blocker.
+When `REBASE_FIRST=true`, run the helper first. Its Step 2 resolves `{base-branch}`, and its guard rejects an `{entry-branch}` that differs from `{base-branch}` and matches a protected role; also apply the protected/workbench/production branch guard in `references/branch-and-platform-handling.md` for branches named in repository instructions. Continue to the rebase only on `ok` or `remote_classification_required`; `feature_branch_required` stops because rebase-first needs a current feature branch. Then invoke `kramme:pr:rebase` with `--force-push --base {base-branch}` through the Skill tool. The delegated skill owns conflict handling and the lease-protected push. Require a successful completion, then rerun the helper to capture the rebased entry state and use only the rerun's facts; do not reuse pre-rebase OIDs or remote classification. Any conflict, lease failure, or incomplete rebase is a hard blocker.
 
 ### Conductor workspaces
 
@@ -126,6 +149,8 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 ---
 
 ## Step 3.5: Reject an Existing Pull Request
+
+The helper performs this step with the rules below; they remain its contract and apply to any branch you name before a rerun.
 
 After branch handling selects `{feature-branch}`, revalidate it before state capture, history rewriting, or any shell command in this file that interpolates it. The branch reference already requires the same boundary before its own commands; this is defense in depth.
 
@@ -144,6 +169,8 @@ Require this command to succeed. Authentication, network, repository, rate-limit
 ---
 
 ## Step 4: Changes Detection
+
+The helper performs Steps 4.1–4.3, reports `worktree_status` and `ahead_count`, and blocks with `no_changes` when both are empty.
 
 ### 4.1 Check for Uncommitted Changes
 
@@ -186,6 +213,8 @@ Nothing to create a PR for. Make some changes first, then run /kramme:pr:create 
 
 ## Step 4.4: Finalize the Remote Mode
 
+The helper sets `remote_mode` to `fresh`, or to `recovery` only after the clean-worktree proof below passes; it blocks a dirty exact tip without `--auto`. Apply the rest of this step after classifying an existing remote.
+
 Initialize `FRESH_REMOTE_MODE=false`. Initialize `REMOTE_RECOVERY_MODE=false`. Initialize `REMOTE_FAST_FORWARD_MODE=false`. Initialize `REMOTE_APPEND_MODE=false`.
 
 If `{branch-action}` is `use-current` or `create-from-entry-head`, require `{observed-origin-oid}=<absent>` and set `FRESH_REMOTE_MODE=true`.
@@ -220,19 +249,7 @@ Require exactly one of `FRESH_REMOTE_MODE`, `REMOTE_RECOVERY_MODE`, `REMOTE_FAST
 
 ## Step 4.5: Reject Stacked Branches
 
-Resolve stack membership before state preservation or history rewriting:
-
-```bash
-STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
-  echo "Stack membership could not be determined; stop before preparing the Pull Request." >&2
-  exit 1
-}
-eval "$STACK_RESOLVED"
-if [ "$STACK_MEMBERSHIP" != "none" ]; then
-  echo "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." >&2
-  exit 1
-fi
-```
+The helper resolves stack membership for the current feature branch with `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh` before state preservation or history rewriting. An unresolved result blocks with `stack_unresolved`; anything but `none` blocks with `stacked_branch`: "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." A branch that Step 5 will create (`create-from-entry-head`) does not exist yet, so the helper reports `none` without resolving it; the reset-time revalidation in `recreate-commits` and Step 8's in-shell guards resolve it after creation.
 
 Both locally tracked and server-side stacks stop here. Do not pass stack authorization through to the nested rewrite: this workflow publishes at most one lease-protected branch and creates one default-base Pull Request, so it cannot safely own restacking, whole-stack publication, or per-branch Pull Request bases.
 
@@ -250,11 +267,41 @@ Otherwise, require either `FRESH_REMOTE_MODE=true` with `{observed-origin-oid}=<
 
 This step applies when `FRESH_REMOTE_MODE=true` or `REMOTE_APPEND_MODE=true`. Clean existing-remote modes already skipped here from Step 5 and preserve the existing local commit history.
 
+### 6.0 Keep Well-Formed Commits
+
+The existing commits may be kept without a rewrite only when all of these hold:
+
+- `FRESH_REMOTE_MODE=true`.
+- `{uncommitted-disposition}` is `none` or `excluded-and-stashed`, so no temporary include commit exists.
+- The invocation did not include the literal `--require-generated-description` flag. `kramme:code:plan-to-pr` and `kramme:linear:issue-to-pr` always pass it, and their shipping contracts promise a narrative rewrite.
+- The helper's `unpublished_commits` lists all `ahead_count` commits and none carries a flag (`merge`, `autosquash`, `placeholder`, or `ai-attribution`).
+- Every subject follows the convention resolved by `${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md`, running its signal block with `{history-ref}` set to `{base-source-ref}`.
+- With several commits, none only fixes an earlier commit in the range, for example "Fix lint", "Address review feedback", or "Fix typo".
+
+When they all hold and `AUTO_MODE=true`, skip the rest of Step 6, do not invoke `recreate-commits`, and record `History: kept {N} existing commits; no rewrite` for Step 9. When they hold and `AUTO_MODE=false`, offer **Keep existing commits (recommended)** as the first Step 6.1 option; choosing it skips Step 6.2 the same way. Otherwise continue with Step 6.1 unchanged.
+
 ### 6.1 Confirm Commit Restructuring Approach
 
 If `AUTO_MODE=true`, skip this question and choose **Narrative (recommended)**.
 
-Otherwise use AskUserQuestion:
+Otherwise use AskUserQuestion. Use the qualified prompt when Step 6.0 passed; use the default prompt otherwise.
+
+When Step 6.0 qualified:
+
+```yaml
+header: "Commit style"
+question: "How should commits be structured for the PR?"
+options:
+  - label: "Keep existing commits (recommended)"
+    description: "Publish the existing commits unchanged"
+  - label: "Narrative"
+    description: "Reorganize into logical story: setup, core implementation, tests, polish"
+  - label: "Single squash"
+    description: "Combine all changes into one well-documented commit"
+multiSelect: false
+```
+
+Otherwise:
 
 ```yaml
 header: "Commit style"
@@ -379,13 +426,13 @@ Read `references/confirmation-and-creation.md` and execute Step 8 from that file
 
 ## Step 9: Success Output
 
-Before printing the final success message, execute Step 9.0 from `references/state-and-rollback.md` only when `FRESH_REMOTE_MODE=true` so any excluded uncommitted changes are restored or explicitly reported. Existing-remote modes skip Step 9.0; clean modes created no stash, and remote append committed all dirty work for inclusion. Then use Step 9 in `references/confirmation-and-creation.md` for the final success message. Preserve the draft-specific wording when `DRAFT_MODE=true`.
+When Step 6.0 kept the commits, add its recorded `History:` line below the `Uncommitted work:` line. Before printing the final success message, execute Step 9.0 from `references/state-and-rollback.md` only when `FRESH_REMOTE_MODE=true` so any excluded uncommitted changes are restored or explicitly reported. Existing-remote modes skip Step 9.0; clean modes created no stash, and remote append committed all dirty work for inclusion. Then use Step 9 in `references/confirmation-and-creation.md` for the final success message. Preserve the draft-specific wording when `DRAFT_MODE=true`.
 
 ---
 
 ## Step 10: Abort and Rollback Handling
 
-Triggered by an "Abort" choice in Step 8 when `FRESH_REMOTE_MODE=true`, by a critical failure in Steps 6–8 on the fresh path, or by a critical failure before any remote-append push attempt when `REMOTE_APPEND_MODE=true`. Execute Step 10 from `references/state-and-rollback.md`, which first refuses destructive rollback if the prepared append checkout drifted, otherwise restores the pre-rewrite feature state and uncommitted work, returns to the invocation entry branch when this run created the feature branch, and reports observed remote state without mutating it. Clean existing-remote modes never execute Step 10 because they do not rewrite local history or create rollback state. After any remote-append push attempt, preserve the prepared local state and use Step 8's read-only outcome classification instead of Step 10.
+Triggered by an "Abort" choice in Step 8 when `FRESH_REMOTE_MODE=true`, by a critical failure in Steps 6–8 on the fresh path, or by a critical failure before any remote-append push attempt when `REMOTE_APPEND_MODE=true`. Read `references/abort-and-rollback.md` and execute its Step 10, which first refuses destructive rollback if the prepared append checkout drifted, otherwise restores the pre-rewrite feature state and uncommitted work, returns to the invocation entry branch when this run created the feature branch, and reports observed remote state without mutating it. Clean existing-remote modes never execute Step 10 because they do not rewrite local history or create rollback state. After any remote-append push attempt, preserve the prepared local state and use Step 8's read-only outcome classification instead of Step 10.
 
 ---
 
@@ -393,7 +440,7 @@ Triggered by an "Abort" choice in Step 8 when `FRESH_REMOTE_MODE=true`, by a cri
 
 ### Commit Messages
 
-`${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` defines the rules for every commit this workflow publishes. `recreate-commits` resolves the convention and applies it to the rewritten commits; this skill does not resolve or apply it itself. The temporary "Include uncommitted changes for PR creation" commit is a placeholder that `recreate-commits` replaces.
+`${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md` defines the rules for every commit this workflow publishes. `recreate-commits` resolves the convention and applies it to the rewritten commits; this skill resolves it only for Step 6.0's decision to keep existing commits. The temporary "Include uncommitted changes for PR creation" commit is a placeholder that `recreate-commits` replaces.
 
 Never add `Generated with [Claude Code]`, `Co-Authored-By: Claude`, or any mention of AI assistance to commits. `recreate-commits` enforces this for commit messages; this skill must not undo it.
 
@@ -411,7 +458,7 @@ This skill creates PRs with `gh pr create --assignee @me`. This is intentional �
 
 ### Complete Every Applicable Step
 
-For a fresh remote branch, invoke both sub-skills:
+For a fresh remote branch, invoke both sub-skills unless Step 6.0 keeps the existing commits:
 
 1. `kramme:git:recreate-commits` for clean commit history
 2. `kramme:pr:generate-description` for a clear, reviewer-focused description

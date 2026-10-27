@@ -67,18 +67,18 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "rule_id": "TM1",
-      "reason": "Re-reviewed intentional TM1 finding for Pull Request publication: the fresh path uses an empty-expectation lease only for a branch proven absent, while the existing-remote path freezes one push endpoint, revalidates branch, clean-tree, immutable source OID, strict-ancestor, and remote-tip state, then uses an exact observed-OID lease with one refspec and tag following disabled. Both modes fail closed on concurrent Git-ref updates and never replace remote-only work; Pull Request ownership sequencing remains a separate workflow policy decision. Re-reviewed on 2026-09-27 after later edits: both flagged pushes still use the absence lease for the proven-absent fresh ref or the exact observed-OID lease with tag following disabled, and plain --force remains forbidden.",
+      "reason": "Re-reviewed intentional TM1 finding for Pull Request publication: the fresh path uses an empty-expectation lease only for a branch proven absent, while the existing-remote path freezes one push endpoint, revalidates branch, clean-tree, immutable source OID, strict-ancestor, and remote-tip state, then uses an exact observed-OID lease with one refspec and tag following disabled. Both modes fail closed on concurrent Git-ref updates and never replace remote-only work; Pull Request ownership sequencing remains a separate workflow policy decision. Re-reviewed on 2026-09-27 after later edits: both flagged pushes still use the absence lease for the proven-absent fresh ref or the exact observed-OID lease with tag following disabled, and plain --force remains forbidden. Re-reviewed on 2026-10-27 after the separate pre-publication stack check was removed: the in-shell FINAL_STACK_RESOLVED guard still runs immediately before each flagged push and before gh pr create, and both pushes keep the absence lease or the exact observed-OID lease with tag following disabled.",
       "owner": "kramme",
-      "accepted_at": "2026-09-27",
-      "review_after": "2026-10-27"
+      "accepted_at": "2026-10-27",
+      "review_after": "2026-11-26"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/abort-and-rollback.md",
       "rule_id": "TM1",
-      "reason": "Re-reviewed intentional TM1 finding for the Pull Request creation rollback path: remote-append rollback validates the clean worktree, branch, and exact prepared tip immediately before using reset --keep, while fresh-mode hard reset restores only the feature branch to the full original commit after strict branch-name and full-commit-ID validation; both paths preserve the recreation backup ref for manual recovery. Re-reviewed on 2026-09-27 after later edits: the flagged reset --keep still runs inside the single bounded ownership guard, and reset --hard still runs only after strict branch-name and full-commit-ID validation.",
+      "reason": "Re-reviewed intentional TM1 finding for the Pull Request creation rollback path: remote-append rollback validates the clean worktree, branch, and exact prepared tip immediately before using reset --keep, while fresh-mode hard reset restores only the feature branch to the full original commit after strict branch-name and full-commit-ID validation; both paths preserve the recreation backup ref for manual recovery. Re-reviewed on 2026-09-27 after later edits: the flagged reset --keep still runs inside the single bounded ownership guard, and reset --hard still runs only after strict branch-name and full-commit-ID validation. Re-reviewed on 2026-10-27 after Step 10 moved verbatim from state-and-rollback.md into abort-and-rollback.md, which is read only on abort: reset --keep still runs inside the single bounded ownership guard, and reset --hard still runs only in fresh mode after strict branch-name and full-commit-ID validation.",
       "owner": "kramme",
-      "accepted_at": "2026-09-27",
-      "review_after": "2026-10-27"
+      "accepted_at": "2026-10-27",
+      "review_after": "2026-11-26"
     },
     {
       "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js",

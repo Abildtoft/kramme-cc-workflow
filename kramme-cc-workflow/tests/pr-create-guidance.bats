@@ -126,9 +126,8 @@ file_mode() {
     grep -qF "Automatic stack-wide rewriting additionally requires \`--authorize-history-rewrite\`" ../README.md
     grep -qF "A non-auto stacked invocation may instead use separate interactive confirmations" ../README.md
     grep -qF "## Step 4.5: Reject Stacked Branches" "$create"
-    grep -qF "STACK_RESOLVED=\$(\"\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")" "$create"
-    grep -qF "if [ \"\$STACK_MEMBERSHIP\" != \"none\" ]; then" "$create"
-    grep -qF "use kramme:pr:stack instead" "$create"
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh" "$create"
+    grep -qF "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." "$create"
     grep -qF "Both locally tracked and server-side stacks stop here" "$create"
     grep -qF "any later stack detection is state drift" "$create"
     ! grep -qF "leaves any stacked rewrite to the nested skill" "$create"
@@ -144,6 +143,7 @@ file_mode() {
 		pr-create-origin-push-url-helper \
 		pr-create-push-failure-rollback \
 		pr-create-remote-absence-contract \
+		pr-create-preflight-helper \
 		recreate-commits-deferred-push-contract \
 		pr-generate-description-subskill-contract \
 		recreate-commits-push-target-helper \
@@ -161,7 +161,8 @@ file_mode() {
     recreate="skills/kramme:git:recreate-commits/SKILL.md"
 
     grep -qF "If \`IN_STACK=true\` and \`--auto\` was passed without \`--authorize-history-rewrite\`, stop before the reset" "$recreate"
-    grep -qF "If \`REQUIRE_UNSTACKED=true\`, require \`STACK_MEMBERSHIP=none\` immediately after this resolution" "$recreate"
+    grep -qF "When \`REQUIRE_UNSTACKED=true\` and \`--no-push\` was passed (the \`kramme:pr:create\` delegation), skip this initial resolution and set \`IN_STACK=false\`" "$recreate"
+    grep -qF "Under \`REQUIRE_UNSTACKED=true\`, any local or server-side membership is state drift" "$recreate"
     grep -qF "stop before the reset, even when \`--auto\` or \`--authorize-history-rewrite\` was passed" "$recreate"
     grep -qF "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches" "$recreate"
     grep -qF "The branch joined a local or server-side stack after initial validation; stop before rewriting history." "$recreate"
@@ -181,11 +182,10 @@ file_mode() {
     grep -qF "[ \"\$(git symbolic-ref --quiet --short HEAD)\" = \"\$ORIGINAL_BRANCH\" ]" "$recreate"
     grep -qF "verify-rewrite-state.sh" "$recreate"
     publication="skills/kramme:pr:create/references/confirmation-and-creation.md"
-    grep -qF "STACK_REVALIDATION_FAILED=false" "$publication"
     grep -qF "Do not publish or create a default-base Pull Request from stale unstacked authorization." "$publication"
-    publication_stack_line=$(grep -nF "LATEST_STACK_RESOLVED=" "$publication" | head -1 | cut -d: -f1)
-    first_push_line=$(grep -nF "git push --no-follow-tags" "$publication" | head -1 | cut -d: -f1)
-    [ "$publication_stack_line" -lt "$first_push_line" ]
+    authorization_line=$(grep -nF "Do not publish or create a default-base Pull Request from stale unstacked authorization." "$publication" | cut -d: -f1)
+    first_guard_line=$(grep -nF "FINAL_STACK_RESOLVED=" "$publication" | head -1 | cut -d: -f1)
+    [ "$authorization_line" -lt "$first_guard_line" ]
     grep -qF "The current branch changed after push-target resolution; stop before pushing." "$recreate"
     grep -qF "without the captured ref-specific \`--force-with-lease\`" "$recreate"
     grep -qF -- "--no-follow-tags" "$recreate"
@@ -744,6 +744,7 @@ file_mode() {
     cd "'"$BATS_TEST_DIRNAME"'/.."
     create="skills/kramme:pr:create/SKILL.md"
     state="skills/kramme:pr:create/references/state-and-rollback.md"
+    abort="skills/kramme:pr:create/references/abort-and-rollback.md"
     confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
 
     grep -qF "REMOTE_APPEND_MODE=true" "$create"
@@ -768,14 +769,14 @@ file_mode() {
     grep -qF "still at \`{observed-origin-oid}\` — the update has not been observed" "$confirmation"
 	    grep -qF "Preserve the prepared append branch and recovery refs in every outcome" "$confirmation"
 	    grep -qF "now at \`{publication-commit}\`" "$confirmation"
-	    grep -qF "### 10.0 Refuse Rollback After Local Drift" "$state"
-	    grep -qF "derive \`{rollback-expected-tip}\`" "$state"
-	    grep -qF "Otherwise require \`{recreate-input-tip}\`" "$state"
-	    grep -qF "final guard and reset in one bounded shell invocation" "$state"
-	    grep -qF "git reset --keep \"{original-commit}\"" "$state"
-	    grep -qF "Never substitute \`git reset --hard\` in remote-append mode" "$state"
-	    grep -qF "shell tool'\''s bounded timeout" "$state"
-	    grep -qF "git ls-remote --heads -- \"\$ORIGIN_PUSH_URL\"" "$state"
+	    grep -qF "### 10.0 Refuse Rollback After Local Drift" "$abort"
+	    grep -qF "derive \`{rollback-expected-tip}\`" "$abort"
+	    grep -qF "Otherwise require \`{recreate-input-tip}\`" "$abort"
+	    grep -qF "final guard and reset in one bounded shell invocation" "$abort"
+	    grep -qF "git reset --keep \"{original-commit}\"" "$abort"
+	    grep -qF "Never substitute \`git reset --hard\` in remote-append mode" "$abort"
+	    grep -qF "shell tool'\''s bounded timeout" "$abort"
+	    grep -qF "git ls-remote --heads -- \"\$ORIGIN_PUSH_URL\"" "$abort"
 	    grep -qF "Remote append is auto-only and cannot reach this confirmation" "$confirmation"
 	    grep -qF "reject inline credentials, other credential-bearing URL syntax, executable remote-helper forms, and unsupported transports" "$create"
   '
@@ -783,7 +784,8 @@ file_mode() {
 	assert_required_contracts_registered \
 		pr-create-existing-remote-append-orchestration \
 		pr-create-existing-remote-append-state \
-		pr-create-existing-remote-append-publication
+		pr-create-existing-remote-append-publication \
+		pr-create-abort-and-rollback
 
 	[ "$status" -eq 0 ]
 }
@@ -913,6 +915,7 @@ file_mode() {
     grep -qF "references/pre-validation-checks.md" "$create"
     grep -qF "references/branch-and-platform-handling.md" "$create"
     grep -qF "references/state-and-rollback.md" "$create"
+    grep -qF "references/abort-and-rollback.md" "$create"
     grep -qF "references/confirmation-and-creation.md" "$create"
     grep -qF "## Step 3.5: Reject an Existing Pull Request" "$create"
     grep -qF "Inspect the agent-tracked value directly" "$create"
@@ -1039,25 +1042,31 @@ file_mode() {
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     state="skills/kramme:pr:create/references/state-and-rollback.md"
+    abort="skills/kramme:pr:create/references/abort-and-rollback.md"
 
     test -f "$state"
+    test -f "$abort"
     grep -q "^## Step 5: State Preservation" "$state"
     grep -q "^## Step 9.0: Restore Excluded Uncommitted Changes" "$state"
-    grep -q "^## Step 10: Abort and Rollback" "$state"
+    ! grep -q "^## Step 10" "$state"
+    grep -qF "Step 10 (abort path) lives in \`abort-and-rollback.md\`; read it only when Step 10 runs" "$state"
+    grep -q "^## Step 10: Abort and Rollback" "$abort"
     grep -qF "{rollback-origin-ref}" "$state"
     grep -qF "{rollback-origin-oid}" "$state"
     grep -qF "git ls-remote --heads origin \"{rollback-origin-ref}\"" "$state"
+    grep -qF "git ls-remote --heads origin \"{rollback-origin-ref}\"" "$abort"
     grep -qF "continue only when it returns no matching ref" "$state"
     grep -qF "Neither \`--auto\` nor \`--authorize-history-rewrite\` may bypass this fresh-mode remote-absence requirement" "$state"
-    grep -qF "never force-push, delete, or recreate the remote ref during automatic rollback" "$state"
-    grep -qF "Remote state: {unchanged at captured OID/absence | diverged" "$state"
-    grep -qF "Remote restoration is claimed only when the read-only comparison reports \`unchanged\`" "$state"
-    ! grep -qF "Your work has been restored to the pre-skill branch state." "$state"
+    grep -qF "never force-push, delete, or recreate the remote ref during automatic rollback" "$abort"
+    grep -qF "Remote state: {unchanged at captured OID/absence | diverged" "$abort"
+    grep -qF "Remote restoration is claimed only when the read-only comparison reports \`unchanged\`" "$abort"
+    ! grep -qF "Your work has been restored to the pre-skill branch state." "$abort"
   '
 
 	assert_required_contracts_registered \
 		pr-create-remote-absence-contract \
-		pr-create-state-restoration-contract
+		pr-create-state-restoration-contract \
+		pr-create-abort-and-rollback
 
 	[ "$status" -eq 0 ]
 }
@@ -1195,4 +1204,148 @@ file_mode() {
     grep -qF "Do not publish a Pull Request from a production branch" "$branch"
   '
 	[ "$status" -eq 0 ]
+}
+
+@test "pr-create runs Steps 1-4.5 through the read-only preflight helper" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    prevalidation="skills/kramme:pr:create/references/pre-validation-checks.md"
+    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
+
+    test -f "skills/kramme:pr:create/scripts/pr-create-preflight.py"
+    [ "$(grep -c "^## Preflight Helper$" "$create")" -eq 1 ]
+    helper_line=$(grep -n "^## Preflight Helper$" "$create" | cut -d: -f1)
+    step_one_line=$(grep -n "^## Step 1: Pre-Validation$" "$create" | cut -d: -f1)
+    [ "$helper_line" -lt "$step_one_line" ]
+    grep -qF "python3 \"\${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py\"" "$create"
+    grep -qF "parse it as JSON and never \`eval\` or source it" "$create"
+    grep -qF "rerun the helper with the same flags plus \`--feature-branch \"{validated-candidate}\"\`" "$create"
+    grep -qF "starting at \"If they differ, freeze the one effective push endpoint\"" "$create"
+    grep -qF "If they differ, freeze the one effective push endpoint" "$branch"
+    grep -qF "read \`references/pre-validation-checks.md\` only to word the error" "$create"
+    grep -qF "rerun the helper to capture the rebased entry state" "$create"
+    grep -qF "apply any protected, workbench, or production branch named in repository instructions" "$create"
+    grep -qF "scripts/pr-create-preflight.py\` performs these checks" "$prevalidation"
+    grep -qF "scripts/pr-create-preflight.py\` performs entry capture" "$branch"
+    grep -qF "git rev-parse --git-path rebase-merge --git-path rebase-apply --git-path MERGE_HEAD" "$prevalidation"
+    ! grep -qF ".git/rebase-merge" "$prevalidation" || exit 1
+    ! grep -qF ".git/MERGE_HEAD" "$prevalidation" || exit 1
+  '
+
+	assert_required_contracts_registered pr-create-preflight-helper
+
+	[ "$status" -eq 0 ]
+}
+
+@test "the fresh path resolves stack membership at the helper, the reset, each push, and creation" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+    publication="skills/kramme:pr:create/references/confirmation-and-creation.md"
+
+    ! grep -qF "STACK_RESOLVED=\$(" "$create" || exit 1
+    grep -qF "The helper resolves stack membership for the current feature branch" "$create"
+
+    skip_line=$(grep -nF "skip this initial resolution and set \`IN_STACK=false\`" "$recreate" | cut -d: -f1)
+    initial_line=$(grep -nF "STACK_RESOLVED=\$(" "$recreate" | grep -vF "LATEST_STACK_RESOLVED" | head -1 | cut -d: -f1)
+    latest_line=$(grep -nF "LATEST_STACK_RESOLVED=" "$recreate" | head -1 | cut -d: -f1)
+    drift_line=$(grep -nF "Under \`REQUIRE_UNSTACKED=true\`, any local or server-side membership is state drift" "$recreate" | cut -d: -f1)
+    reset_line=$(grep -nF "git reset --hard \"\$RESET_POINT\"" "$recreate" | head -1 | cut -d: -f1)
+    [ "$skip_line" -lt "$initial_line" ]
+    [ "$latest_line" -lt "$drift_line" ]
+    [ "$drift_line" -lt "$reset_line" ]
+    grep -qF "stop before the reset, even when \`--auto\` or \`--authorize-history-rewrite\` was passed" "$recreate"
+
+    ! grep -qF "LATEST_STACK_RESOLVED" "$publication" || exit 1
+    ! grep -qF "STACK_REVALIDATION_FAILED" "$publication" || exit 1
+    [ "$(grep -cF "FINAL_STACK_RESOLVED=" "$publication")" -eq 3 ]
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "pr-create Step 10 lives in the abort-only reference" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill_dir="skills/kramme:pr:create"
+
+    ! grep -rqF "Step 10 from \`state-and-rollback.md\`" "$skill_dir" || exit 1
+    ! grep -rqF "Step 10 in \`references/state-and-rollback.md\`" "$skill_dir" || exit 1
+    ! grep -rqF "Step 10 from \`references/state-and-rollback.md\`" "$skill_dir" || exit 1
+    [ "$(grep -cF "abort-and-rollback.md" "$skill_dir/references/confirmation-and-creation.md")" -eq 3 ]
+    section=$(awk "/^## Step 10: Abort and Rollback Handling\$/{found=1; next} found && /^## /{exit} found" "$skill_dir/SKILL.md")
+    grep -qF "Read \`references/abort-and-rollback.md\` and execute its Step 10" <<<"$section"
+    [ "$(grep -c "^### 10\.[0-4] " "$skill_dir/references/abort-and-rollback.md")" -eq 5 ]
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "pr-create keeps well-formed commits only on direct fresh runs without an include commit" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    create="skills/kramme:pr:create/SKILL.md"
+
+    keep_line=$(grep -n "^### 6.0 Keep Well-Formed Commits$" "$create" | cut -d: -f1)
+    confirm_line=$(grep -n "^### 6.1 Confirm Commit Restructuring Approach$" "$create" | cut -d: -f1)
+    [ "$keep_line" -lt "$confirm_line" ]
+    section=$(awk "/^### 6.0 Keep Well-Formed Commits\$/{found=1; next} found && /^### /{exit} found" "$create")
+    grep -qF -- "- \`FRESH_REMOTE_MODE=true\`." <<<"$section"
+    grep -qF "\`{uncommitted-disposition}\` is \`none\` or \`excluded-and-stashed\`" <<<"$section"
+    grep -qF "did not include the literal \`--require-generated-description\` flag" <<<"$section"
+    grep -qF "none carries a flag (\`merge\`, \`autosquash\`, \`placeholder\`, or \`ai-attribution\`)" <<<"$section"
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md" <<<"$section"
+    grep -qF "\"Fix lint\", \"Address review feedback\", or \"Fix typo\"" <<<"$section"
+    grep -qF "History: kept {N} existing commits; no rewrite" <<<"$section"
+    grep -qF "**Keep existing commits (recommended)**" "$create"
+    grep -qF "When Step 6.0 qualified:" "$create"
+    grep -qF "label: \"Keep existing commits (recommended)\"" "$create"
+    grep -qF "label: \"Narrative\"" "$create"
+    grep -qF "Otherwise:" "$create"
+    grep -qF "keep unpublished fresh-branch commits that pass Step 6.0" "$create"
+    grep -qF "kramme:pr:create --auto --base {base-branch} --require-generated-description" \
+      "skills/kramme:code:plan-to-pr/references/shipping-contract.md"
+    grep -qF "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description" \
+      "skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    grep -qF "keeps unpublished commits that already follow the repository'\''s commit conventions" ../README.md
+  '
+
+	[ "$status" -eq 0 ]
+}
+
+@test "generate-description skips its resolver for a caller-pinned base" {
+	guidance="$BATS_TEST_DIRNAME/../skills/kramme:pr:generate-description/references/base-branch-resolution.md"
+	block="$BATS_TEST_TMPDIR/pinned-base.sh"
+	repo="$BATS_TEST_TMPDIR/repo"
+	python3 - "$guidance" "$block" <<'PY'
+import pathlib
+import sys
+
+source = pathlib.Path(sys.argv[1]).read_text()
+section = source.split("When both `BASE_BRANCH_OVERRIDE` and `BASE_COMMIT_OVERRIDE` are set", 1)[1]
+block = section.split("```bash", 1)[1].split("```", 1)[0]
+pathlib.Path(sys.argv[2]).write_text(block)
+PY
+	! grep -qF "resolve-base.sh" "$block" || false
+	grep -qF "Otherwise, resolve the base/target branch with the shared plugin script." "$guidance"
+	init_test_git_repo "$repo"
+	cd "$repo"
+	pinned=$(git rev-parse HEAD)
+	git remote add origin https://github.com/acme/repo.git
+
+	for base in refs/remotes/origin/main refs/heads/main origin/main; do
+		BASE_BRANCH_OVERRIDE="$base" BASE_COMMIT_OVERRIDE="$pinned" run bash "$block"
+		[ "$status" -eq 0 ]
+		[ "$output" = "Base branch: main" ]
+	done
+
+	BASE_BRANCH_OVERRIDE=main BASE_COMMIT_OVERRIDE="$(printf 'a%.0s' $(seq 40))" run bash "$block"
+	[ "$status" -ne 0 ]
+	[[ "$output" == *"Pinned base commit does not resolve locally"* ]]
 }

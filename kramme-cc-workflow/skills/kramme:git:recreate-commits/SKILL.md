@@ -63,7 +63,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 
    It records three values you rely on later: `ORIGINAL_BRANCH` (the branch validated before backup creation), `ORIGINAL_TIP` (the pre-reset `HEAD`, the byte-identical target end state), and `BACKUP_REF` (a branch pointing at `ORIGINAL_TIP`). Recover the original branch at any time with `git reset --hard "$BACKUP_REF"`. A backup already at `ORIGINAL_TIP` is reused for retry safety. If it points elsewhere, inspect it before retrying; only pass `--force-backup` after confirming the previous recovery point can be replaced.
 
-   Before resetting the branch, resolve local and server-side GitHub stack membership:
+   When `REQUIRE_UNSTACKED=true` and `--no-push` was passed (the `kramme:pr:create` delegation), skip this initial resolution and set `IN_STACK=false`: the parent already rejected stacked branches, and the mandatory Step 5 revalidation re-resolves membership immediately before the reset. Otherwise, before resetting the branch, resolve local and server-side GitHub stack membership:
 
    ```bash
    STACK_RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh") || {
@@ -73,7 +73,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
    eval "$STACK_RESOLVED"
    ```
 
-   If `REQUIRE_UNSTACKED=true`, require `STACK_MEMBERSHIP=none` immediately after this resolution. Any local or server-side membership is state drift from the parent workflow's validated boundary: stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed. Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches.
+   If `REQUIRE_UNSTACKED=true` without `--no-push`, require `STACK_MEMBERSHIP=none` immediately after this resolution.
 
    Set `IN_STACK=true` only for `STACK_MEMBERSHIP=local`; set it false for `none`. If membership is `remote`, stop before the reset: the PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry. Authentication, API, parsing, and unexpected CLI failures also stop rather than falling through to the single-branch flow.
 
@@ -196,7 +196,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
        --reset-point "$RESET_POINT"
      ```
 
-     Run the stack-revalidation block above only when the parsed agent state has `REQUIRE_UNSTACKED=true`; omit it for ordinary direct invocations that may intentionally rewrite a local stack. Do not wrap it in a shell-local `REQUIRE_UNSTACKED` conditional: argument parsing and this destructive boundary run in separate shell invocations.
+     Run the stack-revalidation block above only when the parsed agent state has `REQUIRE_UNSTACKED=true`; omit it for ordinary direct invocations that may intentionally rewrite a local stack. Do not wrap it in a shell-local `REQUIRE_UNSTACKED` conditional: argument parsing and this destructive boundary run in separate shell invocations. Under `REQUIRE_UNSTACKED=true`, any local or server-side membership is state drift from the parent workflow's validated boundary: stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed. Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches.
 
      Any failure stops the workflow. Do not rely only on the earlier backup-time or stack-membership validation: diff analysis and commit planning create a real window in which the checkout or authorization boundary can change.
 

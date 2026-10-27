@@ -735,16 +735,13 @@
       "name": "pr-create-stack-publication-boundary",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "contains": [
-        "STACK_REVALIDATION_FAILED=false",
-        "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
-        "The branch joined a local or server-side stack after initial validation; stop before publication.",
-        "If `STACK_REVALIDATION_FAILED=true`",
         "Do not publish or create a default-base Pull Request from stale unstacked authorization.",
         "FINAL_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
         "The branch joined a local or server-side stack before the fast-forward push",
         "The branch joined a local or server-side stack before the fresh push",
         "The branch joined a local or server-side stack before Pull Request creation",
-        "If this final stack guard fails"
+        "If this final stack guard fails",
+        "Stack membership is re-resolved by the `FINAL_STACK_RESOLVED` guard in the same shell as each push and as `gh pr create` below"
       ]
     },
     {
@@ -752,7 +749,7 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
       "contains": [
         "If the push command exits non-zero, its remote outcome is ambiguous",
-        "Execute Step 10 from `state-and-rollback.md`",
+        "Execute Step 10 from `abort-and-rollback.md`",
         "re-queries `{rollback-origin-ref}` without modifying it",
         "show the full generated description directly in the conversation for copy/paste",
         "Never claim the description was saved to disk",
@@ -799,15 +796,7 @@
         "origin-push-url-assignment",
         "This is the only valid disposition in `REMOTE_APPEND_MODE`",
         "verify-clean-worktree.sh\" --allow-visible",
-        "git cherry-pick --no-commit \"{include-commit}\"",
-        "### 10.0 Refuse Rollback After Local Drift",
-        "derive `{rollback-expected-tip}`",
-        "Otherwise require `{recreate-input-tip}`",
-        "final guard and reset in one bounded shell invocation",
-        "git reset --keep \"{original-commit}\"",
-        "Never substitute `git reset --hard` in remote-append mode",
-        "shell tool's bounded timeout",
-        "git ls-remote --heads -- \"$ORIGIN_PUSH_URL\""
+        "Step 10 (abort path) lives in `abort-and-rollback.md`; read it only when Step 10 runs"
       ]
     },
     {
@@ -897,7 +886,7 @@
         "The model must never invent `--force-backup`",
         "only with the exact retry-safe value supplied by `kramme:pr:create`",
         "[--require-unstacked] [--no-push] [--authorize-history-rewrite]",
-        "If `REQUIRE_UNSTACKED=true`, require `STACK_MEMBERSHIP=none` immediately after this resolution",
+        "When `REQUIRE_UNSTACKED=true` and `--no-push` was passed (the `kramme:pr:create` delegation), skip this initial resolution and set `IN_STACK=false`",
         "stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed",
         "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches",
         "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
@@ -917,7 +906,9 @@
         "--no-follow-tags",
         "--force-with-lease=\"${PUSH_REMOTE_REF}:${PUSH_LEASE_OID}\"",
         "-- \"$PUSH_REMOTE_URL\" \"HEAD:${PUSH_REMOTE_REF}\"",
-        "without the captured ref-specific `--force-with-lease`"
+        "without the captured ref-specific `--force-with-lease`",
+        "the mandatory Step 5 revalidation re-resolves membership immediately before the reset",
+        "Under `REQUIRE_UNSTACKED=true`, any local or server-side membership is state drift"
       ]
     },
     {
@@ -1170,8 +1161,6 @@
         "if git add -A && git commit -m \"Include uncommitted changes for PR creation\"; then",
         "mv -f \"$INDEX_BACKUP\" \"$INDEX_PATH\"",
         "restored the original Git index",
-        "if git cherry-pick --no-commit \"{include-commit}\"; then",
-        "CHERRY_PICK_STATUS=$?",
         "git stash pop \"$STASH_REF\"",
         "No PR changes remain after excluding uncommitted work",
         "before any post-push PR creation failure output",
@@ -1183,12 +1172,54 @@
         "{recreate-backup-ref}",
         "newly created temporary include commit gets a different recovery ref",
         "Early Branch Cleanup",
+        "{rollback-origin-ref}",
+        "{rollback-origin-oid}",
+        "git ls-remote --heads origin \"{rollback-origin-ref}\""
+      ]
+    },
+    {
+      "name": "pr-create-abort-and-rollback",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/abort-and-rollback.md",
+      "contains": [
+        "Use this reference for `/kramme:pr:create` Step 10 only",
+        "## Step 10: Abort and Rollback",
+        "### 10.0 Refuse Rollback After Local Drift",
+        "derive `{rollback-expected-tip}`",
+        "Otherwise require `{recreate-input-tip}`",
+        "final guard and reset in one bounded shell invocation",
+        "git reset --keep \"{original-commit}\"",
+        "Never substitute `git reset --hard` in remote-append mode",
+        "if git cherry-pick --no-commit \"{include-commit}\"; then",
+        "CHERRY_PICK_STATUS=$?",
+        "git stash pop \"$STASH_REF\"",
         "Return to the Invocation Entry Checkout",
+        "never force-delete an uncertain branch",
         "{rollback-origin-ref}",
         "{rollback-origin-oid}",
         "git ls-remote --heads origin \"{rollback-origin-ref}\"",
+        "git ls-remote --heads -- \"$ORIGIN_PUSH_URL\"",
+        "shell tool's bounded timeout",
         "never force-push, delete, or recreate the remote ref during automatic rollback",
         "Remote restoration is claimed only when the read-only comparison reports `unchanged`"
+      ]
+    },
+    {
+      "name": "pr-create-preflight-helper",
+      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "contains": [
+        "## Preflight Helper",
+        "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py\"",
+        "it never creates branches, commits, stashes, pushes, or changes configuration, and never prints the origin URL",
+        "parse it as JSON and never `eval` or source it",
+        "`feature_branch_required` (exit 3)",
+        "`remote_classification_required` (exit 3)",
+        "never guess the state",
+        "`references/abort-and-rollback.md` — Step 10: abort and rollback; read only when Step 10 runs.",
+        "### 6.0 Keep Well-Formed Commits",
+        "The invocation did not include the literal `--require-generated-description` flag",
+        "none carries a flag (`merge`, `autosquash`, `placeholder`, or `ai-attribution`)",
+        "`{history-ref}` set to `{base-source-ref}`",
+        "History: kept {N} existing commits; no rewrite"
       ]
     },
     {
