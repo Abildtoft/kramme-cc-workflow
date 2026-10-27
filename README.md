@@ -288,6 +288,8 @@ $kramme:pr:code-review --subagent-model sol      # Codex reviewers use the runti
 /kramme:pr:review-convergence --subagent-model inherit --requirements <authoritative requirements>
 ```
 
+Review skills recognize stacked Pull Requests, from gh-stack tracking or from chained open Pull Requests, and review one layer at a time. `pr:code-review`, `pr:product-review`, `pr:convention-review`, `pr:overengineering-review`, `pr:gut-check`, and `pr:triage-risk` diff a gh-stack layer that has no Pull Request yet, or that needs a restack, against the layer below instead of the trunk. Their reviewers check the layers above before calling new code unused, treat each layer as mergeable on its own, and send findings about lower layers to the Pull Request that owns them. Reports name the layer on a `Stack:` line. `pr:github-review` applies the same rules to someone else's stacked Pull Request, and `pr:review-convergence` keeps remediation commits on the reviewed layer. For a manually chained branch without a Pull Request, pass `--base <parent-branch>`.
+
 `pr:review-convergence` keeps review spend proportional to risk and to what actually changed. Each quality round runs every applicable gate read-only and collects findings, then fixes the accepted ones as one batch that consumes one remediation cycle. In standard mode only an accepted Critical, Important, or `OVERDONE` finding, or a verification failure, opens a batch; advisory items join an open batch or are reported as deferred, so polish never buys another review round. The review profile decides the rest:
 
 | Profile | Selected by | Gates | After each fix batch |
