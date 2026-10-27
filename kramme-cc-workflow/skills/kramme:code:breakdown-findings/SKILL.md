@@ -78,7 +78,7 @@ Follow the generation reference and its assets to write `PR_PLAN_INDEX.md` and `
 
 ### Phase 5: Summary
 
-Read `references/summary-templates.md` only now and use its findings-mode or handoff-mode template verbatim. Preserve the `PLANS GENERATED / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` triplet exactly.
+Read `references/summary-templates.md` only now and use its findings-mode or handoff-mode template verbatim. Preserve the `PLANS GENERATED / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` triplet exactly. The template's `LAUNCH SHEET:` block is mandatory and replaces any single recommended first PR.
 
 ### Phase 6: Reconcile Existing Plan Set
 
@@ -104,3 +104,4 @@ Use these exact prefixes because downstream workflows parse them:
 - `PLAN:` for proposed themes or the delegated 1:1 mapping.
 - `RECONCILE:` for reconcile status and proposed updates.
 - `PLANS GENERATED / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS` for the final summary.
+- `LAUNCH SHEET:` for the per-wave launch list in the final summary.

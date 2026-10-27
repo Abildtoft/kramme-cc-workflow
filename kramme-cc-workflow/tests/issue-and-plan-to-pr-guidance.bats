@@ -673,3 +673,51 @@
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "breakdown findings discovers sibling worktree reports and prints a launch sheet" {
+	run bash -c '
+		set -e
+		cd "'"$BATS_TEST_DIRNAME"'/.."
+		dir="skills/kramme:code:breakdown-findings"
+		skill="$dir/SKILL.md"
+		autodetect="$dir/references/auto-detect-sources.md"
+		intake="$dir/references/source-intake.md"
+		templates="$dir/references/summary-templates.md"
+		checks="$dir/references/generation-checks.md"
+
+		grep -qFx "## Sibling worktree reports" "$autodetect"
+		grep -qF "git worktree list --porcelain" "$autodetect"
+		grep -qF "\`prunable\` records" "$autodetect"
+		grep -qF "whose path below the worktree root contains no symlink" "$autodetect"
+		grep -qF "**Scanned commit**" "$autodetect"
+		grep -qF "git merge-base --is-ancestor" "$autodetect"
+		grep -qF "full lowercase hexadecimal commit ID" "$autodetect"
+		grep -qF "git rev-parse --verify --quiet --end-of-options" "$autodetect"
+		grep -qF "git merge-base --is-ancestor -- <scanned> HEAD" "$autodetect"
+		grep -qF "SOURCES: sibling worktree reports" "$autodetect"
+		grep -qF "\`AUTO_MODE=true\` does not bypass this confirmation." "$autodetect"
+		grep -qF "List \`not in HEAD\` candidates without preselecting them." "$autodetect"
+		! grep -qE "^[[:space:]]*[0-9]+\.[[:space:]]+\`" <(sed -n "/^## Sibling worktree reports/,\$p" "$autodetect")
+
+		grep -qF "Then apply its **Sibling worktree reports** discovery and add only the reports the user selects." "$intake"
+		grep -qF "Explicit source paths are already user-selected" "$intake"
+		grep -qF "counts as a confirmed combination only because the user selected it after seeing the gap" "$intake"
+		grep -qF "explicit \`none (not a git repository)\` sentinel" "$autodetect"
+
+		[ "$(grep -cF "LAUNCH SHEET:" "$templates")" -ge 2 ]
+		grep -qF "/kramme:code:plan-to-pr PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md --ship" "$templates"
+		grep -qF "List every generated plan exactly once." "$templates"
+		grep -qF "implement in its own worktree per the plan'"'"'s Implementation Setup" "$templates"
+		grep -qF "/kramme:code:breakdown-findings --reconcile PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md [--worktree <path> | --source <ref>]" "$templates"
+		! grep -qF "Recommended first PR" "$templates"
+
+		grep -qF "The template'"'"'s \`LAUNCH SHEET:\` block is mandatory" "$skill"
+		grep -qF "\`LAUNCH SHEET:\` for the per-wave launch list in the final summary." "$skill"
+
+		grep -qF "Every auto-detected sibling worktree report in the source set was shown" "$checks"
+		grep -qF "an explicitly supplied report path is already user-selected" "$checks"
+		grep -qF "The summary'"'"'s \`LAUNCH SHEET:\` lists every generated plan exactly once" "$checks"
+	'
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
