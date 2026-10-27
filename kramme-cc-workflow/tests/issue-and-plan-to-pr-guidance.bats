@@ -307,10 +307,12 @@
 		cd "'"$BATS_TEST_DIRNAME"'/.."
 		skill="skills/kramme:code:breakdown-findings/SKILL.md"
 		intake="skills/kramme:code:breakdown-findings/references/source-intake.md"
+		shared_intake="shared/findings/references/findings-intake.md"
 		generation="skills/kramme:code:breakdown-findings/references/generation-workflow.md"
 
 		test -f "$skill"
 		test -f "$intake"
+		test -f "$shared_intake"
 		test -f "$generation"
 
 		grep -qF "set \`RECONCILE_MODE=true\`" "$skill"
@@ -339,15 +341,15 @@
 		[ "$generation_load" -lt "$phase_recon" ]
 
 		grep -qF "Prior PR plan artifacts found:" "$intake"
-		grep -qF "If one or more arguments are present and every argument resolves as a file path" "$intake"
+		grep -qF "If one or more arguments are present and every argument resolves as a file path" "$shared_intake"
 		grep -qF "AUTO_MODE=true does not bypass the resume confirmation" "$intake"
 		grep -qF "compare the resolved source description and available paths with the source set recorded in \`PR_PLAN_INDEX.md\`" "$intake"
 		grep -qF "Stop before writing and report both sets when they differ." "$intake"
 		grep -qF "Generate only missing plan files after explicit confirmation" "$intake"
 		grep -qF "Change \`PR_PLAN_INDEX.md\` or \`PR_PLAN_REJECTIONS.md\` only after a second explicit confirmation naming the exact metadata changes." "$intake"
-		grep -qF "Mixed source arguments are ambiguous:" "$intake"
-		grep -qF "Findings source path not found:" "$intake"
-		grep -qF "No findings source found." "$intake"
+		grep -qF "Mixed source arguments are ambiguous:" "$shared_intake"
+		grep -qF "Findings source path not found:" "$shared_intake"
+		grep -qF "No findings source found." "$shared_intake"
 		grep -qF "HANDOFF_CONFIDENCE=marked" "$intake"
 		grep -qF "HANDOFF_CONFIDENCE=inferred" "$intake"
 		grep -qF "Found N findings from M sources:" "$intake"
@@ -709,7 +711,7 @@
 		cd "'"$BATS_TEST_DIRNAME"'/.."
 		dir="skills/kramme:code:breakdown-findings"
 		skill="$dir/SKILL.md"
-		autodetect="$dir/references/auto-detect-sources.md"
+		autodetect="shared/findings/references/findings-intake.md"
 		intake="$dir/references/source-intake.md"
 		templates="$dir/references/summary-templates.md"
 		checks="$dir/references/generation-checks.md"
@@ -728,9 +730,10 @@
 		grep -qF "List \`not in HEAD\` candidates without preselecting them." "$autodetect"
 		! grep -qE "^[[:space:]]*[0-9]+\.[[:space:]]+\`" <(sed -n "/^## Sibling worktree reports/,\$p" "$autodetect")
 
-		grep -qF "Then apply its **Sibling worktree reports** discovery and add only the reports the user selects." "$intake"
-		grep -qF "Explicit source paths are already user-selected" "$intake"
-		grep -qF "counts as a confirmed combination only because the user selected it after seeing the gap" "$intake"
+		grep -qF "Then apply **Sibling worktree reports** discovery and add only the reports the user selects." "$autodetect"
+		grep -qF "Explicit source paths are already user-selected" "$autodetect"
+		grep -qF "counts as a confirmed combination only because the user selected it after seeing the gap" "$autodetect"
+		grep -qF "**Sibling worktree reports** discovery drive no-argument auto-detection" "$intake"
 		grep -qF "explicit \`none (not a git repository)\` sentinel" "$autodetect"
 
 		[ "$(grep -cF "LAUNCH SHEET:" "$templates")" -ge 2 ]
@@ -746,6 +749,53 @@
 		grep -qF "Every auto-detected sibling worktree report in the source set was shown" "$checks"
 		grep -qF "an explicitly supplied report path is already user-selected" "$checks"
 		grep -qF "The summary'"'"'s \`LAUNCH SHEET:\` lists every generated plan exactly once" "$checks"
+	'
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "breakdown skills share one findings intake reference" {
+	run bash -c '
+		set -e
+		cd "'"$BATS_TEST_DIRNAME"'/.."
+		shared="shared/findings/references/findings-intake.md"
+		shared_path="\${CLAUDE_PLUGIN_ROOT}/$shared"
+		code="skills/kramme:code:breakdown-findings"
+		linear="skills/kramme:linear:breakdown-findings"
+
+		test -f "$shared"
+		test ! -e "$code/references/auto-detect-sources.md"
+		for skill in "$code" "$linear"; do
+			grep -qF "$shared_path" "$skill/SKILL.md"
+		done
+		grep -qF "$shared_path" "$code/references/source-intake.md"
+		grep -qF "$shared_path" "$code/references/clustering.md"
+		grep -qF "$shared_path" "$linear/references/source-intake.md"
+		grep -qF "$shared_path" "$linear/references/clustering-and-recon.md"
+
+		for heading in "Auto-detect candidates" "Sibling worktree reports" "Resolve the source set" \
+			"Check compatibility" "Normalize findings" "Size themes" "Assign execution labels"; do
+			grep -qFx "## $heading" "$shared"
+		done
+		[ "$(grep -c "^## " "$shared")" -eq 7 ]
+
+		candidates=$(sed -n "/^## Auto-detect candidates/,/^## /p" "$shared" | grep -E "^[0-9]+\. \`")
+		[ -n "$candidates" ]
+		! printf "%s\n" "$candidates" | grep -qF "AUDIT_SPEC_REPORT.md"
+		grep -qF "SIW audit decisions route through \`kramme:siw:resolve-audit\`" "$shared"
+		grep -qF "an explicitly passed spec-audit report is still accepted" "$shared"
+		! grep -qF "kramme:siw:spec-audit" "$shared"
+
+		grep -qF "effort (\`S\`, \`M\`, or \`L\`)" "$shared"
+		grep -qF "| **XL** | **9+ files - split into a series** |" "$shared"
+		grep -qF "Dependencies always override value ordering." "$shared"
+		for file in "$code/references/source-intake.md" "$code/references/clustering.md" \
+			"$linear/references/source-intake.md" "$linear/references/clustering-and-recon.md"; do
+			! grep -qF "effort (\`" "$file"
+			! grep -qE "^[[:space:]]*\|[[:space:]]*(XS|\*\*XL\*\*|XL)[[:space:]]*\|" "$file"
+			! grep -qF "REVIEW_OVERVIEW.md" "$file"
+			! grep -qF "Mixed source arguments are ambiguous:" "$file"
+		done
 	'
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
