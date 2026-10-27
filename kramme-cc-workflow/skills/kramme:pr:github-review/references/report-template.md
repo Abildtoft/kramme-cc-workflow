@@ -10,6 +10,7 @@ The report is written for the reviewer to act on. Findings are framed for the PR
 - PR: <url>
 - Author: @<author>
 - Branch: <head-ref> → <base-branch>
+- Stack: <stack summary from the stacked Pull Request reference; omit this line when the PR is not stacked>
 - Reviewed head: <head-oid (short)>
 - Files changed: <n> (+<additions> / -<deletions>)
 - Dimensions run: code<, ux/visual/a11y/product> | code only

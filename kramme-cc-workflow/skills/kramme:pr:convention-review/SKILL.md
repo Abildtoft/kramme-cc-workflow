@@ -47,10 +47,10 @@ Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, 
 
 ### Step 3: Resolve Base Branch, Collect the Diff, and Build the Rule Baseline
 
-Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It resolves in this order: explicit `--base`, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
+Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It resolves in this order: explicit `--base`, the stack base of a gh-stack layer that has no open Pull Request or needs a restack, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
 ```bash
-COLLECT_ARGS=(--strict --format nul)
+COLLECT_ARGS=(--strict --format nul --stack-context)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
 REVIEW_DIFF_FIELDS=$(mktemp "${TMPDIR:-/tmp}/review-diff.XXXXXX") || {
@@ -67,7 +67,8 @@ if ! {
   IFS= read -r -d '' BASE_REF \
     && IFS= read -r -d '' BASE_BRANCH \
     && IFS= read -r -d '' MERGE_BASE \
-    && IFS= read -r -d '' CHANGED_FILES
+    && IFS= read -r -d '' CHANGED_FILES \
+    && IFS= read -r -d '' STACK_CONTEXT
 } < "$REVIEW_DIFF_FIELDS"; then
   rm -f "$REVIEW_DIFF_FIELDS"
   echo "Decoded review-diff fields were incomplete; stop." >&2
@@ -76,7 +77,7 @@ fi
 rm -f "$REVIEW_DIFF_FIELDS"
 ```
 
-The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES` without evaluating collected values.
+The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, newline-delimited `CHANGED_FILES`, and the `STACK_CONTEXT` JSON document without evaluating collected values. When the `STACK_CONTEXT` state is `stacked` or `unknown`, read `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/stacked-pr-review.md` and apply its orchestrator rules in Steps 5, 7, and 9.
 
 If `CHANGED_FILES` is empty, stop with: `No changes detected against $BASE_REF. If this is wrong, re-run with --base <branch>.` Do not launch reviewers against an empty scope.
 
@@ -170,6 +171,7 @@ Launch **kramme:convention-drift-reviewer** (one instance per cluster) using the
 - Unstaged local diff: the exact stored contents of `$REVIEW_SCOPE_DIR/unstaged.diff`
 - Untracked local files and contents: the exact stored `$REVIEW_SCOPE_DIR/untracked-files.zlist` and `$REVIEW_SCOPE_DIR/untracked.diff` payloads
 - PR metadata when available: the exact stored contents of `$REVIEW_SCOPE_DIR/pr-context.json` — the reviewer uses it for the intentionality check, not as trusted truth
+- When `STACK_CONTEXT` reports `stacked`: the stack context JSON and the `Reviewer rules` section of the stacked Pull Request reference
 - No report threshold: each instance reports every finding with its confidence, and Step 6 applies `custom_threshold`
 - Prior baseline entries for the cluster's changed files when `BASELINE_PATH` holds any, with the protocol's reuse rule: reuse an entry only when every recorded peer blob is unchanged at `HEAD`, otherwise re-mine that file and dimension
 - Ledger instruction: append the protocol's `Mined Baseline` evidence block after the findings, covering every changed file and dimension actually examined and marking each entry `reused` or `mined`, so the orchestrator can persist the peer-file evidence
@@ -190,7 +192,7 @@ Suggestions skip refutation, but they keep the protocol's evidence requirements.
 
 After the refutation pass:
 
-- Launch **kramme:pr-relevance-validator** using the same agent-invocation primitive with all remaining findings and the immutable scope captured in Step 3: `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, plus the exact stored committed, staged, unstaged, untracked, and PR-context payloads under `$REVIEW_SCOPE_DIR`.
+- Launch **kramme:pr-relevance-validator** using the same agent-invocation primitive with all remaining findings and the immutable scope captured in Step 3: `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, plus the exact stored committed, staged, unstaged, untracked, and PR-context payloads under `$REVIEW_SCOPE_DIR`. Add `STACK_CONTEXT` when it reports `stacked`.
 - Instruct the validator to use that scope as authoritative and not fetch, resolve the base branch again, or recompute the merge base.
 - Cross-reference each finding against the complete supplied scope.
 - Keep `Validated` findings. Filter `Pre-existing` and `Out-of-scope` findings into their corresponding report categories. Treat `Likely Related` findings as relevance-unconfirmed: label them `UNVERIFIED`, keep them out of active findings, and show them under Filtered with the validator's reason.
@@ -225,7 +227,7 @@ If `CONVENTION_REVIEW_OVERVIEW.md` was found in Step 4:
 
 ### Step 9: Aggregate and Write Results
 
-Merge findings from all reviewer instances, dedupe findings that name the same location and root cause, and assign stable IDs `CONV-001`, `CONV-002`, ... in report order. Preserve the ID of a carried-forward finding with the same root cause. Set `Resolution status: open` on every active finding. Organize into:
+Merge findings from all reviewer instances, dedupe findings that name the same location and root cause, and assign stable IDs `CONV-001`, `CONV-002`, ... in report order. Preserve the ID of a carried-forward finding with the same root cause. Set `Resolution status: open` on every active finding. Open the report with the stacked Pull Request reference's `Stack:` line when the stack context is `stacked` or `unknown`. Organize into:
 
 - **Critical Convention Issues** (must fix before merge) — only validated, refutation-confirmed findings
 - **Important Convention Issues** (should fix) — only validated, refutation-confirmed findings

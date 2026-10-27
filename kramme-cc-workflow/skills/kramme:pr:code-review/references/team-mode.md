@@ -37,7 +37,7 @@ Same setup as `/kramme:pr:code-review` Steps 1-7:
 2. Parse arguments with the same rules as `/kramme:pr:code-review` Step 1, including specific review aspects (comments, tests, errors, types, architecture, code, slop, security, performance, removal, lean, refactor, simplify, all), `--emphasize <dim>...`, `--no-cleanup`, `--base <ref>`, `--previous-review <path>`, and `--inline`. Freeze `NO_CLEANUP` and `EMPHASIZED_DIMENSIONS` in the execution plan as `noCleanup` and `emphasizedDimensions` per `references/execution-contract.md`.
 3. Accept and remove `--parallel` and the deprecated bare `parallel` token as no-op aliases in team mode. Team mode already launches teammate review tasks in parallel; these flags must not remain in the aspect list or cause an unrecognized-token error.
 4. Default `all` includes `lean`, `refactor`, and `simplify`; `--no-cleanup` excludes those advisory dimensions while retaining `["all"]` and independent `removal` applicability. Reject conflicts with explicitly requested cleanup aspects or emphasis under the standard Step 1 rules. These cleanup dimensions are subordinated to unresolved correctness, security, error-handling, and test findings during aggregation. Cleanup emphasis (`lean`, `refactor`, `simplify`) never overrides the precedence pass or the action-class normalization rule that optional cleanup stays advisory.
-5. Resolve the base branch and build the unified change scope by running the exact shared `collect-review-diff.sh` collection flow from `/kramme:pr:code-review` Step 2. Do not inline `git merge-base` or reconstruct changed-file commands here. Reuse the resulting `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES`.
+5. Resolve the base branch and build the unified change scope by running the exact shared `collect-review-diff.sh` collection flow from `/kramme:pr:code-review` Step 2. Do not inline `git merge-base` or reconstruct changed-file commands here. Reuse the resulting `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, newline-delimited `CHANGED_FILES`, and `STACK_CONTEXT`, and apply that step's stacked Pull Request reference rule.
 6. If `CHANGED_FILES` is empty, stop with the same empty-scope message as `/kramme:pr:code-review` Step 4.
 7. Read current PR metadata, if a PR exists for this branch:
    ```bash
@@ -67,6 +67,7 @@ Spawn teammates based on applicable review aspects. Each teammate receives:
 
 - The resolved `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, and diff commands to run (`git diff "$MERGE_BASE"...HEAD`, `git diff --cached`, `git diff`, `git ls-files --others --exclude-standard`)
 - The PR context from Step 1 (`PR_CONTEXT_JSON`) when available
+- When `STACK_CONTEXT` reports `stacked`, the stack context JSON and the `Reviewer rules` section of the stacked Pull Request reference
 - Their specific review mission (from the corresponding agent definition in `agents/`)
 - Instructions to **message other teammates** when they find cross-cutting issues
 
@@ -124,7 +125,7 @@ Run the working-tree integrity check described in Step 5 now, before either down
 
 - "Validate finding relevance against full review scope" -- spawn a new **relevance-validator** teammate
 - Mission from `agents/kramme:pr-relevance-validator.md`
-- Pass `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, and `PR_CONTEXT_JSON` from Step 1 so relevance validation uses the same unified scope and PR description context
+- Pass `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, and `PR_CONTEXT_JSON` from Step 1 so relevance validation uses the same unified scope and PR description context, plus `STACK_CONTEXT` when it reports `stacked`
 - Cross-references all findings against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
 - Filters pre-existing and out-of-scope issues
 - Treat validator output as classifications over the original finding records, not replacement findings. Preserve every raw field, source teammate, and standalone marker; add only the relevance classification and evidence.

@@ -26,14 +26,14 @@ Accept only `--base <branch>` and the optional sentinel `--intent <text>`:
 
 ## Step 2: Collect the Changes
 
-Use the shared plugin script to resolve the base branch and build the unified change scope (committed branch diff + staged + unstaged + untracked). `--exclude-review-artifacts` drops generated review reports, which are workflow state rather than branch work. The script runs in strict mode, so a fetch failure stops the workflow with its own stderr message.
+Use the shared plugin script to resolve the base branch and build the unified change scope (committed branch diff + staged + unstaged + untracked). `--exclude-review-artifacts` drops generated review reports, which are workflow state rather than branch work. `--stack-context` returns `STACK_CONTEXT`, which says whether the branch is one layer of a Pull Request stack, and diffs a gh-stack layer that has no open Pull Request, or that needs a restack, against the layers below it. The script runs in strict mode, so a fetch failure stops the workflow with its own stderr message.
 
 ```bash
 [ -x "${CLAUDE_PLUGIN_ROOT:-}/scripts/collect-review-diff.sh" ] || {
   echo "collect-review-diff.sh not found under CLAUDE_PLUGIN_ROOT; stop." >&2
   exit 1
 }
-COLLECT_ARGS=(--strict --format nul --exclude-review-artifacts)
+COLLECT_ARGS=(--strict --format nul --exclude-review-artifacts --stack-context)
 [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
 
 REVIEW_DIFF_FIELDS=$(mktemp "${TMPDIR:-/tmp}/review-diff.XXXXXX") || {
@@ -50,7 +50,8 @@ if ! {
   IFS= read -r -d '' BASE_REF \
     && IFS= read -r -d '' BASE_BRANCH \
     && IFS= read -r -d '' MERGE_BASE \
-    && IFS= read -r -d '' CHANGED_FILES
+    && IFS= read -r -d '' CHANGED_FILES \
+    && IFS= read -r -d '' STACK_CONTEXT
 } < "$REVIEW_DIFF_FIELDS"; then
   rm -f "$REVIEW_DIFF_FIELDS"
   echo "Decoded review-diff fields were incomplete; stop." >&2
@@ -60,6 +61,8 @@ rm -f "$REVIEW_DIFF_FIELDS"
 ```
 
 If `CHANGED_FILES` is empty, stop with: `No changes detected against $BASE_REF. If this is wrong, re-run with --base <branch>.`
+
+When the `STACK_CONTEXT` state is `stacked` or `unknown`, read `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/stacked-pr-review.md`. For a stacked branch, apply its reviewer rules in Step 5: the branch under review is this layer, not the stack.
 
 ## Step 3: Build the Manifest and Collect Intent
 
@@ -119,6 +122,8 @@ Things that count as jumping out:
 
 This list is not exhaustive and is not a checklist: anything that made you pause counts, listed or not, and nothing counts merely because it appears above.
 
+On a stacked layer, code that an upstack layer uses and work deferred to an upstack layer do not jump out once you have checked the upstack layer as the stacked Pull Request reference describes. A defect an upstack layer would hide still does, and code a downstack layer introduced is outside this branch's changes.
+
 Things that do not count: style preferences, naming taste, missing test coverage, general code-quality findings, and anything you would only mention because a checklist says to. Other skills own those.
 
 Keep the answer honest:
@@ -143,7 +148,7 @@ Use this shape per item, most surprising first:
 
 For an item about the branch's history rather than its tree, name the commit hash in place of the path and line.
 
-Close with one sentence naming what you looked at: the base ref, the number of changed files, and how far each tier got — the manifest always covers every changed file, so say so, then name any file whose hunks you did not fully read. If nothing stood out, say exactly that and give the same scope sentence — do not manufacture an item.
+Close with one sentence naming what you looked at: the base ref, the stack summary when the stack context is `stacked` or `unknown`, the number of changed files, and how far each tier got — the manifest always covers every changed file, so say so, then name any file whose hunks you did not fully read. If nothing stood out, say exactly that and give the same scope sentence — do not manufacture an item.
 
 Only when the user asks what to do next, point at the deeper passes: `/kramme:pr:code-review` for systematic code quality, `/kramme:pr:overengineering-review` for complexity against requirements, and `/kramme:pr:convention-review` for drift from established practice.
 

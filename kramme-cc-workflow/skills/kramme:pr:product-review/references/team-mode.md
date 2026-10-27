@@ -34,7 +34,7 @@ Same as `/kramme:pr:product-review` Steps 1-6:
 1. Parse arguments: `app_url` (starts with `http`), `--categories` filter, `--threshold N`, `--base <ref>` override, and optional `--inline` output mode
    - No `parallel` argument — team version is inherently parallel
 2. Load project review conventions from the project's instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents) and the UI code, plus the product conventions in `references/product-lens.md` unless `--categories` excludes `product`
-3. Resolve base branch using shared base precedence (explicit `--base` → PR target branch → repository/Conductor base → remote default fallback). See `/kramme:pr:product-review` Step 3 for full logic.
+3. Resolve base branch using shared base precedence (explicit `--base` → stack base of a gh-stack layer that has no open Pull Request or needs a restack → PR target branch → repository/Conductor base → remote default fallback) and keep `STACK_CONTEXT`. See `/kramme:pr:product-review` Step 3 for full logic.
 4. Identify UI-relevant changed files via git diff (committed using resolved base, staged, unstaged, untracked), and keep the full changed-file list as the product reviewer's scope
 5. Check for previous `PRODUCT_REVIEW_OVERVIEW.md` and extract previously addressed findings
 6. Determine which agents to launch (same logic: always product, ux and visual when UI files changed, conditionally a11y)
@@ -61,6 +61,7 @@ TREE_MANIFEST_BEFORE=$(mktemp "${TMPDIR:-/tmp}/review-tree.XXXXXX") || exit 1
 Spawn teammates based on applicable review categories. Each teammate receives:
 
 - The resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE` from Step 1 and the git diff commands to run (`git diff "$MERGE_BASE"...HEAD`, `git diff --cached`, `git diff`)
+- When `STACK_CONTEXT` reports `stacked`, the stack context JSON and the `Reviewer rules` section of the stacked Pull Request reference that `/kramme:pr:product-review` Step 3 loads
 - Untracked files list: `git ls-files --others --exclude-standard`
 - The teammate's file scope: the UI-relevant changed files, or every changed file for the product reviewer
 - For the product reviewer, the reviewer brief from `references/product-lens.md`, verbatim
@@ -85,7 +86,7 @@ Create tasks in the shared task list:
 - Once all Phase 1 tasks finish, collect their findings and perform the working-tree integrity check in Step 5 before starting the validator. Abandon the audit if that check requires it.
 - Before the validator starts, drop findings below the report threshold with the same rule as `/kramme:pr:product-review` Step 8, then spawn a **relevance-validator** teammate with only the remaining findings
 - Mission from `agents/kramme:pr-relevance-validator.md`
-- Pass the resolved `BASE_BRANCH` from Step 1 so relevance validation uses the same PR base
+- Pass the resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE` from Step 1 so relevance validation uses the same PR base, plus `STACK_CONTEXT` when it reports `stacked`
 - Cross-references all findings against the full audit scope (PR diff + staged/unstaged/untracked local changes)
 - Filters pre-existing and out-of-scope issues
 

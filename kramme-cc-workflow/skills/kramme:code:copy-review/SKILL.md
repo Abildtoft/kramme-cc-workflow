@@ -82,7 +82,8 @@ if ! {
   IFS= read -r -d '' BASE_REF \
     && IFS= read -r -d '' BASE_BRANCH \
     && IFS= read -r -d '' MERGE_BASE \
-    && IFS= read -r -d '' CHANGED_FILES
+    && IFS= read -r -d '' CHANGED_FILES \
+    && IFS= read -r -d '' STACK_CONTEXT
 } < "$REVIEW_DIFF_FIELDS"; then
   rm -f "$REVIEW_DIFF_FIELDS"
   echo "Decoded review-diff fields were incomplete; stop." >&2
@@ -91,7 +92,7 @@ fi
 rm -f "$REVIEW_DIFF_FIELDS"
 ```
 
-The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES` without evaluating collected values. Use `CHANGED_FILES` for the file filtering below.
+The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES` without evaluating collected values; `STACK_CONTEXT` stays empty because this skill does not pass `--stack-context`. Use `CHANGED_FILES` for the file filtering below.
 
 Filter changed paths using the UI-relevant file rules in `references/copy-review-rubric.md`.
 

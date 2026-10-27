@@ -43,14 +43,14 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
 
 2. **Resolve Base Branch and Collect Review Diff**
 
-   Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It resolves in this order: explicit `--base`, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
+   Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It resolves in this order: explicit `--base`, the stack base of a gh-stack layer that has no open Pull Request or needs a restack, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
    ```bash
    [ -x "${CLAUDE_PLUGIN_ROOT:-}/scripts/collect-review-diff.sh" ] || {
      echo "collect-review-diff.sh not found under CLAUDE_PLUGIN_ROOT — is the kramme-cc-workflow plugin installed?" >&2
      exit 1
    }
-   COLLECT_ARGS=(--strict --format nul)
+   COLLECT_ARGS=(--strict --format nul --stack-context)
    [ -n "${BASE_BRANCH_OVERRIDE:-}" ] && COLLECT_ARGS+=(--base "$BASE_BRANCH_OVERRIDE")
    
    REVIEW_DIFF_FIELDS=$(mktemp "${TMPDIR:-/tmp}/review-diff.XXXXXX") || {
@@ -67,7 +67,8 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
      IFS= read -r -d '' BASE_REF \
        && IFS= read -r -d '' BASE_BRANCH \
        && IFS= read -r -d '' MERGE_BASE \
-       && IFS= read -r -d '' CHANGED_FILES
+       && IFS= read -r -d '' CHANGED_FILES \
+       && IFS= read -r -d '' STACK_CONTEXT
    } < "$REVIEW_DIFF_FIELDS"; then
      rm -f "$REVIEW_DIFF_FIELDS"
      echo "Decoded review-diff fields were incomplete; stop." >&2
@@ -76,7 +77,9 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    rm -f "$REVIEW_DIFF_FIELDS"
    ```
 
-   The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, and newline-delimited `CHANGED_FILES` without evaluating collected values. Use `BASE_REF`/`MERGE_BASE` for committed diff commands and `BASE_BRANCH` for display or when invoking sibling review skills.
+   The shared NUL output sets `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, newline-delimited `CHANGED_FILES`, and the `STACK_CONTEXT` JSON document without evaluating collected values. Use `BASE_REF`/`MERGE_BASE` for committed diff commands and `BASE_BRANCH` for display or when invoking sibling review skills.
+
+   `STACK_CONTEXT` says whether this branch is one layer of a Pull Request stack. When its `state` is `stacked` or `unknown`, read `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/stacked-pr-review.md` and apply its orchestrator rules in Steps 7, 8, and 12. Skip the reference when the state is `unstacked`.
 
 3. **Available Review Aspects:**
    - **comments** - Analyze code comment accuracy and maintainability
@@ -167,7 +170,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
 
 7. **Launch Review Agents**
 
-   Pass the resolved `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, and PR context from Steps 2 and 4 to all agents so they use the correct diff scope and understand the stated intent of the change. Instruct each agent to review the same unified scope:
+   Pass the resolved `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, and PR context from Steps 2 and 4 to all agents so they use the correct diff scope and understand the stated intent of the change. When `STACK_CONTEXT` reports `stacked`, also pass every agent the stack context JSON and the `Reviewer rules` section of the stacked Pull Request reference. Instruct each agent to review the same unified scope:
    - Committed diff: `git diff "$MERGE_BASE"...HEAD`
    - Staged diff: `git diff --cached`
    - Unstaged diff: `git diff`
@@ -235,7 +238,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
 
    After collecting findings from all agents:
    - If every primary reviewer returned zero findings, do not launch the validator: record `relevance` as `skipped` with `Skipped:` evidence, add `Relevance validation: skipped (no findings)` to the report, and skip Step 9 the same way.
-   - Otherwise launch **kramme:pr-relevance-validator** with all findings, the resolved `BASE_BRANCH`, and `PR_CONTEXT_JSON` if present
+   - Otherwise launch **kramme:pr-relevance-validator** with all findings, the resolved `BASE_BRANCH`, `BASE_REF`, and `MERGE_BASE`, `PR_CONTEXT_JSON` if present, and `STACK_CONTEXT` when it reports `stacked`
    - Validator cross-references each finding against the full review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR title/body for PR description findings)
    - Filters out pre-existing issues and out-of-scope problems
    - Treat validator output as classifications over the original finding records, not replacement findings. Preserve every raw field, source agent, and standalone marker such as `OVERENGINEERING`; the validator may only add its relevance classification and evidence before returning findings caused by this review scope.
