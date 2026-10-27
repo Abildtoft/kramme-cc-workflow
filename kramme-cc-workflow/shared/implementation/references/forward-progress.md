@@ -1,11 +1,6 @@
----
-name: kramme:code:forward-progress
-description: "Keeps multi-stage implementations and pipelines moving by separating capability work and correctness evidence from advisory workflow bookkeeping. Use when stale markers, receipts, hashes, dashboards, or progress metadata would cause valid work to be repeated or completed stages to be rewound. Not for bypassing controls that protect identity, authority, integrity, concurrency, resumability, scope, CI, or publication safety."
-disable-model-invocation: false
-user-invocable: false
----
-
 # Preserve Forward Progress
+
+Load this when resuming prior work, retrying a failed step, or when stale markers, receipts, hashes, dashboards, or progress metadata would cause valid work to be repeated or completed stages to be rewound; it never bypasses controls that protect identity, authority, integrity, concurrency, resumability, scope, CI, or publication safety.
 
 Keep an active implementation moving from its latest proven capability. Do not confuse advisory workflow state with either working output or evidence that the output is correct.
 
@@ -87,7 +82,3 @@ Report in this order:
 4. advisory workflow state, when it is useful context.
 
 Success means the run advanced from valid prior work, avoided unnecessary replay, preserved every substantive control, and grounded its claims in relevant evidence.
-
-## Source Tracking
-
-`references/sources.yaml` records the external concept adapted into this original local convention. Do not load it during normal use unless auditing or refreshing source attribution.
