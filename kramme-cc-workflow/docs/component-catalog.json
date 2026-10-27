@@ -273,11 +273,6 @@
       "path": "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md"
     },
     {
-      "name": "kramme:pr:plan-split",
-      "invocation": "User",
-      "path": "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md"
-    },
-    {
       "name": "kramme:pr:product-review",
       "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md"

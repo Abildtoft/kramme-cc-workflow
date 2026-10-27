@@ -1,20 +1,8 @@
----
-name: kramme:pr:plan-split
-description: "Analyze the current branch diff and plan mergeable PR slices with seams, file scope, dependency order, rationale, and tests. Prints a pre-clustered handoff that the user runs through kramme:code:breakdown-findings to write PR_PLAN_*.md artifacts. Use for oversized or unrelated PRs, or when a reviewer asks for a split. Plans only; never edits source, creates branches, or rewrites history."
-argument-hint: "[--base <branch>] [--auto]"
-disable-model-invocation: true
-user-invocable: true
----
+# Split Mode
 
-# PR Split Planner
+Load this only when `SPLIT_MODE=true`, after Phase 0 has passed the prior-artifact guard. It replaces Phase 1 source resolution: the current branch diff is the source. It finds seams in that diff, decides **SPLIT** or **KEEP AS ONE**, and turns confirmed slices into a marked pre-clustered handoff for Phase 2. Split mode never edits source code, creates git branches, or rewrites history; each plan is implemented later, by hand, in its own git worktree.
 
-Break the current branch's changes into smaller, independently mergeable PRs.
-
-This skill is a **planning aid**. It reads the diff, names seams, and proposes one slice per mergeable PR. It does not write the plan files itself: once the slices are confirmed, it prints one pre-clustered handoff for `kramme:code:breakdown-findings` — the canonical PR-plan generator, which the user runs as the next command — containing the slices as themes plus a worktree-based implementation setup. That skill writes the `PR_PLAN_*.md` artifacts. This skill never edits source code, creates git branches, or rewrites history. Each plan is implemented later, by hand, in its own git worktree.
-
-## Workflow
-
-Before Step 1, parse `$ARGUMENTS` as shell-style arguments. If `--auto` is present, set `AUTO_MODE=true` and remove it before base-branch parsing. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value. `--auto` skips the slice-confirmation prompt when the skill recommends `SPLIT`; it does not bypass base-branch validation, empty-diff stops, or the `KEEP AS ONE` outcome.
+`--auto` skips only the slice confirmation in step 8 when the recommendation is `SPLIT`. It does not bypass base-branch validation, empty-diff stops, the `KEEP AS ONE` outcome, or Phase 2's oversized-theme confirmation.
 
 ### 1. Resolve Base Branch
 
@@ -43,7 +31,7 @@ if [ -z "$REFERENCE_BRANCH" ]; then
 fi
 ```
 
-`REFERENCE_BRANCH` is distinct from `BASE_BRANCH`. `BASE_BRANCH` (e.g. `main`) is what the diff is measured against and what each slice branches off of and merges back into. `REFERENCE_BRANCH` is the current feature branch that actually contains the work. Each plan branches off `BASE_BRANCH` in a fresh worktree and pulls its slice's files from `REFERENCE_BRANCH`. Use both resolved names (never the literal placeholders) when filling the Implementation Setup block handed to `breakdown-findings` in step 8.
+`REFERENCE_BRANCH` is distinct from `BASE_BRANCH`. `BASE_BRANCH` (e.g. `main`) is what the diff is measured against and what each slice branches off of and merges back into. `REFERENCE_BRANCH` is the current feature branch that actually contains the work. Each plan branches off `BASE_BRANCH` in a fresh worktree and pulls its slice's files from `REFERENCE_BRANCH`. Use both resolved names (never the literal placeholders) when filling the Implementation Setup block in step 8.
 
 ### 2. Build the Change Set
 
@@ -149,7 +137,7 @@ Flag tight coupling explicitly when proposing slices: _"Slice B depends on Slice
 
 ### 6. Choose Seams
 
-Read `references/strategies.md` for the four named strategies and selection guidance. **Prefer Vertical.**
+Read `references/split-strategies.md` for the four named strategies and selection guidance. **Prefer Vertical.**
 
 For each proposed slice, produce:
 
@@ -167,7 +155,7 @@ The rationale is the load-bearing field. _"Smaller"_ is not a reason; _"these tw
 
 There is no hard upper-bound rule that classifies a PR as "too large" purely by line count. The heuristic is a _target for each slice_, not a gate against the whole branch.
 
-**Stack depth.** When a vertical or stacked plan naturally runs to **6 or more ordered slices**, work through the escape hatches in `references/strategies.md` § _When a stack would need 6+ slices_ before recommending a long chain — combine adjacent slices, carve off the tail as a future branch, promote parallel slices, or reduce scope. If the long stack is genuinely the right answer, fold the coordination guidance from that section (chain naming in PR bodies, single reviewer, rebase cadence, merge cadence) into the recommendation so the user gets a _workable_ long stack, not a cap-and-refuse.
+**Stack depth.** When a vertical or stacked plan naturally runs to **6 or more ordered slices**, work through the escape hatches in `references/split-strategies.md` § _When a stack would need 6+ slices_ before recommending a long chain — combine adjacent slices, carve off the tail as a future branch, promote parallel slices, or reduce scope. If the long stack is genuinely the right answer, fold the coordination guidance from that section (chain naming in PR bodies, single reviewer, rebase cadence, merge cadence) into the recommendation so the user gets a _workable_ long stack, not a cap-and-refuse.
 
 ### 7. Decide Whether to Split
 
@@ -187,30 +175,22 @@ Recommend **KEEP AS ONE** when:
 
 Either way, say so explicitly and explain why. The user asked for a split plan; refusing to invent one is a valid answer when the diff is genuinely atomic.
 
-### 8. Hand the Slices to breakdown-findings
+### 8. Build the Pre-clustered Handoff
 
-This skill does not write the `PR_PLAN_*.md` files itself, and it never invokes `kramme:code:breakdown-findings`, which is user-run. It assembles the confirmed slices into one pre-clustered handoff for that skill, the single canonical PR-plan generator (one naming scheme, one index, one cleanup path), and gives the user the command that generates the plans.
-
-If the recommendation is **KEEP AS ONE**, do not print a handoff. Report inline why the diff is atomic and stop — there is nothing to split.
+If the recommendation is **KEEP AS ONE**, write nothing. Report inline why the diff is atomic and stop — there is nothing to split, and no `PR_PLAN_*.md` artifact is created.
 
 If the recommendation is **SPLIT**:
 
-1. **Confirm the slices.** Print the proposed slices (name, strategy, files, dependency order). If `AUTO_MODE=true`, add `AUTO: proceeding to generate plans for these N slices` and continue without asking. Otherwise ask: `Proceed to generate plans for these N slices? (yes / adjust)`. Do not print the handoff until the user confirms. If they adjust, re-plan.
+1. **Confirm the slices.** Print the proposed slices (name, strategy, files, dependency order). If `AUTO_MODE=true`, add `AUTO: proceeding to generate plans for these N slices` and continue without asking. Otherwise ask: `Proceed to generate plans for these N slices? (yes / adjust)`. Do not generate plans until the user confirms. If they adjust, re-plan.
 
-2. **Assemble one handoff document.** Build a single markdown document — the complete input handed to `breakdown-findings`. It contains, in order:
-   - The marker line `PRE-CLUSTERED HANDOFF — themes are fixed; do not re-cluster.` so the delegate detects the mode without guessing.
+2. **Assemble the handoff.** Build one pre-clustered handoff from the confirmed slices and treat it as the source for the rest of the workflow. It contains, in order:
+   - The marker line `PRE-CLUSTERED HANDOFF — themes are fixed; do not re-cluster.`, so `HANDOFF_CONFIDENCE=marked`.
    - One **theme per slice** (do not merge or re-split — these slices are the seams). For each: the slice name, strategy, the file list with per-file line counts, the dependency relationship (`depends on` / `blocks` / `parallel with`), the one-line test plan, and the one-sentence rationale.
-   - A single shared `## Implementation Setup` block (template below), with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` already replaced by the resolved names. The block lives **inside** this document — it is not a separate input.
+   - A single shared `## Implementation Setup` block (template below), with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` already replaced by the resolved names.
 
-3. **Hand off.** Print the complete handoff document inline in one fenced `markdown` block. Then print this next step for the user, appending ` --auto` to the command when `AUTO_MODE=true`:
+3. **Continue as a handoff.** Apply the **Pre-clustered Handoff** contract in `references/source-intake.md` to this handoff, report `Found N pre-clustered themes from {source}. Proceeding to plan (no re-clustering).`, then return to Phase 1.5 in `SKILL.md`. Record the source in `PR_PLAN_INDEX.md` and the summary as `branch split of {REFERENCE_BRANCH} against {BASE_BRANCH} at {reference head short SHA}`, with source type `pre-clustered handoff`; add `(stale base)` when `BASE_STALE=1`. Every plan embeds the Implementation Setup block, so the summary's launch sheet lists setup and reconcile lines instead of `kramme:code:plan-to-pr` commands.
 
-   ```text
-   Next: run /kramme:code:breakdown-findings to write one PR_PLAN_*.md per slice from the handoff above.
-   ```
-
-   Run with no argument, `kramme:code:breakdown-findings` prefers findings reports it auto-detects at the project root, such as `REVIEW_OVERVIEW.md`, over a handoff in the conversation. When such a report exists, also tell the user to save the handoff to a Markdown file and run `/kramme:code:breakdown-findings <handoff-file>` instead. Do not run either command or carry out its plan-writing steps yourself. The generator detects the pre-clustered marker, maps each theme 1:1 to a plan without re-clustering, embeds the Implementation Setup block in every plan, and owns the prior-artifact check, execution-label naming, the per-plan files, the index, and the end-of-turn summary.
-
-**Implementation Setup block — hand this to `breakdown-findings` verbatim, with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` replaced by the resolved branch names (never the placeholder text). It must specify all five points; do not drop any:**
+**Implementation Setup block — embed this verbatim in the handoff, with `{{REFERENCE_BRANCH}}` and `{{BASE_BRANCH}}` replaced by the resolved branch names (never the placeholder text). It must specify all five points; do not drop any:**
 
 ````markdown
 ## Implementation Setup
@@ -237,16 +217,6 @@ Implement this plan in its **own dedicated git worktree**, separate from every o
 
 After slices are implemented, reviewed, or rebased, reconcile each slice against its own evidence with `kramme:code:breakdown-findings --reconcile <PR_PLAN_W##L_*.md>`. Add `--worktree <path>` when that slice's implementation evidence lives in another worktree, or `--source <ref>` when its branch or commit is the evidence source. Omit the plan path only when the evidence root or source represents the complete indexed plan set.
 
-## Usage
-
-```
-/kramme:pr:plan-split
-# Plan splits against the auto-detected base.
-
-/kramme:pr:plan-split --base develop
-# Plan splits against an explicit base.
-```
-
 ## Notes
 
 ### Conductor workspaces
@@ -257,6 +227,4 @@ For a split run inside Conductor, each slice's "own dedicated git worktree" shou
 
 - Use after a code review surfaces _"this is doing too much"_, when a reviewer asks for a split, or before opening a PR you suspect bundles unrelated work.
 - **Author-driven, not reviewer-driven.** Splitting is the author's responsibility — reviewers shouldn't carry it. Self-review the diff first (a quick read-through, or run `kramme:pr:code-review`) so the seams reflect what the code actually does, not just what the file tree looks like.
-- Pair with `kramme:pr:code-review` for correctness; this skill only addresses scope and seams.
 - The recommendation is advice, not a verdict. If the user disagrees with a proposed seam, that's a useful signal — ask what they'd cut differently before re-planning.
-- Artifact generation is delegated to `kramme:code:breakdown-findings`. That skill writes the `PR_PLAN_*.md` files (working artifacts, clearable with `/kramme:workflow-artifacts:cleanup`) and owns the prior-artifact check, so this skill does not write or guard those files itself.

@@ -83,9 +83,9 @@
         "marker": "Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills):"
       },
       "paths": [
+        "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/split-mode.md",
         "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
         "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md"
       ]
@@ -1532,7 +1532,7 @@
       "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
       "frontmatter": {
         "name": "kramme:code:breakdown-findings",
-        "argument-hint": "[--auto] [--resume|--reconcile] [--all | plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]",
+        "argument-hint": "[--auto] [--resume|--reconcile|--split] [--all | plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]",
         "disable-model-invocation": "true",
         "user-invocable": "true"
       },
@@ -1574,19 +1574,10 @@
     },
     {
       "name": "pr-plan-split-reconcile-scope",
-      "path": "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
+      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/split-mode.md",
       "contains": [
         "reconcile each slice against its own evidence",
         "Omit the plan path only when the evidence root or source represents the complete indexed plan set"
-      ]
-    },
-    {
-      "name": "pr-plan-split-user-run-handoff",
-      "path": "kramme-cc-workflow/skills/kramme:pr:plan-split/SKILL.md",
-      "contains": [
-        "it never invokes `kramme:code:breakdown-findings`, which is user-run",
-        "Next: run /kramme:code:breakdown-findings to write one PR_PLAN_*.md per slice from the handoff above.",
-        "save the handoff to a Markdown file and run `/kramme:code:breakdown-findings <handoff-file>` instead"
       ]
     },
     {

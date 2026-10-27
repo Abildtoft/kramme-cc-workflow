@@ -252,7 +252,7 @@ PY
 		kramme:pr:generate-description/references/verification-checklist.md \
 		kramme:pr:stack/SKILL.md \
 		kramme:pr:stack/references/cli-agent-rules.md \
-		kramme:pr:plan-split/references/strategies.md; do
+		kramme:code:breakdown-findings/references/split-strategies.md; do
 		if grep -nF 'gh pr edit' "$skills/$relative"; then
 			false
 		fi
@@ -261,7 +261,7 @@ PY
 		kramme:pr:generate-description/references/direct-update.md \
 		kramme:pr:stack/SKILL.md \
 		kramme:pr:stack/references/cli-agent-rules.md \
-		kramme:pr:plan-split/references/strategies.md; do
+		kramme:code:breakdown-findings/references/split-strategies.md; do
 		grep -qF 'gh api --method PATCH' "$skills/$relative"
 		grep -qF -- '--hostname' "$skills/$relative"
 	done
