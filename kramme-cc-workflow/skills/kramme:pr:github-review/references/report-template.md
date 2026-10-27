@@ -1,6 +1,6 @@
 # Output template: GITHUB_PR_REVIEW_OVERVIEW.md
 
-Use this structure verbatim when writing `GITHUB_PR_REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting it. The only conditional section is `## Coverage Status` (only when a dimension failed or was skipped). Always include `## Draft Review` and `## Manual posting` so the reviewer can see exactly what changed on GitHub and what remains to do. The skill materializes this report before it offers or attempts a pending-review write, then refreshes the report after the user declines or an authorized attempt finishes.
+Use this structure verbatim when writing `GITHUB_PR_REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting it. The only conditional section is `## Coverage Status` (only when a dimension failed or was skipped). Always include `## Draft Review`, `## Prepared Review`, and `## Manual posting` so the reviewer can see exactly what changed on GitHub, what would be posted, and what remains to do. The skill materializes this report before it offers or attempts a pending-review write, then refreshes the report after the user declines or an authorized attempt finishes.
 
 The report is written for the reviewer to act on. Findings are framed for the PR author, in reviewer voice.
 
@@ -18,12 +18,13 @@ The report is written for the reviewer to act on. Findings are framed for the PR
 - Conversation: <N open threads, M awaiting you> | none yet (first pass)
 - Linked Linear issues: <reviewed identifiers and verdicts | none found | incomplete — reason>
 - Draft review: <exact DRAFT_REVIEW_STATUS; include review ID/counts when available>
+- Review submission: <exact SUBMIT_STATUS; include the review URL when submitted>
 
 ## Recommended Verdict: REQUEST CHANGES | COMMENT | APPROVE
 
 <one or two sentences of rationale tied to the findings below>
 
-_You make the final call. A pending draft, when requested, remains unsubmitted until you choose a verdict in GitHub._
+_You make the final call. Nothing is posted until you confirm the exact action; a pending draft, when requested, stays unsubmitted until then._
 
 ## Draft Review
 
@@ -35,6 +36,20 @@ _You make the final call. A pending draft, when requested, remains unsubmitted u
 - Omitted: <N — list each proposed-item identifier and reason, using `path:line` when available, or "none">
 - Payload: <run-unique `.context/github-review-drafts/pr-<number>.<suffix>` | —>
 - Next action: <authorize or decline pending-review creation | continue the already-authorized guarded creation flow | inspect/edit the pending review in GitHub, then submit it manually | create the declined draft later by re-running with `--draft-review` | resolve the stated no-write blocker and retry | inspect GitHub without retrying after an unknown/unexpected write outcome>
+
+## Prepared Review
+
+_Not posted. This is what a confirmed submission would send._
+
+- Status: <exact SUBMIT_STATUS>
+- Event: chosen by you when you confirm (recommended: <verdict>)
+- Inline comments: <the comments in this run's pending review as they are in GitHub at submission | the <N> eligible comments listed below>
+- Body:
+  > <PREPARED_REVIEW_BODY>
+- To post it, send a separate message naming the action, the PR, and one event:
+  - `Post the prepared review to PR <number> as request changes`
+  - `Post the prepared review to PR <number> as comment`
+  - `Post the prepared review to PR <number> as approve`
 
 ## Coverage Status (omit when complete)
 
@@ -135,13 +150,13 @@ _Fresh findings suppressed because the conversation already covers them — list
 
 ## Manual posting
 
-If this run created a pending review, open the review URL above, inspect or edit every inline comment, then use GitHub's **Finish your review** flow to choose Approve, Comment, or Request changes. The skill does not post a review summary and never performs the submission step.
+If this run created a pending review, open the review URL above, inspect or edit every inline comment, then use GitHub's **Finish your review** flow to choose Approve, Comment, or Request changes, or confirm a submission as shown under Prepared Review. The skill does not post a review summary or submit a review unless you confirm that exact action.
 
 If the pending-review offer was declined or a confirmed no-write blocker was resolved, the clearest later path is to re-run the skill with `--draft-review`. It will repeat the head, pending-review, ignored-payload, and payload-validation guards before creating one unsubmitted pending review.
 
 For `write outcome unknown`, `unexpected state`, an existing pending review, or a stale/unverifiable created review, do not retry with a raw API command. Inspect GitHub first. Submit or delete an existing draft there as appropriate, then re-run the guarded workflow against the current head if another review is still needed.
 
-To reply to an existing review thread, post to its root comment (the comment ID is in the Open Conversation entries):
+The skill never posts thread replies. To reply to an existing review thread yourself, post to its root comment (the comment ID is in the Open Conversation entries):
 
 ```bash
 gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/replies" \
@@ -169,6 +184,7 @@ gh api -X POST "repos/<owner>/<repo>/pulls/<number>/comments/<root-comment-id>/r
 - **Draft Review** — distinguish eligible proposed comments from comments actually included. Before the offer or write, use `not created — awaiting authorization` or `not created — authorized; creation not attempted yet`, with zero included comments and no payload. Existing-thread replies and non-diff anchors cannot be bundled into the pending review and must be listed as omissions rather than silently dropped; identify them by thread, scope, or another concrete descriptor when no `path:line` exists. `PENDING` means the skill created the review but did not submit it. Exact included counts require a confirmed pending-review response; ambiguous outcomes report the attempted count separately.
 - **Already Raised in the Conversation** — fresh findings you suppressed because someone already raised them. Naming who raised it and linking the thread keeps you from re-posting and shows the concern is tracked. If your finding materially extends the existing thread, draft it as a reply under Open Conversation instead of listing it here.
 - **Verdict** — see the skill's draft step for the REQUEST CHANGES / COMMENT / APPROVE criteria and how an ongoing review's conversation weighs in. Always a recommendation — never posted automatically.
+- **Prepared Review** — always present. Show the body exactly as a confirmed submission would post it, and keep `Status` at `not submitted — awaiting confirmation` until Step 14 runs. Replace `<number>` in the example messages with the PR number so the user can copy one.
 - **Linked Linear Issues** — always present, including when no issues were found. Keep each issue's requirement matrix and audit verdict distinct from the recommended GitHub verdict. Missing access or incomplete discovery is a coverage gap, never proof of compliance; withhold APPROVE while an in-scope audit remains incomplete or blocked. Issue-derived findings use the normal severity sections and conversation deduplication. A `review-scope` omission stays in the report and is ineligible for pending inline comments.
 - **Strengths** — a review with zero positive observations is usually miscalibrated. Keep strengths in this local report only; never turn them into a top-level GitHub review body. If the PR genuinely has nothing to praise, say so explicitly rather than omitting the section.
 - **Markers** — keep `UNVERIFIED` on findings you could not trace from the diff, and `NOTICED BUT NOT TOUCHING` on issues that pre-date this PR, so the author can separate "you introduced this" from "this was already here."
