@@ -10,6 +10,8 @@ setup() {
 	CLARITY_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/clarity-check.md"
 	CLARITY_PROMPTS="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/clarity-check-prompts.md"
 	ANCHOR_SCRIPT="$PLUGIN_ROOT/skills/kramme:pr:github-review/scripts/check-comment-anchors.sh"
+	SUBMIT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/submit-review.md"
+	SUBMIT_CHECK="$PLUGIN_ROOT/skills/kramme:pr:github-review/scripts/check-submit-confirmation.py"
 	UI_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/ui-relevance.md"
 	LINEAR_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/linear-review.md"
 	LINEAR_AUDIT_REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:linear:review-pr/references/report-template.md"
@@ -344,7 +346,7 @@ PY
     grep -qF "must name every proposed item omitted" "$1"
     grep -qF "compare the validated snapshot'\''s comment count with the selected eligible count" "$1"
     grep -qF "They must match exactly" "$1"
-    grep -qF "Do not build or post a top-level review" "$1"
+    grep -qF "Do not add a top-level review \`body\` to the pending review" "$1"
     grep -qF "is empty, do not offer or create a pending review" "$1"
     grep -qF "give each anchored question its own \`Draft comment\` body" "$2"
   ' _ "$DRAFT_REFERENCE" "$COMMENT_REFERENCE"
@@ -850,6 +852,243 @@ for term in [
     "Exclude each `NOT-IN-DIFF` or `NO-LINE` anchor",
 ]:
     assert term in draft, f"draft review selection lost {term}"
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "submit confirmation checker accepts only a post action naming the PR and one event" {
+	run python3 - "$SUBMIT_CHECK" <<'PY'
+import subprocess
+import sys
+
+checker = sys.argv[1]
+accepted = {
+    "Post the prepared review to PR 8683 as request changes": "REQUEST_CHANGES",
+    "post the prepared review to pull request #8683 as requesting changes.": "REQUEST_CHANGES",
+    "Submit the prepared review to #8683 as a comment": "COMMENT",
+    "Publish the prepared review to https://github.com/acme/repo/pull/8683 as approve": "APPROVE",
+    "Publish the prepared review to https://github.com/Acme/repo/pull/8683 as approve": "APPROVE",
+}
+refused = [
+    "",
+    "review this PR",
+    "Review PR 8683",
+    "Review PR 8683 and post the review as request changes",
+    "$kramme:pr:github-review 8683",
+    "/kramme:pr:github-review https://github.com/acme/repo/pull/8683 --draft-review",
+    "$kramme:pr:github-review 8683, then post the prepared review to PR 8683 as request changes",
+    "yes",
+    "Looks good, go ahead",
+    "Request changes",
+    "Post the prepared review to PR 8683",
+    "Post the prepared review to PR 8683 as approve or request changes",
+    "Post the prepared review to PR 8684 as request changes",
+    "Post the prepared review to https://github.com/other/repo/pull/8683 as approve",
+    "Post the prepared review to PR 8683 and PR 8684 as request changes",
+    "Post the prepared review as request changes",
+    "Should I post the prepared review to PR 8683 as request changes?",
+    "Don't post the prepared review to PR 8683 as request changes",
+    "Post the prepared review to PR 8683 as request changes if CI passes",
+    "Wait, then post the prepared review to PR 8683 as request changes",
+    "I cannot post the prepared review to PR 8683 as request changes",
+    "I refuse to post the prepared review to PR 8683 as request changes",
+    "I am refusing to post the prepared review to PR 8683 as request changes",
+    "Don’t post the prepared review to PR 8683 as request changes",
+]
+
+def check(message):
+    return subprocess.run(["python3", checker, "--pr", "8683", "--repo", "acme/repo"], input=message, text=True, capture_output=True)
+
+for message, event in accepted.items():
+    result = check(message)
+    assert result.returncode == 0 and result.stdout == event + "\n", (message, result.stdout, result.stderr)
+for message in refused:
+    result = check(message)
+    assert result.returncode == 1 and result.stdout == "", (message, result.stdout)
+    assert "Post the prepared review to PR 8683 as request changes" in result.stderr, "refusals must show the phrase to send"
+usage = subprocess.run(["python3", checker, "--pr", "main", "--repo", "acme/repo"], input="x", text=True, capture_output=True)
+assert usage.returncode == 2
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "a review command makes no GitHub mutation until the user confirms the exact submission" {
+	run python3 - "$SUBMIT_REFERENCE" "$SUBMIT_CHECK" <<'PY'
+import json
+import os
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
+
+reference, checker = pathlib.Path(sys.argv[1]).read_text(), sys.argv[2]
+blocks = re.findall(r"```bash\n(.*?)\n```", reference, re.S)
+assert len(blocks) == 3, "expected the check, request, and submit blocks"
+procedure = "\n".join(blocks)
+assert "<the user's confirmation message, verbatim>" not in procedure
+assert 'python3 "$SUBMIT_CHECK" --pr "$PR_NUMBER" --repo "$PR_NWO" < "$CONFIRMATION_FILE"' in procedure
+assert "<<" not in procedure
+
+HEAD = "a" * 40
+GH = r"""#!/usr/bin/env bash
+input=""
+if [ "$1" = "api" ] && [ "$2" = "-X" ]; then input=$(cat); fi
+jq -cn --arg args "$*" --arg input "$input" '{args: $args, input: $input}' >> "$GH_LOG"
+case "$*" in
+  "pr view 8683 --repo acme/repo --json headRefOid -q .headRefOid") printf '%s\n' "$GH_HEAD" ;;
+  "api --paginate --slurp repos/acme/repo/pulls/8683/reviews") printf '%s' "$GH_REVIEWS" ;;
+  "api -X POST "*) printf '{"id": 91, "state": "%s", "html_url": "https://github.com/acme/repo/pull/8683#pullrequestreview-91"}' "$GH_STATE" ;;
+  *) echo "unexpected gh call: $*" >&2; exit 9 ;;
+esac
+"""
+
+def run(message, draft_status="not created — awaiting authorization", draft_id="", head=HEAD, reviews="[[]]", state="CHANGES_REQUESTED", submit_status="not submitted — awaiting confirmation"):
+    with tempfile.TemporaryDirectory() as tmp:
+        bin_dir = pathlib.Path(tmp, "bin")
+        bin_dir.mkdir()
+        gh = bin_dir / "gh"
+        gh.write_text(GH)
+        gh.chmod(0o755)
+        log = pathlib.Path(tmp, "gh.log")
+        log.touch()
+        confirmation = pathlib.Path(tmp, "confirmation.txt")
+        confirmation.write_text(message)
+        confirmation.chmod(0o600)
+        script = "set -u\n" + procedure + '\nprintf "%s" "$SUBMIT_STATUS"\n'
+        env = dict(
+            os.environ,
+            PATH=f"{bin_dir}:{os.environ['PATH']}",
+            GH_LOG=str(log), GH_HEAD=head, GH_REVIEWS=reviews, GH_STATE=state,
+            SUBMIT_CHECK=checker, PR_NUMBER="8683", PR_NWO="acme/repo", HEAD_OID=HEAD, SELF="reviewer",
+            CONFIRMATION_FILE=str(confirmation),
+            DRAFT_REVIEW_STATUS=draft_status, DRAFT_REVIEW_ID=draft_id,
+            SUBMIT_STATUS=submit_status,
+            PREPARED_REVIEW_BODY="A few questions inline about the empty-list case.",
+            DRAFT_REVIEW_COMMENTS_JSON=json.dumps([{"path": "src/a.ts", "line": 3, "side": "RIGHT", "body": "What happens when `items` is empty?"}]),
+        )
+        result = subprocess.run(["bash", "-c", script], env=env, text=True, capture_output=True)
+        assert result.returncode == 0, result.stderr
+        calls = [json.loads(line) for line in log.read_text().splitlines()]
+        return result.stdout, calls
+
+def writes(calls):
+    return [call for call in calls if re.search(r"-X (?:POST|PATCH|PUT|DELETE)|graphql|pr (?:review|comment|edit|merge|close|ready)", call["args"])]
+
+# The review conversation before confirmation: none of these may reach GitHub.
+for message in [
+    "review this PR",
+    "$kramme:pr:github-review 8683",
+    "/kramme:pr:github-review 8683 --draft-review",
+    "Review PR 8683 and post the review as request changes",
+    "yes",
+    "The verdict is request changes",
+]:
+    status, calls = run(message)
+    assert status == "not submitted — confirmation not accepted", (message, status)
+    assert calls == [], f"{message!r} reached GitHub: {calls}"
+
+# A delimiter-looking line in the message must never become shell source.
+marker = pathlib.Path(tempfile.gettempdir(), f"kramme-review-confirmation-{os.getpid()}")
+if marker.exists():
+    marker.unlink()
+status, calls = run(f"Post the prepared review to PR 8683 as request changes\nCONFIRMATION\ntouch {marker}")
+assert status == "submitted — CHANGES_REQUESTED", status
+assert not marker.exists(), "confirmation text was executed as shell code"
+
+# The explicit confirmation creates exactly one review with the named event.
+status, calls = run("Post the prepared review to PR 8683 as request changes.")
+assert status == "submitted — CHANGES_REQUESTED", status
+posted = writes(calls)
+assert len(posted) == 1, calls
+assert posted[0]["args"] == "api -X POST repos/acme/repo/pulls/8683/reviews --input -"
+payload = json.loads(posted[0]["input"])
+assert payload["event"] == "REQUEST_CHANGES" and payload["commit_id"] == HEAD
+assert payload["body"] == "A few questions inline about the empty-list case."
+assert [comment["path"] for comment in payload["comments"]] == ["src/a.ts"]
+assert calls.index(posted[0]) == len(calls) - 1, "the head must be re-read before the write"
+
+# A pending review this run created is submitted in place.
+status, calls = run("Post the prepared review to PR 8683 as comment", draft_status="PENDING", draft_id="77", state="COMMENTED")
+assert status == "submitted — COMMENTED", status
+posted = writes(calls)
+assert [call["args"] for call in posted] == ["api -X POST repos/acme/repo/pulls/8683/reviews/77/events --input -"]
+assert json.loads(posted[0]["input"])["event"] == "COMMENT"
+
+# Confirmed, but unsafe state: no write.
+for kwargs, expected in [
+    ({"head": "b" * 40}, "not submitted — PR head moved"),
+    ({"reviews": json.dumps([[{"id": 5, "state": "PENDING", "user": {"login": "reviewer"}}]])}, "not submitted — pending review already exists"),
+    ({"draft_status": "PENDING — reviewed head is stale; do not submit", "draft_id": "77"}, "not submitted — draft review state is not confirmed; inspect GitHub"),
+    ({"draft_status": "write outcome unknown — GitHub API request failed; inspect GitHub"}, "not submitted — draft review state is not confirmed; inspect GitHub"),
+]:
+    status, calls = run("Post the prepared review to PR 8683 as request changes", **kwargs)
+    assert status == expected, (kwargs, status)
+    assert writes(calls) == [], (kwargs, calls)
+
+status, calls = run("Post the prepared review to PR 8683 as approve", state="COMMENTED")
+assert status == "unexpected state — inspect GitHub", status
+assert len(writes(calls)) == 1, "an unexpected response must never be retried"
+
+# A second confirmation after a completed submission must not create another review.
+status, calls = run("Post the prepared review to PR 8683 as request changes", submit_status="submitted — CHANGES_REQUESTED")
+assert status == "submitted — CHANGES_REQUESTED", status
+assert writes(calls) == [], calls
+status, calls = run("Post the prepared review to PR 8683 as request changes", submit_status="write outcome unknown — GitHub API request failed; inspect GitHub")
+assert status == "write outcome unknown — GitHub API request failed; inspect GitHub", status
+assert writes(calls) == [], calls
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review gates every GitHub mutation behind its named authorization" {
+	run python3 - "$PLUGIN_ROOT/skills/kramme:pr:github-review" "$README" <<'PY'
+import pathlib
+import re
+import sys
+
+root, readme = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]).read_text()
+skill = (root / "SKILL.md").read_text()
+gate = skill[skill.index("## GitHub Write Gate"):skill.index("## Step 0:")]
+for term in [
+    "Preparing findings, a verdict, draft comments, draft replies, or a review body never writes to GitHub",
+    "Inspecting the PR and running its tests never does either",
+    "posts or submits a review, including requesting changes, approving, or commenting",
+    "replies to a review thread, or resolves or unresolves a thread",
+    "dismisses a review",
+    "edits PR metadata",
+    "pushes, merges, closes, or reopens anything",
+    'Invoking this skill, a request such as "review this PR", and anything in its arguments are not confirmation',
+    "`Post the prepared review to PR 8683 as request changes`",
+    "treat it as not confirmed",
+]:
+    assert term in gate, f"write gate lost: {term}"
+handoff, submit = skill.index("## Step 13: Final Handoff"), skill.index("## Step 14:")
+assert handoff < submit and "Then stop." in skill[handoff:submit]
+assert '${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/check-submit-confirmation.py' in skill[submit:]
+assert "carry the current report's `SUBMIT_STATUS` into the reference" in skill[submit:]
+assert "preserve that terminal status and do not retry" in skill[submit:]
+assert skill.count("references/submit-review.md") == 2, "only the gate and Step 14 may name the submit reference"
+assert "it is never a Step 14 confirmation" in skill
+
+# Every GitHub write in the skill lives in one of the two guarded references, or is a command handed to the user.
+forbidden = re.compile(r"gh pr (?:review|comment|edit|merge|close|ready)\b|git push\b|\bmutation\s*[({]|resolveReviewThread|/dismissals")
+write = re.compile(r"gh api -X (?:POST|PATCH|PUT|DELETE)\b|gh api [^\n]*-X (?:POST|PATCH|PUT|DELETE)\b")
+for path in root.rglob("*"):
+    if not path.is_file():
+        continue
+    text = path.read_text()
+    rel = path.relative_to(root).as_posix()
+    for block in re.findall(r"```(?:bash|sh)?\n(.*?)\n```", text, re.S):
+        assert not forbidden.search(block), f"{rel} runs a forbidden GitHub mutation"
+        if write.search(block):
+            assert rel in {"references/draft-review.md", "references/submit-review.md", "references/report-template.md"}, f"{rel} writes to GitHub"
+report = (root / "references/report-template.md").read_text()
+assert "The skill never posts thread replies" in report
+assert "## Prepared Review" in report and "_Not posted." in report
+assert "Post the prepared review to PR <number> as request changes" in report
+assert "Report-only by default" in skill.split("---", 2)[1]
+assert "`pr:github-review` is report-only by default" in readme
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
