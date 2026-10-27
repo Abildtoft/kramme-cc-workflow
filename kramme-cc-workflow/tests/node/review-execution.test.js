@@ -763,3 +763,104 @@ test("report fields, required sections and consumer repository must match", (t) 
   fs.unlinkSync(path.join(f.run, "slop-meta.txt"));
   assert.notEqual(f.command("check", "--report", f.report).status, 0);
 });
+
+/** @param {ReturnType<typeof fixture>} f */
+function status(f) {
+  return JSON.parse(f.ok("status").stdout);
+}
+
+test("status reports pending jobs and scope freshness without writing", (t) => {
+  const f = fixture(t);
+  const before = fs.readFileSync(path.join(f.run, "ledger.json"), "utf8");
+  const fresh = status(f);
+  assert.equal(fresh.sealed, false);
+  assert.equal(fresh.scopeFresh, true);
+  assert.deepEqual(fresh.aspects, ["all"]);
+  assert.equal(fresh.root, fs.realpathSync(f.root));
+  assert.match(fresh.created, /^\d{4}-\d{2}-\d{2}T/);
+  assert.deepEqual(fresh.jobs["code-reviewer"], {
+    status: "pending",
+    interrupted: 0,
+  });
+  fs.writeFileSync(path.join(f.root, "source.txt"), "later\n");
+  assert.equal(status(f).scopeFresh, false);
+  assert.equal(
+    fs.readFileSync(path.join(f.run, "ledger.json"), "utf8"),
+    before,
+  );
+});
+
+test("status reports a sealed run", (t) => {
+  const f = fixture(t);
+  f.complete();
+  f.draft();
+  f.ok("seal", "--report", f.report);
+  assert.equal(status(f).sealed, true);
+});
+
+test("requeued interrupted reviewer relaunches with a new ID, seals and passes check", (t) => {
+  const f = fixture(t);
+  f.ok("start", "--job", "code-reviewer", "--agent-id", "host-old");
+  f.ok("requeue", "--job", "code-reviewer", "--reason", "session limit");
+  const job = f.ledger().jobs["code-reviewer"];
+  assert.equal(job.status, "pending");
+  assert.equal(job.agentId, undefined);
+  assert.equal(job.interrupted[0].agentId, "host-old");
+  assert.deepEqual(status(f).jobs["code-reviewer"], {
+    status: "pending",
+    interrupted: 1,
+  });
+  assert.match(
+    f.command("start", "--job", "code-reviewer", "--agent-id", "host-old")
+      .stderr,
+    /distinct invocation ID/,
+  );
+  f.complete();
+  f.draft();
+  f.ok("seal", "--report", f.report);
+  f.ok("check", "--report", f.report, "--aspects", "all");
+});
+
+test("completion rejects a final agent ID equal to an interrupted one", (t) => {
+  const f = fixture(t);
+  f.ok("start", "--job", "code-reviewer", "--agent-id", "host-old");
+  f.ok("requeue", "--job", "code-reviewer", "--reason", "host restart");
+  f.complete();
+  const ledger = f.ledger();
+  ledger.jobs["code-reviewer"].agentId = "host-old";
+  fs.writeFileSync(path.join(f.run, "ledger.json"), JSON.stringify(ledger));
+  f.draft();
+  assert.match(
+    f.command("seal", "--report", f.report).stderr,
+    /reused agent ID: code-reviewer/,
+  );
+});
+
+test("requeue rejects pending, finished, sealed and stale runs", (t) => {
+  const f = fixture(t);
+  /** @param {string} id */
+  const requeue = (id) =>
+    f.command("requeue", "--job", id, "--reason", "session limit");
+  assert.match(requeue("code-reviewer").stderr, /Only a running job/);
+  f.finish("code-reviewer");
+  assert.match(requeue("code-reviewer").stderr, /Only a running job/);
+  f.finish("silent-failure-hunter", "failed");
+  assert.match(requeue("silent-failure-hunter").stderr, /Only a running job/);
+  f.ok("start", "--job", "deslop-reviewer", "--agent-id", "host-slop");
+  assert.match(
+    f.command("requeue", "--job", "deslop-reviewer").stderr,
+    /requeue needs --reason/,
+  );
+  fs.writeFileSync(path.join(f.root, "source.txt"), "later\n");
+  assert.match(requeue("deslop-reviewer").stderr, /stale/);
+
+  const sealed = fixture(t);
+  sealed.complete();
+  sealed.draft();
+  sealed.ok("seal", "--report", sealed.report);
+  assert.match(
+    sealed.command("requeue", "--job", "code-reviewer", "--reason", "late")
+      .stderr,
+    /Sealed run cannot change/,
+  );
+});

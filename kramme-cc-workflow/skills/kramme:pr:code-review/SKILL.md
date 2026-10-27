@@ -14,7 +14,7 @@ Run a comprehensive pull request review using multiple specialized agents, each 
 
 Before selecting a workflow, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`. It parses and removes `--subagent-model <model>` before aspect parsing or Team Mode routing. Preserve the original invocation's flag boundaries for `--emphasize`; removing the model pair must not merge later positional aspects into an emphasis span. Its model selection applies to every review subagent in standard, parallel, Team Mode, and loop verification passes.
 
-Before selecting any workflow, read `references/execution-contract.md` in full. Its execution ledger and fail-closed completion gate apply to every mode and rerun. Never replace specialized agents with a parent-only review, silently narrow the scope, cancel reviewers because enough findings exist, or skip stages on zero findings beyond the recorded `skipped` relevance and slop meta-review stages the contract allows. Partial results are `INCOMPLETE`, never a completed or clean review.
+Before selecting any workflow, read `references/execution-contract.md` in full. Its execution ledger and fail-closed completion gate apply to every mode and rerun. Its `Resume an interrupted run` section applies `${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md` to that ledger. Never replace specialized agents with a parent-only review, silently narrow the scope, cancel reviewers because enough findings exist, or skip stages on zero findings beyond the recorded `skipped` relevance and slop meta-review stages the contract allows. Partial results are `INCOMPLETE`, never a completed or clean review.
 
 Before selecting a workflow, if `$ARGUMENTS` contains `--loop`, set `LOOP_MODE=true` and remove that flag. Otherwise set `LOOP_MODE=false`. Use the remaining arguments as the normalized review arguments throughout this run and for any review rerun.
 
@@ -163,7 +163,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
 
    Build `ACTIVE_REVIEW_DIMENSIONS` from the agents that will actually run after aspect filtering and applicability checks. If any emphasized dimension has no active agent in this set, stop with an error telling the user which emphasized dimensions are inactive. Do not cap unrelated findings when the emphasized review never ran.
 
-   Before launching, initialize the frozen plan and execution ledger using `references/execution-contract.md`. Record every dimension's applicability or explicit exclusion; the helper derives required reviewers and downstream jobs.
+   Before launching, first check for a resumable run under `Resume an interrupted run` in `references/execution-contract.md`; otherwise initialize the frozen plan and execution ledger using that contract. Record every dimension's applicability or explicit exclusion; the helper derives required reviewers and downstream jobs.
 
 7. **Launch Review Agents**
 
@@ -209,6 +209,8 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
    Launch the agents resolved in Step 6 using `LAUNCH_MODE` from Step 1:
    - `LAUNCH_MODE=sequential` (default): launch one agent, wait for its report, then launch the next. Use this for interactive review where each report should be readable before the next runs.
    - `LAUNCH_MODE=parallel`: launch all applicable agents simultaneously and collect results together. Use this when the user passed `--parallel` or the deprecated bare `parallel` alias. The discipline reference remains in force for every parallel reviewer.
+
+   In either mode, record each reviewer in the execution ledger as soon as its result arrives, before waiting for the next.
 
    **Working-tree integrity check.** After every reviewer has returned, before relevance validation, re-capture the manifest and compare:
 
@@ -346,7 +348,7 @@ Run this step after standard output and after Team Mode returns its final aggreg
 
 Project only from the canonical aggregated summary. Conductor comments are never a findings source of truth, and this step must never post to GitHub. Missing optional tools or an incompatible host schema leave the report/inline result valid and unchanged.
 
-Always end the run with `Reviewers launched: N` — the exact number of agent launches this run made, counting every primary reviewer, the relevance validator, and the slop meta-review, or `0` when the review ran in the main thread — followed by `Diff comments posted: N (skipped M already present)`, using zeroes when projection is disabled or unavailable; add one concise projection-limitation line when eligible findings were not projected.
+Always end the run with `Reviewers launched: N` — the exact number of agent launches this run made, counting every primary reviewer, the relevance validator, and the slop meta-review, or `0` when the review ran in the main thread — followed by `Diff comments posted: N (skipped M already present)`, using zeroes when projection is disabled or unavailable; add one concise projection-limitation line when eligible findings were not projected. When the run resumed, follow `Reviewers launched: N` with `Agents reused: <M> (run <run-id>)`.
 
 13. **Provide Action Plan**
 
