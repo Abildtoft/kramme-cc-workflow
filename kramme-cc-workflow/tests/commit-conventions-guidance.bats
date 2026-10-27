@@ -222,7 +222,7 @@ assert "- Never add AI attribution to code, commits, or the Pull Request" in iss
 section = pr_create.split("### Commit Messages", 1)[1].split("\n### ", 1)[0]
 for rule in (
     "`recreate-commits` resolves the convention and applies it to the rewritten commits",
-    "this skill does not resolve or apply it itself",
+    "this skill resolves it only for Step 6.0's decision to keep existing commits",
     '"Include uncommitted changes for PR creation" commit is a placeholder',
     "`Co-Authored-By: Claude`",
     "this skill must not undo it",
