@@ -140,4 +140,4 @@ Before Step 1, parse `$ARGUMENTS` for `--auto` and `--effectiveness`. Treat `--a
 
 ## Artifact Lifecycle
 
-This skill writes safe extraction artifacts under `.context/session-search/<timestamp>/automate-repeats/`. The current run consumes skeletons, error summaries, skill-use evidence, and optional `effectiveness.json`; sibling agents may reuse them inside the same Conductor workspace. Refresh them by rerunning this skill. Retire them with `kramme:workflow-artifacts:cleanup` or delete the matching run directory when the workspace no longer needs the evidence.
+This skill writes safe extraction artifacts under `.context/session-search/<timestamp>/automate-repeats/`. The current run consumes skeletons, error summaries, skill-use evidence, and optional `effectiveness.json`; sibling agents may reuse them inside the same Conductor workspace. Refresh them by rerunning this skill. Retire them with `kramme:workflow:cleanup-artifacts` or delete the matching run directory when the workspace no longer needs the evidence.

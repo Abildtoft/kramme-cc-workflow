@@ -84,7 +84,7 @@ setup() {
 	grep -qF '$kramme:code:refactor-opportunities --ranked' "shared/findings/references/findings-intake.md"
 	grep -qF 'kramme:code:refactor-opportunities --ranked' "skills/kramme:discovery:strategic-inquiry/SKILL.md"
 	grep -qF '`/kramme:code:weakness-audit` → `/kramme:code:refactor-opportunities --ranked`' ../README.md
-	run python3 - "skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml" <<'PY'
+	run python3 - "skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
 import json
 import pathlib
 import sys
@@ -194,7 +194,7 @@ PY
 	grep -qF -- '--exclude "$OUTPUT_PATH"' "skills/kramme:code:outside-view/SKILL.md"
 	grep -qF -- '--exclude <each report output path this skill can write>' "skills/kramme:code:refactor-opportunities/SKILL.md"
 	grep -qF 'End the run with `Agents launched: N`' "skills/kramme:code:refactor-opportunities/SKILL.md"
-	run python3 - "skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml" <<'PY'
+	run python3 - "skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
 import json
 import pathlib
 import sys

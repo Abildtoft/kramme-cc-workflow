@@ -370,6 +370,6 @@ For any other request after the handoff, such as replying to or resolving thread
 - **Optional payload:** one run-unique `.context/github-review-drafts/pr-<number>.<suffix>` file when pending-review creation is authorized by either `--draft-review` or the user's confirmation and the payload directory is verified as Git-ignored. It is the exact pending-review payload, retained as a disposable audit artifact when payload construction begins.
 - **Consumed by:** you, when posting the review to GitHub — via the GitHub UI, the report's manual commands, or a Step 14 confirmation.
 - **Refreshed by:** re-running this skill on the same or a different PR (overwrites the file).
-- **Retired by:** `/kramme:workflow-artifacts:cleanup`, or manual deletion.
+- **Retired by:** `/kramme:workflow:cleanup-artifacts`, or manual deletion.
 - **Temporary worktree:** created under a `mktemp` directory during the run and removed in Step 8 unless `--keep-worktree` is set. An interrupted run's worktree is reused or removed when the review resumes.
-- **Resume state:** `.context/pr-github-review/<run-id>/` under `ORIG_ROOT`, only when that directory is Git-ignored. It holds each finished step's result so an interrupted review can continue. It is moved to the Trash after Step 13 and retired by `/kramme:workflow-artifacts:cleanup`.
+- **Resume state:** `.context/pr-github-review/<run-id>/` under `ORIG_ROOT`, only when that directory is Git-ignored. It holds each finished step's result so an interrupted review can continue. It is moved to the Trash after Step 13 and retired by `/kramme:workflow:cleanup-artifacts`.

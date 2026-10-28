@@ -442,7 +442,7 @@ write_plugin_fixture() {
 	grep -qF 'no open `PROD-NNN` finding is Critical or Major' "$skills/kramme:siw:spec-audit/references/apply-report-update.md"
 	# The retired report name stays excluded from spec detection and cleanable.
 	grep -qF '`AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.' "$skills/kramme:siw:spec-audit/references/spec-resolution.md"
-	grep -qF '"id": "siw-product-audit-legacy"' "$skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+	grep -qF '"id": "siw-product-audit-legacy"' "$skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
 	grep -qF 'Never extract, score, or edit `### PROD-NNN:` findings.' "$apply_now"
 	grep -qF "## Dimension: Rationale Documentation" "$dimensions"
 	grep -qF "those questions belong to the opt-in Product dimension (\`--product\`)" "$dimensions"

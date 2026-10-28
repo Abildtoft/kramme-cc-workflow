@@ -12,9 +12,9 @@ load 'test_helper/common'
 
 setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
-	REGISTRY="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
-	CLEANUP_SKILL="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/SKILL.md"
-	SIW_MODE_REF="$PLUGIN_ROOT/skills/kramme:workflow-artifacts:cleanup/references/siw-mode.md"
+	REGISTRY="$PLUGIN_ROOT/skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
+	CLEANUP_SKILL="$PLUGIN_ROOT/skills/kramme:workflow:cleanup-artifacts/SKILL.md"
+	SIW_MODE_REF="$PLUGIN_ROOT/skills/kramme:workflow:cleanup-artifacts/references/siw-mode.md"
 	AUTODETECT="$PLUGIN_ROOT/shared/findings/references/findings-intake.md"
 	HELPER="$BATS_TEST_TMPDIR/cleanup_registry.py"
 	cat >"$HELPER" <<'PY'
@@ -654,7 +654,7 @@ required = {
             "A model caller must never pass `--siw` on its own initiative, including after `kramme:siw:transfer-to-linear` prints its removal suggestion inside an autonomous loop",
             "when `--siw` is present without that user request, stop without scanning or deleting anything.",
             "A direct user request still goes through every SIW confirmation.",
-            "for any other `--`-prefixed flag, stop with `Usage: /kramme:workflow-artifacts:cleanup [--auto | --siw]` and delete nothing.",
+            "for any other `--`-prefixed flag, stop with `Usage: /kramme:workflow:cleanup-artifacts [--auto | --siw]` and delete nothing.",
             "Ignore free text that is not a flag.",
             "the git top-level when inside a repository, otherwise the current working directory",
             "apply the pre-scan warning and the Step 1 through Step 5 overrides",
@@ -682,7 +682,7 @@ if "Accept only `--auto` and `--siw`" in skill:
     errors.append("default cleanup must keep ignoring free-text arguments")
 adr = (root / "docs/decisions/2026-08-29-model-invocable-orchestration-children.md").read_text()
 for phrase in (
-    "- Amended: 2026-10-15",
+    "- `kramme:workflow:cleanup-artifacts` (renamed from `kramme:workflow-artifacts:cleanup` on 2026-10-27) is model-invocable only as the child of `kramme:linear:issue-to-pr --ship`, with `--auto`;",
     "the user typed the slash command or `$` mention with `--siw`, or explicitly asked in this session to retire the SIW workspace or to run cleanup with `--siw`",
     "`--siw` combined with `--auto` fails closed before any scan or deletion",
 ):
@@ -693,13 +693,15 @@ if "siw:remove" in skill or "siw:remove" in siw_mode:
     errors.append("cleanup still routes to the removed kramme:siw:remove")
 if (root / "skills/kramme:siw:remove").exists():
     errors.append("kramme:siw:remove must be deleted")
+if (root / "skills/kramme:workflow-artifacts:cleanup").exists():
+    errors.append("kramme:workflow-artifacts:cleanup must be renamed")
 
 # The only authorized model parent passes --auto and never --siw.
 parent_dir = root / "skills/kramme:linear:issue-to-pr"
 for path in parent_dir.rglob("*.md"):
     if "cleanup --siw" in path.read_text():
         errors.append(f"model parent passes --siw: {path.relative_to(root)}")
-if "Invoke `kramme:workflow-artifacts:cleanup --auto`" not in (parent_dir / "SKILL.md").read_text():
+if "Invoke `kramme:workflow:cleanup-artifacts --auto`" not in (parent_dir / "SKILL.md").read_text():
     errors.append("issue-to-pr no longer pins its cleanup --auto handoff")
 raise SystemExit("\n".join(errors) if errors else 0)
 PY

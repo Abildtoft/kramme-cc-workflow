@@ -63,7 +63,7 @@
     parent="skills/kramme:linear:issue-to-pr/SKILL.md"
     implement="skills/kramme:linear:issue-implement/SKILL.md"
     convergence="skills/kramme:pr:review-convergence/SKILL.md"
-    cleanup="skills/kramme:workflow-artifacts:cleanup/SKILL.md"
+    cleanup="skills/kramme:workflow:cleanup-artifacts/SKILL.md"
     create="skills/kramme:pr:create/SKILL.md"
     fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
 
@@ -73,7 +73,7 @@
       grep -qF "No other parent workflow is authorized by this model-invocation exception" "$skill"
     done
     grep -qF "Invoke \`kramme:linear:issue-implement\` with \`{issue-id} --auto --set-in-progress\`" "$parent"
-    grep -qF "Invoke \`kramme:workflow-artifacts:cleanup --auto\`" "$parent"
+    grep -qF "Invoke \`kramme:workflow:cleanup-artifacts --auto\`" "$parent"
     grep -qF "Invoke \`kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description\`" "$parent"
     grep -qF "Invoke \`kramme:pr:fix-ci --no-consolidate\`" "$parent"
     grep -qF "Invoke automatically only as the exact child of \`kramme:linear:issue-to-pr\`" "$implement"
@@ -284,7 +284,7 @@
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:pr:review-convergence/SKILL.md"
-    registry="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+    registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
     readme="../README.md"
 
     grep -qF "argument-hint: \"[--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]\"" "$skill"
@@ -452,7 +452,7 @@
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:pr:review-convergence/SKILL.md"
     policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
-    registry="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+    registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
 
     grep -qF "Step 2 already created and validated \`{review-archive}\`" "$policy"
     grep -qF "REVIEW_ARCHIVE_CANONICAL" "$policy"
@@ -511,7 +511,7 @@
     shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
 
-    grep -qF "kramme:workflow-artifacts:cleanup --auto" "$shipping"
+    grep -qF "kramme:workflow:cleanup-artifacts --auto" "$shipping"
     grep -qF "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description" "$shipping"
     grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
     grep -qF -- "- \`{work-id}\`: \`{issue-id}\`." "$shipping"

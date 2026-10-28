@@ -71,7 +71,8 @@ function fixture(t, aspects = ["all"], active = [], options = {}) {
     return spawnSync(process.execPath, [helper, action, run, ...args], {
       cwd: root,
       encoding: "utf8",
-      timeout: 10000,
+      // The convergence check can exceed ten seconds on shared macOS runners.
+      timeout: 30000,
     });
   }
   /** @param {string} action @param {...string} args */

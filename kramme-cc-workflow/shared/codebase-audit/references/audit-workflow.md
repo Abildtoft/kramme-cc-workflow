@@ -173,7 +173,7 @@ The orchestrator, not a teammate, owns final ranking and report writing. Enforce
 1. Read `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/assets/report-template.md`.
 2. Write the report to `OUTPUT_PATH`, overwriting any previous report at that path. Include the resolved scope and date in the header so an overwritten report remains understandable. Write `## Report Provenance` and name the detailed findings section `## Breakdown-Ready Finding Data`, per `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`.
 3. Include all required sections from the template, including the Team Review block in team mode only; omit that block for `--solo` runs. If no major weakness is found, keep the same header, provenance, scorecard, filtered candidates, impressions, and coverage notes, and write `None.` under `## Breakdown-Ready Finding Data`. Replace the other findings sections with: `No major weaknesses met the evidence bar in this scope.` Explain the scope, evidence reviewed, and residual risks instead of inventing findings.
-4. Treat the report as a working artifact that should not be committed. It is consumed by the user, by `/kramme:code:breakdown-findings` when turning validated findings into implementation plans, and by `/kramme:code:outside-view` comparisons. It is retired by `/kramme:workflow-artifacts:cleanup` when no longer useful, or manual deletion.
+4. Treat the report as a working artifact that should not be committed. It is consumed by the user, by `/kramme:code:breakdown-findings` when turning validated findings into implementation plans, and by `/kramme:code:outside-view` comparisons. It is retired by `/kramme:workflow:cleanup-artifacts` when no longer useful, or manual deletion.
 
 ## Summarize
 

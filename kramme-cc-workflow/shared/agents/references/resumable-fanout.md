@@ -37,7 +37,7 @@ Write `manifest.json` before launching any agent: `schema`, `skill`, `key`, `key
 
 - A run is stale when its key differs, it is older than 24 hours, its manifest is unreadable, or its `schema` is unknown. Never resume a stale run.
 - Before creating a new run directory, move every other run directory of this skill that is `complete` or stale to the Trash with `trash`; if `trash` is unavailable, leave them and name them in the summary. Never use `rm -rf`.
-- `/kramme:workflow-artifacts:cleanup` removes `.context/<skill-slug>/` as a registered disposable.
+- `/kramme:workflow:cleanup-artifacts` removes `.context/<skill-slug>/` as a registered disposable.
 
 ## Accounting
 

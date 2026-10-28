@@ -174,7 +174,7 @@ Organize the report:
 - **Previously Processed** — unmatched prior entries with non-open lifecycle state, preserved verbatim so reruns do not erase resolver history
 - Include all sections even when empty (with count of 0)
 
-If `INLINE_MODE=true`, reply with the full report inline and do **not** create or update `OVERENGINEERING_REVIEW_OVERVIEW.md`. Otherwise write it to `OVERENGINEERING_REVIEW_OVERVIEW.md` in the project root — a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+If `INLINE_MODE=true`, reply with the full report inline and do **not** create or update `OVERENGINEERING_REVIEW_OVERVIEW.md`. Otherwise write it to `OVERENGINEERING_REVIEW_OVERVIEW.md` in the project root — a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`.
 
 If any Confirmed or Judgment Call findings exist, suggest `/kramme:pr:resolve-review`. For inline output, tell the user to invoke it in the immediately following message so the resolver selects that structured review ahead of older local artifacts; later handoffs must supply the report content explicitly or save it as `OVERENGINEERING_REVIEW_OVERVIEW.md`. Judgment calls resolve as accept-or-simplify decisions, not automatic fixes.
 

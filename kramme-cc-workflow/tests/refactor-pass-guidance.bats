@@ -163,7 +163,7 @@ setup() {
 # Disposability is not the criterion - every protected entry is disposable too -
 # nor is the directory, since siw/AUDIT_SPEC_REPORT.md is blocked.
 @test "protected workflow artifacts omit the disposable siw and .context paths" {
-  local disposable="skills/kramme:workflow-artifacts:cleanup/references/disposable-artifacts.yaml"
+  local disposable="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
   local disposable_path
 
   # A missing registry makes grep exit non-zero, indistinguishable from

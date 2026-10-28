@@ -1,5 +1,5 @@
 ---
-name: kramme:workflow-artifacts:cleanup
+name: kramme:workflow:cleanup-artifacts
 description: Delete workflow artifacts when explicitly requested or delegated by kramme:linear:issue-to-pr --ship. Covers review/audit/QA reports, generated plans, SIW tracking, diagrams, and context evidence. Direct mode confirms deletion; guarded --auto keeps permanent specs and shared diagrams and requires Trash, with no permanent-deletion fallback. User-only --siw retires the whole local siw/ workspace after Linear transfer or abandonment.
 argument-hint: "[--auto | --siw]"
 disable-model-invocation: false
@@ -16,7 +16,7 @@ Delete workflow artifacts from the current working directory, local context evid
 - No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain the `trash` requirement, dirty-artifact checks, safe candidate inventory, and permanent-specification protections. Never invent broader cleanup targets or permanent-deletion fallbacks.
 - `--siw` is a destructive direct-user-only mode. Honor `--siw` only when the user typed the slash command or `$` mention with `--siw`, or explicitly asked in this session to retire the SIW workspace or to run cleanup with `--siw`. A model caller must never pass `--siw` on its own initiative, including after `kramme:siw:transfer-to-linear` prints its removal suggestion inside an autonomous loop; when `--siw` is present without that user request, stop without scanning or deleting anything. A direct user request still goes through every SIW confirmation.
 
-Parse `$ARGUMENTS` before Step 1. Recognize `--auto` and `--siw`; for any other `--`-prefixed flag, stop with `Usage: /kramme:workflow-artifacts:cleanup [--auto | --siw]` and delete nothing. Ignore free text that is not a flag. If both flags are present, stop before scanning with `--siw cannot be combined with --auto; SIW cleanup always confirms. Rerun /kramme:workflow-artifacts:cleanup --siw without --auto.` and delete nothing.
+Parse `$ARGUMENTS` before Step 1. Recognize `--auto` and `--siw`; for any other `--`-prefixed flag, stop with `Usage: /kramme:workflow:cleanup-artifacts [--auto | --siw]` and delete nothing. Ignore free text that is not a flag. If both flags are present, stop before scanning with `--siw cannot be combined with --auto; SIW cleanup always confirms. Rerun /kramme:workflow:cleanup-artifacts --siw without --auto.` and delete nothing.
 
 If `--auto` is present, set `AUTO_MODE=true`. `--auto` deletes only current-project always-candidate artifacts from Step 1, keeps permanent SIW specs, and excludes shared diagram files under `~/.kramme-cc-workflow/diagrams/`. It requires `trash` to be available and aborts on dirty tracked artifact files; it never falls back to permanent deletion.
 

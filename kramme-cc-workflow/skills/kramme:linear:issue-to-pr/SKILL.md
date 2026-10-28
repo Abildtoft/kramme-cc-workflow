@@ -52,7 +52,7 @@ Defaults:
 
 `--continue` is explicit authorization to preserve and resume local work from an interrupted invocation. It does not accept arbitrary dirty state: Step 2 still requires the exact unpublished Linear branch, the issue already in the resolved target `started` status, no in-progress Git operation, a local change relative to the fetched base, and issue-related committed and dirty paths. It never authorizes a Linear transition, stashing, discarding, resetting, switching away from, or silently absorbing unrelated work.
 
-`--ship` is explicit authorization to retire current-project disposable workflow artifacts through `kramme:workflow-artifacts:cleanup --auto`, let `kramme:pr:create --auto` perform the backup-protected local narrative rewrite without a nested reset prompt, create the previously absent remote issue branch once with an exact absence lease, self-assign, and open the Pull Request, then let `kramme:pr:fix-ci --no-consolidate` push validated CI and review-feedback fixes until the checks are green. The cleanup skill keeps permanent specifications and shared diagrams in auto mode. Keeping CI fix commits unconsolidated avoids a post-creation history rewrite. `--ship` does not authorize rewriting an existing remote branch or Pull Request branch, bypassing a lease mismatch, force-pushing unrelated work, merging, or post-merge rollout.
+`--ship` is explicit authorization to retire current-project disposable workflow artifacts through `kramme:workflow:cleanup-artifacts --auto`, let `kramme:pr:create --auto` perform the backup-protected local narrative rewrite without a nested reset prompt, create the previously absent remote issue branch once with an exact absence lease, self-assign, and open the Pull Request, then let `kramme:pr:fix-ci --no-consolidate` push validated CI and review-feedback fixes until the checks are green. The cleanup skill keeps permanent specifications and shared diagrams in auto mode. Keeping CI fix commits unconsolidated avoids a post-creation history rewrite. `--ship` does not authorize rewriting an existing remote branch or Pull Request branch, bypassing a lease mismatch, force-pushing unrelated work, merging, or post-merge rollout.
 
 If validation fails, stop with:
 
@@ -174,7 +174,7 @@ If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:creat
 If `SHIP_MODE=true`, resolve `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/pr-shipping-contract.md` as `{pr-shipping-contract}`, read `references/shipping-contract.md` for this workflow's hook bindings, then read `{pr-shipping-contract}` and follow it completely with those bindings. That contract owns the complete order; in summary:
 
 1. Recheck that no Pull Request appeared for the issue branch and that the remote branch is still absent.
-2. Invoke `kramme:workflow-artifacts:cleanup --auto` to retire current-project disposable workflow artifacts.
+2. Invoke `kramme:workflow:cleanup-artifacts --auto` to retire current-project disposable workflow artifacts.
 3. Require a clean, unambiguous worktree.
 4. Record the verified tree identity.
 5. Invoke `kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description`.
@@ -201,7 +201,7 @@ Remediation: {cycles used}/{cycle budget}; stop={converged|diminishing returns}
 Findings: 0 blocking unresolved; fixed={count}, rejected={count}, deferred optional={count}, blocked=0
 Verification: passed
 Pull Request: not created (--ship was not supplied)
-Next: $kramme:workflow-artifacts:cleanup --auto
+Next: $kramme:workflow:cleanup-artifacts --auto
 Then: $kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description
 Then: $kramme:pr:fix-ci --no-consolidate
 ```
@@ -246,7 +246,7 @@ Keep the summary factual and grounded in captured evidence. Never invent a findi
 - **Linear started-state transition** is resolved and gated by this workflow, written by `kramme:linear:issue-implement --set-in-progress` before its branch setup when needed, and verified there by a fresh issue read. The outcome reports the verified transition using the team's actual status name; later PR and delivery workflows may advance that durable Linear state before this workflow reports.
 - **Conductor workspace name** is an optional host-owned presentation value updated once after the Linear state gate passes and before delegated implementation. It is not authoritative for issue, branch, or Pull Request identity, and an unavailable or unverified rename leaves the implementation workflow intact.
 - **Frozen Linear requirements and review handoff state** are produced by this skill plus `kramme:pr:review-convergence`, refreshed with `kramme:pr:fix-ci` remediation and final-tree validation handoffs when shipping changes the tree, consumed by reporting and the shipping contract, and retained in run state only for the same issue and tree lineage.
-- **Quality-loop review reports** are produced and owned by `kramme:pr:review-convergence` under `.context/linear-issue-to-pr/reviews/`. They are retained for a non-shipping review-ready handoff and retired before shipping by `kramme:workflow-artifacts:cleanup --auto` or explicitly if the branch is abandoned.
+- **Quality-loop review reports** are produced and owned by `kramme:pr:review-convergence` under `.context/linear-issue-to-pr/reviews/`. They are retained for a non-shipping review-ready handoff and retired before shipping by `kramme:workflow:cleanup-artifacts --auto` or explicitly if the branch is abandoned.
 - **Preflight helper state** (`{preflight-state}`) is a private temporary file created by the Step 1 `args` call, refreshed by `capture`, read by `check-branch`, and removed by the helper's `cleanup` call before delegation or at any earlier stop.
 - **Pull Request** is produced only by `kramme:pr:create` after `--ship` authorization, then consumed and refreshed by `kramme:pr:fix-ci --no-consolidate` until CI and review feedback are clear. It is retired by merge or close.
 

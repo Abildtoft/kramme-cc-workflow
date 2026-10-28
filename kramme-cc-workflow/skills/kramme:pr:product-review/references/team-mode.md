@@ -198,7 +198,7 @@ UX, visual, and accessibility review not run: no UI-relevant files matched (chan
 **To resolve findings, run:** `/kramme:pr:resolve-review`
 ```
 
-When file output is used, `PRODUCT_REVIEW_OVERVIEW.md` is a working artifact -- it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow-artifacts:cleanup` when that skill is installed.
+When file output is used, `PRODUCT_REVIEW_OVERVIEW.md` is a working artifact -- it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow:cleanup-artifacts` when that skill is installed.
 
 ### Step 7: Cleanup
 

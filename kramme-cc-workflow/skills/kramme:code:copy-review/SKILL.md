@@ -218,7 +218,7 @@ Otherwise:
 - Write to `COPY_REVIEW_OVERVIEW.md` in the project root using the report format from `assets/copy-review-report-format.md`.
 - In codebase scan mode, replace the report's base-branch metadata with the requested scope and file count, include a "Patterns & Themes" section, and overwrite any prior overview because the file represents the latest scan.
 - Include all sections even if empty (with count of 0)
-- Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`
+- Treat the file as a working artifact that should **not** be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`
 
 ### Step 10: Provide Action Plan
 

@@ -17,7 +17,7 @@ Before doing anything else, list every root-level `PR_PLAN_*.md` artifact, inclu
 
   Re-running would risk silent overwrite of plans whose slugs match new themes, and would leave stale plans whose slugs do not match.
   Options:
-    - cleanup — run `$kramme:workflow-artifacts:cleanup` to clear them, then re-run this skill
+    - cleanup — run `$kramme:workflow:cleanup-artifacts` to clear them, then re-run this skill
     - resume — regenerate only missing plan files after confirming these artifacts came from the same source set
     - reconcile — re-run this skill with `--reconcile` to classify drift, done/blocked status, and stale plans
   ```

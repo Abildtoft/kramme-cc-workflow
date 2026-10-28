@@ -69,5 +69,5 @@ When the user asks to start over instead of continuing, move the matching run di
 
 - Apply the shared stale-run rules with one narrowing: before creating a run directory, consider only runs for the same `repo` and `pr`, plus any run older than 24 hours. A run for another PR may belong to a review still in progress in another session.
 - When cleanup trashes a run whose manifest names a worktree that still exists, remove that worktree with the Step 8 block. Name any worktree it cannot remove.
-- After Step 13, set the manifest `status` to `complete`, then move the run directory to the Trash with `trash`. If `trash` is unavailable, leave it; the next run's cleanup or `/kramme:workflow-artifacts:cleanup` removes it. Never use `rm -rf`.
+- After Step 13, set the manifest `status` to `complete`, then move the run directory to the Trash with `trash`. If `trash` is unavailable, leave it; the next run's cleanup or `/kramme:workflow:cleanup-artifacts` removes it. Never use `rm -rf`.
 - When this run reused saved results, the Step 13 handoff also prints `Agents reused: <M> (run <run-id>)`.

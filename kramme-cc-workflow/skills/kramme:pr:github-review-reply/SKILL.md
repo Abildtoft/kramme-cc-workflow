@@ -325,7 +325,7 @@ Use this readable layout exactly: keep status in the item heading, metadata in t
 
 If `--inline` is set, return the same structure in chat and do not create the file.
 
-Treat `GITHUB_REVIEW_REPLY_PLAN.md` and the reply payload files under `.context/github-review-replies/` (Step 9) as working artifacts that should **not** be committed and can be cleaned up by `/kramme:workflow-artifacts:cleanup`.
+Treat `GITHUB_REVIEW_REPLY_PLAN.md` and the reply payload files under `.context/github-review-replies/` (Step 9) as working artifacts that should **not** be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`.
 
 ## Step 8: Confirm Before GitHub Writes
 

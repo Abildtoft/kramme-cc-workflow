@@ -22,4 +22,4 @@ Next Steps:
 - Or let the model choose each resolution automatically: /kramme:siw:resolve-audit {report_path} --auto
 - Re-run after spec revisions to verify quality: /kramme:siw:spec-audit {add --product if product mode ran}
 - When spec is ready, define the issue set with /kramme:siw:generate-phases, then run /kramme:siw:transfer-to-linear
-- Clean up report when done: /kramme:workflow-artifacts:cleanup
+- Clean up report when done: /kramme:workflow:cleanup-artifacts

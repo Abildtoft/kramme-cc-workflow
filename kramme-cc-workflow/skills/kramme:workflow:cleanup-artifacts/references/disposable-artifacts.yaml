@@ -1,7 +1,7 @@
 {
   "version": 1,
   "notes": [
-    "Single source of truth for kramme:workflow-artifacts:cleanup targets. Add a producer's fixed default output here once; cleanup discovery (SKILL.md Step 1) and the cleanup fixture test both derive their inventory from this list, so no separate prose inventory is maintained.",
+    "Single source of truth for kramme:workflow:cleanup-artifacts targets. Add a producer's fixed default output here once; cleanup discovery (SKILL.md Step 1) and the cleanup fixture test both derive their inventory from this list, so no separate prose inventory is maintained.",
     "JSON-compatible YAML so the skill and tests parse it with the Python stdlib (json.loads); do not use YAML-only syntax.",
     "category: working-dir (in the project working tree), shared-diagram (global, shared across sessions and projects), or permanent-spec (durable SIW specification).",
     "retention: disposable (deleted after confirmation) or permanent (kept unless the user explicitly opts in).",

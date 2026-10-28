@@ -124,7 +124,7 @@ Reply with:
 - **Produces/updates:** `STRATEGIC_INQUIRY.md` by default, or the path passed with `--output`. Working artifact; not intended to be committed.
 - **Consumed by:** the user for prioritization; `/kramme:discovery:interview` to pursue a single question in depth; `/kramme:docs:adr` to record the decision once a question is settled; `/kramme:docs:feature-spec` or `/kramme:siw:init` when an investigation turns into build work.
 - **Refresh trigger:** re-run after a strategy revision, a major architectural commitment, entering a new market or user segment, or when prior questions have been answered.
-- **Retired by:** `/kramme:workflow-artifacts:cleanup` or manual deletion once the questions are tracked elsewhere.
+- **Retired by:** `/kramme:workflow:cleanup-artifacts` or manual deletion once the questions are tracked elsewhere.
 
 ## Discipline
 

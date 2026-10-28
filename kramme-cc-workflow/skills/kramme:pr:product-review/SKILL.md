@@ -324,7 +324,7 @@ Otherwise, write to `PRODUCT_REVIEW_OVERVIEW.md` in the project root using the r
 
 In both modes, add the stacked Pull Request reference's `Stack:` line under the report title when the stack context is `stacked` or `unknown`.
 
-When file output is used, `PRODUCT_REVIEW_OVERVIEW.md` is a working artifact — it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow-artifacts:cleanup` when that skill is installed.
+When file output is used, `PRODUCT_REVIEW_OVERVIEW.md` is a working artifact — it should NOT be committed. It is intended to be cleaned up by `/kramme:workflow:cleanup-artifacts` when that skill is installed.
 
 ### Post Conductor Diff Comments (When Available)
 
