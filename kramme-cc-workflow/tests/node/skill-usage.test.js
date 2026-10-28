@@ -9,6 +9,7 @@ const test = require("node:test");
 
 const SCRIPT = path.resolve(__dirname, "../../scripts/skill-usage.js");
 const MIB = 1024 * 1024;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * @param {string[]} args
@@ -52,6 +53,23 @@ async function tempDir(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "skill-usage-test-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   return root;
+}
+
+/** @param {string} file @param {unknown[]} records */
+async function writeUsageLines(file, records) {
+  await fs.writeFile(
+    file,
+    records.map((record) => `${JSON.stringify(record)}\n`).join(""),
+  );
+}
+
+/** @param {string} file */
+async function readUsageLines(file) {
+  const text = await fs.readFile(file, "utf8");
+  return text
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line));
 }
 
 /** @param {string} file @param {string} line @param {number} targetBytes */
@@ -428,16 +446,266 @@ test("record maps Claude Code plugin skill names to frontmatter names", async (t
     assert.deepEqual([result.status, result.stderr], [0, ""]);
   }
 
-  const records = (await fs.readFile(usageFile, "utf8")).trim().split("\n");
+  const records = await readUsageLines(usageFile);
   assert.deepEqual(
-    records.map((line) => [JSON.parse(line).skill, JSON.parse(line).kind]),
+    records.map((record) => [
+      record.skill,
+      record.unrecognizedSkill,
+      record.kind,
+    ]),
     [
-      ["kramme:pr:create", "tool"],
-      ["kramme:qa", "explicit"],
-      ["kramme:verify:run", "explicit"],
-      ["kramme:setup", "tool"],
+      ["kramme:pr:create", undefined, "tool"],
+      ["kramme:qa", undefined, "explicit"],
+      [undefined, "kramme-cc-workflow:kramme-not-a-real-skill", "tool"],
+      ["kramme:verify:run", undefined, "explicit"],
+      ["kramme:setup", undefined, "tool"],
     ],
   );
+});
+
+test("record stamps each record with the plugin manifest version", async (t) => {
+  const usageFile = path.join(await tempDir(t), "usage.jsonl");
+  const manifest = JSON.parse(
+    await fs.readFile(
+      path.resolve(__dirname, "../../.claude-plugin/plugin.json"),
+      "utf8",
+    ),
+  );
+  assert.match(manifest.version, /^\d+\.\d+\.\d+/);
+
+  const result = runUsageWithInput(
+    ["record", "--file", usageFile],
+    JSON.stringify({ prompt: "/kramme:qa", session_id: "session-1" }),
+  );
+
+  assert.deepEqual([result.status, result.stderr], [0, ""]);
+  const [record] = await readUsageLines(usageFile);
+  assert.equal(record.pluginVersion, manifest.version);
+});
+
+test("record keeps Skill tool events that name the plugin but no shipped skill", async (t) => {
+  const usageFile = path.join(await tempDir(t), "usage.jsonl");
+  for (const tool_input of [
+    { skill: "kramme-cc-workflow/kramme-pr-create" },
+    { skill: "anthropic-skills:pdf" },
+    { skill: "other-plugin:kramme-pr-create" },
+    {
+      skill: "other-plugin:helper",
+      command: "/kramme-cc-workflow:kramme-gone",
+    },
+    { skill: "kramme-cc-workflow:kramme-pr-create" },
+  ]) {
+    const event = {
+      hook_event_name: "PreToolUse",
+      session_id: "session-1",
+      tool_name: "Skill",
+      tool_input,
+    };
+    const result = runUsageWithInput(
+      ["record", "--file", usageFile],
+      JSON.stringify(event),
+    );
+    assert.deepEqual([result.status, result.stderr], [0, ""]);
+  }
+
+  const records = await readUsageLines(usageFile);
+  assert.deepEqual(
+    records.map((record) => [record.skill, record.unrecognizedSkill]),
+    [
+      [undefined, "kramme-cc-workflow/kramme-pr-create"],
+      ["kramme:pr:create", undefined],
+    ],
+  );
+  const [unrecognized] = records;
+  assert.equal("skill" in unrecognized, false);
+  assert.deepEqual(
+    [
+      unrecognized.kind,
+      unrecognized.source,
+      unrecognized.sessionId,
+      unrecognized.event,
+    ],
+    ["tool", "tool_input", "session-1", "PreToolUse"],
+  );
+});
+
+test("report skips unrecognized skill events inside the selected window", async (t) => {
+  const root = await tempDir(t);
+  const usageFile = path.join(root, "usage.jsonl");
+  const recent = new Date(Date.now() - DAY_MS).toISOString();
+  await writeUsageLines(usageFile, [
+    {
+      recordedAt: recent,
+      sessionId: "session-1",
+      skill: "kramme:qa",
+      kind: "explicit",
+    },
+    {
+      recordedAt: "2026-01-05T10:00:00.000Z",
+      sessionId: "session-0",
+      unrecognizedSkill: "kramme-cc-workflow/old-name",
+      kind: "tool",
+    },
+    {
+      recordedAt: recent,
+      sessionId: "session-1",
+      unrecognizedSkill: "kramme-cc-workflow/new-name",
+      kind: "tool",
+    },
+  ]);
+
+  const windowed = runUsage([
+    "report",
+    "--file",
+    usageFile,
+    "--json",
+    "--since",
+    "30d",
+  ]);
+  assert.equal(windowed.status, 0);
+  assert.deepEqual(JSON.parse(windowed.stdout), {
+    summary: [
+      {
+        skill: "kramme:qa",
+        total: 1,
+        explicit: 1,
+        tool: 0,
+        firstUsedAt: recent,
+        lastUsedAt: recent,
+        sessions: 1,
+      },
+    ],
+    diagnostics: { skippedLines: 1, readFailures: 0 },
+  });
+  assert.equal(
+    windowed.stderr,
+    `skill-usage: skipped 1 unrecognized skill event latest=kramme-cc-workflow/new-name file=${usageFile}\n`,
+  );
+
+  const strict = runUsage([
+    "report",
+    "--file",
+    usageFile,
+    "--json",
+    "--strict",
+  ]);
+  assert.equal(strict.status, 1);
+  assert.equal(JSON.parse(strict.stdout).diagnostics.skippedLines, 2);
+  assert.equal(
+    strict.stderr,
+    `skill-usage: skipped 2 unrecognized skill events latest=kramme-cc-workflow/new-name file=${usageFile}\n`,
+  );
+
+  const projects = path.join(root, "projects");
+  await fs.mkdir(projects);
+  const cost = runUsage([
+    "cost",
+    "--file",
+    usageFile,
+    "--projects",
+    projects,
+    "--json",
+    "--strict",
+  ]);
+  assert.deepEqual([cost.status, cost.stderr], [0, ""]);
+});
+
+test("report filters usage records by plugin version", async (t) => {
+  const usageFile = path.join(await tempDir(t), "usage.jsonl");
+  await writeUsageLines(
+    usageFile,
+    [
+      ["kramme:pr:create", "0.89.0"],
+      ["kramme:qa", "0.90.0"],
+      ["kramme:verify:run", undefined],
+    ].map(([skill, pluginVersion], index) => ({
+      recordedAt: `2026-10-1${index}T10:00:00.000Z`,
+      sessionId: `session-${index}`,
+      skill,
+      kind: "explicit",
+      pluginVersion,
+    })),
+  );
+
+  /** @param {string[]} args */
+  const skills = (...args) => {
+    const result = runUsage(["report", "--file", usageFile, "--json", ...args]);
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(result.stdout).map(
+      (/** @type {{ skill: string }} */ row) => row.skill,
+    );
+  };
+
+  assert.deepEqual(skills("--plugin-version", "0.90.0"), ["kramme:qa"]);
+  assert.deepEqual(skills("--plugin-version=0.89.0"), ["kramme:pr:create"]);
+  assert.deepEqual(skills("--plugin-version", "unknown"), [
+    "kramme:verify:run",
+  ]);
+  assert.deepEqual(skills(), [
+    "kramme:pr:create",
+    "kramme:qa",
+    "kramme:verify:run",
+  ]);
+
+  const table = runUsage([
+    "report",
+    "--file",
+    usageFile,
+    "--plugin-version",
+    "0.90.0",
+  ]);
+  assert.equal(table.status, 0, table.stderr);
+  assert.match(table.stdout.split("\n")[0], / pluginVersion=0\.90\.0$/);
+});
+
+test("report warns on stderr when the last 7 days fall far below the weekly median", async (t) => {
+  const root = await tempDir(t);
+  const now = Date.now();
+  /** @param {string} name @param {number[]} weeklyCounts Most recent week first. */
+  const writeWeeks = async (name, weeklyCounts) => {
+    const file = path.join(root, name);
+    await writeUsageLines(
+      file,
+      weeklyCounts.flatMap((count, week) =>
+        Array.from({ length: count }, (_, index) => ({
+          recordedAt: new Date(
+            now - (week * 7 + 3) * DAY_MS - index * 1000,
+          ).toISOString(),
+          sessionId: `session-${week}-${index}`,
+          skill: "kramme:qa",
+          kind: "tool",
+        })),
+      ),
+    );
+    return file;
+  };
+
+  const gap = await writeWeeks(
+    "gap.jsonl",
+    [2, 30, 30, 30, 30, 30, 30, 30, 30],
+  );
+  const warning =
+    "skill-usage: warning: 2 records in the last 7 days against a weekly median of 30 over the previous 8 weeks; recording may have stopped, or usage fell\n";
+  for (const args of [
+    ["--json", "--strict"],
+    ["--since", "1d"],
+  ]) {
+    const result = runUsage(["report", "--file", gap, ...args]);
+    assert.deepEqual([result.status, result.stderr], [0, warning]);
+  }
+
+  const healthy = await writeWeeks(
+    "healthy.jsonl",
+    [8, 30, 30, 30, 30, 30, 30, 30, 30],
+  );
+  const thin = await writeWeeks(
+    "thin.jsonl",
+    [0, 19, 19, 19, 19, 19, 19, 19, 19],
+  );
+  for (const file of [healthy, thin]) {
+    const result = runUsage(["report", "--file", file, "--json"]);
+    assert.deepEqual([result.status, result.stderr], [0, ""]);
+  }
 });
 
 test("scan counts Claude Code command-name transcript records", async (t) => {
