@@ -94,13 +94,55 @@
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:linear:next/SKILL.md"
 
-    grep -qF "recommends one issue and actively searches for 2-4 additional good issues that can be implemented in parallel" "$skill"
-    grep -qF "until the best recommendation has four good parallel candidates or every candidate collected in Step 4 has been enriched and assessed" "$skill"
+    grep -qF "recommends the best one, and actively searches for 2-4 additional good issues that can be implemented in parallel with it" "$skill"
+    grep -qF "and the best recommendation has four good parallel candidates, or every candidate collected in Step 4 has been enriched and assessed" "$skill"
     grep -qF "Reaching the collection cap bounds the candidate set but is not by itself a reason to stop enriching it." "$skill"
     grep -qF "independent of both the recommendation and every other issue in the proposed parallel set" "$skill"
-    grep -qF "Finding a defensible parallel set is part of the required result." "$skill"
+    grep -qF "Finding up to \`--count\` ready issues and a defensible parallel set is part of the required result." "$skill"
     grep -qF "do not use low-value filler merely to reach four" "$skill"
     grep -qF "Never present uncertain or dependent issues as good parallel candidates." "$skill"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear next tries to find ten ready issues by default" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:linear:next/SKILL.md"
+
+    grep -qF "[--count <n>]" "$skill"
+    grep -qF "\`--count <n>\`: number of ready issues to try to find and rank. Default 10, maximum 25." "$skill"
+    grep -qF "The skill tries to find 10 ready issues by default" "$skill"
+    grep -qF "Map a requested number of issues, such as \`find 5 issues\`, to \`--count\`." "$skill"
+    grep -qF "a \`--count\` outside 1-25" "$skill"
+    grep -qF "Continue through further batches until \`--count\` issues pass every readiness and hard-filter requirement" "$skill"
+    grep -qF "keep the top \`--count\` as the ranked shortlist, starting with the recommendation" "$skill"
+    grep -qF "state how many were found against the requested count" "$skill"
+    grep -qF "Never pad the ranked shortlist with issues that fail readiness or a hard filter." "$skill"
+    grep -qF "Ranked shortlist ({found} of {count} ready issues):" "$skill"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear next estimates UI/UX work for every shortlisted issue" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:linear:next/SKILL.md"
+    rubric="skills/kramme:linear:next/references/scoring-rubric.md"
+
+    grep -qF "| Rank | Issue | Plain-language summary | State | Pool | UI/UX work |" "$skill"
+    grep -qF "Estimate \`UI/UX work\` as \`None\`, \`Low\`, \`Medium\` or \`High\` for every issue in the ranked shortlist" "$skill"
+    grep -qF "## UI/UX Work" "$rubric"
+    grep -qF "| \`None\` | No user-facing change" "$rubric"
+    grep -qF "| \`Low\` |" "$rubric"
+    grep -qF "| \`Medium\` |" "$rubric"
+    grep -qF "| \`High\` |" "$rubric"
+    grep -qF "Do not judge from labels or title keywords alone." "$rubric"
+    grep -qF "The estimate describes the work; it does not change value, readiness or rank." "$rubric"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
