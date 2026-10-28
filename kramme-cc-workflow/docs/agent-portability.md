@@ -44,6 +44,49 @@ Use this document when reviewing converter, hook, MCP, or host-adapter changes. 
 
 Installed output under the Codex plugin cache, the generated marketplace, or the published branch is not source behavior. Repository-local `./.agents/skills/` remains the local-only source for maintenance skills. Change canonical source or converter modules, then rebuild.
 
+## Installing from a Checkout
+
+The root [README](../../README.md#codex) lists the install, update, and removal commands. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
+
+The converter's `install` command:
+
+- builds the marketplace under `<codex-home>/.kramme-plugin-marketplaces/kramme-cc-workflow`, registers it with `codex plugin marketplace add`, and installs it with `codex plugin add`;
+- fails if Codex places the plugin anywhere other than `plugins/cache/kramme-cc-workflow/kramme-cc-workflow/<version>` under the Codex home, because the converted skills reference that directory;
+- uses `$CODEX_HOME` or `~/.codex` as the Codex home; override it with `--codex-home`.
+
+`scripts/install-codex.sh` installs missing converter runtime dependencies and forwards additional arguments to the converter.
+
+Installs from an earlier converter release (skills copied into `~/.codex/skills`, agent skills in `~/.agents/skills`, shared helpers under `~/.codex/scripts`, and the managed `AGENTS.md` tool map) are detected through `.kramme-install-state.json` and removed after confirmation. Pass `--yes` to confirm automatically or `--non-interactive` to keep them; `--agents-home` selects the agents home that held the legacy agent skills.
+
+### Installed State
+
+`codex plugin list` shows the plugin as `kramme-cc-workflow@kramme-cc-workflow` with its status, version, and marketplace source. The registration lives in the Codex `config.toml` as `[marketplaces.kramme-cc-workflow]` and `[plugins."kramme-cc-workflow@kramme-cc-workflow"]`, and the installed files live under `plugins/cache/kramme-cc-workflow/kramme-cc-workflow/<version>` in the Codex home.
+
+Converted skills reference that directory through `${CODEX_HOME:-$HOME/.codex}`, so keep `CODEX_HOME` exported in shells Codex runs when you use a non-default Codex home. If skills from an earlier converter release still appear twice, a legacy copy remains under `~/.codex/skills` or `~/.agents/skills`; run the install command again with `--yes` to remove it.
+
+### Building and Inspecting
+
+Build the marketplace without installing, for inspection or publishing:
+
+```bash
+node kramme-cc-workflow/scripts/convert-plugin.js build kramme-cc-workflow --out /tmp/kramme-codex
+```
+
+The output root holds `.agents/plugins/marketplace.json` and `plugins/kramme-cc-workflow/` with `.codex-plugin/plugin.json`, `skills/` (converted skills, generated command skills, and agent skills), `scripts/` (shared helpers), and `hooks/` when the hook control skills are present.
+
+Inspect the generated skill counts without building:
+
+```bash
+node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow
+node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow --json
+```
+
+The default output contains `codex_skills=<integer>` followed by `agent_skills=<integer>`. JSON output contains the same two integer fields in an object. `codex_skills` counts converted skill directories plus generated command skills; `agent_skills` counts generated Codex agent skills. Both groups are packaged in the plugin's `skills/` directory.
+
+### Publishing
+
+CI regenerates the `codex-plugin` branch on every release tag. The release-tag workflow calls the publisher with that exact tag, so tags created by GitHub Actions still publish the marketplace. If the branch is ever missing, maintainers can rebuild it from the Actions tab by running **Publish Codex Plugin** against `main`.
+
 ## Codex Usage Decision
 
 As of 2026-07-06, keep Codex output first-class. Local Codex evidence showed recent sessions using generated `kramme:*` skills:
