@@ -20,7 +20,7 @@
     grep -qF "Do not refine issues someone is already working on." "$skill"
     grep -qF "references/refinement-rubric.md" "$skill"
     grep -qF "kramme:linear:issue-define" "$skill"
-    grep -qF "kramme:linear:select-next" "$skill"
+    grep -qF "kramme:linear:next" "$skill"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }

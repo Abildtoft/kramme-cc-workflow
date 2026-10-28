@@ -77,7 +77,7 @@ For each `agent-ready` specification, assess startability separately: `ready-to-
 
 Do not infer agent-readiness from priority, an `agent-ready` label, assignment, state name, or a phrase such as "straightforward" alone. Those are supporting signals, not substitutes for the checklist. Record evidence for every passing item and gaps for failing or unknown items. Never promote an issue while required evidence is unknown.
 
-When `--agent-ready-only` is active, these classes are a hard eligibility gate rather than a score adjustment.
+When `--agent-ready` is active, these classes are a hard eligibility gate rather than a score adjustment.
 
 ## Parallelism Checklist
 
@@ -90,3 +90,14 @@ Highlight issues as parallel candidates only when all relevant checks pass:
 - The order of merging should not matter, or the only coordination is routine conflict avoidance.
 
 When evidence is weak, report `possible parallel candidates` and name the uncertainty.
+
+## UI/UX Work
+
+Estimate how much user-interface and user-experience work an issue needs from the changes it describes: screens, components, copy, interaction, visual states and design decisions. Do not judge from labels or title keywords alone. The estimate describes the work; it does not change value, readiness or rank.
+
+| Level | Guide |
+| --- | --- |
+| `None` | No user-facing change: backend, data, CI, tooling, documentation, or settings and operations work. |
+| `Low` | A small visible change inside existing components and patterns, such as copy, a label, an icon or a minor layout tweak. |
+| `Medium` | Changes to an existing screen's layout, states or interaction, such as new loading, empty or error states or a reworked step, within the current design system. |
+| `High` | New screens or flows, a new interaction pattern, a substantial redesign, or work that needs design exploration, user testing or broad accessibility changes. |
