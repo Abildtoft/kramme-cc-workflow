@@ -270,3 +270,30 @@ The hook automatically skips:
 - **Lock files**: \*.lock, package-lock.json, pnpm-lock.yaml
 - **Source maps**: \*.map
 - **Minified files**: _.min.js, _.min.css
+
+## update-check
+
+`update-check` runs when a new session starts: it is registered on `SessionStart` with the `startup` matcher, so resuming, `/clear`, and compaction do not run it. It can show two notices. Both arrive as the hook's `systemMessage`, which the host shows to you; the hook prints no plain stdout or `additionalContext`, which would go into the model's context:
+
+- **A newer version is available.** At most once a day, the hook fetches `kramme-cc-workflow/.claude-plugin/plugin.json` from the `main` branch on raw.githubusercontent.com with `curl --max-time 2`. Only release Pull Requests change that version, so it is the version an update would install. When it is newer than the installed copy, the notice names both versions and the host's update commands: `/plugin marketplace update kramme-cc-workflow`, then `/reload-plugins` in Claude Code, or `codex plugin marketplace upgrade kramme-cc-workflow`, then `codex plugin add kramme-cc-workflow@kramme-cc-workflow` in Codex. The notice appears in the session that ran the check, so an update you skip is mentioned again the next day.
+- **The plugin was updated.** The first session that starts on a newer installed version names the previous and new versions once. In Claude Code it also counts the changelog entries marked breaking in between, from the plugin's bundled `CHANGELOG.md`; Codex packages do not include the changelog, so the count is omitted there.
+
+State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/update-check.json` by default; set `KRAMME_UPDATE_CHECK_FILE` to override the path. It holds three fields:
+
+- `checkedAt`: epoch seconds of the last check attempt, successful or not. A failed check is not retried until the next day.
+- `latestVersion`: the newest release the last successful check found.
+- `seenVersion`: the newest version a session has started with. It only moves forward, so an older copy installed in another scope or project never triggers a notice. The first run records the installed version without a notice.
+
+`/kramme:setup` reports this record as `Plugin update` without fetching anything.
+
+The hook holds a Python `fcntl` file lock across the state read, check, and write. Concurrent startups skip the check silently, leaving any pending installed-version notice for a later startup. The lock file is `<state-file>.lock`; the OS releases the lock when its processes exit, including after termination, so the file may remain without blocking future checks.
+
+The fetch is one HTTPS request a day per state file. It sends nothing beyond what any request reveals, such as your IP address and curl's user agent. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` to any non-empty value to skip it; the update notice still works because it needs no network. Turn the whole hook off with `/kramme:hooks:toggle update-check disable`.
+
+The hook is fail-open. Missing `jq`, Python file-locking support, or `curl`, an unavailable state/lock path, an installed manifest without a release version, an unreachable GitHub, or malformed state all end in `{}` with no error. Malformed state is replaced as if it were the first run.
+
+The check runs synchronously because Claude Code never shows a background (`async`) hook's `systemMessage` to the user; it goes to the model on the next turn instead. Claude Code lets you type while `SessionStart` hooks run, but its first response waits for them, which is why the fetch has a two-second limit and runs at most once a day. Agent SDK clients, which may include Conductor, can receive the message as an informational event, and whether it is displayed depends on the client.
+
+Claude Code's own auto-update is off by default for this marketplace. Turning it on under `/plugin` → Marketplaces → `kramme-cc-workflow` makes the available-version notice rare, because Claude Code then updates the plugin in the background and shows its own `Plugin updated` message. Codex has no auto-update; it shows `systemMessage` as a warning and asks you to review and trust a new or changed plugin hook before it runs.
+
+See [the decision record](decisions/2026-10-28-plugin-update-notices.md) for the alternatives that were rejected.

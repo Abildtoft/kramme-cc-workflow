@@ -530,6 +530,11 @@
       "name": "skill-usage-stats",
       "event": "PreToolUse (Skill), UserPromptSubmit",
       "path": "kramme-cc-workflow/hooks/skill-usage-stats.sh"
+    },
+    {
+      "name": "update-check",
+      "event": "SessionStart (startup)",
+      "path": "kramme-cc-workflow/hooks/update-check.sh"
     }
   ]
 }

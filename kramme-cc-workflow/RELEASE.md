@@ -162,10 +162,18 @@ gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
 
 ## After Release
 
-Users update via:
+Once the release Pull Request merges, the version on `main` changes. Within a day, users with the `update-check` hook enabled see a notice at the start of a session, and Claude Code users who turned on auto-update for the marketplace receive the release in the background. See [the hook reference](docs/hooks.md#update-check).
+
+Users update inside a Claude Code session via:
 
 ```bash
-claude /plugin marketplace update kramme-cc-workflow
+/plugin marketplace update kramme-cc-workflow
+```
+
+Or from a terminal:
+
+```bash
+claude plugin update kramme-cc-workflow@kramme-cc-workflow
 ```
 
 Or for git installs:

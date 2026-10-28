@@ -16,7 +16,7 @@ This repo packages a personal workflow plugin for Claude Code and includes a Cod
 | --- | --- | --- |
 | Skills | `skills/*/SKILL.md`, `skills/*/references/`, `skills/*/assets/`, `skills/*/scripts/`, `shared/<topic>/` | User-invocable and background workflows. Skills carry their runtime policy inside their own directory or in plugin-level `shared/` references and assets used by more than one skill. |
 | Agents | `agents/*.md` | Specialized Claude Code subagents used by skills and PR review workflows. |
-| Hooks | `hooks/hooks.json`, `hooks/*.sh`, `hooks/lib/` | Claude Code lifecycle hooks for command safety, formatting, review confirmation, and usage stats. |
+| Hooks | `hooks/hooks.json`, `hooks/*.sh`, `hooks/lib/` | Claude Code lifecycle hooks for command safety, formatting, review confirmation, usage stats, and update notices. |
 | Shared scripts | `scripts/*.sh`, `scripts/*.py`, `scripts/*.js`, `scripts/dev-server/` | Helpers shared by skills, hooks, release workflows, and browser-facing workflows. |
 | Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/` | Loads the Claude plugin, transforms components for Codex, and writes managed output under a Codex home. |
 | Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals, an optional live Claude SDK adapter with sequential credit failover/checkpoints, and the local SkillOpt adapter for the `kramme:skill:review` pilot. |
@@ -43,6 +43,7 @@ The live eval entry point `evals/skill-review/run-live-eval.js` delegates to the
 
 - Hook toggle state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json`.
 - Skill usage events default to `~/.local/state/kramme-cc-workflow/skill-usage.jsonl`.
+- Update-check state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/update-check.json`; see [hooks.md](hooks.md#update-check).
 - Codex conversion writes a generated marketplace under `<codex-home>/.kramme-plugin-marketplaces/`; Codex copies the plugin into `<codex-home>/plugins/cache/`. The Codex home defaults to `$CODEX_HOME` or `~/.codex`.
 - SkillOpt and other local run artifacts belong under `.context/` and must not be committed.
 
