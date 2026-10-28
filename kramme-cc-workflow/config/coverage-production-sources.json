@@ -636,6 +636,9 @@
       "kramme-cc-workflow/hooks/skill-usage-stats.sh": [
         "kramme-cc-workflow/tests/skill-usage-stats.bats"
       ],
+      "kramme-cc-workflow/hooks/update-check.sh": [
+        "kramme-cc-workflow/tests/update-check.bats"
+      ],
       "kramme-cc-workflow/scripts/benchmark-hook-overhead.sh": [
         "kramme-cc-workflow/tests/benchmark-hook-overhead.bats"
       ],
