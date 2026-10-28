@@ -1,12 +1,12 @@
 # Repository Architecture
 
-This repo packages a personal workflow plugin for Claude Code and includes a Codex conversion path. The root [README.md](../../README.md) is the canonical user-facing documentation; this file is a short map for maintainers and agents.
+This repo packages a personal workflow plugin for Claude Code and includes a Codex conversion path. The root [README.md](../../README.md) is the canonical entry point for user-facing documentation, and `kramme-cc-workflow/docs/` holds the deep usage guides it links; this file is a short map for maintainers and agents.
 
 ## Top-Level Shape
 
 - `kramme-cc-workflow/` is the plugin source. Its `.claude-plugin/plugin.json` is the installable plugin manifest.
 - `.claude-plugin/marketplace.json` is the root marketplace entry that points at `kramme-cc-workflow/`.
-- `README.md` documents install, usage, skills, agents, hooks, testing, and releases.
+- `README.md` documents install, requirements, short workflow guides, configuration, the skill, agent, and hook reference, testing entry points, and releases. Deep usage reference lives in linked guides such as `docs/review.md`, `docs/shipping.md`, `docs/siw.md`, and `docs/hooks.md`.
 - `AGENTS.md` records local contribution conventions; `CLAUDE.md` imports it for Claude Code.
 - `.agents/skills/` contains repository-maintenance skills that are not shipped as part of the public plugin.
 

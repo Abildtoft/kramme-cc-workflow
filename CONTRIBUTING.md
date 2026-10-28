@@ -1,6 +1,6 @@
 # Contributing
 
-This repository ships the `kramme-cc-workflow` Claude Code plugin. The root [README.md](README.md) is the canonical public documentation; plugin source and tests live under [kramme-cc-workflow/](kramme-cc-workflow/).
+This repository ships the `kramme-cc-workflow` Claude Code plugin. The root [README.md](README.md) is the canonical entry point for public documentation, and the guides under [kramme-cc-workflow/docs/](kramme-cc-workflow/docs/) hold the deep usage reference it links; plugin source and tests live under [kramme-cc-workflow/](kramme-cc-workflow/).
 
 ## Start Here
 
@@ -44,7 +44,7 @@ The repository-root `package.json` versions the npm installer entrypoint. `kramm
 ## Change Guidelines
 
 - Keep changes scoped to the subsystem being modified.
-- Add or update README entries when adding skills, agents, hooks, commands, or user-facing workflows.
+- Add or update README entries when adding skills, agents, hooks, commands, or user-facing workflows, including a one-line summary for each new skill or agent in `kramme-cc-workflow/scripts/synced-contracts.yaml`. Keep README paragraphs short, and put deep usage detail in the matching guide under `kramme-cc-workflow/docs/`.
 - Keep skills self-contained within the installed plugin. A skill may use its own directory, plugin-level `kramme-cc-workflow/shared/` references and assets, and `kramme-cc-workflow/scripts/` helpers, but never repository-level docs. Put a file that two or more skills need in one of those plugin-level locations instead of copying it, and name its `${CLAUDE_PLUGIN_ROOT}/...` path in each consuming `SKILL.md`.
 - Keep `SKILL.md` files focused; move reference material to `references/`, templates to `assets/`, and executable helpers to `scripts/`.
 - Treat public availability as provenance, not permission. Copy external prose, code, templates, or substantial assets only under a verified compatible license; preserve the complete required notice in the affected skill and mark the source `usage: copied` in `references/sources.yaml` with its exact upstream path and an immutable commit, revision, release, or version. For conceptual inspiration, use `usage: inspiration` and rewrite in original language.
