@@ -43,6 +43,7 @@ Nothing here changes a rule in the table above.
 | --- | --- |
 | Whether to expand the committed eval cap to `kramme:pr:resolve-review`. Tests the revisit condition in `2026-07-06-skill-quality-regime.md` against a prototype and recommends reaffirming the cap. | [2026-08-08-eval-scope-review.md](2026-08-08-eval-scope-review.md) |
 | Whether review filter roles (relevance validation and slop meta-review) should default to one model class below the orchestrator while every defect-finding reviewer stays on its model. Narrows the lower-class default that the 2026-10-20 risk-routing record deferred; decision review 2026-11-21. | [2026-10-21-filter-role-model-default.md](2026-10-21-filter-role-model-default.md) |
+| Whether to run a monthly skill improvement review that turns version-stamped evidence from real use into PRs that name a metric and are re-measured on the release that shipped them. Extends the monthly report cadence in `2026-07-06-skill-usage-portrait.md`; trial in November and December 2026, with the decision at the December review. | [2026-10-28-monthly-skill-improvement-review.md](2026-10-28-monthly-skill-improvement-review.md) |
 
 ## Adding Decisions
 
