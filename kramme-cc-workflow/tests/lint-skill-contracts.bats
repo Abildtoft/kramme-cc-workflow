@@ -1959,7 +1959,7 @@ EOF
     linear-issue-implement-reference-mapping \
     linear-issue-implement-display-template \
     linear-issue-implement-plan-template \
-    linear-issue-implement-readme-note \
+    linear-issue-implement-public-note \
     code-optimize-shell-permission \
     code-optimize-source-manifest \
     workflow-artifact-cleanup-names

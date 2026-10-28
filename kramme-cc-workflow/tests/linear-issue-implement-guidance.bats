@@ -27,7 +27,7 @@ load 'test_helper/common'
 		linear-issue-implement-reference-mapping \
 		linear-issue-implement-display-template \
 		linear-issue-implement-plan-template \
-		linear-issue-implement-readme-note
+		linear-issue-implement-public-note
 
 	[ "$status" -eq 0 ]
 }

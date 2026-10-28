@@ -17,6 +17,7 @@ setup() {
 	LINEAR_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/linear-review.md"
 	LINEAR_AUDIT_REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:linear:review-pr/references/report-template.md"
 	README="$PLUGIN_ROOT/../README.md"
+	REVIEW_GUIDE="$PLUGIN_ROOT/docs/review.md"
 }
 
 @test "github review discovers linked issues from both PR lookup paths before inspection" {
@@ -151,11 +152,11 @@ PY
 }
 
 @test "github review reports issue traceability and withholds approval for missing coverage" {
-	run python3 - "$LINEAR_REFERENCE" "$REPORT_TEMPLATE" "$COMMENT_REFERENCE" "$README" <<'PY'
+	run python3 - "$LINEAR_REFERENCE" "$REPORT_TEMPLATE" "$COMMENT_REFERENCE" "$REVIEW_GUIDE" <<'PY'
 import pathlib
 import sys
 
-reference, report, comments, readme = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+reference, report, comments, review_guide = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
 for term in ["## Linked Linear Issues", "Reviewed snapshot", "Linear requirement and citation",
              "Test evidence or gap", "Scope decisions", "Context and verification gaps"]:
     assert term in report, f"report must retain {term}"
@@ -165,7 +166,7 @@ assert "Withhold `APPROVE`" in reference
 assert "prevents `APPROVE`" in comments
 assert "no changed-line anchor" in reference
 assert "ineligible for pending inline comments" in report
-assert "per-issue requirement evidence and coverage gaps" in readme
+assert "per-issue requirement evidence and coverage gaps" in review_guide
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
@@ -463,12 +464,12 @@ PY
 }
 
 @test "report and public docs make the draft handoff explicit" {
-	run python3 - "$REPORT_TEMPLATE" "$README" "$SKILL" <<'PY'
+	run python3 - "$REPORT_TEMPLATE" "$REVIEW_GUIDE" "$SKILL" <<'PY'
 import pathlib
 import sys
 
 report = pathlib.Path(sys.argv[1]).read_text()
-readme = pathlib.Path(sys.argv[2]).read_text()
+review_guide = pathlib.Path(sys.argv[2]).read_text()
 skill = pathlib.Path(sys.argv[3]).read_text()
 
 required_report = [
@@ -489,9 +490,9 @@ if "GitHub was not changed only for statuses that confirm no write occurred" not
     raise SystemExit("skill must distinguish confirmed no-write outcomes")
 if "write outcome unknown" not in skill:
     raise SystemExit("skill must report unknown write outcomes")
-if "--draft-review" not in readme or "creates one unsubmitted pending review containing only eligible inline comments" not in readme:
+if "--draft-review" not in review_guide or "creates one unsubmitted pending review containing only eligible inline comments" not in review_guide:
     raise SystemExit("public docs must describe the draft-review flow")
-if "containing only eligible inline comments" not in readme:
+if "containing only eligible inline comments" not in review_guide:
     raise SystemExit("public docs must state that pending reviews contain only inline comments")
 if "The skill does not post a review summary" not in report:
     raise SystemExit("report instructions must keep review summaries off GitHub")
@@ -526,8 +527,8 @@ PY
     grep -qF "With \`--sequential\`, omit it" "$1"
     if grep -qF "[--parallel]" "$1"; then exit 1; fi
     grep -qF "[--code-only] [--sequential] [--fresh]" "$2"
-    grep -qF "pass \`--sequential\` to run them one at a time" "$2"
-  ' _ "$SKILL" "$README"
+    grep -qF "pass \`--sequential\` to run them one at a time" "$3"
+  ' _ "$SKILL" "$README" "$REVIEW_GUIDE"
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
@@ -550,11 +551,11 @@ PY
 }
 
 @test "github review runs the clarity check after humanizing and before the eligibility count" {
-	run python3 - "$SKILL" "$README" <<'PY'
+	run python3 - "$SKILL" "$README" "$REVIEW_GUIDE" <<'PY'
 import pathlib
 import sys
 
-skill, readme = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+skill, readme, review_guide = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
 humanize = skill.index("## Step 10: Humanize the Draft Comments")
 clarity = skill.index("## Step 10a: Check the Draft Comments With Cold Readers")
 materialize = skill.index("## Step 11: Materialize the Markdown Report")
@@ -587,7 +588,7 @@ assert "a clarity-check request is not authorization" in offer
 assert "skipped the clarity check only because fewer than five comments were drafted, add that a clarity check can run first" in offer
 assert "the clarity-check status" in skill[skill.index("## Step 13:"):]
 assert "[--clarity-check\\|--no-clarity-check]" in readme
-assert "`--no-clarity-check` to skip it" in readme
+assert "`--no-clarity-check` to skip it" in review_guide
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
@@ -1043,12 +1044,12 @@ PY
 }
 
 @test "github review gates every GitHub mutation behind its named authorization" {
-	run python3 - "$PLUGIN_ROOT/skills/kramme:pr:github-review" "$README" <<'PY'
+	run python3 - "$PLUGIN_ROOT/skills/kramme:pr:github-review" "$REVIEW_GUIDE" <<'PY'
 import pathlib
 import re
 import sys
 
-root, readme = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]).read_text()
+root, review_guide = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]).read_text()
 skill = (root / "SKILL.md").read_text()
 gate = skill[skill.index("## GitHub Write Gate"):skill.index("## Step 0:")]
 for term in [
@@ -1089,7 +1090,7 @@ assert "The skill never posts thread replies" in report
 assert "## Prepared Review" in report and "_Not posted." in report
 assert "Post the prepared review to PR <number> as request changes" in report
 assert "Report-only by default" in skill.split("---", 2)[1]
-assert "`pr:github-review` is report-only by default" in readme
+assert "`pr:github-review` is report-only by default" in review_guide
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }

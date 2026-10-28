@@ -123,8 +123,8 @@ file_mode() {
     grep -qF "fresh mode'\''s sole remote update before Pull Request creation" "$confirmation"
     grep -qF "[--require-unstacked] [--no-push] [--authorize-history-rewrite]" "$recreate"
     grep -qF "If \`--no-push\` was passed, do not run any push command" "$recreate"
-    grep -qF "Automatic stack-wide rewriting additionally requires \`--authorize-history-rewrite\`" ../README.md
-    grep -qF "A non-auto stacked invocation may instead use separate interactive confirmations" ../README.md
+    grep -qF "Automatic stack-wide rewriting additionally requires \`--authorize-history-rewrite\`" docs/shipping.md
+    grep -qF "A non-auto stacked invocation may instead use separate interactive confirmations" docs/shipping.md
     grep -qF "## Step 4.5: Reject Stacked Branches" "$create"
     grep -qF "\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh" "$create"
     grep -qF "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." "$create"
@@ -1313,7 +1313,7 @@ file_mode() {
       "skills/kramme:code:plan-to-pr/references/shipping-contract.md"
     grep -qF "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description" \
       "skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
-    grep -qF "keeps unpublished commits that already follow the repository'\''s commit conventions" ../README.md
+    grep -qF "keeps unpublished commits that already follow the repository'\''s commit conventions" docs/shipping.md
   '
 
 	[ "$status" -eq 0 ]
