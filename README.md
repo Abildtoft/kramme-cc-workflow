@@ -57,7 +57,7 @@ For the full default experience, use a current release of your host:
 
 - **Claude Code** — use a current release on a [supported platform](https://code.claude.com/docs/en/installation#system-requirements). The plugin does not pin a minimum Claude Code version.
 - **Codex** — use a current Codex CLI release. The published native plugin installs through the Codex marketplace; checkout installs also need the converter toolchain described below.
-- Install Bash, Git, `jq`, Python 3.10+, and Node.js 18+. The bundled hooks invoke Bash directly, and the enabled safety hooks fail closed when `jq` or Python is unavailable. Node powers the enabled local skill-usage recording hook; without it, that hook records a diagnostic and otherwise remains silent. Disable hooks explicitly with `/kramme:hooks:toggle` if they cannot run in your environment.
+- Install Bash, Git, `jq`, Python 3.10+, and Node.js 18+. The bundled hooks invoke Bash directly, and the enabled safety hooks fail closed when `jq` or Python is unavailable. Node powers the enabled local skill-usage recording hook; without it, that hook records a diagnostic and otherwise remains silent. The update-check hook uses `curl` to look for a new release once a day, with Python file locking to coordinate concurrent sessions; it stays silent when these are unavailable. Disable hooks explicitly with `/kramme:hooks:toggle` if they cannot run in your environment.
 - Prefer macOS, Linux, or WSL. On native Windows, install Git Bash and make the required tools available in that shell; PowerShell-only use does not support the plugin's Bash hooks.
 
 Additional dependencies are capability-specific:
@@ -80,7 +80,7 @@ Both hosts expose the same skills and workflows. Choose the install and update c
 
 | Host | Install | Update |
 | --- | --- | --- |
-| Claude Code | `/plugin marketplace add` then `/plugin install` | `/plugin marketplace update` or rerun the Git/local install |
+| Claude Code | `/plugin marketplace add` then `/plugin install` | Turn on auto-update, run `/plugin marketplace update`, or rerun the Git/local install |
 | Codex | `codex plugin marketplace add` then `codex plugin add` | `codex plugin marketplace upgrade` then `codex plugin add` |
 
 ### Claude Code
@@ -91,6 +91,8 @@ Marketplace install (recommended) — run inside a Claude Code session:
 /plugin marketplace add Abildtoft/kramme-cc-workflow
 /plugin install kramme-cc-workflow@kramme-cc-workflow
 ```
+
+Then turn on auto-update so new releases install themselves: run `/plugin`, open **Marketplaces**, select `kramme-cc-workflow`, and choose **Enable auto-update**. Claude Code leaves auto-update off for third-party marketplaces until you do.
 
 Direct Git install — run from your terminal:
 
@@ -170,10 +172,18 @@ For published installs, `codex plugin remove kramme-cc-workflow@kramme-cc-workfl
 
 ### Updating
 
-For marketplace installs:
+When a new release is out, the `update-check` hook tells you at the start of a session and gives the update commands for your host. It checks at most once a day, so the notice can arrive up to a day after the release. After you update, the next session names the new version and, in Claude Code, how many breaking changes it includes. To turn the hook off or keep it offline, see [update-check](kramme-cc-workflow/docs/hooks.md#update-check).
+
+For marketplace installs, update inside a Claude Code session, then run `/reload-plugins`:
 
 ```bash
-claude /plugin marketplace update kramme-cc-workflow
+/plugin marketplace update kramme-cc-workflow
+```
+
+Or update from your terminal:
+
+```bash
+claude plugin update kramme-cc-workflow@kramme-cc-workflow
 ```
 
 For Git or local installs, re-run the install command to pull the latest version:
@@ -195,9 +205,9 @@ codex plugin add kramme-cc-workflow@kramme-cc-workflow
 
 For checkout Codex installs, re-run the install command; it rebuilds the marketplace and reinstalls the plugin into the Codex cache.
 
-Restart the host you updated after updating for changes to take effect.
+Restart the host you updated, or run `/reload-plugins` in Claude Code, for changes to take effect.
 
-**Auto-update:** Since Claude Code v2.0.70, auto-update can be enabled per-marketplace from the `/plugin` marketplace settings. Codex marketplace updates are explicit: run `codex plugin marketplace upgrade` and then `codex plugin add` as shown above.
+**Auto-update:** Claude Code v2.0.70 and later can install new releases in the background, but auto-update stays off for third-party marketplaces such as this one until you turn it on under `/plugin` → **Marketplaces** → `kramme-cc-workflow` → **Enable auto-update**. Claude Code then shows `Plugin updated` with a `/reload-plugins` prompt when a release lands, and `/kramme:setup` reports the auto-update policy from local settings and the marketplace record. The check reads shared settings in the session directory and, on Unix, local overrides from the owned main checkout. Confirm the effective session policy under `/plugin`; session flags, remote or OS-managed policy, and workspace trust are not inspected by the shell check. Codex marketplace updates are explicit: run `codex plugin marketplace upgrade` and then `codex plugin add` as shown above.
 
 ## Getting Started
 
@@ -602,7 +612,7 @@ Session management, verification, artifact cleanup, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:setup` | User, Auto | `[--json\|--help]` | Run a read-only environment health check for this plugin's local workflow tools, repo context, optional CLIs, and detectable Conductor/worktree state. Use after installing the plugin, when a skill fails because a dependency may be missing, or before running a workflow in a new workspace. Not for installing tools, changing config, or repairing broken environments automatically. |
+| `/kramme:setup` | User, Auto | `[--json\|--help]` | Run a read-only environment health check for this plugin's local workflow tools, repo context, optional CLIs, plugin update status, and detectable Conductor/worktree state. Use after installing the plugin, when a skill fails because a dependency may be missing, or before running a workflow in a new workspace. Not for installing tools, changing config, or repairing broken environments automatically. |
 | `/kramme:workflow:cleanup-artifacts` | User, Auto | `[--auto \| --siw]` | Delete disposable workflow artifacts: review, audit, and QA reports, generated plans, diagrams, context evidence. Use when asked or delegated by kramme:linear:issue-to-pr --ship with --auto; --siw is user-only. |
 | `/kramme:workflow:wizard` | User | `[procedure description or target script path]` | Generates an interactive Bash wizard script for human-run manual procedures: third-party setup, one-off migrations, A-to-B state transitions, local environment values, and GitHub Actions secrets or variables. Use when the user wants a guided setup script that opens URLs, captures values, confirms irreversible steps, and writes local or CI config. Not for running the procedure yourself, ordinary shell automation, or long-lived application code. |
 | `/kramme:hooks:toggle` | User | `<status\|reset\|hook-name> [enable\|disable]` | Enable, disable, list, or reset hook toggles for the kramme-cc-workflow plugin. Use when a hook is firing unwantedly, when a new hook needs to be switched on, or when the user asks about current hook state. |
@@ -705,6 +715,7 @@ Event handlers defined once in the plugin source and packaged for both hosts. Ea
 | `confirm-review-responses` | PreToolUse (Bash) | Confirms before committing review artifact files. |
 | `skill-usage-stats` | PreToolUse (Skill), UserPromptSubmit | Records local skill usage statistics. |
 | `auto-format` | PostToolUse (Write\|Edit) | Auto-formats code after file modifications using detected project formatter. |
+| `update-check` | SessionStart (startup) | Checks GitHub at most once a day and shows a notice when a newer plugin version is available, then names the new version once after an update. |
 <!-- END SOURCE-SYNCED HOOK ROWS -->
 <!-- prettier-ignore-end -->
 

@@ -7,10 +7,13 @@ setup() {
 	REAL_JQ="$(command -v jq)"
 	FAKE_BIN="$BATS_TEST_TMPDIR/bin"
 	mkdir -p "$FAKE_BIN"
-	# Keep host probes off the developer's real Codex and Claude directories.
+	# Keep host probes off the developer's real Codex, Claude, and plugin state directories.
 	export CODEX_HOME="$BATS_TEST_TMPDIR/no-codex"
 	export CLAUDE_CONFIG_DIR="$BATS_TEST_TMPDIR/no-claude"
-	unset CLAUDE_CODE_PLUGIN_CACHE_DIR
+	export XDG_STATE_HOME="$BATS_TEST_TMPDIR/no-state"
+	unset CLAUDE_CODE_PLUGIN_CACHE_DIR KRAMME_UPDATE_CHECK_FILE CLAUDE_PROJECT_DIR
+	mkdir -p "$BATS_TEST_TMPDIR/repo/.git"
+	cd "$BATS_TEST_TMPDIR/repo"
 }
 
 link_core_tools() {
@@ -23,6 +26,7 @@ link_core_tools() {
 create_fake_git() {
 	cat >"$FAKE_BIN/git" <<EOF
 #!/bin/sh
+if [ "\$1" = "-C" ]; then shift 2; fi
 case "\$*" in
   "--version")
     echo "git version 2.99.0"
@@ -35,6 +39,9 @@ case "\$*" in
     ;;
   "rev-parse --git-dir")
     echo ".git"
+    ;;
+  "worktree list --porcelain")
+    echo "worktree $BATS_TEST_TMPDIR/repo"
     ;;
   "diff --quiet"|"diff --cached --quiet")
     exit 0
@@ -422,6 +429,7 @@ assert_context_value() {
 	[ "$status" -eq 0 ]
 	assert_context_value codexPlugin "not checked (HOME and CODEX_HOME unset)"
 	assert_context_value claudePluginCache "not checked (HOME, CLAUDE_CONFIG_DIR, and CLAUDE_CODE_PLUGIN_CACHE_DIR unset)"
+	assert_context_value claudeAutoUpdate "not checked (HOME, CLAUDE_CONFIG_DIR, and CLAUDE_CODE_PLUGIN_CACHE_DIR unset)"
 
 	run env -u CODEX_HOME -u CLAUDE_CONFIG_DIR -u HOME PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT"
 
@@ -604,6 +612,320 @@ assert_context_value() {
 	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
 	[ "$status" -eq 0 ]
 	assert_context_value pluginCopy "$plugin_root (4.5.6)"
+}
+
+@test "reports the Claude auto-update toggle for this marketplace without changing it" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local plugins_root="$BATS_TEST_TMPDIR/claude plugins"
+	local record="$plugins_root/known_marketplaces.json"
+	mkdir -p "$plugins_root"
+
+	run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "not registered"
+
+	printf '{"kramme-cc-workflow":{"source":{"source":"github","repo":"Abildtoft/kramme-cc-workflow"},"autoUpdate":true}}\n' >"$record"
+	cp "$record" "$BATS_TEST_TMPDIR/record.before"
+	run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
+	cmp -s "$record" "$BATS_TEST_TMPDIR/record.before"
+
+	for entry in '{"autoUpdate":false}' '{"autoUpdate":null}' '{}'; do
+		printf '{"kramme-cc-workflow":%s}\n' "$entry" >"$record"
+		run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT"
+		[ "$status" -eq 0 ]
+		assert_text_row "Claude auto-update" "off (local files; confirm session policy in /plugin)"
+	done
+
+	printf '{"other-marketplace":{"autoUpdate":true}}\n' >"$record"
+	run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "not registered"
+
+	printf 'invalid json\n' >"$record"
+	run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "unknown (unreadable: $record)"
+}
+
+@test "honors Claude settings overrides before the known marketplace record" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local claude_root="$BATS_TEST_TMPDIR/claude home"
+	local project_root="$BATS_TEST_TMPDIR/repo"
+	local settings_dir="$project_root/.claude"
+	local record="$claude_root/plugins/known_marketplaces.json"
+	mkdir -p "$claude_root/plugins" "$settings_dir"
+	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$record"
+
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$settings_dir/settings.local.json"
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$settings_dir/settings.json"
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+
+	rm "$settings_dir/settings.local.json"
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
+
+	rm "$settings_dir/settings.json"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$claude_root/settings.json"
+	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+}
+
+@test "a marketplace entry without autoUpdate masks lower settings and uses the recorded toggle" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local settings_dir="$BATS_TEST_TMPDIR/repo/.claude"
+	local record="$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
+	mkdir -p "$settings_dir" "${record%/*}"
+	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$record"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$CLAUDE_CONFIG_DIR/settings.json"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"source":{"source":"directory","path":"/example"}}}}\n' >"$settings_dir/settings.local.json"
+	cp "$settings_dir/settings.local.json" "$BATS_TEST_TMPDIR/settings.before"
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
+	cmp -s "$settings_dir/settings.local.json" "$BATS_TEST_TMPDIR/settings.before"
+}
+
+@test "resolves shared settings in the session directory and root local settings first" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local session_dir="$BATS_TEST_TMPDIR/repo/app"
+	local root_settings="$BATS_TEST_TMPDIR/repo/.claude"
+	local record="$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
+	mkdir -p "$session_dir/.claude" "$root_settings" "${record%/*}"
+	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$record"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$root_settings/settings.json"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$session_dir/.claude/settings.json"
+
+	cd "$session_dir"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+
+	# CLAUDE_PROJECT_DIR keeps settings anchored to the session if the shell moves.
+	cd "$BATS_TEST_TMPDIR/repo"
+	run env PATH="$FAKE_BIN" CLAUDE_PROJECT_DIR="$session_dir" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$session_dir/.claude/settings.local.json"
+	run env PATH="$FAKE_BIN" CLAUDE_PROJECT_DIR="$session_dir" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
+
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$root_settings/settings.local.json"
+	run env PATH="$FAKE_BIN" CLAUDE_PROJECT_DIR="$session_dir" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+}
+
+@test "reads worktree local settings from the main checkout without changing either copy" {
+	local real_git="$(command -v git)"
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	ln -sf "$real_git" "$FAKE_BIN/git"
+	create_fake_tool "uname" "Linux"
+	local main_checkout="$BATS_TEST_TMPDIR/repo"
+	local worktree="$BATS_TEST_TMPDIR/linked worktree"
+	"$real_git" init -q "$main_checkout"
+	"$real_git" -C "$main_checkout" -c user.name=Test -c user.email=test@example.com -c core.hooksPath=/dev/null commit -qm 'Initial test commit' --allow-empty
+	"$real_git" -C "$main_checkout" worktree add -q --detach "$worktree"
+	mkdir -p "$main_checkout/.claude" "$worktree/.claude"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$main_checkout/.claude/settings.local.json"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$worktree/.claude/settings.local.json"
+	cp "$main_checkout/.claude/settings.local.json" "$BATS_TEST_TMPDIR/main.before"
+	cp "$worktree/.claude/settings.local.json" "$BATS_TEST_TMPDIR/worktree.before"
+
+	cd "$worktree"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+	cmp -s "$main_checkout/.claude/settings.local.json" "$BATS_TEST_TMPDIR/main.before"
+	cmp -s "$worktree/.claude/settings.local.json" "$BATS_TEST_TMPDIR/worktree.before"
+
+	# Windows and repositories rooted at HOME keep local settings by the session.
+	create_fake_tool "uname" "MINGW64_NT"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
+	create_fake_tool "uname" "Linux"
+	run env PATH="$FAKE_BIN" HOME="$main_checkout" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
+}
+
+@test "keeps local and shared settings together outside Git" {
+	local real_git="$(command -v git)"
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	ln -sf "$real_git" "$FAKE_BIN/git"
+	local session_dir="$BATS_TEST_TMPDIR/plain"
+	mkdir -p "$session_dir/.claude"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$session_dir/.claude/settings.local.json"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$session_dir/.claude/settings.json"
+	cd "$session_dir"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+}
+
+@test "reports an unavailable session directory as unknown instead of using the registry" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	mkdir -p "$CLAUDE_CONFIG_DIR/plugins"
+	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
+	run env PATH="$FAKE_BIN" CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/missing" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "unknown (session settings directory unavailable; check /plugin)"
+}
+
+@test "honors the marketplace alias and prefers its canonical spelling in user settings" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local test_home="$BATS_TEST_TMPDIR/home"
+	local settings="$test_home/.claude/settings.json"
+	mkdir -p "${settings%/*}"
+	printf '{"additionalMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$settings"
+
+	# User settings use HOME even with a separate plugin-cache override, and a
+	# settings declaration can exist before known_marketplaces.json is written.
+	run env -u CLAUDE_CONFIG_DIR HOME="$test_home" CLAUDE_CODE_PLUGIN_CACHE_DIR="$BATS_TEST_TMPDIR/cache" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
+
+	printf '{"additionalMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}},"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$settings"
+	run env -u CLAUDE_CONFIG_DIR HOME="$test_home" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+}
+
+@test "managed settings override local files and managed fragments report unknown" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	create_fake_tool "uname" "MINGW64_NT"
+	local program_files="$BATS_TEST_TMPDIR/Program Files"
+	local managed="$program_files/ClaudeCode/managed-settings.json"
+	mkdir -p "${managed%/*}" "$CLAUDE_CONFIG_DIR"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$CLAUDE_CONFIG_DIR/settings.json"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$managed"
+	cp "$managed" "$BATS_TEST_TMPDIR/managed.before"
+
+	run env PROGRAMFILES="$program_files" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
+	cmp -s "$managed" "$BATS_TEST_TMPDIR/managed.before"
+
+	mkdir -p "${managed%/*}/managed-settings.d"
+	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"${managed%/*}/managed-settings.d/10-policy.json"
+	run env PROGRAMFILES="$program_files" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "unknown (managed settings fragments; check /plugin)"
+}
+
+@test "unreadable or malformed settings report unknown instead of trusting a cached toggle" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local settings_dir="$BATS_TEST_TMPDIR/repo/.claude"
+	local record="$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
+	mkdir -p "$settings_dir" "${record%/*}"
+	local resolved_settings_dir="$(cd "$settings_dir" && pwd -P)"
+	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$record"
+	for content in 'invalid json' '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":"false"}}}'; do
+		printf '%s\n' "$content" >"$settings_dir/settings.local.json"
+		run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
+		[ "$status" -eq 0 ]
+		assert_context_value claudeAutoUpdate "unknown (unreadable: $resolved_settings_dir/settings.local.json)"
+	done
+}
+
+@test "reports the last update-check result without fetching or changing it" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
+	local copied_script="$plugin_root/skills/kramme:setup/scripts/check-environment.sh"
+	local state_file="$XDG_STATE_HOME/kramme-cc-workflow/update-check.json"
+	mkdir -p "${copied_script%/*}" "$plugin_root/.claude-plugin" "${state_file%/*}"
+	cp "$SCRIPT" "$copied_script"
+	printf '{"version":"0.89.0"}\n' >"$plugin_root/.claude-plugin/plugin.json"
+
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "not checked yet"
+
+	# 1793176010 is 2026-10-28 in UTC.
+	printf '{"checkedAt":1793176010,"latestVersion":"0.90.0","seenVersion":"0.89.0"}\n' >"$state_file"
+	cp "$state_file" "$BATS_TEST_TMPDIR/state.before"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "0.90.0 available, last checked 2026-10-28"
+	cmp -s "$state_file" "$BATS_TEST_TMPDIR/state.before"
+
+	printf '{"checkedAt":1793176010,"latestVersion":"0.89.0","seenVersion":"0.89.0"}\n' >"$state_file"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script"
+	[ "$status" -eq 0 ]
+	assert_text_row "Plugin update" "up to date (0.89.0), last checked 2026-10-28"
+
+	printf '{"checkedAt":0,"latestVersion":"","seenVersion":"0.89.0"}\n' >"$state_file"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "not checked yet"
+
+	printf 'invalid json\n' >"$state_file"
+	run env PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "unknown (unreadable: $state_file)"
+}
+
+@test "resolves the update-check state file the way the hook does" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
+	local copied_script="$plugin_root/skills/kramme:setup/scripts/check-environment.sh"
+	local override="$BATS_TEST_TMPDIR/custom/update-check.json"
+	local home_state="$BATS_TEST_TMPDIR/home/.local/state/kramme-cc-workflow/update-check.json"
+	mkdir -p "${copied_script%/*}" "${override%/*}" "${home_state%/*}"
+	cp "$SCRIPT" "$copied_script"
+	printf '{"checkedAt":1793176010,"latestVersion":"0.90.0"}\n' >"$override"
+	printf '{"latestVersion":"0.91.0"}\n' >"$home_state"
+
+	run env PATH="$FAKE_BIN" KRAMME_UPDATE_CHECK_FILE="$override" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "latest release 0.90.0, last checked 2026-10-28"
+
+	run env -u XDG_STATE_HOME PATH="$FAKE_BIN" HOME="$BATS_TEST_TMPDIR/home" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "latest release 0.91.0"
+
+	run env -u XDG_STATE_HOME -u HOME PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "not checked (HOME, XDG_STATE_HOME, and KRAMME_UPDATE_CHECK_FILE unset)"
+}
+
+@test "reports auto-update and update state as unknown without jq" {
+	setup_core_path
+	local plugins_root="$BATS_TEST_TMPDIR/plugins"
+	local state_file="$XDG_STATE_HOME/kramme-cc-workflow/update-check.json"
+	mkdir -p "$plugins_root" "${state_file%/*}"
+	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$plugins_root/known_marketplaces.json"
+	printf '{"latestVersion":"0.90.0"}\n' >"$state_file"
+
+	run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT" --json
+	[ "$status" -eq 0 ]
+	assert_context_value claudeAutoUpdate "unknown (jq unavailable)"
+	assert_context_value pluginUpdate "unknown (jq unavailable)"
 }
 
 @test "reports legacy codex install records and tool map block without changing them" {
