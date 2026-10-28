@@ -1,6 +1,7 @@
 // @ts-check
 "use strict";
 
+const fs = require("fs");
 const path = require("path");
 
 /**
@@ -8,6 +9,12 @@ const path = require("path");
  */
 const PLATFORM_CODEX = "codex";
 const PLATFORM_CLAUDE_CODE = "claude-code";
+// A Claude Code plugin root carries `.claude-plugin/`; the converted Codex
+// plugin carries `.codex-plugin/` instead.
+const PLUGIN_MANIFESTS = [
+  path.join(".claude-plugin", "plugin.json"),
+  path.join(".codex-plugin", "plugin.json"),
+];
 
 // Conductor prepends a `<system_instruction>` block to the user's own text.
 const CONDUCTOR_INSTRUCTION_CLOSE = "</system_instruction>";
@@ -49,6 +56,29 @@ function detectPlatform(input, env) {
     return PLATFORM_CODEX;
   }
   if (env.CLAUDECODE === "1") return PLATFORM_CLAUDE_CODE;
+  return "";
+}
+
+/**
+ * Returns the manifest version of the plugin copy at `pluginRoot`. An empty
+ * string means no host manifest there was readable; reports show it as
+ * `unknown`, like records written before versions were stamped.
+ * @param {string} pluginRoot
+ * @returns {string}
+ */
+function readPluginVersion(pluginRoot) {
+  for (const manifest of PLUGIN_MANIFESTS) {
+    let parsed;
+    try {
+      parsed = JSON.parse(
+        fs.readFileSync(path.join(pluginRoot, manifest), "utf8"),
+      );
+    } catch {
+      continue;
+    }
+    const version = asRecord(parsed).version;
+    if (isNonEmptyString(version)) return version;
+  }
   return "";
 }
 
@@ -146,5 +176,6 @@ module.exports = {
   PLATFORM_CODEX,
   detectPlatform,
   openCodexRollout,
+  readPluginVersion,
   stripConductorInstructions,
 };

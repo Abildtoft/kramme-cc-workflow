@@ -9,6 +9,7 @@ const {
   PLATFORM_CODEX,
   detectPlatform,
   openCodexRollout,
+  readPluginVersion,
   stripConductorInstructions,
 } = require("./lib/skill-usage-hosts");
 
@@ -19,12 +20,21 @@ const STATE_DIR = path.join(
 const DEFAULT_USAGE_FILE = path.join(STATE_DIR, "skill-usage.jsonl");
 const MAX_NON_JSONL_COMPAT_BYTES = 1024 * 1024;
 const MAX_JSONL_LINE_BYTES = 1024 * 1024;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+// `report` warns when the last 7 days hold under a quarter of the weekly
+// median of the 8 weeks before them. Below a median of 20 records a week, a
+// stopped recorder and a quiet stretch look the same.
+const CAPTURE_BASELINE_WEEKS = 8;
+const CAPTURE_DROP_RATIO = 0.25;
+const CAPTURE_MIN_WEEKLY_MEDIAN = 20;
 // Claude Code names plugin skills `kramme-cc-workflow:kramme-pr-create` and
 // records typed slash commands inside `<command-name>` tags, so accept the
 // plugin prefix, hyphenated names, and a `>` before the slash, then map every
 // match back to the `kramme:` frontmatter name.
-const PLUGIN_SKILL_PREFIX = "kramme-cc-workflow:";
-const SKILLS_DIR = path.join(__dirname, "..", "skills");
+const PLUGIN_NAME = "kramme-cc-workflow";
+const PLUGIN_SKILL_PREFIX = `${PLUGIN_NAME}:`;
+const PLUGIN_ROOT = path.join(__dirname, "..");
+const SKILLS_DIR = path.join(PLUGIN_ROOT, "skills");
 const SLASH_SKILL_PATTERN =
   /(?:^|\s|>)\/((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)/g;
 // Codex users invoke skills as `$kramme:...`; the slash form also works there.
@@ -58,6 +68,7 @@ const SCAN_PRUNED_DIRS = new Set([
  * @property {string} [since]
  * @property {string} [kind]
  * @property {string} [platform]
+ * @property {string} [pluginVersion]
  * @property {string} [limit]
  * @property {string} [projects]
  * @property {boolean} [strict]
@@ -68,11 +79,13 @@ const SCAN_PRUNED_DIRS = new Set([
  * @property {string} sessionId
  * @property {string} cwd
  * @property {string} platform
+ * @property {string} pluginVersion
  * @property {string} event
  * @property {string} skill
  * @property {"explicit" | "tool"} kind
  * @property {"prompt" | "tool_input"} source
  *
+ * @typedef {Omit<UsageRecord, "skill"> & { unrecognizedSkill: string }} UnrecognizedUsageRecord
  * @typedef {Omit<UsageRecord, "source"> & { source: "scan", file: string }} ScannedUsageRecord
  * @typedef {UsageRecord | ScannedUsageRecord} UsageLikeRecord
  * @typedef {Object} UsageSummaryRow
@@ -135,7 +148,7 @@ async function main() {
 function printHelp(exitCode) {
   const help = `Usage:
   scripts/skill-usage.js record [--file <path>]
-  scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--platform <claude-code|codex|unknown|all>] [--json] [--limit <n>] [--strict]
+  scripts/skill-usage.js report [--file <path>] [--since <duration|date>] [--kind <explicit|tool|all>] [--platform <claude-code|codex|unknown|all>] [--plugin-version <version|unknown|all>] [--json] [--limit <n>] [--strict]
   scripts/skill-usage.js scan <file-or-dir...> [--since <duration|date>] [--json] [--limit <n>] [--strict]
   scripts/skill-usage.js cost [--file <path>] [--projects <dir>] [--since <duration|date>] [--json] [--limit <n>] [--strict]
 
@@ -147,6 +160,9 @@ counters. Use --strict to return a non-zero status when diagnostics occur.
 JSONL inputs stream incrementally with individual records limited to 1 MiB.
 Whole-document JSON and plaintext compatibility input is limited to 1 MiB
 per file.
+
+Report warns on stderr when the last 7 days hold under a quarter of the
+weekly median of the 8 weeks before them: recording may have stopped.
 
 Cost groups Claude Code sessions in the usage file by entry skill and reads
 their transcripts under --projects (default: $CLAUDE_CONFIG_DIR/projects or
@@ -216,6 +232,14 @@ function parseArgs(args) {
     }
     if (arg.startsWith("--platform=")) {
       parsed.platform = arg.slice("--platform=".length);
+      continue;
+    }
+    if (arg === "--plugin-version") {
+      parsed.pluginVersion = args[++i];
+      continue;
+    }
+    if (arg.startsWith("--plugin-version=")) {
+      parsed.pluginVersion = arg.slice("--plugin-version=".length);
       continue;
     }
     if (arg === "--limit") {
@@ -308,16 +332,27 @@ function reportIoFailure(operation, error, file) {
 
 /**
  * @param {unknown} input
- * @returns {UsageRecord[]}
+ * @returns {Array<UsageRecord | UnrecognizedUsageRecord>}
  */
 function buildUsageRecords(input) {
   const value = asRecord(input);
-  const recordedAt = new Date().toISOString();
   const platform = detectPlatform(value, process.env);
+  const promptSkills = extractPromptSkills(value, platform);
+  const toolSkills = extractToolSkills(value);
+  const unrecognizedSkill =
+    toolSkills.length === 0 ? unrecognizedToolSkill(value) : "";
+  if (
+    promptSkills.length === 0 &&
+    toolSkills.length === 0 &&
+    !unrecognizedSkill
+  ) {
+    return [];
+  }
+
   /** @type {Omit<UsageRecord, "skill" | "kind" | "source">} */
   const base = {
     schemaVersion: 1,
-    recordedAt,
+    recordedAt: new Date().toISOString(),
     sessionId: stringValue(
       value.session_id ??
         value.sessionId ??
@@ -326,6 +361,7 @@ function buildUsageRecords(input) {
     ),
     cwd: stringValue(value.cwd ?? value.workspace ?? value.project_dir),
     platform,
+    pluginVersion: readPluginVersion(PLUGIN_ROOT),
     event: stringValue(
       value.hook_event_name ?? value.hookEventName ?? value.event ?? value.type,
     ),
@@ -333,7 +369,7 @@ function buildUsageRecords(input) {
 
   /** @type {UsageRecord[]} */
   const records = [];
-  for (const skill of extractPromptSkills(value, platform)) {
+  for (const skill of promptSkills) {
     records.push({
       ...base,
       skill,
@@ -342,7 +378,7 @@ function buildUsageRecords(input) {
     });
   }
 
-  for (const skill of extractToolSkills(value)) {
+  for (const skill of toolSkills) {
     records.push({
       ...base,
       skill,
@@ -351,7 +387,12 @@ function buildUsageRecords(input) {
     });
   }
 
-  return dedupeRecords(records);
+  const recognized = dedupeRecords(records);
+  if (!unrecognizedSkill) return recognized;
+  return [
+    ...recognized,
+    { ...base, unrecognizedSkill, kind: "tool", source: "tool_input" },
+  ];
 }
 
 /** @param {Record<string, unknown>} input @param {string} platform @returns {string[]} */
@@ -417,14 +458,8 @@ function extractScannedPromptSkills(input) {
 
 /** @param {Record<string, unknown>} input @returns {string[]} */
 function extractToolSkills(input) {
-  const toolName = stringValue(
-    input.tool_name ?? input.toolName ?? input.tool ?? input.name,
-  ).toLowerCase();
-  const toolInput = asRecord(input.tool_input ?? input.toolInput);
-
-  if (toolName !== "skill" && !hasSkillToolShape(toolInput)) {
-    return [];
-  }
+  const toolInput = skillToolInput(input);
+  if (!toolInput) return [];
 
   const candidates = [
     toolInput.name,
@@ -445,6 +480,42 @@ function extractToolSkills(input) {
       ];
     }),
   );
+}
+
+/**
+ * Returns the skill name of a Skill tool event that names this plugin but no
+ * shipped skill, which is how a host renaming plugin skills first shows up.
+ * Only skill-name fields count; `command`, `prompt`, and `text` can mention
+ * the plugin without invoking anything.
+ * @param {Record<string, unknown>} input
+ * @returns {string}
+ */
+function unrecognizedToolSkill(input) {
+  const toolInput = skillToolInput(input);
+  if (!toolInput) return "";
+  for (const name of [
+    toolInput.name,
+    toolInput.skill,
+    toolInput.skill_name,
+    toolInput.skillName,
+  ]) {
+    if (typeof name === "string" && name.includes(PLUGIN_NAME)) return name;
+  }
+  return "";
+}
+
+/**
+ * @param {Record<string, unknown>} input
+ * @returns {Record<string, unknown> | null} The tool input of a Skill tool event.
+ */
+function skillToolInput(input) {
+  const toolName = stringValue(
+    input.tool_name ?? input.toolName ?? input.tool ?? input.name,
+  ).toLowerCase();
+  const toolInput = asRecord(input.tool_input ?? input.toolInput);
+  return toolName === "skill" || hasSkillToolShape(toolInput)
+    ? toolInput
+    : null;
 }
 
 /** @param {Record<string, unknown>} toolInput */
@@ -594,7 +665,7 @@ function ensureUsageFile(file) {
   }
 }
 
-/** @param {string} file @param {UsageRecord[]} records */
+/** @param {string} file @param {Array<UsageRecord | UnrecognizedUsageRecord>} records */
 function appendJsonLines(file, records) {
   const lines =
     records.map((record) => JSON.stringify(record)).join("\n") + "\n";
@@ -609,6 +680,9 @@ async function report(args) {
   const kind = parsed.kind || "all";
   const platform = parsed.platform || "all";
   const recordedPlatform = platform === "unknown" ? "" : platform;
+  const pluginVersion = parsed.pluginVersion || "all";
+  const recordedPluginVersion =
+    pluginVersion === "unknown" ? "" : pluginVersion;
   const limit = parsed.limit == null ? null : Number(parsed.limit);
 
   if (!["all", "explicit", "tool"].includes(kind)) {
@@ -618,29 +692,65 @@ async function report(args) {
     throw new Error(`Invalid --limit value: ${parsed.limit}`);
   }
 
+  /** @param {UsageRecord | UnrecognizedUsageRecord} record */
+  const selected = (record) => {
+    if (kind !== "all" && record.kind !== kind) return false;
+    if (platform !== "all" && record.platform !== recordedPlatform) {
+      return false;
+    }
+    if (
+      pluginVersion !== "all" &&
+      record.pluginVersion !== recordedPluginVersion
+    ) {
+      return false;
+    }
+    if (!since) return true;
+    const recordedAt = Date.parse(record.recordedAt);
+    return Number.isFinite(recordedAt) && recordedAt >= since.getTime();
+  };
+
   const diagnostics = createDiagnostics();
   const accumulator = createUsageAccumulator();
+  const now = Date.now();
+  const weeklyCounts = new Array(CAPTURE_BASELINE_WEEKS + 1).fill(0);
+  let unrecognizedEvents = 0;
+  let latestUnrecognizedSkill = "";
   const usesExplicitFile =
     Boolean(parsed.file) || Boolean(process.env.KRAMME_SKILL_USAGE_FILE);
   await readUsageRecords(
     file,
     diagnostics,
     (record) => {
-      if (kind !== "all" && record.kind !== kind) return;
-      if (platform !== "all" && record.platform !== recordedPlatform) return;
-      if (since) {
-        const recordedAt = Date.parse(record.recordedAt);
-        if (!Number.isFinite(recordedAt) || recordedAt < since.getTime()) {
-          return;
-        }
-      }
-      addUsageRecord(accumulator, record);
+      countRecordWeek(weeklyCounts, now, record.recordedAt);
+      if (selected(record)) addUsageRecord(accumulator, record);
     },
     !usesExplicitFile,
+    (record) => {
+      if (!selected(record)) return;
+      unrecognizedEvents += 1;
+      // The recorder appends in order, so the last match is the latest.
+      latestUnrecognizedSkill = record.unrecognizedSkill;
+    },
+  );
+  recordUnrecognizedSkillEvents(
+    diagnostics,
+    file,
+    unrecognizedEvents,
+    latestUnrecognizedSkill,
   );
 
   const summary = finishUsageSummary(accumulator, limit);
-  renderResult(summary, diagnostics, parsed.json, file, since, kind, platform);
+  renderResult(
+    summary,
+    diagnostics,
+    parsed.json,
+    file,
+    since,
+    kind,
+    platform,
+    pluginVersion,
+  );
+  warnOnCaptureGap(weeklyCounts);
   applyStrictMode(parsed, diagnostics);
 }
 
@@ -686,6 +796,7 @@ async function scan(args) {
     parsed._.join(","),
     since,
     "explicit",
+    "all",
     "all",
   );
   applyStrictMode(parsed, diagnostics);
@@ -1152,6 +1263,7 @@ function scannedRecord({
     sessionId,
     cwd: "",
     platform,
+    pluginVersion: "",
     event: "scan",
     skill,
     kind: "explicit",
@@ -1175,8 +1287,15 @@ function isUserMessage(input) {
  * @param {UsageDiagnostics} diagnostics
  * @param {(record: UsageRecord) => void} onRecord
  * @param {boolean} ignoreMissing
+ * @param {(record: UnrecognizedUsageRecord) => void} [onUnrecognized] Without it, unrecognized-skill records are ignored.
  */
-async function readUsageRecords(file, diagnostics, onRecord, ignoreMissing) {
+async function readUsageRecords(
+  file,
+  diagnostics,
+  onRecord,
+  ignoreMissing,
+  onUnrecognized,
+) {
   let malformedLines = 0;
   let invalidLines = 0;
   let overlongLines = 0;
@@ -1191,8 +1310,9 @@ async function readUsageRecords(file, diagnostics, onRecord, ignoreMissing) {
       if (!line) continue;
       try {
         const record = normalizeUsageRecord(JSON.parse(line));
-        if (record) onRecord(record);
-        else invalidLines += 1;
+        if (!record) invalidLines += 1;
+        else if ("unrecognizedSkill" in record) onUnrecognized?.(record);
+        else onRecord(record);
       } catch {
         malformedLines += 1;
       }
@@ -1209,22 +1329,29 @@ async function readUsageRecords(file, diagnostics, onRecord, ignoreMissing) {
   recordSkippedLines(diagnostics, file, invalidLines, "invalid usage record");
 }
 
-/** @param {unknown} value @returns {UsageRecord | null} */
+/** @param {unknown} value @returns {UsageRecord | UnrecognizedUsageRecord | null} */
 function normalizeUsageRecord(value) {
   const record = asRecord(value);
-  if (typeof record.skill !== "string") return null;
   const kind = record.kind === "tool" ? "tool" : "explicit";
-  return {
+  /** @type {Omit<UsageRecord, "skill">} */
+  const fields = {
     schemaVersion: 1,
     recordedAt: stringValue(record.recordedAt),
     sessionId: stringValue(record.sessionId),
     cwd: stringValue(record.cwd),
     platform: stringValue(record.platform),
+    pluginVersion: stringValue(record.pluginVersion),
     event: stringValue(record.event),
-    skill: record.skill,
     kind,
     source: kind === "tool" ? "tool_input" : "prompt",
   };
+  if (typeof record.skill === "string") {
+    return { ...fields, skill: record.skill };
+  }
+  if (typeof record.unrecognizedSkill === "string") {
+    return { ...fields, unrecognizedSkill: record.unrecognizedSkill };
+  }
+  return null;
 }
 
 /** @returns {UsageAccumulator} */
@@ -1313,6 +1440,55 @@ function recordSkippedLines(diagnostics, file, count, reason) {
 }
 
 /**
+ * Counts selected Skill tool events that named this plugin but no shipped
+ * skill. They stay out of the totals, so they count as skipped lines.
+ * @param {UsageDiagnostics} diagnostics
+ * @param {string} file
+ * @param {number} count
+ * @param {string} latest
+ */
+function recordUnrecognizedSkillEvents(diagnostics, file, count, latest) {
+  if (count === 0) return;
+  diagnostics.skippedLines += count;
+  const noun = count === 1 ? "event" : "events";
+  process.stderr.write(
+    `skill-usage: skipped ${count} unrecognized skill ${noun} latest=${latest} file=${file}\n`,
+  );
+}
+
+/**
+ * Adds a record to `counts[n]`, the 7-day window ending `n` weeks before
+ * `now`. Unparseable and future timestamps fall in no window.
+ * @param {number[]} counts
+ * @param {number} now
+ * @param {string} recordedAt
+ */
+function countRecordWeek(counts, now, recordedAt) {
+  const week = Math.floor((now - Date.parse(recordedAt)) / WEEK_MS);
+  if (week >= 0 && week < counts.length) counts[week] += 1;
+}
+
+/**
+ * Warns when the last 7 days fall far below the weekly median before them,
+ * which is how a recorder that stops matching skill names shows up.
+ * @param {number[]} counts Weekly record counts, most recent first.
+ */
+function warnOnCaptureGap([recent, ...baselineWeeks]) {
+  // Loaded here so the per-prompt `record` hook path never pays for it.
+  const { median } = require("./lib/skill-usage-cost");
+  const baseline = median(baselineWeeks) ?? 0;
+  if (
+    baseline < CAPTURE_MIN_WEEKLY_MEDIAN ||
+    recent >= baseline * CAPTURE_DROP_RATIO
+  ) {
+    return;
+  }
+  process.stderr.write(
+    `skill-usage: warning: ${recent} records in the last 7 days against a weekly median of ${baseline} over the previous ${CAPTURE_BASELINE_WEEKS} weeks; recording may have stopped, or usage fell\n`,
+  );
+}
+
+/**
  * @param {UsageDiagnostics} diagnostics
  * @param {string} file
  * @param {unknown} error
@@ -1336,8 +1512,18 @@ function recordReadFailure(diagnostics, file, error) {
  * @param {Date | null} since
  * @param {string} kind
  * @param {string} platform
+ * @param {string} pluginVersion
  */
-function renderResult(summary, diagnostics, json, file, since, kind, platform) {
+function renderResult(
+  summary,
+  diagnostics,
+  json,
+  file,
+  since,
+  kind,
+  platform,
+  pluginVersion,
+) {
   if (json) {
     const result = hasDiagnostics(diagnostics)
       ? { summary, diagnostics }
@@ -1346,7 +1532,7 @@ function renderResult(summary, diagnostics, json, file, since, kind, platform) {
     return;
   }
 
-  renderTable(summary, file, since, kind, platform);
+  renderTable(summary, file, since, kind, platform, pluginVersion);
   if (hasDiagnostics(diagnostics)) {
     process.stdout.write(
       `diagnostics skippedLines=${diagnostics.skippedLines} readFailures=${diagnostics.readFailures}\n`,
@@ -1388,8 +1574,8 @@ function parseSince(value) {
   return parsed;
 }
 
-/** @param {UsageSummaryRow[]} rows @param {string} file @param {Date | null} since @param {string} kind @param {string} platform */
-function renderTable(rows, file, since, kind, platform) {
+/** @param {UsageSummaryRow[]} rows @param {string} file @param {Date | null} since @param {string} kind @param {string} platform @param {string} pluginVersion */
+function renderTable(rows, file, since, kind, platform, pluginVersion) {
   if (rows.length === 0) {
     process.stdout.write("No skill usage records found.\n");
     return;
@@ -1437,6 +1623,7 @@ function renderTable(rows, file, since, kind, platform) {
     since ? `since=${since.toISOString()}` : null,
     kind !== "all" ? `kind=${kind}` : null,
     platform !== "all" ? `platform=${platform}` : null,
+    pluginVersion !== "all" ? `pluginVersion=${pluginVersion}` : null,
   ].filter(Boolean);
 
   process.stdout.write(

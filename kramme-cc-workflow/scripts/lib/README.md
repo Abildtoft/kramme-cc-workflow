@@ -10,7 +10,7 @@ script; keep behavior shared by multiple scripts here.
 | --- | --- |
 | `shell-helpers.sh` | Provides required-argument validation, shell assignment quoting, JSON object emit/decode with a single Python guard, and timeout-wrapped command execution. |
 | `skill-usage-cost.js` | Transcript indexing, per-session cost and token summaries, and rendering for `scripts/skill-usage.js cost`. |
-| `skill-usage-hosts.js` | Host detection and Codex rollout parsing for `scripts/skill-usage.js`. |
+| `skill-usage-hosts.js` | Host detection, plugin manifest version lookup, and Codex rollout parsing for `scripts/skill-usage.js`. |
 
 ## Usage
 

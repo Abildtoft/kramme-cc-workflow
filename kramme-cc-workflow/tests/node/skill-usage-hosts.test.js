@@ -12,6 +12,7 @@ const {
   PLATFORM_CODEX,
   detectPlatform,
   openCodexRollout,
+  readPluginVersion,
   stripConductorInstructions,
 } = require("../../scripts/lib/skill-usage-hosts.js");
 
@@ -253,6 +254,45 @@ test("detectPlatform checks Codex markers before CLAUDECODE", () => {
   assert.equal(detectPlatform({ transcript_path: null, turn_id: 7 }, {}), "");
   assert.equal(detectPlatform({}, { CLAUDECODE: "0" }), "");
   assert.equal(detectPlatform(null, {}), "");
+});
+
+test("readPluginVersion reads the Claude Code manifest, then the Codex one", async (t) => {
+  const root = await tempDir(t);
+  /** @param {string} name @param {Record<string, string>} manifests */
+  const pluginRoot = async (name, manifests) => {
+    const dir = path.join(root, name);
+    for (const [file, content] of Object.entries(manifests)) {
+      await fs.mkdir(path.join(dir, path.dirname(file)), { recursive: true });
+      await fs.writeFile(path.join(dir, file), content);
+    }
+    return dir;
+  };
+
+  const roots = [
+    await pluginRoot("claude", {
+      ".claude-plugin/plugin.json": '{"version":"0.90.0"}',
+      ".codex-plugin/plugin.json": '{"version":"0.89.0"}',
+    }),
+    await pluginRoot("codex", {
+      ".codex-plugin/plugin.json": '{"version":"0.89.0"}',
+    }),
+    await pluginRoot("broken", {
+      ".claude-plugin/plugin.json": "{not json",
+      ".codex-plugin/plugin.json": '{"version":"0.88.0"}',
+    }),
+    await pluginRoot("unversioned", {
+      ".claude-plugin/plugin.json": '{"name":"kramme-cc-workflow"}',
+    }),
+    path.join(root, "missing"),
+  ];
+
+  assert.deepEqual(roots.map(readPluginVersion), [
+    "0.90.0",
+    "0.89.0",
+    "0.88.0",
+    "",
+    "",
+  ]);
 });
 
 test("stripConductorInstructions keeps only text after the last block", () => {

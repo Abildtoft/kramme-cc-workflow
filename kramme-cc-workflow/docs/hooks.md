@@ -75,6 +75,10 @@ Each record's `platform` field names the host that produced the event. The recor
 
 Codex markers are checked before `CLAUDECODE` because a Codex process started from a Claude Code shell inherits `CLAUDECODE=1`.
 
+Each record's `pluginVersion` field is the `version` from the plugin manifest beside the recorder: `.claude-plugin/plugin.json` in Claude Code and `.codex-plugin/plugin.json` in the converted Codex plugin. It is empty when neither manifest is readable and absent from records written before the field existed; reports treat both as `unknown`. The manifest version changes only at release, so a local install of an unreleased checkout reports the last released version.
+
+When a Skill tool event names a skill that contains the plugin name `kramme-cc-workflow` but maps to no shipped skill, the recorder writes that name to an `unrecognizedSkill` field in place of `skill`. A host that changes how it names plugin skills produces these records, so the change shows up in reports instead of silently dropping events. Only the Skill tool's skill-name fields count; prompts, and therefore Codex events, never produce them.
+
 For Codex prompts, the recorder ignores everything up to the last Conductor `</system_instruction>` block and accepts both `$kramme:*` and `/kramme:*` invocations. Claude Code prompts keep the `/kramme:*` rule. The converted Codex plugin ships this hook and its recorder, but Codex has no Skill tool, so only the `UserPromptSubmit` entry fires there. Codex may also require you to trust plugin hooks before they run.
 
 Records are stored outside the repository at:
@@ -92,9 +96,12 @@ node scripts/skill-usage.js report --since 30d
 node scripts/skill-usage.js report --kind explicit --json
 node scripts/skill-usage.js report --json --strict
 node scripts/skill-usage.js report --platform codex --since 30d
+node scripts/skill-usage.js report --plugin-version 0.89.0
 ```
 
-`--platform` accepts `claude-code`, `codex`, `unknown` (records with an empty `platform`), or `all` (the default).
+`--platform` accepts `claude-code`, `codex`, `unknown` (records with an empty `platform`), or `all` (the default). `--plugin-version` accepts a version, `unknown` (records without one), or `all` (the default); use it to compare how a skill was used before and after a release.
+
+Every report also checks whether recording has stalled. It compares the records of the last 7 days with the median weekly count of the 8 weeks before them, across the whole usage file and regardless of report filters. When that median is at least 20 and the last 7 days hold under a quarter of it, the report writes a warning to stderr: recording may have stopped, or usage fell. Because the baseline follows the data, the warning catches the start of a gap; after about a month of low counts it stops. The warning never changes the exit status, even with `--strict`. `unrecognizedSkill` records count toward neither side; the skipped-line diagnostics below report them.
 
 Scan existing transcript files for historical explicit invocations:
 
@@ -110,7 +117,7 @@ node scripts/skill-usage.js scan ~/.codex/sessions --since 30d --json
 
 Scan treats a file whose first line is a Codex `session_meta` record as a Codex rollout and streams it line by line. Only the first `session_meta` classifies the file, because forked threads replay parent history after a second one. Subagent threads (`thread_source` `subagent`, or a `source` object with a `subagent` key) are skipped without reading further. In top-level threads, scan counts explicit invocations in user messages only. It skips injected `# AGENTS.md instructions for` and `<environment_context>` messages and ignores text before the last Conductor `</system_instruction>`. It also ignores developer and assistant messages and the user text that `event_msg` and `compacted` records repeat. Each thread id is one session, and `--since` filters by message timestamp. Large tool output can exceed the 1 MiB line limit, so whole-history Codex scans usually report a few overlong-line diagnostics. Once the Codex hook records events, do not add `scan` totals to `report --platform codex` totals for the same period; both count the same sessions.
 
-Reports and scans tolerate degraded input by default. They retain valid totals, write skipped-line and read-failure diagnostics to stderr, and exit successfully. Healthy `--json` output remains an array. When diagnostics occur, JSON output is an object with `summary` and `diagnostics` fields instead. Add `--strict` to render the same result but exit nonzero when any input was skipped or could not be read. Individual JSONL records larger than 1 MiB are skipped with diagnostics so malformed or truncated lines cannot make memory use unbounded.
+Reports and scans tolerate degraded input by default. They retain valid totals, write skipped-line and read-failure diagnostics to stderr, and exit successfully. Healthy `--json` output remains an array. When diagnostics occur, JSON output is an object with `summary` and `diagnostics` fields instead. Add `--strict` to render the same result but exit nonzero when any input was skipped or could not be read. Individual JSONL records larger than 1 MiB are skipped with diagnostics so malformed or truncated lines cannot make memory use unbounded. Reports leave `unrecognizedSkill` records that match their filters out of the totals, count them as skipped lines, and name the latest one on stderr; `cost` ignores them, and earlier versions of the script skip them as invalid usage records.
 
 Scan treats JSONL as its canonical streaming format. Whole-document JSON and plaintext use a compatibility fallback limited to 1 MiB per file. Larger non-JSONL files are skipped with diagnostics; `--strict` makes that condition fail the command after rendering the degraded result.
 
