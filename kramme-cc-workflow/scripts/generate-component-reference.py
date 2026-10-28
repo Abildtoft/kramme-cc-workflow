@@ -3,7 +3,8 @@
 
 By default this command checks whether the README component rows and the
 compact component catalog match the source metadata in each `SKILL.md`, agent
-file, and hook manifest entry. Pass --write to update both in place.
+file, and hook manifest entry, plus the README summaries registered in
+synced-contracts.yaml. Pass --write to update both in place.
 """
 
 from __future__ import annotations

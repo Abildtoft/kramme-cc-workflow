@@ -19,6 +19,7 @@ from .markdown import (
     normalize_markdown_cell,
     split_markdown_table_row,
 )
+from .readme_summaries import apply_readme_summaries, readme_summaries_configured
 from .schema import load_contract_schema, skill_frontmatter_field_by_loader_property
 from .strings import is_empty_value, shorten
 
@@ -510,6 +511,7 @@ def check_readme_skill_rows_sync(
 
     readme = read_text(readme_path)
     references = load_skill_references(root, skills_relative, failures, schema)
+    references = apply_readme_summaries("readme skill sync", "skill", references, config, failures)
     documented_skills = readme_skill_rows(readme, config, failures)
 
     check_readme_missing_rows(
@@ -550,7 +552,7 @@ def check_readme_skill_rows_sync(
             "arguments": reference.arguments,
             "description": reference.description,
         },
-        "SKILL.md frontmatter",
+        "source metadata" if readme_summaries_configured(config) else "SKILL.md frontmatter",
         failures,
     )
 
@@ -574,6 +576,7 @@ def check_readme_agent_sync(
 
     readme = read_text(readme_path)
     references = load_agent_references(root, agents_relative, failures)
+    references = apply_readme_summaries("readme agent sync", "agent", references, config, failures)
     documented_agents = readme_component_rows(
         readme,
         config,
@@ -703,6 +706,7 @@ def render_readme_skill_rows_sync(
     readme_relative = config.get("readme", "README.md")
     skills_relative = config.get("skills_dir", "kramme-cc-workflow/skills")
     references = load_skill_references(root, skills_relative, failures, schema)
+    references = apply_readme_summaries("readme skill sync", "skill", references, config, failures)
     documented_skills = readme_skill_rows(readme, config, failures)
     allow_readme_only = set(config.get("allow_readme_only_skills", []))
     for name in sorted(references):
@@ -745,6 +749,7 @@ def render_readme_agent_sync(
 
     agents_relative = config.get("agents_dir", "kramme-cc-workflow/agents")
     references = load_agent_references(root, agents_relative, failures)
+    references = apply_readme_summaries("readme agent sync", "agent", references, config, failures)
     if failures:
         return None
     rows = [render_agent_reference_row(reference) for reference in references.values()]

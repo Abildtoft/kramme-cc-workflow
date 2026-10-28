@@ -796,6 +796,219 @@ description: Reviews code
         self.assertIn("readme_hook_sync", "\n".join(failures))
 
 
+SUMMARY_REGISTRY = {
+    "readme_skill_sync": {
+        "skills_dir": "skills",
+        "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
+        "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->",
+        "max_summary_chars": 40,
+        "summaries": {"kramme:sample": "Short sample summary"},
+    },
+    "readme_agent_sync": {
+        "agents_dir": "agents",
+        "start_marker": "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
+        "end_marker": "<!-- END SOURCE-SYNCED AGENT ROWS -->",
+        "summaries": {"kramme:reviewer": "Short reviewer summary"},
+    },
+}
+
+
+class ReadmeSummariesTest(unittest.TestCase):
+    def _write_tree(self, root: Path, skill_description: str) -> None:
+        skill = root / "skills" / "kramme:sample"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text(
+            "---\nname: kramme:sample\ndescription: Sample skill\n"
+            "disable-model-invocation: true\nuser-invocable: true\n---\n# kramme:sample\n",
+            encoding="utf-8",
+        )
+        agents = root / "agents"
+        agents.mkdir()
+        (agents / "kramme:reviewer.md").write_text(
+            "---\nname: kramme:reviewer\ndescription: Reviews code\n---\n# kramme:reviewer\n",
+            encoding="utf-8",
+        )
+        self._write_readme(root, skill_description)
+
+    def _write_readme(self, root: Path, skill_description: str) -> None:
+        (root / "README.md").write_text(
+            "\n".join(
+                [
+                    "# Plugin",
+                    "",
+                    "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
+                    "| Skill | Invocation | Arguments | Description |",
+                    "| --- | --- | --- | --- |",
+                    f"| `/kramme:sample` | User | — | {skill_description} |",
+                    "<!-- END SOURCE-SYNCED SKILL ROWS -->",
+                    "",
+                    "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
+                    "<!-- END SOURCE-SYNCED AGENT ROWS -->",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+    def test_rendered_rows_show_summaries_instead_of_source_descriptions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root, "Sample skill")
+
+            rendered, failures = lint_skill_contracts.render_readme_component_sync(root, SUMMARY_REGISTRY)
+
+        self.assertEqual(failures, [])
+        assert rendered is not None
+        self.assertIn("| `/kramme:sample` | User | — | Short sample summary |", rendered)
+        self.assertIn("| `kramme:reviewer` | Short reviewer summary |", rendered)
+        self.assertNotIn("Reviews code", rendered)
+
+    def test_check_compares_description_cells_with_summaries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root, "Sample skill")
+            stale: list[str] = []
+            lint_skill_contracts.check_readme_skill_rows_sync(
+                root, SUMMARY_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA, stale
+            )
+
+            self._write_readme(root, "Short sample summary")
+            synced: list[str] = []
+            lint_skill_contracts.check_readme_skill_rows_sync(
+                root, SUMMARY_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA, synced
+            )
+
+        self.assertEqual(len(stale), 1)
+        self.assertIn("'kramme:sample' description differs from source metadata", stale[0])
+        self.assertEqual(synced, [])
+
+    def test_summaries_cover_every_component_within_the_length_budget(self) -> None:
+        def reference(name: str) -> lint_skill_contracts.SkillReference:
+            return lint_skill_contracts.SkillReference(
+                name=name,
+                display_name=f"/{name}",
+                invocation="User",
+                arguments="—",
+                description="Full routing description",
+            )
+
+        failures: list[str] = []
+        summarized = lint_skill_contracts.apply_readme_summaries(
+            "readme skill sync",
+            "skill",
+            {"kramme:long": reference("kramme:long"), "kramme:missing": reference("kramme:missing")},
+            {"summaries": {"kramme:long": "x" * 11, "kramme:gone": "Stale"}, "max_summary_chars": 10},
+            failures,
+        )
+
+        self.assertEqual(
+            failures,
+            [
+                "readme skill sync: summaries names unknown skill 'kramme:gone'",
+                "readme skill sync: summary for 'kramme:long' is 11 chars, exceeds 10",
+                "readme skill sync: summaries is missing skill 'kramme:missing'",
+            ],
+        )
+        self.assertEqual(summarized["kramme:long"].description, "x" * 11)
+        self.assertEqual(summarized["kramme:missing"].description, "Full routing description")
+
+    def test_source_descriptions_stay_without_summaries(self) -> None:
+        references = {"kramme:reviewer": lint_skill_contracts.AgentReference("kramme:reviewer", "Reviews code")}
+        failures: list[str] = []
+
+        result = lint_skill_contracts.apply_readme_summaries("readme agent sync", "agent", references, {}, failures)
+
+        self.assertIs(result, references)
+        self.assertEqual(failures, [])
+
+
+class ReadmeProseCheckTest(unittest.TestCase):
+    def test_blocks_are_paragraphs_and_list_items_outside_tables_code_and_comments(self) -> None:
+        text = "\n".join(
+            [
+                "# Title",
+                "",
+                "First paragraph line one",
+                "continues here.",
+                "",
+                "- item one",
+                "  continued",
+                "- item two",
+                "",
+                "| a | b |",
+                "| --- | --- |",
+                "",
+                "```bash",
+                "echo not prose",
+                "```",
+                "",
+                "<!-- comment",
+                "still comment -->",
+                "> [!NOTE]",
+                "> Quoted text",
+            ]
+        )
+
+        self.assertEqual(
+            lint_skill_contracts.readme_prose_blocks(text),
+            [
+                (3, "First paragraph line one continues here."),
+                (6, "item one continued"),
+                (8, "item two"),
+                (19, "[!NOTE] Quoted text"),
+            ],
+        )
+
+    def test_check_warns_on_long_blocks_longest_first_within_the_report_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "README.md").write_text(
+                "\n".join(
+                    [
+                        "Short paragraph.",
+                        "",
+                        "x" * 30,
+                        "",
+                        "- " + "y" * 40,
+                        "",
+                        "[" + "z" * 26 + "](https://example.com/a-long-link-target)",
+                        "",
+                        "| " + "w" * 80 + " |",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = lint_skill_contracts.check_readme_prose(
+                lint_skill_contracts.LintContext(
+                    root=root,
+                    registry={"readme_prose": {"warn_paragraph_chars": 25, "report_limit": 2}},
+                    schema={},
+                )
+            )
+
+        self.assertEqual(result.failures, [])
+        self.assertEqual(
+            [warning.split(" (warn at")[0] for warning in result.warnings],
+            [
+                "readme prose: long-paragraph burndown: README.md:5 is 40 chars",
+                "readme prose: long-paragraph burndown: README.md:3 is 30 chars",
+            ],
+        )
+
+    def test_check_is_disabled_without_config_and_rejects_invalid_settings(self) -> None:
+        def run(registry):
+            return lint_skill_contracts.check_readme_prose(
+                lint_skill_contracts.LintContext(root=Path("/tmp/repo"), registry=registry, schema={})
+            )
+
+        disabled = run({})
+        invalid = run({"readme_prose": {"warn_paragraph_chars": 0}})
+
+        self.assertEqual((disabled.failures, disabled.warnings), ([], []))
+        self.assertEqual(invalid.failures, ["readme prose: warn_paragraph_chars must be a positive integer"])
+
+
 class CheckRegistryTest(unittest.TestCase):
     def test_registry_preserves_cli_check_order(self) -> None:
         self.assertEqual(
@@ -811,6 +1024,7 @@ class CheckRegistryTest(unittest.TestCase):
                 "epilogue_forbidden",
                 "hooks_json",
                 "readme_skill_sync",
+                "readme_prose",
                 "component_catalog",
                 "routing_distinctness",
                 "invocation_graph",
