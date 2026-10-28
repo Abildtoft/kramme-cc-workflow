@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:backlog-refine
-description: "Requires Linear MCP. Grades a Linear team's open backlog for clarity, scope, agent-readiness, freshness, and resolution evidence; clusters related work and flags conflicting issues; and proposes complete, cancel, merge, split, rewrite, ask, or keep. Read-only unless --apply is passed and each write batch is approved. Use for backlog grooming or pre-planning cleanup. Not for selecting, defining, or implementing an issue; use kramme:linear:select-next or kramme:linear:issue-define instead."
+description: "Requires Linear MCP. Grades a Linear team's open backlog for clarity, scope, agent-readiness, freshness, and resolution evidence; clusters related work and flags conflicting issues; and proposes complete, cancel, merge, split, rewrite, ask, or keep. Read-only unless --apply is passed and each write batch is approved. Use for backlog grooming or pre-planning cleanup. Not for selecting, defining, or implementing an issue; use kramme:linear:next or kramme:linear:issue-define instead."
 argument-hint: "[team] [--project <name>] [--label <name>] [--stale-days <n>] [--limit <n>] [--apply]"
 disable-model-invocation: true
 user-invocable: true
@@ -14,7 +14,7 @@ Grade a Linear team's backlog so that as many issues as possible reach a state w
 
 - **Do:** inspect backlog issues, grade clarity, scope, and agent-readiness, detect duplicates, conflicting issues, oversized items, and stale issues, and produce a refinement plan with a concrete action per issue.
 - **Do not:** implement issues, change assignees or priorities without an approved `--apply` batch, delete issues, create issues from scratch, or settle a conflict between issues on the owner's behalf.
-- **Handoff:** for a `rewrite` that needs a full interview, point to `kramme:linear:issue-define {IDENTIFIER}`; for picking work after refinement, point to `kramme:linear:select-next`.
+- **Handoff:** for a `rewrite` that needs a full interview, point to `kramme:linear:issue-define {IDENTIFIER}`; for picking work after refinement, point to `kramme:linear:next`.
 
 ## Arguments
 
@@ -147,7 +147,7 @@ Reject unknown flags and repeated flags with one short message naming the offend
     Next: {"rerun with --apply to apply approved batches" | "handoff lines"}
     ```
 
-    Omit the `keep` rows from `Proposed actions` when more than 20 issues were graded; list their identifiers in one line instead. Omit empty sections except `Conflicts`, so an empty conflict result is distinguishable from a skipped search. Name the conflict key beside every issue a conflict involves, in its `Why` cell or in the `keep` identifier line. Leave `Startability` as `n/a` for any issue that is not `agent-ready`; only `agent-ready` rows contribute to the startability counts, which sum to the agent-ready count rather than the graded count. For picking autonomous implementation work, hand off to `kramme:linear:select-next {team} --agent-ready-only`; only issues that are also ready to start are candidates. Selection rechecks live evidence rather than trusting this report. With that handoff, list the issues in an unresolved `contradiction` and say not to pick them until the decision is recorded in Linear, because selection judges each issue on its own.
+    Omit the `keep` rows from `Proposed actions` when more than 20 issues were graded; list their identifiers in one line instead. Omit empty sections except `Conflicts`, so an empty conflict result is distinguishable from a skipped search. Name the conflict key beside every issue a conflict involves, in its `Why` cell or in the `keep` identifier line. Leave `Startability` as `n/a` for any issue that is not `agent-ready`; only `agent-ready` rows contribute to the startability counts, which sum to the agent-ready count rather than the graded count. For picking autonomous implementation work, hand off to `kramme:linear:next {team} --agent-ready`; only issues that are also ready to start are candidates. Selection rechecks live evidence rather than trusting this report. With that handoff, list the issues in an unresolved `contradiction` and say not to pick them until the decision is recorded in Linear, because selection judges each issue on its own.
 
 11. **Apply approved changes (`--apply` only).**
     - Resolve the team's state whose type is `completed` and the state whose type is `canceled` before presenting terminal batches. If either needed state cannot be resolved unambiguously, do not apply that action; report the missing state. A `complete` action may use only the completed state, and a `cancel` action may use only the canceled state.

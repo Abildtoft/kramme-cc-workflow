@@ -1,7 +1,7 @@
 ---
-name: kramme:linear:select-next
+name: kramme:linear:next
 description: "Requires Linear MCP. Selects valuable ready-to-start issues from a Linear team using structured flags or a free-form query, including explicit states and autonomous agent-readiness. Actively finds a strong parallel set and gives every reported issue a plain-language summary. Use when deciding what to pick up next. Not for creating, editing, implementing, or closing Linear issues."
-argument-hint: "[team or selection query] [--state <name>] [--agent-ready-only] [--interest <preference>] [--mine|--unassigned|--both] [--project <name>] [--label <name>] [--limit <n>]"
+argument-hint: "[team or selection query] [--state <name>] [--agent-ready] [--interest <preference>] [--mine|--unassigned|--both] [--project <name>] [--label <name>] [--limit <n>]"
 disable-model-invocation: true
 user-invocable: true
 ---
@@ -23,7 +23,7 @@ Parse `$ARGUMENTS` before Step 1.
 - Accept either structured flags, a bare team name/key/ID, a free-form selection query, or a combination of them. When unflagged input may contain both a team and a query, match the longest exact leading substring against available Linear team names, keys, and IDs. If one matches, consume it as the team and parse the remainder as the query; if none matches, apply the whole-input rules below. Do not invent quoting or delimiter syntax.
 - Parse flags and their values first. Explicit flags override constraints inferred from free-form text.
 - `--state <name>`: include only a named workflow state. The flag is repeatable; repeated values are alternatives, so `--state Backlog --state "To Do"` includes either state. Match state names case-insensitively after normalizing spaces and hyphens.
-- `--agent-ready-only`: return only issues that pass the autonomous agent-readiness checklist in `references/scoring-rubric.md`.
+- `--agent-ready`: return only issues that pass the autonomous agent-readiness checklist in `references/scoring-rubric.md`.
 - `--mine`: include only issues assigned to the logged-in user.
 - `--unassigned`: include only unassigned issues.
 - `--both`: include assigned-to-me and unassigned issues. This is the default.
@@ -36,10 +36,10 @@ Treat unflagged input as a free-form selection query when it begins with a selec
 
 - Resolve state phrases such as `in Backlog or To-do state` to team workflow states in Step 3.
 - Map `assigned to me`, `unassigned`, or an explicit request for both to the corresponding candidate pool.
-- Map phrases such as `ready for autonomous agent-driven implementation`, `agent-ready`, or `can be implemented autonomously` to `--agent-ready-only` semantics.
+- Map phrases such as `ready for autonomous agent-driven implementation`, `agent-ready`, or `can be implemented autonomously` to `--agent-ready` semantics.
 - Preserve other work-type language as the interest preference, and preserve `only` as a hard preference filter.
 
-For example, `Please identify Linear issues that are in Backlog or To-do state that are ready for autonomous agent-driven implementation` means: infer the team in Step 2, include only workflow states matching `Backlog` or `To-do`, enable agent-ready-only filtering, and do not interpret the sentence as a team name.
+For example, `Please identify Linear issues that are in Backlog or To-do state that are ready for autonomous agent-driven implementation` means: infer the team in Step 2, include only workflow states matching `Backlog` or `To-do`, enable agent-ready filtering, and do not interpret the sentence as a team name.
 
 When unflagged input has no selection-query signal and no leading team match was found, first try the whole value as the team name/key/ID. If it resolves, use it as the team. If it does not resolve and the text contains additional words, treat it as a selection query only when its constraints can be parsed unambiguously; otherwise ask one short clarification question. If a team resolves and extra unflagged text remains, treat that remainder as selection-query text.
 
@@ -81,8 +81,8 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
    - If there are no candidates, report that no available assigned/unassigned issues were found for the team and filters.
    - Enrich candidates in batches of up to 25, ordered by Linear priority, due date, project metadata, blocker/unblock hints, customer-impact hints, and match against the `--interest` terms when present. For each candidate, call Linear MCP `get_issue` with `includeRelations: true`, `includeCustomerNeeds: true`, and `includeReleases: true` when supported.
    - After each batch, apply Steps 6-8 provisionally. Continue through further batches until the best recommendation has four good parallel candidates or every candidate collected in Step 4 has been enriched and assessed. Reaching the collection cap bounds the candidate set but is not by itself a reason to stop enriching it. A good parallel candidate must pass all readiness and hard-filter requirements and be independent of both the recommendation and every other issue in the proposed parallel set.
-   - With `--agent-ready-only`, every issue in the recommendation and parallel set must also be `agent-ready`. Never classify an issue as agent-ready from title keywords alone. A candidate may pass provisionally only when every applicable checklist item has concrete evidence from its description, fetched relations and metadata, reachable linked inputs, or relevant comments.
-   - Call Linear MCP `list_comments` only when a high-value candidate's description and fetched relations do not establish a required decision or dependency, or when recent comments may have superseded that evidence. If required evidence is still unavailable, classify the issue as `needs-refinement` under `--agent-ready-only`; without that hard filter, disclose the evidence gap and lower confidence rather than claiming it is `agent-ready`.
+   - With `--agent-ready`, every issue in the recommendation and parallel set must also be `agent-ready`. Never classify an issue as agent-ready from title keywords alone. A candidate may pass provisionally only when every applicable checklist item has concrete evidence from its description, fetched relations and metadata, reachable linked inputs, or relevant comments.
+   - Call Linear MCP `list_comments` only when a high-value candidate's description and fetched relations do not establish a required decision or dependency, or when recent comments may have superseded that evidence. If required evidence is still unavailable, classify the issue as `needs-refinement` under `--agent-ready`; without that hard filter, disclose the evidence gap and lower confidence rather than claiming it is `agent-ready`.
    - Do not stop after the first batch merely because it contains one strong recommendation. Finding a defensible parallel set is part of the required result.
    - Keep the analysis read-only even if the best next action appears to be "assign this to me" or "ask for clarification".
 
@@ -91,8 +91,8 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
    - `clarify-first`: valuable, but missing acceptance criteria, owner decision, design detail, or technical boundary.
    - `blocked`: blocked by another issue, external dependency, approval, or explicit blocked/waiting state/label.
    - `not-now`: low value, stale without evidence, duplicate-looking, or outside the current team/project focus.
-   - When `--agent-ready-only` or equivalent autonomous-implementation intent was requested, separately classify `agent-readiness` as `agent-ready`, `needs-refinement`, or `human-only`. Ordinary `ready` means work can begin; `agent-ready` is stricter and means an implementation agent can complete and verify the issue without obtaining a human decision, unavailable design, privileged access, or subjective sign-off. Otherwise do not perform or report the stricter autonomous classification.
-   - With `--agent-ready-only`, exclude `needs-refinement` and `human-only` issues from the recommendation, parallel candidates, and ranked shortlist. Retain valuable excluded issues in `High-value but not agent-ready` with their specific gaps. If no issue passes, say so; do not weaken the filter.
+   - When `--agent-ready` or equivalent autonomous-implementation intent was requested, separately classify `agent-readiness` as `agent-ready`, `needs-refinement`, or `human-only`. Ordinary `ready` means work can begin; `agent-ready` is stricter and means an implementation agent can complete and verify the issue without obtaining a human decision, unavailable design, privileged access, or subjective sign-off. Otherwise do not perform or report the stricter autonomous classification.
+   - With `--agent-ready`, exclude `needs-refinement` and `human-only` issues from the recommendation, parallel candidates, and ranked shortlist. Retain valuable excluded issues in `High-value but not agent-ready` with their specific gaps. If no issue passes, say so; do not weaken the filter.
    - If `--interest` was provided, add a `preference fit` assessment based on title, description, labels, project, customer needs, comments, and likely implementation area. Preference fit can break ties or surface a close alternative, but it must not outrank a materially higher-value ready issue unless the user explicitly asked for `only` that work type.
    - Write a `plain-language summary` for every issue that will appear in the report. Use one or two concise sentences that explain the problem to solve or the outcome that will change and why it matters. Prefer familiar words and direct phrasing. Never summarize an issue with internal jargon, unexplained acronyms, implementation details, or a restatement of its title.
 
@@ -113,7 +113,7 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
 9. **Report the recommendation.** Use this structure:
 
    ```text
-   Applied criteria: {team, states, assignee pool, project/label, agent-ready-only, interest}
+   Applied criteria: {team, states, assignee pool, project/label, agent-ready, interest}
    Recommended next issue: {IDENTIFIER} - {title}
    Plain-language summary: {one or two concise sentences explaining the problem or outcome and why it matters}
    Why this one: {3-5 bullets on value, readiness, urgency, unblock impact}

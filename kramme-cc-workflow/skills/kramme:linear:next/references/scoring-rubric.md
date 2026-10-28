@@ -77,7 +77,7 @@ For each `agent-ready` specification, assess startability separately: `ready-to-
 
 Do not infer agent-readiness from priority, an `agent-ready` label, assignment, state name, or a phrase such as "straightforward" alone. Those are supporting signals, not substitutes for the checklist. Record evidence for every passing item and gaps for failing or unknown items. Never promote an issue while required evidence is unknown.
 
-When `--agent-ready-only` is active, these classes are a hard eligibility gate rather than a score adjustment.
+When `--agent-ready` is active, these classes are a hard eligibility gate rather than a score adjustment.
 
 ## Parallelism Checklist
 
