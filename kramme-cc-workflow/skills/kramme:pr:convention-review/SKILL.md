@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:convention-review
-description: Review PR and local changes for convention drift and overcaution around new patterns, dependencies, abstractions, or defensive complexity when requested or delegated by kramme:pr:review-convergence. Compare documented rules and mined peer-file practice; every finding cites evidence. Supports --inline and produces review output without editing source. Not for general code quality or spec review.
+description: "Flag drift from documented rules and mined peer-file practice, plus overcaution, citing evidence for every finding. Use when asked or delegated by kramme:pr:review-convergence. Never edits source."
 argument-hint: "[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--baseline <path>] [--inline] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true

@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:generate-description
-description: Write a structured PR title and body from git diff, commit log, and Linear context when requested or delegated by a PR workflow. With --check, report drift between an open PR's title and body and its branch diff: false claims, missing major changes, stale scope, missing risk callouts. Model callers pass --no-update and stay read-only; only a direct user invocation may update an existing PR.
+description: "Draft or --check a PR title and body against the diff, commit log, and Linear context. Use when asked or delegated by a PR workflow; model callers pass --no-update and never edit a PR."
 argument-hint: "[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
 disable-model-invocation: false
 user-invocable: true

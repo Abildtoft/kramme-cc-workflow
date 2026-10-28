@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:create
-description: Create a PR when explicitly requested or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr --ship. Generates the description, rewrites unpublished work into narrative commits, and publishes with lease protection; safely reuses or appends to an existing remote at or behind local HEAD.
+description: "Publish a new PR: narrative commits, generated title and body, self-assignment, lease-protected first push. Use when asked or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr --ship."
 argument-hint: "[--auto] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: false
 user-invocable: true

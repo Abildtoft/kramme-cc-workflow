@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:product-review
-description: Review the product, UX, visual, and accessibility experience of PR and local changes with specialized reviewers; UX and visual reviewers join when UI files changed. Use when explicitly requested or delegated by kramme:pr:github-review. Supports --inline and --team.
+description: "Assess product value, UX heuristics, visual consistency, and accessibility of local changes with specialist agents. Use when asked or delegated by kramme:pr:github-review with --inline."
 argument-hint: "[--subagent-model <model>] [app-url|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline] [--no-diff-comments]"
 disable-model-invocation: false
 user-invocable: true

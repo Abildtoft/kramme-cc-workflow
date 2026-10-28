@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:review-convergence
-description: Converge a clean committed feature branch when explicitly requested or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr. Runs gut-check, code, convention, overengineering, and refactor gates at a depth chosen from the deterministic risk floor, with bounded remediation and verification against authoritative requirements. Optional --adversarial-review requires a different model provider. Not for implementation, publication, CI repair, or read-only audits.
+description: "Converge a clean committed branch: ordered quality gates, bounded remediation, final verification against frozen requirements. Use when asked or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr."
 argument-hint: "[--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]"
 disable-model-invocation: false
 user-invocable: true

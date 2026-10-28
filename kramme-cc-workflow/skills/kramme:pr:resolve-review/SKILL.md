@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:resolve-review
-description: Resolve review findings from code reviews, GitHub, or Conductor diff comments by implementing in-scope fixes on the current branch and recording outcomes. Use when explicitly requested or delegated by kramme:pr:github-review-reply or kramme:pr:review-convergence. --team parallelizes by file area.
+description: "Implement fixes for code-review or Conductor diff-comment findings as commits. Use when asked, or as the --implement-only engine of kramme:pr:github-review-reply or review-convergence remediation."
 argument-hint: "[--team] [--implement-only] [--granular] [--severity ...] [--source local|online|conductor] [review|url|instructions]"
 disable-model-invocation: false
 user-invocable: true

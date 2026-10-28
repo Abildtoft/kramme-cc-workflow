@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:rebase
-description: Rebase current branch onto its Pull Request target or configured workbench, auto-resolving conflicts with safe defaults unless dangerous --auto is used, then force push with --force-with-lease. Use when your PR is behind the base branch or when delegated by kramme:pr:fix-ci with --force-push. Optionally delegates post-push CI stabilization to kramme:pr:fix-ci. Detects GitHub stacks (gh-stack) and cascade-rebases the whole stack instead of the single branch.
+description: "Rebase onto the PR target and force-push with a pinned lease; cascades gh-stack stacks. Use when asked or when kramme:pr:fix-ci delegates with --force-push."
 argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>] [--all-open]"
 disable-model-invocation: false
 user-invocable: true

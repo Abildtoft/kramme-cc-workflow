@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:triage-risk
-description: "Decide how much review the current branch needs before review starts. Combines deterministic risk signals (sensitive paths, change size, dependencies, missing tests, secret-shaped values, and optional repository policy) with a read of the diff, then returns a low, medium, or high tier, the review commands to run, and the decisions that need a human. Read-only and inline. Not for finding defects (use kramme:pr:code-review) or a first-reader reaction (use kramme:pr:gut-check)."
+description: "Decide how much review the current branch needs: a low, medium, or high tier from deterministic risk signals plus a diff read, and the review commands to run. Read-only; use when asked."
 argument-hint: "[--base <branch>]"
 disable-model-invocation: false
 user-invocable: true

@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:overengineering-review
-description: Review branch and local changes for unnecessary complexity, speculative generality, or unlikely edge-case handling when requested or delegated by kramme:pr:review-convergence. Judge necessity against actual requirements using a finder and adversarial justification pass; retain surviving judgment calls. Supports --requirements and --inline; produces review output without editing source. Not for baseline convention drift or general code quality.
+description: "Flag speculative generality and unlikely edge-case handling the requirements do not need, after an adversarial justification pass. Use when asked or delegated by kramme:pr:review-convergence."
 argument-hint: "[--subagent-model <model>] [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]"
 disable-model-invocation: false
 user-invocable: true

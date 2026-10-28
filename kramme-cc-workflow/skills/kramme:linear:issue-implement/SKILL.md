@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:issue-implement
-description: Requires Linear MCP. Implement a Linear issue when explicitly requested or when kramme:linear:issue-to-pr delegates its guarded --auto phase. Includes branch setup, reference mapping, planning, and verification. Pass --set-in-progress to move the issue to its team's started status, preferring In Progress, before any branch or code work. Local SIW work must be transferred to Linear first.
+description: "Requires Linear MCP. Implement one Linear issue: branch setup, reference mapping, planning, coding, fast verification. Use when asked or when kramme:linear:issue-to-pr delegates its guarded --auto phase."
 argument-hint: "<ISSUE-ID> [--auto] [--set-in-progress]"
 disable-model-invocation: false
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Implement Linear Issue
 
-Start implementing a Linear issue through an extensive planning phase before any code changes.
+Start implementing a Linear issue through an extensive planning phase before any code changes. Local SIW work must be transferred to Linear first.
 
 ### Model Invocation Contract
 

@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:fix-ci
-description: Fix PR CI and review feedback when explicitly requested or delegated by kramme:linear:issue-to-pr, kramme:code:plan-to-pr, or kramme:pr:rebase. Pushes targeted fixes until checks pass, with bounded retries. Offers a rebase for an unscoped branch behind its base, or decides it under --rebase or --auto, and accepts a validated archived plan for scoped shipping or recovery.
+description: "Repair failing checks and reviewer feedback on an open PR with targeted pushes and retry limits. Use when asked or delegated by kramme:linear:issue-to-pr, kramme:code:plan-to-pr, or kramme:pr:rebase."
 argument-hint: "[--fixup] [--auto] [--no-consolidate] [--rebase] [--scope-plan <archived-plan>]"
 disable-model-invocation: false
 user-invocable: true
