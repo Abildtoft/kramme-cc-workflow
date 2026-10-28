@@ -150,7 +150,7 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
    Every issue shown anywhere in the report must include its plain-language summary. Omit the Agent-readiness field and columns when autonomous readiness was not requested. Omit empty sections except `Parallel candidates`; when fewer than two good parallel candidates exist, preserve that section and explain the exhausted search rather than silently omitting it.
 
 10. **Offer to start the work in Conductor cloud.** Skip this step when the ranked shortlist is empty.
-   - `{cloud-launch-helper}` is `${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:next/scripts/cloud-launch.py`. Run `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:next/scripts/cloud-launch.py" detect` and parse its JSON. A cloud workspace is one where `CONDUCTOR_IS_LOCAL` is `0`.
-   - On `not_cloud`, end without mentioning Conductor. Local workspaces cannot be created from a session.
-   - On `unavailable`, add one line, `Conductor cloud workspace detected, but new workspaces can't be started from here: {message}.`, and end.
-   - On `ok`, read `references/cloud-launch.md` and follow it. It narrows the shortlist to issues an agent can finish in a cloud workspace, asks which to start and whether Medium and High UI/UX issues should use a different model, and starts the confirmed issues with `{cloud-launch-helper}`.
+    - `{cloud-launch-helper}` is `${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:next/scripts/cloud-launch.py`. Run `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:next/scripts/cloud-launch.py" detect` and parse its JSON. A cloud workspace is one where `CONDUCTOR_IS_LOCAL` is `0`.
+    - On `not_cloud`, end without mentioning Conductor. Local workspaces cannot be created from a session.
+    - On `unavailable`, add one line, `Conductor cloud workspace detected, but new workspaces can't be started from here: {message}.`, and end.
+    - On `ok`, read `references/cloud-launch.md` and follow it. It narrows the shortlist to issues an agent can finish in a cloud workspace, asks which to start and whether Medium and High UI/UX issues should use a different model, and starts the confirmed issues with `{cloud-launch-helper}`.
