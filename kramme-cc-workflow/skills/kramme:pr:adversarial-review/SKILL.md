@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:adversarial-review
-description: Run one read-only Pull Request review through a model provider different from the active Claude Code or Codex host when explicitly requested or delegated as the opt-in --adversarial-review gate of kramme:pr:review-convergence. Validates findings against the committed diff and reports provider and tree identity. Not for same-provider review, implementation, dirty trees, or automatic background review.
+description: "Run one read-only PR review through a different model provider and validate its findings against the committed diff. Use only when explicitly requested or as the opt-in --adversarial-review gate."
 argument-hint: "[--provider claude|codex] [--model <id>] [--base <branch>] [--requirements <authoritative requirements>]"
 disable-model-invocation: false
 user-invocable: true

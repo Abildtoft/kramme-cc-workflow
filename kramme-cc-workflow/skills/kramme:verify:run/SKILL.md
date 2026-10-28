@@ -1,6 +1,6 @@
 ---
 name: kramme:verify:run
-description: Run verification checks (tests, formatting, builds, linting, type checking) for affected code based on the project's configuration. Defaults to the full pre-push sweep; --fast selects the iteration tier. Reuses a green run only when its tree, scope, and inputs still match.
+description: "Run tests, lint, formatting, builds, and type checks configured by the project; --fast picks the iteration tier. Use when asked, before claiming completion, or when a workflow delegates."
 argument-hint: "[--fast | --full] [--force] [--base <branch> [--base-commit <oid>]]"
 disable-model-invocation: false
 user-invocable: true

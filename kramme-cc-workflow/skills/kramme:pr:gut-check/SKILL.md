@@ -1,6 +1,6 @@
 ---
 name: kramme:pr:gut-check
-description: "Asks one question about the current branch and answers it plainly: does anything here jump out as strange, unusual, or unnecessary? A fast first-reader reaction with no rubric, scores, or report file. Use it before deeper review, or when a branch feels off but you cannot name why. Not for systematic code quality (use kramme:pr:code-review), complexity judged against requirements (use kramme:pr:overengineering-review), or drift from codebase practice (use kramme:pr:convention-review)."
+description: "Fast first-reader reaction: does anything here look strange, unusual, or unnecessary? No rubric, scores, or report file. Use when asked, before deeper review, or as review convergence Gate 0."
 argument-hint: "[--base <branch>] [--intent <text>]"
 disable-model-invocation: false
 user-invocable: true

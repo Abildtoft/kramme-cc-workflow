@@ -1,6 +1,6 @@
 ---
 name: kramme:git:recreate-commits
-description: Recreate commits with narrative-quality history when the user asks or kramme:pr:create delegates its guarded rewrite phase. Not for merged or shared branches — it rewrites history and uses --force-with-lease unless remote synchronization is disabled.
+description: "Rewrite unpublished history into narrative commits behind a backup ref. Use when asked or when kramme:pr:create delegates its guarded rewrite. Not for merged or shared branches."
 argument-hint: "[--auto] [--coarse|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]"
 disable-model-invocation: false
 user-invocable: true

@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:review-pr
-description: Requires Linear MCP and the GitHub CLI. Read-only check that an existing Pull Request implements its Linear issue, tracing requirements to diff, code, and test evidence and reporting gaps and undocumented additions. Use when explicitly requested or delegated by kramme:pr:github-review.
+description: "Requires Linear MCP and gh. Audit an existing PR against its Linear issue, tracing each requirement to diff, code, and test evidence. Use when asked or delegated by kramme:pr:github-review."
 argument-hint: "[PR-number|PR-url] [ISSUE-ID]"
 disable-model-invocation: false
 user-invocable: true

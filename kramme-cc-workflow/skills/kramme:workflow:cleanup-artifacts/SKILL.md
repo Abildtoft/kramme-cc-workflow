@@ -1,6 +1,6 @@
 ---
 name: kramme:workflow:cleanup-artifacts
-description: Delete workflow artifacts when explicitly requested or delegated by kramme:linear:issue-to-pr --ship. Covers review/audit/QA reports, generated plans, SIW tracking, diagrams, and context evidence. Direct mode confirms deletion; guarded --auto keeps permanent specs and shared diagrams and requires Trash, with no permanent-deletion fallback. User-only --siw retires the whole local siw/ workspace after Linear transfer or abandonment.
+description: "Delete disposable workflow artifacts: review, audit, and QA reports, generated plans, diagrams, context evidence. Use when asked or delegated by kramme:linear:issue-to-pr --ship with --auto; --siw is user-only."
 argument-hint: "[--auto | --siw]"
 disable-model-invocation: false
 user-invocable: true

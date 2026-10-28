@@ -1,6 +1,6 @@
 ---
 name: kramme:code:work-from-plan
-description: "Route and execute one standalone `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist when explicitly requested or delegated by kramme:code:plan-to-pr. Implements only bounded current-branch work and routes Linear issues, local SIW issues, and unready plans elsewhere. Not for planning from scratch, PR creation, CI watching, or multi-phase initiatives."
+description: "Route and execute one standalone implementation plan, such as a PR_PLAN_*.md file or pasted checklist, as bounded current-branch work. Use when asked or delegated by kramme:code:plan-to-pr."
 argument-hint: "[plan path | inline plan]"
 disable-model-invocation: false
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # Work From Plan
 
-Route a standalone implementation plan into the right existing workflow, then execute only when the work is bounded enough for direct current-branch implementation.
+Route a standalone implementation plan into the right existing workflow, then execute only when the work is bounded enough for direct current-branch implementation. Use it when the user provides a `PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist that is not already a Linear issue or local SIW preparation artifact; it delegates Linear work, stops local SIW issues with a transfer recommendation, and proceeds directly only for bounded current-branch work.
 
 This skill is an adapter, not a full autonomous pipeline. It does not create branches, create Pull Requests, watch CI, push commits, or turn unclear plans into invented requirements.
 
