@@ -1,19 +1,23 @@
 ---
 name: kramme:linear:next
-description: "Requires Linear MCP. Finds up to 10 valuable ready-to-start issues from a Linear team by default, using structured flags or a free-form query, including explicit states and autonomous agent-readiness. Actively finds a strong parallel set and gives every reported issue a plain-language summary. Use when deciding what to pick up next. Not for creating, editing, implementing, or closing Linear issues."
+description: "Requires Linear MCP. Finds up to 10 valuable ready-to-start issues from a Linear team by default, using structured flags or a free-form query, including explicit states and autonomous agent-readiness. Actively finds a strong parallel set and gives every reported issue a plain-language summary. In a Conductor cloud workspace, offers to start confirmed issues in new workspaces. Use when deciding what to pick up next. Not for creating, editing, or closing Linear issues."
 argument-hint: "[team or selection query] [--state <name>] [--agent-ready] [--interest <preference>] [--mine|--unassigned|--both] [--project <name>] [--label <name>] [--count <n>] [--limit <n>]"
 disable-model-invocation: true
 user-invocable: true
+permissions:
+  - shell
+  - env
 ---
 
 # Select Next Linear Issue
 
-Find the most valuable ready-to-start issues in a Linear team, optionally constrained by workflow state, autonomous agent-readiness, and the type of work the user wants to do. The skill tries to find 10 ready issues by default, recommends the best one, and actively searches for 2-4 additional good issues that can be implemented in parallel with it, explaining every reported issue in plain language. It is read-only: it gathers Linear context, ranks candidates, explains the recommendation, and points to `kramme:linear:issue-implement` for follow-up.
+Find the most valuable ready-to-start issues in a Linear team, optionally constrained by workflow state, autonomous agent-readiness, and the type of work the user wants to do. The skill tries to find 10 ready issues by default, recommends the best one, and actively searches for 2-4 additional good issues that can be implemented in parallel with it, explaining every reported issue in plain language. It is read-only: it gathers Linear context, ranks candidates, explains the recommendation, and points to `kramme:linear:issue-implement` for follow-up. The one exception is Step 10: in a Conductor cloud workspace it offers to start the shortlisted issues, each in its own new workspace, and starts only the ones the user confirms.
 
 ## Boundaries
 
 - **Do:** inspect available team issues, compare assigned-to-me and unassigned work, account for blockers/readiness/value, assess autonomous agent-readiness when requested, rank up to `--count` ready issues, and identify independent issues that can run in parallel.
-- **Do not:** create branches, change assignees, move statuses, add comments, create issues, or start implementation.
+- **Do not:** create branches, change assignees, move statuses, add comments, create issues, or start implementation in this workspace.
+- **Cloud launch:** only Step 10 may start work, and only by creating new Conductor cloud workspaces for issues the user confirms in this run. Each workspace runs `kramme:linear:issue-to-pr {ISSUE-ID} --ship`.
 - **Handoff:** once the user picks an issue, suggest `kramme:linear:issue-implement {ISSUE-ID}`.
 
 ## Arguments
@@ -93,7 +97,7 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
    - `clarify-first`: valuable, but missing acceptance criteria, owner decision, design detail, or technical boundary.
    - `blocked`: blocked by another issue, external dependency, approval, or explicit blocked/waiting state/label.
    - `not-now`: low value, stale without evidence, duplicate-looking, or outside the current team/project focus.
-   - When `--agent-ready` or equivalent autonomous-implementation intent was requested, separately classify `agent-readiness` as `agent-ready`, `needs-refinement`, or `human-only`. Ordinary `ready` means work can begin; `agent-ready` is stricter and means an implementation agent can complete and verify the issue without obtaining a human decision, unavailable design, privileged access, or subjective sign-off. Otherwise do not perform or report the stricter autonomous classification.
+   - When `--agent-ready` or equivalent autonomous-implementation intent was requested, separately classify `agent-readiness` as `agent-ready`, `needs-refinement`, or `human-only`. Ordinary `ready` means work can begin; `agent-ready` is stricter and means an implementation agent can complete and verify the issue without obtaining a human decision, unavailable design, privileged access, or subjective sign-off. Otherwise do not perform or report the stricter autonomous classification. Step 10 makes the same assessment for the issues it offers to start in Conductor cloud.
    - With `--agent-ready`, exclude `needs-refinement` and `human-only` issues from the recommendation, parallel candidates, and ranked shortlist. Retain valuable excluded issues in `High-value but not agent-ready` with their specific gaps. If no issue passes, say so; do not weaken the filter.
    - If `--interest` was provided, add a `preference fit` assessment based on title, description, labels, project, customer needs, comments, and likely implementation area. Preference fit can break ties or surface a close alternative, but it must not outrank a materially higher-value ready issue unless the user explicitly asked for `only` that work type.
    - Write a `plain-language summary` for every issue that will appear in the report. Use one or two concise sentences that explain the problem to solve or the outcome that will change and why it matters. Prefer familiar words and direct phrasing. Never summarize an issue with internal jargon, unexplained acronyms, implementation details, or a restatement of its title.
@@ -145,3 +149,8 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
 
    Every issue shown anywhere in the report must include its plain-language summary. Omit the Agent-readiness field and columns when autonomous readiness was not requested. Omit empty sections except `Parallel candidates`; when fewer than two good parallel candidates exist, preserve that section and explain the exhausted search rather than silently omitting it.
 
+10. **Offer to start the work in Conductor cloud.** Skip this step when the ranked shortlist is empty.
+   - `{cloud-launch-helper}` is `${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:next/scripts/cloud-launch.py`. Run `python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:next/scripts/cloud-launch.py" detect` and parse its JSON. A cloud workspace is one where `CONDUCTOR_IS_LOCAL` is `0`.
+   - On `not_cloud`, end without mentioning Conductor. Local workspaces cannot be created from a session.
+   - On `unavailable`, add one line, `Conductor cloud workspace detected, but new workspaces can't be started from here: {message}.`, and end.
+   - On `ok`, read `references/cloud-launch.md` and follow it. It narrows the shortlist to issues an agent can finish in a cloud workspace, asks which to start and whether Medium and High UI/UX issues should use a different model, and starts the confirmed issues with `{cloud-launch-helper}`.

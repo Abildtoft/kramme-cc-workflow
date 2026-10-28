@@ -85,6 +85,7 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/schema.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/strings.py",
       "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/scripts/preflight.py",
+      "kramme-cc-workflow/skills/kramme:linear:next/scripts/cloud-launch.py",
       "kramme-cc-workflow/skills/kramme:pr:create/scripts/pr-create-preflight.py",
       "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
       "kramme-cc-workflow/scripts/risk-signals.py",
@@ -420,6 +421,11 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-next-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:linear:next/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/python/test_linear_next_cloud_launch.py",
       "skills": ["kramme-cc-workflow/skills/kramme:linear:next/SKILL.md"]
     },
     {

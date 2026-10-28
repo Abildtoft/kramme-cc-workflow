@@ -71,7 +71,7 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "Linear next remains read-only" {
+@test "Linear next keeps its own workspace read-only" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
@@ -81,7 +81,8 @@
     grep -qF "user-invocable: true" "$skill"
     grep -qF "MISSING REQUIREMENT: Linear MCP is required to select the next issue" "$skill"
     grep -qF "Keep the analysis read-only" "$skill"
-    grep -qF "create branches, change assignees, move statuses" "$skill"
+    grep -qF "create branches, change assignees, move statuses, add comments, create issues, or start implementation in this workspace." "$skill"
+    grep -qF "only Step 10 may start work, and only by creating new Conductor cloud workspaces for issues the user confirms in this run." "$skill"
     grep -qF "kramme:linear:issue-implement" "$skill"
   '
 
@@ -143,6 +144,34 @@
     grep -qF "| \`High\` |" "$rubric"
     grep -qF "Do not judge from labels or title keywords alone." "$rubric"
     grep -qF "The estimate describes the work; it does not change value, readiness or rank." "$rubric"
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear next offers Conductor cloud workspaces only in cloud and only on an explicit yes" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:linear:next/SKILL.md"
+    launch="skills/kramme:linear:next/references/cloud-launch.md"
+
+    test -f "$launch"
+    test -f "skills/kramme:linear:next/scripts/cloud-launch.py"
+    grep -qF "10. **Offer to start the work in Conductor cloud.**" "$skill"
+    grep -qF "scripts/cloud-launch.py\" detect" "$skill"
+    grep -qF "A cloud workspace is one where \`CONDUCTOR_IS_LOCAL\` is \`0\`." "$skill"
+    grep -qF "On \`not_cloud\`, end without mentioning Conductor." "$skill"
+    grep -qF "On \`ok\`, read \`references/cloud-launch.md\` and follow it." "$skill"
+    grep -qF "Nothing here runs without the user'"'"'s explicit yes in this run." "$launch"
+    grep -qF "Offer an issue only when it is \`agent-ready\` with startability \`ready-to-start\`" "$launch"
+    grep -qF "whose first message runs \`kramme:linear:issue-to-pr {ISSUE-ID} --ship\`" "$launch"
+    grep -qF "Name every offered issue whose state type is not \`backlog\`" "$launch"
+    grep -qF "asks once in that workspace before moving such an issue to its started status" "$launch"
+    grep -qF "whether those issues should use a different model than the None and Low ones" "$launch"
+    grep -qF "Treat anything other than a clear yes with a selection as no, and start nothing." "$launch"
+    grep -qF "Accept only the \`claude\` and \`codex\` agents" "$launch"
+    grep -qF "Never run \`launch\` again for the same issues in this run." "$launch"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
