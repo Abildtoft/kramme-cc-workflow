@@ -20,7 +20,28 @@ sources:
   - id: claude-plugin-loading
     url: https://code.claude.com/docs/en/plugins/loading.md
     title: "Claude Code plugin loading reference"
-    rationale: "Documents the plugin-root override and installation records by scope; the checker reports cached and registered copies without inferring the active session."
+    rationale: "Documents the plugin-root override, installation records by scope, and precedence of settings-file autoUpdate over the per-marketplace record; the checker resolves local policy without inferring the active session."
     usage: inspiration
-    last_reviewed_at: 2026-10-22
-    baseline_hash: "sha256:186db8f211a9294bf61b5dadead619da1d71324e54758109463a26827c40aac9"
+    last_reviewed_at: 2026-10-28
+    baseline_hash: "sha256:4384e0e85677682e34e68362a70b06e4a6ef74a7f03e3ad044c0e817b1c35c0e"
+  - id: claude-settings
+    url: https://code.claude.com/docs/en/settings.md
+    title: "Claude Code settings guide"
+    rationale: "Defines settings locations, precedence, and main-checkout local-file rules; the checker separates session-directory shared settings from local overrides and qualifies the result because session settings and trust are not visible to it."
+    usage: inspiration
+    last_reviewed_at: 2026-10-28
+    baseline_hash: "sha256:70064d76e67c335615d678ee493c16e9315e89a17813c31365ffbca673f89d11"
+  - id: claude-marketplace-settings
+    url: https://code.claude.com/docs/en/settings-reference.md
+    title: "Claude Code settings reference"
+    rationale: "Defines whole-entry marketplace replacement and the additionalMarketplaces alias; the checker preserves the registry fallback when a winning entry omits autoUpdate."
+    usage: inspiration
+    last_reviewed_at: 2026-10-28
+    baseline_hash: "sha256:3e61bb59ba30495277af107905960770c81dca87a15fff7bdd04844a63e9d759"
+  - id: claude-managed-settings
+    url: https://code.claude.com/docs/en/managed-settings.md
+    title: "Claude Code managed settings guide"
+    rationale: "Defines platform-specific managed settings paths and drop-in fragments; the checker reads the base file and reports unknown for fragment merging or policy outside the files it can inspect."
+    usage: inspiration
+    last_reviewed_at: 2026-10-28
+    baseline_hash: "sha256:b8331e890c11bd57aff6e22a16a2f25f2bd1745093fd3977a24fdf6ee81d043b"

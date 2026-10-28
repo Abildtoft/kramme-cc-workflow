@@ -308,6 +308,22 @@ detect_codex_plugin() {
   fi
 }
 
+# Prints the Claude Code plugins root; fails when no host directory is set.
+claude_plugins_root() {
+  local root
+
+  if [ -n "${CLAUDE_CODE_PLUGIN_CACHE_DIR:-}" ]; then
+    root="$CLAUDE_CODE_PLUGIN_CACHE_DIR"
+  elif [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+    root="$CLAUDE_CONFIG_DIR/plugins"
+  elif [ -n "${HOME:-}" ]; then
+    root="$HOME/.claude/plugins"
+  else
+    return 1
+  fi
+  printf '%s\n' "${root%/}"
+}
+
 detect_claude_plugin_cache() {
   local plugins_root
   local cache_dir
@@ -317,17 +333,10 @@ detect_claude_plugin_cache() {
   local installed_path
   local registered=""
 
-  if [ -n "${CLAUDE_CODE_PLUGIN_CACHE_DIR:-}" ]; then
-    plugins_root="$CLAUDE_CODE_PLUGIN_CACHE_DIR"
-  elif [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
-    plugins_root="$CLAUDE_CONFIG_DIR/plugins"
-  elif [ -n "${HOME:-}" ]; then
-    plugins_root="$HOME/.claude/plugins"
-  else
+  if ! plugins_root="$(claude_plugins_root)"; then
     echo "not checked (HOME, CLAUDE_CONFIG_DIR, and CLAUDE_CODE_PLUGIN_CACHE_DIR unset)"
     return
   fi
-  plugins_root="${plugins_root%/}"
   cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
   versions="$(cached_versions "$cache_dir")"
   if [ -z "$versions" ]; then
@@ -352,7 +361,178 @@ detect_claude_plugin_cache() {
   printf '%s%s\n' "$versions" "${registered:+ (registered $registered)}"
 }
 
-detect_plugin_copy() {
+# Resolve the file-based managed settings location for the current host.
+claude_managed_settings_file() {
+  case "$(uname -s 2> /dev/null || true)" in
+    Darwin)
+      printf '%s\n' "/Library/Application Support/ClaudeCode/managed-settings.json"
+      ;;
+    Linux*)
+      printf '%s\n' "/etc/claude-code/managed-settings.json"
+      ;;
+    MINGW* | MSYS* | CYGWIN*)
+      if [ -n "${PROGRAMFILES:-}" ]; then
+        printf '%s\n' "${PROGRAMFILES%/}/ClaudeCode/managed-settings.json"
+      fi
+      ;;
+  esac
+}
+
+claude_user_settings_file() {
+  if [ -n "${CLAUDE_CONFIG_DIR:-}" ]; then
+    printf '%s\n' "${CLAUDE_CONFIG_DIR%/}/settings.json"
+  elif [ -n "${HOME:-}" ]; then
+    printf '%s\n' "$HOME/.claude/settings.json"
+  fi
+}
+
+# Local settings use the main checkout on Unix when it is owned by this user.
+# Shared settings always use the session directory. Also read the legacy local
+# file in that directory, below the root local file in precedence.
+claude_project_settings_files() {
+  local session_dir="${CLAUDE_PROJECT_DIR:-$PWD}"
+  local home_dir="${HOME:-}"
+  local root=""
+  local line
+  local entry
+  local worktrees
+
+  session_dir="$(cd -- "$session_dir" 2> /dev/null && pwd -P)" || return 1
+  if [ -d "$home_dir" ]; then
+    home_dir="$(cd -- "$home_dir" && pwd -P)" || return 1
+  fi
+  case "$(uname -s 2> /dev/null || true)" in
+    MINGW* | MSYS* | CYGWIN*) ;;
+    *)
+      worktrees="$(git -C "$session_dir" worktree list --porcelain 2> /dev/null || true)"
+      while IFS= read -r line; do
+        case "$line" in
+          'worktree '*)
+            root="${line#worktree }"
+            break
+            ;;
+        esac
+      done <<< "$worktrees"
+      # A bare repository, a home-directory repository, or an unowned root
+      # does not relocate the local settings file.
+      if [ -n "$root" ]; then
+        root="$(cd -- "$root" 2> /dev/null && pwd -P)" || return 1
+      fi
+      if [ -z "$root" ] || [ ! -e "$root/.git" ] || [ "$root" = "$home_dir" ]; then
+        root=""
+      else
+        for entry in "$root" "$root/.git" "$root/.claude"; do
+          if [ -e "$entry" ] && [ ! -O "$entry" ]; then
+            root=""
+            break
+          fi
+        done
+      fi
+      ;;
+  esac
+  if [ -n "$root" ] && [ "$root" != "$session_dir" ]; then
+    printf '%s\n' "$root/.claude/settings.local.json"
+  fi
+  printf '%s\n' "$session_dir/.claude/settings.local.json"
+  printf '%s\n' "$session_dir/.claude/settings.json"
+}
+
+# Prints true, false, absent (no entry), or inherit (entry without autoUpdate).
+# A higher-precedence entry replaces the whole entry from lower settings files.
+# Malformed settings return non-zero so the caller can report an unknown status.
+claude_auto_update_setting() {
+  jq -er '
+    if type != "object" then error("settings root is not an object") else . end
+    | (if has("extraKnownMarketplaces") then .extraKnownMarketplaces
+       else .additionalMarketplaces end) as $marketplaces
+    | if $marketplaces == null then "absent"
+      elif ($marketplaces | type) != "object" then error("marketplaces is not an object")
+      elif ($marketplaces | has("kramme-cc-workflow") | not) then "absent"
+      else $marketplaces["kramme-cc-workflow"]
+        | if type != "object" then error("marketplace entry is not an object")
+          elif has("autoUpdate") | not then "inherit"
+          elif (.autoUpdate | type) != "boolean" then error("autoUpdate is not boolean")
+          else .autoUpdate | tostring
+          end
+      end
+  ' "$1" 2> /dev/null
+}
+
+# Local-file /plugin auto-update policy. Session-only settings, remote managed
+# policy, OS policy, and workspace trust cannot be inferred by this shell probe.
+detect_claude_auto_update() {
+  local plugins_root
+  local file
+  local settings_file
+  local setting
+  local dropin
+  local project_settings
+  local value
+
+  if ! plugins_root="$(claude_plugins_root)"; then
+    echo "not checked (HOME, CLAUDE_CONFIG_DIR, and CLAUDE_CODE_PLUGIN_CACHE_DIR unset)"
+    return
+  fi
+  if ! command -v jq > /dev/null 2>&1; then
+    echo "unknown (jq unavailable)"
+    return
+  fi
+
+  settings_file="$(claude_managed_settings_file)"
+  if [ -n "$settings_file" ]; then
+    for dropin in "${settings_file%/*}/managed-settings.d"/*.json; do
+      [ -e "$dropin" ] || continue
+      echo "unknown (managed settings fragments; check /plugin)"
+      return
+    done
+  fi
+
+  if ! project_settings="$(claude_project_settings_files)"; then
+    echo "unknown (session settings directory unavailable; check /plugin)"
+    return
+  fi
+  while IFS= read -r settings_file; do
+    [ -n "$settings_file" ] || continue
+    [ -f "$settings_file" ] || continue
+    if ! setting="$(claude_auto_update_setting "$settings_file")"; then
+      echo "unknown (unreadable: $settings_file)"
+      return
+    fi
+    case "$setting" in
+      true)
+        echo "on (local files; confirm session policy in /plugin)"
+        return
+        ;;
+      false)
+        echo "off (local files; confirm session policy in /plugin)"
+        return
+        ;;
+      inherit) break ;;
+    esac
+  done < <(
+    claude_managed_settings_file
+    printf '%s\n' "$project_settings"
+    claude_user_settings_file
+  )
+
+  file="$plugins_root/known_marketplaces.json"
+  if [ ! -f "$file" ]; then
+    echo "not registered"
+    return
+  fi
+  if ! value="$(jq -er 'if has("kramme-cc-workflow") then (.["kramme-cc-workflow"].autoUpdate == true | tostring) else "absent" end' "$file" 2> /dev/null)"; then
+    echo "unknown (unreadable: $file)"
+    return
+  fi
+  case "$value" in
+    true) echo "on (local files; confirm session policy in /plugin)" ;;
+    false) echo "off (local files; confirm session policy in /plugin)" ;;
+    *) echo "not registered" ;;
+  esac
+}
+
+# Prints the manifest version of the plugin copy running this checker, if any.
+plugin_copy_version() {
   local manifest
   local line
   local version_pattern='"version"[[:space:]]*:[[:space:]]*"([^"]+)"'
@@ -361,12 +541,73 @@ detect_plugin_copy() {
     [ -f "$manifest" ] && [ -r "$manifest" ] || continue
     while IFS= read -r line || [ -n "$line" ]; do
       if [[ "$line" =~ $version_pattern ]]; then
-        printf '%s (%s)\n' "$PLUGIN_ROOT" "${BASH_REMATCH[1]}"
-        return
+        printf '%s\n' "${BASH_REMATCH[1]}"
+        return 0
       fi
     done < "$manifest"
   done
-  printf '%s (version unknown)\n' "$PLUGIN_ROOT"
+  return 0
+}
+
+detect_plugin_copy() {
+  local version
+
+  version="$(plugin_copy_version)"
+  printf '%s (%s)\n' "$PLUGIN_ROOT" "${version:-version unknown}"
+}
+
+# Resolves the update-check hook's state file the way the hook does.
+update_check_state_file() {
+  if [ -n "${KRAMME_UPDATE_CHECK_FILE:-}" ]; then
+    printf '%s\n' "$KRAMME_UPDATE_CHECK_FILE"
+  elif [ -n "${XDG_STATE_HOME:-}" ]; then
+    printf '%s\n' "$XDG_STATE_HOME/kramme-cc-workflow/update-check.json"
+  elif [ -n "${HOME:-}" ]; then
+    printf '%s\n' "$HOME/.local/state/kramme-cc-workflow/update-check.json"
+  else
+    return 1
+  fi
+}
+
+# Reports the newest release the update-check hook last saw. The checker itself
+# never fetches anything.
+detect_plugin_update() {
+  local state_file
+  local summary
+
+  if ! state_file="$(update_check_state_file)"; then
+    echo "not checked (HOME, XDG_STATE_HOME, and KRAMME_UPDATE_CHECK_FILE unset)"
+    return
+  fi
+  if [ ! -f "$state_file" ]; then
+    echo "not checked yet"
+    return
+  fi
+  if ! command -v jq > /dev/null 2>&1; then
+    echo "unknown (jq unavailable)"
+    return
+  fi
+  if ! summary="$(jq -er --arg installed "$(plugin_copy_version)" '
+    def release: test("^[0-9]+\\.[0-9]+\\.[0-9]+$");
+    def parts: split(".") | map(tonumber);
+    (.latestVersion // "") as $latest
+    | if ($latest | type) != "string" or ($latest | release | not) then
+        "not checked yet"
+      else
+        (if ($installed | release | not) then "latest release \($latest)"
+         elif ($latest | parts) > ($installed | parts) then "\($latest) available"
+         else "up to date (\($installed))"
+         end)
+        + (if (.checkedAt | type) == "number" and .checkedAt > 0
+           then ", last checked \(.checkedAt | todate | .[0:10])"
+           else ""
+           end)
+      end
+  ' "$state_file" 2> /dev/null)"; then
+    echo "unknown (unreadable: $state_file)"
+    return
+  fi
+  printf '%s\n' "$summary"
 }
 
 # Records from converter releases that copied skills into the Codex home.
@@ -537,7 +778,11 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   printf ','
   repo_value "claudePluginCache" "$(detect_claude_plugin_cache)"
   printf ','
+  repo_value "claudeAutoUpdate" "$(detect_claude_auto_update)"
+  printf ','
   repo_value "pluginCopy" "$(detect_plugin_copy)"
+  printf ','
+  repo_value "pluginUpdate" "$(detect_plugin_update)"
   printf ']'
   printf '}\n'
   exit 0
@@ -592,4 +837,6 @@ repo_value "Codex legacy records" "$(detect_codex_legacy_records)"
 repo_value "Codex tool map block" "$(detect_codex_tool_map)"
 repo_value "Codex plugin" "$(detect_codex_plugin)"
 repo_value "Claude plugin cache" "$(detect_claude_plugin_cache)"
+repo_value "Claude auto-update" "$(detect_claude_auto_update)"
 repo_value "Plugin copy" "$(detect_plugin_copy)"
+repo_value "Plugin update" "$(detect_plugin_update)"
