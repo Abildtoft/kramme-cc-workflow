@@ -32,6 +32,70 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - `/kramme:pr:generate-description` now finds repository PR templates when the agent's shell is zsh. The lookup looped over a variable named `path`, which zsh ties to `PATH`, so every later command in the lookup failed and it reported no template.
 
+## [0.90.0] - 2026-10-28
+
+### Added
+
+- **BREAKING:** Rename select-next to next and start issues in cloud (#1047)
+- Add plugin update notices (#1045)
+- Review stacked Pull Requests one layer at a time (#1041)
+- Resume interrupted code and GitHub reviews (#1039)
+- Submit reviews only on a named confirmation (#1038)
+- Apply subagent model policy to codebase audits (#1035)
+- Run preflight checks in one read-only helper (#1034)
+- Add sibling worktree sources and a launch sheet (#1032)
+- Resume interrupted audit fan-outs (#1033)
+- Add live Claude evals with credit failover (#1024)
+- Add shared breakdown-ready report schema (#1028)
+- Cache verify:run discovery between runs (#1027)
+- Run github-review's reviewers in parallel by default (#1025)
+- Add skill invocation-graph check (#1023)
+- Add --all-open batch mode to pr:rebase (#1022)
+- Delegate plan drafting in bounded batches (#1016)
+- Add per-skill cost report from transcripts (#1018)
+- Report plugin cache and version state (#1011)
+- Add ranked refactor opportunity audits (#1003)
+- Reconcile completed plans from merged PRs (#1005)
+- Batch findings issue-definition handoffs (#997)
+- Share model policy with non-review roles (#999)
+- Record host platform and scan Codex sessions (#998)
+
+### Changed
+
+- Shorten orchestration descriptions (#1046)
+- **BREAKING:** Rehome workflow artifact cleanup (#1042)
+- Propose a monthly skill improvement review (#1044)
+- **BREAKING:** Merge plan-split into breakdown-findings as --split (#1040)
+- Share intake rules across both breakdown skills (#1037)
+- Ship through the shared PR shipping contract (#1036)
+- **BREAKING:** Merge humanize into clarify as --humanize mode (#1031)
+- Extract a shared PR shipping contract (#1029)
+- **BREAKING:** Move forward-progress into a shared reference (#1030)
+- **BREAKING:** Remove local issue definition workflow (#1017)
+- Gate cold reads for small changes (#1021)
+- **BREAKING:** Merge weakness audit into refactor opportunities (#1020)
+- Skip the rebuild for one-commit plans (#1013)
+- **BREAKING:** Fold verify:before-completion into verify:run (#1012)
+- **BREAKING:** Merge solution refresh into note mode (#1008)
+- **BREAKING:** Remove the portless setup skill (#1006)
+- **BREAKING:** Merge spec audit fixes into apply mode (#1002)
+- **BREAKING:** Merge diagrams and onboarding into explain (#1001)
+- Propose a lower model default for review filters (#994)
+- Record guarded child-skill invocation exceptions (#996)
+- Record overdue singleton-domain review (#995)
+
+### Fixed
+
+- Apply shared commit conventions to delegated commits (#1026)
+- Let review workflows invoke their child skills (#1019)
+- Guard review-convergence child skill hand-offs (#1014)
+- Let plan-to-pr invoke work-from-plan (#1015)
+- Pin rebase push leases before rewriting (#1010)
+- Update PR metadata through REST (#1009)
+- Respect repository commit conventions (#1007)
+- Honor user-run workflow boundaries (#1004)
+- Expose agent instruction updates as a user command (#1000)
+
 ## [0.89.0] - 2026-10-20
 
 ### Added
@@ -1137,6 +1201,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.90.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.89.0...v0.90.0
 [0.89.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.88.0...v0.89.0
 [0.88.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.87.0...v0.88.0
 [0.87.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.86.0...v0.87.0
