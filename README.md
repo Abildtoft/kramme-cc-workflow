@@ -468,7 +468,7 @@ Plan-driven implementation, migrations, deprecations, design and security guidan
 
 #### Audits
 
-Codebase, dependency, and test-suite audits that report findings without changing code.
+Codebase, dependency, test-suite, and agent-practice audits that report findings without changing code.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
@@ -476,6 +476,7 @@ Codebase, dependency, and test-suite audits that report findings without changin
 | `/kramme:code:outside-view` | User | `[--subagent-model <model>] [--raters N] [--output <path>] [--compare <report-path>] [--cross-model]` | Rate a codebase with unprimed raters to surface unknown-unknown quality problems, especially in AI-engineered code. |
 | `/kramme:code:agent-readiness` | User | `[--subagent-model <model>] [--auto]` | Score how well a codebase suits AI coding agents across five dimensions and get a prioritized refactoring plan. |
 | `/kramme:code:audit-agent-config` | User, Auto | `[scope-path]` | Audit the repository's agent instructions, skills, hooks, MCP servers, and permissions for redundant, outdated, or conflicting entries. Read-only. |
+| `/kramme:code:audit-practice` | User | `[--recent N] [--no-sessions]` | Check how you work with coding agents against 18 common mistakes, from effort and alignment to review and steering, and get the fixes to make first. |
 | `/kramme:code:audit-security` | User | `[--output <repo-relative-path>]` | Audit a repository's security posture and attack surfaces before remediation, producing an evidence-ranked report with coverage gaps. |
 | `/kramme:code:copy-review` | User, Auto | `[--pr] [--base <branch>] [--threshold 0-100] [--inline] [--all \| <scope-path>]` | Find unnecessary, redundant, or duplicated UI text across the codebase, or in the branch diff when run on a feature branch. |
 | `/kramme:deps:audit` | User | `[--auto]` | (experimental) Audit dependencies for outdated packages, vulnerabilities, and staleness, and get a prioritized upgrade plan. |
@@ -833,6 +834,7 @@ Copied prose, scripts, templates, and substantial assets must be permitted by a 
 - `kramme:debug:triage-to-issue`: The hands-off bug-to-issue workflow is adapted from Matt Pocock's [triage-issue](https://github.com/mattpocock/skills/tree/383b6a06d59c4ce0ffcb14112bfd91265a86cf91/skills/triage-issue), while its vertical RED-GREEN cycle guidance is adapted from Pocock's [TDD skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd).
 - Module-depth guidance in `kramme:code:agent-readiness`, `kramme:code:refactor-opportunities`, `kramme:code:api-design`, `kramme:pr:code-review` with `kramme:architecture-strategist`, `kramme:pr:triage-risk`, and the spec, issue, and plan templates: Informed by AI Hero's [How To Make Codebases AI Agents Love](https://www.aihero.dev/how-to-make-codebases-ai-agents-love). The shared architecture glossary adapts the vocabulary of Matt Pocock's [codebase-design skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/codebase-design).
 - Name-collision guidance in the shared implementation context checklist that `kramme:linear:issue-implement`, `kramme:code:work-from-plan`, and `kramme:code:plan-to-pr` apply, and the search-uniqueness checks in `kramme:code:agent-readiness`: Informed by Modem's [How AI coding agents read your code](https://modem.ai/blog/how-coding-agents-read-your-code).
+- `kramme:code:audit-practice`: The eighteen mistakes it checks for are adapted from Matt Pocock's [post on agentic coding mistakes](https://x.com/mattpocockuk/status/2109973273924579720), with terms read through AI Hero's [AI Coding Dictionary](https://www.aicodingdictionary.com/).
 - `kramme:docs:update-agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
 - `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
 - `kramme:text:clarify` and the shared plain-language rubric that `kramme:pr:generate-description` also applies: Inspired by [fofr's GOV.UK style skill](https://gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2) and official GOV.UK guidance on [identifying user needs](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/plan-manage-content/identify-user-needs/) and [using clear language](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/), adapted into a locale-neutral reader-task workflow.

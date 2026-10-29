@@ -1751,6 +1751,7 @@
       "kramme:code:agent-readiness": "Score how well a codebase suits AI coding agents across five dimensions and get a prioritized refactoring plan.",
       "kramme:code:api-design": "(experimental) Design stable APIs and module boundaries for endpoints, public modules, and SDKs; `--design-twice` compares alternative shapes first.",
       "kramme:code:audit-agent-config": "Audit the repository's agent instructions, skills, hooks, MCP servers, and permissions for redundant, outdated, or conflicting entries. Read-only.",
+      "kramme:code:audit-practice": "Check how you work with coding agents against 18 common mistakes, from effort and alignment to review and steering, and get the fixes to make first.",
       "kramme:code:audit-security": "Audit a repository's security posture and attack surfaces before remediation, producing an evidence-ranked report with coverage gaps.",
       "kramme:code:breakdown-findings": "Cluster validated review, audit, or QA findings into PR-sized `PR_PLAN_*.md` files; `--split` plans slices of a branch and `--reconcile` updates plan sets.",
       "kramme:code:copy-review": "Find unnecessary, redundant, or duplicated UI text across the codebase, or in the branch diff when run on a feature branch.",

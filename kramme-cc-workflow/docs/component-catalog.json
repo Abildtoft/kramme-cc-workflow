@@ -23,6 +23,11 @@
       "path": "kramme-cc-workflow/skills/kramme:code:audit-agent-config/SKILL.md"
     },
     {
+      "name": "kramme:code:audit-practice",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:code:audit-practice/SKILL.md"
+    },
+    {
       "name": "kramme:code:audit-security",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:code:audit-security/SKILL.md"
