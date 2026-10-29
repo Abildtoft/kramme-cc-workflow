@@ -150,7 +150,7 @@ elif version_newer "$installed" "$seen"; then
 fi
 
 if [ "$host" = "codex" ]; then
-  update_hint="Run codex plugin marketplace upgrade ${PLUGIN_NAME}, then codex plugin add ${PLUGIN_NAME}@${PLUGIN_NAME}, and restart Codex."
+  update_hint="For Git marketplace installs, run codex plugin marketplace upgrade ${PLUGIN_NAME}, then codex plugin add ${PLUGIN_NAME}@${PLUGIN_NAME}. For local/checkout installs (including npx), rerun your original install command. Restart Codex after updating."
 else
   update_hint="Run /plugin marketplace update ${PLUGIN_NAME}, then /reload-plugins. Turning on auto-update in /plugin → Marketplaces keeps it current."
 fi

@@ -151,7 +151,7 @@ EOF
 	[ "$(state_value latestVersion)" = "0.90.0" ]
 }
 
-@test "uses the Codex update commands in a Codex plugin package" {
+@test "limits Codex marketplace upgrade advice to Git installs" {
 	rm -rf "$TEST_PLUGIN_ROOT/.claude-plugin"
 	mkdir -p "$TEST_PLUGIN_ROOT/.codex-plugin"
 	printf '{"name":"kramme-cc-workflow","version":"0.89.0"}\n' >"$TEST_PLUGIN_ROOT/.codex-plugin/plugin.json"
@@ -160,7 +160,34 @@ EOF
 	run run_hook
 
 	[ "$status" -eq 0 ]
-	[ "$(system_message)" = "kramme-cc-workflow 0.90.0 is available (you have 0.89.0). Run codex plugin marketplace upgrade kramme-cc-workflow, then codex plugin add kramme-cc-workflow@kramme-cc-workflow, and restart Codex. Changelog: $CHANGELOG_URL" ]
+	[ "$(system_message)" = "kramme-cc-workflow 0.90.0 is available (you have 0.89.0). For Git marketplace installs, run codex plugin marketplace upgrade kramme-cc-workflow, then codex plugin add kramme-cc-workflow@kramme-cc-workflow. For local/checkout installs (including npx), rerun your original install command. Restart Codex after updating. Changelog: $CHANGELOG_URL" ]
+}
+
+@test "gives local Codex installs update advice without querying Codex" {
+	rm -rf "$TEST_PLUGIN_ROOT/.claude-plugin"
+	mkdir -p "$TEST_PLUGIN_ROOT/.codex-plugin"
+	printf '{"name":"kramme-cc-workflow","version":"0.89.0"}\n' >"$TEST_PLUGIN_ROOT/.codex-plugin/plugin.json"
+	write_remote_version "0.90.0"
+
+	export CODEX_HOME="$BATS_TEST_TMPDIR/codex-home"
+	mkdir -p "$CODEX_HOME"
+	cat >"$CODEX_HOME/config.toml" <<EOF
+[marketplaces.kramme-cc-workflow]
+source_type = "local"
+source = "$CODEX_HOME/.kramme-plugin-marketplaces/kramme-cc-workflow"
+EOF
+	cat >"$FAKE_BIN/codex" <<EOF
+#!/bin/sh
+touch "$BATS_TEST_TMPDIR/codex-called"
+exit 1
+EOF
+	chmod +x "$FAKE_BIN/codex"
+
+	run run_hook
+
+	[ "$status" -eq 0 ]
+	printf '%s' "$output" | jq -e '.systemMessage | contains("For local/checkout installs (including npx), rerun your original install command.") and contains("Restart Codex after updating.")'
+	[ ! -e "$BATS_TEST_TMPDIR/codex-called" ]
 }
 
 @test "checks GitHub at most once a day" {
