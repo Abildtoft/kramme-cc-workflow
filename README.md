@@ -188,6 +188,8 @@ When a new release is out, the `update-check` hook tells you at the start of a s
 | Codex published | `codex plugin marketplace upgrade kramme-cc-workflow`, then `codex plugin add kramme-cc-workflow@kramme-cc-workflow` |
 | Codex checkout | Re-run the install command; it rebuilds the marketplace and reinstalls the plugin into the Codex cache |
 
+Codex update notices include both paths. `marketplace upgrade` requires a Git marketplace; local installs made from a checkout or through `npx` must re-run their original install command.
+
 Restart the host you updated, or run `/reload-plugins` in Claude Code, for changes to take effect.
 
 Claude Code auto-update needs v2.0.70 or later. When a release lands, Claude Code shows `Plugin updated` with a `/reload-plugins` prompt. `/kramme:setup` reports the auto-update policy from local settings and the marketplace record, but it does not inspect session flags, remote or OS-managed policy, or workspace trust; confirm the effective policy under `/plugin`.
