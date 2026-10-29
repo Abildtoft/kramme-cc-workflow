@@ -14,10 +14,11 @@ const {
   validatePool,
   validateRun,
 } = require("./eval-state");
+const { PROVIDERS, providerById } = require("./providers");
 
+/** @typedef {import('./live-types').Provider} Provider */
 const WORKFLOW = "skill-review-live-eval.yml";
-const ARTIFACT = "claude-eval-checkpoint";
-const DEFAULT_STATE = path.resolve(__dirname, "../../../.context/claude-evals");
+const REPO = path.resolve(__dirname, "../../..");
 const ALIAS = /^[a-z][a-z0-9-]{0,63}$/;
 const CASE_ID = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,100}$/;
 
@@ -149,8 +150,8 @@ function restoreArchive(archive, destination) {
     writeJson(path.join(destination, payload.file), payload.value);
 }
 
-/** @param {string} destination @param {NodeJS.ProcessEnv} env */
-function restoreCheckpoint(destination, env) {
+/** @param {string} destination @param {string} artifactName @param {NodeJS.ProcessEnv} env */
+function restoreCheckpoint(destination, artifactName, env) {
   const repository = env.GITHUB_REPOSITORY;
   const currentRun = Number(env.GITHUB_RUN_ID);
   if (
@@ -181,7 +182,7 @@ function restoreCheckpoint(destination, env) {
         .map(record)
         .find(
           (item) =>
-            item.name === ARTIFACT &&
+            item.name === artifactName &&
             item.expired === false &&
             Number.isSafeInteger(item.id),
         );
@@ -216,6 +217,10 @@ function restoreCheckpoint(destination, env) {
 /** @param {unknown} value */
 function summary(value) {
   const report = record(value);
+  const label =
+    report.provider === "anthropic" || report.provider === "openai"
+      ? PROVIDERS[report.provider].label
+      : "Live";
   const counts = record(report.counts);
   const status = ["COMPLETE", "PAUSED_NO_CREDITS", "ERROR"].includes(
     String(report.status),
@@ -236,7 +241,7 @@ function summary(value) {
   );
   const cost = report.estimated_cost_usd;
   const lines = [
-    `Claude skill-review eval: **${status}**${status === "COMPLETE" ? (report.passed === true ? " (checks passed)" : " (checks failed)") : " (incomplete)"}`,
+    `${label} skill-review eval: **${status}**${status === "COMPLETE" ? (report.passed === true ? " (checks passed)" : " (checks failed)") : " (incomplete)"}`,
     `Cases completed: ${completed}/${total}.`,
     ...(Number.isFinite(aggregate.hard) && Number.isFinite(aggregate.soft)
       ? [`Scores: hard ${aggregate.hard}, soft ${aggregate.soft}.`]
@@ -259,24 +264,34 @@ function summary(value) {
   return `${lines.join("\n\n")}\n`;
 }
 
+/** @param {Provider} provider */
+function stateDirectory(provider) {
+  return path.join(REPO, provider.stateDir);
+}
+
 if (require.main === module) {
   try {
-    const [command, argument] = process.argv.slice(2);
-    if (command === "restore") restoreCheckpoint(DEFAULT_STATE, process.env);
-    else if (command === "stage" && argument)
-      stageCheckpoint(DEFAULT_STATE, path.resolve(argument));
-    else if (
-      command === "summary" &&
-      argument &&
-      process.env.GITHUB_STEP_SUMMARY
-    )
+    const [command, first, second] = process.argv.slice(2);
+    if (command === "restore" && first) {
+      const provider = providerById(first);
+      restoreCheckpoint(
+        stateDirectory(provider),
+        `${provider.artifact}-checkpoint`,
+        process.env,
+      );
+    } else if (command === "stage" && first && second)
+      stageCheckpoint(
+        stateDirectory(providerById(first)),
+        path.resolve(second),
+      );
+    else if (command === "summary" && first && process.env.GITHUB_STEP_SUMMARY)
       fs.appendFileSync(
         process.env.GITHUB_STEP_SUMMARY,
-        summary(readJson(argument)),
+        summary(readJson(first)),
       );
     else
       throw new Error(
-        "Usage: ci-checkpoint.js restore | stage <destination> | summary <report.json>",
+        "Usage: ci-checkpoint.js restore <provider> | stage <provider> <destination> | summary <report.json>",
       );
   } catch {
     console.error(

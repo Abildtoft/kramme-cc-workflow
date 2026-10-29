@@ -240,9 +240,9 @@ test-skill-contracts:
 test-skill-review-eval:
 	@bats tests/skill-review-eval.bats
 
-# Live adapter checks use fake SDK sessions; this target never spends credits.
+# Live adapter checks use fake SDK sessions and Responses endpoints; this target never spends credits.
 test-skill-review-live-eval: check-node-deps check-bats-deps
-	@node --test tests/node/credit-pool.test.js tests/node/eval-state.test.js tests/node/claude-predict.test.js tests/node/run-live-eval.test.js tests/node/ci-checkpoint.test.js
+	@node --test tests/node/credit-pool.test.js tests/node/eval-state.test.js tests/node/claude-predict.test.js tests/node/openai-predict.test.js tests/node/run-live-eval.test.js tests/node/ci-checkpoint.test.js
 	@bats tests/skill-review-live-eval.bats
 
 skill-security: check-security-deps
