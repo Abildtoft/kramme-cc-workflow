@@ -23,12 +23,20 @@
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "Linear next resolves explicit states without silently broadening them" {
+@test "Linear next defaults to unstarted work and resolves explicit states without broadening them" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:linear:next/SKILL.md"
 
+    grep -qF "When no states were requested, use only states with type \`backlog\` or \`unstarted\`." "$skill"
+    grep -qF "State type takes precedence over the name" "$skill"
+    grep -qF "Exclude all started issues by default, including those assigned to the logged-in user." "$skill"
+    grep -qF "Include started issues only when their state was explicitly requested" "$skill"
+    grep -qF "Exclude completed, canceled, duplicate, archived, blocked, waiting, review, and started-by-someone-else issues." "$skill"
+    grep -qF "blocked, waiting, or review state does not make those issues eligible" "$skill"
+    grep -qF "Without explicit states, apply the default type/name eligibility rules locally" "$skill"
+    grep -qF "omit issues whose state cannot be established" "$skill"
     grep -qF "\`--state <name>\`: include only a named workflow state" "$skill"
     grep -qF "The flag is repeatable" "$skill"
     grep -qF "case-insensitively after removing spaces and hyphens" "$skill"
