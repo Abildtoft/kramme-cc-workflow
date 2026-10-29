@@ -33,10 +33,11 @@ RESOLVE_BASE_GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-${GIT_SSH:-ssh}} -oBatchMode=ye
 
 usage() {
   cat >&2 << 'USAGE'
-Usage: resolve-base.sh [--base <branch>] [--workbench] [--base-only] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--backup] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--format shell|json]
+Usage: resolve-base.sh [--base <branch-or-40-hex-oid>] [--workbench] [--base-only] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--backup] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--format shell|json]
 
 --workbench skips the current Pull Request target when starting independent work.
 --base-only selects a base for independent work without comparing it with HEAD; MERGE_BASE is empty.
+--base with a full 40-character lowercase commit OID uses that local commit without fetching; BASE_BRANCH is empty.
 
 Default output is shell-quoted assignments:
   BASE_REF BASE_BRANCH MERGE_BASE AFTER_COMMIT RESET_POINT ORIGINAL_BRANCH ORIGINAL_TIP BACKUP_REF
@@ -171,6 +172,14 @@ if [ -n "$BASE_COMMIT_FLAG" ] && [[ ! "$BASE_COMMIT_FLAG" =~ ^[0-9a-f]{40}$ ]]; 
   echo "--base-commit must be a full 40-character lowercase commit OID" >&2
   exit 1
 fi
+BASE_IS_COMMIT=0
+if [[ "$BASE_FLAG" =~ ^[0-9a-f]{40}$ ]]; then
+  BASE_IS_COMMIT=1
+fi
+if [ "$BASE_IS_COMMIT" -eq 1 ] && [ -n "$BASE_COMMIT_FLAG" ]; then
+  echo "--base-commit pins a branch base; it cannot be combined with a commit OID --base" >&2
+  exit 1
+fi
 
 if ! REPO_ROOT=$(git rev-parse --show-toplevel 2> /dev/null); then
   echo "Not inside a git repository" >&2
@@ -255,7 +264,15 @@ remote_exists() {
 BASE_BRANCH=""
 BASE_REMOTE="origin"
 
-if [ -n "$BASE_FLAG" ]; then
+if [ "$BASE_IS_COMMIT" -eq 1 ]; then
+  # A delta review scopes to a local commit, such as the commit before a
+  # remediation batch, that no remote branch names; never fetch it.
+  if ! git rev-parse --verify --quiet "${BASE_FLAG}^{commit}" > /dev/null; then
+    echo "Explicit base commit '$BASE_FLAG' does not resolve locally" >&2
+    exit 1
+  fi
+  BASE_REF="$BASE_FLAG"
+elif [ -n "$BASE_FLAG" ]; then
   case "$BASE_FLAG" in
     refs/remotes/*/*)
       BASE_REMOTE=${BASE_FLAG#refs/remotes/}

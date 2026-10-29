@@ -264,6 +264,37 @@ delete_origin_head() {
 	[[ "$output" == *"Pinned base commit '0000000000000000000000000000000000000000' does not resolve locally"* ]]
 }
 
+@test "explicit commit OID base resolves locally without fetching a branch" {
+	commit_file "first.txt" "first" "first feature commit"
+	local pre_batch_commit
+	pre_batch_commit="$(git rev-parse HEAD)"
+	commit_file "remediation.txt" "remediation" "remediation commit"
+	write_gh_base "main"
+	write_slow_git_fetch
+	export MOCK_GIT_FETCH_SLEEP_SECONDS=10
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict --base "$pre_batch_commit"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "$pre_batch_commit" ]
+	[ "$BASE_BRANCH" = "" ]
+	[ "$MERGE_BASE" = "$pre_batch_commit" ]
+}
+
+@test "explicit commit OID base rejects missing commits and a branch pin" {
+	run "$SCRIPT_DIR/resolve-base.sh" --base 0000000000000000000000000000000000000000
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Explicit base commit '0000000000000000000000000000000000000000' does not resolve locally"* ]]
+	[[ "$output" != *"Failed to fetch"* ]]
+
+	local head_commit
+	head_commit="$(git rev-parse HEAD)"
+	run "$SCRIPT_DIR/resolve-base.sh" --base "$head_commit" --base-commit "$head_commit"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base-commit pins a branch base; it cannot be combined with a commit OID --base"* ]]
+}
+
 @test "uses GitHub PR base metadata before origin HEAD" {
 	create_remote_branch "develop"
 	write_gh_base "develop"
