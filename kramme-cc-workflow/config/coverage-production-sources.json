@@ -93,6 +93,8 @@
       "kramme-cc-workflow/skills/kramme:linear:next/scripts/cloud-launch.py",
       "kramme-cc-workflow/skills/kramme:pr:create/scripts/pr-create-preflight.py",
       "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
+      "kramme-cc-workflow/skills/kramme:code:audit-practice/scripts/session-signals.py",
+      "kramme-cc-workflow/skills/kramme:code:audit-practice/scripts/signal_patterns.py",
       "kramme-cc-workflow/scripts/risk-signals.py",
       "kramme-cc-workflow/scripts/risk_patterns.py",
       "kramme-cc-workflow/scripts/resolve-stack-context.py"
@@ -590,6 +592,20 @@
       "skills": [
         "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
         "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/audit-practice-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:audit-practice/SKILL.md"
+      ]
+    },
+    {
+      "kind": "executable",
+      "suite": "kramme-cc-workflow/tests/python/test_audit_practice_session_signals.py",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:audit-practice/SKILL.md"
       ]
     },
     {

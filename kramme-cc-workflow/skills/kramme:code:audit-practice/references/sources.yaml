@@ -1,0 +1,15 @@
+sources:
+  - id: pocock-agentic-coding-mistakes
+    url: https://x.com/mattpocockuk/status/2109973273924579720
+    title: "Matt Pocock X post on agentic coding mistakes"
+    rationale: "The eighteen mistakes that references/mistakes.md checks for are adapted from this post's list, rewritten in original wording with local evidence signals, thresholds, and changes."
+    usage: inspiration
+    last_reviewed_at: 2026-10-29
+    baseline_hash: "sha256:b125c62b5b12be7ea4dd9b52e6c45a33069ece767ad76c439e66c7ee9d9dad3e"
+  - id: aihero-ai-coding-dictionary
+    url: https://www.aicodingdictionary.com/
+    title: "AI Hero - The AI Coding Dictionary"
+    rationale: "The rubric's readings of effort, skills, automated checks, automated and human review, prototyping, vibe coding, and unattended work follow this glossary, which the post links for its terms."
+    usage: inspiration
+    last_reviewed_at: 2026-10-29
+    baseline_hash: "sha256:e0c192ee3b3004416414bd1b7fac95f5b17f3d551bd4ca0b55f2ec27944e32e3"
