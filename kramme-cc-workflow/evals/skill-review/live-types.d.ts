@@ -1,3 +1,16 @@
+export type ProviderId = "anthropic" | "openai";
+export type Provider = {
+  id: ProviderId;
+  label: string;
+  keyPrefix: string;
+  keysJsonEnv: string;
+  modelEnv: string;
+  model: RegExp;
+  adapter: string;
+  exampleConfig: string;
+  stateDir: string;
+  artifact: string;
+};
 export type Organization = { alias: string; key: string; fingerprint: string };
 export type PoolEntry = {
   fingerprint: string;
@@ -48,6 +61,7 @@ export type AdapterContext = {
   };
 };
 export type LiveOptions = {
+  provider: Provider;
   organizations: string;
   model: string;
   split: string;

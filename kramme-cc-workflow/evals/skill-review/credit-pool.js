@@ -5,6 +5,7 @@ const crypto = require("node:crypto");
 
 /** @typedef {import('./live-types').Organization} Organization */
 /** @typedef {import('./live-types').PoolState} PoolState */
+/** @typedef {import('./live-types').Provider} Provider */
 const RECHECK_MS = 24 * 60 * 60 * 1000;
 const ALIAS = /^[a-z][a-z0-9-]{0,63}$/;
 const EMPTY_BALANCE =
@@ -20,23 +21,25 @@ function record(value) {
   return /** @type {Record<string, unknown>} */ (value);
 }
 
-/** @param {unknown} config @param {NodeJS.ProcessEnv} env @returns {Organization[]} */
-function organizationsFromConfig(config, env) {
+/** @param {unknown} config @param {NodeJS.ProcessEnv} env @param {Provider} provider @returns {Organization[]} */
+function organizationsFromConfig(config, env, provider) {
   if (!Array.isArray(config) || !config.length)
     throw new Error("Configure at least one organization.");
   /** @type {Record<string, unknown>} */
   let keys = {};
-  if (env.ANTHROPIC_EVAL_KEYS_JSON) {
+  const bundle = env[provider.keysJsonEnv];
+  if (bundle) {
     try {
-      keys = record(JSON.parse(env.ANTHROPIC_EVAL_KEYS_JSON));
+      keys = record(JSON.parse(bundle));
     } catch {
-      throw new Error("ANTHROPIC_EVAL_KEYS_JSON must be a JSON object.");
+      throw new Error(`${provider.keysJsonEnv} must be a JSON object.`);
     }
     if (!Object.keys(keys).length)
       throw new Error(
-        "ANTHROPIC_EVAL_KEYS_JSON must be a nonempty JSON object.",
+        `${provider.keysJsonEnv} must be a nonempty JSON object.`,
       );
   }
+  const keyEnvName = new RegExp(`^${provider.keyPrefix}[A-Z0-9_]+$`);
   const aliases = new Set();
   const credentials = new Set();
   return config.map((value) => {
@@ -44,12 +47,9 @@ function organizationsFromConfig(config, env) {
     const { alias, key_env: keyEnv } = entry;
     if (typeof alias !== "string" || !ALIAS.test(alias) || aliases.has(alias))
       throw new Error("Organization aliases must be unique lowercase names.");
-    if (
-      typeof keyEnv !== "string" ||
-      !/^ANTHROPIC_EVAL_KEY_[A-Z0-9_]+$/.test(keyEnv)
-    )
+    if (typeof keyEnv !== "string" || !keyEnvName.test(keyEnv))
       throw new Error(
-        "Each organization needs an ANTHROPIC_EVAL_KEY_* variable name.",
+        `Each organization needs an ${provider.keyPrefix}* variable name.`,
       );
     if (Object.keys(entry).some((name) => !["alias", "key_env"].includes(name)))
       throw new Error("Organization entries accept only alias and key_env.");
@@ -154,12 +154,46 @@ function classifyApiError(value) {
   return "runtime_error";
 }
 
+/** OpenAI documents a distinct `error.code` for each billing condition; only an
+ * exhausted prepaid balance rotates. The broader `insufficient_quota` type or
+ * legacy code cannot tell credits from limits, so it stops for diagnosis.
+ * @param {number | null} status HTTP status, or null for an in-band failed response
+ * @param {unknown} code @param {unknown} type */
+function classifyOpenAIError(status, code, type) {
+  if (
+    code === "credit_balance_exhausted" &&
+    (status === 429 || status === null)
+  )
+    return "insufficient_credits";
+  if (
+    code === "organization_spend_limit_exceeded" ||
+    code === "project_spend_limit_exceeded"
+  )
+    return "spend_limit";
+  if (code === "organization_usage_limit_exceeded") return "usage_limit";
+  if (code === "insufficient_quota" || type === "insufficient_quota")
+    return "billing_error";
+  if (status === 401) return "authentication_failed";
+  if (status === 403) return "permission_denied";
+  if (
+    status === 408 ||
+    status === 409 ||
+    status === 429 ||
+    (status !== null && status >= 500)
+  )
+    return "retryable";
+  return "runtime_error";
+}
+
 /** @param {string} value @param {Organization[]} organizations */
 function redact(value, organizations) {
   let result = value;
   for (const org of organizations)
     result = result.split(org.key).join("[REDACTED]");
-  return result.replace(/sk-ant-[A-Za-z0-9_-]+/g, "[REDACTED]");
+  return result.replace(
+    /sk-(?:ant|proj|svcacct|admin)-[A-Za-z0-9_-]+|sk-[A-Za-z0-9]{32,}/g,
+    "[REDACTED]",
+  );
 }
 
 module.exports = {
@@ -170,6 +204,7 @@ module.exports = {
   markAvailable,
   classifyAssistantError,
   classifyApiError,
+  classifyOpenAIError,
   redact,
   record,
 };

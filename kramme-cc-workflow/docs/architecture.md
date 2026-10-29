@@ -19,7 +19,7 @@ This repo packages a personal workflow plugin for Claude Code and includes a Cod
 | Hooks | `hooks/hooks.json`, `hooks/*.sh`, `hooks/lib/` | Claude Code lifecycle hooks for command safety, formatting, review confirmation, usage stats, and update notices. |
 | Shared scripts | `scripts/*.sh`, `scripts/*.py`, `scripts/*.js`, `scripts/dev-server/` | Helpers shared by skills, hooks, release workflows, and browser-facing workflows. |
 | Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/` | Loads the Claude plugin, transforms components for Codex, and writes managed output under a Codex home. |
-| Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals, an optional live Claude SDK adapter with sequential credit failover/checkpoints, and the local SkillOpt adapter for the `kramme:skill:review` pilot. |
+| Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals, optional live Claude SDK and OpenAI Responses adapters with per-provider sequential credit failover/checkpoints, and the local SkillOpt adapter for the `kramme:skill:review` pilot. |
 | Review completion | `skills/kramme:pr:code-review/scripts/review-execution.js`, `evals/review-completion/` | Self-attested execution ledger, scope/report validation, and independently observed completion evaluations; consumed by review convergence. |
 | Tests | `tests/*.bats`, `tests/node/`, `tests/python/`, `tests/test_helper/` | Bats integration suites plus focused Node and Python unit suites, converter contracts, eval harnesses, and skill guidance contracts. |
 
@@ -37,7 +37,7 @@ Shared runtime helpers belong to the main `CodexBundle`, independently of whethe
 
 How much independence skills and agents take at runtime is described in [agent-autonomy.md](agent-autonomy.md).
 
-The live eval entry point `evals/skill-review/run-live-eval.js` delegates to the existing runner's prediction-command boundary. Its Claude adapter stages only one reviewer and fixture, runs an isolated read-only SDK session, and persists predictions before stdout. The credit pool advances only on confirmed depletion; ordinary errors stop or use bounded same-key retries. Checkpoints and reports stay under `.context/claude-evals/`. A separate trusted-main scheduled/manual workflow restores validated checkpoint artifacts; no live credentials or paid calls enter the default PR checks. See the [decision](decisions/2026-10-24-sequential-credit-evals.md).
+The live eval entry point `evals/skill-review/run-live-eval.js` delegates to the existing runner's prediction-command boundary. `--provider` selects the Claude adapter, an isolated read-only SDK session, or the OpenAI adapter, a Responses API loop over the same read-only tools. Both stage only one reviewer and fixture, share the organization rotation in `live-predict.js`, and persist predictions before stdout. Each provider has its own credit pool, which advances only on confirmed depletion; ordinary errors stop or use bounded same-key retries, and no provider falls back to another. Checkpoints and reports stay under `.context/claude-evals/` or `.context/openai-evals/`. A separate trusted-main scheduled/manual workflow restores validated checkpoint artifacts; no live credentials or paid calls enter the default PR checks. See the [decision](decisions/2026-10-24-sequential-credit-evals.md).
 
 ## State and Generated Output
 

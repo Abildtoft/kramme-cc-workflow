@@ -17,6 +17,7 @@ const {
   organizationsFromConfig,
   reconcilePool,
 } = require("../../evals/skill-review/credit-pool");
+const { PROVIDERS } = require("../../evals/skill-review/providers");
 const { sandbox } = require("../test_helper/live-eval");
 
 test("only completed runs of this workflow on the original main branch are trusted", () => {
@@ -45,7 +46,10 @@ test("checkpoint export and zip restore include validated progress but no runtim
   const source = env.KRAMME_LIVE_EVAL_STATE;
   writeJson(
     path.join(source, "pool-state.json"),
-    reconcilePool(organizationsFromConfig(readJson(config), env), null),
+    reconcilePool(
+      organizationsFromConfig(readJson(config), env, PROVIDERS.anthropic),
+      null,
+    ),
   );
   fs.writeFileSync(path.join(source, "auth.json"), "secret auth");
   const destination = path.join(root, "export");
@@ -107,10 +111,12 @@ test("checkpoint export and zip restore include validated progress but no runtim
 
 test("CI summary never labels credit pause as a passing evaluation", () => {
   const output = summary({
+    provider: "openai",
     status: "PAUSED_NO_CREDITS",
     counts: { completed: 1, total: 7 },
     error: "secret",
   });
+  assert.match(output, /^OpenAI skill-review eval: \*\*PAUSED_NO_CREDITS\*\*/);
   assert.match(output, /incomplete/);
   assert.match(output, /1\/7/);
   assert.ok(!output.includes("secret"));
@@ -126,6 +132,7 @@ test("CI summary never labels credit pause as a passing evaluation", () => {
 
 test("CI summary shows scores, organization switches, cost, pending work, and errors", () => {
   const complete = summary({
+    provider: "anthropic",
     status: "COMPLETE",
     passed: true,
     counts: { completed: 2, total: 2 },
@@ -138,6 +145,7 @@ test("CI summary shows scores, organization switches, cost, pending work, and er
     estimated_cost_usd: 0.12345,
     pending: [],
   });
+  assert.match(complete, /^Claude skill-review eval/);
   assert.match(complete, /hard 1, soft 0\.75/);
   assert.match(complete, /org-a → org-b\./);
   assert.match(complete, /\$0\.1235/);

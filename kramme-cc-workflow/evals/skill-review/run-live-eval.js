@@ -6,6 +6,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
+const claude = require("./claude-predict");
 const {
   organizationsFromConfig,
   reconcilePool,
@@ -24,14 +25,21 @@ const {
   digestFiles,
   treeFiles,
 } = require("./eval-state");
-const { PROFILE } = require("./claude-predict");
+const openai = require("./openai-predict");
+const { providerById } = require("./providers");
+const { PROFILE } = require("./review-profile");
 const { loadItemsForSplit } = require("./run-eval");
 const { scoreItem, aggregateScores } = require("./scorer");
 
 /** @typedef {import('./live-types').LiveOptions} LiveOptions */
 /** @typedef {import('./live-types').Organization} Organization */
+/** @typedef {import('./live-types').Provider} Provider */
 /** @typedef {import('./live-types').RunState} RunState */
 const REPO = path.resolve(__dirname, "../../..");
+const RUNTIME_VERSIONS = {
+  anthropic: claude.runtimeVersion,
+  openai: openai.runtimeVersion,
+};
 const REVIEWER = path.join(
   REPO,
   "kramme-cc-workflow/skills/kramme:skill:review",
@@ -47,6 +55,7 @@ function parseOptions(argv, env) {
   const values = new Map();
   const switches = new Set(["--dry-run", "--help"]);
   const named = new Set([
+    "--provider",
     "--organizations",
     "--model",
     "--split",
@@ -68,10 +77,11 @@ function parseOptions(argv, env) {
       values.set(name, value);
     }
   }
-  const model = values.get("--model") || env.ANTHROPIC_EVAL_MODEL || "";
-  if (!values.has("--help") && !/^claude-[a-z0-9.-]+$/.test(model))
+  const provider = providerById(values.get("--provider") || "anthropic");
+  const model = values.get("--model") || env[provider.modelEnv] || "";
+  if (!values.has("--help") && !provider.model.test(model))
     throw new Error(
-      "Set --model or ANTHROPIC_EVAL_MODEL to an explicit Claude model ID.",
+      `Set --model or ${provider.modelEnv} to an explicit ${provider.label} model ID.`,
     );
   const split = values.get("--split") || "all";
   if (!["train", "val", "test", "all"].includes(split))
@@ -91,14 +101,15 @@ function parseOptions(argv, env) {
       "Use positive integer limits: attempt <= case <= 600000ms, max turns <= 100.",
     );
   return {
+    provider,
     organizations: path.resolve(
       values.get("--organizations") ||
-        path.join(__dirname, "credit-pool.example.json"),
+        path.join(__dirname, provider.exampleConfig),
     ),
     model,
     split,
     stateDir: path.resolve(
-      values.get("--state-dir") || path.join(REPO, ".context/claude-evals"),
+      values.get("--state-dir") || path.join(REPO, provider.stateDir),
     ),
     runId: values.get("--run-id"),
     dryRun: values.has("--dry-run"),
@@ -109,25 +120,14 @@ function parseOptions(argv, env) {
   };
 }
 
-function sdkVersion() {
-  return String(
-    record(
-      readJson(
-        path.join(
-          path.dirname(require.resolve("@anthropic-ai/claude-agent-sdk")),
-          "package.json",
-        ),
-      ),
-    ).version,
-  );
-}
-
 // Only inputs that change predictions or scores; docs and CI helpers must not orphan a paused run.
+// Each provider adds its own adapter, so changing one adapter never orphans another provider's run.
 const IDENTITY_INPUTS = [
-  "claude-predict.js",
-  "claude-profile.js",
   "credit-pool.js",
   "eval-state.js",
+  "live-predict.js",
+  "providers.js",
+  "review-profile.js",
   "run-eval.js",
   "scorer.js",
   "fixtures",
@@ -137,7 +137,9 @@ const IDENTITY_INPUTS = [
 /** @param {LiveOptions} options @param {string} version */
 function runIdentity(options, version) {
   const files = [
-    ...IDENTITY_INPUTS.flatMap((name) => treeFiles(path.join(__dirname, name))),
+    ...[...IDENTITY_INPUTS, options.provider.adapter].flatMap((name) =>
+      treeFiles(path.join(__dirname, name)),
+    ),
     ...treeFiles(REVIEWER),
   ];
   return crypto
@@ -145,6 +147,7 @@ function runIdentity(options, version) {
     .update(digestFiles(files, REPO))
     .update(
       JSON.stringify({
+        provider: options.provider.id,
         profile: PROFILE,
         sdk: version,
         model: options.model,
@@ -229,8 +232,8 @@ function runnerDiagnostic(result, organizations) {
     : `Eval runner exited ${result.status} without a diagnostic.`;
 }
 
-/** @param {RunState} run @param {ReturnType<typeof loadItemsForSplit>} items @param {import('./live-types').PoolState} pool @param {string | null} [error] */
-function reportForRun(run, items, pool, error = null) {
+/** @param {Provider} provider @param {RunState} run @param {ReturnType<typeof loadItemsForSplit>} items @param {import('./live-types').PoolState} pool @param {string | null} [error] */
+function reportForRun(provider, run, items, pool, error = null) {
   const results = items
     .filter((item) => Object.hasOwn(run.completed, item.id))
     .map((item) => ({
@@ -246,6 +249,7 @@ function reportForRun(run, items, pool, error = null) {
   const aggregate = complete ? aggregateScores(results) : null;
   return {
     schema_version: 1,
+    provider: provider.id,
     run_id: run.id,
     status: run.status,
     error: run.status === "ERROR" ? error : null,
@@ -275,6 +279,12 @@ function reportForRun(run, items, pool, error = null) {
       "SkillSpector and ecosystem analyzers are unavailable in this read-only profile.",
       "Cost is estimated; missing attempt costs are unknown, not zero.",
       "Hard interruption can repeat cases since the last durable checkpoint artifact.",
+      ...(provider.id === "openai"
+        ? [
+            "OpenAI attempts record token usage in their traces instead of a cost estimate.",
+            "The OpenAI profile runs the reviewer through a local Responses API tool loop, not the Codex host.",
+          ]
+        : []),
     ],
   };
 }
@@ -285,15 +295,17 @@ function runLive(options, dependencies = {}) {
   const organizations = organizationsFromConfig(
     readJson(options.organizations),
     env,
+    options.provider,
   );
   const items = loadItemsForSplit(options.split, __dirname);
-  const version = sdkVersion();
+  const version = RUNTIME_VERSIONS[options.provider.id]();
   const fingerprint = runIdentity(options, version);
   if (options.dryRun)
     return {
       exitCode: 0,
       report: {
         status: "DRY_RUN",
+        provider: options.provider.id,
         model: options.model,
         sdk_version: version,
         organizations: organizations.map((org) => org.alias),
@@ -321,7 +333,7 @@ function runLive(options, dependencies = {}) {
     saveRun(options.stateDir, run);
     const command =
       dependencies.adapterCommand ||
-      `exec ${shellQuote(process.execPath)} ${shellQuote(path.join(__dirname, "claude-predict.js"))}`;
+      `exec ${shellQuote(process.execPath)} ${shellQuote(path.join(__dirname, options.provider.adapter))}`;
     const result = spawnSync(
       process.execPath,
       [
@@ -369,6 +381,7 @@ function runLive(options, dependencies = {}) {
       readJson(path.join(options.stateDir, "pool-state.json")),
     );
     const report = reportForRun(
+      options.provider,
       run,
       items,
       finalPool,
@@ -392,7 +405,7 @@ function main() {
     const options = parseOptions(process.argv.slice(2), process.env);
     if (options.help) {
       console.log(
-        "Usage: node evals/skill-review/run-live-eval.js --organizations <config.json> --model <claude-model-id> [--split train|val|test|all] [--run-id <id>] [--state-dir <dir>] [--dry-run] [--attempt-timeout-ms <ms>] [--case-timeout-ms <ms>] [--max-turns <n>]",
+        "Usage: node evals/skill-review/run-live-eval.js [--provider anthropic|openai] --organizations <config.json> --model <model-id> [--split train|val|test|all] [--run-id <id>] [--state-dir <dir>] [--dry-run] [--attempt-timeout-ms <ms>] [--case-timeout-ms <ms>] [--max-turns <n>]",
       );
       return;
     }

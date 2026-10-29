@@ -7,9 +7,9 @@ const path = require("node:path");
 const { record } = require("./credit-pool");
 const { writeJson, treeFiles } = require("./eval-state");
 /** @typedef {import('./live-types').AdapterContext} AdapterContext */
+// Every provider adapter exposes only these tools, inside this staged layout.
 const PROFILE = "read-only-review-v1";
-// This SDK normalizes ':' within a skill name to '-' when qualifying a plugin skill.
-const SKILL = "eval-review:kramme-skill-review";
+const TOOLS = ["Skill", "Read", "Glob", "Grep"];
 
 class EvalFailure extends Error {
   /** @param {string} code */
@@ -62,6 +62,7 @@ function stageCase(context) {
   const auth = path.join(temporary, "runtime");
   try {
     fs.mkdirSync(auth, { mode: 0o700 });
+    // Claude loads this layout as a local plugin; other adapters read the same files.
     copyTree(source, path.join(plugin, "skills", "kramme:skill:review"));
     writeJson(path.join(plugin, ".claude-plugin", "plugin.json"), {
       name: "eval-review",
@@ -91,13 +92,14 @@ function stageCase(context) {
   }
 }
 
-/** Every file tool is checked before SDK auto-approval. Unlisted tools cannot run.
- * @param {string} workspace @param {string} name @param {unknown} input */
-function toolAllowed(workspace, name, input) {
+/** Every tool call is checked before it runs. Unlisted tools cannot run.
+ * @param {string} workspace @param {string} name @param {unknown} input
+ * @param {string} skill The reviewer's name as the provider's runtime reports it. */
+function toolAllowed(workspace, name, input, skill) {
   const args = record(input);
   if (name === "Skill")
     return (
-      args.skill === SKILL &&
+      args.skill === skill &&
       typeof args.args === "string" &&
       args.args === path.join(workspace, "fixture")
     );
@@ -122,29 +124,10 @@ function toolAllowed(workspace, name, input) {
   }
 }
 
-/** @param {string} key @param {string} auth @param {NodeJS.ProcessEnv} parent */
-function childEnvironment(key, auth, parent) {
-  // SDK 0.3.310 replaces (rather than merges) its subprocess environment.
-  return {
-    PATH: parent.PATH || "/usr/bin:/bin",
-    LANG: "en_US.UTF-8",
-    ANTHROPIC_API_KEY: key,
-    CLAUDE_CONFIG_DIR: auth,
-    CLAUDE_AGENT_SDK_CLIENT_APP: "kramme-skill-review-evals/1.0.0",
-    CLAUDE_CODE_MAX_RETRIES: "2",
-    CLAUDE_CODE_NONSTREAMING_TIMEOUT_RETRIES: "0",
-    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
-    ...(parent.RUNNER_TRACKING_ID
-      ? { RUNNER_TRACKING_ID: parent.RUNNER_TRACKING_ID }
-      : {}),
-  };
-}
-
 module.exports = {
   PROFILE,
-  SKILL,
+  TOOLS,
   EvalFailure,
   stageCase,
   toolAllowed,
-  childEnvironment,
 };

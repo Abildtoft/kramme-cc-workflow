@@ -3,9 +3,12 @@
     "measured": [
       "kramme-cc-workflow/evals/skill-review/ci-checkpoint.js",
       "kramme-cc-workflow/evals/skill-review/claude-predict.js",
-      "kramme-cc-workflow/evals/skill-review/claude-profile.js",
       "kramme-cc-workflow/evals/skill-review/credit-pool.js",
       "kramme-cc-workflow/evals/skill-review/eval-state.js",
+      "kramme-cc-workflow/evals/skill-review/live-predict.js",
+      "kramme-cc-workflow/evals/skill-review/openai-predict.js",
+      "kramme-cc-workflow/evals/skill-review/providers.js",
+      "kramme-cc-workflow/evals/skill-review/review-profile.js",
       "kramme-cc-workflow/evals/skill-review/run-live-eval.js",
       "kramme-cc-workflow/evals/skill-review/scorer.js",
       "kramme-cc-workflow/scripts/convert-plugin/ask-user-question-parser.js",

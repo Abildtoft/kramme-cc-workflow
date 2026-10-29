@@ -742,7 +742,7 @@ make -C kramme-cc-workflow pr-verify
 make -C kramme-cc-workflow verify
 ```
 
-Skill changes also need a separate SkillSpector installation for the changed-skill security gate. [CONTRIBUTING.md](CONTRIBUTING.md#optional-pre-commit-check) describes the optional managed pre-commit hook, and the [skill-review eval guide](kramme-cc-workflow/evals/skill-review/README.md#live-claude-adapter) covers the optional live evals that spend API credits.
+Skill changes also need a separate SkillSpector installation for the changed-skill security gate. [CONTRIBUTING.md](CONTRIBUTING.md#optional-pre-commit-check) describes the optional managed pre-commit hook, and the [skill-review eval guide](kramme-cc-workflow/evals/skill-review/README.md#live-provider-adapters) covers the optional live evals that spend Anthropic or OpenAI API credits.
 
 ## Plugin Structure
 

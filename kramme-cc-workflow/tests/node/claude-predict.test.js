@@ -224,49 +224,70 @@ test("staged input and tool boundaries exclude the answer key, runtime auth, and
   const stage = stageCase(context);
   t.after(() => fs.rmSync(stage.temporary, { recursive: true, force: true }));
   const read = path.join(stage.fixture, "SKILL.md");
-  assert.equal(toolAllowed(stage.workspace, "Read", { file_path: read }), true);
   assert.equal(
-    toolAllowed(stage.workspace, "Grep", { pattern: "frontmatter" }),
+    toolAllowed(stage.workspace, "Read", { file_path: read }, SKILL),
     true,
   );
   assert.equal(
-    toolAllowed(stage.workspace, "Glob", { pattern: "**/*.md" }),
+    toolAllowed(stage.workspace, "Grep", { pattern: "frontmatter" }, SKILL),
     true,
   );
   assert.equal(
-    toolAllowed(stage.workspace, "Glob", { pattern: "../**" }),
+    toolAllowed(stage.workspace, "Glob", { pattern: "**/*.md" }, SKILL),
+    true,
+  );
+  assert.equal(
+    toolAllowed(stage.workspace, "Glob", { pattern: "../**" }, SKILL),
     false,
   );
   assert.equal(
-    toolAllowed(stage.workspace, "Read", { file_path: stage.auth }),
+    toolAllowed(stage.workspace, "Read", { file_path: stage.auth }, SKILL),
     false,
   );
   assert.equal(
-    toolAllowed(stage.workspace, "Read", { file_path: __filename }),
+    toolAllowed(stage.workspace, "Read", { file_path: __filename }, SKILL),
     false,
   );
-  assert.equal(toolAllowed(stage.workspace, "Bash", { command: "env" }), false);
+  assert.equal(
+    toolAllowed(stage.workspace, "Bash", { command: "env" }, SKILL),
+    false,
+  );
   for (const name of ["Write", "Edit", "Agent", "WebFetch", "mcp__anything"])
-    assert.equal(toolAllowed(stage.workspace, name, {}), false);
+    assert.equal(toolAllowed(stage.workspace, name, {}, SKILL), false);
   assert.equal(
-    toolAllowed(stage.workspace, "Skill", {
-      skill: SKILL,
-      args: stage.fixture,
-    }),
+    toolAllowed(
+      stage.workspace,
+      "Skill",
+      {
+        skill: SKILL,
+        args: stage.fixture,
+      },
+      SKILL,
+    ),
     true,
   );
   assert.equal(
-    toolAllowed(stage.workspace, "Skill", {
-      skill: "other",
-      args: stage.fixture,
-    }),
+    toolAllowed(
+      stage.workspace,
+      "Skill",
+      {
+        skill: "other",
+        args: stage.fixture,
+      },
+      SKILL,
+    ),
     false,
   );
   fs.symlinkSync(__filename, path.join(stage.workspace, "escape"));
   assert.equal(
-    toolAllowed(stage.workspace, "Read", {
-      file_path: path.join(stage.workspace, "escape"),
-    }),
+    toolAllowed(
+      stage.workspace,
+      "Read",
+      {
+        file_path: path.join(stage.workspace, "escape"),
+      },
+      SKILL,
+    ),
     false,
   );
   assert.equal(fs.existsSync(path.join(stage.workspace, "items")), false);
@@ -317,15 +338,18 @@ test("timeout aborts and closes the SDK session without accepting a partial resu
       },
     );
   await assert.rejects(
-    runSession(context, {
-      key: "test-key",
-      model: "claude-test-1",
-      timeout: 20,
-      maxTurns: 12,
-      attempt,
-      signal: new AbortController().signal,
-      query,
-    }),
+    runSession(
+      context,
+      {
+        key: "test-key",
+        model: "claude-test-1",
+        timeout: 20,
+        maxTurns: 12,
+        attempt,
+        signal: new AbortController().signal,
+      },
+      { query },
+    ),
     (error) => error instanceof EvalFailure && error.code === "attempt_timeout",
   );
   assert.equal(closed, true);

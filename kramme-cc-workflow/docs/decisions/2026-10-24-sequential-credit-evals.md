@@ -2,6 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-10-24
+- Amended: 2026-10-29
 - Deciders: repository maintainer
 
 ## Context
@@ -29,3 +30,15 @@ Persist successful predictions and sanitized attempt evidence before returning s
 ## Verification
 
 Fake-SDK tests cover depletion, partial-case restart, replenishment, checkpoints, credential/answer isolation, and failure classification. CLI/workflow tests keep ordinary checks offline and enforce trusted artifact sources and branch guards. A separately observed manual live run is needed after model and keys are set.
+
+## Amendment: OpenAI organizations (2026-10-29)
+
+The maintainer now also holds OpenAI API credits in several organizations. The same evaluator consumes them through a separate provider pool: `--provider openai`, `OPENAI_EVAL_KEY_*` keys, `.context/openai-evals/` state, and its own CI job and artifacts. Each run belongs to one provider, which is part of its fingerprint. An exhausted pool pauses; it never falls back to the other provider.
+
+The OpenAI adapter calls the Responses API directly and implements the profile's Skill, Read, Glob, and Grep tools locally behind the same real-path boundary. It rotates only on `credit_balance_exhausted`. Spend limits, the OpenAI-assigned usage limit, and a bare `insufficient_quota` stop with distinct diagnostics. Throttling and transient failures get two same-key retries.
+
+- A Codex-hosted adapter would test the converted skill in its real host. However, Codex 0.165 reports `credit_balance_exhausted` and both spend-limit codes as one `Quota exceeded` message, so it could not honor the rule that spend caps never rotate.
+- The OpenAI or Agents SDK would add a pinned dependency for one endpoint. The adapter must control retries and error classification itself anyway.
+- The local tool loop measures the reviewer skill on OpenAI models under the Claude profile's tools; it does not exercise the Codex host. Attempts record token usage instead of an estimated cost.
+
+Fake-endpoint tests cover mid-case exhaustion and restart, non-rotating limit and authentication errors, same-key retries, tool boundaries, timeouts, and provider-separated run identity. A separately observed live run is still needed after OpenAI keys and a model are set.

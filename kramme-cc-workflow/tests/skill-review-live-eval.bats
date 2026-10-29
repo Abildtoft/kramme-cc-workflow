@@ -10,19 +10,32 @@ setup() {
     node "$LIVE_ROOT/run-live-eval.js" --model claude-test --split train --state-dir "$BATS_TEST_TMPDIR/state" --dry-run
   [ "$status" -eq 0 ]
   [ "$(printf '%s' "$output" | jq -r .status)" = DRY_RUN ]
+  [ "$(printf '%s' "$output" | jq -r .provider)" = anthropic ]
   [ "$(printf '%s' "$output" | jq '.cases | length')" -eq 2 ]
   [[ "$output" != *sk-ant-bats* ]]
   [ ! -e "$BATS_TEST_TMPDIR/state" ]
 }
 
-@test "live adapter reports malformed stdin without echoing it" {
-  run bash -c 'printf "%s" "sk-ant-never-echo-this" | node "$1/claude-predict.js"' _ "$LIVE_ROOT"
-  [ "$status" -eq 1 ]
-  [[ "$output" == *invalid_adapter_context* ]]
-  [[ "$output" != *sk-ant-never-echo-this* ]]
+@test "OpenAI dry run uses its own example pool and never prints keys" {
+  run env OPENAI_EVAL_KEY_A=sk-proj-bats-key-a OPENAI_EVAL_KEY_B=sk-proj-bats-key-b OPENAI_EVAL_KEY_C=sk-proj-bats-key-c \
+    node "$LIVE_ROOT/run-live-eval.js" --provider openai --model gpt-test --split train --state-dir "$BATS_TEST_TMPDIR/state" --dry-run
+  [ "$status" -eq 0 ]
+  [ "$(printf '%s' "$output" | jq -r .provider)" = openai ]
+  [ "$(printf '%s' "$output" | jq -c .organizations)" = '["org-a","org-b","org-c"]' ]
+  [[ "$output" != *sk-proj-bats* ]]
+  [ ! -e "$BATS_TEST_TMPDIR/state" ]
 }
 
-@test "live workflow uses a serialized trusted branch and explicit checkpoint uploads" {
+@test "live adapters report malformed stdin without echoing it" {
+  for adapter in claude-predict.js openai-predict.js; do
+    run bash -c 'printf "%s" "sk-ant-never-echo-this" | node "$1/$2"' _ "$LIVE_ROOT" "$adapter"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *invalid_adapter_context* ]]
+    [[ "$output" != *sk-ant-never-echo-this* ]]
+  done
+}
+
+@test "live workflow uses a serialized trusted branch and explicit checkpoint uploads per provider" {
   run node - "$REPO_ROOT" <<'NODE'
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -32,23 +45,40 @@ const workflow = YAML.parse(fs.readFileSync(path.join(process.argv[2], '.github/
 assert.deepEqual(Object.keys(workflow.on).sort(), ['schedule', 'workflow_dispatch']);
 assert.equal(workflow.concurrency['cancel-in-progress'], false);
 assert.deepEqual(workflow.permissions, {contents: 'read', actions: 'read'});
-const job = workflow.jobs['live-eval'];
-assert.ok(job.if.includes("github.ref == 'refs/heads/main'"));
-assert.ok(job.if.includes("vars.ANTHROPIC_EVAL_MODEL != ''"));
-assert.ok(job.if.includes("vars.ANTHROPIC_EVAL_ORGANIZATIONS != ''"));
-assert.equal(job.steps[0].with.ref, 'main');
-assert.equal(job.steps[0].with['persist-credentials'], false);
-const secretSteps = job.steps.filter(step => JSON.stringify(step.env || {}).includes('secrets.'));
-assert.equal(secretSteps.length, 1);
-assert.equal(secretSteps[0].id, 'eval');
-const uploads = job.steps.filter(step => (step.uses || '').startsWith('actions/upload-artifact@'));
-assert.equal(uploads.length, 2);
-for (const step of uploads) {
-  assert.equal(step.if, '${{ always() }}');
-  assert.ok(!step.with.path.includes('.context'));
-  assert.equal(step.with['retention-days'], 90);
+const providers = {
+  'claude-live-eval': {provider: 'anthropic', prefix: 'ANTHROPIC', artifact: 'claude-eval'},
+  'openai-live-eval': {provider: 'openai', prefix: 'OPENAI', artifact: 'openai-eval'},
+};
+assert.deepEqual(Object.keys(workflow.jobs).sort(), Object.keys(providers).sort());
+for (const [name, expected] of Object.entries(providers)) {
+  const job = workflow.jobs[name];
+  assert.ok(job.if.includes("github.ref == 'refs/heads/main'"));
+  assert.ok(job.if.includes(`vars.${expected.prefix}_EVAL_MODEL != ''`));
+  assert.ok(job.if.includes(`vars.${expected.prefix}_EVAL_ORGANIZATIONS != ''`));
+  assert.equal(job.steps[0].with.ref, 'main');
+  assert.equal(job.steps[0].with['persist-credentials'], false);
+  const secretSteps = job.steps.filter(step => JSON.stringify(step.env || {}).includes('secrets.'));
+  assert.equal(secretSteps.length, 1);
+  assert.equal(secretSteps[0].id, 'eval');
+  // Each job receives only its own provider's key bundle.
+  assert.deepEqual(
+    Object.entries(secretSteps[0].env).filter(([, value]) => value.includes('secrets.')),
+    [[`${expected.prefix}_EVAL_KEYS_JSON`, `\${{ secrets.${expected.prefix}_EVAL_KEYS_JSON }}`]],
+  );
+  const run = secretSteps[0].run;
+  assert.ok(run.includes(`--provider ${expected.provider}`));
+  assert.ok(run.includes('"$result" -eq 2'));
+  const scripts = job.steps.map(step => step.run || '').join('\n');
+  assert.ok(scripts.includes(`ci-checkpoint.js restore ${expected.provider}`));
+  assert.ok(scripts.includes(`ci-checkpoint.js stage ${expected.provider} `));
+  const uploads = job.steps.filter(step => (step.uses || '').startsWith('actions/upload-artifact@'));
+  assert.deepEqual(uploads.map(step => step.with.name), [`${expected.artifact}-checkpoint`, `${expected.artifact}-report`]);
+  for (const step of uploads) {
+    assert.equal(step.if, '${{ always() }}');
+    assert.ok(!step.with.path.includes('.context'));
+    assert.equal(step.with['retention-days'], 90);
+  }
 }
-assert.ok(job.steps.find(step => step.id === 'eval').run.includes('"$result" -eq 2'));
 NODE
   [ "$status" -eq 0 ]
 }
