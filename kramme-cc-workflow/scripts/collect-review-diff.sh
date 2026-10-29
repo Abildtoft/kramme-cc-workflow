@@ -24,7 +24,7 @@ REVIEW_ARTIFACT_PATTERNS=()
 
 usage() {
   cat >&2 << 'USAGE'
-Usage: collect-review-diff.sh [--base <branch-or-ref>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json|nul] [--exclude-review-artifacts] [--require-local-artifact <path>] [--stack-context]
+Usage: collect-review-diff.sh [--base <branch-or-ref-or-40-hex-oid>] [--base-commit <40-hex-oid>] [--strict|--tolerate-fetch-failure] [--format shell|json|nul] [--exclude-review-artifacts] [--require-local-artifact <path>] [--stack-context]
        collect-review-diff.sh --decode-json
 
 Default output is shell-quoted assignments:

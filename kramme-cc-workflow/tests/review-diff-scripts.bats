@@ -122,6 +122,32 @@ GH
 	[ "$CHANGED_FILES" = "committed.txt" ]
 }
 
+@test "collect-review-diff scopes an explicit local commit base without fetching a branch" {
+	printf 'first\n' >first.txt
+	git add first.txt
+	git commit -m "first feature commit" >/dev/null
+	local pre_batch_commit
+	pre_batch_commit="$(git rev-parse HEAD)"
+	printf 'remediation\n' >remediation.txt
+	git add remediation.txt
+	git commit -m "remediation commit" >/dev/null
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --base "$pre_batch_commit" --strict --format json --exclude-review-artifacts
+
+	[ "$status" -eq 0 ]
+	COLLECTED_JSON="$output" PRE_BATCH_COMMIT="$pre_batch_commit" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["COLLECTED_JSON"])
+assert data["base_ref"] == os.environ["PRE_BATCH_COMMIT"], data
+assert data["base_branch"] == "", data
+assert data["merge_base"] == os.environ["PRE_BATCH_COMMIT"], data
+assert data["changed_files"] == ["remediation.txt"], data
+PY
+}
+
 @test "collect-review-diff emits JSON for structured consumers" {
 	printf 'committed\n' >committed.txt
 	git add committed.txt
