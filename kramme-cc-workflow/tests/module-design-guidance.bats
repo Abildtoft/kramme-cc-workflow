@@ -49,6 +49,16 @@ setup() {
 	grep -qF "### Phase 3: Structural" "skills/kramme:code:agent-readiness/assets/audit-report.md"
 }
 
+@test "agent readiness measures search uniqueness and treats wildcard re-exports as weak entry points" {
+	local rubrics="skills/kramme:code:agent-readiness/references/dimension-rubrics.md"
+	grep -qF "9. **Search uniqueness.**" "$rubrics"
+	grep -qF "report the share with exactly one definition plus the worst collisions" "$rubrics"
+	grep -qF 'names a framework requires, such as `index.*`, `page.*`, and `__init__.py`, do not count.' "$rubrics"
+	grep -qF 'a wildcard re-export (`export *`, `from x import *`) forwards everything and hides which file defines each name.' "$rubrics"
+	grep -qF "Does a file-name search for a source file's name also find its test" "$rubrics"
+	grep -qF "id: modem-how-coding-agents-read-your-code" "skills/kramme:code:agent-readiness/references/sources.yaml"
+}
+
 @test "implementation context searches for a new exported name before adding it" {
 	local reference="shared/implementation/references/context-preparation.md"
 	grep -qF "Before adding a new exported name or file, search the repository's contents and file paths for that name." "$reference"

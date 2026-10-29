@@ -8,7 +8,7 @@ Include the relevant dimension blocks in each Explore agent's prompt based on it
 
 A Context Pointer is an intentional link or code affordance that helps an AI agent move from compact context to the right deeper context without loading the whole codebase. Examples include AGENTS/CLAUDE instructions that point to focused docs, README navigation that routes setup/testing/architecture questions, module `README.md` files, `index.*` public exports, route maps, registries, schemas, shared helper entry points, and comments that point unusual decisions to ADRs or specs.
 
-Strong Context Pointers are accurate, scoped, and explain when or why to follow the pointer. Stale links, undifferentiated link dumps, and giant catch-all docs are weak evidence.
+Strong Context Pointers are accurate, scoped, and explain when or why to follow the pointer. Stale links, undifferentiated link dumps, giant catch-all docs, and wildcard re-exports (`export *`) that hide which file defines each name are weak evidence.
 
 ---
 
@@ -56,18 +56,19 @@ Assess how easily an AI agent can discover, navigate, and understand the project
 3. **Naming consistency.** Do files, functions, and variables follow consistent naming conventions? (kebab-case files, PascalCase components, etc.)
 4. **Import/dependency clarity.** Are import paths clean? Path aliases configured? Circular dependencies avoided?
 5. **Module depth.** Do modules offer a lot of behavior behind small interfaces? Flag wide interfaces (many exports, parameters, or call-order rules a caller must learn) and pass-through modules that fail the deletion test. File length is evidence only when a file mixes unrelated concerns; a long implementation behind a small interface is depth, not a defect.
-6. **Module boundaries.** Does each module declare its public interface in an entry point (`index.*`, `__init__.py`, `lib.rs`, `public-api.ts`, package `exports`), and do callers import only through it? Count internal imports — imports that resolve to a file inside another module instead of its entry point.
-7. **Colocation.** Are related files (component + test + styles + types) colocated or clearly cross-referenced?
+6. **Module boundaries.** Does each module declare its public interface in an entry point (`index.*`, `__init__.py`, `lib.rs`, `public-api.ts`, package `exports`), and do callers import only through it? Count internal imports — imports that resolve to a file inside another module instead of its entry point. An entry point that names its exports declares the interface; a wildcard re-export (`export *`, `from x import *`) forwards everything and hides which file defines each name.
+7. **Colocation.** Are related files (component + test + styles + types) colocated or clearly cross-referenced? Does a file-name search for a source file's name also find its test (`stripe.ts` and `stripe.test.ts`)?
 8. **Context Pointer structure.** Are there clear entry points that route agents from high-level docs or module boundaries to the right source files, workflows, schemas, tests, or design records?
+9. **Search uniqueness.** Agents find code by text search, so every search for a name defined in many places also returns the unrelated definitions. Count the definitions of each exported name, in one pass where the language allows or across a sample of 20+ names otherwise, and report the share with exactly one definition plus the worst collisions (`create`, `init`, `Config`). Where callers always qualify names with the module (Go packages), the module name counts as part of the name. Also count repeated generic file names such as `utils.*` and `helpers.*`; names a framework requires, such as `index.*`, `page.*`, and `__init__.py`, do not count.
 
 ### Scoring Rubric
 
 | Score | Criteria |
 | --- | --- |
-| **5** | Top-level modules follow the domain and fit in a short list. Modules expose small interfaces through clear entry points, and callers never use internal imports. Consistent naming throughout. Clean imports with aliases. Colocated related files. Strong Context Pointers connect docs, entry points, tests, schemas, and architecture decisions. |
-| **4** | Mostly domain-shaped structure with minor inconsistencies. Most modules have clear entry points; internal imports are rare. Imports mostly clean. Good naming conventions. Useful Context Pointers exist for the main workflows or modules. |
-| **3** | Understandable structure, but some concepts are split across technical layers or many small modules. Mixed naming patterns. Some modules lack entry points or are reached through internal imports. Import paths somewhat messy. Some Context Pointers exist, but coverage is inconsistent or agents still need broad searches. |
-| **2** | Layer-shaped or unclear structure that scatters concepts. Inconsistent naming. Many shallow modules with wide interfaces, and frequent internal imports. Confusing import paths. Few Context Pointers. Hard to find where things live. |
+| **5** | Top-level modules follow the domain and fit in a short list. Modules expose small interfaces through clear entry points, and callers never use internal imports. Consistent naming throughout, and searches for exported names land on one definition. Clean imports with aliases. Colocated related files. Strong Context Pointers connect docs, entry points, tests, schemas, and architecture decisions. |
+| **4** | Mostly domain-shaped structure with minor inconsistencies. Most modules have clear entry points; internal imports are rare. Imports mostly clean. Good naming conventions with few name collisions. Useful Context Pointers exist for the main workflows or modules. |
+| **3** | Understandable structure, but some concepts are split across technical layers or many small modules. Mixed naming patterns, and some generic names are defined in several modules. Some modules lack entry points or are reached through internal imports. Import paths somewhat messy. Some Context Pointers exist, but coverage is inconsistent or agents still need broad searches. |
+| **2** | Layer-shaped or unclear structure that scatters concepts. Inconsistent naming, and generic names collide across many modules. Many shallow modules with wide interfaces, and frequent internal imports. Confusing import paths. Few Context Pointers. Hard to find where things live. |
 | **1** | No discernible structure. Random file placement. Inconsistent naming. No module boundaries: anything imports anything, and massive files mix unrelated concerns. Circular imports. No useful Context Pointers or clear entry points. |
 
 ### Evidence to Gather
@@ -76,9 +77,12 @@ Assess how easily an AI agent can discover, navigate, and understand the project
 - Top-level module map: names, count, and whether they follow the domain or technical layers
 - Sample of 3-5 module interfaces: what a caller must learn, compared with what the module hides
 - Internal-import count with 2-3 examples (imports that climb out of one module and into another's implementation files)
+- Wildcard re-exports in module entry points, with 1-2 examples
 - Files over 500 lines that mix unrelated concerns, not merely long implementations
 - Sample of import paths (clean vs messy)
 - Naming pattern consistency check across 10+ files
+- Search-uniqueness counts: the share of exported names with exactly one definition, the worst collisions, and repeated generic file names
+- Source-to-test name check: whether a file-name search for 3-5 source files finds their tests
 - Examples of effective Context Pointers and missing pointer gaps
 
 ---
