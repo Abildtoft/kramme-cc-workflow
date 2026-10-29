@@ -10,7 +10,7 @@
 - **ALWAYS** read [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) before changing subsystem boundaries or runtime flow.
 - **ALWAYS** use [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to choose the first source files and closest tests for a change.
 - **ALWAYS** consult [docs/decisions/README.md](kramme-cc-workflow/docs/decisions/README.md) before revisiting a settled repository decision.
-- **ALWAYS** keep install, usage, component listings, and testing documentation in the canonical public [README.md](README.md).
+- **ALWAYS** keep install, quick-start usage, component listings, and testing entry points in the canonical public [README.md](README.md), and put deep usage reference in linked guides under `kramme-cc-workflow/docs/`, such as [docs/review.md](kramme-cc-workflow/docs/review.md) and [docs/shipping.md](kramme-cc-workflow/docs/shipping.md), per [docs/decisions/2026-10-28-readme-entry-point.md](kramme-cc-workflow/docs/decisions/2026-10-28-readme-entry-point.md).
 - **PREFER** the generated [component catalog](kramme-cc-workflow/docs/component-catalog.json) over the full README when locating a shipped skill, agent, or hook; regenerate it with `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` after component changes.
 - **ALWAYS** use [.agents/skills/](.agents/skills/) or [Local Repository Maintenance](README.md#local-repository-maintenance) to locate repository-maintenance skills, which are intentionally absent from the shipped component catalog.
 - **ALWAYS** read [agent-portability.md](kramme-cc-workflow/docs/agent-portability.md) before changing converter, hook, MCP, or host-adapter behavior.
@@ -98,7 +98,8 @@ exit_if_hook_disabled "hook-name" "json" # PostToolUse or Stop
 - **ALWAYS** use namespaced `kramme:` component names with kebab-case name segments.
 - **ALWAYS** store component definitions as Markdown files with YAML frontmatter.
 - **PREFER** concise, actionable instructions.
-- **ALWAYS** document every command, skill, agent, and hook in `README.md` with what it does and when to use it.
+- **ALWAYS** document every command, skill, agent, and hook in `README.md` with what it does and when to use it; give each skill and agent a one-line summary of at most 160 characters in `summaries` under `readme_skill_sync` or `readme_agent_sync` in `kramme-cc-workflow/scripts/synced-contracts.yaml`, which the generated README rows display.
+- **ALWAYS** keep README paragraphs and list items under 500 characters, and treat `readme prose: long-paragraph burndown` warnings from `python3 kramme-cc-workflow/scripts/lint-skill-contracts.py` as an ordered review queue: split the text, use a list or table, or move the detail to the owning `SKILL.md` or a linked docs guide.
 - **ALWAYS** use “Pull Request” or “PR” terminology consistently.
 - **ALWAYS** use plain-English branch commit messages without Conventional Commit prefixes.
 - **ALWAYS** use Conventional Commits for PR titles because CI validates them and they become changelog-generating merge commit messages.
@@ -152,4 +153,5 @@ make -C kramme-cc-workflow verify     # Release-candidate gate
 ```
 
 - **ALWAYS** use [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to map changed files to the closest focused tests.
+- **PREFER** pinning behavior wording in tests against the owning `SKILL.md` or the docs guide that documents it; pin `README.md` only for component existence, generated rows, migration entries, and links.
 - **ALWAYS** regenerate the component reference after changing a skill, agent, or hook with `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write`.

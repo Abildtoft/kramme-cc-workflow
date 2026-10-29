@@ -30,6 +30,7 @@ from .checks.marker_manifest import (
     parse_sources_manifest,
 )
 from .checks.mechanical import check_mechanical
+from .checks.readme_prose import check_readme_prose, readme_prose_blocks
 from .checks.routing_distinctness import (
     check_routing_distinctness,
     description_tokens,
@@ -97,6 +98,7 @@ from .readme import (
     skill_name_from_readme_cell,
     skill_reference_from_frontmatter,
 )
+from .readme_summaries import apply_readme_summaries
 from .schema import (
     DEFAULT_CONTRACT_SCHEMA,
     DEFAULT_CONTRACT_SCHEMA_PATH,
@@ -129,6 +131,7 @@ __all__ = [
     "agent_catalog_entries",
     "agent_name_from_readme_cell",
     "allow_empty_field_keys",
+    "apply_readme_summaries",
     "catalog_relative_path",
     "check_base_diff_scope",
     "check_component_catalog",
@@ -142,6 +145,7 @@ __all__ = [
     "check_readme_agent_sync",
     "check_readme_extra_skill_rows",
     "check_readme_hook_sync",
+    "check_readme_prose",
     "check_readme_skill_sync",
     "check_readme_skill_rows_sync",
     "check_required_file_contracts",
@@ -191,6 +195,7 @@ __all__ = [
     "path_segments",
     "read_text",
     "readme_component_rows",
+    "readme_prose_blocks",
     "readme_relative_for_component_sync",
     "readme_skill_rows",
     "rel",

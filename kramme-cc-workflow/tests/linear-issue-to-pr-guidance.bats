@@ -9,6 +9,7 @@
     convergence="skills/kramme:pr:review-convergence/SKILL.md"
     policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
     readme="../README.md"
+    review_guide="docs/review.md"
 
     test -f "$parent"
     test -f "$preflight"
@@ -30,8 +31,8 @@
     grep -qF "name: kramme:pr:review-convergence" "$convergence"
     grep -qF "user-invocable: true" "$convergence"
     grep -qF "disable-model-invocation: false" "$convergence"
-    grep -qF "The same phase is also used by \`kramme:code:plan-to-pr\`" "$readme"
-    ! grep -qF "kramme:linear:issue-review" "$parent" "$convergence" "$readme"
+    grep -qF "The same phase is also used by \`kramme:code:plan-to-pr\`" "$review_guide"
+    ! grep -qF "kramme:linear:issue-review" "$parent" "$convergence" "$readme" "$review_guide"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -43,14 +44,14 @@
     cd "'"$BATS_TEST_DIRNAME"'/.."
     parent="skills/kramme:linear:issue-to-pr/SKILL.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
-    readme="../README.md"
+    review_guide="docs/review.md"
 
     grep -qF "always forwards an explicit remediation-cycle budget" "$parent"
     grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]" "$parent"
     grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} [--depth {depth}] [--isolated] --requirements {issue-requirements}" "$parent"
     grep -qF "Always pass \`--rounds {cycles}\`, which carries this workflow'"'"'s default budget of \`2\` unless \`--cycles\` overruled it" "$parent"
     grep -qF "neither the caller'"'"'s default remediation-cycle budget nor a \`--cycles\` override" "$shared_contract"
-    grep -qF "\`issue-to-pr\` and \`plan-to-pr\` instead always forward a budget of two, which their own \`--cycles <1-5>\` flag overrules" "$readme"
+    grep -qF "\`issue-to-pr\` and \`plan-to-pr\` instead always forward a budget of two, which their own \`--cycles <1-5>\` flag overrules" "$review_guide"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -214,7 +215,7 @@
     adapter="skills/kramme:linear:issue-to-pr/references/conductor-workspace.md"
     sources="skills/kramme:linear:issue-to-pr/references/sources.yaml"
     portability="docs/agent-portability.md"
-    readme="../README.md"
+    shipping_guide="docs/shipping.md"
 
     test -f "$adapter"
     grep -qF "After Step 10 closes the confirmation race" "$skill"
@@ -238,7 +239,7 @@
     grep -qF "continue regardless of its outcome" "$skill"
     grep -qF "Conductor workspace: {conductor-rename-outcome}" "$skill"
     grep -qF "workspace CLI" "$portability"
-    grep -qF "detected Conductor workspace is renamed best-effort" "$readme"
+    grep -qF "detected Conductor workspace is renamed best-effort" "$shipping_guide"
     grep -qF "id: conductor-openapi" "$sources"
     grep -qF "id: conductor-environment-variables" "$sources"
 
@@ -285,7 +286,7 @@
     cd "'"$BATS_TEST_DIRNAME"'/.."
     skill="skills/kramme:pr:review-convergence/SKILL.md"
     registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
-    readme="../README.md"
+    review_guide="docs/review.md"
 
     grep -qF "argument-hint: \"[--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]\"" "$skill"
     grep -qF "user-invocable: true" "$skill"
@@ -313,9 +314,9 @@
     grep -qF "set \`DIRECT_REQUIREMENTS_SOURCE=linear\` and \`{work-id}={linear-issue-id}\`" "$skill"
     grep -qF "Do not use the branch diff, implementation, commit messages, Pull Request metadata, or repository conventions to fill missing product intent." "$skill"
     grep -qF "Usage: \$kramme:pr:review-convergence [--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]" "$skill"
-    grep -qF "with no requirement argument it derives the contract from the current conversation" "$readme"
-    grep -qF "with \`--derive\` it drafts a contract from conversation and committed branch evidence" "$readme"
-    grep -qF "set its maximum to one through five fix-and-rerun rounds with \`--rounds <1-5>\`" "$readme"
+    grep -qF "with no requirement argument it derives the contract from the current conversation" "$review_guide"
+    grep -qF "with \`--derive\` it drafts a contract from conversation and committed branch evidence" "$review_guide"
+    grep -qF "set its maximum to one through five fix-and-rerun rounds with \`--rounds <1-5>\`" "$review_guide"
 
     for report in REVIEW_OVERVIEW CONVENTION_REVIEW_OVERVIEW OVERENGINEERING_REVIEW_OVERVIEW REFACTOR_OPPORTUNITIES_OVERVIEW; do
       grep -qF "\"path\": \".context/pr-review-convergence/reviews/$report.md\"" "$registry"
@@ -593,7 +594,7 @@
     policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
     fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
-    readme="../README.md"
+    shipping_guide="docs/shipping.md"
 
     grep -qF "### Reviewer Handoff Summary" "$parent"
     grep -qF "after either success template" "$parent"
@@ -626,8 +627,8 @@
     grep -qF "merge only \`findings\` and \`focus\` with the final-tree handoff" "$parent"
     grep -qF "retained rejected or blocked Gut Check items" "$parent"
     grep -qF "Deduplicate a routed Gut Check item linked to an owning finding fingerprint" "$parent"
-    grep -qF "Shipped summaries merge CI remediation and final-tree validation evidence" "$readme"
-    grep -qF "reviewer handoff summary" "$readme"
+    grep -qF "Shipped summaries merge CI remediation and final-tree validation evidence" "$shipping_guide"
+    grep -qF "reviewer handoff summary" "$shipping_guide"
 
     capture_line=$(grep -nF "JSON-decode the returned \`Reviewer handoff JSON\` field" "$parent" | cut -d: -f1)
     shipping_line=$(grep -nF "## Step 4: Stop or Ship" "$parent" | cut -d: -f1)

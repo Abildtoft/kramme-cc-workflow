@@ -5,17 +5,15 @@ setup() {
 	SKILL="$PLUGIN_ROOT/skills/kramme:code:deprecate/SKILL.md"
 	DECISION_CHECKLIST="$PLUGIN_ROOT/skills/kramme:code:deprecate/references/decision-checklist.md"
 	MIGRATION_PATTERNS="$PLUGIN_ROOT/skills/kramme:code:deprecate/references/migration-patterns.md"
-	README="$PLUGIN_ROOT/../README.md"
 }
 
 @test "database migration pattern is routed before generic migration cost" {
-	run python3 - "$SKILL" "$DECISION_CHECKLIST" "$README" <<'PY'
+	run python3 - "$SKILL" "$DECISION_CHECKLIST" <<'PY'
 import pathlib
 import sys
 
 skill = pathlib.Path(sys.argv[1]).read_text()
 checklist = pathlib.Path(sys.argv[2]).read_text()
-readme = pathlib.Path(sys.argv[3]).read_text()
 
 skill_frontmatter = skill.split("---", 2)[1]
 step_one = skill.split("## Step 1 —", 1)[1].split("## Step 2 —", 1)[0]
@@ -28,7 +26,6 @@ required = {
     "decision-checklist routing": "use Database Expand/Migrate/Contract regardless of whether dependent work is Low, Medium, or High",
     "framework-only boundary": "framework/library-only `kramme:code:migrate` workflow",
     "framework migration route": "Framework or library version migration",
-    "canonical README": "Database Expand-Migrate-Contract patterns",
 }
 texts = {
     "public skill description": skill_frontmatter,
@@ -36,7 +33,6 @@ texts = {
     "decision-checklist routing": cost_section,
     "framework-only boundary": cost_section,
     "framework migration route": cost_section,
-    "canonical README": readme,
 }
 missing = [name for name, phrase in required.items() if phrase not in texts[name]]
 if question_four.find("persisted data/schema contract") > question_four.find("Then estimate"):

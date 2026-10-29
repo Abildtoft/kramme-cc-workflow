@@ -22,20 +22,18 @@ Claude Code is the canonical source, and Codex is a first-class native plugin ge
 
 Using the plugin:
 
-- [System Requirements & Dependencies](#system-requirements--dependencies)
+- [Quick Start](#quick-start)
+- [Requirements](#requirements)
 - [Installation & Updating](#installation--updating)
-- [Getting Started](#getting-started)
-- [Skills](#skills)
-- [Agents](#agents)
-- [Hooks](#hooks)
-- [Recommended Auto Modes](#recommended-auto-modes)
-- [Recommended MCP Servers](#recommended-mcp-servers)
-- [Recommended CLIs](#recommended-clis)
+- [Workflows](#workflows)
+- [Configuration](#configuration)
 
 Reference:
 
-- [Plugin Status](#plugin-status)
-- [Plugin Structure](#plugin-structure)
+- [Skills](#skills)
+- [Agents](#agents)
+- [Hooks](#hooks)
+- [Renamed and Removed Commands](#renamed-and-removed-commands)
 - [Documentation](#documentation)
 - [Related Plugins](#related-plugins)
 - [Releases](#releases)
@@ -44,35 +42,72 @@ Contributing & maintenance:
 
 - [Contributing](#contributing)
 - [Development](#development)
+- [Plugin Structure](#plugin-structure)
 - [Adding Components](#adding-components)
 - [Local Repository Maintenance](#local-repository-maintenance)
 - [Attribution](#attribution)
 - [License](#license)
 
-## System Requirements & Dependencies
+## Quick Start
 
-The plugin does not depend on another plugin, and no MCP server is required for basic use. It runs from the same source on Claude Code and Codex.
+Install in Claude Code, inside a session:
 
-For the full default experience, use a current release of your host:
+```bash
+/plugin marketplace add Abildtoft/kramme-cc-workflow
+/plugin install kramme-cc-workflow@kramme-cc-workflow
+```
 
-- **Claude Code** — use a current release on a [supported platform](https://code.claude.com/docs/en/installation#system-requirements). The plugin does not pin a minimum Claude Code version.
-- **Codex** — use a current Codex CLI release. The published native plugin installs through the Codex marketplace; checkout installs also need the converter toolchain described below.
-- Install Bash, Git, `jq`, Python 3.10+, and Node.js 18+. The bundled hooks invoke Bash directly, and the enabled safety hooks fail closed when `jq` or Python is unavailable. Node powers the enabled local skill-usage recording hook; without it, that hook records a diagnostic and otherwise remains silent. The update-check hook uses `curl` to look for a new release once a day, with Python file locking to coordinate concurrent sessions; it stays silent when these are unavailable. Disable hooks explicitly with `/kramme:hooks:toggle` if they cannot run in your environment.
-- Prefer macOS, Linux, or WSL. On native Windows, install Git Bash and make the required tools available in that shell; PowerShell-only use does not support the plugin's Bash hooks.
+Or install in Codex, from your terminal:
 
-Additional dependencies are capability-specific:
+```bash
+codex plugin marketplace add Abildtoft/kramme-cc-workflow --ref codex-plugin
+codex plugin add kramme-cc-workflow@kramme-cc-workflow
+```
 
-| Capability | Dependency |
+Then check your environment and try a first workflow:
+
+```bash
+/kramme:setup           # read-only check of tools, repository context, and plugin updates
+/kramme:pr:code-review  # review the changes on your current branch
+/kramme:verify:run      # run tests, linting, and type checks for changed code
+```
+
+In Codex, start skills with `$` instead of `/`, for example `$kramme:setup`. See [Installation & Updating](#installation--updating) for other install methods and auto-update.
+
+## Requirements
+
+The plugin needs no other plugin and no MCP server for basic use. Use a current release of [Claude Code](https://code.claude.com/docs/en/installation#system-requirements) or the Codex CLI; the plugin does not pin a minimum host version. Prefer macOS, Linux, or WSL.
+
+### Core Tools
+
+| Tool | Used for | Install |
+| --- | --- | --- |
+| `bash` | Hook runtime | Pre-installed on macOS and Linux. On native Windows, use Git Bash; PowerShell alone cannot run the hooks. |
+| `git` | Version control | Pre-installed on most systems |
+| `jq` | Safety-hook JSON parsing | `brew install jq` (macOS) / `apt install jq` (Linux) |
+| `python3` | Safety-hook command parsing | Install Python 3.10+ |
+| `node` | Local skill-usage recording | Install Node.js 18+ |
+
+The enabled safety hooks fail closed when `jq` or Python is unavailable. Without Node.js, the usage-recording hook records a diagnostic and otherwise stays silent. The `update-check` hook uses `curl` and Python file locking, and stays silent when they are unavailable. If hooks cannot run in your environment, disable them with `/kramme:hooks:toggle`.
+
+### Optional Tools by Capability
+
+| Capability | Needs |
 | --- | --- |
-| GitHub Pull Request, review, CI, and changelog workflows | Authenticated GitHub CLI (`gh auth login`) |
+| GitHub Pull Request, review, CI, and changelog workflows | Authenticated GitHub CLI: `brew install gh` or [cli.github.com](https://cli.github.com/), then `gh auth login` |
 | Linear workflows | Authenticated Linear MCP server |
 | Browser QA and live product review | Claude in Chrome, Chrome DevTools, or Playwright MCP |
-| Document conversion | `uv`/`uvx`; MarkItDown dependencies are downloaded on demand |
-| Recoverable cleanup in autonomous workflows | `trash` on macOS or `trash-cli` on Linux |
-| Codex checkout conversion | Node.js 18+, npm, and the Codex CLI (`npm install -g @openai/codex`) |
-| Project verification and formatting | The target project's own build, test, type-check, and formatter tools |
+| Document conversion | `uv`/`uvx`; MarkItDown dependencies download on demand |
+| Recoverable cleanup in autonomous workflows, and the `trash` alternative that `block-rm-rf` recommends | `brew install trash` (macOS) / `apt install trash-cli` (Linux) |
+| Codex checkout installs | Node.js 18+, npm, and the Codex CLI (`npm install -g @openai/codex`) |
+| Project verification and formatting | The target project's own build, test, type-check, and formatter tools, such as `nx`, `dotnet`, `prettier`, `eslint`, or `tsc` |
+| Nx workspace tools in `/kramme:verify:run` | Nx MCP |
+| Up-to-date library documentation | Context7 MCP |
+| Magic Patterns designs and Granola meeting notes | Magic Patterns MCP, Granola MCP |
+| Security scans of local skill directories | [SkillSpector](https://github.com/NVIDIA/SkillSpector) |
+| AI-generated illustrations in visual diagrams | [surf-cli](https://github.com/nicobailon/surf-cli) |
 
-The Claude Code marketplace install does not need Node.js. Codex marketplace installs do not need a checkout; Node.js is needed when building or installing from a checkout. Context7, Nx, Magic Patterns, Granola, and other MCP integrations are optional enhancements unless a selected skill says otherwise. After installing on either host, run `/kramme:setup` for a read-only environment check. Contributors need the broader toolchain described in [Development](#development).
+The Claude Code marketplace install does not need Node.js, and Codex marketplace installs need no checkout. [docs/mcp-servers.md](kramme-cc-workflow/docs/mcp-servers.md) covers MCP server setup. After installing on either host, run `/kramme:setup` for a read-only environment check. Contributors need the broader toolchain described in [Development](#development).
 
 ## Installation & Updating
 
@@ -94,21 +129,19 @@ Marketplace install (recommended) — run inside a Claude Code session:
 
 Then turn on auto-update so new releases install themselves: run `/plugin`, open **Marketplaces**, select `kramme-cc-workflow`, and choose **Enable auto-update**. Claude Code leaves auto-update off for third-party marketplaces until you do.
 
-Direct Git install — run from your terminal:
+Other installs — run from your terminal:
 
 ```bash
+# Direct Git install
 claude /plugin install git+https://github.com/Abildtoft/kramme-cc-workflow
-```
 
-For local development — run from your terminal:
-
-```bash
+# Local development
 claude /plugin install /path/to/kramme-cc-workflow/kramme-cc-workflow
 ```
 
 ### Codex
 
-The plugin ships to Codex as a native Codex plugin. A converter CLI (Node.js 18+) builds a Codex marketplace from the Claude plugin source, and Codex installs the plugin from that marketplace into its own plugin cache, where it also owns updates and removal. Use the plugin name from `.claude-plugin/marketplace.json` (here: `kramme-cc-workflow`).
+The plugin ships to Codex as a native Codex plugin. A converter builds a Codex marketplace from the Claude plugin source, and Codex installs the plugin from that marketplace into its own plugin cache, where it also owns updates and removal.
 
 Install the published plugin without a clone (requires the Codex CLI):
 
@@ -117,119 +150,59 @@ codex plugin marketplace add Abildtoft/kramme-cc-workflow --ref codex-plugin
 codex plugin add kramme-cc-workflow@kramme-cc-workflow
 ```
 
-CI regenerates the `codex-plugin` branch on every release tag. The release-tag workflow
-calls the publisher with that exact tag, so tags created by GitHub Actions still publish
-the marketplace. If the branch is ever missing, maintainers can rebuild it from the
-Actions tab by running **Publish Codex Plugin** against `main`.
-
-Build and install from a checkout:
+Or build and install it yourself:
 
 ```bash
+# From a checkout
 npm install
 node kramme-cc-workflow/scripts/convert-plugin.js install kramme-cc-workflow
-```
 
-Run with npx (no clone):
-
-```bash
+# With npx, without a clone
 npx --yes github:Abildtoft/kramme-cc-workflow install kramme-cc-workflow
-```
 
-Local dev from this repo:
-
-```bash
+# Local development from this repository
 ./kramme-cc-workflow/scripts/install-codex.sh
 ```
 
-`install` builds the marketplace under `<codex-home>/.kramme-plugin-marketplaces/kramme-cc-workflow`, registers it with `codex plugin marketplace add`, installs it with `codex plugin add`, and fails if Codex places the plugin anywhere other than `plugins/cache/kramme-cc-workflow/kramme-cc-workflow/<version>` under the Codex home, because the converted skills reference that directory. The Codex home defaults to `$CODEX_HOME` or `~/.codex`; override it with `--codex-home`. The helper script installs missing converter runtime dependencies and forwards additional args to the converter.
+Checkout installs build the marketplace under the Codex home (`$CODEX_HOME` or `~/.codex`; override it with `--codex-home`) and offer to remove output left by earlier converter releases. The [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md#installing-from-a-checkout) covers installer options, build output, and publishing.
 
-Installs from an earlier converter release (skills copied into `~/.codex/skills`, agent skills in `~/.agents/skills`, shared helpers under `~/.codex/scripts`, and the managed `AGENTS.md` tool map) are detected through `.kramme-install-state.json` and removed after confirmation. Pass `--yes` to confirm automatically or `--non-interactive` to keep them; `--agents-home` selects the agents home that held the legacy agent skills.
-
-Build the marketplace without installing, for inspection or publishing:
+To uninstall:
 
 ```bash
-node kramme-cc-workflow/scripts/convert-plugin.js build kramme-cc-workflow --out /tmp/kramme-codex
-```
+# Published install
+codex plugin remove kramme-cc-workflow@kramme-cc-workflow
+codex plugin marketplace remove kramme-cc-workflow
 
-The output root holds `.agents/plugins/marketplace.json` and `plugins/kramme-cc-workflow/` with `.codex-plugin/plugin.json`, `skills/` (converted skills, generated command skills, and agent skills), `scripts/` (shared helpers), and `hooks/` when the hook control skills are present. See the [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md) for the exact source-to-output mapping.
-
-Inspect the generated skill counts without building:
-
-```bash
-node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow
-node kramme-cc-workflow/scripts/convert-plugin.js stats kramme-cc-workflow --json
-```
-
-The default output contains `codex_skills=<integer>` followed by `agent_skills=<integer>`. JSON output contains the same two integer fields in an object. `codex_skills` counts converted skill directories plus generated command skills; `agent_skills` counts generated Codex agent skills. Both groups are packaged in the plugin's `skills/` directory.
-
-Remove a checkout install, including the marketplace and any legacy output:
-
-```bash
+# Checkout install, including the marketplace and any legacy output
 node kramme-cc-workflow/scripts/convert-plugin.js uninstall kramme-cc-workflow
 ```
-
-For published installs, `codex plugin remove kramme-cc-workflow@kramme-cc-workflow` and `codex plugin marketplace remove kramme-cc-workflow` do the same through Codex. For install status, see [Plugin Status](#plugin-status).
 
 ### Updating
 
 When a new release is out, the `update-check` hook tells you at the start of a session and gives the update commands for your host. It checks at most once a day, so the notice can arrive up to a day after the release. After you update, the next session names the new version and, in Claude Code, how many breaking changes it includes. To turn the hook off or keep it offline, see [update-check](kramme-cc-workflow/docs/hooks.md#update-check).
 
-For marketplace installs, update inside a Claude Code session, then run `/reload-plugins`:
-
-```bash
-/plugin marketplace update kramme-cc-workflow
-```
-
-Or update from your terminal:
-
-```bash
-claude plugin update kramme-cc-workflow@kramme-cc-workflow
-```
-
-For Git or local installs, re-run the install command to pull the latest version:
-
-```bash
-# Git install
-claude /plugin install git+https://github.com/Abildtoft/kramme-cc-workflow
-
-# Local development
-claude /plugin install /path/to/kramme-cc-workflow/kramme-cc-workflow
-```
-
-For published Codex installs, refresh the marketplace snapshot and reinstall:
-
-```bash
-codex plugin marketplace upgrade kramme-cc-workflow
-codex plugin add kramme-cc-workflow@kramme-cc-workflow
-```
-
-For checkout Codex installs, re-run the install command; it rebuilds the marketplace and reinstalls the plugin into the Codex cache.
+| Install | How to update |
+| --- | --- |
+| Claude Code marketplace | Auto-update, `/plugin marketplace update kramme-cc-workflow` in a session, or `claude plugin update kramme-cc-workflow@kramme-cc-workflow` from a terminal |
+| Claude Code Git or local | Re-run the install command |
+| Codex published | `codex plugin marketplace upgrade kramme-cc-workflow`, then `codex plugin add kramme-cc-workflow@kramme-cc-workflow` |
+| Codex checkout | Re-run the install command; it rebuilds the marketplace and reinstalls the plugin into the Codex cache |
 
 Restart the host you updated, or run `/reload-plugins` in Claude Code, for changes to take effect.
 
-**Auto-update:** Claude Code v2.0.70 and later can install new releases in the background, but auto-update stays off for third-party marketplaces such as this one until you turn it on under `/plugin` → **Marketplaces** → `kramme-cc-workflow` → **Enable auto-update**. Claude Code then shows `Plugin updated` with a `/reload-plugins` prompt when a release lands, and `/kramme:setup` reports the auto-update policy from local settings and the marketplace record. The check reads shared settings in the session directory and, on Unix, local overrides from the owned main checkout. Confirm the effective session policy under `/plugin`; session flags, remote or OS-managed policy, and workspace trust are not inspected by the shell check. Codex marketplace updates are explicit: run `codex plugin marketplace upgrade` and then `codex plugin add` as shown above.
+Claude Code auto-update needs v2.0.70 or later. When a release lands, Claude Code shows `Plugin updated` with a `/reload-plugins` prompt. `/kramme:setup` reports the auto-update policy from local settings and the marketplace record, but it does not inspect session flags, remote or OS-managed policy, or workspace trust; confirm the effective policy under `/plugin`.
 
-## Getting Started
+### Checking Your Installation
 
-After installation in either Claude Code or Codex, start with the smallest useful workflow:
+- **Claude Code:** open `/plugin` to see the marketplace registration and installed version.
+- **Codex:** run `codex plugin list`; the plugin appears as `kramme-cc-workflow@kramme-cc-workflow` with its status, version, and marketplace source.
+- **Either host:** run `/kramme:setup` for a read-only report of missing tools, cached plugin versions, and update status. It never installs plugins or changes host configuration.
 
-```bash
-/kramme:setup
-```
+With a non-default Codex home, keep `CODEX_HOME` exported in shells Codex runs, because converted skills locate their files through it. If skills from an earlier converter release appear twice, run the checkout install again with `--yes` to remove the legacy copy.
 
-The setup report includes cached plugin versions and the path and manifest version of the running checker. For Claude Code, it also lists cached versions registered across installation scopes and projects when `jq` can read the registration file; these records do not identify the active session's version. The Claude probe honors `CLAUDE_CODE_PLUGIN_CACHE_DIR` before `CLAUDE_CONFIG_DIR/plugins` or `~/.claude/plugins`. The check never installs plugins or changes host configuration.
+## Workflows
 
-For an existing code change, run `/kramme:pr:code-review`. Contributors can start with the [closest focused test](kramme-cc-workflow/docs/code-map.md#source-to-test-map); for a documentation edit, run:
-
-```bash
-make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats
-```
-
-Use `test-smoke` for representative feedback. The complete [PR and release gates](#development) remain required at their respective workflow stages.
-
-These skills cover the full lifecycle of a change. Most work runs through the middle phases; only the situational **Chart** phase up front is reached for when a task is too big or foggy to plan in one pass.
-
-Feature specification, API design, Linear implementation planning, review resolution, agent-readiness recommendations, skill authoring/review, and completion verification consider user experience (UX), developer experience (DX), and agent experience (AX) together. Prefer improvements across all three within scope, preserve established behavior and contracts outside the intended change, make intentional changes and material tradeoffs explicit, and support regression claims with relevant checks. Unchanged or inapplicable dimensions are acceptable; the principle does not require extra scope.
+These skills cover the full lifecycle of a change. Most work runs through the middle phases; the situational **Chart** phase up front is for tasks too big or foggy to plan in one pass.
 
 | Phase | When to use it | Skills |
 | --- | --- | --- |
@@ -241,11 +214,15 @@ Feature specification, API design, Linear implementation planning, review resolu
 | **Implement** | Build one issue at a time | `/kramme:linear:issue-implement`, `/kramme:linear:issue-to-pr` |
 | **Review & verify** | Check quality before shipping | `/kramme:pr:code-review`, `/kramme:verify:run` |
 
-Most tasks begin at Clarify or Spec and flow into SIW — the local markdown-based preparation workflow for refining specifications and the first issue set. Approved work then transfers one way to Linear for implementation and Pull Requests. Use `/kramme:research` wherever a phase needs a cited answer from primary sources before committing to an approach. Request throwaway prototypes directly when a disposable experiment would settle one design question.
+Most tasks begin at Clarify or Spec and flow into SIW, the local Markdown-based workflow for refining a specification and its first issue set. Approved work then transfers one way to Linear for implementation and Pull Requests. Use `/kramme:research` whenever a phase needs a cited answer from primary sources, and ask for a throwaway prototype when a disposable experiment would settle one design question.
 
-For repository work, start with [CONTRIBUTING.md](CONTRIBUTING.md), then use [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant subsystem and tests.
+Feature specs, API design, Linear implementation planning, review resolution, agent-readiness recommendations, skill authoring and review, and completion verification weigh user experience (UX), developer experience (DX), and agent experience (AX) together. They:
 
-The workflows below walk through the hands-on parts:
+- preserve established behavior and contracts outside the intended change;
+- make intentional changes and material tradeoffs explicit;
+- support regression claims with relevant checks.
+
+Unchanged or inapplicable dimensions are fine; the principle never requires extra scope.
 
 ### Prepare with SIW, implement with Linear
 
@@ -264,53 +241,28 @@ See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow referenc
 ### Implement and ship a Linear issue
 
 ```bash
-/kramme:linear:issue-to-pr DISC-202 --strict --ship # implement, review code/conventions/necessity, refactor where useful, verify, and open the PR
-/kramme:linear:issue-to-pr DISC-202 --continue --ship # resume validated local work after an interrupted workspace/session
+/kramme:linear:issue-to-pr DISC-202 --strict --ship    # implement, review, verify, and open the PR
+/kramme:linear:issue-to-pr DISC-202 --continue --ship  # resume after an interrupted session
 ```
 
-Before implementation, `issue-to-pr` validates Linear's target branch and verifies that it has no existing Pull Request or remote branch on `origin`. A normal invocation requires a clean tree. `--continue` instead preserves an interrupted local implementation only when Linear already places the issue in the resolved started status, the current branch exactly matches its unpublished issue branch, no Git operation is in progress, local work exists relative to the fetched base, and every committed or dirty path is issue-related; unrelated or ambiguous work remains a blocker. A Backlog issue is then moved automatically to the team's resolved started status, preferring a status named In Progress; any other current state requires explicit confirmation before the status changes or implementation starts. `issue-to-pr` owns that authorization, status resolution, and confirmation, then hands the gated write to `/kramme:linear:issue-implement --set-in-progress`, which repeats the pre-write race close, updates the status field alone, and verifies it by reading the issue back before it creates a branch. Resume mode never performs this transition. Once the state gate passes, a detected Conductor workspace is renamed best-effort to `ISSUE-ID: normalized issue title`; missing CLI access, authentication, or rename support is reported without blocking canonical work. Continuations preserve the existing workspace name. After implementation it freezes the Linear issue's bounded requirements and delegates the prepared branch to `kramme:pr:review-convergence`. The shared convergence phase opens with one `/kramme:pr:gut-check` pass, then runs applicable gates in this order: `/kramme:pr:code-review`, `/kramme:pr:convention-review`, `/kramme:pr:overengineering-review`, and `/kramme:code:refactor-opportunities pr`. One bounded remediation budget prevents churn; direct and normal internal invocations can set its maximum to one through five fix-and-rerun rounds with `--rounds <1-5>`, defaulting to five and stopping early on convergence or diminishing returns; `issue-to-pr` and `plan-to-pr` instead always forward a budget of two, which their own `--cycles <1-5>` flag overrules. Review depth follows the branch's deterministic risk floor, computed by the same signals `/kramme:pr:triage-risk` uses with repository policy read only from the default branch: a `low` floor selects the `light` profile, `medium` selects `balanced`, and `high`, `--strict`, or `--depth full` selects `full`. Both callers accept `--depth balanced|full` to raise the profile; nothing in the diff can lower it. At every terminal handoff after review activity begins, convergence returns a human-readable overview of every retained finding and focus item it did not fix, grouped as required unresolved work, deferred optional work, rejected reviewer findings, and remaining review-focus notes. A caller-only validation mode instead reruns the applicable gates once when authorized CI or review-feedback fixes change the tree. Users can also invoke `/kramme:pr:review-convergence` directly on a clean committed feature branch: with no requirement argument it derives the contract from the current conversation; with `--derive` it drafts a contract from conversation and committed branch evidence, asks targeted questions, and requires explicit user approval; with one Linear issue identifier or URL it performs a read-only Linear MCP lookup; and with `--requirements <authoritative requirements>` it uses the supplied block. Add `--adversarial-review` to require a final review from the opposite model provider after the ordinary gates reach a no-change candidate; optional `--adversarial-provider` and `--adversarial-model` values select that reviewer explicitly, and any unavailable provider, malformed result, degraded coverage, or tree mutation blocks convergence. The same phase is also used by `kramme:code:plan-to-pr`, which preserves its own requirements and scope contract; its `--continue` mode requires the selected archived plan already to be `IN_PROGRESS`, the exact deterministic unpublished plan branch, and only in-scope existing changes. With `--ship`, `issue-to-pr` opens the Pull Request against the validated base branch and runs `/kramme:pr:fix-ci --no-consolidate` until CI and review feedback are clear; omit `--ship` to stop after implementation, review, and verification. With `--strict`, every review finding receives an evidence-based disposition rather than blind implementation. When the workflow finishes successfully, its report closes with a reviewer handoff summary: what was implemented, what the convergence review uncovered, and what to focus on when reviewing the result — open questions, decisions the workflow made autonomously, and deferred optional findings. Shipped summaries merge CI remediation and final-tree validation evidence when publication fixes changed the branch, then pass the complete prose through `kramme:text:clarify` for plain-language editing. The [review-convergence definition](kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md) owns convergence; the [issue-to-pr definition](kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md) owns Linear sequencing and shipping safeguards.
+1. **Preflight:** checks Linear's target branch and confirms there is no existing Pull Request or remote branch for it. Needs a clean tree unless you pass `--continue`.
+2. **Start:** moves a Backlog issue to the team's started status, preferring In Progress; any other state asks first. Renames a detected Conductor workspace, best-effort.
+3. **Implement** the issue with `/kramme:linear:issue-implement`.
+4. **Review:** freezes the issue's requirements and runs [review convergence](kramme-cc-workflow/docs/review.md#review-convergence) on the branch.
+5. **Ship** (`--ship` only): opens the PR and runs `/kramme:pr:fix-ci` until CI and review feedback are clear.
+6. **Hand off:** summarizes what was built, what review found, and what to check when you review it.
+
+| Flag | Effect |
+| --- | --- |
+| `--ship` | Open the PR and stabilize CI; without it, the run stops after verification |
+| `--strict` | Give every review finding an evidence-based disposition; forces the `full` review profile |
+| `--cycles <1-5>` | Fix-and-rerun budget for review convergence (default 2) |
+| `--depth balanced\|full` | Raise the review profile above the branch's risk floor; it never lowers it |
+| `--continue` | Resume on the issue's exact unpublished branch; the issue must already be started and every changed path must belong to it |
+
+`/kramme:code:plan-to-pr` runs the same pipeline for one `PR_PLAN_*.md` file. The [shipping guide](kramme-cc-workflow/docs/shipping.md) covers preconditions, status changes, and the handoff in full.
 
 ### Review and ship a PR
-
-PR review subagents default to the orchestrator's own model. This applies to `pr:code-review`, `pr:product-review`, `pr:convention-review`, and `pr:overengineering-review`, including their validation passes, team modes, and review reruns.
-
-With `KRAMME_REVIEW_SUBAGENT_LEVEL=lower`, reviewers instead step down one model class:
-
-| Host | Orchestrator → reviewer |
-| --- | --- |
-| Claude | Fable → Opus; Opus → Sonnet; Sonnet → Haiku |
-| Codex | Astra → Sol; Sol → Luna |
-
-Haiku and Luna stay at their own class. `KRAMME_REVIEW_SUBAGENT_LEVEL` accepts `same` (the default when unset) or `lower`; any other value stops the review with an error. In Claude Code, put it in the `env` block of `~/.claude/settings.json` (or a project `.claude/settings.json`); in Codex, export it in the shell environment Codex inherits. An explicit `--subagent-model` flag or conversational reviewer-model choice still wins over the setting.
-
-```json
-{ "env": { "KRAMME_REVIEW_SUBAGENT_LEVEL": "lower" } }
-```
-
-Override the default for a single run with `--subagent-model <model>` on any of these five skills, `pr:github-review`, or `pr:review-convergence`. The value can be a model class, a runtime-supported model ID, or `inherit` to use the orchestrator's model. The flag takes precedence over conversational reviewer-model preferences and the level setting, persists through team passes and reruns, and must precede `--requirements` when that sentinel is used. Unsupported explicit choices stop with an error; unknown or unavailable automatic defaults retain host defaults with a reported limitation. GitHub review and review convergence preserve the orchestrator class when delegating these skills, so any step-down happens once. Implementation agents and different-provider adversarial reviews retain their own model policies; `--adversarial-model` controls the latter separately.
-
-The same setting and flag select subagent models for the codebase audits: scan agents and `--ranked` reviewers in `/kramme:code:refactor-opportunities`, dimension agents in `/kramme:code:agent-readiness`, and in-repo raters in `/kramme:code:outside-view`. Defaults stay on the orchestrator's model; `lower` cuts audit cost at some risk to finding depth, and outside-view's opt-in `--cross-model` rater keeps its own provider policy.
-
-```text
-/kramme:pr:code-review --subagent-model opus      # Claude reviewers use Opus
-$kramme:pr:code-review --subagent-model sol      # Codex reviewers use the runtime's Sol model
-/kramme:pr:product-review --team --subagent-model inherit
-/kramme:pr:review-convergence --subagent-model inherit --requirements <authoritative requirements>
-```
-
-Review skills recognize stacked Pull Requests, from gh-stack tracking or from chained open Pull Requests, and review one layer at a time. `pr:code-review`, `pr:product-review`, `pr:convention-review`, `pr:overengineering-review`, `pr:gut-check`, and `pr:triage-risk` diff a gh-stack layer that has no Pull Request yet, or that needs a restack, against the layer below instead of the trunk. Their reviewers check the layers above before calling new code unused, treat each layer as mergeable on its own, and send findings about lower layers to the Pull Request that owns them. Reports name the layer on a `Stack:` line. `pr:github-review` applies the same rules to someone else's stacked Pull Request, and `pr:review-convergence` keeps remediation commits on the reviewed layer. For a manually chained branch without a Pull Request, pass `--base <parent-branch>`.
-
-`pr:review-convergence` keeps review spend proportional to risk and to what actually changed. Each quality round runs every applicable gate read-only and collects findings, then fixes the accepted ones as one batch that consumes one remediation cycle. In standard mode only an accepted Critical, Important, or `OVERDONE` finding, or a verification failure, opens a batch; advisory items join an open batch or are reported as deferred, so polish never buys another review round. The review profile decides the rest:
-
-| Profile | Selected by | Gates | After each fix batch |
-| --- | --- | --- | --- |
-| `light` | `low` risk floor | gut check, code review without the advisory cleanup dimensions, convention review only on an explicit trigger, overengineering review; no refactor scan | one full-scope closing pass |
-| `balanced` | `medium` risk floor | all applicable gates, with convention review only on an explicit trigger | one full-scope closing pass |
-| `full` | `high` risk floor, `--strict`, or `--depth full` | all applicable gates | a delta round scoped to the fix, then a full confirmation pass |
-
-A closing pass runs code review with `--no-cleanup` over the whole branch plus only the gates the fix made relevant. The delta round uses `--base <pre-batch-commit>`, `--no-cleanup` on `pr:code-review`, and a reused `--baseline` for `pr:convention-review`. The loop closes when a full-scope pass changes nothing. The advisory `code:refactor-opportunities` scan runs at most once, on the final candidate, `pr:overengineering-review` carries findings whose cited regions are unchanged forward without re-justifying them, and the handoff reports `Review profile:` and `Review cost:` lines from the run-state ledger. In Claude Code, `linear:issue-to-pr` and `code:plan-to-pr` run convergence inside one delegated agent so review turns stop re-reading the implementation conversation. After CI repair, they pass `--verified-tree` and the earlier profile so the validation-only pass reviews only the CI remediation, never more lightly than before.
-
-`pr:code-review --no-cleanup` excludes only the advisory `lean`, `refactor`, and `simplify` dimensions. Removal review remains independently applicable. The execution plan retains default `all` scope with `noCleanup: true`, records the skipped dimensions, and can seal and pass convergence's `--aspects all` completion check. Combining the flag with explicitly requested cleanup aspects or cleanup emphasis is rejected. When every reviewer returns zero findings, the relevance validator and slop meta-review are recorded as skipped instead of launched, and the report states each skip; the execution helper's `record --manifest` command records a batch of reviewer jobs in one call.
 
 ```bash
 /kramme:pr:code-review    # run specialized review agents on your branch
@@ -318,24 +270,6 @@ A closing pass runs code review with `--no-cleanup` over the whole branch plus o
 /kramme:pr:create         # restructure commits and open the PR
 /kramme:pr:fix-ci         # iterate until CI passes
 ```
-
-The skills select a workbench branch separately for each repository. Review of an existing Pull Request uses its target branch; creating independent work uses the repository workbench even when the current branch has a Pull Request. For new work, set the local Git configuration when the workbench differs from the remote default:
-
-```bash
-git config --local kramme.baseBranch development
-```
-
-For a repository where `main` is the workbench and releases use tags, the remote default can remain `main`; no setting is needed when Conductor also names `main`. Set `kramme.baseBranch` to `main` if a host suggests a different branch. An explicit `--base <branch>` on a base-aware skill overrides the default for that run. Without an explicit or local setting, the shared resolver checks Conductor's configured branch when it has a local `origin` tracking ref, then `origin/HEAD`, `origin/main`, and `origin/master`. A failed GitHub PR lookup stops existing-branch workflows unless GitHub confirms there is no PR; it cannot silently choose the workbench. New worktrees can use a cached workbench ref during a fetch failure, and local repositories without `origin` or a configured workbench start from `HEAD`. Configure the workbench in each repository rather than assuming a branch's role from its name.
-
-Code review uses a **challenge → delete → simplify** sequence: establish the required outcome, question unsupported implementation assumptions, consider removing unnecessary mechanisms, then simplify what remains. Standard and Team Mode reviews reconcile deletion and cleanup findings so they do not recommend polishing code proposed for removal. Conditional cleanup remains a separate tracked finding; resolution validates dependency graphs, processes connected findings sequentially after each dependency has a verified outcome, and keeps correctness and security findings ahead of cleanup.
-
-`pr:github-review` also checks linked Linear issues discovered in the PR title, description, branch, and linking comments, including integration comments. It runs `linear:review-pr` for each in-scope issue and merges requirement findings into the normal review, deduplicating existing conversations. The report includes per-issue requirement evidence and coverage gaps. Linear access is needed only when issues are linked; unavailable issue context is reported while the code review continues. `--fresh` and `--code-only` still include this requirements check. Its delegated code and product reviews launch their reviewers in parallel; pass `--sequential` to run them one at a time.
-
-`pr:github-review` is report-only by default. Inspecting the PR, running its tests, and preparing findings, a verdict, or review text never write to GitHub, and invoking the skill or asking it to review a PR is never confirmation. Its only writes are one unsubmitted pending review, after `--draft-review` or a yes to its offer, and one review submission, after you send a separate message such as `Post the prepared review to PR 8683 as request changes` (or `as comment`, `as approve`). A bundled checker refuses any other wording, and the skill takes the review event only from the checker. It never replies to or resolves threads, dismisses reviews, edits PR metadata, pushes, or merges; it hands you the prepared text instead.
-
-When `pr:github-review` drafts five or more inline comments, it also runs a clarity check before writing the report. Fresh readers see only the lines GitHub shows above each comment: one reads as the PR author in a second language, the other as a teammate a day later. Each reader paraphrases, questions, and scores every comment. The skill verifies their points in the code, fixes and re-anchors the comments, and has a new reader confirm the result. The check takes about 30–50 minutes and never writes to GitHub. Pass `--clarity-check` to run it on fewer comments, or `--no-clarity-check` to skip it.
-
-Interrupted reviews resume. After a session-limit reset or restart, ask to continue, or re-run `/kramme:pr:code-review` on the same unchanged tree or `/kramme:pr:github-review` on the same PR head with the same review arguments within 24 hours. Code review reuses every reviewer that finished and relaunches only the ones that did not; a failed reviewer still needs a fresh run. GitHub review reruns only the delegated passes, steps, and clarity-check stages that did not finish, saving them under `.context/pr-github-review/`, which must be git-ignored. Team Mode and `--loop` reruns always start fresh.
 
 More review skills cover product, convention, UX, and GitHub-reviewer flows. Which one should you use?
 
@@ -353,6 +287,10 @@ More review skills cover product, convention, UX, and GitHub-reviewer flows. Whi
 | Triage and respond to review comments on your own PR | `/kramme:pr:github-review-reply` |
 | Implement fixes from local review findings | `/kramme:pr:resolve-review` |
 | Whether an open PR's title and body still match the branch diff | `/kramme:pr:generate-description --check` |
+
+`/kramme:pr:github-review` is report-only by default; it writes a pending review or submits one only when you explicitly ask. Review skills handle stacked Pull Requests one layer at a time, and interrupted reviews resume within 24 hours. The [review guide](kramme-cc-workflow/docs/review.md) covers reviewer models, review convergence, stacks, and GitHub write rules.
+
+New work starts from the repository's workbench branch. Set it with `git config --local kramme.baseBranch <branch>` when it differs from the remote default; the [shipping guide](kramme-cc-workflow/docs/shipping.md#base-branch) explains how the skills choose it.
 
 ### Inspect and test a live app
 
@@ -373,19 +311,64 @@ More review skills cover product, convention, UX, and GitHub-reviewer flows. Whi
 /kramme:code:work-from-plan # route and execute a standalone implementation plan
 ```
 
-The optional regression red-green check in `/kramme:verify:run` restores the fix by stash commit ID and retains the stash entry, reporting its tag and commit ID for later identification. It leaves cleanup to the user because other workspaces share the stash list.
+All skills are listed in the [reference below](#skills). Background skills, such as commit-message guidance, run automatically.
 
-All skills are listed in the reference below. Background skills, such as commit-message guidance, run automatically.
+## Configuration
+
+| Setting | Where | Effect |
+| --- | --- | --- |
+| `kramme.baseBranch` | `git config --local`, per repository | The workbench branch new work starts from, when it differs from the remote default. `--base <branch>` overrides it for one run. See [Base Branch](kramme-cc-workflow/docs/shipping.md#base-branch). |
+| `KRAMME_REVIEW_SUBAGENT_LEVEL` | The `env` block of Claude Code's `settings.json`, or the shell environment Codex inherits | `same` (default) keeps review subagents on the orchestrator's model; `lower` steps them down one model class. See [Reviewer Models](kramme-cc-workflow/docs/review.md#reviewer-models). |
+| `--subagent-model <model>` | Flag on review skills and codebase audits | Picks the reviewer model for one run and wins over `KRAMME_REVIEW_SUBAGENT_LEVEL`. |
+| Hook toggles | `/kramme:hooks:toggle` | Enable, disable, or reset hooks. State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` unless `KRAMME_HOOK_STATE_FILE` points elsewhere. See [Toggling Hooks](kramme-cc-workflow/docs/hooks.md#toggling-hooks). |
+| `KRAMME_AUTOFORMAT_DEBUG=1` | Environment | Keeps the latest failed auto-format attempt's stderr in a private local file. Off by default. See [Failure Diagnostics](kramme-cc-workflow/docs/hooks.md#failure-diagnostics). |
+| `CODEX_HOME` | Environment | A non-default Codex home. Keep it exported in shells Codex runs. |
+| `.context/` in `.gitignore` | Your repository | Required to resume interrupted GitHub reviews and codebase audits, which save their progress there. |
+
+### Auto Mode
+
+Instead of maintaining a static permission allowlist, use the host's built-in auto mode to reduce approval prompts while retaining its automatic safety checks:
+
+- **Claude Code** — start a session with `claude --permission-mode auto`
+- **Codex** — start a session with `codex --approve-for-me`
+
+Enable auto mode only in repositories you trust, and review changes before publishing them.
 
 ## Skills
 
-All plugin functionality is delivered through skills. Skills can be user-invoked via the host's `/` menu, auto-triggered by the host based on context, or both.
+All plugin functionality is delivered through skills. The Invocation column shows who can start each one:
 
-- **User-invocable**: Trigger with `/kramme:skill-name`. Skills that should never auto-run set `disable-model-invocation: true`.
-- **Auto-triggered**: The host invokes automatically when context matches the skill description.
-- **Background**: Skills with `user-invocable: false` are auto-triggered only and don't appear in the `/` menu.
+- **User:** only you, from the host's `/` menu (`$` in Codex). These skills set `disable-model-invocation: true` and never auto-run.
+- **User, Auto:** you, or the host when the context matches the skill.
+- **Background:** only the host, automatically. These skills set `user-invocable: false` and don't appear in the menu.
 
-The tables below are the canonical component reference. For a compact lookup by name, invocation mode, and source path, see the generated [component catalog](kramme-cc-workflow/docs/component-catalog.json).
+Each row gives a one-line summary. The full description lives in the skill's `SKILL.md`, and the generated [component catalog](kramme-cc-workflow/docs/component-catalog.json) indexes every skill, agent, and hook by name, invocation mode, and source path.
+
+### Find a Skill by Task
+
+| I want to… | Use |
+| --- | --- |
+| Turn a vague idea into clear requirements | `/kramme:discovery:interview` |
+| Chart an initiative too big or foggy to plan in one session | `/kramme:discovery:wayfinder` |
+| Get a cited answer from primary sources | `/kramme:research` |
+| Write a feature spec | `/kramme:docs:feature-spec`, or `/kramme:siw:init` for tracked work |
+| Record an architecture decision | `/kramme:docs:adr` |
+| Create or refine a Linear issue | `/kramme:linear:issue-define` |
+| Pick the next Linear issue to work on | `/kramme:linear:next` |
+| Implement and ship a Linear issue | `/kramme:linear:issue-to-pr` |
+| Implement a saved plan | `/kramme:code:plan-to-pr` or `/kramme:code:work-from-plan` |
+| Review my branch | `/kramme:pr:code-review`, or see [which review to use](#review-and-ship-a-pr) |
+| Open a PR | `/kramme:pr:create` |
+| Fix failing CI on my PR | `/kramme:pr:fix-ci` |
+| Review someone else's PR | `/kramme:pr:github-review` |
+| Respond to review comments on my PR | `/kramme:pr:github-review-reply` |
+| Run tests, linting, and type checks | `/kramme:verify:run` |
+| Investigate a bug | `/kramme:debug:investigate` |
+| Test a running app | `/kramme:qa` |
+| Find refactoring candidates or tech debt | `/kramme:code:refactor-opportunities` |
+| Upgrade a framework or library | `/kramme:code:migrate` |
+| Explain a system or change visually | `/kramme:visual:explain` |
+| Make a document easier to read | `/kramme:text:clarify` |
 
 <!-- BEGIN SOURCE-SYNCED SKILL ROWS -->
 
@@ -393,115 +376,117 @@ The tables below are the canonical component reference. For a compact lookup by 
 
 #### Structured Implementation Workflow (SIW)
 
-Local specification refinement and initial issue planning before a one-way Linear transfer. Run SIW discovery with `/kramme:discovery:interview --siw`, which writes `siw/DISCOVERY_BRIEF.md` before a spec exists or `siw/SPEC_STRENGTHENING_PLAN.md` for an existing spec. See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for detailed workflow documentation.
+Local specification refinement and initial issue planning before a one-way Linear transfer. See [docs/siw.md](kramme-cc-workflow/docs/siw.md).
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:siw:init` | User | `[spec-file(s) \| folder \| discover] [--auto]` | Initialize structured implementation workflow documents in siw/ (spec, LOG.md, issues) |
-| `/kramme:siw:generate-phases` | User | `[spec-file-path] [--auto]` | Break spec into atomic, phase-based issues with tests and validation |
-| `/kramme:siw:spec-audit` | User | `[spec-file-path(s) \| 'siw' \| audit-report-path] [--product] [--auto] [--apply [--dry-run] [--threshold 60-100] [--allow-dirty]] [--model opus\|sonnet\|haiku] [--inline] [--team]` | Audit specifications for implementation readiness — coherence, completeness, clarity, scope consistency, actionability, testability, rationale documentation, and technical design. Add --product to also judge product correctness — target user, problem/solution fit, user states, critical moments, scope, success criteria, prioritization, and strategy fit. --apply auto-fixes mechanical findings, also in an existing report. Supports --inline and --team cross-validation with codebase pattern review. |
-| `/kramme:siw:resolve-audit` | User | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve audit findings one-by-one with executive summaries, alternatives, recommendation, and SIW issue creation |
-| `/kramme:siw:transfer-to-linear` | User | `[siw-dir] [--project <name-or-id>] [--team <team>] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | One-way migration of a local SIW project into Linear. Creates one Linear project, migrates the main spec, supporting specs, selected contract specs, and decision log as Linear Documents, rewrites SIW-local markdown references to Linear Documents where possible, creates milestones from SIW phases and issues from SIW issues (with native blocking relations when supported), writes minimal Linear transfer markers back to migrated source issues for retry safety, then prompts to retire the local siw/ files via /kramme:workflow:cleanup-artifacts --siw. Linear becomes the source of truth; this is not a two-way sync. Use when moving a planned SIW initiative into Linear for good. Not for implementing issues, defining new SIW issues, or generating an issue breakdown. |
+| `/kramme:siw:init` | User | `[spec-file(s) \| folder \| discover] [--auto]` | Initialize SIW documents in `siw/`: the spec, `LOG.md`, and issues. |
+| `/kramme:siw:generate-phases` | User | `[spec-file-path] [--auto]` | Break the spec into atomic, phase-based issues with tests and validation. |
+| `/kramme:siw:spec-audit` | User | `[spec-file-path(s) \| 'siw' \| audit-report-path] [--product] [--auto] [--apply [--dry-run] [--threshold 60-100] [--allow-dirty]] [--model opus\|sonnet\|haiku] [--inline] [--team]` | Audit specs for implementation readiness; `--product` adds product checks and `--apply` fixes mechanical findings. |
+| `/kramme:siw:resolve-audit` | User | `[audit-report-path] [finding-id(s)] [--auto]` | Resolve spec-audit findings one by one with summaries, alternatives, a recommendation, and SIW issue creation. |
+| `/kramme:siw:transfer-to-linear` | User | `[siw-dir] [--project <name-or-id>] [--team <team>] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | Move a planned SIW initiative into Linear for good: one project with its documents, milestones, and issues. One-way. |
 
-Migration: `/kramme:siw:issue-define` has been removed. Before transfer, update the spec and run `/kramme:siw:generate-phases` (choose Append when issues exist; a spec that describes one coherent change fitting a single XS–L task yields one issue). Larger changes still receive a phased breakdown. For a standalone issue or after transfer, use `/kramme:linear:issue-define`. Existing local issue files stay valid; edit them directly and keep `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/LOG.md` in sync.
+#### Discovery, Research & Learning
+
+Requirements discovery, primary-source research, and checks that you understand a topic.
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:research` | User, Auto | `[research question or topic] [--output <path>]` | Answer a question from primary sources, such as official docs, specs, or source code, and save one cited Markdown artifact. |
+| `/kramme:discovery:wayfinder` | User | `[initiative description \| map-path [ticket-id]]` | Chart a huge or foggy initiative as a local decision map and resolve one open question per session until it is ready for planning. |
+| `/kramme:discovery:interview` | User, Auto | `[topic \| file-path(s) \| siw] [--siw] [--apply] [--ideate] [--decision-tree] [--research]` | Interview you about a topic, proposal, or spec to uncover requirements, priorities, and non-goals, then write a plan; `--siw` feeds an SIW spec. |
+| `/kramme:discovery:strategic-inquiry` | User | `[focus, e.g. 'onboarding', src/auth, or omit for whole repo] [--max-questions N] [--output <path>] [--inline]` | Generate ranked strategic questions about hidden assumptions, contradictions, and load-bearing decisions in a codebase or area. |
+| `/kramme:learn:verify-understanding` | User | `[topic: PR, branch, feature, document, spec, etc.] [--answer-options\|--choices]` | Confirm that you understand a PR, feature, spec, or other topic through questions and a checklist before calling it done. |
+
+#### Product
+
+Product direction, demand validation, behavior documentation, and design critique.
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:product:strategy` | User | `[optional: section or notes to revisit, e.g. 'metrics', 'active tracks']` | Create or update `STRATEGY.md`, a concise product anchor covering problem, users, metrics, active tracks, and non-goals. |
+| `/kramme:product:validate-demand` | User, Auto | `[idea or evidence] [--output <repo-relative-path>]` | Judge whether a product idea has enough demand evidence to justify more work: GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE. |
+| `/kramme:product:describe-behavior` | User | `[product or surface] [--source <path>] [--output <path>] [--resume]` | Document how an existing product behaves from the user's perspective, grounded in code, tests, and the running app. |
+| `/kramme:product:design-critic` | User, Auto | `[file-path, screenshot, URL, or product question]` | (experimental) Critique product UI and UX, including flows, hierarchy, trust, and jobs-to-be-done, rather than visual polish alone. |
+| `/kramme:product:review` | User | `<url\|auto> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]` | (experimental) Review a live product across flows for navigation, discoverability, onboarding, consistency, dead ends, and trust. |
+
+#### Linear
+
+Linear issue tracking. These skills need an authenticated Linear MCP server; `issue-to-pr` and `review-pr` also use the GitHub CLI. See the [shipping guide](kramme-cc-workflow/docs/shipping.md#linear-issue-to-pull-request).
+
+| Skill | Invocation | Arguments | Description |
+| --- | --- | --- | --- |
+| `/kramme:linear:backlog-refine` | User | `[team] [--project <name>] [--label <name>] [--stale-days <n>] [--limit <n>] [--apply]` | Grade a Linear team's open backlog and propose completing, cancelling, merging, splitting, or rewriting issues. Read-only unless `--apply`. |
+| `/kramme:linear:breakdown-findings` | User | `[--auto] [--ask] [--dry-run] [--resume <partial-report-path>] [--team <team>] [--project <project>] [--label <label>] [--] [source ...]` | Turn reviewed audit, review, scan, or QA findings into coordinated, PR-sized Linear issues. |
+| `/kramme:linear:issue-define` | User, Auto | `[--auto [--ask]] [--] [issue-id or description and/or file paths for context]` | Create or improve a Linear issue that fits one PR; larger work becomes a parent with sub-issues. `--auto` drafts from rough input. |
+| `/kramme:linear:issue-implement` | User, Auto | `<ISSUE-ID> [--auto] [--set-in-progress]` | Implement one Linear issue: branch setup, reference mapping, planning, coding, and fast verification. |
+| `/kramme:linear:issue-to-pr` | User | `<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced\|full>] [--ship]` | Take one Linear issue through implementation, review convergence, and verification; `--ship` also opens the PR and fixes CI. |
+| `/kramme:linear:next` | User | `[team or selection query] [--state <name>] [--agent-ready] [--interest <preference>] [--mine\|--unassigned\|--both] [--project <name>] [--label <name>] [--count <n>] [--limit <n>]` | Find up to 10 valuable, ready-to-start Linear issues, with plain-language summaries, when deciding what to pick up next. |
+| `/kramme:linear:review-pr` | User, Auto | `[PR-number\|PR-url] [ISSUE-ID]` | Check that an existing PR implements its Linear issue, tracing each requirement to diff, code, and test evidence. Read-only. |
 
 #### Pull Requests
 
-PR creation, review, iteration, and resolution.
-
-`/kramme:pr:create --auto` is fully non-interactive, including the backup-protected local history rewrite when applicable and final publication. It chooses documented deterministic branch defaults or stops on a hard blocker without asking a question or opening a terminal credential prompt. It never publishes placeholder title/body content and restores the invocation's entry checkout on failures before publication when the captured local state is still safe to restore. After an ambiguous publication attempt, it preserves the prepared local state for recovery. Fresh branches require remote absence and an absence-leased publication. A current branch that already exists remotely can preserve its published commits: a clean exact-tip remote skips the push, a clean remote tip that is a strict ancestor of local `HEAD` receives one OID-leased fast-forward, and dirty auto-mode work is committed and reorganized only after the observed remote tip before the same OID-leased append. Non-current branches, open Pull Requests, ambiguous, credential-bearing, executable, or unsupported push destinations, hidden tracked changes, remote-only commits, genuine divergence, and any remote change after classification remain hard blockers. A direct invocation on a fresh branch keeps unpublished commits that already follow the repository's commit conventions instead of rewriting them; `kramme:code:plan-to-pr` and `kramme:linear:issue-to-pr` always get the narrative rewrite.
+PR creation, review, iteration, and resolution. See the [review guide](kramme-cc-workflow/docs/review.md) and the [shipping guide](kramme-cc-workflow/docs/shipping.md).
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:pr:create` | User, Auto | `[--auto] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]` | Publish a new PR: narrative commits, generated title and body, self-assignment, lease-protected first push. Use when asked or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr --ship. |
-| `/kramme:pr:stack` | User | `[init [--base <trunk>] <branches...> \| submit \| sync \| merge <pr-number> \| adopt [--base <trunk>] <branches...> \| status]` | Create and manage GitHub stacked PRs with gh-stack v0.1.0 or newer. Build an ordered chain of dependent branches, submit chained draft PRs, make mid-stack edits safely, merge or sync stacks, and adopt existing branch chains. Use when a change should land as a sequence of small dependent PRs instead of one large PR. Requires a repository with stacked PRs enabled (private preview); degrades to a manual chain otherwise. |
-| `/kramme:pr:adversarial-review` | User, Auto | `[--provider claude\|codex] [--model <id>] [--base <branch>] [--requirements <authoritative requirements>]` | Run one read-only PR review through a different model provider and validate its findings against the committed diff. Use only when explicitly requested or as the opt-in --adversarial-review gate. |
-| `/kramme:pr:code-review` | User, Auto | `[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--no-cleanup] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]` | Review branch changes for tests, errors, types, module architecture, security, performance, slop, lean deletion, refactor fit, and simplification. Outputs REVIEW_OVERVIEW.md with actionable findings, or replies inline with --inline. --team cross-validates; --loop applies fixes and verifies convergence. Not for UX, visual, or accessibility; use kramme:pr:product-review. |
-| `/kramme:pr:review-convergence` | User, Auto | `[--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced\|full>] [--adversarial-review [--adversarial-provider claude\|codex] [--adversarial-model <id>]] [--derive \| LINEAR-ISSUE \| --requirements <authoritative requirements>]` | Converge a clean committed branch: ordered quality gates, bounded remediation, final verification against frozen requirements. Use when asked or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr. |
-| `/kramme:pr:resolve-review` | User, Auto | `[--team] [--implement-only] [--granular] [--severity ...] [--source local\|online\|conductor] [review\|url\|instructions]` | Implement fixes for code-review or Conductor diff-comment findings as commits. Use when asked, or as the --implement-only engine of kramme:pr:github-review-reply or review-convergence remediation. |
-| `/kramme:pr:github-review-reply` | User | `[--auto] [--implement\|--no-implement] [--post] [--resolve] [--inline] [--humanize] [--human-only\|--include-bots] [--all] [--only <login>] [pr-url\|instructions]` | Maps GitHub PR review feedback from humans, bots, and apps, including inline review threads, review-summary comments, and general PR comments; facilitates needed code changes; drafts action-based responses; and optionally posts replies or resolves addressed inline threads with gh. Use when reviewers left GitHub comments that need triage, implementation, or response. Not for fixing CI, generating internal review findings, or resolving local REVIEW_OVERVIEW.md findings. |
-| `/kramme:pr:github-review` | User | `[--subagent-model <model>] [pr-number\|pr-url] [--draft-review] [--clarity-check\|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]` | Review a GitHub PR as the assigned reviewer, including linked Linear issues. Report-only by default: writes a local report and drafts inline comments, replies, and a verdict. With confirmation or --draft-review, creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), replying on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review). |
-| `/kramme:pr:fix-ci` | User, Auto | `[--fixup] [--auto] [--no-consolidate] [--rebase] [--scope-plan <archived-plan>]` | Repair failing checks and reviewer feedback on an open PR with targeted pushes and retry limits. Use when asked or delegated by kramme:linear:issue-to-pr, kramme:code:plan-to-pr, or kramme:pr:rebase. |
-| `/kramme:pr:generate-description` | User, Auto | `[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]` | Draft or --check a PR title and body against the diff, commit log, and Linear context. Use when asked or delegated by a PR workflow; model callers pass --no-update and never edit a PR. |
-| `/kramme:pr:walkthrough` | User | `[--report [branch\|commit\|PR#\|range] \| --report --base <ref> \| --base <ref>] [--output <path>]` | Generate a local visual walkthrough as a self-contained HTML artifact. Use the default guided D3 style for current-branch or open-PR orientation through system, data-flow, code-dependency, and user-action views; use --report with an optional branch, commit, PR, or range for a shareable before/after architecture comparison, KPI dashboard, Mermaid graphs, explanatory review notes, and decision log. Not for actionable code review findings, PR descriptions, publishing, or live UX audits. |
-| `/kramme:pr:gut-check` | User, Auto | `[--base <branch>] [--intent <text>]` | Fast first-reader reaction: does anything here look strange, unusual, or unnecessary? No rubric, scores, or report file. Use when asked, before deeper review, or as review convergence Gate 0. |
-| `/kramme:pr:triage-risk` | User, Auto | `[--base <branch>]` | Decide how much review the current branch needs: a low, medium, or high tier from deterministic risk signals plus a diff read, and the review commands to run. Read-only; use when asked. |
-| `/kramme:pr:convention-review` | User, Auto | `[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--baseline <path>] [--inline] [--no-diff-comments]` | Flag drift from documented rules and mined peer-file practice, plus overcaution, citing evidence for every finding. Use when asked or delegated by kramme:pr:review-convergence. Never edits source. |
-| `/kramme:pr:overengineering-review` | User, Auto | `[--subagent-model <model>] [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]` | Flag speculative generality and unlikely edge-case handling the requirements do not need, after an adversarial justification pass. Use when asked or delegated by kramme:pr:review-convergence. |
-| `/kramme:pr:product-review` | User, Auto | `[--subagent-model <model>] [app-url\|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline] [--no-diff-comments]` | Assess product value, UX heuristics, visual consistency, and accessibility of local changes with specialist agents. Use when asked or delegated by kramme:pr:github-review with --inline. |
-| `/kramme:pr:rebase` | User, Auto | `[--auto] [--force-push] [--fix-ci] [--base <branch>] [--all-open]` | Rebase onto the PR target and force-push with a pinned lease; cascades gh-stack stacks. Use when asked or when kramme:pr:fix-ci delegates with --force-push. |
+| `/kramme:pr:create` | User, Auto | `[--auto] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]` | Publish a new PR: narrative commits, a generated title and body, and a lease-protected first push. |
+| `/kramme:pr:stack` | User | `[init [--base <trunk>] <branches...> \| submit \| sync \| merge <pr-number> \| adopt [--base <trunk>] <branches...> \| status]` | Create and manage GitHub stacked PRs with gh-stack when a change should land as a chain of small dependent PRs. |
+| `/kramme:pr:adversarial-review` | User, Auto | `[--provider claude\|codex] [--model <id>] [--base <branch>] [--requirements <authoritative requirements>]` | Get one read-only review of your branch from a different model provider than the host you are using. |
+| `/kramme:pr:code-review` | User, Auto | `[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--no-cleanup] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]` | Review branch changes for bugs, tests, errors, types, architecture, security, performance, and cleanup; writes `REVIEW_OVERVIEW.md`. |
+| `/kramme:pr:review-convergence` | User, Auto | `[--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced\|full>] [--adversarial-review [--adversarial-provider claude\|codex] [--adversarial-model <id>]] [--derive \| LINEAR-ISSUE \| --requirements <authoritative requirements>]` | Take a clean committed branch through ordered review gates, bounded fixes, and verification against frozen requirements. |
+| `/kramme:pr:resolve-review` | User, Auto | `[--team] [--implement-only] [--granular] [--severity ...] [--source local\|online\|conductor] [review\|url\|instructions]` | Implement fixes for code-review or Conductor diff-comment findings as commits on the current branch. |
+| `/kramme:pr:github-review-reply` | User | `[--auto] [--implement\|--no-implement] [--post] [--resolve] [--inline] [--humanize] [--human-only\|--include-bots] [--all] [--only <login>] [pr-url\|instructions]` | Triage review comments on your own PR, make the needed changes, and draft or post replies. |
+| `/kramme:pr:github-review` | User | `[--subagent-model <model>] [pr-number\|pr-url] [--draft-review] [--clarity-check\|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]` | Review someone else's GitHub PR, including linked Linear issues. Report-only unless you ask for a pending review. |
+| `/kramme:pr:fix-ci` | User, Auto | `[--fixup] [--auto] [--no-consolidate] [--rebase] [--scope-plan <archived-plan>]` | Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass. |
+| `/kramme:pr:generate-description` | User, Auto | `[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]` | Write a PR title and body from the diff, commits, and Linear context; `--check` reports drift in an open PR's description. |
+| `/kramme:pr:walkthrough` | User | `[--report [branch\|commit\|PR#\|range] \| --report --base <ref> \| --base <ref>] [--output <path>]` | Generate a visual HTML walkthrough of a branch or PR; `--report` produces a shareable before/after architecture report. |
+| `/kramme:pr:gut-check` | User, Auto | `[--base <branch>] [--intent <text>]` | Get a fast first-reader reaction: does anything on this branch look strange, unusual, or unnecessary? |
+| `/kramme:pr:triage-risk` | User, Auto | `[--base <branch>]` | Decide how much review the branch needs: a low, medium, or high risk tier and the review commands to run. Read-only. |
+| `/kramme:pr:convention-review` | User, Auto | `[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--baseline <path>] [--inline] [--no-diff-comments]` | Flag drift from documented rules and established codebase practice, plus overcautious code, with evidence for every finding. |
+| `/kramme:pr:overengineering-review` | User, Auto | `[--subagent-model <model>] [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]` | Flag speculative generality and unlikely edge-case handling that the requirements do not need. |
+| `/kramme:pr:product-review` | User, Auto | `[--subagent-model <model>] [app-url\|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline] [--no-diff-comments]` | Review the product value, UX, visual consistency, and accessibility of your changes with specialist agents. |
+| `/kramme:pr:rebase` | User, Auto | `[--auto] [--force-push] [--fix-ci] [--base <branch>] [--all-open]` | Rebase onto the PR's target branch, resolve conflicts safely, and force-push with a lease; cascades through stacks. |
 
-Migration: `/kramme:pr:update-split-plans` has moved to `/kramme:code:breakdown-findings --reconcile`. Update saved prompts and automation to pass the same plan paths, `--all`, `--worktree`, `--source`, `--base`, and `--auto` options to the replacement command. Former no-scope calls must add `--all` to preserve the removed command's active-plan-only default; zero-scope reconcile intentionally retains `kramme:code:breakdown-findings`'s existing all-indexed behavior.
+#### Code Changes
 
-Reconcile can infer `DONE` from a proven merged plan branch only while the selected in-scope source state still matches the landed implementation. Later scoped changes or reversions require review and block automatic completion and dependent unblocking, including with `--auto`.
-
-Migration: `/kramme:ci:design-pipeline` has been removed. Ask directly for CI/CD pipeline design or gate planning. `/kramme:pr:fix-ci` remains available for failures in an existing Pull Request pipeline.
-
-#### Browser & QA
-
-Live product inspection and structured testing.
+Plan-driven implementation, migrations, deprecations, design and security guidance, and cleanup.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:browse` | User, Auto | `<url\|auto> [--screenshot] [--console] [--network]` | (experimental) Browser operator for live product inspection. Detects available browser MCP tooling (claude-in-chrome, chrome-devtools, playwright) and provides consistent navigation, screenshots, interaction, and evidence capture. Not for code-only analysis. |
-| `/kramme:qa` | User, Auto | `<url\|auto> [quick\|diff-aware\|targeted <route>] [--base <branch>] [--regression] [--inline] [--legacy-console]` | Structured QA testing with evidence capture. Runs smoke checks, diff-aware validation, or targeted route testing against a live app. Produces QA_REPORT.md with screenshots, repro steps, severity, and recommended fixes, or replies inline with --inline. Uses browser MCP when available and falls back to code-only analysis otherwise. Not for logging multiple bugs from a manual pass (use kramme:qa:intake) or tracing one bug's root cause (use kramme:debug:investigate). |
-| `/kramme:qa:intake` | User | `[optional starting context]` | Conversational QA intake session - user describes bugs they encountered, the agent lightly clarifies, explores the codebase in the background for domain language, and files durable Linear or SIW tickets one issue at a time. Use when the user has multiple bugs from a manual QA pass and wants to log them rapidly without per-issue deep interviews. Not for live-app browser testing (use kramme:qa), not for tracing the root cause of a single bug or applying a fix (use kramme:debug:investigate), not for one well-refined ticket with a 5-round interview (use kramme:linear:issue-define). |
-| `/kramme:product:review` | User | `<url\|auto> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]` | (experimental) Whole-product review across flows and surfaces. Requires a live app URL or auto-detected local dev server. Evaluates navigation coherence, feature discoverability, onboarding, cross-flow consistency, dead ends, friction, and trust/safety. Produces PRODUCT_AUDIT_OVERVIEW.md, or replies inline with --inline. Not for branch-scoped PR review (use pr:product-review) or pre-implementation spec audit (use siw:spec-audit --product). |
+| `/kramme:code:plan-to-pr` | User | `<attached plan \| PR_PLAN_W##L_*.md> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced\|full>] [--ship]` | Implement one self-contained `PR_PLAN_*.md` on a fresh branch, then review, verify, and optionally ship it as a PR. |
+| `/kramme:code:work-from-plan` | User, Auto | `[plan path \| inline plan]` | Execute one standalone implementation plan, such as a `PR_PLAN_*.md` file or a pasted checklist, as bounded work on the current branch. |
+| `/kramme:code:breakdown-findings` | User | `[--auto] [--resume\|--reconcile\|--split] [--all \| plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]` | Cluster validated review, audit, or QA findings into PR-sized `PR_PLAN_*.md` files; `--split` plans slices of a branch and `--reconcile` updates plan sets. |
+| `/kramme:code:api-design` | User, Auto | `[--design-twice]` | (experimental) Design stable APIs and module boundaries for endpoints, public modules, and SDKs; `--design-twice` compares alternative shapes first. |
+| `/kramme:code:harden-security` | User, Auto | — | Apply secure defaults when code handles untrusted input, authentication, sessions, dependencies, or personal data. |
+| `/kramme:code:migrate` | User | `<target e.g. 'Angular 19', 'React 19', 'Node 22'> [--auto]` | (experimental) Plan and run framework or library version upgrades, such as Angular, React, or Node, in phases with verification gates. |
+| `/kramme:code:deprecate` | User | — | Plan and run the deprecation of code, features, APIs, or persistent data shapes: build the replacement, announce, migrate incrementally, then remove. |
+| `/kramme:code:optimize` | User | `[spec.yaml \| optimization goal] [--auto]` | (experimental) Run repeatable, metric-driven optimization experiments when a measurable outcome needs variants instead of guess-and-check. |
+| `/kramme:code:refactor-pass` | User | `[scope ... \| --rewrite]` | Simplify recent changes and clean up AI slop slice by slice without changing behavior; `--rewrite` redoes mediocre recent work properly. |
 
-#### Product Strategy
+#### Audits
 
-Product direction and demand validation.
-
-| Skill | Invocation | Arguments | Description |
-| --- | --- | --- | --- |
-| `/kramme:product:strategy` | User | `[optional: section or notes to revisit, e.g. 'metrics', 'active tracks']` | Create or update repo-root STRATEGY.md as a concise product anchor covering target problem, approach, users, metrics, active tracks, milestones, and non-goals. Use when starting a product, revisiting direction, grounding discovery/spec/SIW work, or resolving product-context drift. Not for one-off feature specs, roadmaps, or implementation plans. |
-| `/kramme:product:validate-demand` | User, Auto | `[idea or evidence] [--output <repo-relative-path>]` | Evaluate whether one concrete product idea has enough demand evidence to justify more work. Use when testing willingness to pay, the urgent first user, the status quo to displace, or the smallest paid wedge. Produces an evidence-labeled GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE verdict and one falsifiable action. Inline by default; writes a repository-scoped report only on request. Not for strategic inquiry, strategy, spec audits, design, promotion, or implementation. |
-
-Migration: `/kramme:product:pulse` has been removed. Ask directly for a time-windowed product health recap when one is needed. `/kramme:product:strategy`, `/kramme:product:review`, and `/kramme:siw:spec-audit --product` still read existing reports under `docs/pulse-reports/` as optional evidence, but the plugin no longer generates them.
-
-#### Product Documentation
-
-Outside-in behavioral documentation grounded in implementation evidence and runtime observation.
+Codebase, dependency, and test-suite audits that report findings without changing code.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:product:describe-behavior` | User | `[product or surface] [--source <path>] [--output <path>] [--resume]` | Creates or resumes a repository-scoped product behavior corpus that describes an existing software surface from the user's perspective, grounds claims in source code and tests, verifies observable behavior against the running product, and triages discrepancies. Use when asked to document how a product, app, CLI, or workflow behaves feature by feature or to continue an existing behavior corpus. Not for preimplementation feature specs, one-off live-product reviews, API reference docs, or implementation. |
+| `/kramme:code:refactor-opportunities` | User, Auto | `[--subagent-model <model>] [full \| pr \| path <file-or-folder> \| feature <name>] [--ranked [--solo] [--output <path>] [--max-findings N] [--base <ref>]]` | Find refactoring candidates and tech debt in the codebase, a PR, a path, or a feature; `--ranked` ranks the biggest weaknesses in a report. |
+| `/kramme:code:outside-view` | User | `[--subagent-model <model>] [--raters N] [--output <path>] [--compare <report-path>] [--cross-model]` | Rate a codebase with unprimed raters to surface unknown-unknown quality problems, especially in AI-engineered code. |
+| `/kramme:code:agent-readiness` | User | `[--subagent-model <model>] [--auto]` | Score how well a codebase suits AI coding agents across five dimensions and get a prioritized refactoring plan. |
+| `/kramme:code:audit-agent-config` | User, Auto | `[scope-path]` | Audit the repository's agent instructions, skills, hooks, MCP servers, and permissions for redundant, outdated, or conflicting entries. Read-only. |
+| `/kramme:code:audit-security` | User | `[--output <repo-relative-path>]` | Audit a repository's security posture and attack surfaces before remediation, producing an evidence-ranked report with coverage gaps. |
+| `/kramme:code:copy-review` | User, Auto | `[--pr] [--base <branch>] [--threshold 0-100] [--inline] [--all \| <scope-path>]` | Find unnecessary, redundant, or duplicated UI text across the codebase, or in the branch diff when run on a feature branch. |
+| `/kramme:deps:audit` | User | `[--auto]` | (experimental) Audit dependencies for outdated packages, vulnerabilities, and staleness, and get a prioritized upgrade plan. |
+| `/kramme:test:audit` | User, Auto | `[full \| path <file-or-folder> \| changed [--base <ref>]] [--max-findings N]` | Find low-value, brittle, obsolete, or duplicated tests and get a read-only report of what to remove, repair, or consolidate. |
 
-#### Product Design
+#### Git
 
-Product critique and design-direction skills.
+Git history management and commit operations. History rewrites are covered in the [shipping guide](kramme-cc-workflow/docs/shipping.md#rewriting-history).
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:product:design-critic` | User, Auto | `[file-path, screenshot, URL, or product question]` | (experimental) Sharpen product design judgment for software UI/UX, interaction flows, jobs-to-be-done, hierarchy, trust, governance surfacing, and competitor-informed critique. Use when critiquing or shaping a product surface, card, panel, workflow, chat experience, or design strategy instead of merely suggesting visual polish. |
-
-#### Code Quality & Review
-
-Code cleanup, refactoring, and bug/security review.
-
-| Skill | Invocation | Arguments | Description |
-| --- | --- | --- | --- |
-| `/kramme:code:migrate` | User | `<target e.g. 'Angular 19', 'React 19', 'Node 22'> [--auto]` | (experimental) Plan and execute framework or library version migrations with phased upgrades and verification gates. Use when upgrading major framework versions (Angular, React, Node) or migrating between libraries. |
-| `/kramme:code:refactor-pass` | User | `[scope ... \| --rewrite]` | Perform a refactor pass focused on simplicity after recent changes, including AI-slop cleanup for unnecessary comments, defensive noise, weak typing, over-engineering, and style drift. Use for a narrow cleanup, simplification, dead-code removal, suspected AI-generated code, or an explicit request to redo mediocre recent work properly with --rewrite. Applies Chesterton's Fence, rejects changes that require modifying tests, and keeps the default mode slice-by-slice. |
-| `/kramme:code:work-from-plan` | User, Auto | `[plan path \| inline plan]` | Route and execute one standalone implementation plan, such as a PR_PLAN_*.md file or pasted checklist, as bounded current-branch work. Use when asked or delegated by kramme:code:plan-to-pr. |
-| `/kramme:code:plan-to-pr` | User | `<attached plan \| PR_PLAN_W##L_*.md> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced\|full>] [--ship]` | Implements one self-contained `PR_PLAN_*.md` from an indexed breakdown set or `.context/attachments/` on a deterministic unpublished branch. Detached `W##L` plans prove prerequisites from embedded evidence. `--continue` resumes validated dirty work only from an archived `IN_PROGRESS` plan. Enforces drift, scope, and publication checks, delegates review and verification, and can ship the PR. Not for inline plans, Linear/SIW issues, split worktrees, stacked or existing PRs, or batches. |
-| `/kramme:code:copy-review` | User, Auto | `[--pr] [--base <branch>] [--threshold 0-100] [--inline] [--all \| <scope-path>]` | Review unnecessary, redundant, or duplicative UI text across a codebase or the current branch diff. Defaults to a full-codebase audit on the base branch and automatically uses PR/local diff review on non-base branches; use --pr to force diff review. Supports scoped audits, confidence thresholds, and inline output. |
-| `/kramme:code:breakdown-findings` | User | `[--auto] [--resume\|--reconcile\|--split] [--all \| plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]` | Cluster validated review/audit/QA findings into PR-sized implementation plans with index, rejection record, repo recon, sequencing, and reconcile/resume support. --split plans mergeable PR slices from the current branch diff. Reconcile generic or split/worktree plan sets against working-tree or named-ref evidence. Accepts structured findings, report files, current-dialogue findings, or marked/inferred pre-clustered handoffs. Not for raw bug lists, single issues, or unvalidated triage. |
-| `/kramme:code:refactor-opportunities` | User, Auto | `[--subagent-model <model>] [full \| pr \| path <file-or-folder> \| feature <name>] [--ranked [--solo] [--output <path>] [--max-findings N] [--base <ref>]]` | Scan the full codebase, current PR, a named file/folder, or a named feature for refactoring candidates. Use when the user asks to find refactor opportunities, audit code quality, identify tech debt, or wants a codebase health check. Flags themes whose combined blast radius exceeds 500 lines as automation candidates. User-only --ranked runs a multi-agent audit that ranks the biggest maintainability, readability, and correctness weaknesses into CODEBASE_WEAKNESS_REPORT.md. |
-| `/kramme:code:outside-view` | User | `[--subagent-model <model>] [--raters N] [--output <path>] [--compare <report-path>] [--cross-model]` | Rate a codebase with unprimed raters; cluster complaints, compare with CODEBASE_WEAKNESS_REPORT.md, and track gestalt in OUTSIDE_VIEW_REPORT.md. Cross-model is opt-in and isolated. Use for unknown-unknown quality issues, especially in AI-engineered code. Not for evidence-ranked findings (kramme:code:refactor-opportunities --ranked), PR review, or implementation. |
-| `/kramme:code:agent-readiness` | User | `[--subagent-model <model>] [--auto]` | Audit a codebase for agent-nativeness — score how well-optimized it is for AI coding agents across 5 dimensions and generate a prioritized refactoring plan. |
-| `/kramme:code:audit-agent-config` | User, Auto | `[scope-path]` | Audit repository-persisted agent instructions, skills, subagents, hooks, MCP servers, permissions, and memory for redundant, outdated, conflicting, or irrelevant entries; return read-only KEEP / IMPROVE / REMOVE verdicts. Never edits files or inspects global config. Not for codebase agent-readiness (kramme:code:agent-readiness) or general code-quality audits (kramme:code:refactor-opportunities). |
-| `/kramme:code:audit-security` | User | `[--output <repo-relative-path>]` | Audit a repository's security posture before remediation by inventorying attack surfaces and trust boundaries across code, identity, data, CI/CD, infrastructure, integrations, dependencies, secrets, and agent or LLM tooling. Produces a secret-safe, evidence-ranked report with coverage gaps and remediation routes. Use for whole-repository posture or threat-surface audits. Not for fixes, dependency-only audits, author-time hardening, penetration tests, compliance claims, or PR-diff review. |
-| `/kramme:code:api-design` | User, Auto | `[--design-twice]` | (experimental) Design stable APIs and module boundaries. Covers contract-first approach, Hyrum's Law, validation placement (at boundaries, not between internal functions), consistent error shapes with HTTP status mapping, naming conventions, and TypeScript patterns for interface stability. Use when adding HTTP endpoints, public modules, SDK surfaces, or any interface with external or cross-team callers. Includes a Design It Twice mode (opt-in via --design-twice or the phrase 'design it twice') that drafts radically different shapes — in parallel via sub-agents on Claude Code, sequentially elsewhere — before committing to one. |
-| `/kramme:code:harden-security` | User, Auto | — | Apply security-by-default to code handling user input, authentication, dependency or lockfile changes, installer/build inputs, personal-data lifecycles, external integrations, or personal-data sharing with LLM providers. Use when accepting untrusted data, managing sessions, adding, upgrading, or remediating packages, or designing sensitive-data collection, retention, deletion, or third-party sharing. Complements the review-time kramme:security-reviewer agent. |
-| `/kramme:code:optimize` | User | `[spec.yaml \| optimization goal] [--auto]` | (experimental) Run metric-driven optimization experiments. Use when search relevance, clustering quality, prompt quality, build latency, ranking behavior, bundle size, or another measurable outcome needs repeatable variants instead of sequential guess-and-check. Requires a measurement command or judge rubric, persists baselines and experiment logs under `.context/code-optimize/`, and can use serial or worktree-isolated experiments. Not for ordinary one-shot performance fixes, implementation without a harness, or speculative optimization with no metric. |
-| `/kramme:code:deprecate` | User | — | Plan and execute deprecation of code, features, APIs, modules, or persistent data shapes, treating code as a liability. Covers the decision to deprecate (5-question checklist), Hyrum's Law risk assessment, Advisory vs Compulsory paths, Strangler / Adapter / Feature-Flag / Database Expand-Migrate-Contract patterns, and a four-step workflow: build replacement → announce → migrate incrementally → remove old. Emits SIMPLICITY CHECK, NOTICED BUT NOT TOUCHING, UNVERIFIED, and ASK FIRST markers. Use when removing legacy systems, evolving database schemas, sunsetting features, retiring API versions, or cleaning up zombie code with unknown owners. |
-
-Interrupted audits resume. After a session-limit reset, re-run `/kramme:code:refactor-opportunities` (with or without `--ranked`), `/kramme:code:agent-readiness`, or `/kramme:code:outside-view` with the same arguments on unchanged files within 24 hours: finished agents' results are reused from `.context/` and only unfinished agents launch again. Resume needs `.context/` to be git-ignored.
-
-Migration: `/kramme:code:incremental` has been removed after no recorded use during instrumented history. Use ordinary implementation requests for small verified slices and `/kramme:code:refactor-pass` for narrow behavior-preserving cleanup. For structural refactors, use `/kramme:code:refactor-opportunities` to survey candidates, then request planning and implementation directly; no dedicated replacement preserves the former interview-driven Decision Document and tiny-commit workflow.
-
-Migration: `/kramme:code:source-driven` has been removed. Use `/kramme:code:migrate` for version migrations with a self-contained official-source contract, `/kramme:research` for bounded cited research artifacts, and the host's source tools to verify unstable third-party facts during ordinary implementation.
+| `/kramme:git:fixup` | User | `[--skip-tests\|--skip-build\|--skip-lint\|--skip-all] [--no-confirm] [--base=<branch>] [instructions]` | Fold unstaged changes into the commits they belong to on the current branch, validate, and autosquash. |
+| `/kramme:git:recreate-commits` | User, Auto | `[--auto] [--coarse\|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]` | Rewrite unpublished branch history into narrative commits behind a backup ref. Not for merged or shared branches. |
 
 #### Debug
 
@@ -509,56 +494,19 @@ Bug investigation and root cause analysis.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:debug:find-sibling-bugs` | User, Auto | `[--base <branch>] [--intent <text>]` | Finds sibling bugs by treating the current bug-fix branch as a worked example: infers the problem, isolates the code, UX, or UI pattern that caused it, and audits the codebase for other occurrences with evidence and confidence. Use after a branch contains a fix or mitigation and recurrence analysis is needed. Not for diagnosing an unfixed bug, reviewing general branch quality, or changing code. |
-| `/kramme:debug:investigate` | User | `[bug description, error message, or issue reference] [--auto]` | Structured bug investigation workflow: reproduce, isolate, trace root cause, and fix. Use when debugging a bug, investigating an error, or tracking down a regression. |
-| `/kramme:debug:triage-to-issue` | User | `[bug description, error message, or Linear/SIW issue ref] [--yes \| --auto]` | (experimental) Turn a bug into an implementation-ready Linear or local SIW issue with root-cause evidence and a RED-GREEN TDD fix plan. Not for full interactive investigation with multiple confidence gates (kramme:debug:investigate), multi-bug QA intake (kramme:qa:intake), or fix implementation (use kramme:linear:issue-implement after transferring local SIW tickets). |
+| `/kramme:debug:find-sibling-bugs` | User, Auto | `[--base <branch>] [--intent <text>]` | Use a bug-fix branch as a worked example and search the codebase for other places with the same flaw. |
+| `/kramme:debug:investigate` | User | `[bug description, error message, or issue reference] [--auto]` | Investigate a bug step by step: reproduce it, isolate it, trace the root cause, and fix it. |
+| `/kramme:debug:triage-to-issue` | User | `[bug description, error message, or Linear/SIW issue ref] [--yes \| --auto]` | (experimental) Turn a bug into an implementation-ready Linear or SIW issue with root-cause evidence and a red-green TDD fix plan. |
 
-#### Dependencies
+#### Browser & QA
 
-Dependency auditing and management.
-
-| Skill | Invocation | Arguments | Description |
-| --- | --- | --- | --- |
-| `/kramme:deps:audit` | User | `[--auto]` | (experimental) Audit project dependencies for outdated packages, security vulnerabilities, and staleness. Generates a prioritized upgrade plan with risk assessment. |
-
-#### Testing
-
-Test-suite quality audits.
+Live product inspection and structured testing.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:test:audit` | User, Auto | `[full \| path <file-or-folder> \| changed [--base <ref>]] [--max-findings N]` | Audits an existing test suite for low-value, brittle, obsolete, duplicated, provider-shape-coupled, or weak tests. Produces a read-only, evidence-backed REMOVE / REPAIR / CONSOLIDATE / INVESTIGATE report. Use to find poor-quality tests across a repository or path. Not for generating or ordinarily running tests, PR coverage review, or editing or pruning tests. |
-
-Migration: `/kramme:test:generate` has been removed. Ask directly for tests that follow the project's existing conventions, and use `/kramme:test:audit` to assess an existing suite.
-
-#### Git
-
-Git history management and commit operations.
-
-| Skill | Invocation | Arguments | Description |
-| --- | --- | --- | --- |
-| `/kramme:git:fixup` | User | `[--skip-tests\|--skip-build\|--skip-lint\|--skip-all] [--no-confirm] [--base=<branch>] [instructions]` | Intelligently fixup unstaged changes into existing commits on the current branch. Maps each changed file to its most recent commit, validates (build/test/lint), creates fixup commits, and autosquashes. |
-| `/kramme:git:recreate-commits` | User, Auto | `[--auto] [--coarse\|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]` | Rewrite unpublished history into narrative commits behind a backup ref. Use when asked or when kramme:pr:create delegates its guarded rewrite. Not for merged or shared branches. |
-
-`/kramme:git:recreate-commits --auto` authorizes one backup-protected unstacked history rewrite and any required lease-protected force-push. It rejects visible or assume-unchanged tracked edits, ordinary untracked work, and reset-colliding ignored work; refuses mismatched or base-branch upstreams, renamed push destinations, and effective push-destination commits missing locally; honors `branch.<name>.pushRemote` and `remote.pushDefault`; freezes one push URL, branch, and lease; disables tag following; and revalidates the checkout immediately before reset. Automatic stack-wide rewriting additionally requires `--authorize-history-rewrite`. A non-auto stacked invocation may instead use separate interactive confirmations that enumerate the full stack before authorizing the local reset/restack and the atomic whole-stack force-push.
-
-Migration: `/kramme:git:worktree` and `/kramme:git:clean-gone-branches` have been removed together with their helper scripts. Use Conductor workspace management or run `git worktree` and `git branch` directly. No dedicated replacement preserves their Conductor-path guards or confirmation-gated branch deletion.
-
-#### Linear
-
-Linear issue tracking integration.
-
-`/kramme:linear:issue-implement`: Fetches issue details plus referenced Linear issues/documents when accessible, reports inaccessible referenced assets, and uses that context during planning. It writes to Linear only with `--set-in-progress`, which moves the issue to its team's resolved started status — preferring a status named In Progress — before branch setup, asks for confirmation first when the issue is not in Backlog, and stops without creating a branch if that transition is declined or unverified.
-
-| Skill | Invocation | Arguments | Description |
-| --- | --- | --- | --- |
-| `/kramme:linear:backlog-refine` | User | `[team] [--project <name>] [--label <name>] [--stale-days <n>] [--limit <n>] [--apply]` | Requires Linear MCP. Grades a Linear team's open backlog for clarity, scope, agent-readiness, freshness, and resolution evidence; clusters related work and flags conflicting issues; and proposes complete, cancel, merge, split, rewrite, ask, or keep. Read-only unless --apply is passed and each write batch is approved. Use for backlog grooming or pre-planning cleanup. Not for selecting, defining, or implementing an issue; use kramme:linear:next or kramme:linear:issue-define instead. |
-| `/kramme:linear:breakdown-findings` | User | `[--auto] [--ask] [--dry-run] [--resume <partial-report-path>] [--team <team>] [--project <project>] [--label <label>] [--] [source ...]` | Requires Linear MCP and kramme:linear:issue-define. Turns reviewed audit, review, scan, or QA findings into coordinated PR-sized Linear issues with repository grounding, clustering, sequencing, exclusions, and deterministic partial-report resume. Delegates each ticket's duplicate check, refinement, approval, and creation. Use --ask for full questions. Accepts reports, inline or dialogue input, and pre-grouped handoffs. Not for local PR_PLAN files, one rough issue, SIW migration, raw lists, or implementation. |
-| `/kramme:linear:issue-define` | User, Auto | `[--auto [--ask]] [--] [issue-id or description and/or file paths for context]` | Requires the Linear MCP server. Create or improve a well-structured Linear issue through guided refinement. Every issue must fit one PR; larger work becomes a parent with one sub-issue per PR. Use with --auto to create a new Linear issue from rough input with light clarification and approval instead of the full interview; add --ask to ask every relevant interview question before drafting. Not for implementing Linear issues (use kramme:linear:issue-implement), multi-bug QA intake (use kramme:qa:intake), or root-cause bug triage (use kramme:debug:triage-to-issue). |
-| `/kramme:linear:issue-implement` | User, Auto | `<ISSUE-ID> [--auto] [--set-in-progress]` | Requires Linear MCP. Implement one Linear issue: branch setup, reference mapping, planning, coding, fast verification. Use when asked or when kramme:linear:issue-to-pr delegates its guarded --auto phase. |
-| `/kramme:linear:issue-to-pr` | User | `<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced\|full>] [--ship]` | Requires Linear MCP and the GitHub gh CLI. Takes one Linear issue, including one transferred from SIW, through implementation, frozen requirements, review convergence, verification, and optional PR/CI stabilization. `--continue` resumes validated dirty work only on the exact unpublished Linear branch for an already-started issue. Fresh runs may rename the Conductor workspace. Not for implementation/review only, untransferred local SIW issues, stacked or existing PRs, or post-merge rollout. |
-| `/kramme:linear:next` | User | `[team or selection query] [--state <name>] [--agent-ready] [--interest <preference>] [--mine\|--unassigned\|--both] [--project <name>] [--label <name>] [--count <n>] [--limit <n>]` | Requires Linear MCP. Finds up to 10 valuable ready-to-start issues from a Linear team by default, using structured flags or a free-form query, including explicit states and autonomous agent-readiness. Actively finds a strong parallel set and gives every reported issue a plain-language summary. In a Conductor cloud workspace, offers to start confirmed issues in new workspaces. Use when deciding what to pick up next. Not for creating, editing, or closing Linear issues. |
-| `/kramme:linear:review-pr` | User, Auto | `[PR-number\|PR-url] [ISSUE-ID]` | Requires Linear MCP and gh. Audit an existing PR against its Linear issue, tracing each requirement to diff, code, and test evidence. Use when asked or delegated by kramme:pr:github-review. |
+| `/kramme:browse` | User, Auto | `<url\|auto> [--screenshot] [--console] [--network]` | (experimental) Drive a live app through whichever browser MCP is available: navigate, screenshot, interact, and capture evidence. |
+| `/kramme:qa` | User, Auto | `<url\|auto> [quick\|diff-aware\|targeted <route>] [--base <branch>] [--regression] [--inline] [--legacy-console]` | Test a running app with smoke, diff-aware, or targeted checks and get `QA_REPORT.md` with screenshots, repro steps, and severity. |
+| `/kramme:qa:intake` | User | `[optional starting context]` | Log several bugs from a manual QA pass as Linear or SIW tickets through a light, quick conversation. |
 
 #### Visual
 
@@ -566,62 +514,47 @@ Generate and inspect visual output, including self-contained HTML pages, UI chec
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:visual:check-slop` | User | `<file-or-directory> [--fix]` | Runs a bundled deterministic 73-guard check over HTML screens, reports exact AI-style UI findings, and optionally applies safe idempotent fixes with --fix. User-run: invoke it on generated or hand-written HTML before showing, exporting, shipping, or committing it, or to check a screen for visual slop. Not for broad UX, accessibility, product-value, or screenshot critique; use kramme:pr:product-review or kramme:product:design-critic. |
-| `/kramme:visual:explain` | User, Auto | `[topic or description \| --onboarding [focus-area or audience]]` | Generate beautiful, self-contained HTML pages that visually explain systems, code changes, plans, and data. Use when the user asks for a diagram, architecture overview, flowchart, schema, or any visual explanation of technical concepts. Use --onboarding for an interactive onboarding guide that introduces a codebase to newcomers. Also use proactively when about to render a large ASCII table (4+ rows and 3+ columns) — present it as a styled HTML page instead. |
+| `/kramme:visual:check-slop` | User | `<file-or-directory> [--fix]` | Run a deterministic check for AI-style UI patterns in HTML screens; `--fix` applies safe fixes. |
+| `/kramme:visual:explain` | User, Auto | `[topic or description \| --onboarding [focus-area or audience]]` | Generate a self-contained HTML page that explains a system, change, plan, or data visually; `--onboarding` builds a codebase guide. |
 
-Migration: `/kramme:visual:plan-review` and `/kramme:visual:project-recap` have been removed. Use `/kramme:pr:walkthrough --report` to explain an existing branch or Pull Request, `/kramme:visual:explain` to visualize a plan or architecture, and `/kramme:visual:explain --onboarding` to rebuild a codebase overview.
+#### Documentation & Writing
 
-Migration: `/kramme:visual:generate-image` has been removed. The plugin no longer bundles the Gemini image-generation script or its API-key setup. Use image tools available in your active host when you need image generation or editing.
-
-Migration: `/kramme:visual:demo-reel` has been removed together with the Pull Request visual-evidence path it powered. `/kramme:pr:generate-description` no longer accepts `--visual`, and `/kramme:pr:create` no longer starts a local environment, captures screenshots or video, or attaches them; both leave a Screenshots/Videos placeholder on changes with visible UI for the author to fill in. Ask directly for a screenshot or recording when one is needed, or use `/kramme:browse` or `/kramme:qa` for browser evidence. No dedicated replacement preserves tiered capture, the secret preflight, or bounded environment startup. Earlier captures left under `.context/demo-reels/` remain eligible for `/kramme:workflow:cleanup-artifacts`.
-
-#### Discovery & Documentation
-
-Requirements discovery, document conversion, and text processing.
+Decision records, specs, solution notes, document review and conversion, and plain-language editing.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:research` | User, Auto | `[research question or topic] [--output <path>]` | Investigates a question against primary sources and saves one cited Markdown artifact. Use for reading legwork: official docs/API facts, source-code or spec checks, standards, and first-party service behavior before planning or implementation. Not for making product or architecture decisions, implementing code, broad web search, secondary blog summaries, or uncited answers. |
-| `/kramme:discovery:wayfinder` | User | `[initiative description \| map-path [ticket-id]]` | Charts huge or foggy initiatives into a local `.context` decision map and resolves one typed frontier ticket per session until the work is ready for SIW or another execution workflow. Use when the route to a destination cannot fit in one agent session or parallel workspaces need coordinated planning state. Not for clear specs, ordinary issue decomposition, implementation, or Linear-native tracking. |
-| `/kramme:discovery:interview` | User, Auto | `[topic \| file-path(s) \| siw] [--siw] [--apply] [--ideate] [--decision-tree] [--research]` | Conduct an in-depth interview about a topic, proposal, or spec to uncover requirements, priorities, and non-goals, then write a plan. Pass --ideate for divergent framing, --decision-tree or depth-first language for coupled decisions, --research for pre-interview research, or --siw (or siw/ spec paths) to interview to 90% confidence and write siw/DISCOVERY_BRIEF.md or siw/SPEC_STRENGTHENING_PLAN.md. --apply edits SIW specs only on direct user request. |
-| `/kramme:discovery:strategic-inquiry` | User | `[focus, e.g. 'onboarding', src/auth, or omit for whole repo] [--max-questions N] [--output <path>] [--inline]` | Generate ranked strategic questions and evidence-backed briefs on hidden assumptions, contradictions, absences, and load-bearing decisions. Writes STRATEGIC_INQUIRY.md or returns inline. Use to surface blind spots. Not for defect or quality audits; use kramme:code:refactor-opportunities --ranked, kramme:pr:code-review, or kramme:product:review. |
-| `/kramme:docs:adr` | User | `[decision title]` | Author Architecture Decision Records for significant, long-lived decisions. Creates ADRs in docs/decisions/ with sequential numbering and lifecycle states (PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED). Detects and preserves existing ADR format when one is in use; falls back to a Nygard-style template otherwise. Use when adopting a new pattern, committing to a dependency, changing a public interface, changing the data model, or rejecting an alternative a future maintainer might reasonably re-propose. Initiative-local SIW decisions stay in the spec and LOG for transfer to Linear. |
-| `/kramme:docs:feature-spec` | User | `[feature name or brief description] [--synthesize\|--auto]` | Author a lightweight PRD-style feature spec before implementation. Produces a single reviewable markdown artifact covering objective, scope, boundaries, assumptions, non-goals, and testing strategy. Use when starting a feature that needs written alignment before coding but does NOT warrant the full siw/ tracked workflow. Pass --synthesize, --auto, or say "draft straight from context" to skip the assumptions block when the current conversation already grounds enough of the spec. For tracked initiatives (phased issues, LOG, audit) use kramme:siw:init instead. |
-| `/kramme:docs:track-rejected-enhancements` | User | `<record\|check\|append\|reconsider> <concept>` | (experimental) Record, check, append, or reconsider rejected enhancement concepts in the project's `.out-of-scope/` directory. One markdown file per concept; substantive reason + prior-request list. Use when the team rejects an enhancement and wants to remember why, or when checking whether a new request matches a prior rejection. Not for bug rejections (close as wontfix with a comment), not for deferrals (use issue priority/status instead), not for cross-repo aggregation. |
-| `/kramme:docs:review` | User | `[markdown-path] [--inline\|--file\|--output <path>]` | Review one Markdown document outside tracked SIW workflows: requirements, implementation plans, strategy drafts, README/docs drafts, proposals, and decision drafts. Classifies the document, selects focused review lenses, and returns severity-ordered findings inline by default or in a requested report file. Not for source-code review, PR diffs, live-product review, or documents under siw/; use SIW audit skills for tracked SIW artifacts. |
-| `/kramme:docs:solution-note` | User | `[problem, lesson, or context] \| --refresh [solution-note-path\|--all] [--apply]` | Create a reusable solved-problem note in docs/solutions/ after a bug fix, migration, repeated workflow, tricky refactor, or implementation lesson: failed approaches, final approach, code references, verification, and reuse cautions. With --refresh, audit existing notes against the codebase as keep, update, consolidate, or delete, confirming deletions and consolidations. Not for ADRs (kramme:docs:adr), domain vocabulary (kramme:docs:ubiquitous-language), feature specs, or rejected enhancements. |
-| `/kramme:docs:sync-release` | User | `[<base>...<ref>\|--base <rev> [--ref <rev>]\|--current] [--apply]` | Compare a named Git base/ref or confirmed current checkout with installation, usage, architecture, testing, and public-contract docs. Returns an evidence-linked drift report by default; with --apply or an explicit apply request, previews and applies bounded local doc corrections and reverifies them. Use for release-scoped documentation drift. Not for one-document review, solution-note refresh, ADRs, changelogs, versions, Git or Pull Request mutations, deployment, or publication. |
-| `/kramme:docs:to-markdown` | User, Auto | — | Convert documents and files to Markdown using markitdown. Use when converting PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx, .xls), HTML, CSV, JSON, XML, images (with EXIF/OCR), audio (with transcription), video via Azure Content Understanding, ZIP archives, YouTube URLs, or EPubs to Markdown format for LLM processing or text analysis. |
-| `/kramme:docs:ubiquitous-language` | User | — | Extract a DDD-style ubiquitous language glossary from the current conversation, flagging ambiguities and proposing canonical terms. Saves to UBIQUITOUS_LANGUAGE.md at the repo root. Use when the user wants to define domain terms, build a glossary, harden terminology, or mentions 'ubiquitous language' or 'DDD'. Not for general programming concepts (array, function, endpoint), code-level type/class glossaries, or per-feature naming inside a single module. |
-| `/kramme:docs:update-agents-md` | User | — | This skill should be used when the user asks to "update AGENTS.md", "add to AGENTS.md", "maintain agent docs", add the Hard-Cut Greenfield Policy or no-compatibility-code policy, or otherwise add guidelines to agent instructions. Guides discovery of local skills and enforces structured, keyword-based documentation style. |
-| `/kramme:text:clarify` | User, Auto | `[--humanize] [file-path or text]` | Rewrites prose so readers can understand and act on it quickly by front-loading the outcome, improving structure, and using concrete active language while preserving technical meaning. Use for reports, guidance, documentation, research notes, and summaries that need plain-language editing. With --humanize, it instead removes AI-writing patterns while keeping the author's voice. Not for marketing voice, code, quoted or legal text, or content that must remain verbatim. |
-| `/kramme:skill:create` | User | `[skill-name or description]` | Guide the creation of a new Claude Code plugin skill with best-practice structure, optimized frontmatter, and progressive disclosure. Use when creating a new skill from scratch or scaffolding a skill directory. Not for editing or refactoring existing skills. |
-| `/kramme:skill:review` | User, Auto | `[skill-path \| skill-name \| proposed skill text]` | Reviews plugin skills for focused scope, progressive disclosure, portability, safety, retry behavior, and documentation quality. Use when auditing a SKILL.md, skill directory, or proposed skill text against skill-authoring standards. Not for creating new skills, editing skills, or reviewing ordinary application code. |
+| `/kramme:docs:adr` | User | `[decision title]` | Write an Architecture Decision Record for a significant, long-lived decision, following the project's existing ADR format. |
+| `/kramme:docs:feature-spec` | User | `[feature name or brief description] [--synthesize\|--auto]` | Write a lightweight PRD-style feature spec before coding, for features that need written alignment but not the full SIW workflow. |
+| `/kramme:docs:track-rejected-enhancements` | User | `<record\|check\|append\|reconsider> <concept>` | (experimental) Record rejected enhancement ideas in `.out-of-scope/` and check new requests against them. |
+| `/kramme:docs:review` | User | `[markdown-path] [--inline\|--file\|--output <path>]` | Review one Markdown document, such as a plan, proposal, or README draft, and get severity-ordered findings. |
+| `/kramme:docs:solution-note` | User | `[problem, lesson, or context] \| --refresh [solution-note-path\|--all] [--apply]` | Record a solved problem in `docs/solutions/` after a fix, migration, or lesson; `--refresh` audits existing notes against the code. |
+| `/kramme:docs:sync-release` | User | `[<base>...<ref>\|--base <rev> [--ref <rev>]\|--current] [--apply]` | Compare install, usage, architecture, and contract docs against a release range and report drift; `--apply` fixes it. |
+| `/kramme:docs:to-markdown` | User, Auto | — | Convert PDF, Office, HTML, image, audio, and other files to Markdown with MarkItDown. |
+| `/kramme:docs:ubiquitous-language` | User | — | Extract a DDD-style glossary of domain terms from the conversation into `UBIQUITOUS_LANGUAGE.md`, flagging ambiguous terms. |
+| `/kramme:docs:update-agents-md` | User | — | Add or update guidelines in AGENTS.md, such as a no-compatibility-code policy, in a structured, keyword-based style. |
+| `/kramme:text:clarify` | User, Auto | `[--humanize] [file-path or text]` | Rewrite prose so readers can understand and act on it quickly; `--humanize` removes AI-writing patterns instead. |
 
-#### Learning
+#### Skill Authoring
 
-Human comprehension checks and teach-back workflows.
+Create and review plugin skills.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:learn:verify-understanding` | User | `[topic: PR, branch, feature, document, spec, etc.] [--answer-options\|--choices]` | Guides topic-level understanding verification for a PR, branch, feature, document, spec, design decision, bug fix, or other concrete subject. Use when the user asks to confirm, quiz, drill, teach-and-check, or verify that they understand a topic. Supports optional answer choices for quiz prompts. Maintains a topic-specific checklist artifact and requires demonstrated understanding before marking the topic complete. Not for ordinary explanations without verification, end-of-session summaries, or code/test correctness checks. |
+| `/kramme:skill:create` | User | `[skill-name or description]` | Scaffold a new plugin skill with best-practice structure, frontmatter, and progressive disclosure. |
+| `/kramme:skill:review` | User, Auto | `[skill-path \| skill-name \| proposed skill text]` | Review a skill for focused scope, progressive disclosure, portability, safety, and documentation quality. |
 
 #### Workflow & Configuration
 
-Session management, verification, artifact cleanup, and hook configuration.
+Environment checks, verification, artifact cleanup, guided setup scripts, session review, and hook configuration.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:setup` | User, Auto | `[--json\|--help]` | Run a read-only environment health check for this plugin's local workflow tools, repo context, optional CLIs, plugin update status, and detectable Conductor/worktree state. Use after installing the plugin, when a skill fails because a dependency may be missing, or before running a workflow in a new workspace. Not for installing tools, changing config, or repairing broken environments automatically. |
-| `/kramme:workflow:cleanup-artifacts` | User, Auto | `[--auto \| --siw]` | Delete disposable workflow artifacts: review, audit, and QA reports, generated plans, diagrams, context evidence. Use when asked or delegated by kramme:linear:issue-to-pr --ship with --auto; --siw is user-only. |
-| `/kramme:workflow:wizard` | User | `[procedure description or target script path]` | Generates an interactive Bash wizard script for human-run manual procedures: third-party setup, one-off migrations, A-to-B state transitions, local environment values, and GitHub Actions secrets or variables. Use when the user wants a guided setup script that opens URLs, captures values, confirms irreversible steps, and writes local or CI config. Not for running the procedure yourself, ordinary shell automation, or long-lived application code. |
-| `/kramme:hooks:toggle` | User | `<status\|reset\|hook-name> [enable\|disable]` | Enable, disable, list, or reset hook toggles for the kramme-cc-workflow plugin. Use when a hook is firing unwantedly, when a new hook needs to be switched on, or when the user asks about current hook state. |
-| `/kramme:session:automate-repeats` | User | `[session-paths or --recent N] [--effectiveness] [--create\|--auto]` | Reviews recent agent sessions for repeated work, recurring friction, and evidence-backed skill effectiveness, then reports improvements to the existing owner before proposing or scaffolding new automation. Use when asked to inspect recent sessions, find automation opportunities, improve a skill from its runs, determine which skills are working, or turn repeated work into reusable workflows. Not for summarizing one session, general retrospectives, or codebase refactoring. |
-| `/kramme:verify:run` | User, Auto | `[--fast \| --full] [--force] [--base <branch> [--base-commit <oid>]]` | Run tests, lint, formatting, builds, and type checks configured by the project; --fast picks the iteration tier. Use when asked, before claiming completion, or when a workflow delegates. |
-
-Migration: `/kramme:session:context-setup` has been removed. `/kramme:code:work-from-plan`, `/kramme:code:plan-to-pr`, and `/kramme:linear:issue-implement` retain a shared preparation checklist for relevant source, tests, implementation patterns, and types, with focused context loading. A shared forward-progress reference covers context recovery while preserving valid work. Ask directly for rules-file updates when needed; the separate setup ritual, markers, and mandatory repair gate are retired.
-
-Migration: `/kramme:nx:setup-portless` has been removed together with the `nx` skill domain. Ask directly for portless setup or Nx `dev:local`/`dev:full` target wiring; no dedicated replacement preserves its target templates or certificate-trust steps.
+| `/kramme:setup` | User, Auto | `[--json\|--help]` | Run a read-only health check of the tools, repository context, plugin version, and workspace this plugin depends on. |
+| `/kramme:verify:run` | User, Auto | `[--fast \| --full] [--force] [--base <branch> [--base-commit <oid>]]` | Run the project's tests, linting, formatting, builds, and type checks for affected code; `--fast` runs the quick tier. |
+| `/kramme:workflow:cleanup-artifacts` | User, Auto | `[--auto \| --siw]` | Delete disposable workflow artifacts such as review, audit, and QA reports, plans, and diagrams; `--siw` retires the `siw/` workspace. |
+| `/kramme:workflow:wizard` | User | `[procedure description or target script path]` | Generate an interactive Bash wizard for manual procedures such as third-party setup, one-off migrations, or CI secrets. |
+| `/kramme:hooks:toggle` | User | `<status\|reset\|hook-name> [enable\|disable]` | Enable, disable, list, or reset this plugin's hooks. |
+| `/kramme:session:automate-repeats` | User | `[session-paths or --recent N] [--effectiveness] [--create\|--auto]` | Review recent agent sessions for repeated work and friction, and suggest skill improvements or new automation. |
 
 ### Background Skills
 
@@ -629,84 +562,44 @@ Auto-triggered by the host based on context. These don't appear in the `/` menu.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `kramme:git:commit-message` | Background | — | Create commit messages for branch commits. Use when committing code changes or writing commit messages. Follows the repository's commit-subject convention (plain English when none is found), with a pre-commit checklist and AI-attribution rules. Not for PR titles or merge commits. |
+| `kramme:git:commit-message` | Background | — | Write commit messages that follow the repository's commit convention, with a pre-commit checklist and AI-attribution rules. |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
-### Skill Command Migrations
-
-These user-invocable skill names have changed. Update saved prompts and automation before upgrading:
-
-- `/kramme:siw:spec-audit:auto-fix` and `/kramme:siw:apply-spec-audit-fixes` → `/kramme:siw:spec-audit --apply <report>`
-- `/kramme:docs:out-of-scope` → `/kramme:docs:track-rejected-enhancements`
-- `/kramme:code:cleanup-ai` → `/kramme:code:refactor-pass`
-- `/kramme:pr:ux-review` → `/kramme:pr:product-review`
-- `/kramme:siw:discovery` → `/kramme:discovery:interview --siw`
-- `/kramme:siw:remove` → `/kramme:workflow:cleanup-artifacts --siw`
-- `/kramme:pr:verify-description` → `/kramme:pr:generate-description --check`
-- `/kramme:siw:product-audit` → `/kramme:siw:spec-audit --product`
-- `/kramme:visual:diagram` → `/kramme:visual:explain`
-- `/kramme:visual:onboarding` → `/kramme:visual:explain --onboarding`
-- `/kramme:docs:solution-refresh` → `/kramme:docs:solution-note --refresh`
-- `/kramme:code:weakness-audit` → `/kramme:code:refactor-opportunities --ranked`
-- `/kramme:text:humanize` → `/kramme:text:clarify --humanize`
-- `/kramme:pr:plan-split` → `/kramme:code:breakdown-findings --split`
-- `/kramme:workflow-artifacts:cleanup` → `/kramme:workflow:cleanup-artifacts`
-- `/kramme:linear:select-next` → `/kramme:linear:next`
-
-The `out-of-scope` replacement preserves the existing arguments and behavior. The auto-fix replacement takes the report path after `--apply`, keeps `--auto`, `--dry-run`, `--threshold 60-100`, and `--allow-dirty`, and `--apply` without a path audits first and then fixes the new report. `--dry-run` requires an existing report path (`--apply <report> --dry-run`); audit-first dry runs are rejected before auditing or writing files. Use `--inline` without `--apply` for a read-only audit. The `cleanup-ai` replacement does not preserve the old arguments or side effects: remove `--auto`; omit arguments to use the canonical branch review scope, or pass file and directory scope tokens instead of a base branch. When cleanup candidates exist, `refactor-pass` verifies and checkpoints scoped uncommitted input, then verifies and commits each simplification separately. The `ux-review` replacement preserves the old arguments. It also runs the product reviewer over every changed file by default (`--categories product` gives the former product-only review), writes `PRODUCT_REVIEW_OVERVIEW.md` with `PROD-NNN` finding IDs, and no longer reads, cleans up, or guards an existing `UX_REVIEW_OVERVIEW.md`, so delete leftover copies by hand. For SIW discovery, pass `--siw` (or a bare `siw`, or `siw/` paths); plain topic text no longer starts an SIW run, and `--apply` now works only on a direct user request and confirms the edits in-session. The `siw:remove` replacement keeps the SIW-only scope, the transfer-to-Linear-first warning, and the temporary-only, all-SIW, or abort confirmation; it cannot be combined with `--auto`, skips directories instead of force-deleting them when `trash` is missing, and skips `siw/issues/` or `siw/qa-intake/` when they hold unexpected files. The `verify-description` replacement keeps `--base`, `--strict`, the drift rubric, and the report shape, but the report heading is now `PR Description Check` instead of `PR Description Verification`. `--strict` also reports two accuracy-adjacent clarity Suggestions: an opening that doesn't say what changes, and an untestable behavior change or risk without a Test plan scenario. Remove `--fix`: after Important or Critical drift, `--check` itself asks once (y/N) before regenerating and updating the PR; add `--no-update` for a report with no prompt. The `product-audit` replacement keeps the `--auto` and `--inline` arguments and adds the readiness dimensions: product findings keep `PROD-NNN` IDs but are written to `AUDIT_SPEC_REPORT.md` alongside `SPEC-NNN` findings, are never auto-fixed by `--apply`, and resolve through `/kramme:siw:resolve-audit`. No skill reads or commit-guards an existing `PRODUCT_AUDIT.md` anymore; SIW spec detection still ignores it, and `/kramme:workflow:cleanup-artifacts` removes leftover copies. The `visual:diagram` rename keeps the topic argument, the single-diagram and proactive table behavior, and the `~/.kramme-cc-workflow/diagrams/` output directory. The `visual:onboarding` replacement keeps the optional focus-area or audience argument, the parallel exploration agents, the cited fact sheet, the eight-section page plan, and the `onboarding-{project-name}.html` output name in `~/.kramme-cc-workflow/diagrams/`. The `solution-refresh` replacement keeps the note-path and `--all` targets and `--apply`, which now follow `--refresh`; deletion and consolidation still ask first. The `weakness-audit` replacement keeps the `full`, `path`, and `feature` scopes, `--output`, `--max-findings`, `--solo`, and `--base`, and still writes `CODEBASE_WEAKNESS_REPORT.md` with `WA-NNN` IDs; add `--ranked` to saved commands and drop `--team`. Ranked mode is user-only, so a model or another skill never starts it; automation must ask the user to run it. The `text:humanize` replacement keeps the AI-writing pattern catalog, the opt-in voice pass, and the confirm-before-write flow, but takes one file or one text block per run and treats a single-line argument that merely contains a slash, such as `Fixed in src/api/orders.ts`, as text instead of a missing path. `/kramme:pr:github-review` keeps its humanize pass through the new mode, and `/kramme:pr:github-review-reply` now humanizes drafted replies only with `--humanize`. The `plan-split` replacement keeps `--base <branch>` and `--auto`, the seam strategies, and the SPLIT or KEEP AS ONE decision, and now writes the same `PR_PLAN_*.md` set itself instead of printing a handoff for you to run; split plans still carry the worktree Implementation Setup and are implemented by hand, then reconciled with `--reconcile`. The `workflow-artifacts:cleanup` rename keeps every argument, mode, and safety gate. The `linear:select-next` rename keeps its other arguments and behavior; pass `--agent-ready` instead of `--agent-ready-only`. The old identifiers no longer resolve.
-
 ## Agents
 
-Specialized subagents for PR review and UX audit tasks. Invoked by `/kramme:pr:code-review`, `/kramme:pr:product-review`, or directly via the Task tool.
-
-`/kramme:pr:code-review` records a frozen applicability plan, actual invocation IDs,
-saved reviewer results, and every required post-processing stage. Default `all`
-runs every applicable reviewer; explicit aspect filters remain supported. All modes,
-including `--team`, `--inline`, and loop reruns, require a locally validated
-completion seal tied to the current Git scope and exact report. Missing reviewers,
-skipped stages, or stale evidence mean `INCOMPLETE`, even with zero findings.
-Review convergence and the closeout loop recheck the seal before accepting the
-review. Node.js 20+ and Git are required. Temporary evidence lives outside the
-worktree and must remain available until consumers finish; it is never committed.
-This evidence is self-attested and does not independently prove host execution.
-
-Run completion regression checks with
-`node --test kramme-cc-workflow/tests/node/review-execution.test.js kramme-cc-workflow/tests/node/review-completion-eval.test.js`.
-The [completion evaluation guide](kramme-cc-workflow/evals/review-completion/README.md)
-provides seven early-stop and control cases for live model checks. Passing fixture
-tests is not a claim that Astra passed those live cases.
+Specialized subagents for PR review and UX audit tasks. Review skills such as `/kramme:pr:code-review` and `/kramme:pr:product-review` invoke them, and you can also call them directly through the Task tool. Code review records completion evidence for every reviewer run; see [Completion Evidence](kramme-cc-workflow/docs/review.md#completion-evidence).
 
 <!-- prettier-ignore-start -->
 <!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
 | Agent | Description |
 | --- | --- |
-| `kramme:a11y-auditor` | Use this agent to audit UI code for WCAG 2.1 AA accessibility issues, including semantics, ARIA, keyboard navigation, focus handling, screen reader support, and contrast. Use it when accessibility is an explicit requirement or when reviewing forms, dialogs, and other interactive flows; not for general UX or visual consistency review. |
-| `kramme:architecture-strategist` | Use this agent to review code changes for module design: whether modules stay deep (a small interface over substantial behavior), whether callers go through public interfaces instead of internal imports, whether one change stays in one place, and whether new seams have real variation. Best for diffs that add or remove a module, change a module's public interface, or add dependencies between modules; not for line-level style, naming, or general code quality. |
-| `kramme:cleanup-reviewer` | Use this agent to review recent or PR-scoped changes for code the change does not need to own or could express more simply, across four dimensions - lean (delete, replace with the standard library, native platform features, installed dependencies, or existing helpers, and drop YAGNI abstractions), removal (verify that deleted, deprecated, or consolidated code is safe to remove by tracing every reference), refactor (reuse, composition, and codebase fit), and simplify (clarity and maintainability while preserving exact behavior). Review-only inside a multi-reviewer run; may apply behavior-preserving simplifications only when it is the sole agent on the change. Not for correctness, security, error-handling, test-coverage, or style-only review. |
-| `kramme:code-reviewer` | Use this agent to review recent code against project guidelines, CLAUDE.md conventions, and established patterns. It is best used after writing or modifying code, especially before commits or PRs, and should be pointed at the relevant files or diff scope; not for deep product, accessibility, or performance-specific review. |
-| `kramme:codebase-pattern-reviewer` | Use this agent during spec or design review to detect whether a proposed implementation introduces new codebase patterns, conventions, dependencies, file structures, or abstractions without rationale. Best for pre-implementation SIW spec audits; not for line-level code review or implementation conformance checks. |
-| `kramme:comment-analyzer` | Use this agent to review code comments for accuracy, necessity, completeness, and long-term maintainability. Use it after adding or editing docstrings, inline comments, or PR documentation changes; not for reviewing code behavior unrelated to comments. |
-| `kramme:convention-drift-reviewer` | Use this agent to review implemented branch changes for convention drift and overcaution relative to the codebase's own established practice. It mines a peer-file baseline with quorum evidence before judging, flags new patterns, conventions, dependencies, or abstractions introduced without rationale, and flags code that is more defensive or complicated than comparable existing sites, citing exemplar file:line evidence or documented rules for every finding. Also supports a refute mode that adversarially re-checks findings against wider sampling. Not for spec-level pattern review (use kramme:codebase-pattern-reviewer) or absolute AI-slop pattern detection (use kramme:deslop-reviewer). |
-| `kramme:copy-reviewer` | Use this agent to review UI text for redundancy and remove labels, helper copy, tooltips, and instructions that merely restate what the interface already communicates. Use it for PRs or audits where copy minimalism matters; not for grammar, tone, brand voice, or broader UX review. |
-| `kramme:design-iterator` | Use this agent when a design still feels off after an initial pass or two and needs iterative refinement. It reviews screenshots, applies improvements, and repeats for multiple rounds to improve hierarchy, spacing, color balance, and overall polish; not for one-off code changes that are already visually solid. |
-| `kramme:deslop-reviewer` | Use this agent to detect AI-generated code slop in code changes or in review findings. In code-review mode it flags unnecessary comments, defensive noise, weak typing, and style inconsistencies in the diff; in meta-review mode it flags review suggestions that would introduce the same patterns. |
-| `kramme:overengineering-reviewer` | Use this agent to answer one question about branch changes with full recall - are we overdoing things, needlessly complicating things, or hedging against very unlikely edge cases. In necessity-review mode it judges the diff against what the task actually requires (never against codebase baseline practice), is explicitly allowed to make probability judgments, and reports every plausible candidate without confidence thresholds or evidence gates. In justify mode it adversarially defends candidate findings by hunting for the requirement, documented rule, concrete failure path, or stated rationale that warrants the complexity, and returns JUSTIFIED, OVERDONE, or JUDGMENT CALL verdicts. Not for relative baseline measurement (use kramme:convention-drift-reviewer), AI-slop pattern detection (use kramme:deslop-reviewer), or reuse/deletion review (use kramme:cleanup-reviewer). |
-| `kramme:performance-oracle` | Use this agent to review code for performance and scalability risks, including algorithmic complexity, query efficiency, memory use, caching, contention, and bottlenecks. Use it after implementing data-heavy features or when investigating slow paths; not for general code quality review. |
-| `kramme:pr-relevance-validator` | Validates that review findings are actually caused by the current review scope (committed PR diff + staged/unstaged/untracked local changes, plus PR description findings when PR metadata is provided). Use this agent after collecting findings from other review agents to filter out pre-existing issues and problems outside the in-scope changes. This prevents scope creep in code reviews by ensuring reviewers only see issues they should address. |
-| `kramme:pr-test-analyzer` | Use this agent to review a pull request for test coverage quality and important gaps. It checks whether new behavior, edge cases, and regressions are exercised before a PR is marked ready; not for writing tests or doing general code review. |
-| `kramme:product-reviewer` | Use this agent to review PRs, specs, or live-product flows from a product perspective. It checks discoverability, flow completeness, edge cases, information architecture, copy, target user clarity, problem-solution fit, prioritization, trust and safety, and post-action experience, and makes autonomous product calls when context is incomplete. |
-| `kramme:security-reviewer` | Use this agent to review code changes for exploitable security flaws in one pass with four lenses - injection and XSS (user input reaching SQL, command, template, header, or eval sinks), authentication, authorization, IDOR, CSRF, and session handling, secrets, cryptographic misuse, information disclosure, and denial-of-service bounds, and business-logic flaws such as invalid state transitions, TOCTOU races, and numeric edge cases. Use it when a diff touches API routes, auth logic, access checks, DB queries, external calls, user input, crypto, secrets, session state, or business-rule enforcement; not for general code quality, performance, or style review. |
-| `kramme:silent-failure-hunter` | Use this agent to review recent code for silent failures, swallowed errors, weak error propagation, and misleading fallback behavior. Use it for PRs or recent changes involving try-catch blocks, retries, fallbacks, or error-handling refactors; not for general logic review. |
-| `kramme:type-design-analyzer` | Use this agent to review new or changed types for encapsulation, invariant expression, usefulness, and enforcement. Best for PRs that add data models, domain types, or type-heavy refactors; not for general code review when type design is not the main concern. |
-| `kramme:ux-reviewer` | Use this agent to review code changes for usability issues using Nielsen's heuristics and interaction design best practices. It looks for missing states, confusing flows, poor feedback, preventable errors, and weak recovery paths; not for accessibility compliance or visual consistency checks. |
-| `kramme:visual-reviewer` | Use this agent to review code changes for visual consistency and responsive behavior, including design token usage, spacing, typography, color, component-library conformance, layout reflow, and breakpoint behavior. Use it for UI PRs with custom styling or layout changes; not for accessibility or product strategy review. |
+| `kramme:a11y-auditor` | Audits UI code for WCAG 2.1 AA issues: semantics, ARIA, keyboard and focus handling, screen readers, and contrast. |
+| `kramme:architecture-strategist` | Reviews module design: deep modules, use of public interfaces, change locality, and whether new seams have real variation. |
+| `kramme:cleanup-reviewer` | Reviews changes for code to delete, replace with existing tools, reuse, or simplify, and checks that removals are safe. |
+| `kramme:code-reviewer` | Reviews recent code against project guidelines, CLAUDE.md conventions, and established patterns. |
+| `kramme:codebase-pattern-reviewer` | Checks a spec or design for new patterns, dependencies, or abstractions introduced without rationale. |
+| `kramme:comment-analyzer` | Reviews code comments for accuracy, necessity, completeness, and long-term maintainability. |
+| `kramme:convention-drift-reviewer` | Flags drift from the codebase's established practice and overly defensive code, citing peer-file evidence. |
+| `kramme:copy-reviewer` | Flags UI text that merely restates what the interface already communicates. |
+| `kramme:design-iterator` | Refines a design over several screenshot-review rounds when it still feels off. |
+| `kramme:deslop-reviewer` | Detects AI-generated slop in code changes, or in review suggestions that would introduce it. |
+| `kramme:overengineering-reviewer` | Asks whether a change is overdone, needlessly complex, or hedging against unlikely edge cases, then defends or confirms each finding. |
+| `kramme:performance-oracle` | Reviews code for performance and scalability risks: complexity, queries, memory, caching, and contention. |
+| `kramme:pr-relevance-validator` | Filters review findings down to those the current changes caused, dropping pre-existing issues. |
+| `kramme:pr-test-analyzer` | Reviews a PR's test coverage for untested behavior, edge cases, and regressions. |
+| `kramme:product-reviewer` | Reviews PRs, specs, or live flows from a product perspective: discoverability, flows, edge cases, copy, and fit. |
+| `kramme:security-reviewer` | Reviews changes for exploitable flaws: injection, authentication and access control, secrets and crypto, and business-logic bugs. |
+| `kramme:silent-failure-hunter` | Finds swallowed errors, weak error propagation, and misleading fallbacks. |
+| `kramme:type-design-analyzer` | Reviews new or changed types for encapsulation, invariants, usefulness, and enforcement. |
+| `kramme:ux-reviewer` | Reviews changes for usability with Nielsen's heuristics: missing states, confusing flows, poor feedback, and weak recovery. |
+| `kramme:visual-reviewer` | Reviews visual consistency and responsive behavior: design tokens, spacing, typography, color, and breakpoints. |
 <!-- END SOURCE-SYNCED AGENT ROWS -->
 <!-- prettier-ignore-end -->
 
 ## Hooks
 
-Event handlers defined once in the plugin source and packaged for both hosts. Each host maps them to its own lifecycle events; for detailed configuration, pattern lists, and formatter tables, see [docs/hooks.md](kramme-cc-workflow/docs/hooks.md).
+Event handlers defined once in the plugin source and packaged for both hosts. Each host maps them to its own lifecycle events. Toggle them with `/kramme:hooks:toggle`; [docs/hooks.md](kramme-cc-workflow/docs/hooks.md) covers configuration, pattern lists, and formatter tables.
 
 <!-- prettier-ignore-start -->
 <!-- BEGIN SOURCE-SYNCED HOOK ROWS -->
@@ -720,131 +613,70 @@ Event handlers defined once in the plugin source and packaged for both hosts. Ea
 <!-- END SOURCE-SYNCED HOOK ROWS -->
 <!-- prettier-ignore-end -->
 
-For opt-in formatter failure evidence, set `KRAMME_AUTOFORMAT_DEBUG=1`. The auto-format hook retains only the latest failed attempt's first 64 KiB of stderr in a private mode-`0600` file under `${XDG_CACHE_HOME:-$HOME/.cache}/claude-format` and reports the path without copying raw diagnostics into hook JSON. Debug retention is disabled by default; see [auto-format hook details](kramme-cc-workflow/docs/hooks.md#failure-diagnostics).
+## Renamed and Removed Commands
 
-Use `/kramme:hooks:toggle` to enable/disable hooks. State persists in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `kramme-cc-workflow/hooks/hook-state.json`.
+Update saved prompts and automation before upgrading; the old names no longer resolve. [CHANGELOG.md](kramme-cc-workflow/CHANGELOG.md) has the release-by-release detail.
 
-## Recommended Auto Modes
+### Renamed
 
-Instead of maintaining a static permission allowlist, use the host's built-in auto mode to reduce approval prompts while retaining its automatic safety checks:
-
-- **Claude Code** — start a session with `claude --permission-mode auto`
-- **Codex** — start a session with `codex --approve-for-me`
-
-Enable auto mode only in repositories you trust, and review changes before publishing them.
-
-## Recommended MCP Servers
-
-These MCP servers enhance the plugin's capabilities. See [docs/mcp-servers.md](kramme-cc-workflow/docs/mcp-servers.md) for installation instructions.
-
-| Server | Purpose |
+| Old → new | What to change |
 | --- | --- |
-| **Linear** | Issue tracking for `/kramme:linear:backlog-refine`, `/kramme:linear:breakdown-findings`, `/kramme:linear:issue-to-pr`, `/kramme:linear:issue-implement`, `/kramme:linear:issue-define`, `/kramme:linear:review-pr`, `/kramme:linear:next`, and the optional Linear requirements source in `/kramme:pr:review-convergence` |
-| **Context7** | Up-to-date library documentation retrieval |
-| **Nx MCP** | Nx monorepo tools for `/kramme:verify:run` in Nx workspaces |
-| **Chrome DevTools** | Browser automation and debugging |
-| **Claude in Chrome** | Browser automation via Chrome extension |
-| **Playwright** | Browser automation for testing |
-| **Magic Patterns** | Design-to-code integration for Magic Patterns designs |
-| **Granola** | Query meeting notes from Granola |
+| `/kramme:siw:spec-audit:auto-fix` and `/kramme:siw:apply-spec-audit-fixes` → `/kramme:siw:spec-audit --apply <report>` | Pass the report path after `--apply`; `--auto`, `--dry-run`, `--threshold 60-100`, and `--allow-dirty` still work. `--apply` without a path audits first, then fixes the new report. `--dry-run` needs an existing report (`--apply <report> --dry-run`); audit-first dry runs are rejected before auditing or writing files. For a read-only audit, use `--inline` without `--apply`. |
+| `/kramme:docs:out-of-scope` → `/kramme:docs:track-rejected-enhancements` | Nothing; arguments and behavior are unchanged. |
+| `/kramme:code:cleanup-ai` → `/kramme:code:refactor-pass` | The replacement does not preserve the old arguments or side effects. Remove `--auto`; omit arguments to use the canonical branch review scope, or pass file and directory scope tokens instead of a base branch. When cleanup candidates exist, it verifies and checkpoints scoped uncommitted input, then verifies and commits each simplification separately. |
+| `/kramme:pr:ux-review` → `/kramme:pr:product-review` | Arguments are unchanged. It also runs the product reviewer over every changed file by default (`--categories product` gives the former product-only review) and writes `PRODUCT_REVIEW_OVERVIEW.md` with `PROD-NNN` finding IDs. It no longer reads, cleans up, or guards `UX_REVIEW_OVERVIEW.md`, so delete leftover copies by hand. |
+| `/kramme:siw:discovery` → `/kramme:discovery:interview --siw` | Pass `--siw` (or a bare `siw`, or `siw/` paths); plain topic text no longer starts an SIW run. `--apply` now works only on a direct user request and confirms the edits in-session. |
+| `/kramme:siw:remove` → `/kramme:workflow:cleanup-artifacts --siw` | Keeps the SIW-only scope, the transfer-to-Linear-first warning, and the temporary-only, all-SIW, or abort confirmation. It cannot be combined with `--auto`, skips directories instead of force-deleting them when `trash` is missing, and skips `siw/issues/` or `siw/qa-intake/` when they hold unexpected files. |
+| `/kramme:pr:verify-description` → `/kramme:pr:generate-description --check` | Keeps `--base`, `--strict`, the drift rubric, and the report shape; the report heading is now `PR Description Check`. `--strict` also reports two clarity Suggestions: an opening that doesn't say what changes, and an untestable behavior change or risk without a Test plan scenario. Remove `--fix`: after Important or Critical drift, `--check` asks once (y/N) before regenerating and updating the PR; add `--no-update` for a report with no prompt. |
+| `/kramme:siw:product-audit` → `/kramme:siw:spec-audit --product` | Keeps `--auto` and `--inline` and adds the readiness dimensions. Product findings keep `PROD-NNN` IDs but are written to `AUDIT_SPEC_REPORT.md` alongside `SPEC-NNN` findings, are never auto-fixed by `--apply`, and resolve through `/kramme:siw:resolve-audit`. No skill reads or commit-guards `PRODUCT_AUDIT.md` anymore; SIW spec detection still ignores it, and `/kramme:workflow:cleanup-artifacts` removes leftover copies. |
+| `/kramme:visual:diagram` → `/kramme:visual:explain` | Nothing; the topic argument, behavior, and `~/.kramme-cc-workflow/diagrams/` output directory are unchanged. |
+| `/kramme:visual:onboarding` → `/kramme:visual:explain --onboarding` | Nothing; the focus-area or audience argument, behavior, and `onboarding-{project-name}.html` output are unchanged. |
+| `/kramme:docs:solution-refresh` → `/kramme:docs:solution-note --refresh` | The note-path and `--all` targets and `--apply` now follow `--refresh`; deletion and consolidation still ask first. |
+| `/kramme:code:weakness-audit` → `/kramme:code:refactor-opportunities --ranked` | Add `--ranked` and drop `--team`. The `full`, `path`, and `feature` scopes, `--output`, `--max-findings`, `--solo`, and `--base` are kept, and it still writes `CODEBASE_WEAKNESS_REPORT.md` with `WA-NNN` IDs. Ranked mode is user-only, so a model or another skill never starts it; automation must ask the user to run it. |
+| `/kramme:text:humanize` → `/kramme:text:clarify --humanize` | Takes one file or one text block per run, and treats a single-line argument that merely contains a slash, such as `Fixed in src/api/orders.ts`, as text. The pattern catalog, opt-in voice pass, and confirm-before-write flow are kept. `/kramme:pr:github-review` keeps its humanize pass, and `/kramme:pr:github-review-reply` now humanizes drafted replies only with `--humanize`. |
+| `/kramme:pr:plan-split` → `/kramme:code:breakdown-findings --split` | Keeps `--base <branch>`, `--auto`, the seam strategies, and the SPLIT or KEEP AS ONE decision. It now writes the `PR_PLAN_*.md` set itself instead of printing a handoff. Split plans still carry the worktree Implementation Setup; implement them by hand, then reconcile with `--reconcile`. |
+| `/kramme:pr:update-split-plans` → `/kramme:code:breakdown-findings --reconcile` | Pass the same plan paths, `--all`, `--worktree`, `--source`, `--base`, and `--auto` options. Former no-scope calls must add `--all` to preserve the removed command's active-plan-only default; zero-scope reconcile intentionally retains `kramme:code:breakdown-findings`'s existing all-indexed behavior. |
+| `/kramme:workflow-artifacts:cleanup` → `/kramme:workflow:cleanup-artifacts` | Nothing; every argument, mode, and safety gate is unchanged. |
+| `/kramme:linear:select-next` → `/kramme:linear:next` | Pass `--agent-ready` instead of `--agent-ready-only`; other arguments and behavior are unchanged. |
 
-## Recommended CLIs
+### Removed
 
-CLI tools that enhance the plugin experience. Some are required for specific commands.
-
-### Core and GitHub Workflows
-
-| CLI | Purpose | Install |
-| --- | --- | --- |
-| `bash` | Hook runtime | Pre-installed on macOS/Linux; use Git Bash on Windows |
-| `git` | Version control | Pre-installed on most systems |
-| `jq` | Safety-hook JSON parsing | `brew install jq` (macOS) / `apt install jq` (Linux) |
-| `python3` | Safety-hook command parsing | Install Python 3.10+ |
-| `node` | Local skill-usage recording and Codex conversion | Install Node.js 18+; Codex conversion also requires npm and the Codex CLI |
-| `gh` | GitHub Pull Request workflows | `brew install gh` or follow [cli.github.com](https://cli.github.com/) |
-
-### Verification & Build
-
-| CLI | Purpose | Install |
-| --- | --- | --- |
-| `nx` | Nx monorepo commands | `npm install -g nx` |
-| `dotnet` | .NET project verification | [dotnet.microsoft.com](https://dotnet.microsoft.com/download) |
-| `prettier` | JS/TS formatting | `npm install -g prettier` |
-| `eslint` | JS/TS linting | `npm install -g eslint` |
-| `tsc` | TypeScript type-checking | `npm install -g typescript` |
-
-### Utilities
-
-| CLI | Purpose | Install |
-| --- | --- | --- |
-| `trash` | Safe file deletion (used by block-rm-rf hook) | `brew install trash` (macOS) / `apt install trash-cli` (Linux) |
-| `markitdown` | Document conversion skill | `uvx markitdown` or `pip install markitdown` |
-| `skillspector` | Optional security scanning for local skill directories | [NVIDIA/SkillSpector](https://github.com/NVIDIA/SkillSpector) |
-| `surf` | AI-generated illustrations in visual diagrams (optional) | [surf-cli](https://github.com/nicobailon/surf-cli) |
-
-## Plugin Status
-
-Each host owns its installed plugin and provides a way to inspect that state.
-
-### Claude Code
-
-Open the plugin manager inside Claude Code:
-
-```text
-/plugin
-```
-
-Use it to view the marketplace registration and installed version.
-
-### Codex
-
-Codex reports the installed plugin through its own CLI:
-
-```bash
-codex plugin list
-```
-
-The plugin appears as `kramme-cc-workflow@kramme-cc-workflow` with its status, version, and marketplace source. The registration lives in the Codex `config.toml` as `[marketplaces.kramme-cc-workflow]` and `[plugins."kramme-cc-workflow@kramme-cc-workflow"]`, and the installed files live under `plugins/cache/kramme-cc-workflow/kramme-cc-workflow/<version>` in the Codex home. Converted skills reference that directory through `${CODEX_HOME:-$HOME/.codex}`, so keep `CODEX_HOME` exported in shells Codex runs when you use a non-default Codex home.
-
-If skills from an earlier converter release still appear twice, a legacy copy remains under `~/.codex/skills` or `~/.agents/skills`; run the install command again with `--yes` to remove it.
-
-## Plugin Structure
-
-The shared plugin source lives in `kramme-cc-workflow/`; this root README is the canonical project documentation for both Claude Code and Codex. Claude Code source files are canonical, and Codex output is generated from them at build time.
-
-```
-.
-├── .claude-plugin/
-│   └── marketplace.json     # Root marketplace definition
-├── kramme-cc-workflow/
-│   ├── .claude-plugin/
-│   │   └── plugin.json      # Plugin metadata
-│   ├── agents/              # Specialized subagents
-│   ├── skills/              # Skills (subdirectories with SKILL.md)
-│   ├── shared/              # References and assets used by more than one skill
-│   ├── hooks/               # Event handlers
-│   │   └── hooks.json
-│   ├── docs/                # Detailed reference docs
-│   │   └── component-catalog.json  # Generated compact component index
-│   └── README.md            # Pointer to this root README
-├── .agents/skills/          # Local repository-maintenance skills
-└── README.md                # Canonical documentation
-```
-
-The source tree above feeds both host packages. Claude Code reads the plugin metadata, skills, agents, and hooks directly; the converter packages the same behavior as the native Codex plugin described in [the portability matrix](kramme-cc-workflow/docs/agent-portability.md).
+| Removed | Use instead |
+| --- | --- |
+| `/kramme:siw:issue-define` | Before transfer, update the spec and run `/kramme:siw:generate-phases`, choosing Append when issues exist. For a standalone issue or after transfer, use `/kramme:linear:issue-define`. Existing local issue files stay valid; edit them directly and keep `siw/OPEN_ISSUES_OVERVIEW.md` and `siw/LOG.md` in sync. |
+| `/kramme:ci:design-pipeline` | Ask directly for CI/CD pipeline design or gate planning. `/kramme:pr:fix-ci` still handles failures in an existing Pull Request pipeline. |
+| `/kramme:product:pulse` | Ask directly for a time-windowed product health recap. `/kramme:product:strategy`, `/kramme:product:review`, and `/kramme:siw:spec-audit --product` still read existing reports under `docs/pulse-reports/`, but nothing generates them anymore. |
+| `/kramme:code:incremental` | Use ordinary implementation requests for small verified slices and `/kramme:code:refactor-pass` for narrow behavior-preserving cleanup. For structural refactors, survey candidates with `/kramme:code:refactor-opportunities`, then ask for planning and implementation directly. No replacement keeps the interview-driven Decision Document and tiny-commit workflow. |
+| `/kramme:code:source-driven` | Use `/kramme:code:migrate` for version migrations, `/kramme:research` for cited research artifacts, and the host's source tools to verify unstable third-party facts during implementation. |
+| `/kramme:test:generate` | Ask directly for tests that follow the project's existing conventions, and use `/kramme:test:audit` to assess an existing suite. |
+| `/kramme:git:worktree` and `/kramme:git:clean-gone-branches` | Use Conductor workspace management, or run `git worktree` and `git branch` directly. Their helper scripts are gone too, and no replacement keeps their Conductor-path guards or confirmation-gated branch deletion. |
+| `/kramme:visual:plan-review` and `/kramme:visual:project-recap` | Use `/kramme:pr:walkthrough --report` to explain a branch or Pull Request, `/kramme:visual:explain` to visualize a plan or architecture, and `/kramme:visual:explain --onboarding` for a codebase overview. |
+| `/kramme:visual:generate-image` | Use the image tools in your host. The Gemini image-generation script and its API-key setup are no longer bundled. |
+| `/kramme:visual:demo-reel` | `/kramme:pr:generate-description` no longer accepts `--visual`, and `/kramme:pr:create` no longer captures or attaches screenshots or video; both leave a Screenshots/Videos placeholder on changes with visible UI. Ask directly for a screenshot or recording, or use `/kramme:browse` or `/kramme:qa`. No replacement keeps tiered capture, the secret preflight, or bounded environment startup. Earlier captures under `.context/demo-reels/` remain eligible for `/kramme:workflow:cleanup-artifacts`. |
+| `/kramme:session:context-setup` | `/kramme:code:work-from-plan`, `/kramme:code:plan-to-pr`, and `/kramme:linear:issue-implement` keep a shared preparation checklist with focused context loading, and a shared forward-progress reference covers context recovery. Ask directly for rules-file updates; the setup ritual, markers, and mandatory repair gate are retired. |
+| `/kramme:nx:setup-portless` and the `nx` skill domain | Ask directly for portless setup or Nx `dev:local`/`dev:full` target wiring. No replacement keeps its target templates or certificate-trust steps. |
 
 ## Documentation
 
+Guides in this repository:
+
+- [Review Workflows](kramme-cc-workflow/docs/review.md) — reviewer models, review convergence, stacked PRs, GitHub review rules, and resuming runs
+- [Implementing and Shipping](kramme-cc-workflow/docs/shipping.md) — base-branch selection, Linear issue and plan to PR, PR creation, and history rewrites
+- [SIW Workflow Reference](kramme-cc-workflow/docs/siw.md)
+- [Hook Reference](kramme-cc-workflow/docs/hooks.md)
+- [Recommended MCP Servers](kramme-cc-workflow/docs/mcp-servers.md)
+- [Agent Autonomy Model](kramme-cc-workflow/docs/agent-autonomy.md)
+- [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md)
+- [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
+- [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
+- [Development Guide](kramme-cc-workflow/docs/development.md)
+- [Decision Index](kramme-cc-workflow/docs/decisions/README.md)
+- [Component Catalog](kramme-cc-workflow/docs/component-catalog.json) (generated compact index of skills, agents, and hooks)
+
+Host documentation:
+
 - Claude Code: [Plugin Documentation](https://code.claude.com/docs/en/plugins), [Plugins Reference](https://code.claude.com/docs/en/plugins-reference), [Hooks Reference](https://code.claude.com/docs/en/hooks), and [Skills Documentation](https://code.claude.com/docs/en/skills)
 - Codex: [Plugins](https://developers.openai.com/codex/plugins), [CLI Reference](https://developers.openai.com/codex/cli), and [Skills](https://developers.openai.com/codex/skills)
-- [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
-- [Agent Autonomy Model](kramme-cc-workflow/docs/agent-autonomy.md)
-- [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
-- [Component Catalog](kramme-cc-workflow/docs/component-catalog.json) (generated compact index of skills, agents, and hooks)
-- [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md)
-- [Decision Index](kramme-cc-workflow/docs/decisions/README.md)
-- [SIW Workflow Reference](kramme-cc-workflow/docs/siw.md)
-- [Development Guide](kramme-cc-workflow/docs/development.md)
 
 ## Related Plugins
 
@@ -861,7 +693,7 @@ For maintainers: see [RELEASE.md](kramme-cc-workflow/RELEASE.md) for the release
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor and agent workflow, including source maps, verification commands, and documentation expectations.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor and agent workflow, including source maps, verification commands, and documentation expectations. For repository work, start there, then use [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant subsystem and tests.
 
 ### PR Title Format
 
@@ -885,7 +717,7 @@ Regular branch commits should use plain-English commit messages (no Conventional
 
 ## Development
 
-The full contributor reference — the complete test-target catalog, coverage baselines and the production-source inventory, pre-PR verification, skill security scans, and the SkillOpt eval pilot — lives in [docs/development.md](kramme-cc-workflow/docs/development.md). The short version:
+[CONTRIBUTING.md](CONTRIBUTING.md) covers local setup, and the [development guide](kramme-cc-workflow/docs/development.md) has the complete test-target catalog, coverage baselines, pre-PR verification, skill security scans, and the SkillOpt eval pilot. The short version:
 
 ```bash
 # Read-only prerequisite check
@@ -910,36 +742,32 @@ make -C kramme-cc-workflow pr-verify
 make -C kramme-cc-workflow verify
 ```
 
-The bootstrap covers Make, Bats, `jq`, ShellCheck, Ruff, mypy, Python 3.10+, Node.js 20+, and locked Node dependencies. It uses Homebrew on macOS; on Debian 12+ and Ubuntu 22.04+, Node.js 20+ with npm and Python 3.10+ are prerequisites before the remaining host packages use `apt-get`. It installs pinned Python tools in `.venv` and does not modify Git hooks. Skill changes also require a separate SkillSpector installation for the changed-skill security gate.
+Skill changes also need a separate SkillSpector installation for the changed-skill security gate. [CONTRIBUTING.md](CONTRIBUTING.md#optional-pre-commit-check) describes the optional managed pre-commit hook, and the [skill-review eval guide](kramme-cc-workflow/evals/skill-review/README.md#live-claude-adapter) covers the optional live evals that spend API credits.
 
-The repository also provides an optional managed pre-commit configuration. After installing `pre-commit`, run `npm run hooks:install` to delegate commits to the existing `npm run check:pre-commit` gate; remove it with `npm run hooks:uninstall`. See [CONTRIBUTING.md](CONTRIBUTING.md#optional-pre-commit-check) for platform prerequisites.
+## Plugin Structure
 
-### Live Claude evals with separate organization credits
+The shared plugin source lives in `kramme-cc-workflow/`; this root README is the canonical entry point for both Claude Code and Codex. Claude Code source files are canonical, and Codex output is generated from them at build time.
 
-The optional live evaluator runs `kramme:skill:review` against the existing synthetic fixtures through the Claude Agent SDK. It uses organization A until a recognized insufficient-credit error, restarts the unfinished case on B, and continues in configured order. Completed predictions are checkpointed under `.context/claude-evals/`. When every organization is empty it pauses; later runs recheck exhausted entries after 24 hours. It finishes the finite eval sweep even when credits remain.
+```
+.
+├── .claude-plugin/
+│   └── marketplace.json     # Root marketplace definition
+├── kramme-cc-workflow/
+│   ├── .claude-plugin/
+│   │   └── plugin.json      # Plugin metadata
+│   ├── agents/              # Specialized subagents
+│   ├── skills/              # Skills (subdirectories with SKILL.md)
+│   ├── shared/              # References and assets used by more than one skill
+│   ├── hooks/               # Event handlers
+│   │   └── hooks.json
+│   ├── docs/                # Usage guides and reference docs
+│   │   └── component-catalog.json  # Generated compact component index
+│   └── README.md            # Pointer to this root README
+├── .agents/skills/          # Local repository-maintenance skills
+└── README.md                # Canonical entry point
+```
 
-1. Create a dedicated API key in each credit-bearing organization. Keep auto-reload disabled and purchased balances absent if you want the evaluator to spend only the monthly allocation. Credits renew on each subscription's billing cycle, rather than a shared calendar-month reset. Anthropic confirms that these credits cover direct Agent SDK runs; the official Claude Code GitHub Action has different eligibility. See [monthly API credits](https://support.claude.com/en/articles/17154008-monthly-api-credits-for-max-and-team-plans).
-2. Run `npm ci` in this repository to install the pinned SDK development dependency. Copy [the pool example](kramme-cc-workflow/evals/skill-review/credit-pool.example.json) under `.context/` and edit its ordered `alias` / `key_env` entries for your organizations. Each named `ANTHROPIC_EVAL_KEY_*` environment variable supplies its key; never put keys in the configuration file.
-3. Set `ANTHROPIC_EVAL_MODEL` to an explicit available Claude model ID and validate without API calls:
-
-   ```bash
-   node kramme-cc-workflow/evals/skill-review/run-live-eval.js \
-     --organizations .context/eval-organizations.json --dry-run
-   ```
-
-4. Remove `--dry-run` to perform one live sweep. The runner resumes matching unfinished runs automatically. `--run-id <id>` explicitly resumes/replays a run; changed inputs require a new ID. A completed automatic run is followed by a fresh sweep on the next invocation. Exit codes are `0` for complete/passing, `1` for errors or completed check failures, and `2` for an incomplete credit pause. Rate limits use bounded retries on the same key; authentication, ambiguous billing, and spend-cap errors stop with a diagnostic.
-
-To enable daily CI at 07:23 UTC, configure these GitHub Actions values:
-
-| Kind | Name | Value |
-| --- | --- | --- |
-| Secret | `ANTHROPIC_EVAL_KEYS_JSON` | A JSON object mapping configured environment-variable names to keys, for example `{"ANTHROPIC_EVAL_KEY_A":"your-first-key","ANTHROPIC_EVAL_KEY_B":"your-second-key"}`. |
-| Variable | `ANTHROPIC_EVAL_ORGANIZATIONS` | An ordered JSON array such as `[{"alias":"org-a","key_env":"ANTHROPIC_EVAL_KEY_A"},{"alias":"org-b","key_env":"ANTHROPIC_EVAL_KEY_B"}]`. Every listed `key_env` needs a key in the secret. Leaving it unset disables the live job. |
-| Variable | `ANTHROPIC_EVAL_MODEL` | The explicit Claude model ID. Leaving it unset disables the live job. |
-
-Then run **Live Skill Review Eval** manually on `main`, or let the daily schedule run after the workflow is merged. It serializes runs, restores validated checkpoints from prior trusted runs, and uploads `claude-eval-checkpoint` plus `claude-eval-report`. Read the job summary: a handled credit pause means **incomplete**, even when the workflow exits successfully. State artifacts expire after 90 days or the repository's shorter retention limit; loss of a checkpoint can repeat recent cases.
-
-The SDK sees only the selected key and staged reviewer/fixture files. It cannot read scoring expectations or run arbitrary tools. The read-only profile omits SkillSpector and ecosystem scanners. The existing phrase scorer gives an initial regression signal; inspect diagnostics before making quality claims. Default PR tests remain offline; live evals are separate from required merge gates. Run `make -C kramme-cc-workflow test-skill-review-live-eval` for credential-free adapter tests. Checkpoint archive tests require `zip` and `unzip`, present on the supported GitHub runners and macOS; install them on other development hosts if missing. See the [adapter and recovery guide](kramme-cc-workflow/evals/skill-review/README.md#live-claude-adapter) for limits and local recovery.
+The source tree above feeds both host packages. Claude Code reads the plugin metadata, skills, agents, and hooks directly; the converter packages the same behavior as the native Codex plugin described in [the portability matrix](kramme-cc-workflow/docs/agent-portability.md).
 
 ## Adding Components
 
@@ -948,9 +776,10 @@ See [AGENTS.md](AGENTS.md) for detailed conventions. Quick reference:
 - **Agents**: Create markdown files in `kramme-cc-workflow/agents/` with `name`, `description`, `model`, and `color` frontmatter.
 - **Skills**: Create a subdirectory in `kramme-cc-workflow/skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `kramme-platforms`.
 - **Hooks**: Edit `kramme-cc-workflow/hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
-- **External sources**: When adapting skills, scripts, docs, or workflows from another project, update the skill's `references/sources.yaml` and classify each entry as `usage: inspiration` or `usage: copied`. Conceptual inspiration must be rewritten in original local language. Copied expression requires a verified compatible license, a complete skill-local notice, the exact upstream path, and an immutable commit, revision, release, or version; public availability and attribution alone are not permission. Fetched source bodies and `references/sources-snapshot/` directories must never be committed. Use `/kramme:skill:create` and `/kramme:skill:review` for the detailed checks.
+- **README summaries**: Give each new skill or agent a one-line summary of at most 160 characters under `summaries` in `readme_skill_sync` or `readme_agent_sync` in [synced-contracts.yaml](kramme-cc-workflow/scripts/synced-contracts.yaml). Hooks use `readme_hook_sync.descriptions`.
+- **External sources**: Record every adapted source in the skill's `references/sources.yaml` as `usage: inspiration` or `usage: copied`, following [External Sources and Rights](AGENTS.md#external-sources-and-rights). Use `/kramme:skill:create` and `/kramme:skill:review` for the detailed checks.
 
-The skill, agent, and hook table rows in this README and the compact [component catalog](kramme-cc-workflow/docs/component-catalog.json) are generated from component source metadata. Run `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` to refresh both, or `python3 kramme-cc-workflow/scripts/generate-component-reference.py --check` to validate without writing. `make -C kramme-cc-workflow skill-contracts` fails on drift.
+The skill, agent, and hook table rows in this README and the compact [component catalog](kramme-cc-workflow/docs/component-catalog.json) are generated from component source metadata and the README summaries. Run `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` to refresh both, or `python3 kramme-cc-workflow/scripts/generate-component-reference.py --check` to validate without writing. `make -C kramme-cc-workflow skill-contracts` fails on drift and warns on README paragraphs of 500 characters or more.
 
 ## Local Repository Maintenance
 
@@ -960,21 +789,15 @@ This workspace also includes local maintenance skills under `.agents/skills/`, e
 | --- | --- |
 | `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares normalized source hashes without retaining fetched source bodies, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
 
-Run `/kramme:skill:audit-sources` monthly and again before each quarterly catalog review. The audit stays manual because fetching upstream content and trusting its contents are deliberate decisions. A reported upstream change is a prompt to review a skill, never permission to change it: fold suggestions into a `SKILL.md` only after human review, and refresh a `baseline_hash` only from a fetch that returned the real source rather than a redirect, login, or error page.
+Run `/kramme:skill:audit-sources` monthly and again before each quarterly catalog review. The audit stays manual because fetching upstream content and trusting its contents are deliberate decisions.
+
+A reported upstream change is a prompt to review a skill, never permission to change it. Fold suggestions into a `SKILL.md` only after human review, and refresh a `baseline_hash` only from a fetch that returned the real source rather than a redirect, login, or error page.
 
 ## Attribution
 
-This plugin is shaped by work shared across the agent-tooling community. The
-sections below credit the projects, practitioners, standards, and official
-documentation behind specific skills, workflows, and conventions.
+This plugin is shaped by work shared across the agent-tooling community. The sections below credit the projects, practitioners, standards, and official documentation behind specific skills, workflows, and conventions.
 
-Copied prose, scripts, templates, and substantial assets must be permitted by a
-verified upstream license and ship with its complete required notice, not only
-an attribution in this README. Adapted workflows should record their source in
-the skill's `references/sources.yaml`, rewrite the workflow in this plugin's
-style, and avoid direct ports of long monolithic skill bodies. See
-[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for retained third-party
-material and its skill-local notices.
+Copied prose, scripts, templates, and substantial assets must be permitted by a verified upstream license and ship with its complete required notice, not only an attribution in this README. Adapted workflows should record their source in the skill's `references/sources.yaml`, rewrite the workflow in this plugin's style, and avoid direct ports of long monolithic skill bodies. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for retained third-party material and its skill-local notices.
 
 ### From [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills)
 

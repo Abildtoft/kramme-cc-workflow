@@ -146,10 +146,83 @@ test targets above when validating only the deterministic harness.
 
 ## Live Claude Adapter
 
-Setup, local commands, and GitHub secret/variable names are documented in the
-root [README](../../../README.md#live-claude-evals-with-separate-organization-credits).
+The optional live evaluator runs `kramme:skill:review` against the existing
+synthetic fixtures through the Claude Agent SDK. It uses organization A until a
+recognized insufficient-credit error, restarts the unfinished case on B, and
+continues in configured order. Completed predictions are checkpointed under
+`.context/claude-evals/`. When every organization is empty it pauses; later
+runs recheck exhausted entries after 24 hours. It finishes the finite eval
+sweep even when credits remain.
+
 The separate live workflow uses the pinned Agent SDK directly, outside required
 PR gates. Its API calls spend credits only when deliberately configured.
+
+### Setup and local runs
+
+Run these commands from the repository root.
+
+1. Create a dedicated API key in each credit-bearing organization. Keep
+   auto-reload disabled and purchased balances absent if you want the evaluator
+   to spend only the monthly allocation. Credits renew on each subscription's
+   billing cycle, rather than a shared calendar-month reset. Anthropic confirms
+   that these credits cover direct Agent SDK runs; the official Claude Code
+   GitHub Action has different eligibility. See
+   [monthly API credits](https://support.claude.com/en/articles/17154008-monthly-api-credits-for-max-and-team-plans).
+2. Run `npm ci` to install the pinned SDK development dependency. Copy
+   [the pool example](credit-pool.example.json) under `.context/` and edit its
+   ordered `alias` / `key_env` entries for your organizations. Each named
+   `ANTHROPIC_EVAL_KEY_*` environment variable supplies its key; never put keys
+   in the configuration file.
+3. Set `ANTHROPIC_EVAL_MODEL` to an explicit available Claude model ID and
+   validate without API calls:
+
+   ```bash
+   node kramme-cc-workflow/evals/skill-review/run-live-eval.js \
+     --organizations .context/eval-organizations.json --dry-run
+   ```
+
+4. Remove `--dry-run` to perform one live sweep. The runner resumes matching
+   unfinished runs automatically. `--run-id <id>` explicitly resumes/replays a
+   run; changed inputs require a new ID. A completed automatic run is followed
+   by a fresh sweep on the next invocation.
+
+Exit codes are `0` for complete/passing, `1` for errors or completed check
+failures, and `2` for an incomplete credit pause. Rate limits use bounded
+retries on the same key; authentication, ambiguous billing, and spend-cap
+errors stop with a diagnostic.
+
+### Daily CI
+
+To enable daily CI at 07:23 UTC, configure these GitHub Actions values:
+
+| Kind | Name | Value |
+| --- | --- | --- |
+| Secret | `ANTHROPIC_EVAL_KEYS_JSON` | A JSON object mapping configured environment-variable names to keys, for example `{"ANTHROPIC_EVAL_KEY_A":"your-first-key","ANTHROPIC_EVAL_KEY_B":"your-second-key"}`. |
+| Variable | `ANTHROPIC_EVAL_ORGANIZATIONS` | An ordered JSON array such as `[{"alias":"org-a","key_env":"ANTHROPIC_EVAL_KEY_A"},{"alias":"org-b","key_env":"ANTHROPIC_EVAL_KEY_B"}]`. Every listed `key_env` needs a key in the secret. Leaving it unset disables the live job. |
+| Variable | `ANTHROPIC_EVAL_MODEL` | The explicit Claude model ID. Leaving it unset disables the live job. |
+
+Then run **Live Skill Review Eval** manually on `main`, or let the daily
+schedule run after the workflow is merged. It serializes runs, restores
+validated checkpoints from prior trusted runs, and uploads
+`claude-eval-checkpoint` plus `claude-eval-report`. Read the job summary: a
+handled credit pause means **incomplete**, even when the workflow exits
+successfully. State artifacts expire after 90 days or the repository's shorter
+retention limit; loss of a checkpoint can repeat recent cases.
+
+### Isolation and verification
+
+The SDK sees only the selected key and staged reviewer/fixture files. It cannot
+read scoring expectations or run arbitrary tools. The read-only profile omits
+SkillSpector and ecosystem scanners. The existing phrase scorer gives an
+initial regression signal; inspect diagnostics before making quality claims.
+
+Default PR tests remain offline; live evals are separate from required merge
+gates. Run `make -C kramme-cc-workflow test-skill-review-live-eval` for
+credential-free adapter tests. Checkpoint archive tests require `zip` and
+`unzip`, present on the supported GitHub runners and macOS; install them on
+other development hosts if missing.
+
+### Adapter behavior
 
 `run-live-eval.js` invokes this existing runner with `claude-predict.js` as its
 prediction command. The adapter reads version-1 context on stdin, invokes the

@@ -169,7 +169,7 @@
 		grep -qF "ask no questions in light mode" "$auto_create"
 		grep -qF "/kramme:linear:breakdown-findings" "$readme"
 		grep -qF "[--resume <partial-report-path>]" "$readme"
-		grep -qF "deterministic partial-report resume" "$readme"
+		grep -qF "deterministic partial-report resume" "$skill"
 	'
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
