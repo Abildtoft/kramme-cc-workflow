@@ -5,44 +5,63 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const {
-  organizationsFromConfig,
-  reconcilePool,
-  selectOrganization,
-  markExhausted,
-  markAvailable,
   classifyAssistantError,
   classifyApiError,
-  redact,
   record,
 } = require("./credit-pool");
-const {
-  readJson,
-  writeJson,
-  validatePool,
-  validateRun,
-  runFile,
-  saveRun,
-  registerWorker,
-  processAlive,
-} = require("./eval-state");
-
-/** @typedef {import('./live-types').AdapterContext} AdapterContext */
-/** @typedef {import('./live-types').Attempt} Attempt */
-/** @typedef {import('@anthropic-ai/claude-agent-sdk').Options} SDKOptions */
-/** @typedef {AsyncIterable<unknown> & {close: () => void}} Query */
-/** @typedef {(args: {prompt: string, options: SDKOptions}) => Query} QueryFunction */
+const { readJson } = require("./eval-state");
+const { predictWithPool, runAdapter } = require("./live-predict");
+const { PROVIDERS } = require("./providers");
 const {
   PROFILE,
-  SKILL,
+  TOOLS,
   EvalFailure,
   stageCase,
   toolAllowed,
-  childEnvironment,
-} = require("./claude-profile");
+} = require("./review-profile");
 
-/** @param {AdapterContext} context
- * @param {{key: string, model: string, timeout: number, maxTurns: number, attempt: Attempt, signal: AbortSignal, query?: QueryFunction}} config */
-async function runSession(context, config) {
+/** @typedef {import('./live-types').AdapterContext} AdapterContext */
+/** @typedef {import('./live-predict').SessionConfig} SessionConfig */
+/** @typedef {import('@anthropic-ai/claude-agent-sdk').Options} SDKOptions */
+/** @typedef {AsyncIterable<unknown> & {close: () => void}} Query */
+/** @typedef {(args: {prompt: string, options: SDKOptions}) => Query} QueryFunction */
+/** @typedef {{query?: QueryFunction, now?: () => number}} Dependencies */
+// This SDK normalizes ':' within a skill name to '-' when qualifying a plugin skill.
+const SKILL = "eval-review:kramme-skill-review";
+
+function runtimeVersion() {
+  return String(
+    record(
+      readJson(
+        path.join(
+          path.dirname(require.resolve("@anthropic-ai/claude-agent-sdk")),
+          "package.json",
+        ),
+      ),
+    ).version,
+  );
+}
+
+/** @param {string} key @param {string} auth @param {NodeJS.ProcessEnv} parent */
+function childEnvironment(key, auth, parent) {
+  // SDK 0.3.310 replaces (rather than merges) its subprocess environment.
+  return {
+    PATH: parent.PATH || "/usr/bin:/bin",
+    LANG: "en_US.UTF-8",
+    ANTHROPIC_API_KEY: key,
+    CLAUDE_CONFIG_DIR: auth,
+    CLAUDE_AGENT_SDK_CLIENT_APP: "kramme-skill-review-evals/1.0.0",
+    CLAUDE_CODE_MAX_RETRIES: "2",
+    CLAUDE_CODE_NONSTREAMING_TIMEOUT_RETRIES: "0",
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+    ...(parent.RUNNER_TRACKING_ID
+      ? { RUNNER_TRACKING_ID: parent.RUNNER_TRACKING_ID }
+      : {}),
+  };
+}
+
+/** @param {AdapterContext} context @param {SessionConfig} config @param {Dependencies} [dependencies] */
+async function runSession(context, config, dependencies = {}) {
   const staged = stageCase(context);
   const controller = new AbortController();
   const abort = () => controller.abort();
@@ -56,7 +75,8 @@ async function runSession(context, config) {
   try {
     if (config.signal.aborted) throw new EvalFailure("interrupted");
     const query =
-      config.query || (await import("@anthropic-ai/claude-agent-sdk")).query;
+      dependencies.query ||
+      (await import("@anthropic-ai/claude-agent-sdk")).query;
     /** @type {SDKOptions} */
     const options = {
       cwd: staged.workspace,
@@ -64,7 +84,7 @@ async function runSession(context, config) {
       model: config.model,
       plugins: [{ type: "local", path: staged.plugin }],
       skills: [SKILL],
-      tools: ["Skill", "Read", "Glob", "Grep"],
+      tools: TOOLS,
       allowedTools: ["Read", "Glob", "Grep"],
       settingSources: [],
       settings: {
@@ -104,10 +124,11 @@ async function runSession(context, config) {
                   staged.workspace,
                   input.tool_name,
                   input.tool_input,
+                  SKILL,
                 );
                 config.attempt.trace.push({
                   event: "tool",
-                  detail: `${["Skill", "Read", "Glob", "Grep"].includes(input.tool_name) ? input.tool_name : "other"}:${allowed ? "allow" : "deny"}`,
+                  detail: `${TOOLS.includes(input.tool_name) ? input.tool_name : "other"}:${allowed ? "allow" : "deny"}`,
                 });
                 return {
                   hookSpecificOutput: {
@@ -131,6 +152,7 @@ async function runSession(context, config) {
                     staged.workspace,
                     input.tool_name,
                     input.tool_input,
+                    SKILL,
                   ) &&
                   !record(input.tool_response).is_error
                 ) {
@@ -251,147 +273,18 @@ async function runSession(context, config) {
   }
 }
 
-/** @param {AdapterContext} context @param {NodeJS.ProcessEnv} env @param {{query?: QueryFunction, now?: () => number}} [dependencies] */
-async function predictLocked(
-  context,
-  env,
-  dependencies = {},
-  owner = process.pid,
-) {
-  const directory = env.KRAMME_LIVE_EVAL_STATE;
-  const id = env.KRAMME_LIVE_EVAL_RUN;
-  if (!directory || !id || !env.KRAMME_LIVE_EVAL_CONFIG)
-    throw new EvalFailure("use_live_eval_entrypoint");
-  const organizations = organizationsFromConfig(
-    readJson(env.KRAMME_LIVE_EVAL_CONFIG),
+/** @param {AdapterContext} context @param {NodeJS.ProcessEnv} env @param {Dependencies} [dependencies] */
+function predict(context, env, dependencies = {}) {
+  return predictWithPool(
+    context,
     env,
+    PROVIDERS.anthropic,
+    runSession,
+    dependencies,
   );
-  const run = validateRun(readJson(runFile(directory, id)));
-  if (!run.case_ids.includes(context.item.id))
-    throw new EvalFailure("unexpected_case");
-  if (Object.hasOwn(run.completed, context.item.id))
-    return run.completed[context.item.id].text;
-  const poolPath = path.join(directory, "pool-state.json");
-  const previous = readJson(poolPath);
-  const pool = reconcilePool(
-    organizations,
-    previous === null ? null : validatePool(previous),
-  );
-  const now = dependencies.now || Date.now;
-  const runDeadline = Number(env.KRAMME_LIVE_EVAL_DEADLINE || Infinity);
-  const deadline = Math.min(
-    now() + Number(env.KRAMME_LIVE_EVAL_CASE_TIMEOUT || 600000),
-    runDeadline,
-  );
-  const controller = new AbortController();
-  const interrupt = () => controller.abort();
-  const ownerCheck = setInterval(() => {
-    if (!processAlive(owner) || now() >= runDeadline) interrupt();
-  }, 1000);
-  ownerCheck.unref();
-  process.on("SIGINT", interrupt);
-  process.on("SIGTERM", interrupt);
-  try {
-    while (!controller.signal.aborted) {
-      const org = selectOrganization(organizations, pool, now());
-      if (!org) {
-        run.status = "PAUSED_NO_CREDITS";
-        saveRun(directory, run);
-        throw new EvalFailure("no_credits");
-      }
-      if (now() >= deadline) throw new EvalFailure("case_timeout");
-      /** @type {Attempt} */
-      const attempt = {
-        case_id: context.item.id,
-        organization: org.alias,
-        started_at: now(),
-        outcome: "RUNNING",
-        model: null,
-        cost_usd: null,
-        trace: [],
-      };
-      run.attempts.push(attempt);
-      saveRun(directory, run);
-      try {
-        const text = await runSession(context, {
-          key: org.key,
-          model: run.model,
-          timeout: Math.min(
-            Number(env.KRAMME_LIVE_EVAL_ATTEMPT_TIMEOUT || 120000),
-            deadline - now(),
-          ),
-          maxTurns: Number(env.KRAMME_LIVE_EVAL_MAX_TURNS || 12),
-          attempt,
-          signal: controller.signal,
-          query: dependencies.query,
-        });
-        attempt.outcome = "COMPLETE";
-        markAvailable(pool, org.alias);
-        run.completed[context.item.id] = {
-          text: redact(text, organizations),
-          organization: org.alias,
-          model: /** @type {string} */ (attempt.model),
-        };
-        writeJson(poolPath, pool);
-        saveRun(directory, run);
-        return run.completed[context.item.id].text;
-      } catch (error) {
-        attempt.outcome =
-          error instanceof EvalFailure ? error.code : "runtime_error";
-        if (attempt.outcome === "insufficient_credits")
-          markExhausted(pool, org.alias, now());
-        else run.status = "ERROR";
-        writeJson(poolPath, pool);
-        saveRun(directory, run);
-        if (attempt.outcome !== "insufficient_credits")
-          throw new EvalFailure(`${org.alias}:${attempt.outcome}`);
-      }
-    }
-    throw new EvalFailure("interrupted");
-  } finally {
-    clearInterval(ownerCheck);
-    process.removeListener("SIGINT", interrupt);
-    process.removeListener("SIGTERM", interrupt);
-  }
 }
 
-/** @param {AdapterContext} context @param {NodeJS.ProcessEnv} env @param {{query?: QueryFunction, now?: () => number}} [dependencies] */
-async function predict(context, env, dependencies = {}) {
-  if (!env.KRAMME_LIVE_EVAL_STATE)
-    throw new EvalFailure("use_live_eval_entrypoint");
-  const worker = registerWorker(
-    env.KRAMME_LIVE_EVAL_STATE,
-    env.KRAMME_LIVE_EVAL_OWNER_TOKEN,
-  );
-  try {
-    return await predictLocked(context, env, dependencies, worker.owner);
-  } finally {
-    worker.release();
-  }
-}
-
-if (require.main === module) {
-  Promise.resolve()
-    .then(() => {
-      let context;
-      try {
-        context = JSON.parse(fs.readFileSync(0, "utf8"));
-      } catch {
-        throw new EvalFailure("invalid_adapter_context");
-      }
-      return predict(context, process.env);
-    })
-    .then(
-      (text) => process.stdout.write(text),
-      (error) => {
-        // Do not forward SDK errors, input JSON, or the inherited environment.
-        process.stderr.write(
-          `Live prediction failed: ${error instanceof EvalFailure ? error.code : "configuration_or_checkpoint_error"}\n`,
-        );
-        process.exitCode = 1;
-      },
-    );
-}
+if (require.main === module) runAdapter(predict);
 
 module.exports = {
   PROFILE,
@@ -400,6 +293,7 @@ module.exports = {
   stageCase,
   toolAllowed,
   childEnvironment,
+  runtimeVersion,
   runSession,
   predict,
 };

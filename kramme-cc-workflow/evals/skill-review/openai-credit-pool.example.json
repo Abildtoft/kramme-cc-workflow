@@ -1,0 +1,5 @@
+[
+  { "alias": "org-a", "key_env": "OPENAI_EVAL_KEY_A" },
+  { "alias": "org-b", "key_env": "OPENAI_EVAL_KEY_B" },
+  { "alias": "org-c", "key_env": "OPENAI_EVAL_KEY_C" }
+]

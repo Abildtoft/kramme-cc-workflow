@@ -46,6 +46,121 @@ test("live entry point validates model, limits, flags, and dry run without creat
   assert.equal(fs.existsSync(options.stateDir), false);
 });
 
+test("each provider requires its own model ID and defaults to its own pool and state", () => {
+  assert.throws(
+    () => parseOptions(["--provider", "openai"], {}),
+    /OPENAI_EVAL_MODEL to an explicit OpenAI model/,
+  );
+  assert.throws(
+    () => parseOptions(["--provider", "openai", "--model", "claude-test"], {}),
+    /OpenAI model/,
+  );
+  assert.throws(
+    () => parseOptions(["--model", "gpt-test"], {}),
+    /explicit Claude model/,
+  );
+  assert.throws(
+    () => parseOptions(["--provider", "gemini", "--model", "x"], {}),
+    /Unknown live eval provider/,
+  );
+  const openai = parseOptions(["--provider", "openai"], {
+    OPENAI_EVAL_MODEL: "gpt-test",
+    ANTHROPIC_EVAL_MODEL: "claude-test",
+  });
+  assert.equal(openai.provider.id, "openai");
+  assert.equal(openai.model, "gpt-test");
+  assert.match(openai.stateDir, /\.context[\\/]openai-evals$/);
+  assert.match(openai.organizations, /openai-credit-pool\.example\.json$/);
+  const claude = parseOptions([], { ANTHROPIC_EVAL_MODEL: "claude-test" });
+  assert.equal(claude.provider.id, "anthropic");
+  assert.match(claude.stateDir, /\.context[\\/]claude-evals$/);
+});
+
+test("an OpenAI run scores through the same harness and never resumes as another provider's run", (t) => {
+  const { root, env, config } = sandbox(t, "openai");
+  const adapter = path.join(root, "fake-openai-adapter.js");
+  const implementation = path.resolve(
+    __dirname,
+    "../../evals/skill-review/openai-predict.js",
+  );
+  const helper = path.resolve(__dirname, "../test_helper/live-eval.js");
+  fs.writeFileSync(
+    adapter,
+    `
+const fs = require('node:fs');
+const { predict } = require(${JSON.stringify(implementation)});
+const { fakeOpenAI, reviewer } = require(${JSON.stringify(helper)});
+const context = JSON.parse(fs.readFileSync(0, 'utf8'));
+if ('fixture_review_output' in context.item || 'expected_findings' in context.item) process.exit(3);
+const { fetch } = fakeOpenAI(reviewer(context.item.id === 'train-good-skill'
+  ? 'No findings found. Focused and composable: Pass. Progressively disclosed: Pass.'
+  : 'Major: Frontmatter is missing, including disable model invocation. Self describing boundaries: Fail.'));
+predict(context, process.env, { fetch }).then(text => process.stdout.write(text), () => {process.exitCode=1});
+`,
+  );
+  const stateDir = path.join(root, "shared-state");
+  const options = parseOptions(
+    [
+      "--provider",
+      "openai",
+      "--organizations",
+      config,
+      "--model",
+      "gpt-test",
+      "--split",
+      "train",
+      "--state-dir",
+      stateDir,
+    ],
+    {},
+  );
+  const result = runLive(options, {
+    env,
+    adapterCommand: `exec '${process.execPath}' '${adapter}'`,
+  });
+  assert.equal(result.exitCode, 0);
+  assert.ok("provider" in result.report && "aggregate" in result.report);
+  if (!("aggregate" in result.report)) return;
+  assert.equal(result.report.provider, "openai");
+  assert.equal(result.report.sdk_version, "openai-responses-1");
+  assert.equal(result.report.aggregate?.hard, 1);
+  assert.ok(
+    result.report.items.every((item) => item.model === "gpt-test-resolved"),
+  );
+  assert.ok(
+    result.report.limitations.some((line) => line.includes("Codex host")),
+  );
+  const runId = result.report.run_id;
+  // The provider is part of the run identity, even with a shared state directory.
+  const claudeConfig = path.join(root, "claude-organizations.json");
+  writeJson(claudeConfig, [
+    { alias: "org-a", key_env: "ANTHROPIC_EVAL_KEY_A" },
+  ]);
+  assert.throws(
+    () =>
+      runLive(
+        {
+          ...parseOptions(
+            [
+              "--organizations",
+              claudeConfig,
+              "--model",
+              "claude-test",
+              "--split",
+              "train",
+              "--state-dir",
+              stateDir,
+            ],
+            {},
+          ),
+          runId,
+        },
+        { env: { ...env, ANTHROPIC_EVAL_KEY_A: "sk-ant-test-key-A" } },
+      ),
+    /different inputs/,
+  );
+});
+
 test("the existing stdin/stdout harness scores real adapter output, resumes, and starts fresh sweeps", (t) => {
   const { root, env, config } = sandbox(t);
   const adapter = path.join(root, "fake-sdk-adapter.js");

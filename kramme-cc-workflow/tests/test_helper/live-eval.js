@@ -12,9 +12,14 @@ const {
 } = require("../../evals/skill-review/eval-state");
 const { record } = require("../../evals/skill-review/credit-pool");
 const { SKILL } = require("../../evals/skill-review/claude-predict");
+const openai = require("../../evals/skill-review/openai-predict");
+const { PROVIDERS } = require("../../evals/skill-review/providers");
 
-/** @param {import('node:test').TestContext} t */
-function sandbox(t) {
+/** @param {import('node:test').TestContext} t @param {import('../../evals/skill-review/live-types').ProviderId} [providerId] */
+function sandbox(t, providerId = "anthropic") {
+  const prefix = PROVIDERS[providerId].keyPrefix;
+  const secret =
+    providerId === "openai" ? "sk-proj-test-key" : "sk-ant-test-key";
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "live-eval-test-"));
   let unlock = () => {};
   t.after(() => {
@@ -23,13 +28,13 @@ function sandbox(t) {
   });
   const config = path.join(root, "organizations.json");
   writeJson(config, [
-    { alias: "org-a", key_env: "ANTHROPIC_EVAL_KEY_A" },
-    { alias: "org-b", key_env: "ANTHROPIC_EVAL_KEY_B" },
+    { alias: "org-a", key_env: `${prefix}A` },
+    { alias: "org-b", key_env: `${prefix}B` },
   ]);
   const env = {
     ...process.env,
-    ANTHROPIC_EVAL_KEY_A: "sk-ant-test-key-A",
-    ANTHROPIC_EVAL_KEY_B: "sk-ant-test-key-B",
+    [`${prefix}A`]: `${secret}-A`,
+    [`${prefix}B`]: `${secret}-B`,
     KRAMME_LIVE_EVAL_CONFIG: config,
     KRAMME_LIVE_EVAL_STATE: path.join(root, "state"),
     KRAMME_LIVE_EVAL_RUN: "test-run",
@@ -50,7 +55,7 @@ function sandbox(t) {
     schema_version: 1,
     id: "test-run",
     fingerprint: "a".repeat(64),
-    model: "claude-test-1",
+    model: providerId === "openai" ? "gpt-test-1" : "claude-test-1",
     sdk_version: "test",
     commit: "test",
     created_at: 1,
@@ -69,7 +74,11 @@ function sandbox(t) {
   return {
     root,
     config,
-    env: { ...env, KRAMME_LIVE_EVAL_OWNER_TOKEN: token },
+    // The provider's key variables are dynamic; keep them reachable by name.
+    env: /** @type {NodeJS.ProcessEnv & typeof env & {KRAMME_LIVE_EVAL_OWNER_TOKEN: string}} */ ({
+      ...env,
+      KRAMME_LIVE_EVAL_OWNER_TOKEN: token,
+    }),
     context,
     run,
   };
@@ -119,4 +128,106 @@ function init(options) {
   };
 }
 
-module.exports = { sandbox, invokeSkill, init };
+/** @param {number} status @param {unknown} body @param {Record<string, string>} [headers] */
+function jsonResponse(status, body, headers = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json", ...headers },
+  });
+}
+
+/** A completed Responses API reply. @param {unknown[]} output */
+function completed(output, model = "gpt-test-resolved") {
+  return jsonResponse(200, {
+    id: "resp_test",
+    object: "response",
+    status: "completed",
+    model,
+    output,
+    usage: {
+      input_tokens: 10,
+      input_tokens_details: { cached_tokens: 2 },
+      output_tokens: 5,
+      output_tokens_details: { reasoning_tokens: 1 },
+    },
+  });
+}
+
+/** @param {string} text */
+function message(text) {
+  return {
+    type: "message",
+    id: "msg_test",
+    role: "assistant",
+    status: "completed",
+    content: [{ type: "output_text", text, annotations: [] }],
+  };
+}
+
+/** @param {string} name @param {Record<string, unknown>} args @param {string} [id] */
+function functionCall(name, args, id = `call_${name}`) {
+  return {
+    type: "function_call",
+    id: `fc_${id}`,
+    call_id: id,
+    name,
+    arguments: JSON.stringify(args),
+    status: "completed",
+  };
+}
+
+/** The adapter's first message names the staged fixture path. @param {any} body */
+function skillCall(body) {
+  const fixture = /args exactly (\S+)\. Review/.exec(body.input[0].content);
+  return functionCall("Skill", { skill: openai.SKILL, args: fixture?.[1] });
+}
+
+/** @param {any} body */
+function toolResults(body) {
+  return body.input.filter(
+    (/** @type {any} */ item) => item.type === "function_call_output",
+  );
+}
+
+/** @typedef {{url: string, key: string, body: any, signal: AbortSignal}} FakeRequest */
+/** A fake Responses endpoint that records each request's key and body.
+ * @param {(request: FakeRequest) => Response | Promise<Response>} respond */
+function fakeOpenAI(respond) {
+  /** @type {FakeRequest[]} */
+  const requests = [];
+  /** @type {import('../../evals/skill-review/openai-predict').FetchFunction} */
+  const fetch = async (url, init) => {
+    const request = {
+      url,
+      key: init.headers.authorization.replace(/^Bearer /, ""),
+      body: JSON.parse(init.body),
+      signal: init.signal,
+    };
+    requests.push(request);
+    return respond(request);
+  };
+  return { fetch, requests };
+}
+
+/** Invoke the reviewer skill, then return the review. @param {string} review */
+function reviewer(review) {
+  /** @param {FakeRequest} request */
+  return (request) =>
+    toolResults(request.body).length
+      ? completed([message(review)])
+      : completed([skillCall(request.body)]);
+}
+
+module.exports = {
+  sandbox,
+  invokeSkill,
+  init,
+  jsonResponse,
+  completed,
+  message,
+  functionCall,
+  skillCall,
+  toolResults,
+  fakeOpenAI,
+  reviewer,
+};
