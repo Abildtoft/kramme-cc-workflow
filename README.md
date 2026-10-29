@@ -423,7 +423,7 @@ Linear issue tracking. These skills need an authenticated Linear MCP server; `is
 | `/kramme:linear:issue-define` | User, Auto | `[--auto [--ask]] [--] [issue-id or description and/or file paths for context]` | Create or improve a Linear issue that fits one PR; larger work becomes a parent with sub-issues. `--auto` drafts from rough input. |
 | `/kramme:linear:issue-implement` | User, Auto | `<ISSUE-ID> [--auto] [--set-in-progress]` | Implement one Linear issue: branch setup, reference mapping, planning, coding, and fast verification. |
 | `/kramme:linear:issue-to-pr` | User | `<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced\|full>] [--ship]` | Take one Linear issue through implementation, review convergence, and verification; `--ship` also opens the PR and fixes CI. |
-| `/kramme:linear:next` | User | `[team or selection query] [--state <name>] [--agent-ready] [--interest <preference>] [--mine\|--unassigned\|--both] [--project <name>] [--label <name>] [--count <n>] [--limit <n>]` | Find up to 10 valuable, ready-to-start Linear issues, with plain-language summaries, when deciding what to pick up next. |
+| `/kramme:linear:next` | User | `[team or selection query] [--state <name>] [--agent-ready] [--interest <preference>] [--mine\|--unassigned\|--both] [--project <name>] [--label <name>] [--count <n>] [--limit <n>]` | Find up to 10 valuable, unstarted Linear issues by default, with plain-language summaries, when deciding what to pick up next. |
 | `/kramme:linear:review-pr` | User, Auto | `[PR-number\|PR-url] [ISSUE-ID]` | Check that an existing PR implements its Linear issue, tracing each requirement to diff, code, and test evidence. Read-only. |
 
 #### Pull Requests

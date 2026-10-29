@@ -1,6 +1,6 @@
 ---
 name: kramme:linear:next
-description: "Requires Linear MCP. Finds up to 10 valuable ready-to-start issues from a Linear team by default, using structured flags or a free-form query, including explicit states and autonomous agent-readiness. Actively finds a strong parallel set and gives every reported issue a plain-language summary. In a Conductor cloud workspace, offers to start confirmed issues in new workspaces. Use when deciding what to pick up next. Not for creating, editing, or closing Linear issues."
+description: "Requires Linear MCP. Finds up to 10 valuable, unstarted, ready-to-start issues from a Linear team by default, using structured flags or a free-form query, including explicit states and autonomous agent-readiness. Actively finds a strong parallel set and gives every reported issue a plain-language summary. In a Conductor cloud workspace, offers to start confirmed issues in new workspaces. Use when deciding what to pick up next. Not for creating, editing, or closing Linear issues."
 argument-hint: "[team or selection query] [--state <name>] [--agent-ready] [--interest <preference>] [--mine|--unassigned|--both] [--project <name>] [--label <name>] [--count <n>] [--limit <n>]"
 disable-model-invocation: true
 user-invocable: true
@@ -11,7 +11,7 @@ permissions:
 
 # Select Next Linear Issue
 
-Find the most valuable ready-to-start issues in a Linear team, optionally constrained by workflow state, autonomous agent-readiness, and the type of work the user wants to do. The skill tries to find 10 ready issues by default, recommends the best one, and actively searches for 2-4 additional good issues that can be implemented in parallel with it, explaining every reported issue in plain language. It is read-only: it gathers Linear context, ranks candidates, explains the recommendation, and points to `kramme:linear:issue-implement` for follow-up. The one exception is Step 10: in a Conductor cloud workspace it offers to start the shortlisted issues, each in its own new workspace, and starts only the ones the user confirms.
+Find the most valuable ready-to-start issues in a Linear team, optionally constrained by workflow state, autonomous agent-readiness, and the type of work the user wants to do. By default, select only unstarted work, including Backlog and To-do; exclude in-progress issues even when assigned to the logged-in user. The skill tries to find 10 ready issues by default, recommends the best one, and actively searches for 2-4 additional good issues that can be implemented in parallel with it, explaining every reported issue in plain language. It is read-only: it gathers Linear context, ranks candidates, explains the recommendation, and points to `kramme:linear:issue-implement` for follow-up. The one exception is Step 10: in a Conductor cloud workspace it offers to start the shortlisted issues, each in its own new workspace, and starts only the ones the user confirms.
 
 ## Boundaries
 
@@ -66,11 +66,11 @@ If mutually exclusive assignee flags are combined, stop and ask the user to choo
 3. **Resolve requested and available states.**
    - Call Linear MCP `list_issue_statuses` for the selected team.
    - When the arguments requested one or more states, resolve every requested name case-insensitively after removing spaces and hyphens. Use exactly the resolved states as the candidate state set. If any requested state does not resolve, stop and show the unresolved value plus the team's available state names; never silently broaden an explicit state filter.
-   - Treat issues as available when their state type or state name indicates backlog/unstarted/todo/ready work.
-   - Exclude completed, canceled, duplicate, archived, and started-by-someone-else issues.
-   - Include started issues only when assigned to the logged-in user and the state name does not imply blocked/waiting/review.
+   - When no states were requested, use only states with type `backlog` or `unstarted`. State type takes precedence over the name; only when type is missing may a clearly unstarted state name such as Backlog, To-do, or Ready establish eligibility. Exclude unknown states rather than assuming they are unstarted.
+   - Exclude completed, canceled, duplicate, archived, blocked, waiting, review, and started-by-someone-else issues.
+   - Exclude all started issues by default, including those assigned to the logged-in user. Include started issues only when their state was explicitly requested, they are assigned to the logged-in user, and the state name does not imply blocked/waiting/review.
    - Explicit requested states still pass through the exclusions above. A request for a completed, canceled, duplicate, archived, blocked, waiting, or review state does not make those issues eligible; explain the conflict and stop rather than returning unsafe candidates.
-   - If status metadata is unavailable and explicit states were requested, filter locally only when every returned issue record includes a state name and at least one record establishes each requested normalized state name. Apply the same exclusions. If the records omit state names, or the results cannot distinguish an unknown requested state from a valid state with no issues, stop with `MISSING REQUIREMENT: Linear status metadata is required to validate explicit state filters`; never guess that the requested state exists. Otherwise filter locally by available state name using the default exclusions.
+   - If status metadata is unavailable and explicit states were requested, filter locally only when every returned issue record includes a state name and at least one record establishes each requested normalized state name. Apply the same exclusions. If the records omit state names, or the results cannot distinguish an unknown requested state from a valid state with no issues, stop with `MISSING REQUIREMENT: Linear status metadata is required to validate explicit state filters`; never guess that the requested state exists. Without explicit states, apply the default type/name eligibility rules locally to returned issue records and omit issues whose state cannot be established.
 
 4. **Fetch candidate issues.**
    - Build the requested pools:
