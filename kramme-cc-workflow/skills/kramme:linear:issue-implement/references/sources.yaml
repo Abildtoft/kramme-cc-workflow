@@ -13,6 +13,13 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-10-19
     baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"
+  - id: modem-how-coding-agents-read-your-code
+    url: https://modem.ai/blog/how-coding-agents-read-your-code
+    title: "Modem Blog - How AI coding agents read your code"
+    rationale: "The shared implementation checklist's name-collision search before adding an exported name or file follows this article's finding that search-driven agents spend more retrieval effort on names defined in many places."
+    usage: inspiration
+    last_reviewed_at: 2026-10-28
+    baseline_hash: "sha256:b864a980008561eaebd7e285af9bd19c1eacd078de99268ff88843a527179521"
   - id: vuk97-forward-implementation-first
     url: https://raw.githubusercontent.com/Vuk97/forward-implementation-first/main/SKILL.md
     title: "Forward implementation first"

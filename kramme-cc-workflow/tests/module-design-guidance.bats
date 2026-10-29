@@ -49,6 +49,18 @@ setup() {
 	grep -qF "### Phase 3: Structural" "skills/kramme:code:agent-readiness/assets/audit-report.md"
 }
 
+@test "implementation context searches for a new exported name before adding it" {
+	local reference="shared/implementation/references/context-preparation.md"
+	grep -qF "Before adding a new exported name or file, search the repository's contents and file paths for that name." "$reference"
+	grep -qF "When the search finds other definitions, add the domain term the change is about" "$reference"
+	grep -qF "Keep a name that a framework or an implemented interface requires" "$reference"
+	local skill
+	for skill in kramme:code:plan-to-pr kramme:code:work-from-plan kramme:linear:issue-implement; do
+		grep -qF '${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/context-preparation.md' "skills/$skill/SKILL.md"
+		grep -qF "id: modem-how-coding-agents-read-your-code" "skills/$skill/references/sources.yaml"
+	done
+}
+
 @test "refactor opportunities collects co-change evidence and reports deepening candidates" {
 	local skill="skills/kramme:code:refactor-opportunities/SKILL.md"
 	grep -qF "**Collect co-change evidence**" "$skill"
