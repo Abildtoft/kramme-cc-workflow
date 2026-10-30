@@ -172,6 +172,15 @@ A caller-only validation mode instead reruns the applicable gates once when auth
 - `--fresh` and `--code-only` still include this requirements check.
 - Its delegated code and product reviews launch their reviewers in parallel; pass `--sequential` to run them one at a time.
 
+### Re-Reviews
+
+When you reviewed a Pull Request before, `pr:github-review` reviews only what changed since your last review.
+
+- Your last review is the newest approval, change request, dismissed review, or comment review with a summary that you submitted. Single comments and thread replies do not count.
+- After a rebase or restack, commits whose patch is unchanged count as already reviewed, so a restack alone runs no code review. Your open threads are still checked against the new code, and linked Linear issues are still audited in full.
+- When the changes cannot be isolated, the whole Pull Request is reviewed. `--full` always reviews all of it.
+- Patch matching preserves whitespace, including string contents and indentation. Removing or replacing a reviewed patch requires a full review; failure to resolve the stack trunk also keeps the full scope.
+
 ### What It Writes to GitHub
 
 `pr:github-review` is report-only by default. Inspecting the PR, running its tests, and preparing findings, a verdict, or review text never write to GitHub, and invoking the skill or asking it to review a PR is never confirmation.

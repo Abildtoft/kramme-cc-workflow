@@ -1,6 +1,6 @@
 # Output template: GITHUB_PR_REVIEW_OVERVIEW.md
 
-Use this structure verbatim when writing `GITHUB_PR_REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting it. The only conditional section is `## Coverage Status` (only when a dimension failed or was skipped). Always include `## Draft Review`, `## Prepared Review`, and `## Manual posting` so the reviewer can see exactly what changed on GitHub, what would be posted, and what remains to do. The skill materializes this report before it offers or attempts a pending-review write, then refreshes the report after the user declines or an authorized attempt finishes.
+Use this structure verbatim when writing `GITHUB_PR_REVIEW_OVERVIEW.md` (or the inline reply with `--inline`). Include every required section even if empty — emit `(0 found)` rather than omitting it. The only conditional sections are `## Coverage Status` (only when a dimension failed or was skipped) and `## Since Your Last Review` (only when Step 4a found an earlier review of yours). Always include `## Draft Review`, `## Prepared Review`, and `## Manual posting` so the reviewer can see exactly what changed on GitHub, what would be posted, and what remains to do. The skill materializes this report before it offers or attempts a pending-review write, then refreshes the report after the user declines or an authorized attempt finishes.
 
 The report is written for the reviewer to act on. Findings are framed for the PR author, in reviewer voice.
 
@@ -12,8 +12,9 @@ The report is written for the reviewer to act on. Findings are framed for the PR
 - Branch: <head-ref> → <base-branch>
 - Stack: <stack summary from the stacked Pull Request reference; omit this line when the PR is not stacked>
 - Reviewed head: <head-oid (short)>
+- Review scope: <the Step 4a scope line from `references/delta-review.md`, such as "whole PR (first review)" or "changes since your last review at <commit>: 1 of 6 commits">
 - Files changed: <n> (+<additions> / -<deletions>)
-- Dimensions run: code<, ux/visual/a11y/product> | code only
+- Dimensions run: code<, ux/visual/a11y/product> | code only | none — no code changed since your last review
 - Current GitHub review decision: <reviewDecision or "none">
 - Your last review: <APPROVED | CHANGES_REQUESTED | COMMENTED | none>
 - Conversation: <N open threads, M awaiting you> | none yet (first pass)
@@ -51,6 +52,18 @@ _Not posted. This is what a confirmed submission would send._
   - `Post the prepared review to PR <number> as request changes`
   - `Post the prepared review to PR <number> as comment`
   - `Post the prepared review to PR <number> as approve`
+
+## Since Your Last Review (omit when you have not reviewed this PR before)
+
+- Last review: <state> on <date> at <commit (short)>
+- Scope: <delta | unchanged | full> — <reason>
+
+| Commit      | Subject   | Since your last review |
+| ----------- | --------- | ---------------------- |
+| <short oid> | <subject> | changed \| unchanged   |
+
+- No longer in this PR: <short oid and subject of each dropped commit | none>
+- <the applicable notes from `references/delta-review.md` Section 3, ending with: `--full` reviews the whole PR>
 
 ## Coverage Status (omit when complete)
 

@@ -92,6 +92,7 @@
       "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/scripts/preflight.py",
       "kramme-cc-workflow/skills/kramme:linear:next/scripts/cloud-launch.py",
       "kramme-cc-workflow/skills/kramme:pr:create/scripts/pr-create-preflight.py",
+      "kramme-cc-workflow/skills/kramme:pr:github-review/scripts/review-delta.py",
       "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
       "kramme-cc-workflow/skills/kramme:code:audit-practice/scripts/session-signals.py",
       "kramme-cc-workflow/skills/kramme:code:audit-practice/scripts/signal_patterns.py",
