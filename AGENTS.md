@@ -46,6 +46,8 @@ color: <appropriate-color>
 # Agent mission and expected output
 ```
 
+- **ALWAYS** add `disallowedTools: Write, Edit, NotebookEdit` to the frontmatter of every agent that reports findings instead of changing code, and keep its `**Read-only agent.**` body rule, because Bash can still write files and the Codex converter drops the field.
+
 ### Skills
 
 - **ALWAYS** create shipped skills at `kramme-cc-workflow/skills/kramme:<domain>:<skill-name>/SKILL.md` with this frontmatter shape:

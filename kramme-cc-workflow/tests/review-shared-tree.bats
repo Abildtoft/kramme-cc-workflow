@@ -307,3 +307,21 @@ EOF
     fi
   done
 }
+
+@test "every agent except the design iterator withholds file-writing tools" {
+  local path name frontmatter
+
+  for path in "$REPO_DIR"/agents/kramme:*.md; do
+    name="$(basename "$path" .md)"
+    [ "$name" = "kramme:design-iterator" ] && continue
+    frontmatter="$(awk 'NR == 1 { next } /^---$/ { exit } { print }' "$path")"
+    if ! grep -qxF 'disallowedTools: Write, Edit, NotebookEdit' <<<"$frontmatter"; then
+      printf 'agent can write files: %s\n' "$path" >&2
+      return 1
+    fi
+    if ! grep -qF '**Read-only agent' "$path"; then
+      printf 'missing read-only mandate: %s\n' "$path" >&2
+      return 1
+    fi
+  done
+}
