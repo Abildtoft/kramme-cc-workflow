@@ -369,6 +369,7 @@ Each row gives a one-line summary. The full description lives in the skill's `SK
 | Investigate a bug | `/kramme:debug:investigate` |
 | Test a running app | `/kramme:qa` |
 | Find refactoring candidates or tech debt | `/kramme:code:refactor-opportunities` |
+| Stop agents from repeating a mistake by turning it into a type, lint rule, or check | `/kramme:code:encode-constraint` |
 | Upgrade a framework or library | `/kramme:code:migrate` |
 | Explain a system or change visually | `/kramme:visual:explain` |
 | Make a document easier to read | `/kramme:text:clarify` |
@@ -467,6 +468,7 @@ Plan-driven implementation, migrations, deprecations, design and security guidan
 | `/kramme:code:deprecate` | User | — | Plan and run the deprecation of code, features, APIs, or persistent data shapes: build the replacement, announce, migrate incrementally, then remove. |
 | `/kramme:code:optimize` | User | `[spec.yaml \| optimization goal] [--auto]` | (experimental) Run repeatable, metric-driven optimization experiments when a measurable outcome needs variants instead of guess-and-check. |
 | `/kramme:code:refactor-pass` | User | `[scope ... \| --rewrite]` | Simplify recent changes and clean up AI slop slice by slice without changing behavior; `--rewrite` redoes mediocre recent work properly. |
+| `/kramme:code:encode-constraint` | User | `[mistake description \| path:line example \| review comment]` | Turn an observed agent mistake or review nit into a type, lint rule, or check that rejects it, proven to fail on the mistake and pass on the repository. |
 
 #### Audits
 
@@ -837,6 +839,7 @@ Copied prose, scripts, templates, and substantial assets must be permitted by a 
 - Module-depth guidance in `kramme:code:agent-readiness`, `kramme:code:refactor-opportunities`, `kramme:code:api-design`, `kramme:pr:code-review` with `kramme:architecture-strategist`, `kramme:pr:triage-risk`, and the spec, issue, and plan templates: Informed by AI Hero's [How To Make Codebases AI Agents Love](https://www.aihero.dev/how-to-make-codebases-ai-agents-love). The shared architecture glossary adapts the vocabulary of Matt Pocock's [codebase-design skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/codebase-design).
 - Name-collision guidance in the shared implementation context checklist that `kramme:linear:issue-implement`, `kramme:code:work-from-plan`, and `kramme:code:plan-to-pr` apply, and the search-uniqueness checks in `kramme:code:agent-readiness`: Informed by Modem's [How AI coding agents read your code](https://modem.ai/blog/how-coding-agents-read-your-code).
 - `kramme:code:audit-practice`: The eighteen mistakes it checks for are adapted from Matt Pocock's [post on agentic coding mistakes](https://x.com/mattpocockuk/status/2109973273924579720), with terms read through AI Hero's [AI Coding Dictionary](https://www.aicodingdictionary.com/).
+- `kramme:code:encode-constraint`: Inspired by [@poteto's X post](https://x.com/poteto/status/2109699980248408574) on treating the codebase as agent memory and turning each observed agent mistake into a constraint.
 - `kramme:product:prd`: The PRD written after prototyping as a decision record, with its behavior contract, golden-set evals, rollout gates, kill switch, and change log, is adapted from Aakash Gupta's [post on an AI-era PRD template](https://x.com/aakashgupta/status/2112951808050245874).
 - `kramme:docs:update-agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
 - `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).

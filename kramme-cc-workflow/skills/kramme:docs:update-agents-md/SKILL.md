@@ -83,7 +83,7 @@ Strictness hierarchy: ALWAYS/NEVER > PREFER > CAN > NOTE/EXAMPLE
 - **Reference, don't duplicate** - Point to skills: "See `.claude/skills/db-migrate/SKILL.md`"
 - **Context Pointers over pasted detail** - Point to deeper docs, scripts, modules, tests, schemas, or ADRs with a clear when/why cue
 - **One hop** - Important pointers should be directly visible from the active agent instruction file; avoid chains of documents that only point to more documents
-- **Enforce before instructing** - Before adding a rule that steers agents around the code's structure ("when you change X, also update Y", "never import from `foo/internal`"), check whether a lint rule, type, test, or script could enforce it, or whether the rule papers over scattered code that a refactor should fix; propose that alternative alongside the rule
+- **Enforce before instructing** - Before adding a rule that steers agents around the code's structure ("when you change X, also update Y", "never import from `foo/internal`"), check whether a lint rule, type, test, or script could enforce it, or whether the rule papers over scattered code that a refactor should fix; propose that alternative alongside the rule, and suggest `/kramme:code:encode-constraint` to build and prove the check
 - **No filler** - No intros, conclusions, or pleasantries
 
 ## After Writing
