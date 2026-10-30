@@ -202,13 +202,13 @@ It never replies to or resolves threads, dismisses reviews, edits PR metadata, p
 
 ### Clarity Check
 
-When `pr:github-review` drafts five or more inline comments, it also runs a clarity check before writing the report. Fresh readers see only the lines GitHub shows above each comment: one reads as the PR author in a second language, the other as a teammate a day later.
+When `pr:github-review` drafts any inline comments, it also runs a clarity check before writing the report. Fresh readers see only the lines GitHub shows above each comment: one reads as the PR author in a second language, the other as a teammate a day later.
 
 - Each reader paraphrases, questions, and scores every comment.
 - The skill verifies their points in the code, fixes and re-anchors the comments, and has a new reader confirm the result.
 - The check takes about 30–50 minutes and never writes to GitHub.
 
-Pass `--clarity-check` to run it on fewer comments, or `--no-clarity-check` to skip it.
+Pass `--no-clarity-check` to skip it.
 
 ## Resuming Interrupted Reviews and Audits
 

@@ -285,22 +285,129 @@ PY
 	run bash -c '
     set -e
     grep -qF "**Use the code'\''s and ticket'\''s words, not your own labels.**" "$1"
-    grep -qF "**Context first, ask last.**" "$1"
-    grep -qF "end with the ask as a question, in its own paragraph when more than one sentence comes before it" "$1"
+    grep -qF "**Problem first, ask last.**" "$1"
+    grep -qF "State the conclusion, not the evidence that leads to it, and use at most one code identifier" "$1"
+    grep -qF "A reader who stops after that sentence should know what'\''s wrong." "$1"
+    grep -qF "End with the ask as a question in its own paragraph." "$1"
     grep -qF "**Make the ask concrete.**" "$1"
     grep -qF "**Short sentences, one concern.**" "$1"
-    grep -qF "Could the author tell what'\''s wrong before reaching the ask?" "$1"
-    grep -qF "### Worked example" "$1"
-    grep -qF "but no test checks that for a soft-deleted user" "$1"
-    grep -qF "the problem stated before the ask" "$1"
-    grep -qF "except a modest increase from splitting a sentence or moving the ask into its own paragraph" "$1"
+    grep -qF "**First-line test:** read only the first sentence." "$1"
+    grep -qF "**Fact cut:** for each fact, ask whether the author would miss it: do they need it to see the problem or act on it? If not, move it to \`Evidence\`." "$1"
+    grep -qF "Facts the concern does not depend on belong in \`Evidence\` too" "$1"
+    grep -qF "### Worked examples" "$1"
+    grep -qF "the problem sentence as its own first paragraph with its lead-in" "$1"
+    grep -qF "Judge density, not length: reject text that adds a fact or claim" "$1"
     if grep -qF "Lead with a question" "$1"; then exit 1; fi
     if grep -qF "one to three sentences" "$1"; then exit 1; fi
     if grep -qF "no added length" "$1"; then exit 1; fi
-    grep -qF "> <e.g. \"\`refreshSession()\` in \`auth/session.ts\` only runs on page load" "$2"
-    grep -qF "> <e.g. \"\`applyDateRange()\` in \`src/reports/ReportFilters.tsx\` repeats this date-range check." "$2"
-  ' _ "$COMMENT_REFERENCE" "$REPORT_TEMPLATE"
+    if grep -qF "Reject added length" "$1"; then exit 1; fi
+    if grep -qF "Context first, ask last" "$1"; then exit 1; fi
+  ' _ "$COMMENT_REFERENCE"
 
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review example comments open with one hedged problem sentence and end with the ask" {
+	run python3 - "$COMMENT_REFERENCE" "$REPORT_TEMPLATE" <<'PY'
+import pathlib
+import re
+import sys
+
+drafting, template = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+LEAD_INS = ("If I understand correctly,", "Based on my reading of the code,", "It looks like")
+CODE = re.compile(r"`[^`]*`")
+
+hedge = next(line for line in drafting.splitlines() if line.startswith("- **Hedge a little, so the comment invites a reply.**"))
+for lead in LEAD_INS:
+    assert f'"{lead}"' in hedge, f"the hedge rule must name the lead-in {lead}"
+for term in [
+    "Hedge with the lead-in only, and keep the claim itself plain",
+    "State results you ran without a hedge.",
+    "Phrase `UNVERIFIED` concerns as questions.",
+]:
+    assert term in hedge, f"the hedge rule lost {term}"
+assert "State traced failures plainly" not in drafting, "traced findings must not read as verdicts"
+
+
+def quotes_after(text, label):
+    lines = text.splitlines()
+    blocks = []
+    for index, line in enumerate(lines):
+        if line.strip() != label:
+            continue
+        quoted = []
+        for following in lines[index + 1:]:
+            if following.strip().startswith(">"):
+                quoted.append(following.strip()[1:].strip())
+            elif quoted:
+                break
+        blocks.append("\n".join(quoted))
+    return blocks
+
+
+def sentences(paragraph):
+    return re.split(r"(?<=[.?!])\s+", CODE.sub("CODE", paragraph).strip())
+
+
+def check(name, body):
+    paragraphs = [" ".join(part.split()) for part in re.split(r"\n\s*\n", body.strip())]
+    if len(paragraphs) == 1:
+        assert sentences(paragraphs[0])[0].endswith("?"), f"{name}: a one-paragraph comment must be one question: {body}"
+        return 1
+    problem = paragraphs[0]
+    assert len(sentences(problem)) == 1, f"{name}: the problem must be one sentence in its own paragraph: {problem}"
+    assert len(CODE.findall(problem)) <= 1, f"{name}: the problem sentence names more than one identifier: {problem}"
+    assert problem.startswith(LEAD_INS), f"{name}: the problem sentence must open with one light lead-in: {problem}"
+    assert sentences(paragraphs[-1])[0].endswith("?"), f"{name}: the last paragraph must open with the ask: {paragraphs[-1]}"
+    for paragraph in paragraphs[:-1]:
+        assert "?" not in CODE.sub("CODE", paragraph), f"{name}: only the last paragraph may ask: {paragraph}"
+    return len(paragraphs)
+
+
+rewrites = quotes_after(drafting, "Rewrite:")
+assert len(rewrites) >= 2, "the worked examples must show at least two rewrites"
+for number, rewrite in enumerate(rewrites, start=1):
+    assert check(f"rewrite {number}", rewrite) >= 3, f"rewrite {number} must separate the problem, the reasons, and the ask"
+
+examples = quotes_after(template, "- Draft comment:")
+assert len(examples) == 4, f"expected one draft comment example per severity section, found {len(examples)}"
+shaped = 0
+for number, example in enumerate(examples, start=1):
+    match = re.search(r'e\.g\. "(.*)">$', example, re.S)
+    assert match, f"draft comment example {number} must quote its example body"
+    shaped += check(f"template example {number}", match.group(1)) > 1
+assert shaped >= 2, "the report template must show the problem-first shape, not only one-question comments"
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "clarity check targets buried problems and caps density instead of length" {
+	run python3 - "$CLARITY_REFERENCE" "$CLARITY_PROMPTS" <<'PY'
+import pathlib
+import sys
+
+reference, prompts = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+assert "including the first-line test and the fact cut" in reference
+row = next(line for line in reference.splitlines() if line.startswith("| The reader's `Problem` quote is not in the first sentence"))
+assert "the paraphrase names a detail instead of the problem" in row and "the reader reread the first paragraph" in row
+assert "Give the problem its own first paragraph in one plain sentence, and move secondary facts to `Evidence`" in row
+assert row.rstrip().endswith("| 3 |"), row
+humanize = reference[reference.index("## 6. Constrained humanize"):reference.index("## 7. Anchor re-check")]
+for term in [
+    "the lead-in on the problem sentence",
+    "add no fact or claim, and give no sentence more identifiers than the densest sentence you sent",
+    "A body may grow from splitting sentences or paragraphs",
+]:
+    assert term in humanize, f"constrained humanize lost {term}"
+for stale in ["add no length", "longer than the body you sent"]:
+    assert stale not in humanize, f"constrained humanize still caps length: {stale}"
+for name in ["Author reader", "Teammate reader"]:
+    section = prompts[prompts.index(f"## {name}"):]
+    prompt = section[:section.index("\n```\n")]
+    assert "- Problem: quote the words where you first understood what is wrong." in prompt, f"{name} lost the Problem field"
+    assert "You may reword, split, or reorder sentences, for example to say the problem first, but add no new facts." in prompt, name
+    assert "no longer than the original" not in prompt, f"{name} still blocks restructuring fixes"
+PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
@@ -568,27 +675,31 @@ assert "ANCHOR_CHECK=" not in step
 for term in [
     "references/clarity-check.md",
     "when `CLARITY_CHECK=on` and at least one is drafted",
-    "when `CLARITY_CHECK=auto` and five or more are drafted",
     "`not run — --no-clarity-check`",
+    "`not run — no inline comments drafted`",
     "splitting a comment changes the eligible count",
     "it never writes to GitHub",
 ]:
     assert term in step, f"Step 10a lost {term}"
 for term in [
-    "[--draft-review] [--clarity-check|--no-clarity-check]",
-    "- `--clarity-check` → `CLARITY_CHECK=on`",
+    "[--draft-review] [--no-clarity-check]",
+    "- `--clarity-check` → `CLARITY_CHECK=on`, the default. It stays accepted so saved prompts keep working.",
     "- `--no-clarity-check` → `CLARITY_CHECK=off`",
     "If both clarity flags are given, ask the user to pick one and stop",
-    "`CLARITY_CHECK=auto`",
+    "`CREATE_DRAFT_REVIEW=false`, `CLARITY_CHECK=on`",
 ]:
     assert term in skill, f"argument parsing lost {term}"
+guide = review_guide[review_guide.index("### Clarity Check"):review_guide.index("## Resuming Interrupted Reviews")]
+for text, name in [(skill, "SKILL.md"), (guide, "the review guide")]:
+    for stale in ["CLARITY_CHECK=auto", "five or more", "fewer than five", "below the default of five", "fewer comments"]:
+        assert stale not in text, f"{name} still ties the clarity check to a comment count: {stale}"
 offer = skill[skill.index("## Step 12:"):skill.index("## Step 13:")]
 assert "If the user asks for a clarity check, run Step 10a with `CLARITY_CHECK=on`, repeat Step 11" in offer
 assert "a clarity-check request is not authorization" in offer
-assert "skipped the clarity check only because fewer than five comments were drafted, add that a clarity check can run first" in offer
 assert "the clarity-check status" in skill[skill.index("## Step 13:"):]
-assert "[--clarity-check\\|--no-clarity-check]" in readme
-assert "`--no-clarity-check` to skip it" in review_guide
+assert "[--draft-review] [--no-clarity-check]" in readme
+assert "When `pr:github-review` drafts any inline comments, it also runs a clarity check" in guide
+assert "Pass `--no-clarity-check` to skip it." in guide
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }

@@ -41,9 +41,10 @@ The pack below holds each comment and the code lines GitHub shows above it. Read
 
 For each comment, return:
 - Paraphrase: one sentence, in your own words, on what you are asked to do and why.
+- Problem: quote the words where you first understood what is wrong. Write "never" if you did not understand it.
 - Unclear: anything you reread, could read two ways, or found wrong once you checked the code. Write "none" if nothing.
 - Clarity: 1-5, where 5 means you understood it on the first read and know exactly what to change.
-- Fix: only if Clarity is 4 or lower, the smallest wording change, no longer than the original.
+- Fix: only if Clarity is 4 or lower, the smallest change that makes it clear. You may reword, split, or reorder sentences, for example to say the problem first, but add no new facts.
 
 End with one line naming the comments you would most want reworded.
 ```
@@ -61,10 +62,11 @@ The pack below holds each comment and the code lines GitHub shows above it. Read
 
 For each comment, return:
 - Paraphrase: one sentence, in your own words, on what the author is asked to do and why.
+- Problem: quote the words where you first understood what is wrong. Write "never" if you did not understand it.
 - Unclear: anything you reread, could read two ways, or found wrong once you checked the code, and any jargon a reader whose first language is not English might stumble on. Write "none" if nothing.
 - Looked up: every file or symbol you had to open to understand the comment. Every lookup means the comment does not stand alone. Write "none" if nothing.
 - Clarity: 1-5, where 5 means you understood it on the first read and know exactly what the author should change.
-- Fix: only if Clarity is 4 or lower, the smallest wording change, no longer than the original.
+- Fix: only if Clarity is 4 or lower, the smallest change that makes it clear. You may reword, split, or reorder sentences, for example to say the problem first, but add no new facts.
 
 End with one line naming the comments you would most want reworded.
 ```
