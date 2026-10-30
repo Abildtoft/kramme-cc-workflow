@@ -22,4 +22,4 @@ Read `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/references/audit-workflow.md` 
 
 After the shared workflow writes the report, mark the run complete. When results were reused, add the `Agents reused:` line from the resumable fan-out contract after its `Agents launched: N` line.
 
-After the workflow returns, apply Phase 4 step 9 to any declined candidate to close the rejection loop.
+After the workflow returns, apply Phase 4 step 9 to any declined candidate to close the rejection loop, then Phase 4 step 10 with `WA-NNN` IDs to hand off one item.

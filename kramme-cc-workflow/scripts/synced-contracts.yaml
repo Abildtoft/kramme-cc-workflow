@@ -1762,7 +1762,7 @@
       "kramme:code:optimize": "(experimental) Run repeatable, metric-driven optimization experiments when a measurable outcome needs variants instead of guess-and-check.",
       "kramme:code:outside-view": "Rate a codebase with unprimed raters to surface unknown-unknown quality problems, especially in AI-engineered code.",
       "kramme:code:plan-to-pr": "Implement one self-contained `PR_PLAN_*.md` on a fresh branch, then review, verify, and optionally ship it as a PR.",
-      "kramme:code:refactor-opportunities": "Find refactoring candidates and tech debt in the codebase, a PR, a path, or a feature; `--ranked` ranks the biggest weaknesses in a report.",
+      "kramme:code:refactor-opportunities": "Find refactoring candidates and tech debt in a codebase, PR, path, or feature, or before a planned change (`--for`); `--ranked` ranks the biggest weaknesses.",
       "kramme:code:refactor-pass": "Simplify recent changes and clean up AI slop slice by slice without changing behavior; `--rewrite` redoes mediocre recent work properly.",
       "kramme:code:work-from-plan": "Execute one standalone implementation plan, such as a `PR_PLAN_*.md` file or a pasted checklist, as bounded work on the current branch.",
       "kramme:debug:find-sibling-bugs": "Use a bug-fix branch as a worked example and search the codebase for other places with the same flaw.",

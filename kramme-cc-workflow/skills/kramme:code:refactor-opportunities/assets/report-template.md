@@ -16,11 +16,11 @@
 
 ## Executive Summary
 
-{{1-3 sentences: overall health, biggest themes, recommended starting point}}
+{{1-3 sentences: overall health, biggest themes, recommended starting point; with --for, the refactor that would make the planned change easiest, or that the change needs none}}
 
 ---
 
-{{Severity tables: In Current PR scope only, add a `PR Relevance` column between `Location` and `Description` and populate it for every active finding. In full, path, and feature scopes, omit PR relevance entirely.}}
+{{Severity tables: In Current PR scope only, add a `PR Relevance` column between `Location` and `Description` and populate it for every active finding. In full, path, and feature scopes, omit PR relevance entirely. With --for, add a `Change Relevance` column in the same position instead and populate it for every active finding.}}
 
 ## High Severity
 
@@ -80,11 +80,11 @@
 - **Suggested fix:** {{smallest useful first fix}}
 - **Effort:** {{S / M / L}}
 - **Category:** {{category, or Deepening candidate}}
-- **Scope notes:** {{PR scope only: PR relevance sentence; omit otherwise}}
+- **Scope notes:** {{PR scope: PR relevance sentence; with --for: change relevance sentence; omit otherwise}}
 
 ## Noticed But Not Touching
 
-{{Observations agents recorded outside their assigned category group. Not findings — surface them here so the user can decide whether to request a follow-up scan.}}
+{{Observations agents recorded outside their assigned category group and, with --for, findings that would not ease the planned change. Not findings — surface them here so the user can decide whether to request a follow-up scan.}}
 
 ## Filtered PR-Scope Observations
 
