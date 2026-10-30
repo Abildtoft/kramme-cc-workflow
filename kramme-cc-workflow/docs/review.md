@@ -92,6 +92,7 @@ Review skills recognize stacked Pull Requests, from gh-stack tracking or from ch
 - Reports name the layer on a `Stack:` line.
 - `pr:github-review` applies the same rules to someone else's stacked Pull Request, and `pr:review-convergence` keeps remediation commits on the reviewed layer.
 - For a manually chained branch without a Pull Request, pass `--base <parent-branch>`.
+- Stack context follows up to 16 layers in each direction. It reads another layer from a local ref only when that ref is at or ahead of the layer's Pull Request head, so a stale local branch never stands in for it.
 
 ## Review Convergence
 
