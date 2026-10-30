@@ -61,5 +61,5 @@ Judge each item as the reader named in the fixed reader contract in Part 1 of `r
 
 ## Cold read
 
-- [ ] The cold read ran once in a fresh agent and its findings were applied, or `When to Skip the Cold Read` in `references/readability-pass.md` allowed the skip.
+- [ ] The cold read ran once in a fresh agent and its findings were applied, or `When to Skip the Cold Read` in `references/readability-pass.md` allowed the skip. Running non-interactively is not by itself a reason to skip.
 - [ ] The run output, outside the PR body, has exactly one line starting `Cold read:`, either the outcome or `Cold read: skipped (<reason>)`, followed by at most three open questions.

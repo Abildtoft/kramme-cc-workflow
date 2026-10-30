@@ -701,6 +701,9 @@ EOF
     grep -qF "If any condition fails, run Part 2." "$pass"
     grep -qF "Cold read: skipped (small diff: 2 files, 40 lines)" "$pass"
     grep -qF "Also skip when the host can'"'"'t launch an agent without the conversation history" "$pass"
+    grep -qF "A non-interactive run is not a reason to skip: \`--auto\`, \`--no-update\`, delegation from another skill, and headless sessions" "$pass"
+    grep -qF "\`NON_INTERACTIVE=true\` is not a skip reason." "$skill/SKILL.md"
+    grep -qF "Running non-interactively is not by itself a reason to skip." "$checklist"
 
     grep -qF "Every run, whether the cold read ran or was skipped, puts $contract" "$pass"
     grep -qF "Cold read: no changes" "$pass"

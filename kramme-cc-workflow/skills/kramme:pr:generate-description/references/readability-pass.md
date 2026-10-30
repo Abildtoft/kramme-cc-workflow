@@ -1,6 +1,6 @@
 # Readability Pass
 
-Run this pass after drafting the title and body (Phase 3) and before output (Phase 4). It has two parts: an edit for the reader, then one cold read by a fresh agent, which small, low-risk changes skip. Neither part asks the user anything, so the pass runs unchanged in `--auto` and `--no-update` modes.
+Run this pass after drafting the title and body (Phase 3) and before output (Phase 4). It has two parts: an edit for the reader, then one cold read by a fresh agent, which small, low-risk changes skip. Neither part asks the user anything, so the pass runs unchanged in `--auto` and `--no-update` modes and in non-interactive sessions.
 
 ## Part 1: Edit for the Reader
 
@@ -16,7 +16,9 @@ Then check the draft against every section of `references/verification-checklist
 
 ## When to Skip the Cold Read
 
-Skip the cold read only when all of these hold:
+Skip the cold read only for a small, low-risk change or a host that can't launch the agent, both defined below. A non-interactive run is not a reason to skip: `--auto`, `--no-update`, delegation from another skill, and headless sessions such as `claude -p` or `codex exec` still run the cold read, because it launches an agent and never asks the user anything.
+
+Skip for a small, low-risk change only when all of these hold:
 
 - The `git diff "$BASE_REF"...HEAD --stat` summary from Phase 2 shows at most 3 changed files and at most 150 changed lines (insertions plus deletions).
 - The draft has no `## Breaking changes` or `## Rollout` section.
@@ -25,7 +27,7 @@ Skip the cold read only when all of these hold:
 
 If any condition fails, run Part 2. Record a size skip with the counts, for example `Cold read: skipped (small diff: 2 files, 40 lines)`.
 
-Also skip when the host can't launch an agent without the conversation history, and record `Cold read: skipped (<reason>)`. Never simulate the cold read in your own context.
+Also skip when the host can't launch an agent without the conversation history: this session has no agent-invocation tool, its only launch mode passes the conversation history, or the launch fails. Record `Cold read: skipped (<reason>)` naming the missing tool, the history-only launch mode, or the launch error. Never simulate the cold read in your own context.
 
 ## Part 2: Cold Read
 
