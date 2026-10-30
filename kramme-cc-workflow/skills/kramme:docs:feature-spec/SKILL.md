@@ -23,6 +23,7 @@ Route elsewhere if:
 - **Multi-phase, multi-contributor, or needs an audit trail** → use `/kramme:siw:init` for the full tracked workflow (siw/ dir, LOG.md, OPEN_ISSUES_OVERVIEW.md, issues/).
 - **Project-level rules** (package manager, commit style, coding conventions) → use `/kramme:docs:update-agents-md`.
 - **Deep requirements unknown** (need a long adaptive interview) → use `/kramme:discovery:interview`, then run this skill on the resulting plan.
+- **A prototype is already built** and the ship decision, metrics, rollout, and kill switch need recording → use `/kramme:product:prd`.
 - **Security hardening depth** needed in the Boundaries section → this skill names the pattern (Always Do / Ask First / Never Do) but does not inline security content. Pair with a dedicated security-hardening skill if one exists.
 
 ## Workflow Boundaries

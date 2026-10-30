@@ -354,6 +354,7 @@ Each row gives a one-line summary. The full description lives in the skill's `SK
 | Chart an initiative too big or foggy to plan in one session | `/kramme:discovery:wayfinder` |
 | Get a cited answer from primary sources | `/kramme:research` |
 | Write a feature spec | `/kramme:docs:feature-spec`, or `/kramme:siw:init` for tracked work |
+| Write a PRD for the prototype I'm shipping | `/kramme:product:prd` |
 | Record an architecture decision | `/kramme:docs:adr` |
 | Create or refine a Linear issue | `/kramme:linear:issue-define` |
 | Pick the next Linear issue to work on | `/kramme:linear:next` |
@@ -402,12 +403,13 @@ Requirements discovery, primary-source research, and checks that you understand 
 
 #### Product
 
-Product direction, demand validation, behavior documentation, and design critique.
+Product direction, demand validation, post-prototype PRDs, behavior documentation, and design critique.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:product:strategy` | User | `[optional: section or notes to revisit, e.g. 'metrics', 'active tracks']` | Create or update `STRATEGY.md`, a concise product anchor covering problem, users, metrics, active tracks, and non-goals. |
 | `/kramme:product:validate-demand` | User, Auto | `[idea or evidence] [--output <repo-relative-path>]` | Judge whether a product idea has enough demand evidence to justify more work: GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE. |
+| `/kramme:product:prd` | User | `[feature name or path to an existing PRD]` | Write a PRD after prototyping that records which candidate ships and why, how success is measured, and when to roll back; log results after launch. |
 | `/kramme:product:describe-behavior` | User | `[product or surface] [--source <path>] [--output <path>] [--resume]` | Document how an existing product behaves from the user's perspective, grounded in code, tests, and the running app. |
 | `/kramme:product:design-critic` | User, Auto | `[file-path, screenshot, URL, or product question]` | (experimental) Critique product UI and UX, including flows, hierarchy, trust, and jobs-to-be-done, rather than visual polish alone. |
 | `/kramme:product:review` | User | `<url\|auto> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]` | (experimental) Review a live product across flows for navigation, discoverability, onboarding, consistency, dead ends, and trust. |
@@ -835,6 +837,7 @@ Copied prose, scripts, templates, and substantial assets must be permitted by a 
 - Module-depth guidance in `kramme:code:agent-readiness`, `kramme:code:refactor-opportunities`, `kramme:code:api-design`, `kramme:pr:code-review` with `kramme:architecture-strategist`, `kramme:pr:triage-risk`, and the spec, issue, and plan templates: Informed by AI Hero's [How To Make Codebases AI Agents Love](https://www.aihero.dev/how-to-make-codebases-ai-agents-love). The shared architecture glossary adapts the vocabulary of Matt Pocock's [codebase-design skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/codebase-design).
 - Name-collision guidance in the shared implementation context checklist that `kramme:linear:issue-implement`, `kramme:code:work-from-plan`, and `kramme:code:plan-to-pr` apply, and the search-uniqueness checks in `kramme:code:agent-readiness`: Informed by Modem's [How AI coding agents read your code](https://modem.ai/blog/how-coding-agents-read-your-code).
 - `kramme:code:audit-practice`: The eighteen mistakes it checks for are adapted from Matt Pocock's [post on agentic coding mistakes](https://x.com/mattpocockuk/status/2109973273924579720), with terms read through AI Hero's [AI Coding Dictionary](https://www.aicodingdictionary.com/).
+- `kramme:product:prd`: The PRD written after prototyping as a decision record, with its behavior contract, golden-set evals, rollout gates, kill switch, and change log, is adapted from Aakash Gupta's [post on an AI-era PRD template](https://x.com/aakashgupta/status/2112951808050245874).
 - `kramme:docs:update-agents-md`: Inspired by [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/agents-md/SKILL.md).
 - `kramme:git:commit-message`: From [getsentry/skills](https://github.com/getsentry/skills/blob/main/plugins/sentry-skills/skills/commit/SKILL.md).
 - `kramme:text:clarify` and the shared plain-language rubric that `kramme:pr:generate-description` also applies: Inspired by [fofr's GOV.UK style skill](https://gist.github.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2) and official GOV.UK guidance on [identifying user needs](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/plan-manage-content/identify-user-needs/) and [using clear language](https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/), adapted into a locale-neutral reader-task workflow.
