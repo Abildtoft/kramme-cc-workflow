@@ -115,7 +115,7 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Humanized: yes|no
   - Clarity: <author>/<teammate>, then <final> | not checked
   - Draft comment:
-    > <concise, calibrated, context first, understandable from the anchor alone — e.g. "If `loadRows()` in `src/api/rows.ts` returns an empty array, does this `.then` chain still resolve, or does the dashboard spinner hang? Couldn't trace it from the diff.">
+    > <concise, problem first, lightly hedged, understandable from the anchor alone — e.g. "If `loadRows()` in `src/api/rows.ts` returns an empty array, does this `.then` chain still resolve, or does the dashboard spinner hang? Couldn't trace it from the diff.">
 
 ## Important (should fix) (X found)
 
@@ -126,7 +126,11 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Humanized: yes|no
   - Clarity: <author>/<teammate>, then <final> | not checked
   - Draft comment:
-    > <e.g. "`refreshSession()` in `auth/session.ts` only runs on page load, so after an hour-long session this `fetchInvoices` call looks like it goes out with an expired token. Is there a reason it isn't refreshed first?">
+    > <e.g. "If I understand correctly, this `fetchInvoices` call goes out with an expired token after an hour-long session.
+    >
+    > `refreshSession()` in `auth/session.ts` only runs on page load.
+    >
+    > Is there a reason the token isn't refreshed before this call?">
 
 ## Suggestions / Nits (X found)
 
@@ -136,7 +140,11 @@ _Existing threads on this PR. Reply where it moves the review forward; the rest 
   - Humanized: yes|no
   - Clarity: <author>/<teammate>, then <final> | not checked
   - Draft comment:
-    > <e.g. "`applyDateRange()` in `src/reports/ReportFilters.tsx` repeats this date-range check. Would one named helper for both make the intent clearer? Up to you.">
+    > <e.g. "It looks like this date-range check is duplicated.
+    >
+    > `applyDateRange()` in `src/reports/ReportFilters.tsx` runs the same check.
+    >
+    > Would one named helper for both make the intent clearer? Up to you.">
 
 ## Questions for the Author (X found)
 

@@ -65,7 +65,7 @@ Every "this", "here", "it", or "the field" in a body must point at something in 
 
 ## 3. Self-read and fact check (v2)
 
-Reread each body against its view and apply every rule in Section 1 of `references/comment-drafting.md` again. Then re-verify each factual claim in the code at `HEAD_OID` and cite the `path:line` that supports it in `Evidence`. Fix or drop a claim the code does not support. The result is v2.
+Reread each body against its view and apply every rule in Section 1 of `references/comment-drafting.md` again, including the first-line test and the fact cut. Then re-verify each factual claim in the code at `HEAD_OID` and cite the `path:line` that supports it in `Evidence`. Fix or drop a claim the code does not support. The result is v2.
 
 ## 4. Two cold readers in parallel
 
@@ -87,24 +87,25 @@ Verify every point a reader raises in the code at the head before you adopt it. 
 | One reading of the comment would make the author do harm, such as deleting code that must stay | Rewrite it to name what changes **and** what stays | 1 |
 | A claim looks wrong | Check the code; fix or drop the claim; record the correction in `Evidence` | 2 |
 | The proposed fix is incomplete, for example one test case cannot guard two implementations | Widen the ask precisely | 2 |
+| The reader's `Problem` quote is not in the first sentence, the paraphrase names a detail instead of the problem, or the reader reread the first paragraph | Give the problem its own first paragraph in one plain sentence, and move secondary facts to `Evidence` | 3 |
 | The reader needed code outside the view | Name the file, symbol, and line, or move the anchor | 3 |
 | Two files or two concerns in one comment | Split it, and anchor each part where its fix belongs | 3 |
 | A promised side benefit is debatable | Remove it | 3 |
 | Idiom, long clause, or phrasal verb | Rephrase | 4 |
 
-Give each part of a split comment its own `Location`, `Refers to`, and `Evidence`. Hedge a claim about framework behavior that you cannot confirm in the repository's own source or with a run. For example, if you have not seen a test run show that React logs "Invalid hook call" and then throws a `TypeError`, say only that every test in the file breaks.
+Give each part of a split comment its own `Location`, `Refers to`, and `Evidence`. Narrow a claim about framework behavior that you cannot confirm in the repository's own source or with a run to the part you did confirm, rather than hedging it. For example, if you have not seen a test run show that React logs "Invalid hook call" and then throws a `TypeError`, say only that every test in the file breaks.
 
 Record corrected facts in this skill's report. Never edit a sealed upstream artifact, such as the delegated code review's report, because changing its bytes breaks its seal check. The result is v3.
 
 ## 6. Constrained humanize
 
-Send only the bodies changed since Step 10 to `/kramme:text:clarify --humanize` in one indexed batch, following Section 3 of `references/comment-drafting.md`, with these stricter constraints:
+Send only the bodies changed since Step 10 to `/kramme:text:clarify --humanize` in one indexed batch, following Section 3 of `references/comment-drafting.md`, with these constraints:
 
-- keep identifiers and code spans exact, as well as the question framing, the claims, and the stated consequence;
-- add no length;
+- keep identifiers and code spans exact, as well as the question framing, the claims, the stated consequence, and the lead-in on the problem sentence;
+- add no fact or claim, and give no sentence more identifiers than the densest sentence you sent;
 - never replace an explicit reference with a pronoun.
 
-Map the results back by index. Reject any output that drops a clarifying detail or is longer than the body you sent.
+Map the results back by index. Reject any output that drops a clarifying detail or breaks one of these constraints. A body may grow from splitting sentences or paragraphs.
 
 ## 7. Anchor re-check
 
