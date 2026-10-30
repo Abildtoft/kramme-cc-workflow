@@ -278,6 +278,14 @@
       "producer": "kramme:pr:github-review"
     },
     {
+      "id": "github-stack-review-overview",
+      "path": "GITHUB_STACK_REVIEW_OVERVIEW.md",
+      "type": "file",
+      "category": "working-dir",
+      "retention": "disposable",
+      "producer": "kramme:pr:github-review"
+    },
+    {
       "id": "github-review-drafts",
       "path": ".context/github-review-drafts/",
       "type": "dir",

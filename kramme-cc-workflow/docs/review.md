@@ -94,6 +94,14 @@ Review skills recognize stacked Pull Requests, from gh-stack tracking or from ch
 - For a manually chained branch without a Pull Request, pass `--base <parent-branch>`.
 - Stack context follows up to 16 layers in each direction. It reads another layer from a local ref only when that ref is at or ahead of the layer's Pull Request head, so a stale local branch never stands in for it.
 
+### Reviewing a Whole Stack
+
+`/kramme:pr:github-review <pr> --stack` reviews the whole stack a Pull Request belongs to, before you review its layers one at a time. It writes `GITHUB_STACK_REVIEW_OVERVIEW.md` and nothing to GitHub.
+
+- It measures each layer against its parent: production, test, database, generated, and other lines, plus review state, checks, and whether the layer needs a restack.
+- It reads the files several layers change as they end up at the top of the stack. It also checks the database changes as a set and flags migration numbers that collide with the trunk.
+- It plans the per-layer reviews: foundation layers first, then the layers with the most production code. It also names the bottom layers that are ready to merge.
+
 ## Review Convergence
 
 `/kramme:pr:review-convergence` takes a clean committed feature branch through ordered review gates, bounded remediation, and final verification against frozen requirements. `kramme:linear:issue-to-pr` delegates its prepared branch to it after implementation. The same phase is also used by `kramme:code:plan-to-pr`, which preserves its own requirements and scope contract.

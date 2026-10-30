@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:github-review
-description: "Review a GitHub PR as the assigned reviewer, including linked Linear issues. Report-only by default: writes a local report and drafts inline comments, replies, and a verdict. With confirmation or --draft-review, creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), replying on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
-argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--clarity-check|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--full] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
+description: "Review a GitHub PR as the assigned reviewer, including linked Linear issues; --stack reviews its whole PR stack. Report-only by default: writes a local report and drafts inline comments, replies, and a verdict. With confirmation or --draft-review, creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), replying on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
+argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--stack] [--draft-review] [--clarity-check|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--full] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
 permissions:
@@ -13,7 +13,7 @@ permissions:
 
 # Review a GitHub PR
 
-Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, checks linked Linear issues when present, and produces a reviewer-facing assessment that can optionally become one pending GitHub review. When you reviewed the PR before, it reviews only what changed since, when that can be isolated.
+Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, checks linked Linear issues when present, and produces a reviewer-facing assessment that can optionally become one pending GitHub review. When you reviewed the PR before, it reviews only what changed since, when that can be isolated. With `--stack`, it instead maps the whole Pull Request stack the PR belongs to and plans the per-layer reviews.
 
 This skill is report-only by default. It always materializes the Markdown review report first and shows it before offering any GitHub write. After the report and draft comments are ready, it offers to create one pending GitHub review containing only the eligible proposed inline comments; that private draft is visible only to you until it is submitted. The explicit `--draft-review` flag supplies that one authorization up front and skips the offer, but the report still comes first. The local report keeps the recommended verdict, rationale, strengths, and other summary context, plus a short prepared review body. The skill submits a review only in Step 14, after you send a separate message naming the action, the PR, and the event; it never chooses a verdict on your behalf.
 
@@ -41,6 +41,7 @@ Parse `$ARGUMENTS` before any network or git call.
 If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to parse and remove `--subagent-model <model>` and validate the setting before the PR selector and other flags. Otherwise do not read it: this skill launches no reviewer, each delegated review skill applies the policy to its own reviewers, and Step 10a readers run on the session's model. Keep `SUBAGENT_MODEL_OVERRIDE`, empty when the file was not read, for both delegated review passes.
 
 - First positional token that is a PR number (`123`, `#123`) or a GitHub PR URL → `PR_SELECTOR`. Otherwise leave `PR_SELECTOR` empty.
+- `--stack` → `STACK_MODE=true`. Review the stack the PR belongs to as a whole instead of the PR itself; Step 2 hands off to `references/stack-mode.md`. It accepts only a PR selector and `--inline`; when any other flag is present, name it and stop.
 - `--draft-review` → `CREATE_DRAFT_REVIEW=true`. After drafting and humanizing the findings, create one unsubmitted pending GitHub review containing every eligible proposed inline comment without asking again. This flag authorizes only that pending-review write; it never authorizes submitting the review, replying to existing threads, resolving threads, approving, or requesting changes, and it is never a Step 14 confirmation.
 - `--clarity-check` → `CLARITY_CHECK=on`. Run the Step 10a clarity check even when fewer than five inline comments are drafted.
 - `--no-clarity-check` → `CLARITY_CHECK=off`. Skip the Step 10a clarity check. If both clarity flags are given, ask the user to pick one and stop.
@@ -56,7 +57,7 @@ If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT
 - `--inline` → `INLINE_MODE=true`. Return the report in chat instead of writing the artifact file.
 - `--keep-worktree` → `KEEP_WORKTREE=true`. Leave the fetched worktree on disk for manual inspection and report its path.
 
-Defaults: `CREATE_DRAFT_REVIEW=false`, `CLARITY_CHECK=auto`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=true`, `SKIP_THREADS=false`, `FULL_REVIEW=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
+Defaults: `CREATE_DRAFT_REVIEW=false`, `CLARITY_CHECK=auto`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=true`, `SKIP_THREADS=false`, `FULL_REVIEW=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`, `STACK_MODE=false`.
 
 ## Step 1: Preflight
 
@@ -164,6 +165,8 @@ PR_NWO=$(printf '%s' "$PR_URL" | sed -E 's#^https://github.com/([^/]+/[^/]+)/pul
 **Repository guard.** The PR head must be fetchable from the local `origin`. This works for forks too, because the base repository always exposes a `pull/<N>/head` ref. If `PR_NWO` differs from `LOCAL_NWO`, stop: this skill must run from a clone of the PR's base repository. Tell the user the PR belongs to `PR_NWO` but the current clone is `LOCAL_NWO`.
 
 **Author guard.** If `AUTHOR` equals `SELF`, this PR is yours. Warn the user and ask whether to continue. Point them to `kramme:pr:code-review` for reviewing your own branch and `kramme:pr:github-review-reply` for responding to reviewers on your own PR. Only continue if the user confirms.
+
+**Stack mode.** If `STACK_MODE=true`, set `STACK_HELPER="${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-context.py"` and `STACK_OVERVIEW="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/stack-overview.py"`, then read `references/stack-mode.md` and follow it instead of Steps 2a–14. Stack mode writes nothing to GitHub.
 
 ## Step 2a: Discover Linked Linear Issues
 
@@ -382,4 +385,5 @@ For any other request after the handoff, such as replying to or resolving thread
 - **Refreshed by:** re-running this skill on the same or a different PR (overwrites the file).
 - **Retired by:** `/kramme:workflow:cleanup-artifacts`, or manual deletion.
 - **Temporary worktree:** created under a `mktemp` directory during the run and removed in Step 8 unless `--keep-worktree` is set. An interrupted run's worktree is reused or removed when the review resumes.
+- **Stack mode:** `GITHUB_STACK_REVIEW_OVERVIEW.md` at the project root, or an inline reply with `--inline`, and nothing else. A fixed name, overwritten on each `--stack` run; the header records the stack and each reviewed head. Retired by `/kramme:workflow:cleanup-artifacts`, or manual deletion.
 - **Resume state:** `.context/pr-github-review/<run-id>/` under `ORIG_ROOT`, only when that directory is Git-ignored. It holds each finished step's result so an interrupted review can continue. It is moved to the Trash after Step 13 and retired by `/kramme:workflow:cleanup-artifacts`.
