@@ -398,6 +398,11 @@
     },
     {
       "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/product-prd-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:product:prd/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-breakdown-findings-guidance.bats",
       "skills": [
         "kramme-cc-workflow/skills/kramme:linear:breakdown-findings/SKILL.md",

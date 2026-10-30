@@ -1,0 +1,8 @@
+sources:
+  - id: aakash-gupta-ai-era-prd
+    url: https://x.com/aakashgupta/status/2112951808050245874
+    title: "Aakash Gupta X post on an AI-era PRD template"
+    rationale: "The PRD written after prototyping as a decision record, its areas from the chosen candidate through the behavior contract, graduation metric, golden set, rollout gates, kill switch, and post-launch change log, and the literal-reader check are adapted from this post and its template image, rewritten in original wording."
+    usage: inspiration
+    last_reviewed_at: 2026-10-30
+    baseline_hash: "sha256:cdcb5bfe73e9c4d0bcea1f9f6b476027644ec6af29c62306d711675f06989b04"

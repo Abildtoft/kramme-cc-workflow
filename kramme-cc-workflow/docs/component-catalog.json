@@ -323,6 +323,11 @@
       "path": "kramme-cc-workflow/skills/kramme:product:design-critic/SKILL.md"
     },
     {
+      "name": "kramme:product:prd",
+      "invocation": "User",
+      "path": "kramme-cc-workflow/skills/kramme:product:prd/SKILL.md"
+    },
+    {
       "name": "kramme:product:review",
       "invocation": "User",
       "path": "kramme-cc-workflow/skills/kramme:product:review/SKILL.md"

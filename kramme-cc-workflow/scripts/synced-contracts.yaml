@@ -1811,6 +1811,7 @@
       "kramme:pr:walkthrough": "Generate a visual HTML walkthrough of a branch or PR; `--report` produces a shareable before/after architecture report.",
       "kramme:product:describe-behavior": "Document how an existing product behaves from the user's perspective, grounded in code, tests, and the running app.",
       "kramme:product:design-critic": "(experimental) Critique product UI and UX, including flows, hierarchy, trust, and jobs-to-be-done, rather than visual polish alone.",
+      "kramme:product:prd": "Write a PRD after prototyping that records which candidate ships and why, how success is measured, and when to roll back; log results after launch.",
       "kramme:product:review": "(experimental) Review a live product across flows for navigation, discoverability, onboarding, consistency, dead ends, and trust.",
       "kramme:product:strategy": "Create or update `STRATEGY.md`, a concise product anchor covering problem, users, metrics, active tracks, and non-goals.",
       "kramme:product:validate-demand": "Judge whether a product idea has enough demand evidence to justify more work: GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE.",
