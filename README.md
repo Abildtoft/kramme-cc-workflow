@@ -368,7 +368,7 @@ Each row gives a one-line summary. The full description lives in the skill's `SK
 | Run tests, linting, and type checks | `/kramme:verify:run` |
 | Investigate a bug | `/kramme:debug:investigate` |
 | Test a running app | `/kramme:qa` |
-| Find refactoring candidates or tech debt | `/kramme:code:refactor-opportunities` |
+| Find refactoring candidates or tech debt | `/kramme:code:refactor-opportunities`, or add `--for <spec>` before building a planned change |
 | Stop agents from repeating a mistake by turning it into a type, lint rule, or check | `/kramme:code:encode-constraint` |
 | Upgrade a framework or library | `/kramme:code:migrate` |
 | Explain a system or change visually | `/kramme:visual:explain` |
@@ -476,7 +476,7 @@ Codebase, dependency, test-suite, and agent-practice audits that report findings
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:code:refactor-opportunities` | User, Auto | `[--subagent-model <model>] [full \| pr \| path <file-or-folder> \| feature <name>] [--ranked [--solo] [--output <path>] [--max-findings N] [--base <ref>]]` | Find refactoring candidates and tech debt in the codebase, a PR, a path, or a feature; `--ranked` ranks the biggest weaknesses in a report. |
+| `/kramme:code:refactor-opportunities` | User, Auto | `[--subagent-model <model>] [full \| pr \| path <file-or-folder> \| feature <name>] [--for <spec-file \| description>] [--ranked [--solo] [--output <path>] [--max-findings N] [--base <ref>]]` | Find refactoring candidates and tech debt in a codebase, PR, path, or feature, or before a planned change (`--for`); `--ranked` ranks the biggest weaknesses. |
 | `/kramme:code:outside-view` | User | `[--subagent-model <model>] [--raters N] [--output <path>] [--compare <report-path>] [--cross-model]` | Rate a codebase with unprimed raters to surface unknown-unknown quality problems, especially in AI-engineered code. |
 | `/kramme:code:agent-readiness` | User | `[--subagent-model <model>] [--auto]` | Score how well a codebase suits AI coding agents across five dimensions and get a prioritized refactoring plan. |
 | `/kramme:code:audit-agent-config` | User, Auto | `[scope-path]` | Audit the repository's agent instructions, skills, hooks, MCP servers, and permissions for redundant, outdated, or conflicting entries. Read-only. |
@@ -837,6 +837,7 @@ Copied prose, scripts, templates, and substantial assets must be permitted by a 
 - `kramme:verify:run` evidence-before-claims rule and red-green check: Inspired by [obra/superpowers](https://github.com/obra/superpowers)' verification-before-completion skill.
 - `kramme:debug:triage-to-issue`: The hands-off bug-to-issue workflow is adapted from Matt Pocock's [triage-issue](https://github.com/mattpocock/skills/tree/383b6a06d59c4ce0ffcb14112bfd91265a86cf91/skills/triage-issue), while its vertical RED-GREEN cycle guidance is adapted from Pocock's [TDD skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/tdd).
 - Module-depth guidance in `kramme:code:agent-readiness`, `kramme:code:refactor-opportunities`, `kramme:code:api-design`, `kramme:pr:code-review` with `kramme:architecture-strategist`, `kramme:pr:triage-risk`, and the spec, issue, and plan templates: Informed by AI Hero's [How To Make Codebases AI Agents Love](https://www.aihero.dev/how-to-make-codebases-ai-agents-love). The shared architecture glossary adapts the vocabulary of Matt Pocock's [codebase-design skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/codebase-design).
+- `kramme:code:refactor-opportunities` hot-spot seeding, deepening patterns, planned-change mode (`--for`), and one-item hand-off: Informed by Matt Pocock's [improve-codebase-architecture skill](https://github.com/mattpocock/skills/tree/main/skills/engineering/improve-codebase-architecture) and AI Hero's [guide to it](https://www.aihero.dev/skills-improve-codebase-architecture).
 - Name-collision guidance in the shared implementation context checklist that `kramme:linear:issue-implement`, `kramme:code:work-from-plan`, and `kramme:code:plan-to-pr` apply, and the search-uniqueness checks in `kramme:code:agent-readiness`: Informed by Modem's [How AI coding agents read your code](https://modem.ai/blog/how-coding-agents-read-your-code).
 - `kramme:code:audit-practice`: The eighteen mistakes it checks for are adapted from Matt Pocock's [post on agentic coding mistakes](https://x.com/mattpocockuk/status/2109973273924579720), with terms read through AI Hero's [AI Coding Dictionary](https://www.aicodingdictionary.com/).
 - `kramme:code:encode-constraint`: Inspired by [@poteto's X post](https://x.com/poteto/status/2109699980248408574) on treating the codebase as agent memory and turning each observed agent mistake into a constraint.

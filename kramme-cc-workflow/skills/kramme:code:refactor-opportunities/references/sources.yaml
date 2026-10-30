@@ -9,10 +9,10 @@ sources:
   - id: pocock-improve-codebase-architecture-skill
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/improve-codebase-architecture/SKILL.md
     title: "Matt Pocock skills - improve-codebase-architecture (SKILL.md)"
-    rationale: "The commit-history hot-spot seeding for full-codebase scans, the post-report offer to record rejected candidates as ADRs, and the three deepening-candidate patterns in references/checklist.md and the shared architecture glossary are adapted from this source's Explore phase and grilling loop."
+    rationale: "The commit-history hot-spot seeding for full-codebase scans, the post-report offer to record rejected candidates as ADRs, the three deepening-candidate patterns in references/checklist.md and the shared architecture glossary, and the checklist's hard-to-test-through-its-interface pattern are adapted from this source's Explore phase and grilling loop."
     usage: inspiration
-    last_reviewed_at: 2026-10-19
-    baseline_hash: "sha256:552240a5ab5cec6b67c15dd1ad6e9f6962b1bca6ce870059a8c2713760c20392"
+    last_reviewed_at: 2026-10-30
+    baseline_hash: "sha256:35b03a3db61e0f5aa333ea59b54963e45a3d2ace6649b2ef4f9576603e2582a6"
   - id: pocock-improve-codebase-architecture-deepening
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/codebase-design/DEEPENING.md
     title: "Matt Pocock skills - codebase-design (DEEPENING.md)"
@@ -34,3 +34,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-10-19
     baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"
+  - id: aihero-improve-codebase-architecture-guide
+    url: https://www.aihero.dev/skills-improve-codebase-architecture
+    title: "AI Hero - The /improve-codebase-architecture Skill"
+    rationale: "The --for planned-change mode follows this guide's advice to point the scan at the next change and ask what would make it easy. The Phase 4 step 10 hand-off follows its advice to take one candidate per session, record the decision in a spec, and turn the rest into tickets. The checklist's hard-to-test pattern follows its use of the scan to find missing seams before testing legacy code, and the plain 'nothing worth changing' summary follows its warning that the scan rarely calls code fine."
+    usage: inspiration
+    last_reviewed_at: 2026-10-30
+    baseline_hash: "sha256:393abe152ffbb33ea2bdac8d9776d787c1d3444f6492d73600f072b24abbdbbe"

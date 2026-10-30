@@ -75,6 +75,35 @@ setup() {
 	grep -qF 'never changes the ranked file scope' "$RANKED_MODE"
 }
 
+@test "refactor opportunities prepares a scan for a planned change with --for" {
+	grep -qF '[--for <spec-file | description>]' <(sed -n '/^argument-hint:/p' "$REFACTOR_SKILL")
+	grep -qF 'Remove `--for <value>` from `$ARGUMENTS` first so its value never feeds the scope rules.' "$REFACTOR_SKILL"
+	grep -qF '`--for prepares a full, path, or feature scan for a planned change; drop pr or --ranked, or drop --for.`' "$REFACTOR_SKILL"
+	grep -qF 'Only a single path-shaped token with no spaces that does not resolve triggers a clarification ask' "$REFACTOR_SKILL"
+	grep -qF 'set `HOT_SPOTS` to the `CHANGE_TARGETS` inside the scan scope instead of the commit-frequency ranking' "$REFACTOR_SKILL"
+	grep -qF 'With `--for`, list pairs that include a `CHANGE_TARGETS` file first' "$REFACTOR_SKILL"
+	grep -qF 'the `PLANNED_CHANGE` text with `--for`' "$REFACTOR_SKILL"
+	grep -qF 'Why skipping: does not ease the planned change' "$REFACTOR_SKILL"
+	grep -qF 'report that the planned change needs no preparatory refactor' "$REFACTOR_SKILL"
+	grep -qF 'Full, path, and feature runs without `--for` skip this step.' "$REFACTOR_SKILL"
+	grep -qF '**With `PLANNED_CHANGE` set, apply the change relevance gate.**' "$REFACTOR_SKILL"
+	grep -qF -- '- **Change relevance** — only when the caller set `PLANNED_CHANGE`' "skills/kramme:code:refactor-opportunities/references/checklist.md"
+	grep -qF 'add a `Change Relevance` column in the same position instead' "skills/kramme:code:refactor-opportunities/assets/report-template.md"
+}
+
+@test "refactor opportunities hands off one chosen item and never blocks a calling skill" {
+	grep -qF '10. **Hand off one item.** Unless another skill invoked this one' "$REFACTOR_SKILL"
+	grep -qF 'Do not design or implement it in this run.' "$REFACTOR_SKILL"
+	grep -qF "pass the next step only that item's report blocks and the report's \`## Report Provenance\` section, not the whole report" "$REFACTOR_SKILL"
+	grep -qF '`kramme:discovery:interview --decision-tree`' "$REFACTOR_SKILL"
+	grep -qF '`kramme:code:api-design --design-twice`' "$REFACTOR_SKILL"
+	grep -qF '`/kramme:linear:breakdown-findings`' "$REFACTOR_SKILL"
+	grep -qF "passing the report's \`## Report Provenance\` section followed by that item's \`## Breakdown-Ready Finding Data\` block as the source" "$REFACTOR_SKILL"
+	grep -qF 'To schedule every remaining item instead' "$REFACTOR_SKILL"
+	grep -qF '9. **Close the rejection loop.**' "$REFACTOR_SKILL"
+	grep -qF 'then Phase 4 step 10 with `WA-NNN` IDs to hand off one item' "$RANKED_MODE"
+}
+
 @test "weakness audit is retired and its consumers route to ranked mode" {
 	[ ! -e "skills/kramme:code:weakness-audit" ]
 	run grep -rqF 'weakness-audit' skills shared

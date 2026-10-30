@@ -10,6 +10,7 @@ Scan every category below. For each finding, record:
 - **Confidence** — HIGH (callers, tests, or history traced and the evidence is direct), MED (clear code evidence, likely impact), or LOW (plausible, lightly evidenced)
 - **Effort** — S, M, or L as defined in the shared breakdown-ready schema
 - **PR relevance** — only when the caller set `SCOPE_MODE=pr`: one sentence tying the issue to an added/modified hunk, new/untracked file, deleted code with surviving references, an unchanged line within ~5 lines of a changed hunk with a concrete causal chain, or unchanged code directly affected by a changed caller/API contract. "File was touched" is not a valid relevance claim.
+- **Change relevance** — only when the caller set `PLANNED_CHANGE`: one sentence naming how the fix eases that change, such as fewer files it must touch, a smaller interface it must alter, a seam where the new behavior plugs in, or one interface where its tests can run. "Cleaner code" is not a valid relevance claim.
 
 ---
 
@@ -93,6 +94,7 @@ Scan every category below. For each finding, record:
   - One concept, many files: understanding or changing one concept means visiting many small modules, or a `CO_CHANGE` pair keeps changing together across modules
   - Leaks across a seam: callers use internal imports or must know a module's call-order rules or intermediate data to use it correctly
   - Helpers extracted only for testability: pure functions unit-tested in isolation while the behavior callers depend on goes untested at the module's interface
+  - Hard to test through its interface: the behavior callers depend on is untested, or tests can reach it only by patching internals or driving real I/O; the candidate's Tests field names the interface-level tests the deepening makes possible
 
 ## 10. Performance Candidates
 

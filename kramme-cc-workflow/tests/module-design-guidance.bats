@@ -80,6 +80,13 @@ setup() {
 	grep -qF "Deepening candidates — behavior that belongs behind one smaller interface" "skills/kramme:code:refactor-opportunities/references/checklist.md"
 }
 
+@test "refactor opportunities looks for behavior that is hard to test through its interface" {
+	local checklist="skills/kramme:code:refactor-opportunities/references/checklist.md"
+	grep -qF "  - Hard to test through its interface:" "$checklist"
+	grep -qF "names the interface-level tests the deepening makes possible" "$checklist"
+	grep -qF "id: aihero-improve-codebase-architecture-guide" "skills/kramme:code:refactor-opportunities/references/sources.yaml"
+}
+
 @test "the co-change pipeline counts repeated pairs across separate modules only" {
 	local skill="$PWD/skills/kramme:code:refactor-opportunities/SKILL.md"
 	local pipeline
