@@ -103,7 +103,7 @@ Items audited: {N} — KEEP {N} / IMPROVE {N} / REMOVE {N}
 
 Group items by source file within each section. In IMPROVE and REMOVE, prefix items from always-on surfaces with `[always-on]` and list them first, then order by confidence (strongest evidence first). Exactly one sentence per item.
 
-Close with: no files were changed, and removals or improvements can be applied as a follow-up on request.
+Close with: no files were changed, and removals or improvements can be applied as a follow-up on request. When an IMPROVE item names an enforcing mechanism, point to `/kramme:code:encode-constraint` as the way to build and prove that check.
 
 ---
 

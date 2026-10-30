@@ -100,6 +100,12 @@ setup() {
   [ "$(grep -c '^- \*\*Baseline:\*\*' "$MECHANISMS")" -ge 6 ]
 }
 
+@test "rule-writing and audit skills point enforceable findings to encode constraint" {
+  grep -qF 'suggest `/kramme:code:encode-constraint` to build and prove the check' "skills/kramme:docs:update-agents-md/SKILL.md"
+  grep -qF 'When an IMPROVE item names an enforcing mechanism, point to `/kramme:code:encode-constraint`' "skills/kramme:code:audit-agent-config/SKILL.md"
+  grep -qF 'close the report by suggesting `/kramme:code:encode-constraint`' "skills/kramme:debug:find-sibling-bugs/SKILL.md"
+}
+
 @test "encode constraint declares its inspiration source" {
   grep -qF 'url: https://x.com/poteto/status/2109699980248408574' "$SOURCES"
   grep -qF 'usage: inspiration' "$SOURCES"

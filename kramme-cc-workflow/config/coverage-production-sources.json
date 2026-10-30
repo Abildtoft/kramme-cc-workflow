@@ -269,7 +269,10 @@
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/code-encode-constraint-guidance.bats",
       "skills": [
-        "kramme-cc-workflow/skills/kramme:code:encode-constraint/SKILL.md"
+        "kramme-cc-workflow/skills/kramme:code:audit-agent-config/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:code:encode-constraint/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:docs:update-agents-md/SKILL.md"
       ]
     },
     {
