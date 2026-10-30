@@ -1401,6 +1401,7 @@
         "at most 3 changed files",
         "at most 150 changed lines",
         "Never simulate the cold read in your own context",
+        "A non-interactive run is not a reason to skip",
         "Every run, whether the cold read ran or was skipped, puts exactly one line starting `Cold read:` in the run output"
       ]
     },
