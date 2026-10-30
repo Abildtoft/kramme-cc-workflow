@@ -22,7 +22,7 @@ fi
 
 Build the key JSON as the shared contract describes, with `skill` set to `kramme:pr:github-review` and:
 
-- `inputs`: `repo` (`PR_NWO`), `pr` (`PR_NUMBER`), `head` (`HEAD_OID`), `base` (`PR_BASE_OID`), `base_ref` (`BASE_REF_ARG`), `pr_context` (a SHA-256 of canonical `{title,body}` JSON), `linked_issues` (the sorted issue IDs discovered in Step 2a), `code_only`, `categories` (sorted `UI_CATEGORIES`, or empty), `skip_threads` (the normalized `--fresh` behavior), `include_bots`, `include_resolved`, and `clarity_check`. Leave out `--draft-review`, `--inline`, `--keep-worktree`, `--sequential`, and `--parallel`, which do not change review content.
+- `inputs`: `repo` (`PR_NWO`), `pr` (`PR_NUMBER`), `head` (`HEAD_OID`), `base` (`PR_BASE_OID`), `base_ref` (`BASE_REF_ARG`), `pr_context` (a SHA-256 of canonical `{title,body}` JSON), `linked_issues` (the sorted issue IDs discovered in Step 2a), `code_only`, `categories` (sorted `UI_CATEGORIES`, or empty), `skip_threads` (the normalized `--fresh` behavior), `full_review`, `include_bots`, `include_resolved`, and `clarity_check`. Leave out `--draft-review`, `--inline`, `--keep-worktree`, `--sequential`, and `--parallel`, which do not change review content.
 - `tree`: after the PR head has been fetched and verified, run `git -C "$ORIG_ROOT" rev-parse "$HEAD_OID^{tree}"`. This is what the shared tree helper prints in the clean review worktree. The user's own checkout is not under review, so it is not hashed.
 - `subagent_model`: the resolved reviewer selection. Use `SUBAGENT_MODEL_OVERRIDE` when it is non-empty; otherwise include `SUBAGENT_MODEL_LEVEL` (default `same`) and the active orchestrator model identity, preserving `inherit` only as the resolved same-model selection.
 
@@ -33,13 +33,13 @@ Step 3 repeats that fetch before creating a worktree, so a PR move between the t
 Write `manifest.json` before Step 3 with the shared fields, setting `head` to `HEAD_OID`. Add two fields as their steps finish:
 
 - `worktree` after Step 3: `WORKTREE_DIR` and `TMP_PARENT`.
-- `scope` after Step 5: `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, `CHANGED_FILES`, `RUN_UI`, and `base_commit` (`git rev-parse "$BASE_REF^{commit}"` in the worktree).
+- `scope` after Step 5: `BASE_REF`, `BASE_BRANCH`, `MERGE_BASE`, `REVIEW_SCOPE`, `REVIEW_BASE`, `CHANGED_FILES`, `RUN_UI`, and `base_commit` (`git rev-parse "$BASE_REF^{commit}"` in the worktree).
 
 The roster holds one entry per saved result. Write stage 1 after Step 5 and append later entries when their step starts:
 
 | Stage | Result ID | Saved after | Content |
 | --- | --- | --- | --- |
-| 1 | `code-review` | Step 6, pass 1 | The delegated code review's full inline report |
+| 1 | `code-review` | Step 6, pass 1 (not when `REVIEW_SCOPE=unchanged`) | The delegated code review's full inline report |
 | 1 | `product-review` | Step 6, pass 2 (only when `RUN_UI=true`) | The delegated product review's full inline report |
 | 1 | `linear-<ISSUE-ID>` | Step 6, pass 3 (one per in-scope issue) | The issue audit's inline result |
 | 2 | `conversation` | Step 7 (skipped when `SKIP_THREADS=true`) | The latest thread map with classifications, per-thread verification, and fresh-finding cross-references; retained as audit evidence and always refreshed on resume |
@@ -58,7 +58,7 @@ Write each result as soon as its step or reader finishes, before starting the ne
 1. Compute the run key and look for a run to resume as the shared contract describes. If none matches, clean up as below, create the run directory and manifest, and continue at Step 3.
 2. When one matches, print the shared contract's `Resuming run` line and reuse its roster. Linear issues and `RUN_UI` come from the roster; do not re-plan them. The current title/body hash and linked-issue IDs must already match the key.
 3. Steps 3–8, when every stage 1 and stage 2 result exists: skip them and restore the `scope` variables from the manifest. If the recorded worktree still exists and `KEEP_WORKTREE` is not `true`, set `WORKTREE_DIR` and `TMP_PARENT` from the manifest and remove it with the Step 8 block.
-4. Steps 3–8, otherwise: reuse the recorded worktree only when `git worktree list --porcelain` lists it, it is detached at `HEAD_OID`, and `git -C "$WORKTREE_DIR" status --porcelain` prints nothing. Then set `WORKTREE_DIR` and `TMP_PARENT` from the manifest, `cd` into it, and skip Step 3. Otherwise run Step 3 and record the new worktree. Run Steps 4–5 either way. If `base_commit` was recorded and now differs, the run is stale: clean it up, create a new run directory and manifest that record the current worktree, and continue at Step 6. Run only the Step 6 passes that have no result, but always rerun Step 7 against the live conversation when `SKIP_THREADS=false`; a saved `conversation` result is never reused. The delegated code review resumes its own interrupted run only in the same worktree; in a new worktree it starts fresh.
+4. Steps 3–8, otherwise: reuse the recorded worktree only when `git worktree list --porcelain` lists it, it is detached at `HEAD_OID`, and `git -C "$WORKTREE_DIR" status --porcelain` prints nothing. Then set `WORKTREE_DIR` and `TMP_PARENT` from the manifest, `cd` into it, and skip Step 3. Otherwise run Step 3 and record the new worktree. Run Steps 4, 4a, and 5 either way. If `base_commit` was recorded and now differs, or `REVIEW_SCOPE` or `REVIEW_BASE` differs from the recorded `scope`, the run is stale: clean it up, create a new run directory and manifest that record the current worktree, and continue at Step 6. Run only the Step 6 passes that have no result, but always rerun Step 7 against the live conversation when `SKIP_THREADS=false`; a saved `conversation` result is never reused. The delegated code review resumes its own interrupted run only in the same worktree; in a new worktree it starts fresh.
 5. Steps 9 and 10: load the saved result instead of rerunning the step. Still set `ANCHOR_CHECK` as Step 9 describes.
 6. Step 10a: if `clarity-outcome` exists, use it. If other clarity results exist, continue the check as `references/clarity-check.md` describes. Otherwise decide whether to run it as usual.
 7. Steps 11–13 always run from the saved results. Step 12's existing-pending-review guard keeps a resumed run from creating a second pending review. Edits the user asks for at the Step 12 offer are not saved.

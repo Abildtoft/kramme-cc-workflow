@@ -61,7 +61,7 @@ Do not draft acknowledgement-only replies. Recommend:
 
 Apply the linked-issue coverage gate from `references/linear-review.md`: incomplete discovery or an incomplete/blocked in-scope Linear audit prevents `APPROVE`. Recommend `COMMENT` with the precise gap unless proven Blocking findings require `REQUEST CHANGES`. Cite Linear requirements in issue-derived comments, and keep verification gaps as questions rather than claiming defects.
 
-For ongoing reviews, let verified thread outcomes affect the recommendation. Always state it as a recommendation with one-line rationale; the user chooses and posts the verdict.
+For ongoing reviews, let verified thread outcomes affect the recommendation. A delta review's fresh findings cover only the commits after `REVIEW_BASE`. With `REVIEW_SCOPE=unchanged` there are no fresh code findings, so the recommendation rests on your open threads, their live verification, and the Linear results, and its rationale says that no code in this PR changed since your last review. Always state it as a recommendation with one-line rationale; the user chooses and posts the verdict.
 
 Draft `PREPARED_REVIEW_BODY`: one to three plain sentences addressed to the author that say where the review lands and point to the inline comments, for example "A few questions inline, mainly about the empty-list case in `parseItems()`. The rest looks good to me." Leave out Strengths lists, Evidence, finding or requirement IDs, coverage notes, and the verdict label, because the user picks the event when they confirm. The body stays in the local report and the pending review never carries it; it is posted only by a confirmed Step 14 submission.
 

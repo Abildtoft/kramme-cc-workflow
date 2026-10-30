@@ -13,7 +13,7 @@ Review the product, UX, and UI experience of a PR's changes, including local sta
 ### Model Invocation Contract
 
 - Invoke automatically only when the user explicitly asks in this session for a product, UX, visual, or accessibility review, or when an active `kramme:pr:github-review` invocation delegates its UI review pass. For a user request, apply the user's options as a direct invocation would.
-- The `kramme:pr:github-review` delegation passes `--base "$BASE_REF" --inline --no-diff-comments` plus the user's `--categories`, `--subagent-model`, and `--parallel` choices when supplied. A delegating caller never adds `--team`, an app URL, or `auto`, and never drops `--inline` or `--no-diff-comments`.
+- The `kramme:pr:github-review` delegation passes `--base "$REVIEW_BASE" --inline --no-diff-comments` plus the user's `--categories`, `--subagent-model`, and `--parallel` choices when supplied. `REVIEW_BASE` is the Pull Request's base, or on a re-review the last commit the reviewer already reviewed. A delegating caller never adds `--team`, an app URL, or `auto`, and never drops `--inline` or `--no-diff-comments`.
 - No other parent workflow may delegate to this skill. Every reviewer stays read-only; model invocation never edits source, posts to GitHub, or chooses dispositions.
 
 **Arguments:** "$ARGUMENTS"

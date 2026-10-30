@@ -1799,7 +1799,7 @@
       "kramme:pr:create": "Publish a new PR: narrative commits, a generated title and body, and a lease-protected first push.",
       "kramme:pr:fix-ci": "Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass.",
       "kramme:pr:generate-description": "Write a PR title and body from the diff, commits, and Linear context; `--check` reports drift in an open PR's description.",
-      "kramme:pr:github-review": "Review someone else's GitHub PR, including linked Linear issues. Report-only unless you ask for a pending review.",
+      "kramme:pr:github-review": "Review someone else's GitHub PR or its whole stack, including linked Linear issues. Report-only unless you ask for a pending review.",
       "kramme:pr:github-review-reply": "Triage review comments on your own PR, make the needed changes, and draft or post replies.",
       "kramme:pr:gut-check": "Get a fast first-reader reaction: does anything on this branch look strange, unusual, or unnecessary?",
       "kramme:pr:overengineering-review": "Flag speculative generality and unlikely edge-case handling that the requirements do not need.",

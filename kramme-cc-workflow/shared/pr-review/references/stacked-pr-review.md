@@ -6,7 +6,7 @@ A stack is an ordered chain of branches where each layer builds on the one below
 
 ## Stack context fields
 
-- `head` is the layer under review. `downstack` lists the layers below it from the bottom up, `parent` is the layer directly below it (null when the parent is the trunk), and `upstack` lists the layers above it from the nearest one up. Each layer names its `branch`, its open Pull Request number `pr` when one exists, and `ref`, a local ref you can read without fetching, or null.
+- `head` is the layer under review. `downstack` lists the layers below it from the bottom up, `parent` is the layer directly below it (null when the parent is the trunk), and `upstack` lists the layers above it from the nearest one up. Each layer names its `branch`, its open Pull Request number `pr` when one exists, and `ref`, a local ref you can read without fetching, or null. For a layer found through open Pull Requests, `ref` is set only when that ref is at or ahead of the Pull Request's head commit, so a null `ref` can also mean the local copies are stale.
 - `trunk` is the branch the bottom layer targets. `position` and `size` count unmerged layers; both are null when the layers below are unknown.
 - `needs_restack` is true when gh-stack reports that the layers below changed after this layer was last rebased.
 - `review_base`, when set, is the base the collector used in place of the default base resolution, so the review diff holds only this layer's commits.

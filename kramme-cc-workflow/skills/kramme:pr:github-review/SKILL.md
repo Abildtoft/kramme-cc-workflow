@@ -1,14 +1,19 @@
 ---
 name: kramme:pr:github-review
-description: "Review a GitHub PR as the assigned reviewer, including linked Linear issues. Report-only by default: writes a local report and drafts inline comments, replies, and a verdict. With confirmation or --draft-review, creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), replying on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
-argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--draft-review] [--clarity-check|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
+description: "Review a GitHub PR as the assigned reviewer, including linked Linear issues; --stack reviews its whole PR stack. Report-only by default: writes a local report and drafts inline comments, replies, and a verdict. With confirmation or --draft-review, creates one unsubmitted pending review containing only eligible inline comments. Not for your own branch (kramme:pr:code-review), replying on your PR (kramme:pr:github-review-reply), or resolving findings (kramme:pr:resolve-review)."
+argument-hint: "[--subagent-model <model>] [pr-number|pr-url] [--stack] [--draft-review] [--clarity-check|--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--full] [--include-bots] [--all-threads] [--inline] [--keep-worktree]"
 disable-model-invocation: true
 user-invocable: true
+permissions:
+  - shell
+  - network
+  - env
+  - file_read
 ---
 
 # Review a GitHub PR
 
-Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, checks linked Linear issues when present, and produces a reviewer-facing assessment that can optionally become one pending GitHub review.
+Carry out a review of a GitHub pull request you have been asked to review. You are the reviewer, not the author or assignee. The skill fetches the PR into a throwaway git worktree, runs the appropriate review agents against the PR's real diff, checks linked Linear issues when present, and produces a reviewer-facing assessment that can optionally become one pending GitHub review. When you reviewed the PR before, it reviews only what changed since, when that can be isolated. With `--stack`, it instead maps the whole Pull Request stack the PR belongs to and plans the per-layer reviews.
 
 This skill is report-only by default. It always materializes the Markdown review report first and shows it before offering any GitHub write. After the report and draft comments are ready, it offers to create one pending GitHub review containing only the eligible proposed inline comments; that private draft is visible only to you until it is submitted. The explicit `--draft-review` flag supplies that one authorization up front and skips the offer, but the report still comes first. The local report keeps the recommended verdict, rationale, strengths, and other summary context, plus a short prepared review body. The skill submits a review only in Step 14, after you send a separate message naming the action, the PR, and the event; it never chooses a verdict on your behalf.
 
@@ -36,6 +41,7 @@ Parse `$ARGUMENTS` before any network or git call.
 If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to parse and remove `--subagent-model <model>` and validate the setting before the PR selector and other flags. Otherwise do not read it: this skill launches no reviewer, each delegated review skill applies the policy to its own reviewers, and Step 10a readers run on the session's model. Keep `SUBAGENT_MODEL_OVERRIDE`, empty when the file was not read, for both delegated review passes.
 
 - First positional token that is a PR number (`123`, `#123`) or a GitHub PR URL → `PR_SELECTOR`. Otherwise leave `PR_SELECTOR` empty.
+- `--stack` → `STACK_MODE=true`. Review the stack the PR belongs to as a whole instead of the PR itself; Step 2 hands off to `references/stack-mode.md`. It accepts only a PR selector and `--inline`; when any other flag is present, name it and stop.
 - `--draft-review` → `CREATE_DRAFT_REVIEW=true`. After drafting and humanizing the findings, create one unsubmitted pending GitHub review containing every eligible proposed inline comment without asking again. This flag authorizes only that pending-review write; it never authorizes submitting the review, replying to existing threads, resolving threads, approving, or requesting changes, and it is never a Step 14 confirmation.
 - `--clarity-check` → `CLARITY_CHECK=on`. Run the Step 10a clarity check even when fewer than five inline comments are drafted.
 - `--no-clarity-check` → `CLARITY_CHECK=off`. Skip the Step 10a clarity check. If both clarity flags are given, ask the user to pick one and stop.
@@ -44,13 +50,14 @@ If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT
 - `--code-only` → `CODE_ONLY=true`. Skip the UI review pass even when UI files changed.
 - `--sequential` → `PARALLEL_REVIEWERS=false`. Each delegated review launches its reviewers one after another.
 - `--parallel` → `PARALLEL_REVIEWERS=true`, the default. It stays accepted so saved prompts keep working. If both `--sequential` and `--parallel` are given, ask the user to pick one and stop.
-- `--fresh` → `SKIP_THREADS=true`. Ignore the existing review conversation and produce a clean first-pass assessment only.
+- `--full` → `FULL_REVIEW=true`. Review the whole PR diff even when you reviewed the PR before; Step 4a otherwise narrows a re-review to what changed since your last review.
+- `--fresh` → `SKIP_THREADS=true`. Ignore the existing review conversation and produce a clean first-pass assessment of the whole PR only.
 - `--include-bots` → `INCLUDE_BOTS=true`. Include bot/app comments when mapping the conversation (default: human only).
 - `--all-threads` → `INCLUDE_RESOLVED=true`. Include already-resolved threads in the map (default: unresolved and awaiting-you threads only).
 - `--inline` → `INLINE_MODE=true`. Return the report in chat instead of writing the artifact file.
 - `--keep-worktree` → `KEEP_WORKTREE=true`. Leave the fetched worktree on disk for manual inspection and report its path.
 
-Defaults: `CREATE_DRAFT_REVIEW=false`, `CLARITY_CHECK=auto`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=true`, `SKIP_THREADS=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`.
+Defaults: `CREATE_DRAFT_REVIEW=false`, `CLARITY_CHECK=auto`, `CODE_ONLY=false`, `PARALLEL_REVIEWERS=true`, `SKIP_THREADS=false`, `FULL_REVIEW=false`, `INCLUDE_BOTS=false`, `INCLUDE_RESOLVED=false`, `INLINE_MODE=false`, `KEEP_WORKTREE=false`, `STACK_MODE=false`.
 
 ## Step 1: Preflight
 
@@ -159,6 +166,8 @@ PR_NWO=$(printf '%s' "$PR_URL" | sed -E 's#^https://github.com/([^/]+/[^/]+)/pul
 
 **Author guard.** If `AUTHOR` equals `SELF`, this PR is yours. Warn the user and ask whether to continue. Point them to `kramme:pr:code-review` for reviewing your own branch and `kramme:pr:github-review-reply` for responding to reviewers on your own PR. Only continue if the user confirms.
 
+**Stack mode.** If `STACK_MODE=true`, set `STACK_HELPER="${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-context.py"` and `STACK_OVERVIEW="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/stack-overview.py"`, then read `references/stack-mode.md` and follow it instead of Steps 2a–14. Stack mode writes nothing to GitHub.
+
 ## Step 2a: Discover Linked Linear Issues
 
 Read Section 1 of `references/linear-review.md` to discover and deduplicate linked issues from the PR metadata and linking comments. This discovery runs independently of `--fresh`, `--include-bots`, and `--code-only`. No linked issues means no Linear prerequisite; unavailable linked context is a coverage gap, not a reason to stop the code review.
@@ -231,9 +240,13 @@ STACK_CONTEXT=$(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-context.py"
 
 When the `STACK_CONTEXT` state is `stacked` or `unknown`, read `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/stacked-pr-review.md`. The delegated reviews in Step 6 resolve the same context for their own reviewers. This skill applies the reference's orchestrator rules to the report header and its reviewer rules while drafting in Step 9: a finding in code that a lower layer introduced belongs to that layer's Pull Request, so name that Pull Request in the report instead of drafting an inline comment here, and check the upstack Pull Requests before drafting a comment that calls new code unused or premature.
 
+## Step 4a: Scope a Re-Review
+
+Set `REVIEW_BASE="$BASE_REF"` and `REVIEW_SCOPE=full`. Unless `FULL_REVIEW=true`, `SKIP_THREADS=true`, or `CHANGED_FILES` is empty, set `REVIEW_DELTA="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/review-delta.py"`, `RESOLVE_BASE="${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh"`, and `COLLECT_REVIEW_DIFF="${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh"`, then read `references/delta-review.md` and follow it. It compares the PR with your last review: it may narrow `REVIEW_BASE` and `CHANGED_FILES` to the commits that changed since, or set `REVIEW_SCOPE=unchanged` when no code in this PR changed. `BASE_REF` and `MERGE_BASE` keep the whole PR's scope.
+
 ## Step 5: Classify Scope
 
-If `CODE_ONLY=true`, set `RUN_UI=false` and skip the rest of this step without loading another resource. Otherwise read `references/ui-relevance.md` and follow its `ui-relevance-path-contract-v1` classifier against `CHANGED_FILES` to set `RUN_UI`.
+If `CODE_ONLY=true` or `REVIEW_SCOPE=unchanged`, set `RUN_UI=false` and skip the rest of this step without loading another resource. Otherwise read `references/ui-relevance.md` and follow its `ui-relevance-path-contract-v1` classifier against `CHANGED_FILES` to set `RUN_UI`.
 
 ## Step 6: Run the Reviews
 
@@ -243,15 +256,15 @@ When `SUBAGENT_MODEL_OVERRIDE` is non-empty, include `--subagent-model <model>` 
 
 Run all review commands **with the worktree as the working directory** (you are already `cd`'d there). Each delegated review resolves git state against the PR head only while the session's working directory is the worktree — keep it there until the worktree is removed in Step 8. Invoke each delegated review by its exact skill name: `kramme:pr:code-review` is model-invocable, and `kramme:pr:product-review` and `kramme:linear:review-pr` name this skill as a permitted caller in their model-invocation contracts. If one cannot be invoked, record that dimension as not covered under **Coverage handling** below; never reconstruct it by reading another skill's files.
 
-1. **Code quality — always.** Delegate to `/kramme:pr:code-review --base "$BASE_REF" --inline --no-diff-comments`. `--inline` keeps the findings in chat instead of writing `REVIEW_OVERVIEW.md` into the throwaway worktree. `--no-diff-comments` keeps the delegated pass from projecting its raw findings onto the reviewer's own Conductor workspace diff. Capture the structured findings (severity, location, confidence, evidence).
+1. **Code quality — unless `REVIEW_SCOPE=unchanged`.** Delegate to `/kramme:pr:code-review --base "$REVIEW_BASE" --inline --no-diff-comments`. `--inline` keeps the findings in chat instead of writing `REVIEW_OVERVIEW.md` into the throwaway worktree. `--no-diff-comments` keeps the delegated pass from projecting its raw findings onto the reviewer's own Conductor workspace diff. Capture the structured findings (severity, location, confidence, evidence).
 
-2. **UI/UX/visual/accessibility/product — when `RUN_UI=true`.** Delegate to `/kramme:pr:product-review --base "$BASE_REF" --inline --no-diff-comments`, appending `--categories <UI_CATEGORIES>` when the user supplied that flag. There is normally no running app for someone else's PR, so the UI pass runs as static, diff-based analysis. Capture its findings.
+2. **UI/UX/visual/accessibility/product — when `RUN_UI=true`.** Delegate to `/kramme:pr:product-review --base "$REVIEW_BASE" --inline --no-diff-comments`, appending `--categories <UI_CATEGORIES>` when the user supplied that flag. There is normally no running app for someone else's PR, so the UI pass runs as static, diff-based analysis. Capture its findings.
 
-3. **Linear requirements — when linked issues were discovered.** Follow Sections 2–3 of `references/linear-review.md`. Delegate to `/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"` separately for each in-scope issue, capture its inline result, and merge supported findings with the code/UI findings before Step 7. Keep this audit orchestrator on the session's model; its interface accepts neither `--parallel` nor `--subagent-model`.
+3. **Linear requirements — when linked issues were discovered, in every review scope.** Follow Sections 2–3 of `references/linear-review.md`; the audit always covers the whole PR. Delegate to `/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"` separately for each in-scope issue, capture its inline result, and merge supported findings with the code/UI findings before Step 7. Keep this audit orchestrator on the session's model; its interface accepts neither `--parallel` nor `--subagent-model`.
 
 When `RUN_UI=false`, do not auto-run `kramme:pr:product-review`; never auto-run `kramme:code:copy-review --pr`. Mention them in the final report as optional deeper passes the user can request. The Linear pass still runs with `--code-only` and `--fresh`.
 
-**Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded. Missing Linear access, unresolved issue scope, or a blocked Linear audit must appear in Coverage Status and the Linear section; withhold an `APPROVE` recommendation while these gaps remain.
+**Coverage handling.** If a delegated review fails or reports degraded coverage, record which dimensions were not covered and surface that in the report. Do not present a partial review as complete. Continue as long as at least the code review succeeded, or `REVIEW_SCOPE=unchanged` skipped it. Missing Linear access, unresolved issue scope, or a blocked Linear audit must appear in Coverage Status and the Linear section; withhold an `APPROVE` recommendation while these gaps remain.
 
 Save each pass's result as soon as it finishes, per `references/resume.md`.
 
@@ -352,7 +365,7 @@ After Sections 2–4 finish, record the resulting draft-review status, review ID
 
 If `INLINE_MODE=true`, return the refreshed full report in chat after the user answers or the pre-authorized creation attempt finishes. Otherwise, the report at `ORIG_ROOT/GITHUB_PR_REVIEW_OVERVIEW.md` is already current from Step 12.
 
-End by telling the user: the recommended verdict, the count of findings per severity, the count of threads awaiting your reply, the report path (or that it was returned inline), the clarity-check status, and the exact draft-review outcome. If a pending review was created, give its URL and say it remains unsubmitted for inspection. Show the prepared review body and say that nothing will be posted unless they send a separate message such as `Post the prepared review to PR <number> as request changes`, `as comment`, or `as approve`. Then stop. Say that GitHub was not changed only for statuses that confirm no write occurred (`declined` or `not created — ...`). For `write outcome unknown — ...` or `unexpected state — ...`, say a write may have occurred, surface every available review ID/URL, and tell the user to inspect GitHub without retrying.
+End by telling the user: the review scope from Step 4a, the recommended verdict, the count of findings per severity, the count of threads awaiting your reply, the report path (or that it was returned inline), the clarity-check status, and the exact draft-review outcome. If a pending review was created, give its URL and say it remains unsubmitted for inspection. Show the prepared review body and say that nothing will be posted unless they send a separate message such as `Post the prepared review to PR <number> as request changes`, `as comment`, or `as approve`. Then stop. Say that GitHub was not changed only for statuses that confirm no write occurred (`declined` or `not created — ...`). For `write outcome unknown — ...` or `unexpected state — ...`, say a write may have occurred, surface every available review ID/URL, and tell the user to inspect GitHub without retrying.
 
 Also state which linked Linear issues were reviewed, or why their review was incomplete; when none were found, say so.
 
@@ -372,4 +385,5 @@ For any other request after the handoff, such as replying to or resolving thread
 - **Refreshed by:** re-running this skill on the same or a different PR (overwrites the file).
 - **Retired by:** `/kramme:workflow:cleanup-artifacts`, or manual deletion.
 - **Temporary worktree:** created under a `mktemp` directory during the run and removed in Step 8 unless `--keep-worktree` is set. An interrupted run's worktree is reused or removed when the review resumes.
+- **Stack mode:** `GITHUB_STACK_REVIEW_OVERVIEW.md` at the project root, or an inline reply with `--inline`, and nothing else. A fixed name, overwritten on each `--stack` run; the header records the stack and each reviewed head. Retired by `/kramme:workflow:cleanup-artifacts`, or manual deletion.
 - **Resume state:** `.context/pr-github-review/<run-id>/` under `ORIG_ROOT`, only when that directory is Git-ignored. It holds each finished step's result so an interrupted review can continue. It is moved to the Trash after Step 13 and retired by `/kramme:workflow:cleanup-artifacts`.

@@ -18,9 +18,12 @@ Sources, in order:
    itself the head of an open same-repository Pull Request, and open Pull Requests that target the head
    branch sit above it. This covers native GitHub stacks and manually chained Pull Requests alike. The
    walk down stops at a trunk-like branch: the remote default branch, `kramme.baseBranch`, or
-   `CONDUCTOR_DEFAULT_BRANCH`.
+   `CONDUCTOR_DEFAULT_BRANCH`. Each walk follows at most `MAX_WALK` layers.
 
 Without `--head`, a detached HEAD is matched to the open Pull Request whose head commit it is.
+
+Each layer's `ref` is a local ref reviewers can read without fetching; for a layer found through the
+Pull Request chain, only a ref at or ahead of the Pull Request's head commit qualifies.
 
 `review_base` is the base a review should use instead of the default base resolution. It is null when
 the default (an open Pull Request's target) already scopes the layer, and it is set only from gh-stack
@@ -44,11 +47,11 @@ from typing import Any
 SCHEMA_VERSION = 1
 LOCAL_TIMEOUT = 30
 NETWORK_TIMEOUT = 20
-MAX_WALK = 8
+MAX_WALK = 16
 OID_RE = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
 GITHUB_URL_RE = re.compile(r"github\.com[:/]")
 UNTRACKED_RE = re.compile(r'current branch "[^"]*" is not part of a stack')
-PR_FIELDS = "number,url,headRefName,baseRefName,isCrossRepository"
+PR_FIELDS = "number,url,headRefName,headRefOid,baseRefName,isCrossRepository"
 
 Json = dict[str, Any]
 
@@ -95,6 +98,10 @@ def valid_branch(name: Any) -> bool:
     return isinstance(name, str) and bool(name) and git("check-ref-format", "--branch", name) == name
 
 
+def object_id(value: Any) -> str | None:
+    return value if isinstance(value, str) and OID_RE.fullmatch(value) else None
+
+
 def commit_of(ref: str) -> str | None:
     return git("rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
 
@@ -103,16 +110,17 @@ def is_ancestor(ancestor: str, descendant: str) -> bool:
     return run(["git", "merge-base", "--is-ancestor", ancestor, descendant], LOCAL_TIMEOUT).returncode == 0
 
 
-def readable_ref(branch: str) -> str | None:
-    """A local ref reviewers can read for this layer without fetching, preferring the local branch."""
+def readable_ref(branch: str, pr_head: str | None = None) -> str | None:
+    """A local ref for this layer, preferring the local branch; given `pr_head`, one at or ahead of it."""
     for ref in (f"refs/heads/{branch}", f"refs/remotes/origin/{branch}"):
-        if commit_of(ref):
+        commit = commit_of(ref)
+        if commit and (pr_head is None or commit == pr_head or is_ancestor(pr_head, commit)):
             return ref
     return None
 
 
-def layer(branch: str, pr: int | None) -> Json:
-    return {"branch": branch, "pr": pr, "ref": readable_ref(branch)}
+def layer(branch: str, pr: int | None, pr_head: str | None = None) -> Json:
+    return {"branch": branch, "pr": pr, "ref": readable_ref(branch, pr_head)}
 
 
 def has_github_remote() -> bool:
@@ -155,10 +163,9 @@ def open_pull_requests(*, head: str = "", base: str = "", unique_head: bool = Fa
             raise Unknown(f"could not parse {what}: malformed Pull Request entry")
         if (head and head_ref != head) or (base and base_ref != base):
             continue
-        url = item.get("url")
-        pulls.append(
-            {"number": number, "url": url if isinstance(url, str) else None, "head": head_ref, "base": base_ref}
-        )
+        url = item["url"] if isinstance(item.get("url"), str) else None
+        oid = object_id(item.get("headRefOid"))
+        pulls.append({"number": number, "url": url, "head": head_ref, "base": base_ref, "oid": oid})
     if unique_head and head and len(pulls) > 1:
         raise Ambiguous(f"`{head or base}` matches {len(pulls)} open Pull Requests; pass the base explicitly")
     return pulls
@@ -275,9 +282,7 @@ def gh_stack_context(view: Json, head: str, head_oid: str, notes: list[str]) -> 
         pr_state = (current.get("pr") or {}).get("state")
         own_pr = {"number": number, "url": None, "head": head, "base": None} if number and pr_state == "OPEN" else None
     needs_restack = current.get("needsRebase") is True
-    recorded = (
-        current.get("base") if isinstance(current.get("base"), str) and OID_RE.fullmatch(current["base"]) else None
-    )
+    recorded = object_id(current.get("base"))
     review_base = None
     if own_pr is None or needs_restack:
         if below:
@@ -320,42 +325,46 @@ def trunk_like() -> set[str]:
 def walk_up(head: str, notes: list[str]) -> list[Json]:
     above: list[Json] = []
     seen, branch = {head}, head
-    for _ in range(MAX_WALK):
+    while True:
         children = open_pull_requests(base=branch)
         if not children:
             return above
+        # Checked only once another layer exists, so a stack exactly MAX_WALK layers tall is not cut off.
+        if len(above) >= MAX_WALK:
+            notes.append(f"stopped after {MAX_WALK} layers above")
+            return above
         if len(children) > 1:
             notes.append(f"{len(children)} open Pull Requests target `{branch}`, so the stack branches above it")
-            return above + [layer(child["head"], child["number"]) for child in children]
+            return above + [layer(child["head"], child["number"], child["oid"]) for child in children]
         child = children[0]
         if child["head"] in seen:
             notes.append("the Pull Request chain loops; stopped walking it")
             return above
         seen.add(child["head"])
-        above.append(layer(child["head"], child["number"]))
+        above.append(layer(child["head"], child["number"], child["oid"]))
         branch = child["head"]
-    notes.append(f"stopped after {MAX_WALK} layers above")
-    return above
 
 
 def walk_down(own_pr: Json, notes: list[str]) -> tuple[list[Json], str | None]:
     trunks = trunk_like()
     below: list[Json] = []
     seen, base = {own_pr["head"]}, own_pr["base"]
-    for _ in range(MAX_WALK):
+    while True:
         if base in trunks or base in seen:
             return below, base
         parents = open_pull_requests(head=base)
         if not parents:
             return below, base
+        # Checked only once another layer exists, so a stack exactly MAX_WALK layers deep still reaches its trunk.
+        if len(below) >= MAX_WALK:
+            notes.append(f"stopped after {MAX_WALK} layers below")
+            return below, None
         if len(parents) > 1:
             notes.append(f"`{base}` heads {len(parents)} open Pull Requests; stopped walking down there")
             return [layer(base, None), *below], None
         seen.add(base)
-        below.insert(0, layer(base, parents[0]["number"]))
+        below.insert(0, layer(base, parents[0]["number"], parents[0]["oid"]))
         base = parents[0]["base"]
-    notes.append(f"stopped after {MAX_WALK} layers below")
-    return below, None
 
 
 def pull_request_context(head: str, own_pr: Json | None, notes: list[str]) -> Json:

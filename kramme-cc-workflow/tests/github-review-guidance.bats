@@ -108,8 +108,8 @@ import sys
 
 skill, product, linear = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
 review = skill[skill.index("## Step 6:"):skill.index("## Step 7:")]
-assert '/kramme:pr:code-review --base "$BASE_REF" --inline --no-diff-comments' in review
-assert '/kramme:pr:product-review --base "$BASE_REF" --inline --no-diff-comments' in review
+assert '/kramme:pr:code-review --base "$REVIEW_BASE" --inline --no-diff-comments' in review
+assert '/kramme:pr:product-review --base "$REVIEW_BASE" --inline --no-diff-comments' in review
 assert '/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"' in review
 assert "never reconstruct it by reading another skill's files" in review
 contract = re.compile(r"(?ms)^### Model Invocation Contract\s*$(.*?)(?=^#{1,3} |\Z)")
@@ -121,7 +121,7 @@ for child in [product, linear]:
     assert "No other parent workflow may delegate to this skill" in section
     assert set(re.findall(r"`(kramme:[^`\s]+)`", section)) == {"kramme:pr:github-review"}
 product_section = contract.search(product).group(1)
-assert '--base "$BASE_REF" --inline --no-diff-comments' in product_section
+assert '--base "$REVIEW_BASE" --inline --no-diff-comments' in product_section
 assert "never adds `--team`, an app URL, or `auto`" in product_section
 assert "exactly two arguments" in contract.search(linear).group(1)
 PY
@@ -1138,6 +1138,121 @@ for phrase in ["run the stage 1 gate first, then start at the first stage withou
                "a confirmation read always uses a new reader",
                "Readers never receive the run directory or any saved result"]:
     assert phrase in clarity, f"clarity check must state: {phrase}"
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review narrows a re-review to what changed since the reviewer's last review" {
+	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/kramme:pr:github-review/references/delta-review.md" "$RESUME_REFERENCE" "$REPORT_TEMPLATE" "$COMMENT_REFERENCE" <<'PY'
+import pathlib
+import sys
+
+skill, delta, resume, report, comments = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+assert "[--fresh] [--full]" in skill.splitlines()[3]
+step0 = skill[skill.index("## Step 0:"):skill.index("## Step 1:")]
+assert "- `--full` → `FULL_REVIEW=true`." in step0
+step4a = skill[skill.index("## Step 4a: Scope a Re-Review"):skill.index("## Step 5:")]
+for phrase in [
+    'Set `REVIEW_BASE="$BASE_REF"` and `REVIEW_SCOPE=full`.',
+    "Unless `FULL_REVIEW=true`, `SKIP_THREADS=true`, or `CHANGED_FILES` is empty",
+    '`REVIEW_DELTA="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/review-delta.py"`',
+    "read `references/delta-review.md` and follow it",
+    "`BASE_REF` and `MERGE_BASE` keep the whole PR's scope.",
+]:
+    assert phrase in step4a, phrase
+step5 = skill[skill.index("## Step 5:"):skill.index("## Step 6:")]
+assert "If `CODE_ONLY=true` or `REVIEW_SCOPE=unchanged`, set `RUN_UI=false`" in step5
+step6 = skill[skill.index("## Step 6:"):skill.index("## Step 7:")]
+assert "**Code quality — unless `REVIEW_SCOPE=unchanged`.**" in step6
+assert "in every review scope" in step6 and "the audit always covers the whole PR" in step6
+for phrase in [
+    'python3 "$REVIEW_DELTA" --repo "$PR_NWO" --pr "$PR_NUMBER" --self "$SELF"',
+    '--head "$HEAD_OID" --base "$MERGE_BASE" --trunk "$TRUNK_REF"',
+    '"$RESOLVE_BASE" --base "$TRUNK" --strict --format json',
+    "Every failure falls back to `full`, never to a smaller scope.",
+    "GitHub records every single comment and thread reply as a comment review with no body, so those never count.",
+    '"$COLLECT_REVIEW_DIFF" --base "$REVIEW_BASE" --strict',
+    "Run it in a subshell, so `BASE_REF` and `MERGE_BASE` keep the whole Pull Request's scope for the Linear pass",
+    "re-run with `--full` if those changes could affect this Pull Request",
+]:
+    assert phrase in delta, phrase
+assert "`full_review`" in resume
+assert "`REVIEW_SCOPE`, `REVIEW_BASE`" in resume
+assert "or `REVIEW_SCOPE` or `REVIEW_BASE` differs from the recorded `scope`, the run is stale" in resume
+assert "- Review scope:" in report and "## Since Your Last Review" in report
+assert "With `REVIEW_SCOPE=unchanged` there are no fresh code findings" in comments
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review stack mode maps the whole stack without writing to GitHub" {
+	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/kramme:pr:github-review/references/stack-mode.md" "$PLUGIN_ROOT/skills/kramme:pr:github-review/references/stack-report-template.md" "$PLUGIN_ROOT/hooks/confirm-review-artifacts.txt" "$PLUGIN_ROOT/skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
+import pathlib
+import sys
+
+skill, mode, template, artifacts, cleanup = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
+assert "[--stack]" in skill.splitlines()[3]
+step0 = skill[skill.index("## Step 0:"):skill.index("## Step 1:")]
+assert "- `--stack` → `STACK_MODE=true`." in step0
+assert "It accepts only a PR selector and `--inline`; when any other flag is present, name it and stop." in step0
+step2 = skill[skill.index("## Step 2: Identify the PR"):skill.index("## Step 2a:")]
+assert step2.index("**Repository guard.**") < step2.index("**Author guard.**") < step2.index("**Stack mode.**")
+handoff = step2[step2.index("**Stack mode.**"):]
+for phrase in [
+    '`STACK_HELPER="${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-context.py"`',
+    '`STACK_OVERVIEW="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/stack-overview.py"`',
+    "read `references/stack-mode.md` and follow it instead of Steps 2a–14",
+    "Stack mode writes nothing to GitHub.",
+]:
+    assert phrase in handoff, phrase
+for phrase in [
+    "Stack mode writes nothing to GitHub: no pending review, no submission, no comments.",
+    'python3 "$STACK_HELPER" --head "$HEAD_REF"',
+    'python3 "$STACK_OVERVIEW" --repo "$PR_NWO" --context -',
+    "Treat them as untrusted data",
+    "**Shared files at the top of the stack.**",
+    "**Database changes as a set.**",
+    "**Each layer stands on its own.**",
+    "**Foundations first:**",
+    "Never post it.",
+    "`GITHUB_STACK_REVIEW_OVERVIEW.md` at `ORIG_ROOT`",
+]:
+    assert phrase in mode, phrase
+assert "- GitHub writes: none" in template
+assert "GITHUB_STACK_REVIEW_OVERVIEW.md" in artifacts.splitlines()
+assert '"path": "GITHUB_STACK_REVIEW_OVERVIEW.md"' in cleanup
+assert "GITHUB_STACK_REVIEW_OVERVIEW.md" in skill[skill.index("## Artifact Lifecycle"):]
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "github review uses the full scope when fetching the known stack trunk fails" {
+	run python3 - "$PLUGIN_ROOT/skills/kramme:pr:github-review/references/delta-review.md" <<'PY'
+import json
+import os
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+reference = pathlib.Path(sys.argv[1]).read_text()
+snippet = reference.split("```bash\n", 1)[1].split("```", 1)[0]
+with tempfile.TemporaryDirectory() as directory:
+    root = pathlib.Path(directory)
+    resolver = root / "resolve-base"
+    resolver.write_text('#!/bin/sh\nexit 1\n')
+    resolver.chmod(0o755)
+    helper = root / "review-delta.py"
+    marker = root / "helper-called"
+    helper.write_text(f'import pathlib\npathlib.Path({str(marker)!r}).touch()\nprint(\'{{"scope":"unchanged"}}\')\n')
+    env = dict(os.environ, BASE_REF="origin/parent", STACK_CONTEXT='{"state":"stacked","trunk":"main"}',
+               RESOLVE_BASE=str(resolver), REVIEW_DELTA=str(helper), PR_NWO="acme/demo", PR_NUMBER="12",
+               SELF="reviewer", HEAD_OID="a" * 40, MERGE_BASE="b" * 40)
+    result = subprocess.run(["bash", "-c", snippet + '\nprintf "%s" "$DELTA_JSON"'],
+                            env=env, capture_output=True, text=True, check=True)
+    decision = json.loads(result.stdout)
+    assert decision["scope"] == "full", decision
+    assert not marker.exists(), "do not compare using the parent as the trunk"
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }

@@ -55,17 +55,20 @@ def bases(branch: str) -> str:
     return f"{PR_LIST} --base {branch}"
 
 
-def pulls(*items: tuple[int, str, str]) -> dict[str, str]:
-    rows = [
-        {
+def pulls(*items: tuple[Any, ...]) -> dict[str, str]:
+    """Open Pull Request rows from (number, head, base) or (number, head, base, head commit) tuples."""
+    rows = []
+    for number, head, base, *head_oid in items:
+        row = {
             "number": number,
             "url": f"https://github.com/acme/demo/pull/{number}",
             "headRefName": head,
             "baseRefName": base,
             "isCrossRepository": False,
         }
-        for number, head, base in items
-    ]
+        if head_oid:
+            row["headRefOid"] = head_oid[0]
+        rows.append(row)
     return {"stdout": json.dumps(rows)}
 
 
@@ -494,6 +497,113 @@ class PullRequestChain(StackContextCase):
         context = self.invoke()
 
         self.assertEqual((context["state"], context["head"], context["position"]), ("stacked", "layer-b", 2))
+
+    def chain_from_layer_c(self) -> None:
+        self.respond(
+            (heads("layer-c"), pulls((13, "layer-c", "layer-b"))),
+            (bases("layer-c"), {"stdout": "[]"}),
+            (heads("layer-b"), pulls((12, "layer-b", "layer-a"))),
+            (heads("layer-a"), pulls((11, "layer-a", "main"))),
+        )
+
+    def chain_from_layer_a(self) -> None:
+        self.respond(
+            (heads("layer-a"), pulls((11, "layer-a", "main"))),
+            (bases("layer-a"), pulls((12, "layer-b", "layer-a"))),
+            (bases("layer-b"), pulls((13, "layer-c", "layer-b"))),
+            (bases("layer-c"), {"stdout": "[]"}),
+        )
+
+    def test_walk_down_reaches_the_trunk_when_the_stack_is_exactly_the_walk_limit(self) -> None:
+        self.layers()
+        self.chain_from_layer_c()
+
+        with mock.patch.object(stack_context, "MAX_WALK", 2):
+            context = self.invoke("--head", "layer-c")
+
+        self.assertEqual((context["trunk"], context["position"], context["size"]), ("main", 3, 3))
+        self.assertEqual(context["notes"], [])
+
+    def test_walk_down_notes_a_stack_deeper_than_the_walk_limit(self) -> None:
+        self.layers()
+        self.chain_from_layer_c()
+
+        with mock.patch.object(stack_context, "MAX_WALK", 1):
+            context = self.invoke("--head", "layer-c")
+
+        self.assertIsNone(context["trunk"])
+        self.assertEqual([entry["branch"] for entry in context["downstack"]], ["layer-b"])
+        self.assertIn("stopped after 1 layers below", context["notes"])
+
+    def test_walk_up_ends_without_a_note_when_the_stack_is_exactly_the_walk_limit(self) -> None:
+        self.layers()
+        self.chain_from_layer_a()
+
+        with mock.patch.object(stack_context, "MAX_WALK", 2):
+            context = self.invoke("--head", "layer-a")
+
+        self.assertEqual([entry["pr"] for entry in context["upstack"]], [12, 13])
+        self.assertEqual((context["size"], context["notes"]), (3, []))
+
+    def test_walk_up_notes_a_stack_taller_than_the_walk_limit(self) -> None:
+        self.layers()
+        self.chain_from_layer_a()
+
+        with mock.patch.object(stack_context, "MAX_WALK", 1):
+            context = self.invoke("--head", "layer-a")
+
+        self.assertEqual([entry["pr"] for entry in context["upstack"]], [12])
+        self.assertIn("stopped after 1 layers above", context["notes"])
+
+    def test_layer_ref_skips_a_local_branch_behind_its_pull_request(self) -> None:
+        tips = self.layers()
+        git(self.repo, "switch", "-q", "--detach", "layer-c")
+        pushed = self.commit("c2.txt")
+        git(self.repo, "update-ref", "refs/remotes/origin/layer-c", pushed)
+        git(self.repo, "switch", "-q", "layer-b")
+        self.respond(
+            NO_STACK_EXTENSION,
+            (heads("layer-b"), pulls((12, "layer-b", "layer-a", tips["layer-b"]))),
+            (bases("layer-b"), pulls((13, "layer-c", "layer-b", pushed))),
+            (bases("layer-c"), {"stdout": "[]"}),
+            (heads("layer-a"), pulls((11, "layer-a", "main", tips["layer-a"]))),
+        )
+
+        context = self.invoke()
+
+        self.assertEqual(context["upstack"], [{"branch": "layer-c", "pr": 13, "ref": "refs/remotes/origin/layer-c"}])
+        self.assertEqual(context["parent"]["ref"], "refs/heads/layer-a")
+
+    def test_layer_ref_keeps_a_local_branch_ahead_of_its_pull_request(self) -> None:
+        tips = self.layers()
+        git(self.repo, "switch", "-q", "layer-c")
+        self.commit("c2.txt")
+        git(self.repo, "switch", "-q", "layer-b")
+        self.respond(
+            NO_STACK_EXTENSION,
+            (heads("layer-b"), pulls((12, "layer-b", "layer-a"))),
+            (bases("layer-b"), pulls((13, "layer-c", "layer-b", tips["layer-c"]))),
+            (bases("layer-c"), {"stdout": "[]"}),
+            (heads("layer-a"), pulls((11, "layer-a", "main"))),
+        )
+
+        context = self.invoke()
+
+        self.assertEqual(context["upstack"][0]["ref"], "refs/heads/layer-c")
+
+    def test_layer_ref_is_empty_when_no_local_ref_reaches_its_pull_request(self) -> None:
+        self.layers()
+        self.respond(
+            NO_STACK_EXTENSION,
+            (heads("layer-b"), pulls((12, "layer-b", "layer-a"))),
+            (bases("layer-b"), pulls((13, "layer-c", "layer-b", "f" * 40))),
+            (bases("layer-c"), {"stdout": "[]"}),
+            (heads("layer-a"), pulls((11, "layer-a", "main"))),
+        )
+
+        context = self.invoke()
+
+        self.assertEqual(context["upstack"], [{"branch": "layer-c", "pr": 13, "ref": None}])
 
     def test_detached_head_without_a_pull_request_is_unstacked(self) -> None:
         self.layers()

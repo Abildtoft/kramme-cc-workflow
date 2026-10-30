@@ -92,6 +92,15 @@ Review skills recognize stacked Pull Requests, from gh-stack tracking or from ch
 - Reports name the layer on a `Stack:` line.
 - `pr:github-review` applies the same rules to someone else's stacked Pull Request, and `pr:review-convergence` keeps remediation commits on the reviewed layer.
 - For a manually chained branch without a Pull Request, pass `--base <parent-branch>`.
+- Stack context follows up to 16 layers in each direction. It reads another layer from a local ref only when that ref is at or ahead of the layer's Pull Request head, so a stale local branch never stands in for it.
+
+### Reviewing a Whole Stack
+
+`/kramme:pr:github-review <pr> --stack` reviews the whole stack a Pull Request belongs to, before you review its layers one at a time. It writes `GITHUB_STACK_REVIEW_OVERVIEW.md` and nothing to GitHub.
+
+- It measures each layer against its parent: production, test, database, generated, and other lines, plus review state, checks, and whether the layer needs a restack.
+- It reads the files several layers change as they end up at the top of the stack. It also checks the database changes as a set and flags migration numbers that collide with the trunk.
+- It plans the per-layer reviews: foundation layers first, then the layers with the most production code. It also names the bottom layers that are ready to merge.
 
 ## Review Convergence
 
@@ -170,6 +179,15 @@ A caller-only validation mode instead reruns the applicable gates once when auth
 - Linear access is needed only when issues are linked; unavailable issue context is reported while the code review continues.
 - `--fresh` and `--code-only` still include this requirements check.
 - Its delegated code and product reviews launch their reviewers in parallel; pass `--sequential` to run them one at a time.
+
+### Re-Reviews
+
+When you reviewed a Pull Request before, `pr:github-review` reviews only what changed since your last review.
+
+- Your last review is the newest approval, change request, dismissed review, or comment review with a summary that you submitted. Single comments and thread replies do not count.
+- After a rebase or restack, commits whose patch is unchanged count as already reviewed, so a restack alone runs no code review. Your open threads are still checked against the new code, and linked Linear issues are still audited in full.
+- When the changes cannot be isolated, the whole Pull Request is reviewed. `--full` always reviews all of it.
+- Patch matching preserves whitespace, including string contents and indentation. Removing or replacing a reviewed patch requires a full review; failure to resolve the stack trunk also keeps the full scope.
 
 ### What It Writes to GitHub
 
