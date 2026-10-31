@@ -137,9 +137,9 @@ PY
     test -f "$check"
     test ! -e "skills/kramme:pr:verify-description"
     grep -qF "disable-model-invocation: false" "$skill"
-    grep -qF "argument-hint: \"[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]\"" "$skill"
+    grep -qF "argument-hint: \"[--manual] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]\"" "$skill"
     grep -qF "Check mode accepts only \`--base <ref>\`, \`--strict\`, and \`--no-update\`." "$skill"
-    grep -qF "reject \`--check\` combined with \`--auto\` (which would imply an unconfirmed update), \`--base-commit\`, or \`--linear-issue\`, and reject \`--strict\` without \`--check\`" "$skill"
+    grep -qF "reject \`--check\` combined with \`--manual\` (check mode owns its own confirmation), \`--base-commit\`, or \`--linear-issue\`, and reject \`--strict\` without \`--check\`" "$skill"
     grep -qF "Every model-initiated invocation must include \`--no-update\`" "$skill"
     grep -qF "A model caller that needs a drift report passes \`--check --no-update\`" "$skill"
     grep -qF "Only a direct user invocation of \`--check\` may reach the confirmation prompt" "$skill"
@@ -149,7 +149,7 @@ PY
     grep -qF "A model caller always passes \`--check --no-update\`, so for model callers check mode stops after the report." "$check"
     grep -qF "**Skip this phase if \`OUTPUT_ONLY=true\`.**" "$check"
     grep -qF "never prompt, generate, or update" "$check"
-    grep -qF -- "--auto --no-update --base {base-branch} --base-commit {base-commit}" "$check"
+    grep -qF -- "exactly as \`--no-update --base {base-branch} --base-commit {base-commit}\` would" "$check"
     grep -qF "Run \`/kramme:pr:generate-description --check\` yourself" "$check"
     grep -qF "Reuse only the accuracy-adjacent items of the generator" "$check"
     grep -qF "the first sentence of item 1 (from the first paragraph alone, a newcomer can say what changes and for whom) and item 7" "$check"
@@ -205,7 +205,7 @@ PY
     confirmation_line=$(grep -nF "Found <N> finding(s). Generate a replacement title and body" "$check" | cut -d: -f1)
     decline_line=$(grep -nF "On \`n\` or no response, stop after the report." "$check" | cut -d: -f1)
     blocking_stop_line=$(grep -nF "**Stop without editing the PR** if generation emits any blocking" "$check" | cut -d: -f1)
-    generation_line=$(grep -nF -- "--auto --no-update --base {base-branch} --base-commit {base-commit}" "$check" | cut -d: -f1)
+    generation_line=$(grep -nF -- "exactly as \`--no-update --base {base-branch} --base-commit {base-commit}\` would" "$check" | cut -d: -f1)
     publish_line=$(grep -nF "run its \`Step 3 for a check-mode confirmed update\` block" "$check" | cut -d: -f1)
     no_pr_line=$(grep -nF "MISSING REQUIREMENT: no PR found for the current branch." "$check" | head -1 | cut -d: -f1)
     generic_pr_failure_line=$(grep -nF "Could not inspect a Pull Request for the current branch" "$check" | cut -d: -f1)
@@ -701,7 +701,7 @@ EOF
     grep -qF "If any condition fails, run Part 2." "$pass"
     grep -qF "Cold read: skipped (small diff: 2 files, 40 lines)" "$pass"
     grep -qF "Also skip when the host can'"'"'t launch an agent without the conversation history" "$pass"
-    grep -qF "A non-interactive run is not a reason to skip: \`--auto\`, \`--no-update\`, delegation from another skill, and headless sessions" "$pass"
+    grep -qF "A non-interactive run is not a reason to skip: auto mode, \`--no-update\`, delegation from another skill, and headless sessions" "$pass"
     grep -qF "\`NON_INTERACTIVE=true\` is not a skip reason." "$skill/SKILL.md"
     grep -qF "Running non-interactively is not by itself a reason to skip." "$checklist"
 

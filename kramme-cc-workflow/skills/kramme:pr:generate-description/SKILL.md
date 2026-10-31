@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
 description: "Draft or --check a PR title and body against the diff, commit log, and Linear context. Use when asked or delegated by a PR workflow; model callers pass --no-update and never edit a PR."
-argument-hint: "[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
+argument-hint: "[--manual] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -10,27 +10,29 @@ user-invocable: true
 
 ## Parse Arguments
 
+Auto mode is the default: skip clarification prompts (Phase 2.5) and the save-to-file prompt (Phase 4). If a PR already exists for the current branch, update its title/body directly. If no PR exists yet, generate the title and description for copy-paste without pausing for user input.
+
 Parse `$ARGUMENTS` for flags:
 
-- `--auto`: Preferred hands-off mode for explicit user invocation. Skip clarification prompts (Phase 2.5) and the save-to-file prompt (Phase 4). If a PR already exists for the current branch, update its title/body directly. If no PR exists yet, generate the title and description for copy-paste without pausing for user input.
-- `--no-update`: Output-only automation mode for orchestrators that need generated title/body content but must not mutate an existing PR. Valid with `--auto`; it skips prompts but keeps `DIRECT_UPDATE=false` even if `gh pr view` finds a PR.
+- `--manual`: Turn off auto mode: run the clarification and save-to-file prompts, and present the result for copy-paste without updating a PR.
+- `--no-update`: Output-only automation mode for orchestrators that need generated title/body content but must not mutate an existing PR. It keeps `DIRECT_UPDATE=false` even if `gh pr view` finds a PR.
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 - `--base-commit <oid>`: Pin diff computation to a caller-validated full commit OID while retaining branch metadata from `--base`.
 - `--linear-issue <ISSUE-ID>`: Use a caller-validated Linear identifier as the authoritative issue context. Validate `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, and do not replace it with a branch-name substring.
 - `--check`: Check mode. Compare the open PR's current title and body against the branch diff and report drift instead of generating a description. Report-only unless a direct user confirms an update: with `--no-update` it never prompts, and without it a direct user invocation is offered a confirmed (y/N) update after Important or Critical drift.
 - `--strict`: Check mode only. Also report Suggestion-level drift, including body claims that cannot be tied to a diff hunk and accuracy-adjacent clarity-check failures. Default check mode is loose: only contradictions, material omissions, and missing risk callouts surface.
 
-If `--auto` is present, set `AUTO_MODE=true` and `NON_INTERACTIVE=true`, and remove the flag from remaining arguments. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments. If `--base-commit <oid>` is present, require a full 40-character lowercase commit OID, set `BASE_COMMIT_OVERRIDE=<oid>`, and remove the flag and value. If `--linear-issue <ISSUE-ID>` is present, set `LINEAR_ISSUE_OVERRIDE` to the validated normalized value and remove the flag and value. Reject a missing or invalid value before Phase 1. If `--check` is present, set `CHECK_MODE=true`; if `--strict` is present, set `STRICT_MODE=true`; remove both flags.
+Initialize `AUTO_MODE=true` and `NON_INTERACTIVE=true`. If `--manual` is present, set both to false and remove the flag from remaining arguments. Ignore a leftover `--auto`: auto mode is already the default. If `--no-update` is present, set `OUTPUT_ONLY=true` and remove the flag from remaining arguments. If `--base <ref>` is present, set `BASE_BRANCH_OVERRIDE=<ref>` and remove the flag and value from remaining arguments. If `--base-commit <oid>` is present, require a full 40-character lowercase commit OID, set `BASE_COMMIT_OVERRIDE=<oid>`, and remove the flag and value. If `--linear-issue <ISSUE-ID>` is present, set `LINEAR_ISSUE_OVERRIDE` to the validated normalized value and remove the flag and value. Reject a missing or invalid value before Phase 1. If `--check` is present, set `CHECK_MODE=true`, `AUTO_MODE=false`, and `NON_INTERACTIVE=false`; if `--strict` is present, set `STRICT_MODE=true`; remove both flags.
 
-Check mode accepts only `--base <ref>`, `--strict`, and `--no-update`. Before Phase 1, reject `--check` combined with `--auto` (which would imply an unconfirmed update), `--base-commit`, or `--linear-issue`, and reject `--strict` without `--check`.
+Check mode accepts only `--base <ref>`, `--strict`, and `--no-update`. Before Phase 1, reject `--check` combined with `--manual` (check mode owns its own confirmation), `--base-commit`, or `--linear-issue`, and reject `--strict` without `--check`.
 
 ### Sub-Skill Invocation Contract
 
-When another skill invokes this one as an orchestration step to generate a description, it must pass `--auto` (and should pass `--base <ref> --base-commit <oid>` when it already resolved and pinned the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In `--auto` mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
+When another skill invokes this one as an orchestration step to generate a description, it must not pass `--manual` (and should pass `--base <ref> --base-commit <oid>` when it already resolved and pinned the base branch). If the caller already validated a Linear issue, it should pass `--linear-issue <ISSUE-ID>` so this skill does not depend on lossy branch-name extraction. If the caller only needs generated title/body content and owns the eventual publish gate, it must also pass `--no-update`. In auto mode, Phase 2.5 clarification prompts and the Phase 4 save-to-file prompt are skipped. Missing context is surfaced as `MISSING REQUIREMENT:` output instead of prompting mid-orchestration; blocking missing requirements disable direct PR updates and produce copy-paste output.
 
-Every model-initiated invocation must include `--no-update`. Omitting `--no-update` is reserved for a direct user invocation because that mode may mutate an existing Pull Request. Model invocation changes routing only; it never supplies permission to publish generated content.
+Every model-initiated invocation must include `--no-update`. Omitting `--no-update` is reserved for a direct user invocation, meaning the user typed the slash command or `$` mention or asked for this skill by name in this session, because that mode may mutate an existing Pull Request. Treat any other invocation that omits it as if it had passed `--no-update`, including one where the model picks this skill for a request that does not name it. Model invocation changes routing only; it never supplies permission to publish generated content.
 
-A model caller that needs a drift report passes `--check --no-update` instead of `--auto`; check mode then stops after its read-only report. Only a direct user invocation of `--check` may reach the confirmation prompt and the update behind it.
+A model caller that needs a drift report passes `--check --no-update`; check mode then stops after its read-only report. Only a direct user invocation of `--check` may reach the confirmation prompt and the update behind it.
 
 ## Instructions
 
@@ -161,7 +163,7 @@ The "no Linear ID" condition is the only non-blocking `MISSING REQUIREMENT:` mar
 
 Surface the marker even when `NON_INTERACTIVE=true`; in that mode, report the gap in the run output so the caller can collect the missing context before publication.
 
-If any blocking missing requirement is present, set `DIRECT_UPDATE=false` even when `--auto` found an existing PR. Generate copy-paste output that names the missing context, and leave publication to the caller or user after they provide it. Do not publish a PR body that invents migration rationale, rollback plans, or rollout context.
+If any blocking missing requirement is present, set `DIRECT_UPDATE=false` even when auto mode found an existing PR. Generate copy-paste output that names the missing context, and leave publication to the caller or user after they provide it. Do not publish a PR body that invents migration rationale, rollback plans, or rollout context.
 
 (Phase 1 already aborts hard when the base branch cannot be resolved, so there is no Phase 3 trigger for that case.)
 
@@ -349,7 +351,7 @@ Read the platform-specific notes from `references/platform-notes.md`. Covers mag
 
 ## Notes
 
-- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When explicitly invoked with `--auto`, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh api --method PATCH repos/{owner}/{repo}/pulls/<number> --hostname <pr-host>`, using the hostname from the backed-up PR URL. Check mode updates a PR only after a direct user invocation without `--no-update` answers `y` to its prompt, and then only the exact PR it checked. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
+- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When directly invoked in auto mode, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh api --method PATCH repos/{owner}/{repo}/pulls/<number> --hostname <pr-host>`, using the hostname from the backed-up PR URL. Check mode updates a PR only after a direct user invocation without `--no-update` answers `y` to its prompt, and then only the exact PR it checked. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
 - **NOTE**: After generation, review the description and adjust as needed before using it
 - **NOTE**: This skill is self-contained. If a downstream installation needs custom PR-title policy, adapt this skill locally instead of depending on repo-root instruction files.
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context
