@@ -150,7 +150,8 @@ class CloudLaunchTest(unittest.TestCase):
             self.calls(),
             [
                 ["--json", "workspace", "create", "--project-id", "proj_1", "--name", "DISC-1", "--agent", "claude"]
-                + ["--model", "opus-5-5-1m", "--message", "/kramme:linear:issue-to-pr DISC-1 --ship"],
+                + ["--model", "opus-5-5-1m"]
+                + ["--message", "/kramme-cc-workflow:kramme-linear-issue-to-pr DISC-1 --ship"],
                 ["--json", "workspace", "create", "--project-id", "proj_1", "--name", "DISC-2", "--agent", "codex"]
                 + ["--model", "gpt-5.5", "--message", "$kramme:linear:issue-to-pr DISC-2 --ship"],
             ],

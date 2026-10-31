@@ -29,9 +29,9 @@ JsonDict = Dict[str, Any]
 
 SCHEMA_VERSION = 1
 CONDUCTOR = "conductor"
-SKILL = "kramme:linear:issue-to-pr"
 # The first message is read as a user-typed skill invocation: a slash command in Claude Code, a $ mention in Codex.
-INVOCATION_PREFIXES = {"claude": "/", "codex": "$"}
+# A message sent from another session expands in Claude Code only under the plugin-qualified skill name.
+INVOCATIONS = {"claude": "/kramme-cc-workflow:kramme-linear-issue-to-pr", "codex": "$kramme:linear:issue-to-pr"}
 MAX_ITEMS = 25
 TIMEOUT_ENV = "KRAMME_CONDUCTOR_TIMEOUT_SECONDS"
 DEFAULT_TIMEOUT = 60
@@ -154,7 +154,7 @@ def validate_items(raw_items: Sequence[Sequence[str]]) -> list[tuple[str, str, s
             raise Stop("issue_invalid", f"{issue!r} is not a Linear issue identifier such as DISC-123.")
         if issue in seen:
             raise Stop("issue_duplicate", f"{issue} is listed more than once.")
-        if agent not in INVOCATION_PREFIXES:
+        if agent not in INVOCATIONS:
             raise Stop("agent_invalid", f"{agent!r} cannot run this plugin's skills; use claude or codex.")
         if not MODEL_RE.fullmatch(model):
             raise Stop("model_invalid", f"{model!r} is not a Conductor model id such as opus-5-5-1m.")
@@ -191,7 +191,7 @@ def launch(project_id: str, raw_items: Sequence[Sequence[str]]) -> JsonDict:
     results: list[JsonDict] = []
     stopped = False
     for issue, agent, model in items:
-        message = f"{INVOCATION_PREFIXES[agent]}{SKILL} {issue} --ship"
+        message = f"{INVOCATIONS[agent]} {issue} --ship"
         entry: JsonDict = {"issue": issue, "agent": agent, "model": model, "message": message}
         results.append(entry)
         if stopped:
