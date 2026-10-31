@@ -179,7 +179,9 @@
     grep -qF "whether those issues should use a different model than the None and Low ones" "$launch"
     grep -qF "Treat anything other than a clear yes with a selection as no, and start nothing." "$launch"
     grep -qF "Accept only the \`claude\` and \`codex\` agents" "$launch"
-    grep -qF "Never run \`launch\` again for the same issues in this run." "$launch"
+    grep -qF "Never run \`launch\` again for the same issues in this run, and never create workspaces with \`conductor\` directly." "$launch"
+    grep -qF "The helper retries only an HTTP 429 rate limit, which creates nothing" "$launch"
+    grep -qF "Run it in the foreground with the longest command timeout the host allows, at least 10 minutes" "$launch"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
