@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Read-only preflight for kramme:pr:create Steps 1-4.5.
 
-  python3 pr-create-preflight.py [--base <branch>] [--feature-branch <name>] [--linear-issue <ID>] [--auto]
+  python3 pr-create-preflight.py [--base <branch>] [--feature-branch <name>] [--linear-issue <ID>] [--manual]
 
 Prints one JSON document with `schema_version`, `status`, `reason`, `message`, and `facts`. Exit codes:
 0 `ok`; 1 `blocked` (`reason` names the gate); 2 `error` (invalid invocation or internal failure);
 3 `feature_branch_required` (the entry is detached or on the base and no `--feature-branch` was given) or
 `remote_classification_required` (origin has the branch at another commit, or at the exact tip with dirty
-`--auto` work; every other check passed).
+auto-mode work; every other check passed).
 
 The helper never creates branches, commits, or stashes, never pushes or changes configuration, and never
 prints the origin URL. Its only write is the base fetch that `scripts/resolve-base.sh` performs. Git and
@@ -336,8 +336,10 @@ def step_4_4(root: Path, options: argparse.Namespace, facts: JsonDict) -> str | 
     if current != facts["feature_branch"] or head != facts["entry_commit"]:
         raise blocked("entry_state_changed", "The current branch or HEAD changed during preflight.")
     if facts["worktree_status"]:
-        if not options.auto:
-            raise blocked("dirty_existing_remote", "Dirty work on an existing remote branch requires --auto.")
+        if options.manual:
+            raise blocked(
+                "dirty_existing_remote", "Dirty work on an existing remote branch cannot be included under --manual."
+            )
         return None
     clean = run([str(VERIFY_CLEAN)], root, "worktree_not_clean")
     if clean.returncode != 0:
@@ -420,7 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base")
     parser.add_argument("--feature-branch")
     parser.add_argument("--linear-issue")
-    parser.add_argument("--auto", action="store_true")
+    parser.add_argument("--manual", action="store_true")
     return parser
 
 

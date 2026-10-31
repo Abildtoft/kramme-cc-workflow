@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:create
 description: "Publish a new PR: narrative commits, generated title and body, self-assignment, lease-protected first push. Use when asked or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr --ship."
-argument-hint: "[--auto] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
+argument-hint: "[--manual] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -12,13 +12,14 @@ Orchestrate the creation of a clean, well-documented PR by validating git state,
 
 ### Model Invocation Contract
 
-- Invoke automatically only as a delegated child of `kramme:linear:issue-to-pr` or `kramme:code:plan-to-pr`, with the caller's `--auto` authorization and its required generated-description flags (`--linear-issue` where supplied, `--require-generated-description`, and any caller-owned history-rewrite guard).
+- Invoke automatically only as a delegated child of `kramme:linear:issue-to-pr` or `kramme:code:plan-to-pr`, with the caller's auto-mode authorization and its required generated-description flags (`--linear-issue` where supplied, `--require-generated-description`, and any caller-owned history-rewrite guard).
 - No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; preserve every branch, backup, remote-absence or lease, description, self-assignment, and Pull Request proof, and never publish outside the current caller-prepared work.
+- Auto mode is reserved for a direct user invocation and for those two parent delegations, which always pass `--require-generated-description`. A direct user invocation means the user typed the slash command or `$` mention, or asked for this skill by name in this session. Every other invocation runs as `--manual`, whether or not it passes that flag, including one where the model picks this skill for a request that does not name it.
 
 ## When NOT to use this skill
 
 - Branch already has an open PR — update it directly (or use `kramme:pr:generate-description` to refresh the description) instead of running the full creation flow.
-- The feature branch exists on `origin` and contains commits absent locally, has genuinely diverged, or is not the current branch. Existing-remote modes never merge, switch branches, or rewrite published history; coordinate and use a fresh branch when the remote cannot be safely reused or fast-forwarded. Dirty existing branches are accepted only in `--auto` mode, which explicitly includes all local work.
+- The feature branch exists on `origin` and contains commits absent locally, has genuinely diverged, or is not the current branch. Existing-remote modes never merge, switch branches, or rewrite published history; coordinate and use a fresh branch when the remote cannot be safely reused or fast-forwarded. Dirty existing branches are accepted only in auto mode, which explicitly includes all local work.
 - Hotfix / cherry-pick that must preserve exact commit boundaries — `recreate-commits` will reorganize history. Push and `gh pr create` manually.
 - Working in a stacked-PR setup where the base is another feature branch — use `kramme:pr:stack` instead: it creates and submits the whole chain with correct base branches via the gh-stack CLI. This skill's `--base` is for selecting the repository's workbench when its remote default has a different role.
 - The current branch hasn't diverged from the base branch — Step 4 will abort, but skip running the skill in the first place.
@@ -47,7 +48,7 @@ Step 4.5 Reject stacked branches
     |
     +-- Existing ancestor tip, clean: skip rewrite and preserve/publish local commits
     |
-    +-- Existing safe tip, dirty + --auto: preserve published commits,
+    +-- Existing safe tip, dirty + auto mode: preserve published commits,
                                          recreate only the unpublished tail
     |
 Step 7  Invoke kramme:pr:generate-description (fail closed in auto mode)
@@ -62,7 +63,7 @@ Step 9  Success output
 
 ## Workflow rule — do not stop mid-flow
 
-The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool, except that Step 6.0 may keep well-formed fresh-branch commits and skip `recreate-commits`. Exact-tip recovery and clean remote fast-forward mode skip Step 6 and invoke only Step 7 because both preserve the existing local commit history. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, a `--auto`-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
+The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool, except that Step 6.0 may keep well-formed fresh-branch commits and skip `recreate-commits`. Exact-tip recovery and clean remote fast-forward mode skip Step 6 and invoke only Step 7 because both preserve the existing local commit history. After a sub-skill returns, **continue to the next step in this skill**. Do not summarize and wait for user input between sub-skills. The only stop points are: the Step 5 uncommitted-work decision when `AUTO_MODE=false`, a confirmation prompt that explicitly requires input, an auto-mode-suppressed prompt that hits a hard blocker, or a routed-to Step 10 abort.
 
 ## References
 
@@ -77,17 +78,17 @@ The fresh-remote and remote-append paths invoke Steps 6 and 7 via the Skill tool
 
 Parse `$ARGUMENTS` for optional flags before starting:
 
-- `--auto` -> set `AUTO_MODE=true` and `REQUIRE_GENERATED_DESCRIPTION=true`, then remove the flag from the remaining arguments. Auto mode authorizes the nested unstacked rewrite but does not synthesize the separate stack-wide authorization capability.
+- `--manual` -> set `AUTO_MODE=false` and remove the flag from the remaining arguments. Auto mode authorizes the nested unstacked rewrite but does not synthesize the separate stack-wide authorization capability.
 - `--draft` -> set `DRAFT_MODE=true` and remove the flag from the remaining arguments.
 - `--rebase` (alias: `--rebase-first`) -> set `REBASE_FIRST=true` and remove the flag from the remaining arguments. Both spellings are equivalent; supplying both is the same as supplying one. The delegated rebase runs before feature-branch selection and the workflow restarts after it completes.
 - `--base <branch>` -> store one explicit workbench branch as `BASE_BRANCH_OVERRIDE` and remove the flag and value. Reject a missing or duplicate value. Apply the ref trust boundary in `references/branch-and-platform-handling.md` before passing this value to the shared resolver; never interpret it as permission to create a stacked PR.
 - `--linear-issue <ISSUE-ID>` -> validate the value against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, store it as `LINEAR_ISSUE_OVERRIDE`, and remove the flag and value. Reject a missing or invalid value before pre-validation. This caller-supplied identifier is authoritative and takes precedence over branch-name extraction.
 - `--require-generated-description` -> set `REQUIRE_GENERATED_DESCRIPTION=true` and remove the flag. This orchestration-only safety mode forbids placeholder fallback when `kramme:pr:generate-description` returns no usable output.
-- `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a non-auto invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, existing-PR, or path-specific remote-state checks. Backup and remote absence apply to the fresh-remote rewrite path; exact-tip recovery never pushes; clean remote fast-forward mode preserves local history; remote append rewrites only the unpublished tail after its captured remote OID. Every existing-remote publication uses a lease tied to that OID.
+- `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a `--manual` invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, existing-PR, or path-specific remote-state checks. Backup and remote absence apply to the fresh-remote rewrite path; exact-tip recovery never pushes; clean remote fast-forward mode preserves local history; remote append rewrites only the unpublished tail after its captured remote OID. Every existing-remote publication uses a lease tied to that OID.
 
-Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REBASE_FIRST=false`, `BASE_BRANCH_OVERRIDE=<none>`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant.
+Defaults: `AUTO_MODE=true`, `DRAFT_MODE=false`, `REBASE_FIRST=false`, `BASE_BRANCH_OVERRIDE=<none>`, `REQUIRE_GENERATED_DESCRIPTION=false`, `AUTHORIZE_HISTORY_REWRITE=false`. Flag order is not significant. Ignore a leftover `--auto`: auto mode is already the default.
 
-`--auto` means:
+Auto mode means:
 
 - keep unpublished fresh-branch commits that pass Step 6.0; otherwise use the recommended commit structure (`Narrative`)
 - invoke downstream skills in non-interactive mode
@@ -98,7 +99,9 @@ Defaults: `AUTO_MODE=false`, `DRAFT_MODE=false`, `REBASE_FIRST=false`, `BASE_BRA
 - choose the recommended branch-handling path from the shared reference instructions
 - stop only on hard blockers
 
-`--auto` is fully non-interactive: while `AUTO_MODE=true`, never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts. Choose a documented deterministic fallback when one exists; otherwise report the hard blocker, execute Step 10 when state preservation has started and no publication was attempted, and stop. After any push attempt, use only the mode-specific outcome handling in Step 8; never infer that a non-zero command result makes destructive local rollback safe. It still stops on failed validation, missing dependencies or required context, an existing Pull Request, remote-only work, genuine divergence, an unsafe or changing existing-remote boundary, backup creation failure, lease mismatch, or any other hard blocker.
+Auto mode is fully non-interactive: while `AUTO_MODE=true`, never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts. Choose a documented deterministic fallback when one exists; otherwise report the hard blocker, execute Step 10 when state preservation has started and no publication was attempted, and stop. After any push attempt, use only the mode-specific outcome handling in Step 8; never infer that a non-zero command result makes destructive local rollback safe. It still stops on failed validation, missing dependencies or required context, an existing Pull Request, remote-only work, genuine divergence, an unsafe or changing existing-remote boundary, backup creation failure, lease mismatch, or any other hard blocker.
+
+`--manual` means: ask how to handle uncommitted work and how to structure commits, confirm before the nested reset and before publication, and stop on dirty work on an existing remote.
 
 `--draft` means:
 
@@ -110,10 +113,10 @@ Without `--draft`, the PR is created ready for review.
 
 ## Preflight Helper
 
-Steps 1–4.5 are mechanical checks. Run them in one call, adding `--base "{BASE_BRANCH_OVERRIDE}"`, `--linear-issue {LINEAR_ISSUE_OVERRIDE}`, and `--auto` only when Step 0 set them:
+Steps 1–4.5 are mechanical checks. Run them in one call, adding `--base "{BASE_BRANCH_OVERRIDE}"`, `--linear-issue {LINEAR_ISSUE_OVERRIDE}`, and `--manual` only when Step 0 set them:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py" [--base "{BASE_BRANCH_OVERRIDE}"] [--linear-issue {LINEAR_ISSUE_OVERRIDE}] [--auto]
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py" [--base "{BASE_BRANCH_OVERRIDE}"] [--linear-issue {LINEAR_ISSUE_OVERRIDE}] [--manual]
 ```
 
 The helper is read-only apart from the base fetch the shared resolver performs: it never creates branches, commits, stashes, pushes, or changes configuration, and never prints the origin URL. It prints one JSON document; parse it as JSON and never `eval` or source it. Use its `facts` as the agent-tracked values for the rest of the invocation: `entry_branch` (`null` means `<detached>`) as `{entry-branch}`, `entry_commit` as `{entry-commit}`, `base_source_ref` as `{base-source-ref}`, `base_ref` as `{base-ref}`, `base_branch` as `{base-branch}`, `feature_branch` as `{feature-branch}`, `linear_issue_id` as `{linear-issue-id}`, `observed_origin_oid` (`null` means `<absent>`) as `{observed-origin-oid}`, `branch_action` as `{branch-action}`, and `worktree_status` as `{worktree-status}`. Initialize `{feature-branch-created}=false`. Route on `status`:
@@ -121,7 +124,7 @@ The helper is read-only apart from the base fetch the shared resolver performs: 
 - `ok` (exit 0) — Steps 1–4.5 passed. `remote_mode` `fresh` sets `FRESH_REMOTE_MODE=true`; `recovery` sets `REMOTE_RECOVERY_MODE=true`. Continue with Step 5.
 - `blocked` (exit 1) — stop and report `reason`, `message`, and `details`. For a Step 1 reason, read `references/pre-validation-checks.md` only to word the error and its recovery steps.
 - `feature_branch_required` (exit 3) — the entry is detached or on `{base-branch}`. Name a branch from `facts.changed_paths` or the Linear issue per "Detached HEAD or currently on the base" in `references/branch-and-platform-handling.md`, apply its ref trust boundary, then rerun the helper with the same flags plus `--feature-branch "{validated-candidate}"`.
-- `remote_classification_required` (exit 3) — origin already has the current branch and every other check, including Step 4.5, passed. When `branch_action` is `null`, the remote tip differs from `{entry-commit}`: classify it with the frozen-endpoint procedure in `references/branch-and-platform-handling.md`, starting at "If they differ, freeze the one effective push endpoint". When it is `reuse-existing-exact-tip`, the tip matches but `--auto` must include dirty work. Then finalize the mode in Step 4.4.
+- `remote_classification_required` (exit 3) — origin already has the current branch and every other check, including Step 4.5, passed. When `branch_action` is `null`, the remote tip differs from `{entry-commit}`: classify it with the frozen-endpoint procedure in `references/branch-and-platform-handling.md`, starting at "If they differ, freeze the one effective push endpoint". When it is `reuse-existing-exact-tip`, the tip matches but auto mode must include dirty work. Then finalize the mode in Step 4.4.
 - `error` (exit 2), or missing or malformed output — stop and report it; never guess the state.
 
 The helper's protected-branch guard covers `main`, `master`, `kramme.baseBranch`, the `origin/HEAD` target, and `CONDUCTOR_DEFAULT_BRANCH`. Before continuing, also apply any protected, workbench, or production branch named in repository instructions to `{entry-branch}` and `{feature-branch}`.
@@ -213,7 +216,7 @@ Nothing to create a PR for. Make some changes first, then run /kramme:pr:create 
 
 ## Step 4.4: Finalize the Remote Mode
 
-The helper sets `remote_mode` to `fresh`, or to `recovery` only after the clean-worktree proof below passes; it blocks a dirty exact tip without `--auto`. Apply the rest of this step after classifying an existing remote.
+The helper sets `remote_mode` to `fresh`, or to `recovery` only after the clean-worktree proof below passes; it blocks a dirty exact tip under `--manual`. Apply the rest of this step after classifying an existing remote.
 
 Initialize `FRESH_REMOTE_MODE=false`. Initialize `REMOTE_RECOVERY_MODE=false`. Initialize `REMOTE_FAST_FORWARD_MODE=false`. Initialize `REMOTE_APPEND_MODE=false`.
 
@@ -234,7 +237,7 @@ If `{branch-action}=fast-forward-existing-remote`, require the same current-bran
 
 The clean fast-forward path preserves the local commits exactly as authored and never invokes `kramme:git:recreate-commits`. Step 8 must revalidate the local tip, frozen push endpoint, remote OID, clean tree, and strict-ancestor relationship, then update that endpoint with immutable `{publication-commit}` and a lease tied to `{observed-origin-oid}`. A changed remote tip must fail even when it remains an ancestor of local `HEAD`.
 
-When either existing-remote branch action has non-empty `{worktree-status}`, require `AUTO_MODE=true`; a non-auto invocation stops without mutating the worktree because it has no explicit include decision. When `AUTO_MODE=true`, route dirty existing-remote work to `REMOTE_APPEND_MODE` only after all of these checks succeed:
+When either existing-remote branch action has non-empty `{worktree-status}`, require `AUTO_MODE=true`; a `--manual` invocation stops without mutating the worktree because it has no explicit include decision. When `AUTO_MODE=true`, route dirty existing-remote work to `REMOTE_APPEND_MODE` only after all of these checks succeed:
 
 - Revalidate the same current branch and unchanged `{entry-commit}` requirements used by the clean mode.
 - Resolve and freeze `{origin-push-url-assignment}` with `scripts/resolve-origin-push-url.sh` when exact-tip classification did not already do so. The helper must reject inline credentials, other credential-bearing URL syntax, executable remote-helper forms, and unsupported transports before returning an assignment. Preserve its shell-quoted assignment bytes; never carry the decoded URL as agent state or substitute it directly into later shell source.
@@ -318,16 +321,16 @@ multiSelect: false
 
 ### 6.2 Invoke the Skill
 
-**IMPORTANT:** Use the Skill tool to invoke `recreate-commits`. Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push` so the nested rewrite retains branch metadata, uses the same pinned base commit, gets a retry-safe recovery ref, and enforces this workflow's unstacked-only authorization while this orchestrator remains the sole remote-mutation owner. When `REMOTE_APPEND_MODE=true`, also pass `--after {observed-origin-oid}` so the published prefix cannot be rewritten. Also pass `--auto` when `AUTO_MODE=true`, and pass `--authorize-history-rewrite` only when the user supplied that flag and `AUTHORIZE_HISTORY_REWRITE=true`. Step 4.5 already proved the branch is unstacked; any later stack detection is state drift and `--require-unstacked` must stop the nested skill before reset. When both variables are explicitly true, pass both flags.
+**IMPORTANT:** Use the Skill tool to invoke `recreate-commits`. Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push` so the nested rewrite retains branch metadata, uses the same pinned base commit, gets a retry-safe recovery ref, and enforces this workflow's unstacked-only authorization while this orchestrator remains the sole remote-mutation owner. When `REMOTE_APPEND_MODE=true`, also pass `--after {observed-origin-oid}` so the published prefix cannot be rewritten. Also pass `--manual` when `AUTO_MODE=false`, and pass `--authorize-history-rewrite` only when the user supplied that flag and `AUTHORIZE_HISTORY_REWRITE=true`. Step 4.5 already proved the branch is unstacked; any later stack detection is state drift and `--require-unstacked` must stop the nested skill before reset.
 
 Examples:
 
 ```yaml
 skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push"
 skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push --authorize-history-rewrite"
-skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push"
-skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push --authorize-history-rewrite"
-skill: "kramme:git:recreate-commits", args: "--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --after {observed-origin-oid} --require-unstacked --no-push"
+skill: "kramme:git:recreate-commits", args: "--manual --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push"
+skill: "kramme:git:recreate-commits", args: "--manual --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push --authorize-history-rewrite"
+skill: "kramme:git:recreate-commits", args: "--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --after {observed-origin-oid} --require-unstacked --no-push"
 ```
 
 The final example is the only remote-append invocation. After it returns, capture the rewritten local `HEAD` as `{publication-commit}`. Require a full 40-character lowercase commit OID, require it to differ from `{observed-origin-oid}`, and require `git merge-base --is-ancestor "{observed-origin-oid}" "{publication-commit}"` to succeed before Step 7. On any postcondition failure, execute Step 10 and stop.
@@ -373,7 +376,7 @@ Recovery:
 
 ### 7.1 Invoke the Skill
 
-Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--auto --no-update --base {base-source-ref} --base-commit {base-ref}` because this orchestrator owns the review/edit gate, the sub-skill must use the same pinned base commit while retaining branch metadata, and it must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation. When `{linear-issue-id}` is set, also pass `--linear-issue {linear-issue-id}` so the generator uses the validated identifier instead of re-extracting it from the branch.
+Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--no-update --base {base-source-ref} --base-commit {base-ref}`, and never `--manual`, because this orchestrator owns the review/edit gate, the sub-skill must use the same pinned base commit while retaining branch metadata, and it must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation. When `{linear-issue-id}` is set, also pass `--linear-issue {linear-issue-id}` so the generator uses the validated identifier instead of re-extracting it from the branch.
 
 The skill will:
 

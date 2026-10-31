@@ -1,7 +1,7 @@
 ---
 name: kramme:git:recreate-commits
 description: "Rewrite unpublished history into narrative commits behind a backup ref. Use when asked or when kramme:pr:create delegates its guarded rewrite. Not for merged or shared branches."
-argument-hint: "[--auto] [--coarse|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]"
+argument-hint: "[--manual] [--coarse|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -14,16 +14,19 @@ This rewrites history and requires a force-push to sync any existing remote hist
 
 - Invoke automatically only when the user clearly requested commit recreation or an active `kramme:pr:create` invocation explicitly delegates this phase. Do not infer authorization merely because a branch appears ready for cleanup or Pull Request creation.
 - The guarded `kramme:pr:create` delegation must pass `--require-unstacked --no-push`, its pinned base commit, and its retry-safe backup ref. No other parent workflow is authorized by the model-invocation exception.
-- Outside that exact `kramme:pr:create` delegation, never invent `--auto` or `--authorize-history-rewrite`. Without those caller-supplied flags, retain every documented confirmation before reset, restack, or publication.
+- Auto mode is reserved for a direct user invocation and for that guarded delegation. A direct user invocation means the user typed the slash command or `$` mention, or asked for this skill by name in this session. Every other invocation runs as `--manual`, whether or not it passes that flag, including one where the model picks this skill for a request that does not name it.
+- Outside that exact `kramme:pr:create` delegation, never invent `--authorize-history-rewrite`. Under `--manual` and without that caller-supplied flag, retain every documented confirmation before reset, restack, or publication.
 - The model must never invent `--force-backup`. It may pass `--backup-ref` automatically only with the exact retry-safe value supplied by `kramme:pr:create`; outside that delegation, the user must have supplied the exact `--backup-ref` value. These flags can create or repoint a local branch before the reset confirmation, so a general request to recreate commits is not authorization to originate them.
 - Model invocation changes routing only. It does not relax backup creation, branch and stack validation, final-tree identity, or lease-protected publication.
 
 **When not to use:** Don't run this on a branch that is already merged, on a protected or shared base branch, or on a branch other contributors have based active work on without coordinating first — the recreation rewrites history and the remote can only be updated with a force-push.
 
+Auto mode is the default: skip the granularity question, automatically choose the best granularity based on diff size and complexity unless `--coarse` or `--granular` pins it, and authorize one backup-protected unstacked history rewrite. Unless `--no-push` is also set, it authorizes that branch's lease-protected force-push too. A stacked rewrite additionally requires `--authorize-history-rewrite`; auto mode never authorizes stack-wide mutation by itself. No mode bypasses backup creation, branch validation, final-tree identity, or force-with-lease. Ignore a leftover `--auto`: auto mode is already the default.
+
 **Flags:**
 
-- `--auto` — Skip the granularity question, automatically choose the best granularity based on diff size and complexity unless `--coarse` or `--granular` pins it, and authorize one backup-protected unstacked history rewrite. Unless `--no-push` is also set, it authorizes that branch's lease-protected force-push too. A stacked rewrite additionally requires `--authorize-history-rewrite`; `--auto` never authorizes stack-wide mutation by itself. Neither flag bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
-- `--coarse` — Force coarse decomposition: one commit per major grouping (typically 5–15 commits). Skips the granularity question but does not authorize the history rewrite or publication by itself. Combine it with `--auto` to retain all other auto-mode behavior while pinning coarse granularity. Do not combine it with `--granular`.
+- `--manual` — Turn off auto mode: ask for the granularity on a large diff, and confirm before the reset and before any force-push.
+- `--coarse` — Force coarse decomposition: one commit per major grouping (typically 5–15 commits). Skips the granularity question but does not authorize the history rewrite or publication by itself: auto mode keeps authorizing them, and `--manual` keeps their confirmations. Do not combine it with `--granular`.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
 - `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the shared resolver checks an existing GitHub Pull Request, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`, `origin/main`, or `origin/master`.
 - `--base-commit <oid>` — Pin diff and reset-point calculation to a caller-validated full commit OID while retaining the branch metadata from `--base`. Use this when a parent workflow must keep one base snapshot across multiple delegated skills.
@@ -32,7 +35,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 - `--force-backup` — Allow the resolution script to replace an existing `<branch>-recreate-backup` branch after you have inspected that backup and confirmed it is safe to move. An exact-tip backup is reused idempotently without this flag; a backup at any different tip makes the script stop so retries cannot destroy the original recovery point.
 - `--require-unstacked` — Require the branch to remain outside every local or server-side stack when membership is resolved immediately before rewrite authorization. Set `REQUIRE_UNSTACKED=true` when present and stop before reset if membership is anything other than `none`. `kramme:pr:create` always passes this flag to preserve its earlier unstacked-only authorization across delegation.
 - `--no-push` — Rewrite and verify the local branch but do not mutate its remote. Report that synchronization is delegated to the caller. `kramme:pr:create` always uses this mode so description generation and confirmation finish before the only remote update.
-- `--authorize-history-rewrite` — Explicit authorization to skip the reset confirmation and, unless `--no-push` is also set, the publication confirmation. It is optional for an unstacked auto invocation but required in addition to `--auto` before auto mode may rewrite or publish a stack. It never bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
+- `--authorize-history-rewrite` — Explicit authorization to skip the reset confirmation and, unless `--no-push` is also set, the publication confirmation. It is optional for an unstacked auto-mode invocation but required before auto mode may rewrite or publish a stack. It never bypasses backup creation, branch validation, final-tree identity, or force-with-lease.
 
 ## Steps
 
@@ -77,7 +80,7 @@ This rewrites history and requires a force-push to sync any existing remote hist
 
    Set `IN_STACK=true` only for `STACK_MEMBERSHIP=local`; set it false for `none`. If membership is `remote`, stop before the reset: the PR is stacked on GitHub but not tracked locally. Install the extension if needed, run `gh stack checkout "$STACK_PR_NUMBER"` from a clean working tree, then retry. Authentication, API, parsing, and unexpected CLI failures also stop rather than falling through to the single-branch flow.
 
-   If `IN_STACK=true` and `--auto` was passed without `--authorize-history-rewrite`, stop before the reset. Auto mode alone authorizes only the current unstacked branch; the additional flag is the explicit approval for restacking and publishing every affected branch. A non-auto stack invocation may instead obtain the explicit stack-wide confirmations below.
+   If `IN_STACK=true` and neither `--manual` nor `--authorize-history-rewrite` was passed, stop before the reset and name both flags. Auto mode alone authorizes only the current unstacked branch; the additional flag is the explicit approval for restacking and publishing every affected branch. A `--manual` stack invocation may instead obtain the explicit stack-wide confirmations below.
 
    When `IN_STACK=true`, freeze and validate the full local stack boundary for every later confirmation:
 
@@ -156,13 +159,13 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 
    **Assess diff size and determine granularity.** After analyzing the diff, assess whether the PR is large (many files changed, significant lines added/removed, multiple distinct features or areas touched).
 
-   If `--coarse` was combined with `--granular`, stop and ask the caller to choose one fixed granularity. `--coarse` selects **Coarse** granularity unconditionally and skips the granularity question. `--granular` selects **Atomic** granularity unconditionally and skips the granularity question. When `--auto` accompanies either fixed-granularity flag, that flag replaces automatic granularity selection and every other auto-mode behavior remains in effect. `--auto` without a fixed-granularity flag selects the most appropriate granularity based on diff size and complexity and skips the question. Otherwise, if the diff is large, ask the user which granularity level they want before planning:
+   If `--coarse` was combined with `--granular`, stop and ask the caller to choose one fixed granularity. `--coarse` selects **Coarse** granularity unconditionally and skips the granularity question. `--granular` selects **Atomic** granularity unconditionally and skips the granularity question. In auto mode, either fixed-granularity flag replaces automatic granularity selection and every other auto-mode behavior remains in effect. Auto mode without a fixed-granularity flag selects the most appropriate granularity based on diff size and complexity and skips the question. Otherwise, with `--manual` and no fixed-granularity flag, if the diff is large, ask the user which granularity level they want before planning:
    - **Coarse** — One commit per major grouping (~5-15 commits)
    - **Medium (recommended)** — Break each major grouping into several commits (~15-30 commits)
    - **Fine** — Recursively break down until each commit is a significant, self-standing change (~30-60+ commits)
    - **Atomic** — Deepest possible decomposition. Each commit introduces exactly one logical addition: a single function, type, config entry, import block, or test case. There is no upper bound on commit count — 100, 200, or 300+ commits are all acceptable if the diff warrants it.
 
-   For normal-sized PRs (without `--auto`), skip this question and plan as usual.
+   For normal-sized PRs under `--manual`, skip this question and plan as usual.
 
    **Use recursive decomposition to plan commits:**
    1. **First pass:** Identify the major groupings of work (e.g., "add auth middleware", "implement user API", "add tests"). For **coarse** granularity, stop here — each grouping becomes one commit.
@@ -173,7 +176,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
    Flatten the tree into a linear commit sequence that tells a coherent narrative — each step should reflect a logical stage of development, as if writing a tutorial. If two planned commits would need the same summary sentence, they are one commit.
 
 5. **Reimplement the work**
-   - Before resetting, unless `--authorize-history-rewrite` was passed or (`--auto` was passed and `IN_STACK=false`), obtain the applicable confirmation. The original tip is preserved at `BACKUP_REF`, so the reset is recoverable, but destructive to the working tree. Auto or explicit authorization skips only this prompt within the boundary described above, not the backup or validation requirements.
+   - Before resetting, unless `--authorize-history-rewrite` was passed or (auto mode is active and `IN_STACK=false`), obtain the applicable confirmation. The original tip is preserved at `BACKUP_REF`, so the reset is recoverable, but destructive to the working tree. Auto or explicit authorization skips only this prompt within the boundary described above, not the backup or validation requirements.
      - If `IN_STACK=false`, confirm that the user authorizes rewriting `ORIGINAL_BRANCH`.
      - If `IN_STACK=true`, enumerate every branch in `STACK_BRANCHES`, explain that `ORIGINAL_BRANCH` will be reset and branches above it may be rewritten by the local upstack restack, then require explicit confirmation authorizing both the reset and that restack. A generic confirmation mentioning only the current branch is insufficient.
    - Immediately before resetting, revalidate the branch, original tip, ordinary untracked work, and ignored paths that overlap the reset point:
@@ -196,7 +199,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
        --reset-point "$RESET_POINT"
      ```
 
-     Run the stack-revalidation block above only when the parsed agent state has `REQUIRE_UNSTACKED=true`; omit it for ordinary direct invocations that may intentionally rewrite a local stack. Do not wrap it in a shell-local `REQUIRE_UNSTACKED` conditional: argument parsing and this destructive boundary run in separate shell invocations. Under `REQUIRE_UNSTACKED=true`, any local or server-side membership is state drift from the parent workflow's validated boundary: stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed. Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches.
+     Run the stack-revalidation block above only when the parsed agent state has `REQUIRE_UNSTACKED=true`; omit it for ordinary direct invocations that may intentionally rewrite a local stack. Do not wrap it in a shell-local `REQUIRE_UNSTACKED` conditional: argument parsing and this destructive boundary run in separate shell invocations. Under `REQUIRE_UNSTACKED=true`, any local or server-side membership is state drift from the parent workflow's validated boundary: stop before the reset, even in auto mode or when `--authorize-history-rewrite` was passed. Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches.
 
      Any failure stops the workflow. Do not rely only on the earlier backup-time or stack-membership validation: diff analysis and commit planning create a real window in which the checkout or authorization boundary can change.
 
@@ -228,7 +231,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
    - If `--no-push` was passed, do not run any push command. The local restack above still applies. Report remote synchronization as delegated in `POTENTIAL CONCERNS`, then continue to the final summary.
    - If the unstacked branch resolved no `PUSH_LEASE_OID` and has no Pull Request, skip this step — the recreation is local-only.
    - Otherwise the rewritten history has diverged from the remote and a force-push is required. Before pushing:
-     - Before pushing, unless `--authorize-history-rewrite` was passed or (`--auto` was passed and `IN_STACK=false`), obtain the applicable publication confirmation and warn explicitly if others may have based active work on any listed branch. For an unstacked branch, confirm the single validated push target. For a stack, enumerate every branch in the frozen `STACK_BRANCHES` list, state that `gh stack push` performs an atomic whole-stack force-with-lease publication, and require explicit confirmation authorizing that whole-stack push. A reset/restack confirmation does not also authorize publication. Auto or explicit authorization skips the prompt only within the same unstacked/stacked boundary as the reset, not the warning or safety checks.
+     - Before pushing, unless `--authorize-history-rewrite` was passed or (auto mode is active and `IN_STACK=false`), obtain the applicable publication confirmation and warn explicitly if others may have based active work on any listed branch. For an unstacked branch, confirm the single validated push target. For a stack, enumerate every branch in the frozen `STACK_BRANCHES` list, state that `gh stack push` performs an atomic whole-stack force-with-lease publication, and require explicit confirmation authorizing that whole-stack push. A reset/restack confirmation does not also authorize publication. Auto or explicit authorization skips the prompt only within the same unstacked/stacked boundary as the reset, not the warning or safety checks.
      - For an unstacked branch, require the checkout to remain on `PUSH_SOURCE_BRANCH`, then push exactly one validated remote ref with the captured lease:
 
        ```bash
@@ -311,5 +314,5 @@ Use these uppercase markers when reasoning about the recreation plan and reporti
 - **NOTICED BUT NOT TOUCHING** — adjacent cleanups that could have slipped in but didn't. `NOTICED BUT NOT TOUCHING: a stale comment in an untouched file — outside the recreation scope`.
 - **CHANGES MADE / THINGS I DIDN'T TOUCH / POTENTIAL CONCERNS** — required end-of-run summary (see Step 8).
 - **CONFUSION** — signals in the original history that don't match the final state. `CONFUSION: can't tell if the Phase 2 rename was intentional or accidental — folded into the rename commit`.
-- **MISSING REQUIREMENT** — input needed before reimplementation can proceed. `MISSING REQUIREMENT: granularity not specified and --auto not passed — asking the user before planning`.
+- **MISSING REQUIREMENT** — input needed before reimplementation can proceed. `MISSING REQUIREMENT: granularity not specified under --manual — asking the user before planning`.
 - **PLAN** — commit storyline announced before executing. `PLAN: 12 commits across 3 groupings — auth middleware, user API, tests`.
