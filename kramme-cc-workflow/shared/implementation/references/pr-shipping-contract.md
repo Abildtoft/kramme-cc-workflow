@@ -12,7 +12,7 @@ Apply this contract only after the caller supplied `--ship`, `kramme:pr:review-c
 | `{work-branch}` | The prepared local branch this invocation may publish. |
 | `{pre-publication-hook}` | Caller work that must finish before the clean-tree check and history rewriting. |
 | `{scope-proof}` | Caller proof that dirty and committed paths belong to the work item, with its disposition for paths that do not. |
-| `{create-invocation}` | The exact `kramme:pr:create --auto ... --require-generated-description` invocation, including caller identity, base, or history-rewrite arguments. |
+| `{create-invocation}` | The exact `kramme:pr:create ... --require-generated-description` invocation, including caller identity, base, or history-rewrite arguments. |
 | `{post-create-hook}` | Caller work that must finish after the initial shipped result is proven and before CI stabilization. |
 | `{fix-ci-invocation}` | The exact `kramme:pr:fix-ci --no-consolidate` invocation, including caller scope arguments; also the recovery invocation for a later session. |
 | `{fix-ci-guard}` | Caller check applied before every fix commit or push made by `{fix-ci-invocation}`. |
@@ -65,7 +65,7 @@ Store the result as `{verified-tree}`. This is the exact source tree covered by 
 
 ## Step 5: Create the Pull Request
 
-Invoke `{create-invocation}` using the platform's skill mechanism. `--require-generated-description` makes unusable generator output a rollback-triggering blocker instead of allowing a placeholder fallback body. `--auto` carries the invocation through the backup-protected local reset without prompting; the delegated workflow separately requires the remote branch to be absent and creates it with an exact absence lease.
+Invoke `{create-invocation}` using the platform's skill mechanism. `--require-generated-description` makes unusable generator output a rollback-triggering blocker instead of allowing a placeholder fallback body. The delegated skill's auto mode carries the invocation through the backup-protected local reset without prompting; the delegated workflow separately requires the remote branch to be absent and creates it with an exact absence lease.
 
 The delegated skill owns pre-validation, base-branch detection, state preservation, narrative commit recreation, description generation, the sole pre-PR remote push, self-assignment, Pull Request creation, and rollback on failure. Capture its validated `{base-branch}` as `{expected-base-branch}`; if that value is unavailable, stop because the workflow cannot prove that the created Pull Request targets the intended base. Its recreate-commits delegate runs with `--no-push`, so description failure cannot publish rewritten history. Continue after it returns; do not stop at an intermediate sub-skill summary.
 
@@ -92,7 +92,7 @@ After the proof passes, run `{post-create-hook}` when it is not `none`. If it fa
 
 After the initial shipped result is proven, invoke `{fix-ci-invocation}`.
 
-The delegated skill owns CI-status inspection, failed-log analysis, review-feedback validation, targeted fixes, scoped commits and pushes, waiting for checks, and its bounded stop conditions. The `--no-consolidate` flag is required: keep `[FIX PIPELINE]` commits visible rather than force-pushing an already-open Pull Request. Do not combine it with `--auto`. When `{fix-ci-guard}` is not `none`, apply it before every fix commit or push; when valid feedback needs a change the guard rejects, stop before editing, staging, committing, or pushing that fix. When it is `none`, apply no additional guard.
+The delegated skill owns CI-status inspection, failed-log analysis, review-feedback validation, targeted fixes, scoped commits and pushes, waiting for checks, and its bounded stop conditions. The `--no-consolidate` flag is required: keep `[FIX PIPELINE]` commits visible rather than force-pushing an already-open Pull Request. It also turns off auto mode in that delegated skill, so the run never decides on its own to rebase that Pull Request. When `{fix-ci-guard}` is not `none`, apply it before every fix commit or push; when valid feedback needs a change the guard rejects, stop before editing, staging, committing, or pushing that fix. When it is `none`, apply no additional guard.
 
 Continue only when the delegated skill reports all checks green, no unaddressed human review feedback, and no unresolved `UNVERIFIED`, `CONFUSION`, or `MISSING REQUIREMENT` marker. Require its `CI remediation JSON` field on success and on a blocker, JSON-decode it, and validate every entry against `kramme:pr:fix-ci`'s documented keys and enum values. Retain the validated array for the final reviewer handoff. If it stops because the branch needs rebasing, the same failure persisted three times, feedback needs a decision, infrastructure failed, or any other exit condition was not satisfied, preserve its evidence and stop through `{blocked-handoff}` with the Pull Request URL.
 

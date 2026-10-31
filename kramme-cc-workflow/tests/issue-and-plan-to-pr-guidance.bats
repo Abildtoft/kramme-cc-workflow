@@ -236,7 +236,7 @@
     ! grep -qF "PLAN_SCOPE_ACTIVE" "$shipping"
     grep -qF "Set \`{fix-ci-invocation}\` to the exact scoped value" "$shipping"
     grep -qF "the same \`--scope-plan {validated-scope-plan}\`" "$shipping"
-    grep -qF "argument-hint: \"[--fixup] [--auto] [--no-consolidate] [--rebase] [--scope-plan <archived-plan>]\"" "$fix_ci"
+    grep -qF "argument-hint: \"[--fixup] [--manual] [--no-consolidate] [--rebase] [--scope-plan <archived-plan>]\"" "$fix_ci"
     grep -qF "SCOPED_PLAN_LIFECYCLE=initial|post-create|recovery" "$fix_ci"
     grep -qF "SCOPED_PLAN_LIFECYCLE=post-create" "$fix_ci_scope"
     grep -qF "records \`Publication state: absent\` from non-ship completion" "$fix_ci_scope"
@@ -430,12 +430,12 @@
     grep -qF "Do not consume a cycle or restart applicability." "$review"
     grep -qF ".context/{archive-key}/reviews/" "$review"
 
-	    grep -qF "kramme:pr:create --auto --base {base-branch} --require-generated-description" "$shipping"
+	    grep -qF "kramme:pr:create --base {base-branch} --require-generated-description" "$shipping"
 	    ! grep -qF -- "--authorize-history-rewrite" "$shipping"
 	    grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
 	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$skill")" -eq 3 ]
 	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$shipping")" -eq 1 ]
-		    grep -qF "Do not combine it with \`--auto\`." "$shared_contract"
+		    grep -qF "It also turns off auto mode in that delegated skill" "$shared_contract"
 	    grep -qF "Completion disposition: published_blocked" "$shipping"
 	    grep -qF "Work branch: {work-branch}" "$shipping"
 	    grep -qF "Blocker: {exact delegated blocker}" "$shipping"

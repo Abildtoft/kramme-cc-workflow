@@ -75,7 +75,7 @@
     done
     grep -qF "Invoke \`kramme:linear:issue-implement\` with \`{issue-id} --auto --set-in-progress\`" "$parent"
     grep -qF "Invoke \`kramme:workflow:cleanup-artifacts --auto\`" "$parent"
-    grep -qF "Invoke \`kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description\`" "$parent"
+    grep -qF "Invoke \`kramme:pr:create --linear-issue {issue-id} --require-generated-description\`" "$parent"
     grep -qF "Invoke \`kramme:pr:fix-ci --no-consolidate\`" "$parent"
     grep -qF "Invoke automatically only as the exact child of \`kramme:linear:issue-to-pr\`" "$implement"
     grep -qF "the exact child of \`kramme:linear:issue-to-pr --ship\`" "$cleanup"
@@ -513,7 +513,7 @@
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
 
     grep -qF "kramme:workflow:cleanup-artifacts --auto" "$shipping"
-    grep -qF "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description" "$shipping"
+    grep -qF "kramme:pr:create --linear-issue {issue-id} --require-generated-description" "$shipping"
     grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
     grep -qF -- "- \`{work-id}\`: \`{issue-id}\`." "$shipping"
     grep -qF -- "- \`{archive-key}\`: \`linear-issue-to-pr\`." "$shipping"

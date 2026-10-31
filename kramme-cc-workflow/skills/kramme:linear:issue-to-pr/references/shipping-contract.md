@@ -28,7 +28,7 @@ Every shared grant applies to the current Linear issue branch only. `--ship` add
 
   The Linear workflow has no committed-path scope beyond the issue branch itself, so the committed-path proof and its final recheck reduce to confirming the current branch is still the Linear issue branch.
 
-- `{create-invocation}`: `kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description`. The explicit issue identifier is authoritative; do not re-extract it from the branch name.
+- `{create-invocation}`: `kramme:pr:create --linear-issue {issue-id} --require-generated-description`. The explicit issue identifier is authoritative; do not re-extract it from the branch name.
 - `{post-create-hook}`: none.
 - `{fix-ci-invocation}`: `kramme:pr:fix-ci --no-consolidate`.
 - `{fix-ci-guard}`: none.
