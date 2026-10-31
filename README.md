@@ -273,6 +273,8 @@ See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow referenc
 /kramme:pr:fix-ci         # iterate until CI passes
 ```
 
+`/kramme:pr:create` and `/kramme:pr:fix-ci` run unattended, including history rewrites and force-pushes; add `--manual` to keep their prompts. The [shipping guide](kramme-cc-workflow/docs/shipping.md#unattended-by-default) covers all five skills that work this way.
+
 More review skills cover product, convention, UX, and GitHub-reviewer flows. Which one should you use?
 
 | Need | Use |
@@ -435,7 +437,7 @@ PR creation, review, iteration, and resolution. See the [review guide](kramme-cc
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:pr:create` | User, Auto | `[--auto] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]` | Publish a new PR: narrative commits, a generated title and body, and a lease-protected first push. |
+| `/kramme:pr:create` | User, Auto | `[--manual] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]` | Publish a new PR unattended: narrative commits, a generated title and body, and a lease-protected first push; `--manual` keeps the prompts. |
 | `/kramme:pr:stack` | User | `[init [--base <trunk>] <branches...> \| submit \| sync \| merge <pr-number> \| adopt [--base <trunk>] <branches...> \| status]` | Create and manage GitHub stacked PRs with gh-stack when a change should land as a chain of small dependent PRs. |
 | `/kramme:pr:adversarial-review` | User, Auto | `[--provider claude\|codex] [--model <id>] [--base <branch>] [--requirements <authoritative requirements>]` | Get one read-only review of your branch from a different model provider than the host you are using. |
 | `/kramme:pr:code-review` | User, Auto | `[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--no-cleanup] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]` | Review branch changes for bugs, tests, errors, types, architecture, security, performance, and cleanup; writes `REVIEW_OVERVIEW.md`. |
@@ -443,15 +445,15 @@ PR creation, review, iteration, and resolution. See the [review guide](kramme-cc
 | `/kramme:pr:resolve-review` | User, Auto | `[--team] [--implement-only] [--granular] [--severity ...] [--source local\|online\|conductor] [review\|url\|instructions]` | Implement fixes for code-review or Conductor diff-comment findings as commits on the current branch. |
 | `/kramme:pr:github-review-reply` | User | `[--auto] [--implement\|--no-implement] [--post] [--resolve] [--inline] [--humanize] [--human-only\|--include-bots] [--all] [--only <login>] [pr-url\|instructions]` | Triage review comments on your own PR, make the needed changes, and draft or post replies. |
 | `/kramme:pr:github-review` | User | `[--subagent-model <model>] [pr-number\|pr-url] [--stack] [--draft-review] [--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--full] [--include-bots] [--all-threads] [--inline] [--keep-worktree]` | Review someone else's GitHub PR or its whole stack, including linked Linear issues. Report-only unless you ask for a pending review. |
-| `/kramme:pr:fix-ci` | User, Auto | `[--fixup] [--auto] [--no-consolidate] [--rebase] [--scope-plan <archived-plan>]` | Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass. |
-| `/kramme:pr:generate-description` | User, Auto | `[--auto] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]` | Write a PR title and body from the diff, commits, and Linear context; `--check` reports drift in an open PR's description. |
+| `/kramme:pr:fix-ci` | User, Auto | `[--fixup] [--manual] [--no-consolidate] [--rebase] [--scope-plan <archived-plan>]` | Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass; `--manual` keeps the prompts. |
+| `/kramme:pr:generate-description` | User, Auto | `[--manual] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]` | Write a PR title and body from the diff, commits, and Linear context, updating an open PR unless `--manual`; `--check` reports drift. |
 | `/kramme:pr:walkthrough` | User | `[--report [branch\|commit\|PR#\|range] \| --report --base <ref> \| --base <ref>] [--output <path>]` | Generate a visual HTML walkthrough of a branch or PR; `--report` produces a shareable before/after architecture report. |
 | `/kramme:pr:gut-check` | User, Auto | `[--base <branch>] [--intent <text>]` | Get a fast first-reader reaction: does anything on this branch look strange, unusual, or unnecessary? |
 | `/kramme:pr:triage-risk` | User, Auto | `[--base <branch>]` | Decide how much review the branch needs: a low, medium, or high risk tier and the review commands to run. Read-only. |
 | `/kramme:pr:convention-review` | User, Auto | `[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--baseline <path>] [--inline] [--no-diff-comments]` | Flag drift from documented rules and established codebase practice, plus overcautious code, with evidence for every finding. |
 | `/kramme:pr:overengineering-review` | User, Auto | `[--subagent-model <model>] [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]` | Flag speculative generality and unlikely edge-case handling that the requirements do not need. |
 | `/kramme:pr:product-review` | User, Auto | `[--subagent-model <model>] [app-url\|auto] [--categories a11y,ux,product,visual] [--threshold 0-100] [--base <branch>] [--parallel] [--team] [--inline] [--no-diff-comments]` | Review the product value, UX, visual consistency, and accessibility of your changes with specialist agents. |
-| `/kramme:pr:rebase` | User, Auto | `[--auto] [--force-push] [--fix-ci] [--base <branch>] [--all-open]` | Rebase onto the PR's target branch, resolve conflicts safely, and force-push with a lease; cascades through stacks. |
+| `/kramme:pr:rebase` | User, Auto | `[--manual] [--force-push] [--fix-ci] [--base <branch>] [--all-open]` | Rebase onto the PR's target branch and force-push with a lease, unattended by default; `--force-push` or `--manual` keeps the gates. |
 
 #### Code Changes
 
@@ -493,7 +495,7 @@ Git history management and commit operations. History rewrites are covered in th
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
 | `/kramme:git:fixup` | User | `[--skip-tests\|--skip-build\|--skip-lint\|--skip-all] [--no-confirm] [--base=<branch>] [instructions]` | Fold unstaged changes into the commits they belong to on the current branch, validate, and autosquash. |
-| `/kramme:git:recreate-commits` | User, Auto | `[--auto] [--coarse\|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]` | Rewrite unpublished branch history into narrative commits behind a backup ref. Not for merged or shared branches. |
+| `/kramme:git:recreate-commits` | User, Auto | `[--manual] [--coarse\|--granular] [--base <branch>] [--base-commit <oid>] [--backup-ref <branch>] [--after <commit>] [--force-backup] [--require-unstacked] [--no-push] [--authorize-history-rewrite]` | Rewrite unpublished branch history into narrative commits behind a backup ref, unattended unless `--manual`. Not for merged or shared branches. |
 
 #### Debug
 
@@ -645,6 +647,7 @@ Update saved prompts and automation before upgrading; the old names no longer re
 | `/kramme:pr:update-split-plans` → `/kramme:code:breakdown-findings --reconcile` | Pass the same plan paths, `--all`, `--worktree`, `--source`, `--base`, and `--auto` options. Former no-scope calls must add `--all` to preserve the removed command's active-plan-only default; zero-scope reconcile intentionally retains `kramme:code:breakdown-findings`'s existing all-indexed behavior. |
 | `/kramme:workflow-artifacts:cleanup` → `/kramme:workflow:cleanup-artifacts` | Nothing; every argument, mode, and safety gate is unchanged. |
 | `/kramme:linear:select-next` → `/kramme:linear:next` | Pass `--agent-ready` instead of `--agent-ready-only`; other arguments and behavior are unchanged. |
+| `--auto` → default on `/kramme:git:recreate-commits`, `/kramme:pr:create`, `/kramme:pr:fix-ci`, `/kramme:pr:generate-description`, and `/kramme:pr:rebase` | Typed commands, and requests that name one of these skills, now run unattended. Add `--manual` wherever you relied on the prompts; a leftover `--auto` is ignored. `/kramme:pr:rebase` now skips its safety gates unless you pass `--manual` or `--force-push`. See [Unattended by Default](kramme-cc-workflow/docs/shipping.md#unattended-by-default). |
 
 ### Removed
 

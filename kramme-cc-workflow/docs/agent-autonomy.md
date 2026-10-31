@@ -40,6 +40,8 @@ Within a workflow, the `--auto` flags apply the same principle one skill at a ti
 
 `skills/kramme:code:migrate/SKILL.md:22` shows the same shape at a higher autonomy setting. There, `--auto` "execute[s] the full migration plan without pausing for review, skip[s] phase-by-phase checkpoints, and abort[s] on unresolved verification failures after the built-in retry budget is exhausted" — automated verification substitutes for the removed human checkpoints. It still aborts outright on a dirty working tree (`SKILL.md:62`) and on pre-existing migration artifacts it would have to overwrite (`SKILL.md:77`).
 
+Five shipping skills invert the flag: `kramme:git:recreate-commits`, `kramme:pr:create`, `kramme:pr:fix-ci`, `kramme:pr:generate-description`, and `kramme:pr:rebase` run in auto mode when the user types or names them, and `--manual` restores their prompts. For `kramme:pr:rebase` that default is a deliberate maintainer exception to this principle, because a force-push without verification is the expensive case. The [decision record](decisions/2026-10-31-unattended-default-for-shipping-skills.md) states the tradeoff and what stays gated for model callers.
+
 Read together, these are points on one spectrum, and what the carve-out lists track is verification cost rather than the maintainer's comfort with the skill. Maintainer judgment has not left the design, but what each list fences off is the irreversible and the unbounded, not the unfamiliar. That is the question a contributor should be answering: not "should this skill ask first?" but "if this goes wrong, how expensive is finding out, and how expensive is undoing it?"
 
 This document does not define named autonomy tiers or classify the skill catalog into them. An unpopulated taxonomy invites mis-citation, and the classification work is not done.
@@ -64,10 +66,10 @@ The principle predates the rule. `skills/kramme:pr:code-review/references/team-m
 
 Maker/checker separation needs two populations. Measured after the September 2026 reviewer merge (which folded the four security reviewers into `kramme:security-reviewer` and the lean, simplifier, and removal-planner agents into `kramme:cleanup-reviewer`) and the October 2026 change that made `kramme:cleanup-reviewer` read-only, `agents/` contains 20 agent definitions, classified by what each one produces:
 
-| Output | Count |
-| --- | --- |
-| Findings, audits, or validation | 19 |
-| Code changes | 1 — `kramme:design-iterator` |
+| Output                          | Count                        |
+| ------------------------------- | ---------------------------- |
+| Findings, audits, or validation | 19                           |
+| Code changes                    | 1 — `kramme:design-iterator` |
 
 Reproduce the total with `ls agents/*.md | wc -l`; the full roster is in the generated agent table in the root `README.md` and in `docs/component-catalog.json`. The classification is declared in frontmatter: checkers withhold the file-writing tools, so `grep -L 'disallowedTools: Write, Edit, NotebookEdit' agents/*.md` lists the makers.
 
