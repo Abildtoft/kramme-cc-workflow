@@ -324,7 +324,7 @@ load_assignments() {
 
 	grep -F 'Do not invoke `kramme:pr:generate-description` from inside this skill' "$stack_skill"
 	grep -F 'every model-initiated call to that child must use output-only `--no-update`' "$stack_skill"
-	grep -F 'ask the user to invoke `/kramme:pr:generate-description --auto` directly' "$stack_skill"
+	grep -F 'ask the user to invoke `/kramme:pr:generate-description` directly' "$stack_skill"
 	! grep -F 'run `kramme:pr:generate-description` per PR' "$stack_skill"
 }
 
@@ -392,24 +392,24 @@ load_assignments() {
 	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
 	local opt_in_guard_line
 	local push_guard_line
-	local default_delegate_line
+	local manual_delegate_line
 	local auto_delegate_line
 
-	grep -F 'argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>] [--all-open]"' "$rebase_skill"
+	grep -F 'argument-hint: "[--manual] [--force-push] [--fix-ci] [--base <branch>] [--all-open]"' "$rebase_skill"
 	grep -F 'set `FIX_CI_MODE=true`' "$rebase_skill"
 	grep -F 'Set it to true only after the applicable validated push command returns success.' "$rebase_skill"
 
 	opt_in_guard_line=$(grep -nF 'If `FIX_CI_MODE` is not true, skip to Step 7.' "$rebase_skill" | cut -d: -f1)
 	push_guard_line=$(grep -nF 'Require `PUSH_COMPLETED=true` before delegating.' "$rebase_skill" | cut -d: -f1)
-	default_delegate_line=$(grep -nF 'invoke `$kramme:pr:fix-ci` with no additional flags.' "$rebase_skill" | cut -d: -f1)
-	auto_delegate_line=$(grep -nF 'invoke `$kramme:pr:fix-ci --auto`' "$rebase_skill" | cut -d: -f1)
+	manual_delegate_line=$(grep -nF 'invoke `$kramme:pr:fix-ci --manual`' "$rebase_skill" | cut -d: -f1)
+	auto_delegate_line=$(grep -nF 'invoke `$kramme:pr:fix-ci` with no additional flags' "$rebase_skill" | cut -d: -f1)
 	[ -n "$opt_in_guard_line" ]
 	[ -n "$push_guard_line" ]
-	[ -n "$default_delegate_line" ]
+	[ -n "$manual_delegate_line" ]
 	[ -n "$auto_delegate_line" ]
-	[ "$opt_in_guard_line" -lt "$default_delegate_line" ]
+	[ "$opt_in_guard_line" -lt "$manual_delegate_line" ]
 	[ "$opt_in_guard_line" -lt "$auto_delegate_line" ]
-	[ "$push_guard_line" -lt "$default_delegate_line" ]
+	[ "$push_guard_line" -lt "$manual_delegate_line" ]
 	[ "$push_guard_line" -lt "$auto_delegate_line" ]
 
 	grep -F 'Do not poll CI separately before invoking it.' "$rebase_skill"
@@ -425,7 +425,7 @@ load_assignments() {
 
 	grep -qF 'disable-model-invocation: false' "$rebase_skill"
 	grep -F 'Invoke automatically only as a delegated child of `kramme:pr:fix-ci`, with the exact `--force-push` argument selected by that parent.' "$rebase_skill"
-	grep -F 'Do not add `--auto`, `--fix-ci`, or an invented `--base` override.' "$rebase_skill"
+	grep -F 'Never omit `--force-push`, and do not add `--fix-ci` or an invented `--base` override.' "$rebase_skill"
 	grep -F 'No other parent workflow is authorized by this model-invocation exception.' "$rebase_skill"
 }
 

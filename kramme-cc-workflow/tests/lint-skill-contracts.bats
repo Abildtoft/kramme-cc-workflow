@@ -1440,7 +1440,7 @@ EOF
   consolidation_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/consolidation-flow.md")"
   scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
 
-  [[ "$skill_text" == *'`--auto` - Run the CI fix loop unattended'* ]]
+  [[ "$skill_text" == *'Auto mode is the default: run the CI fix loop unattended'* ]]
   [[ "$skill_text" == *'If `AUTO_MODE=true`, choose **Automated** without prompting'* ]]
   [[ "$skill_text" == *'**Skip this step if:** `--fixup` mode was used, or `--no-consolidate` flag is set.'* ]]
   [[ "$skill_text" != *'Alias for `--no-consolidate`'* ]]
@@ -1496,7 +1496,7 @@ EOF
   [ "$skip_line" -lt "$watch_line" ]
 }
 
-@test "fix-ci --rebase and --auto settle the rebase question without asking by default" {
+@test "fix-ci --rebase and auto mode settle the rebase question without asking by default" {
   local skill_text
   local rebase_line
   local auto_line
@@ -1507,11 +1507,11 @@ EOF
   grep -qE '^argument-hint: .*\[--rebase\]' <<<"$skill_text"
   [[ "$skill_text" == *'- `--rebase` - When the branch is behind its base, rebase and push through `kramme:pr:rebase --force-push` before fixing CI, without asking.'* ]]
   [[ "$skill_text" == *'if `--rebase` is present, set `REBASE_MODE=true`'* ]]
-  [[ "$skill_text" == *'reject `--fixup`, `--auto`, and `--rebase`, require `--no-consolidate`'* ]]
-  [[ "$skill_text" == *'never invent `--auto`, `--rebase`, a scope plan, or a push destination'* ]]
+  [[ "$skill_text" == *'reject `--fixup` and `--rebase`, require `--no-consolidate`'* ]]
+  [[ "$skill_text" == *'never invent `--rebase`, a scope plan, or a push destination'* ]]
   [[ "$skill_text" == *'decide whether a rebase would help and ask only when in doubt'* ]]
   [[ "$skill_text" == *'runs at most once per invocation. If the branch is behind again after that proven push, note the drift and continue to Step 3 without rebasing.'* ]]
-  [[ "$skill_text" == *'Choice 1, whether selected, requested with `--rebase`, or decided under `--auto`, uses the rebase workflow'"'"'s safe unattended push mode'* ]]
+  [[ "$skill_text" == *'Choice 1, whether selected, requested with `--rebase`, or decided in auto mode, uses the rebase workflow'"'"'s safe unattended push mode'* ]]
 
   rebase_line="$(grep -nF 'When `PLAN_SCOPE_ACTIVE=false` and `REBASE_MODE=true`, the user already chose: take choice 1 below' <<<"$skill_text" | cut -d: -f1)"
   choice_line="$(grep -nF 'use `AskUserQuestion` and present exactly these choices:' <<<"$skill_text" | cut -d: -f1)"
