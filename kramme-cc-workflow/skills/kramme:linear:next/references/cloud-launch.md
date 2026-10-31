@@ -29,7 +29,7 @@ python3 "{cloud-launch-helper}" launch --project-id '{project_id}' --item '{ISSU
 - Medium and High UI/UX issues use the agent and model the user picked for them; every other issue uses the default.
 - Validate each issue identifier and model id before interpolating it, and pass every value as its own single-quoted argument.
 
-The helper builds each first message for its agent, creates the workspaces one at a time, and stops at the first failure without retrying. Conductor does not deduplicate workspace creation, so a lost response may still have created a workspace. Never run `launch` again for the same issues in this run.
+The helper builds each first message for its agent, creates the workspaces one at a time, and stops at the first failure. Conductor does not deduplicate workspace creation, so a lost response may still have created a workspace. The helper retries only an HTTP 429 rate limit, which creates nothing, after the wait Conductor names, and waits at most one minute in total across the run. Run it in the foreground with the longest command timeout the host allows, at least 10 minutes, because a killed helper reports nothing. Never run `launch` again for the same issues in this run, and never create workspaces with `conductor` directly.
 
 ## 4. Report
 
@@ -44,4 +44,5 @@ Conductor cloud workspaces: {started} of {confirmed} started
 - `unknown`: say that the workspace may exist and to check Conductor before starting that issue again.
 - `auth_error`: say that this workspace's Conductor credential cannot create workspaces, and that a user API key in `CONDUCTOR_API_KEY` may allow it.
 - `rejected`: report the CLI's `detail`.
+- `rate_limited`: say that Conductor kept rate-limiting workspace creation, that no workspace was created for that issue, and that it can be started again later.
 - `not_started`: list the issue as not started, because an earlier issue failed.

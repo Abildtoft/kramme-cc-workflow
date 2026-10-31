@@ -11,7 +11,9 @@ The skill keeps issue selection and the user's confirmation. This helper owns th
 
 Each call prints one JSON document with `schema_version`, `command`, `status`, `reason`, and `message`. Exit codes:
 0 when the call completed; 1 when `launch` stopped before starting every issue; 2 for an invalid invocation.
-Conductor does not deduplicate workspace creation, so `launch` stops at the first failure and never retries.
+Conductor does not deduplicate workspace creation, so `launch` stops at the first failure. The one retried failure is an
+HTTP 429 rate limit, which Conductor answers before creating anything; `launch` waits at most RATE_LIMIT_WAIT_BUDGET
+seconds in total for rate limits so the caller's command timeout does not kill it before it prints its results.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from typing import Any, Dict, NamedTuple, NoReturn, Sequence
 
 JsonDict = Dict[str, Any]
@@ -36,6 +39,12 @@ MAX_ITEMS = 25
 TIMEOUT_ENV = "KRAMME_CONDUCTOR_TIMEOUT_SECONDS"
 DEFAULT_TIMEOUT = 60
 MAX_TIMEOUT = 300
+RATE_LIMIT_RE = re.compile(r"\(HTTP 429\)")
+RETRY_AFTER_RE = re.compile(r"Retry after ([0-9]+) seconds?")
+RATE_LIMIT_RETRIES = 5
+DEFAULT_RETRY_AFTER = 10
+MAX_RETRY_AFTER = 60
+RATE_LIMIT_WAIT_BUDGET = 60
 # The Conductor CLI documents exit 2 as a usage error and exit 3 as an authentication error; neither applies a write.
 USAGE_EXIT = 2
 AUTH_EXIT = 3
@@ -88,6 +97,8 @@ def run_cli(args: Sequence[str]) -> CliResult:
     except OSError as error:
         return CliResult("failed", None, f"the Conductor CLI could not run: {error.strerror or error}")
     detail = first_line(completed.stderr) or first_line(completed.stdout)
+    if completed.returncode != 0 and RATE_LIMIT_RE.search(detail):
+        return CliResult("rate_limited", None, detail)
     if completed.returncode == AUTH_EXIT:
         return CliResult("auth_error", None, detail or "the Conductor credential was rejected")
     if completed.returncode == USAGE_EXIT:
@@ -175,9 +186,29 @@ def create_outcome(created: CliResult) -> JsonDict:
                 "deep_link": deep_link if isinstance(deep_link, str) else None,
             }
         return {"outcome": "unknown", "detail": "Conductor answered without a workspace ID; the workspace may exist"}
-    if created.outcome in ("auth_error", "rejected"):
+    if created.outcome in ("auth_error", "rejected", "rate_limited"):
         return {"outcome": created.outcome, "detail": created.detail}
     return {"outcome": "unknown", "detail": f"{created.detail}; the workspace may exist"}
+
+
+def retry_after(detail: str) -> int:
+    match = RETRY_AFTER_RE.search(detail)
+    seconds = int(match.group(1)) if match else DEFAULT_RETRY_AFTER
+    return min(max(seconds, 1), MAX_RETRY_AFTER)
+
+
+def create_workspace(command: Sequence[str], wait_budget: int) -> tuple[CliResult, int]:
+    created = run_cli(command)
+    for _ in range(RATE_LIMIT_RETRIES):
+        if created.outcome != "rate_limited":
+            break
+        wait = retry_after(created.detail)
+        if wait > wait_budget:
+            break
+        time.sleep(wait)
+        wait_budget -= wait
+        created = run_cli(command)
+    return created, wait_budget
 
 
 def launch(project_id: str, raw_items: Sequence[Sequence[str]]) -> JsonDict:
@@ -190,6 +221,7 @@ def launch(project_id: str, raw_items: Sequence[Sequence[str]]) -> JsonDict:
         raise Stop("cli_missing", "The Conductor CLI is not installed in this workspace.")
     results: list[JsonDict] = []
     stopped = False
+    wait_budget = RATE_LIMIT_WAIT_BUDGET
     for issue, agent, model in items:
         message = f"{INVOCATIONS[agent]} {issue} --ship"
         entry: JsonDict = {"issue": issue, "agent": agent, "model": model, "message": message}
@@ -197,9 +229,10 @@ def launch(project_id: str, raw_items: Sequence[Sequence[str]]) -> JsonDict:
         if stopped:
             entry["outcome"] = "not_started"
             continue
-        created = run_cli(
+        created, wait_budget = create_workspace(
             ["workspace", "create", "--project-id", project_id, "--name", issue]
-            + ["--agent", agent, "--model", model, "--message", message]
+            + ["--agent", agent, "--model", model, "--message", message],
+            wait_budget,
         )
         entry.update(create_outcome(created))
         stopped = entry["outcome"] != "created"

@@ -157,6 +157,52 @@ class CloudLaunchTest(unittest.TestCase):
             ],
         )
 
+    def test_launch_retries_a_rate_limited_creation_after_the_named_wait(self) -> None:
+        stderr = "error: Rate limit exceeded for workspace creation. Retry after 8 seconds. (HTTP 429)\n"
+        limited = {"exit": 1, "stderr": stderr}
+        with mock.patch.object(cloud_launch.time, "sleep") as sleep:
+            code, result = self.run_helper(
+                "launch", "--project-id", "proj_1",
+                "--item", "DISC-1", "claude", "opus-5-5-1m",
+                "--item", "DISC-2", "claude", "opus-5-5-1m",
+                responses=[created(1), limited, limited, created(2)],
+            )  # fmt: skip
+        self.assertEqual((code, result["status"]), (0, "ok"))
+        self.assertEqual([entry["outcome"] for entry in result["results"]], ["created", "created"])
+        self.assertEqual(sleep.call_args_list, [mock.call(8), mock.call(8)])
+        self.assertEqual(len(self.calls()), 4)
+
+    def test_launch_stops_when_rate_limiting_outlasts_the_retries(self) -> None:
+        limited = {"exit": 4, "stderr": "error: Rate limit exceeded. (HTTP 429)\n"}
+        with mock.patch.object(cloud_launch.time, "sleep") as sleep:
+            code, result = self.run_helper(
+                "launch", "--project-id", "proj_1",
+                "--item", "DISC-1", "claude", "opus-5-5-1m",
+                "--item", "DISC-2", "claude", "opus-5-5-1m",
+                responses=[limited],
+            )  # fmt: skip
+        self.assertEqual((code, result["status"]), (1, "stopped"))
+        self.assertEqual([entry["outcome"] for entry in result["results"]], ["rate_limited", "not_started"])
+        self.assertNotIn("may exist", result["results"][0]["detail"])
+        self.assertEqual(sleep.call_count, cloud_launch.RATE_LIMIT_RETRIES)
+        self.assertEqual(len(self.calls()), cloud_launch.RATE_LIMIT_RETRIES + 1)
+
+    def test_launch_stops_retrying_once_the_run_wait_budget_is_spent(self) -> None:
+        stderr = "error: Rate limit exceeded for workspace creation. Retry after 45 seconds. (HTTP 429)\n"
+        limited = {"exit": 1, "stderr": stderr}
+        with mock.patch.object(cloud_launch.time, "sleep") as sleep:
+            code, result = self.run_helper(
+                "launch", "--project-id", "proj_1",
+                "--item", "DISC-1", "claude", "opus-5-5-1m",
+                "--item", "DISC-2", "claude", "opus-5-5-1m",
+                "--item", "DISC-3", "claude", "opus-5-5-1m",
+                responses=[limited, created(1), limited],
+            )  # fmt: skip
+        self.assertEqual((code, result["status"]), (1, "stopped"))
+        self.assertEqual([entry["outcome"] for entry in result["results"]], ["created", "rate_limited", "not_started"])
+        self.assertEqual(sleep.call_args_list, [mock.call(45)])
+        self.assertEqual(len(self.calls()), 3)
+
     def test_launch_stops_at_the_first_failure_and_never_retries(self) -> None:
         code, result = self.run_helper(
             "launch", "--project-id", "proj_1",
