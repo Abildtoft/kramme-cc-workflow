@@ -57,4 +57,4 @@ Rebase every open Pull Request of the current user whose head branch is checked 
    - `error`: name the worktree prominently; it needs manual inspection before anything else runs there.
    - `skipped`: the reason explains why the row was left alone, including a rebase that failed before starting.
 
-   Tell the user that each `conflict`, `push-rejected`, or `error` branch needs a single-branch `/kramme:pr:rebase` in its own workspace. Batch mode does not run CI stabilization; run `/kramme:pr:fix-ci` per Pull Request if needed.
+   Tell the user that each `conflict`, `push-rejected`, or `error` branch needs a single-branch `/kramme:pr:rebase --manual` in its own workspace. Batch mode does not run CI stabilization; run `/kramme:pr:fix-ci` per Pull Request if needed.

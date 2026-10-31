@@ -620,7 +620,7 @@
       "name": "pr-create-description-generation-contract",
       "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
       "contains": [
-        "Always pass `--auto --no-update --base {base-source-ref} --base-commit {base-ref}`",
+        "Always pass `--no-update --base {base-source-ref} --base-commit {base-ref}`",
         "also pass `--linear-issue {linear-issue-id}`",
         "require a usable title and body",
         "Title is one line, at most 72 characters",
@@ -646,11 +646,11 @@
         "use kramme:pr:stack instead",
         "Both locally tracked and server-side stacks stop here",
         "any later stack detection is state drift",
-        "`--auto` is fully non-interactive",
+        "Auto mode is fully non-interactive",
         "never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts",
         "REQUIRE_GENERATED_DESCRIPTION=true",
         "Always pass `--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push`",
-        "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"",
+        "args: \"--manual --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"",
         "sole remote-mutation owner"
       ]
     },
@@ -873,7 +873,7 @@
         "A Git ref lease can protect a branch OID",
         "cannot atomically prevent another actor from opening a Pull Request",
         "Never check out or adopt that remote branch",
-        "Neither `--auto` nor `--authorize-history-rewrite` may bypass this fresh-mode remote-absence requirement"
+        "Neither auto mode nor `--authorize-history-rewrite` may bypass this fresh-mode remote-absence requirement"
       ]
     },
     {
@@ -883,17 +883,17 @@
         "disable-model-invocation: false",
         "### Model Invocation Contract",
         "No other parent workflow is authorized by the model-invocation exception",
-        "Outside that exact `kramme:pr:create` delegation, never invent `--auto` or `--authorize-history-rewrite`",
+        "Outside that exact `kramme:pr:create` delegation, never invent `--authorize-history-rewrite`",
         "The model must never invent `--force-backup`",
         "only with the exact retry-safe value supplied by `kramme:pr:create`",
         "[--require-unstacked] [--no-push] [--authorize-history-rewrite]",
         "When `REQUIRE_UNSTACKED=true` and `--no-push` was passed (the `kramme:pr:create` delegation), skip this initial resolution and set `IN_STACK=false`",
-        "stop before the reset, even when `--auto` or `--authorize-history-rewrite` was passed",
+        "stop before the reset, even in auto mode or when `--authorize-history-rewrite` was passed",
         "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches",
         "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
         "The branch joined a local or server-side stack after initial validation; stop before rewriting history.",
         "If `--no-push` was passed, do not run any push command",
-        "If `IN_STACK=true` and `--auto` was passed without `--authorize-history-rewrite`, stop before the reset",
+        "If `IN_STACK=true` and neither `--manual` nor `--authorize-history-rewrite` was passed, stop before the reset",
         "STACK_BRANCH_NAMES=$(resolve_stack_branch_names)",
         "require its output to equal `STACK_BRANCH_NAMES` byte-for-byte",
         "enumerate every branch in `STACK_BRANCHES`",
@@ -990,7 +990,7 @@
         "## Step 6: Prove the Initial Shipped Result",
         "## Step 7: Stabilize CI and Review Feedback",
         "invoke `{fix-ci-invocation}`",
-        "Do not combine it with `--auto`",
+        "It also turns off auto mode in that delegated skill",
         "## Step 8: Prove the Final Pull Request State",
         "baseRefName,headRefName,headRefOid",
         "Capture its validated `{base-branch}` as `{expected-base-branch}`",
@@ -1011,7 +1011,7 @@
         "append `{validation-extra-args}` only when it is not `none`",
         "JSON-decode the returned `Requirements JSON` field",
         "Mode: validation-only",
-        "`--auto` carries the invocation through the backup-protected local reset without prompting",
+        "auto mode carries the invocation through the backup-protected local reset without prompting",
         "has no invocation-owned creation provenance",
         "invoke `kramme:verify:run`",
         "gh pr view --json reviewDecision",
@@ -1037,7 +1037,7 @@
         "{pr-shipping-contract}",
         "- `{fix-ci-invocation}`: `kramme:pr:fix-ci --no-consolidate`.",
         "do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume",
-        "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description",
+        "kramme:pr:create --linear-issue {issue-id} --require-generated-description",
         "kramme:workflow:cleanup-artifacts --auto"
       ]
     },
@@ -1046,7 +1046,7 @@
       "path": "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/shipping-contract.md",
       "contains": [
         "{pr-shipping-contract}",
-        "kramme:pr:create --auto --base {base-branch} --require-generated-description",
+        "kramme:pr:create --base {base-branch} --require-generated-description",
         "`--scope-plan {validated-scope-plan}`",
         "Completion disposition: published_blocked"
       ]
@@ -1088,7 +1088,7 @@
         "stop before delegated branch setup",
         "If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:create`.",
         "Next: $kramme:workflow:cleanup-artifacts --auto",
-        "Then: $kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description",
+        "Then: $kramme:pr:create --linear-issue {issue-id} --require-generated-description",
         "Then: $kramme:pr:fix-ci --no-consolidate"
       ]
     },
@@ -1245,12 +1245,12 @@
       "contains": [
         "disable-model-invocation: false",
         "### Sub-Skill Invocation Contract",
-        "it must pass `--auto`",
+        "it must not pass `--manual`",
         "must also pass `--no-update`",
         "OUTPUT_ONLY=true",
         "Every model-initiated invocation must include `--no-update`",
         "A model caller that needs a drift report passes `--check --no-update`",
-        "reject `--check` combined with `--auto`",
+        "reject `--check` combined with `--manual`",
         "read `references/check-mode.md` and follow it instead of Phases 1 through 4"
       ]
     },
@@ -1278,7 +1278,7 @@
       "name": "pr-generate-description-check-mode-snapshot",
       "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/check-mode.md",
       "contains": [
-        "--auto --no-update --base {base-branch} --base-commit {base-commit}",
+        "exactly as `--no-update --base {base-branch} --base-commit {base-commit}` would",
         "**Skip this phase if `OUTPUT_ONLY=true`.**",
         "Found <N> finding(s). Generate a replacement title and body",
         "On `n` or no response, stop after the report.",
@@ -1313,7 +1313,7 @@
         "blocking for direct update",
         "The \"no Linear ID\" condition is the only non-blocking `MISSING REQUIREMENT:` marker",
         "Treat every other `MISSING REQUIREMENT:` marker",
-        "set `DIRECT_UPDATE=false` even when `--auto` found an existing PR",
+        "set `DIRECT_UPDATE=false` even when auto mode found an existing PR",
         "local exclude file",
         "Local environment failure notes such as missing `node_modules`, unavailable Postgres, missing services",
         "Read `${CLAUDE_PLUGIN_ROOT}/shared/writing/references/plain-language-rubric.md` and `references/readability-pass.md`",
@@ -1784,7 +1784,7 @@
       "kramme:docs:update-agents-md": "Add or update guidelines in AGENTS.md, such as a no-compatibility-code policy, in a structured, keyword-based style.",
       "kramme:git:commit-message": "Write commit messages that follow the repository's commit convention, with a pre-commit checklist and AI-attribution rules.",
       "kramme:git:fixup": "Fold unstaged changes into the commits they belong to on the current branch, validate, and autosquash.",
-      "kramme:git:recreate-commits": "Rewrite unpublished branch history into narrative commits behind a backup ref. Not for merged or shared branches.",
+      "kramme:git:recreate-commits": "Rewrite unpublished branch history into narrative commits behind a backup ref, unattended unless `--manual`. Not for merged or shared branches.",
       "kramme:hooks:toggle": "Enable, disable, list, or reset this plugin's hooks.",
       "kramme:learn:verify-understanding": "Confirm that you understand a PR, feature, spec, or other topic through questions and a checklist before calling it done.",
       "kramme:linear:backlog-refine": "Grade a Linear team's open backlog and propose completing, cancelling, merging, splitting, or rewriting issues. Read-only unless `--apply`.",
@@ -1797,15 +1797,15 @@
       "kramme:pr:adversarial-review": "Get one read-only review of your branch from a different model provider than the host you are using.",
       "kramme:pr:code-review": "Review branch changes for bugs, tests, errors, types, architecture, security, performance, and cleanup; writes `REVIEW_OVERVIEW.md`.",
       "kramme:pr:convention-review": "Flag drift from documented rules and established codebase practice, plus overcautious code, with evidence for every finding.",
-      "kramme:pr:create": "Publish a new PR: narrative commits, a generated title and body, and a lease-protected first push.",
-      "kramme:pr:fix-ci": "Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass.",
-      "kramme:pr:generate-description": "Write a PR title and body from the diff, commits, and Linear context; `--check` reports drift in an open PR's description.",
+      "kramme:pr:create": "Publish a new PR unattended: narrative commits, a generated title and body, and a lease-protected first push; `--manual` keeps the prompts.",
+      "kramme:pr:fix-ci": "Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass; `--manual` keeps the prompts.",
+      "kramme:pr:generate-description": "Write a PR title and body from the diff, commits, and Linear context, updating an open PR unless `--manual`; `--check` reports drift.",
       "kramme:pr:github-review": "Review someone else's GitHub PR or its whole stack, including linked Linear issues. Report-only unless you ask for a pending review.",
       "kramme:pr:github-review-reply": "Triage review comments on your own PR, make the needed changes, and draft or post replies.",
       "kramme:pr:gut-check": "Get a fast first-reader reaction: does anything on this branch look strange, unusual, or unnecessary?",
       "kramme:pr:overengineering-review": "Flag speculative generality and unlikely edge-case handling that the requirements do not need.",
       "kramme:pr:product-review": "Review the product value, UX, visual consistency, and accessibility of your changes with specialist agents.",
-      "kramme:pr:rebase": "Rebase onto the PR's target branch, resolve conflicts safely, and force-push with a lease; cascades through stacks.",
+      "kramme:pr:rebase": "Rebase onto the PR's target branch and force-push with a lease, unattended by default; `--force-push` or `--manual` keeps the gates.",
       "kramme:pr:resolve-review": "Implement fixes for code-review or Conductor diff-comment findings as commits on the current branch.",
       "kramme:pr:review-convergence": "Take a clean committed branch through ordered review gates, bounded fixes, and verification against frozen requirements.",
       "kramme:pr:stack": "Create and manage GitHub stacked PRs with gh-stack when a change should land as a chain of small dependent PRs.",

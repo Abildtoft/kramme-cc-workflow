@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:rebase
 description: "Rebase onto the PR target and force-push with a pinned lease; cascades gh-stack stacks. Use when asked or when kramme:pr:fix-ci delegates with --force-push."
-argument-hint: "[--auto] [--force-push] [--fix-ci] [--base <branch>] [--all-open]"
+argument-hint: "[--manual] [--force-push] [--fix-ci] [--base <branch>] [--all-open]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -12,8 +12,9 @@ Rebase the current branch onto the latest base branch and force push.
 
 ### Model Invocation Contract
 
-- Invoke automatically only as a delegated child of `kramme:pr:fix-ci`, with the exact `--force-push` argument selected by that parent. Do not add `--auto`, `--fix-ci`, or an invented `--base` override.
+- Invoke automatically only as a delegated child of `kramme:pr:fix-ci`, with the exact `--force-push` argument selected by that parent. Never omit `--force-push`, and do not add `--fix-ci` or an invented `--base` override.
 - No other parent workflow is authorized by this model-invocation exception. Model invocation changes routing only; retain every branch, stack, conflict, red-flag, verification, lease, and publication gate, and never push outside the validated current branch or its resolved local stack. A model caller never passes `--all-open`; batch mode is direct-user-only.
+- Auto mode is reserved for a direct user invocation. A direct user invocation means the user typed the slash command or `$` mention, or asked for this skill by name in this session. Every other invocation without `--force-push` runs as `--manual`, whether or not it passes that flag, including one where the model picks this skill for a request that does not name it.
 
 ## Why rebase — dev branches are costs
 
@@ -21,17 +22,19 @@ A feature branch drifts from its base branch while it stays open, accumulating i
 
 ## Options
 
+Auto mode is the default. It is a dangerous unattended mode: continue through risky cases, bypass verification and confirmation gates, and push immediately with `--force-with-lease` after any completed rebase.
+
 **Flags:**
 
-- `--auto` - Dangerous unattended mode. Continue through risky cases, bypass verification and confirmation gates, and push immediately with `--force-with-lease` after any completed rebase.
-- `--force-push` - Safe unattended push mode. Skip only the final force-push confirmation and push immediately with `--force-with-lease` after a successful rebase, while keeping all conflict, red-flag, and verification gates.
+- `--manual` - Turn off auto mode and keep every conflict, red-flag, verification, and force-push confirmation gate.
+- `--force-push` - Safe unattended push mode. Turn off auto mode, skip only the final force-push confirmation, and push immediately with `--force-with-lease` after a successful rebase, while keeping all conflict, red-flag, and verification gates.
 - `--fix-ci` - After a successful rebase push, delegate to `kramme:pr:fix-ci` to watch CI, address failures and review feedback, push fixes, and repeat until the Pull Request is green. This does not bypass any rebase push gate.
 - `--base <branch>` - Override auto-detected base branch (e.g., `--base develop`)
 - `--all-open` - Batch mode: rebase every open PR of yours whose branch is checked out in a clean local worktree and behind its base (or carrying merge commits above it), after one confirmation. Never resolves conflicts; skipped rows are explained in one result table.
 
-`--force-push` is the safe replacement for the old `--auto` behavior. It only bypasses the final confirmation prompt when the rebase completes without unresolved risk.
+`--force-push` is the safe alternative to auto mode. It only bypasses the final confirmation prompt when the rebase completes without unresolved risk.
 
-`--auto` is intentionally dangerous. It means: keep going through risky conflict resolution cases, do not stop for red-flag review, do not require verification before pushing, and push at the end once the rebase has completed. It still uses `--force-with-lease`; if the lease is rejected or the rebase cannot be completed mechanically, report that failure instead of inventing a new history.
+Auto mode is intentionally dangerous. It means: keep going through risky conflict resolution cases, do not stop for red-flag review, do not require verification before pushing, and push at the end once the rebase has completed. It still uses `--force-with-lease`; if the lease is rejected or the rebase cannot be completed mechanically, report that failure instead of inventing a new history. `--all-open` never uses it: batch mode keeps its own rules.
 
 ## Output markers
 
@@ -53,11 +56,11 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 
 ### Step 0: Parse Arguments
 
-If `$ARGUMENTS` contains `--auto`, set `AUTO_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--force-push`, set `FORCE_PUSH_MODE=true` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--fix-ci`, set `FIX_CI_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
+Initialize `AUTO_MODE=true`. If `$ARGUMENTS` contains `--manual`, set `AUTO_MODE=false` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--force-push`, set `FORCE_PUSH_MODE=true` and `AUTO_MODE=false` and remove the flag from remaining arguments. If `$ARGUMENTS` contains `--fix-ci`, set `FIX_CI_MODE=true` and remove the flag from remaining arguments. If `--base <branch>` is present, set `BASE_BRANCH_OVERRIDE=<branch>` and remove the flag and value from remaining arguments.
 
-If both `--auto` and `--force-push` are present, `--auto` wins because it is the broader dangerous mode. Continue with `AUTO_MODE=true` and ignore `FORCE_PUSH_MODE`.
+Ignore a leftover `--auto`: auto mode is already the default. It does not outrank `--manual` or `--force-push`. If both `--manual` and `--force-push` are present, stop with a usage error: `--manual` keeps the confirmation that `--force-push` skips.
 
-If `$ARGUMENTS` contains `--all-open`, set `ALL_OPEN_MODE=true`. Stop with a usage error when `--auto`, `--fix-ci`, or `--base` accompanies it. Otherwise read `references/batch-mode.md` and follow it instead of Steps 1-7, with `{batch-script}` = `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:rebase/scripts/batch-rebase.sh` and `{stack-resolver}` = `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh`.
+If `$ARGUMENTS` contains `--all-open`, set `ALL_OPEN_MODE=true`. Stop with a usage error when `--fix-ci` or `--base` accompanies it. Otherwise read `references/batch-mode.md` and follow it instead of Steps 1-7, with `{batch-script}` = `${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:rebase/scripts/batch-rebase.sh` and `{stack-resolver}` = `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh`.
 
 ### Step 1: Validate Prerequisites
 
@@ -171,9 +174,9 @@ git rebase --autostash origin/<base-branch>
 
 1. **Attempt automatic resolution:**
 
-   The 10-round cap exists because each round reapplies a single commit; beyond that, conflicts almost always indicate semantic drift the auto-resolver can't handle safely. In normal and `--force-push` modes, escalate to the user instead of guessing further. In `--auto` mode, keep resolving until either the rebase completes or Git reaches a conflict the model cannot mechanically resolve.
+   The 10-round cap exists because each round reapplies a single commit; beyond that, conflicts almost always indicate semantic drift the auto-resolver can't handle safely. In `--manual` and `--force-push` modes, escalate to the user instead of guessing further. In auto mode, keep resolving until either the rebase completes or Git reaches a conflict the model cannot mechanically resolve.
 
-   Track all conflicts and resolutions for the summary and set `CONFLICTS_AUTO_RESOLVED=true` once any conflict marker is resolved by the model. Before resolving each file, check the red flags that make auto-resolution unsafe: the file is a migration file or generated artifact, the conflicting logic is not fully understood, or the only available resolution deletes a block instead of merging both sides' semantics. In normal and `--force-push` modes, abort instead of resolving when a red flag applies. In `--auto` mode, record that the red flag was bypassed and continue; every red flag bypassed in `--auto` mode is reported in the end-of-run summary under **POTENTIAL CONCERNS**.
+   Track all conflicts and resolutions for the summary and set `CONFLICTS_AUTO_RESOLVED=true` once any conflict marker is resolved by the model. Before resolving each file, check the red flags that make auto-resolution unsafe: the file is a migration file or generated artifact, the conflicting logic is not fully understood, or the only available resolution deletes a block instead of merging both sides' semantics. In `--manual` and `--force-push` modes, abort instead of resolving when a red flag applies. In auto mode, record that the red flag was bypassed and continue; every red flag bypassed in auto mode is reported in the end-of-run summary under **POTENTIAL CONCERNS**.
 
    For each round:
 
@@ -200,7 +203,7 @@ git rebase --autostash origin/<base-branch>
 
    e. If new conflicts arise, repeat from (a)
 
-2. **If resolution fails** (after 10 rounds in normal or `--force-push` mode, or after an unresolvable conflict in any mode):
+2. **If resolution fails** (after 10 rounds in `--manual` or `--force-push` mode, or after an unresolvable conflict in any mode):
 
    Abort the rebase:
 
@@ -220,7 +223,7 @@ git rebase --autostash origin/<base-branch>
 
 If the rebase completed without conflicts, skip to Step 5.
 
-Otherwise, present a summary of what was auto-resolved. In normal and `--force-push` modes, this is review context before force pushing. In `--auto` mode, this is informational and does not block the push.
+Otherwise, present a summary of what was auto-resolved. In `--manual` and `--force-push` modes, this is review context before force pushing. In auto mode, this is informational and does not block the push.
 
 > **Conflicts resolved during rebase:**
 >
@@ -254,7 +257,7 @@ git push --no-follow-tags --force-with-lease="refs/heads/$CURRENT_BRANCH:$PRE_RE
 
 If `AUTO_MODE=true`, use the validated push procedure immediately after the rebase completes. Do this even if conflicts were auto-resolved, red flags were bypassed, or verification is unavailable/failing. Report the conflicts, bypassed red flags, and verification status after the push attempt. After this push attempt, skip the remaining confirmation gates and proceed to Step 6.
 
-Before any `FORCE_PUSH_MODE=true` push, re-check the Step 3 red flags. If any red flag applies, stop instead of pushing automatically and report `MISSING REQUIREMENT: --force-push cannot bypass red-flag review; rerun without --force-push after addressing the concern.` This applies even when the rebase completed without conflicts.
+Before any `FORCE_PUSH_MODE=true` push, re-check the Step 3 red flags. If any red flag applies, stop instead of pushing automatically and report `MISSING REQUIREMENT: --force-push cannot bypass red-flag review; rerun with --manual after addressing the concern.` This applies even when the rebase completed without conflicts.
 
 If `FORCE_PUSH_MODE=true` and `CONFLICTS_AUTO_RESOLVED` is not true, skip the confirmation prompt, use the validated push procedure immediately, then proceed to Step 6.
 
@@ -288,8 +291,8 @@ Require `PUSH_COMPLETED=true` before delegating. If it is false, do not invoke `
 
 Invoke the sibling skill through the platform skill mechanism rather than reproducing its polling or remediation loop:
 
-- When `AUTO_MODE=true`, invoke `$kramme:pr:fix-ci --auto` so the explicitly requested unattended workflow remains unattended through CI remediation and consolidation.
-- Otherwise, invoke `$kramme:pr:fix-ci` with no additional flags. Its normal consolidation choice remains visible to the user; `--force-push` only controls the rebase push and must not silently opt the delegated workflow into unattended consolidation.
+- When `AUTO_MODE=true`, invoke `$kramme:pr:fix-ci` with no additional flags so the unattended workflow remains unattended through CI remediation and consolidation.
+- Otherwise, invoke `$kramme:pr:fix-ci --manual`. Its consolidation choice remains visible to the user; `--force-push` only controls the rebase push and must not silently opt the delegated workflow into unattended consolidation.
 
 The delegated skill owns Pull Request discovery, stack-aware fix pushes, `gh pr checks --watch`, failure-log inspection, review-feedback handling, retry limits, consolidation, and its `CI remediation JSON` handoff. Do not poll CI separately before invoking it. For a local stack, it stabilizes the current branch's Pull Request and applies its own stack propagation rules; do not claim that sibling Pull Requests were watched.
 

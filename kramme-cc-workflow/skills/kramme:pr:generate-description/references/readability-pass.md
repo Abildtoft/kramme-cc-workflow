@@ -1,6 +1,6 @@
 # Readability Pass
 
-Run this pass after drafting the title and body (Phase 3) and before output (Phase 4). It has two parts: an edit for the reader, then one cold read by a fresh agent, which small, low-risk changes skip. Neither part asks the user anything, so the pass runs unchanged in `--auto` and `--no-update` modes and in non-interactive sessions.
+Run this pass after drafting the title and body (Phase 3) and before output (Phase 4). It has two parts: an edit for the reader, then one cold read by a fresh agent, which small, low-risk changes skip. Neither part asks the user anything, so the pass runs unchanged in auto mode, with `--no-update`, and in non-interactive sessions.
 
 ## Part 1: Edit for the Reader
 
@@ -16,7 +16,7 @@ Then check the draft against every section of `references/verification-checklist
 
 ## When to Skip the Cold Read
 
-Skip the cold read only for a small, low-risk change or a host that can't launch the agent, both defined below. A non-interactive run is not a reason to skip: `--auto`, `--no-update`, delegation from another skill, and headless sessions such as `claude -p` or `codex exec` still run the cold read, because it launches an agent and never asks the user anything.
+Skip the cold read only for a small, low-risk change or a host that can't launch the agent, both defined below. A non-interactive run is not a reason to skip: auto mode, `--no-update`, delegation from another skill, and headless sessions such as `claude -p` or `codex exec` still run the cold read, because it launches an agent and never asks the user anything.
 
 Skip for a small, low-risk change only when all of these hold:
 

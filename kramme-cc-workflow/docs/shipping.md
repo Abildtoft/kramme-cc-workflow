@@ -76,9 +76,28 @@ Its `--continue` mode requires the selected archived plan already to be `IN_PROG
 
 `/kramme:code:breakdown-findings --reconcile` can infer `DONE` from a proven merged plan branch only while the selected in-scope source state still matches the landed implementation. Later scoped changes or reversions require review and block automatic completion and dependent unblocking, including with `--auto`.
 
+## Unattended by Default
+
+These five skills run in auto mode when you type them. Pass `--manual` to keep their prompts.
+
+| Command | Default | With `--manual` |
+| --- | --- | --- |
+| `/kramme:pr:create` | Commits all uncommitted work, rewrites unpublished history behind a backup unless its commits are already well formed, and publishes without a final confirmation | Asks about uncommitted work and commit structure, and confirms before publishing |
+| `/kramme:git:recreate-commits` | Chooses the granularity, rewrites history, and force-pushes with a lease | Asks for the granularity on a large diff, and confirms before the reset and the push |
+| `/kramme:pr:fix-ci` | Decides whether to rebase a stale branch, and consolidates `[FIX PIPELINE]` commits | Asks about both |
+| `/kramme:pr:generate-description` | Skips its prompts and updates an open Pull Request directly | Asks its clarifying questions and prints the result for copy-paste |
+| `/kramme:pr:rebase` | Continues past red flags and force-pushes with a lease, without verification | Keeps every conflict, red-flag, verification, and confirmation gate |
+
+- `/kramme:pr:rebase --force-push` is the safe unattended option: it skips only the final confirmation and keeps every other gate. Both skills that delegate a rebase use it.
+- `/kramme:pr:fix-ci --no-consolidate` also turns off auto mode, so `--ship` never rebases an open Pull Request without asking.
+- `--check`, `--all-open`, and `--scope-plan` keep their own gates.
+- The default covers typed slash commands, `$` mentions, requests that name the skill, and the parent delegations each skill names. When the model picks one of these skills for a request that does not name it, the skill behaves as `--manual`, or as `--no-update` for `kramme:pr:generate-description`.
+
+The [decision record](decisions/2026-10-31-unattended-default-for-shipping-skills.md) covers the tradeoffs.
+
 ## Publishing a Pull Request
 
-`/kramme:pr:create --auto` is fully non-interactive, including the backup-protected local history rewrite when applicable and final publication.
+`/kramme:pr:create` is fully non-interactive by default, including the backup-protected local history rewrite when applicable and final publication.
 
 - It chooses documented deterministic branch defaults or stops on a hard blocker without asking a question or opening a terminal credential prompt.
 - It never publishes placeholder title/body content.
@@ -101,7 +120,7 @@ A direct invocation on a fresh branch keeps unpublished commits that already fol
 
 ## Rewriting History
 
-`/kramme:git:recreate-commits --auto` authorizes one backup-protected unstacked history rewrite and any required lease-protected force-push. Before it resets anything, it:
+By default, `/kramme:git:recreate-commits` authorizes one backup-protected unstacked history rewrite and any required lease-protected force-push. Before it resets anything, it:
 
 - rejects visible or assume-unchanged tracked edits, ordinary untracked work, and reset-colliding ignored work;
 - refuses mismatched or base-branch upstreams, renamed push destinations, and effective push-destination commits missing locally;
@@ -109,7 +128,7 @@ A direct invocation on a fresh branch keeps unpublished commits that already fol
 - freezes one push URL, branch, and lease, and disables tag following;
 - revalidates the checkout immediately before reset.
 
-Automatic stack-wide rewriting additionally requires `--authorize-history-rewrite`. A non-auto stacked invocation may instead use separate interactive confirmations that enumerate the full stack before authorizing the local reset/restack and the atomic whole-stack force-push.
+Automatic stack-wide rewriting additionally requires `--authorize-history-rewrite`. A `--manual` stacked invocation may instead use separate interactive confirmations that enumerate the full stack before authorizing the local reset/restack and the atomic whole-stack force-push.
 
 ## Verification
 

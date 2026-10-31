@@ -62,7 +62,7 @@ git branch --show-current # -> {original-branch}
 git rev-parse HEAD        # -> {original-commit}
 ```
 
-Require `{original-branch}` to equal `{feature-branch}` and `{original-commit}` to be a full 40-character lowercase commit ID. A Git ref lease can protect a branch OID, but it cannot atomically prevent another actor from opening a Pull Request between a GitHub PR check and a force-push. Neither `--auto` nor `--authorize-history-rewrite` may bypass this fresh-mode remote-absence requirement.
+Require `{original-branch}` to equal `{feature-branch}` and `{original-commit}` to be a full 40-character lowercase commit ID. A Git ref lease can protect a branch OID, but it cannot atomically prevent another actor from opening a Pull Request between a GitHub PR check and a force-push. Neither auto mode nor `--authorize-history-rewrite` may bypass this fresh-mode remote-absence requirement.
 
 #### Existing remote append
 

@@ -10,7 +10,7 @@ The required implementation and review children are:
 When shipping, also require these publication children before the Linear state write, because they are invoked later in the same run:
 
 - `kramme:workflow:cleanup-artifacts` for `--auto`.
-- `kramme:pr:create` for `--auto --linear-issue {issue-id} --require-generated-description`.
+- `kramme:pr:create` for `--linear-issue {issue-id} --require-generated-description`.
 - `kramme:pr:fix-ci` for `--no-consolidate`.
 
 For review convergence, also confirm that its required read-only gates are installed and model-callable: `kramme:pr:gut-check`, `kramme:pr:code-review`, `kramme:pr:convention-review`, `kramme:pr:overengineering-review`, `kramme:code:refactor-opportunities`, and `kramme:verify:run`. This workflow never forwards `--adversarial-review`, so it never requires `kramme:pr:adversarial-review`. Its remediation helpers are not required children: convergence uses `kramme:pr:resolve-review --implement-only` only when the installed copy is model-callable and otherwise makes the smallest direct fix, and it never starts a model-disabled helper automatically.

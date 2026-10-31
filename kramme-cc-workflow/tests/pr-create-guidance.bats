@@ -64,27 +64,28 @@ file_mode() {
     grep -qF "### Model Invocation Contract" "$create"
     grep -qF "No other parent workflow is authorized by this model-invocation exception" "$create"
     grep -qF "No other parent workflow is authorized by the model-invocation exception" "$recreate"
-    grep -qF "Outside that exact \`kramme:pr:create\` delegation, never invent \`--auto\` or \`--authorize-history-rewrite\`" "$recreate"
+    grep -qF "Outside that exact \`kramme:pr:create\` delegation, never invent \`--authorize-history-rewrite\`" "$recreate"
     grep -qF "The model must never invent \`--force-backup\`" "$recreate"
     grep -qF "only with the exact retry-safe value supplied by \`kramme:pr:create\`" "$recreate"
     grep -qF "Every model-initiated invocation must include \`--no-update\`" "$description"
     grep -qF "[--authorize-history-rewrite]" "$create"
     grep -qF "AUTHORIZE_HISTORY_REWRITE=true" "$create"
     grep -qF "Auto mode does not set this variable" "$create"
-    grep -qF -- "args: \"--auto --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"" "$create"
+    grep -qF -- "args: \"--manual --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"" "$create"
+    grep -qF -- "args: \"--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"" "$create"
     [ "$(grep -cF "skill: \"kramme:git:recreate-commits\", args:" "$create")" -eq 5 ]
     while IFS= read -r invocation; do
       [[ "$invocation" == *"--base {base-source-ref} --base-commit {base-ref}"* ]]
       [[ "$invocation" == *"--backup-ref {recreate-backup-ref}"* ]]
       [[ "$invocation" == *"--require-unstacked --no-push"* ]]
     done < <(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create")
-    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--auto ")" -eq 3 ]
+    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--manual ")" -eq 2 ]
     [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--authorize-history-rewrite")" -eq 2 ]
     [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--after {observed-origin-oid}")" -eq 1 ]
     grep -qF "pass \`--authorize-history-rewrite\` only when the user supplied that flag" "$create"
-    ! grep -qF "args: \"--auto --no-push\"" "$create"
+    ! grep -qF "args: \"--no-push\"" "$create"
     grep -qF "Always pass \`--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\`" "$create"
-    grep -qF "Always pass \`--auto --no-update --base {base-source-ref} --base-commit {base-ref}\`" "$create"
+    grep -qF "Always pass \`--no-update --base {base-source-ref} --base-commit {base-ref}\`, and never \`--manual\`" "$create"
     grep -qF "Do not push or change upstream configuration" "$branch"
     ! grep -qF "git push -u origin \$(git branch --show-current)" "$branch"
     grep -qF "Step 5 proved that \`{rollback-origin-ref}\` was absent" "$confirmation"
@@ -124,7 +125,7 @@ file_mode() {
     grep -qF "[--require-unstacked] [--no-push] [--authorize-history-rewrite]" "$recreate"
     grep -qF "If \`--no-push\` was passed, do not run any push command" "$recreate"
     grep -qF "Automatic stack-wide rewriting additionally requires \`--authorize-history-rewrite\`" docs/shipping.md
-    grep -qF "A non-auto stacked invocation may instead use separate interactive confirmations" docs/shipping.md
+    grep -qF "A \`--manual\` stacked invocation may instead use separate interactive confirmations" docs/shipping.md
     grep -qF "## Step 4.5: Reject Stacked Branches" "$create"
     grep -qF "\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh" "$create"
     grep -qF "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." "$create"
@@ -160,10 +161,10 @@ file_mode() {
     cd "'"$BATS_TEST_DIRNAME"'/.."
     recreate="skills/kramme:git:recreate-commits/SKILL.md"
 
-    grep -qF "If \`IN_STACK=true\` and \`--auto\` was passed without \`--authorize-history-rewrite\`, stop before the reset" "$recreate"
+    grep -qF "If \`IN_STACK=true\` and neither \`--manual\` nor \`--authorize-history-rewrite\` was passed, stop before the reset" "$recreate"
     grep -qF "When \`REQUIRE_UNSTACKED=true\` and \`--no-push\` was passed (the \`kramme:pr:create\` delegation), skip this initial resolution and set \`IN_STACK=false\`" "$recreate"
     grep -qF "Under \`REQUIRE_UNSTACKED=true\`, any local or server-side membership is state drift" "$recreate"
-    grep -qF "stop before the reset, even when \`--auto\` or \`--authorize-history-rewrite\` was passed" "$recreate"
+    grep -qF "stop before the reset, even in auto mode or when \`--authorize-history-rewrite\` was passed" "$recreate"
     grep -qF "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches" "$recreate"
     grep -qF "The branch joined a local or server-side stack after initial validation; stop before rewriting history." "$recreate"
     grep -qF "Run the stack-revalidation block above only when the parsed agent state has \`REQUIRE_UNSTACKED=true\`" "$recreate"
@@ -204,17 +205,17 @@ file_mode() {
     cd "'"$BATS_TEST_DIRNAME"'/.."
     recreate="skills/kramme:git:recreate-commits/SKILL.md"
 
-    grep -qF "[--auto] [--coarse|--granular]" "$recreate"
+    grep -qF "[--manual] [--coarse|--granular]" "$recreate"
     grep -qF -- "\`--coarse\` — Force coarse decomposition: one commit per major grouping" "$recreate"
-    grep -qF "Combine it with \`--auto\` to retain all other auto-mode behavior while pinning coarse granularity" "$recreate"
+    grep -qF "auto mode keeps authorizing them, and \`--manual\` keeps their confirmations" "$recreate"
     grep -qF "does not authorize the history rewrite or publication by itself" "$recreate"
     grep -qF "If \`--coarse\` was combined with \`--granular\`, stop" "$recreate"
     grep -qF "\`--coarse\` selects **Coarse** granularity unconditionally and skips the granularity question" "$recreate"
-    grep -qF "When \`--auto\` accompanies either fixed-granularity flag, that flag replaces automatic granularity selection and every other auto-mode behavior remains in effect" "$recreate"
+    grep -qF "In auto mode, either fixed-granularity flag replaces automatic granularity selection and every other auto-mode behavior remains in effect" "$recreate"
     grep -qF "For **coarse** granularity, stop here — each grouping becomes one commit" "$recreate"
-    grep -qF "Before resetting, unless \`--authorize-history-rewrite\` was passed or (\`--auto\` was passed and \`IN_STACK=false\`), obtain the applicable confirmation" "$recreate"
-    grep -qF "Before pushing, unless \`--authorize-history-rewrite\` was passed or (\`--auto\` was passed and \`IN_STACK=false\`), obtain the applicable publication confirmation" "$recreate"
-    grep -qF "[--auto] [--coarse\\|--granular]" ../README.md
+    grep -qF "Before resetting, unless \`--authorize-history-rewrite\` was passed or (auto mode is active and \`IN_STACK=false\`), obtain the applicable confirmation" "$recreate"
+    grep -qF "Before pushing, unless \`--authorize-history-rewrite\` was passed or (auto mode is active and \`IN_STACK=false\`), obtain the applicable publication confirmation" "$recreate"
+    grep -qF "[--manual] [--coarse\\|--granular]" ../README.md
 	  '
 
 	[ "$status" -eq 0 ]
@@ -1056,7 +1057,7 @@ file_mode() {
     grep -qF "git ls-remote --heads origin \"{rollback-origin-ref}\"" "$state"
     grep -qF "git ls-remote --heads origin \"{rollback-origin-ref}\"" "$abort"
     grep -qF "continue only when it returns no matching ref" "$state"
-    grep -qF "Neither \`--auto\` nor \`--authorize-history-rewrite\` may bypass this fresh-mode remote-absence requirement" "$state"
+    grep -qF "Neither auto mode nor \`--authorize-history-rewrite\` may bypass this fresh-mode remote-absence requirement" "$state"
     grep -qF "never force-push, delete, or recreate the remote ref during automatic rollback" "$abort"
     grep -qF "Remote state: {unchanged at captured OID/absence | diverged" "$abort"
     grep -qF "Remote restoration is claimed only when the read-only comparison reports \`unchanged\`" "$abort"
@@ -1079,9 +1080,9 @@ file_mode() {
     state="skills/kramme:pr:create/references/state-and-rollback.md"
 
     grep -qF "include all uncommitted changes by selecting **Commit and include**" "$create"
-    grep -qF "\`--auto\` -> set \`AUTO_MODE=true\` and \`REQUIRE_GENERATED_DESCRIPTION=true\`" "$create"
+    grep -qF "\`--manual\` -> set \`AUTO_MODE=false\`" "$create"
     grep -qF "Auto mode authorizes the nested unstacked rewrite but does not synthesize the separate stack-wide authorization capability" "$create"
-    grep -qF "\`--auto\` is fully non-interactive" "$create"
+    grep -qF "Auto mode is fully non-interactive" "$create"
     grep -qF "Step 5 uncommitted-work decision when \`AUTO_MODE=false\`" "$create"
     grep -qF "If uncommitted changes are present and \`AUTO_MODE=true\`, do not prompt." "$state"
     grep -qF "Select **Commit and include** and execute that path below." "$state"
@@ -1100,7 +1101,7 @@ file_mode() {
     state="skills/kramme:pr:create/references/state-and-rollback.md"
     confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
 
-    grep -qF "\`--auto\` is fully non-interactive" "$create"
+    grep -qF "Auto mode is fully non-interactive" "$create"
     grep -qF "never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts" "$create"
     grep -qF "MISSING REQUIREMENT: generated PR title/body unavailable; placeholder publication is forbidden" "$create"
     grep -qF "Never create a Pull Request containing placeholder fallback text." "$create"
@@ -1258,7 +1259,7 @@ file_mode() {
     [ "$skip_line" -lt "$initial_line" ]
     [ "$latest_line" -lt "$drift_line" ]
     [ "$drift_line" -lt "$reset_line" ]
-    grep -qF "stop before the reset, even when \`--auto\` or \`--authorize-history-rewrite\` was passed" "$recreate"
+    grep -qF "stop before the reset, even in auto mode or when \`--authorize-history-rewrite\` was passed" "$recreate"
 
     ! grep -qF "LATEST_STACK_RESOLVED" "$publication" || exit 1
     ! grep -qF "STACK_REVALIDATION_FAILED" "$publication" || exit 1
@@ -1309,9 +1310,9 @@ file_mode() {
     grep -qF "label: \"Narrative\"" "$create"
     grep -qF "Otherwise:" "$create"
     grep -qF "keep unpublished fresh-branch commits that pass Step 6.0" "$create"
-    grep -qF "kramme:pr:create --auto --base {base-branch} --require-generated-description" \
+    grep -qF "kramme:pr:create --base {base-branch} --require-generated-description" \
       "skills/kramme:code:plan-to-pr/references/shipping-contract.md"
-    grep -qF "kramme:pr:create --auto --linear-issue {issue-id} --require-generated-description" \
+    grep -qF "kramme:pr:create --linear-issue {issue-id} --require-generated-description" \
       "skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
     grep -qF "keeps unpublished commits that already follow the repository'\''s commit conventions" docs/shipping.md
   '

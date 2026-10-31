@@ -218,7 +218,7 @@ Verification: passed
 Pull Request: not created (--ship was not supplied)
 Blocker: none
 Recovery: none
-Next: $kramme:pr:create --auto --require-generated-description
+Next: $kramme:pr:create --require-generated-description
 Then: $kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}
 ```
 

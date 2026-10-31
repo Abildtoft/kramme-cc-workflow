@@ -366,12 +366,12 @@ class RemoteModeTests(PreflightCase):
         )
         self.assertNotIn("unpublished_commits", facts)
 
-    def test_exact_tip_dirty_blocks_without_auto_and_needs_classification_with_auto(self) -> None:
+    def test_exact_tip_dirty_blocks_under_manual_and_needs_classification_by_default(self) -> None:
         self.feature()
         git(self.repo, "push", "-q", "origin", BRANCH)
         self.write("tracked.txt", "dirty\n")
-        self.assert_status(self.invoke(), "blocked", "dirty_existing_remote")
-        payload = self.invoke("--auto")
+        self.assert_status(self.invoke("--manual"), "blocked", "dirty_existing_remote")
+        payload = self.invoke()
         self.assert_status(payload, "remote_classification_required", "remote_classification_required")
         self.assertEqual((payload["facts"]["remote_mode"], payload["facts"]["stack_membership"]), (None, "none"))
 
@@ -464,7 +464,7 @@ class CommitAndMutationTests(PreflightCase):
         self.write("tracked.txt", "dirty\n")
         self.write("notes/new.txt", "untracked\n")
         before = self.identity()
-        for argv in ([], ["--auto"], ["--feature-branch", "other"]):
+        for argv in ([], ["--manual"], ["--feature-branch", "other"]):
             self.invoke(*argv)
         git(self.repo, "checkout", "-q", "--detach")
         detached = self.identity()

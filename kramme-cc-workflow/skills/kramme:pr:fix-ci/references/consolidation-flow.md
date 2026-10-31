@@ -156,7 +156,7 @@ After successful rebase, confirm one of these is true before pushing:
 - The branch is not shared.
 - The user explicitly confirmed collaborators are coordinated for a history rewrite.
 
-If neither is true, stop here. Keep the rebased result local and tell the user not to push it yet. In interactive/default mode, recommend either coordinating first or resetting back to the pre-consolidation state and choosing "Keep separate". In `AUTO_MODE`, stop with `MISSING REQUIREMENT` instead of recommending "Keep separate".
+If neither is true, stop here. Keep the rebased result local and tell the user not to push it yet. Under `--manual`, recommend either coordinating first or resetting back to the pre-consolidation state and choosing "Keep separate". In `AUTO_MODE`, stop with `MISSING REQUIREMENT` instead of recommending "Keep separate".
 
 If one of those conditions is true, choose exactly one push path:
 
