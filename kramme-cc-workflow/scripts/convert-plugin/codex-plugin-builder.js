@@ -28,6 +28,9 @@ const {
 
 const EXCLUDED_HOOK_SOURCE_FILES = new Set(["hook-state.json"]);
 const SOURCE_SNAPSHOT_DIR = "references/sources-snapshot";
+const SKILL_POLICY_FILE = path.join("agents", "openai.yaml");
+const EXPLICIT_ONLY_SKILL_POLICY =
+  "policy:\n  allow_implicit_invocation: false\n";
 const HOOK_BOOTSTRAP_MARKER = "# kramme hook bundle bootstrap";
 const MARKETPLACE_MANIFEST = path.join(
   ".agents",
@@ -47,6 +50,7 @@ const OWNERSHIP_MARKER_VERSION = 1;
  * <root>/.agents/plugins/marketplace.json
  * <root>/plugins/<name>/.codex-plugin/plugin.json
  * <root>/plugins/<name>/skills/<skill>/SKILL.md
+ * <root>/plugins/<name>/skills/<skill>/agents/openai.yaml  explicit-only skills
  * <root>/plugins/<name>/scripts/...       shared runtime helpers
  * <root>/plugins/<name>/shared/...        shared skill references and assets
  * <root>/plugins/<name>/hooks/...         when hook packaging is eligible
@@ -145,6 +149,12 @@ async function writeSkillFile(targetDir, skill, rootExpression) {
     path.join(targetDir, "SKILL.md"),
     rewriteCodexPluginRootReferences(skill.content, rootExpression) + "\n",
   );
+  if (skill.allowImplicitInvocation === false) {
+    await writeText(
+      path.join(targetDir, SKILL_POLICY_FILE),
+      EXPLICIT_ONLY_SKILL_POLICY,
+    );
+  }
 }
 
 /** @param {string} pluginRoot @param {CodexBundle} bundle */
