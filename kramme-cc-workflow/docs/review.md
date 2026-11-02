@@ -119,6 +119,8 @@ The phase opens with one `/kramme:pr:gut-check` pass, then runs applicable gates
 
 Add `--adversarial-review` to require a final review from the opposite model provider after the ordinary gates reach a no-change candidate. Optional `--adversarial-provider` and `--adversarial-model` values select that reviewer explicitly. Any unavailable provider, malformed result, degraded coverage, or tree mutation blocks convergence.
 
+`kramme:linear:issue-to-pr --adversarial-review` forwards the same request. Convergence then runs Gate 5 only for medium- and high-risk work, and a Critical or Important finding the run wants to reject or downgrade comes to you as a decision, unless it concerns code the Pull Request didn't change.
+
 ### Requirements
 
 Callers such as `issue-to-pr` and `plan-to-pr` freeze the requirements that convergence verifies against. When you invoke `/kramme:pr:review-convergence` directly on a clean committed feature branch:

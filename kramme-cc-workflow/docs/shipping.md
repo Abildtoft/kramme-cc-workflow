@@ -53,8 +53,11 @@ Once the state gate passes, a detected Conductor workspace is renamed best-effor
 After implementation, `issue-to-pr` freezes the Linear issue's bounded requirements and delegates the prepared branch to `kramme:pr:review-convergence`. The [review guide](review.md#review-convergence) describes the gates, remediation budget, and review profiles.
 
 - With `--strict`, every review finding receives an evidence-based disposition rather than blind implementation.
+- With `--adversarial-review`, review includes a pass by the model provider opposite your host on medium- and high-risk work, and the final report gains an `Independent review` line.
 - With `--ship`, `issue-to-pr` opens the Pull Request against the validated base branch and runs `/kramme:pr:fix-ci --no-consolidate` until CI and review feedback are clear.
 - Omit `--ship` to stop after implementation, review, and verification.
+
+The checked independent-review line also goes into the generated PR description. If CI remediation changes the tree, the final validation pass requests another provider review unless the full change's stable patch ID matches the completed review. A light-profile skip cannot be reused as a completed review.
 
 ### Reviewer Handoff Summary
 
