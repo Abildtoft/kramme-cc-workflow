@@ -48,7 +48,7 @@ The repository-root `package.json` versions the npm installer entrypoint. `kramm
 - Keep skills self-contained within the installed plugin. A skill may use its own directory, plugin-level `kramme-cc-workflow/shared/` references and assets, and `kramme-cc-workflow/scripts/` helpers, but never repository-level docs. Put a file that two or more skills need in one of those plugin-level locations instead of copying it, and name its `${CLAUDE_PLUGIN_ROOT}/...` path in each consuming `SKILL.md`.
 - Keep `SKILL.md` files focused; move reference material to `references/`, templates to `assets/`, and executable helpers to `scripts/`.
 - Treat public availability as provenance, not permission. Copy external prose, code, templates, or substantial assets only under a verified compatible license; preserve the complete required notice in the affected skill and mark the source `usage: copied` in `references/sources.yaml` with its exact upstream path and an immutable commit, revision, release, or version. For conceptual inspiration, use `usage: inspiration` and rewrite in original language.
-- Never commit fetched upstream source bodies or `references/sources-snapshot/` directories. Store source URLs, original notes, review dates, and normalized hashes only.
+- Never commit fetched upstream source bodies or `references/sources-snapshot/` directories. Store source URLs, original notes, review dates, upstream commit IDs, and normalized hashes only.
 - Use plain-English commit messages on branches. Pull Request titles must use Conventional Commits format.
 
 ## Verification

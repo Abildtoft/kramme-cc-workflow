@@ -1,6 +1,6 @@
 # `sources.yaml` Schema
 
-Per-skill manifest of inspiration sources. Lives at `<skill>/references/sources.yaml`. Read by `kramme:skill:audit-sources` to fetch upstream content transiently and compare normalized hashes without retaining source bodies.
+Per-skill manifest of inspiration sources. Lives at `<skill>/references/sources.yaml`. Read by `kramme:skill:audit-sources` to detect upstream changes without retaining source bodies: GitHub-hosted sources through their commit history, other sources by fetching transiently and comparing normalized hashes.
 
 ## Top-level shape
 
@@ -26,11 +26,24 @@ A skill with no sources to audit may omit the file entirely. An empty file (`sou
 | `notice` | for `copied` | Skill-relative path to the complete required license/attribution notice. The file must ship with the skill. |
 | `upstream_path` | for `copied` | Exact path, page title, or artifact name from which the retained expression came. |
 | `upstream_commit`, `baseline_commit`, `upstream_revision`, `upstream_release`, or `version` | one for `copied` | Immutable upstream identifier for the retained expression. Moving branch names are insufficient. |
-| `last_reviewed_at` | yes | ISO date (`YYYY-MM-DD`) when the baseline was last refreshed. Updated by Phase 5 of the audit skill. |
+| `last_reviewed_at` | yes | ISO date (`YYYY-MM-DD`) when the baseline was last refreshed. Updated by Phase 5 of the audit skill. It is not a compared-on date: a GitHub change window derived from it may include upstream changes the skill already adopted. |
 | `baseline_hash` | yes after first audit | `sha256:<hex>` of the transiently normalized source content. Empty string on a freshly bootstrapped entry; populated on the first successful fetch. |
+| `baseline_commit` | no | For a GitHub-hosted `url`, the full 40-character SHA of the upstream commit through which the audit last checked the source. The change window starts here, and Phase 5 writes the checked upstream HEAD. On a `copied` entry with no other immutable revision field, it records the copy origin instead, and the audit never rewrites it. |
 | `graphql_definitions` | no | Ordered list of named GraphQL type-system definitions to extract before normalization. Supported kinds are `enum`, `input`, `interface`, `scalar`, `type`, and `union`, including extensions of a requested name. Use only with an HTTPS `url` when a bounded part of a large schema informs the skill. The local helper fetches the URL without exposing the full schema to model context; missing or malformed definitions fail the source audit instead of falling back to the full schema. |
 
 Exactly one of `url` and `context7_library` must be set.
+
+## GitHub-hosted sources
+
+The audit decides change for a GitHub-hosted `url` from upstream commit history, not from a hash. Supported forms:
+
+- `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>`, where `<ref>` may also be `refs/heads/<branch>` or `refs/tags/<tag>`
+- `https://github.com/<owner>/<repo>/tree/<ref>/<path>` and `https://github.com/<owner>/<repo>/blob/<ref>/<path>`
+- `https://github.com/<owner>/<repo>`
+
+A `<ref>` that is a full commit SHA or a version tag pins the URL. Keep the pin as frozen evidence of what the skill adopted: the audit still checks the default branch for later commits to the same path, because the pinned content never changes. Entries with `graphql_definitions` keep the hash route, because only their named definitions matter.
+
+The change window starts at `baseline_commit` when it is set, otherwise at the pinned commit, otherwise at the last commit on the tracked branch at or before `last_reviewed_at`, which the report marks as derived. `scripts/github_changes.py` reads only GitHub metadata through `gh api` and never fetches file bodies. Phase 5 records the checked upstream HEAD in `baseline_commit`, so manifests gain the field as sources are audited rather than through a bulk backfill.
 
 ## Examples
 
@@ -71,6 +84,20 @@ sources:
     rationale: "Project creation fields and workflow state values used by the integration."
     usage: inspiration
     last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:..."
+```
+
+### GitHub-hosted source
+
+```yaml
+sources:
+  - id: example-review-skill
+    url: https://raw.githubusercontent.com/example/skills/main/skills/review/SKILL.md
+    title: Example skills — review skill
+    rationale: "Review checklist adapted in references/checklist.md"
+    usage: inspiration
+    last_reviewed_at: 2026-10-31
+    baseline_commit: "0123456789abcdef0123456789abcdef01234567"
     baseline_hash: "sha256:..."
 ```
 

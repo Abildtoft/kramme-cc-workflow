@@ -11,12 +11,12 @@ Fill in placeholders surrounded by `{{ }}`. Omit empty sections (no "Errors: non
 
 ## Summary
 
-| Skill | Sources | Changed | Unchanged | Errors | Bootstrapped |
-| --- | --: | --: | --: | --: | :-: |
-| {{kramme:code:harden-security}} | {{3}} | {{1}} | {{2}} | {{0}} | {{—}} |
-| {{kramme:pr:product-review}} | {{2}} | {{0}} | {{2}} | {{0}} | {{✓}} |
+| Skill | Sources | Changed | Unchanged | Moved or gone | Errors | Bootstrapped |
+| --- | --: | --: | --: | --: | --: | :-: |
+| {{kramme:code:harden-security}} | {{3}} | {{1}} | {{2}} | {{0}} | {{0}} | {{—}} |
+| {{kramme:pr:product-review}} | {{2}} | {{0}} | {{2}} | {{0}} | {{0}} | {{✓}} |
 
-Totals: {{X changed, Y unchanged, Z errors, B bootstrapped}}
+Totals: {{X changed, Y unchanged, M moved or gone, Z errors, B bootstrapped}}
 
 ---
 
@@ -29,6 +29,8 @@ Totals: {{X changed, Y unchanged, Z errors, B bootstrapped}}
 - **URL:** {{https://owasp.org/www-project-top-ten/}}
 - **Last reviewed:** {{2026-01-15}}
 - **Hash:** `{{sha256:abc...}}` → `{{sha256:def...}}`
+- **Commit window:** {{GitHub sources only: `<baseline_commit>` (`recorded`, `pinned`, or `derived`) → `<head_commit>`}}
+- **Upstream commits:** {{GitHub sources only: `commit_count`, or "at least `commit_count`; partial list" when `commits_truncated` is true, followed by the helper's commit lines}}
 
 {{Original paraphrased model output from comparison-prompt.md, including the "Suggestion summary", "Specific additions", source locations, and "Notes" sections. Never include source excerpts.}}
 
@@ -36,6 +38,12 @@ Totals: {{X changed, Y unchanged, Z errors, B bootstrapped}}
 
 - {{cwe-top-25}} ({{CWE Top 25}}) — last reviewed {{2026-01-15}}
 - {{snyk-vuln-db}} ({{Snyk Vulnerability DB}}) — last reviewed {{2026-01-15}}
+
+### Moved or gone sources
+
+{{Omit this subsection if none. These sources were not compared and their baselines stay unchanged. Otherwise:}}
+
+- {{source-id}} — {{`moved`, path `missing`; candidates: `skills/wizard/SKILL.md`}}
 
 ### Errors
 

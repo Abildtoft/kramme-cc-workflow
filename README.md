@@ -797,7 +797,7 @@ This workspace also includes local maintenance skills under `.agents/skills/`, e
 
 | Skill | Description |
 | --- | --- |
-| `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, compares normalized source hashes without retaining fetched source bodies, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
+| `/kramme:skill:audit-sources` | Audits one or more skills against declared inspiration sources, bootstraps missing `references/sources.yaml` manifests, detects upstream changes from commit history through `gh` for GitHub-hosted sources and from normalized hashes for other sources, retains no fetched source bodies, and writes `.context/skill-source-audit-<timestamp>.md` reports. |
 
 Run `/kramme:skill:audit-sources` monthly and again before each quarterly catalog review. The audit stays manual because fetching upstream content and trusting its contents are deliberate decisions.
 
