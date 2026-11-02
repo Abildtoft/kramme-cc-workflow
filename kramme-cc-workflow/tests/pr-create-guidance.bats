@@ -1350,3 +1350,30 @@ PY
 	[ "$status" -ne 0 ]
 	[[ "$output" == *"Pinned base commit does not resolve locally"* ]]
 }
+
+@test "PR creation carries bounded independent review evidence through description and publication" {
+    run python3 - "$BATS_TEST_DIRNAME/.." <<'PYTEST'
+import pathlib
+import sys
+root = pathlib.Path(sys.argv[1])
+create = (root / "skills/kramme:pr:create/SKILL.md").read_text()
+generate = (root / "skills/kramme:pr:generate-description/SKILL.md").read_text()
+publish = (root / "skills/kramme:pr:create/references/confirmation-and-creation.md").read_text()
+hooks = (root / "skills/kramme:linear:issue-to-pr/references/shipping-contract.md").read_text()
+record = (root / "shared/implementation/references/independent-review.md").read_text()
+for skill in (create, generate):
+    assert "${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/independent-review.md" in skill
+    assert "--independent-review-line <line>" in skill
+    assert "Reject duplicate, missing, or malformed values" in skill
+    assert "byte-for-byte" in skill
+assert "When `ADVERSARIAL_REVIEW=true`, append `--independent-review-line <line>`" in hooks
+assert "also pass `--independent-review-line <line>` as one inert quoted argument, unchanged" in create
+assert "use only with `--no-update`, and reject it with `--check`" in generate
+assert "MISSING REQUIREMENT: independent review record missing or changed" in generate
+assert "immediately before any push or `gh pr create`" in publish
+assert "missing, changed, duplicate, or stale record blocks publication" in publish
+assert "at most 1024 ASCII characters" in record
+assert "patch ID against the full committed change" in record and "reviewed tree" in record
+PYTEST
+    [ "$status" -eq 0 ] || { echo "$output"; false; }
+}
