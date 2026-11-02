@@ -1,0 +1,8 @@
+sources:
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "The structural-compensation check, which prefers an enforcing tool or a refactor over always-on prose that steers agents around the code's structure, follows this article's argument that the codebase shapes agent output more than its instruction files."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"

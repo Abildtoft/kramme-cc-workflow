@@ -1,0 +1,50 @@
+sources:
+  - id: anthropic-claude-code-skills
+    url: https://code.claude.com/docs/en/skills
+    title: "Claude Code Docs - Extend Claude with skills"
+    rationale: "The model-invocation metadata and direct-user versus Skill-tool routing boundary follow Claude Code's documented skill invocation controls."
+    usage: inspiration
+    last_reviewed_at: 2026-08-29
+    baseline_hash: "sha256:a84b5b394a31b71d8548f0a9d378a05f32b07164c6bec813bc3de5cb241a5965"
+  - id: addy-git-workflow-versioning
+    url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/git-workflow-and-versioning/SKILL.md
+    title: "Addy Osmani agent-skills - git workflow and versioning"
+    rationale: "Output markers, pull-request handoff conventions, and stating deliberate scope boundaries as reviewer notes are adapted from this source. The PR handoff discipline, structured change-summary expectations, and output-marker style that shape check mode's drift report come from the same source; they were reviewed against upstream commit 5e262b20e0cd88dba39e558f42f5c0b6d766d4b4 when check mode was a separate verifier skill."
+    usage: inspiration
+    last_reviewed_at: 2026-06-02
+    baseline_hash: "sha256:b1a84eac7a47f6e2985a27733137d862fcdeb552eefe2bd17629e1f3c20e0e97"
+  - id: github-pr-template-docs
+    url: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/creating-a-pull-request-template-for-your-repository
+    title: "GitHub Docs - Creating a pull request template for your repository"
+    rationale: "Supported GitHub pull request template locations and multiple-template directory behavior are based on this source."
+    usage: inspiration
+    last_reviewed_at: 2026-06-22
+    baseline_hash: "sha256:53452c4d146dcdc16dad1bf957047211bbb06d953097dbc9ba0f61db29eda6a7"
+  - id: fofr-govuk-style-skill
+    url: https://gist.githubusercontent.com/fofr/505e225f9bf5e839d30c12ba6bfa0be2/raw
+    title: "An agent skill for writing in the GOV.UK style"
+    rationale: "Its reader-focused structure, front-loaded editing approach, and final comprehension check inform the shared plain-language rubric that the readability pass applies to PR descriptions."
+    usage: inspiration
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:56466ee04d1a2469eb3203744470f46274269e01837bda1937b7a736cc1cfe52"
+  - id: govuk-identify-user-needs
+    url: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/plan-manage-content/identify-user-needs/
+    title: "GOV.UK content and publishing guidance - Identify user needs"
+    rationale: "Its user-needs guidance informs the readability pass's fixed reader contract: what a reviewer needs to understand, decide, or do."
+    usage: inspiration
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:4030bacb2fd97c21f27d3b641c19d8f4973cd0bf2c6a1f15021ba1eead34d939"
+  - id: govuk-clear-language
+    url: https://guidance.publishing.service.gov.uk/writing-to-gov-uk-standards/writing-guidelines/clear-language/
+    title: "GOV.UK content and publishing guidance - Use clear language"
+    rationale: "Its guidance on familiar wording, active voice, and concise sentences informs the shared plain-language rubric that the readability pass applies."
+    usage: inspiration
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:c0c04c9c1900ab67897f8d79b15b52b416908d4c9f057196e7a7e56d7ef20fdb"
+  - id: govuk-a-to-z-style-guide
+    url: https://www.gov.uk/guidance/style-guide/a-to-z
+    title: "GOV.UK content and publishing guidance - A to Z style guide"
+    rationale: "Its guidance on headings, lists, links, and terminology informs the formatting mechanics of the shared rubric that the readability pass applies."
+    usage: inspiration
+    last_reviewed_at: 2026-08-16
+    baseline_hash: "sha256:3c5d71b1e244484c5f7ecc911bbe81245ca1b6c692a1417f6e3687ae9f53638d"

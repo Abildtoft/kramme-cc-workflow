@@ -1,0 +1,15 @@
+sources:
+  - id: conductor-openapi
+    url: https://api.conductor.build/v0/openapi.json
+    title: "Conductor OpenAPI specification"
+    rationale: "The optional adapter follows the official workspace-rename endpoint and verifies the returned workspace ID and name."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:b61ee76d98e0981735bbb297cff6f84c4bbb9dd575b69a2d78b6aa0f5be5e781"
+  - id: conductor-environment-variables
+    url: https://www.conductor.build/docs/reference/environment-variables
+    title: "Conductor environment variables"
+    rationale: "The host adapter preserves Conductor's distinction between workspace display state and local or cloud execution context."
+    usage: inspiration
+    last_reviewed_at: 2026-08-26
+    baseline_hash: "sha256:c3b6d5d22201b5f8e2d679ba2ba16bf66cac0c5f0c35e8e8529d0e25745ba184"

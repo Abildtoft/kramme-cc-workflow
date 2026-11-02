@@ -1,0 +1,15 @@
+sources:
+  - id: conductor-parallel-agents
+    url: https://www.conductor.build/docs/concepts/parallel-agents
+    title: "Conductor Docs - Parallel agents"
+    rationale: "Conductor's same-workspace implementation-and-review model informs the optional different-provider session boundary used by this skill."
+    usage: inspiration
+    last_reviewed_at: 2026-08-27
+    baseline_hash: ""
+  - id: conductor-api
+    url: https://www.conductor.build/docs/api
+    title: "Conductor Docs - API"
+    rationale: "Conductor's cloud session creation, status polling, and transcript retrieval flow informs the cloud execution path used by this skill."
+    usage: inspiration
+    last_reviewed_at: 2026-08-27
+    baseline_hash: ""

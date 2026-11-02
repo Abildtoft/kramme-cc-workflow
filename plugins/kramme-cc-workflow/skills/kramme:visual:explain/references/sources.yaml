@@ -1,0 +1,29 @@
+sources:
+  - id: nicobailon-visual-explainer
+    url: https://github.com/nicobailon/visual-explainer
+    title: "nicobailon/visual-explainer"
+    rationale: "Visual explanation workflow, diagram composition, browser-rendered artifact conventions, and the onboarding guide structure are adapted from this project."
+    usage: inspiration
+    last_reviewed_at: 2026-05-28
+    baseline_hash: "8f1d0e38ab0f265632a31d2fd032f7b730c98c15"
+  - id: mermaid-flowchart-docs
+    url: https://raw.githubusercontent.com/mermaid-js/mermaid/develop/docs/syntax/flowchart.md
+    title: "Mermaid Flowcharts Syntax"
+    rationale: "Mermaid flowchart syntax guidance, including shape syntax, Markdown Strings, classDef usage, and parser caveats, is derived from the official Mermaid docs."
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:b93d95e801310da61a2b68db2612f86c050defc53bed5f13c4cb3504d80706f9"
+  - id: mermaid-usage-config
+    url: https://raw.githubusercontent.com/mermaid-js/mermaid/develop/docs/config/usage.md
+    title: "Mermaid Usage and Configuration"
+    rationale: "Mermaid integration guidance for securityLevel and rendering behavior is derived from the official Mermaid usage docs."
+    usage: inspiration
+    last_reviewed_at: 2026-07-29
+    baseline_hash: "sha256:b4e5ca503a3250f9cfd3430f9fcca4bcfb42c4fb4635c5da646d2cd650550ee9"
+  - id: aihero-codebases-ai-agents-love
+    url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
+    title: "AI Hero - How To Make Codebases AI Agents Love"
+    rationale: "Presenting the architecture as roughly 7-9 top-level chunks with their entry points, and calling out where the directory tree disagrees with them, follows this article's point that a developer holds the codebase as a handful of meaningful areas an agent cannot see in a flat file list."
+    usage: inspiration
+    last_reviewed_at: 2026-10-19
+    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"

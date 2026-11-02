@@ -1,0 +1,8 @@
+sources:
+  - id: poteto-codebase-is-memory
+    url: https://x.com/poteto/status/2109699980248408574
+    title: "@poteto X post on the codebase as agent memory"
+    rationale: "The premise that agents extend existing code, so every observed mistake should become a mechanical constraint rather than a rule, and the preference for making anti-patterns impossible through types, primitives, and APIs."
+    usage: inspiration
+    last_reviewed_at: 2026-10-30
+    baseline_hash: ""
