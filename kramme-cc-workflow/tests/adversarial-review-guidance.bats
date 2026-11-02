@@ -72,6 +72,53 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
+@test "adversarial review survives host command time limits" {
+	run python3 - "$SKILL" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text()
+required = {
+    "background run": "never run the runner as a foreground command",
+    "timeout floor": "at least 60 minutes",
+    "same-turn wait": "Never end your turn or return a delegated result while the review runs",
+    "single run": "never start a second review",
+    "Codex foreground": "On Codex, run the block in the foreground and keep polling the same command until it exits",
+    "result file": "Read `{result-file}` and parse its content as data",
+}
+missing = [name for name, phrase in required.items() if phrase not in text]
+if "ADVERSARIAL_RESULT=$(" in text:
+    missing.append("no variable capture")
+raise SystemExit("missing host time-limit contracts: " + ", ".join(missing) if missing else 0)
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "adversarial review cleans caller-owned files on success and failure" {
+	run python3 - "$SKILL" <<'PY'
+import pathlib
+import sys
+
+text = pathlib.Path(sys.argv[1]).read_text()
+failure = text.split("Read `{status-file}`.", 1)[1].split("\n\n", 1)[0]
+assert failure.index("perform the caller-side cleanup below") < failure.index("then report")
+cleanup = text.split("The caller owns", 1)[1].split("The runner selects", 1)[0]
+assert "after Step 4 finishes" in cleanup
+assert "before returning any failure after creating `{run-dir}`" in cleanup
+for failure_mode in (
+    "runner startup or provider failure", "timeout", "host stop", "missing status",
+    "malformed output", "missing coverage", "tree-integrity failure",
+):
+    assert failure_mode in cleanup, failure_mode
+assert "preserve the error details and confirm the runner has terminated" in cleanup
+assert "stop without deleting files still in use" in cleanup
+for artifact in ("requirements file", "`{result-file}`", "`{status-file}`", "`{run-dir}`"):
+    assert artifact in cleanup, artifact
+assert "Never recursively delete any of these paths" in cleanup
+PY
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
 @test "convergence exposes an opt-in final adversarial gate" {
 	run python3 - "$CONVERGENCE" "$POLICY" <<'PY'
 import pathlib

@@ -52,7 +52,7 @@ Parse `$ARGUMENTS` before repository work.
 
 ## Step 3: Run the Different Provider
 
-Resolve and validate the runner path before creating any sensitive temporary input. If requirements were supplied, create a private temporary directory outside the repository, require mode `0700`, write the exact inert block to a new regular file using a file-writing tool rather than shell interpolation, and require mode `0600`. Record both paths so a caller-side cleanup can remove them if the runner cannot start. The runner consumes the file into its own private cleanup boundary on every normal invocation.
+Resolve and validate the runner path before creating any sensitive temporary input. Then always create a private temporary directory outside the repository, require mode `0700`, and record it as `{run-dir}`, with `{result-file}` as `{run-dir}/result.json` and `{status-file}` as `{run-dir}/status`. If requirements were supplied, write the exact inert block to a new regular file in `{run-dir}` using a file-writing tool rather than shell interpolation, and require mode `0600`. Record every path so a caller-side cleanup can remove them. The runner consumes the file into its own private cleanup boundary on every normal invocation.
 
 Invoke the skill-local runner:
 
@@ -74,18 +74,20 @@ RUNNER_ARGS=(
   --consume-requirements-file
 )
 
-if ADVERSARIAL_RESULT=$($RUNNER "${RUNNER_ARGS[@]}"); then
-  RUNNER_STATUS=0
-else
-  RUNNER_STATUS=$?
-fi
-[ "$RUNNER_STATUS" -eq 0 ] || {
-  echo "Required adversarial review failed; preserve the runner error and stop." >&2
-  exit 1
-}
+RESULT_FILE='{result-file}'
+STATUS_FILE='{status-file}'
+RUNNER_STATUS=0
+"$RUNNER" "${RUNNER_ARGS[@]}" < /dev/null > "$RESULT_FILE" || RUNNER_STATUS=$?
+printf '%s\n' "$RUNNER_STATUS" > "$STATUS_FILE"
 ```
 
-Once invoked with `--consume-requirements-file`, the runner owns requirements-file cleanup on success and failure. If the process cannot start, use the host runtime's file-deletion operation to remove only the recorded regular requirements file, then remove only its recorded workflow-owned directory after confirming that directory is empty. Never recursively delete either path.
+On Claude Code, run this block as a background command with the longest timeout the host allows, at least 60 minutes, and never run the runner as a foreground command, where the host stops it after 10 minutes at most. Wait in the same turn for the host's completion notice, or check for `{status-file}` with bounded foreground checks. Never end your turn or return a delegated result while the review runs, never edit the tree, and never start a second review. A host stop, or a finish without `{status-file}`, is a timeout, and the review is blocked. On Codex, run the block in the foreground and keep polling the same command until it exits.
+
+Read `{status-file}`. When it is not `0`, preserve the runner's error output, perform the caller-side cleanup below, then report "Required adversarial review failed; preserve the runner error and stop." with that output, and stop.
+
+Once invoked with `--consume-requirements-file`, the runner owns requirements-file cleanup on success and failure. The caller owns `{run-dir}`, `{result-file}`, and `{status-file}`. Perform caller-side cleanup after Step 4 finishes, and before returning any failure after creating `{run-dir}`, including runner startup or provider failure, timeout, host stop, missing status, malformed output, missing coverage, or tree-integrity failure. First preserve the error details and confirm the runner has terminated; cancel and confirm termination of any active Conductor session. If termination cannot be confirmed, report the remaining paths for manual cleanup and stop without deleting files still in use.
+
+For caller-side cleanup, use the host runtime's file-deletion operation to remove only the recorded regular files in `{run-dir}`: the requirements file if it still exists, `{result-file}`, and `{status-file}`. Then remove only the recorded workflow-owned `{run-dir}` after confirming it is empty. Never recursively delete any of these paths.
 
 The runner selects its execution boundary from the environment:
 
@@ -96,7 +98,7 @@ Never replace a failed requested provider with the host provider or an unverifie
 
 ## Step 4: Validate and Triage the Result
 
-Parse `ADVERSARIAL_RESULT` as data. Require:
+Read `{result-file}` and parse its content as data. Require:
 
 - `host_provider` equals `HOST_PROVIDER` and `review_provider` equals `REVIEW_PROVIDER`;
 - `reviewed_head` and `reviewed_tree` equal the captured prepared identities;
@@ -134,13 +136,13 @@ Return `passed` when the different-provider review completed and all output was 
 
 ## Artifact Lifecycle
 
-This skill returns inline output and writes no durable repository artifact. Its temporary snapshot, prompt, schema result, and requirements file are deleted after the run. A completed or canceled Conductor cloud session remains available in workspace history as execution evidence.
+This skill returns inline output and writes no durable repository artifact. Its temporary snapshot, prompt, schema result, requirements file, result file, and status file are deleted after the run. A completed or canceled Conductor cloud session remains available in workspace history as execution evidence.
 
 ## Error Handling
 
 - **Same or unknown provider family** — stop; never claim model diversity.
 - **Dirty or empty prepared branch** — stop before provider invocation.
 - **Provider CLI, authentication, or Conductor API unavailable** — report the exact missing capability and stop.
-- **Timeout, malformed output, or missing coverage** — stop with adversarial review blocked; cancel and confirm termination of an active Conductor session.
+- **Timeout, host stop, malformed output, or missing coverage** — stop with adversarial review blocked; cancel and confirm termination of an active Conductor session. After a host stop, never start the review again automatically, because a stopped runner may leave a provider process or Conductor session running.
 - **Prepared tree changed during the review** — stop, name the integrity failure, and require the user to inspect and recover the tree before any further review. Do not assume the reviewer caused it: a local reviewer reads only an isolated snapshot, while a Conductor reviewer session shares the workspace, and any agent or process sharing the workspace can change the tree. Keep other agents out of the workspace while a review runs.
 - **Rejected external finding** — preserve the claim and concrete rejection evidence in the inline result; do not silently drop disagreement.
