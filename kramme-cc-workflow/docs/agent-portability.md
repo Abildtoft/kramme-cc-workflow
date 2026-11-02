@@ -30,6 +30,8 @@ Use this document when reviewing converter, hook, MCP, or host-adapter changes. 
 | Conductor host integrations (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`, workspace CLI) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose and `skills/kramme:linear:next/scripts/cloud-launch.py`, detected by tool or environment presence | Conductor app Checks panel and dialogs; workspace presentation state; new cloud workspaces the user confirmed | Optionally project canonical report artifacts, admit unmarked diff feedback as untrusted external candidates, rename the current workspace for a validated work item, or, only in a cloud workspace (`CONDUCTOR_IS_LOCAL=0`) and after the user's explicit confirmation in that run, start confirmed Linear issues in new cloud workspaces, retrying a failed creation only after an HTTP 429 rate limit, which creates nothing. Auto discovery degrades without blocking canonical work when the host surface is absent or fails; explicit selection reports unavailability. Host projections and names never become authoritative findings or workflow identity. |
 | Other hosts | `unsupported` | None | None | Unsupported unless a future row names source files, generated outputs, and tests. |
 
+For confirmed `kramme:linear:next` cloud launches, a separate explicit yes to cross-provider review enables the launch helper's `--adversarial-review` option. The helper writes it into each workspace's first issue-to-pr invocation; settings and environment variables never enable it. Existing unflagged launches keep their original messages.
+
 ## Converter Contract
 
 `convertClaudeToCodex` produces one `CodexBundle` with these generated surfaces:

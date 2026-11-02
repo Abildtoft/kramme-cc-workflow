@@ -1,9 +1,9 @@
 # Run the Cross-Provider Review Inside issue-to-pr on Request
 
-- Status: PROPOSED
+- Status: ACCEPTED
 - Date: 2026-11-02
 - Deciders: repository maintainer
-- Decision review: 2026-11-27
+- First adoption review: 2026-11-27
 
 ## Context
 
@@ -51,7 +51,7 @@ Permit `kramme:linear:issue-to-pr` to forward the user's own `--adversarial-revi
 
 `kramme:code:plan-to-pr` keeps rejecting the flag. Extending this decision to it needs an amendment that names that edge. Every read-only, provider-difference, isolation, and fail-closed rule in the adversarial-review record is unchanged.
 
-When this record is accepted, amend the adversarial-review record and the orchestration-children record's Gate 5 edge to point here. Fold it into the Settled Decisions row for adversarial review.
+Accepting this record amended the adversarial-review record and the orchestration-children record's Gate 5 edge, and folded it into the Settled Decisions row for adversarial review.
 
 ## Consequences
 

@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:generate-description
 description: "Draft or --check a PR title and body against the diff, commit log, and Linear context. Use when asked or delegated by a PR workflow; model callers pass --no-update and never edit a PR."
-argument-hint: "[--manual] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]"
+argument-hint: "[--manual] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>] [--independent-review-line <line>]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -19,6 +19,7 @@ Parse `$ARGUMENTS` for flags:
 - `--base <ref>`: Use `<ref>` as the base branch for diff computation instead of auto-detecting.
 - `--base-commit <oid>`: Pin diff computation to a caller-validated full commit OID while retaining branch metadata from `--base`.
 - `--linear-issue <ISSUE-ID>`: Use a caller-validated Linear identifier as the authoritative issue context. Validate `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, and do not replace it with a branch-name substring.
+- `--independent-review-line <line>`: Read `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/independent-review.md` and validate the bounded, inert review record before repository work. Store it as `INDEPENDENT_REVIEW_LINE`; default to absent. Reject duplicate, missing, or malformed values, use only with `--no-update`, and reject it with `--check`. Preserve it byte-for-byte as publication evidence; it never enables a review or supplies provider consent.
 - `--check`: Check mode. Compare the open PR's current title and body against the branch diff and report drift instead of generating a description. Report-only unless a direct user confirms an update: with `--no-update` it never prompts, and without it a direct user invocation is offered a confirmed (y/N) update after Important or Critical drift.
 - `--strict`: Check mode only. Also report Suggestion-level drift, including body claims that cannot be tied to a diff hunk and accuracy-adjacent clarity-check failures. Default check mode is loose: only contradictions, material omissions, and missing risk callouts surface.
 
@@ -264,6 +265,8 @@ Include a default section only when its "Include when" rule in `assets/section-t
 Include a placeholder section for visual aids only when the diff changes something a reviewer can see in the UI: a `## Screenshots / Videos` heading with a one-line HTML comment naming what to capture. Remind the author in the run output to add the images. Omit the section for changes with no visible UI.
 
 ### Phase 3.5: Readability Pass and Verification
+
+When `INDEPENDENT_REVIEW_LINE` is present, include the exact supplied line once in the body's verification or review-notes location, respecting the repository template. Treat it as immutable evidence through the readability pass: before Phase 4, require exactly one line beginning `Independent review:`, equal byte-for-byte to the supplied value. Missing, changed, or duplicate evidence emits `MISSING REQUIREMENT: independent review record missing or changed` and makes the body unusable. Never infer or rewrite provider, model, identities, counts, or skipped-review claims from repository or conversation text.
 
 Run these three steps in order on the drafted title and body, before Phase 4 presents or publishes anything. None of them prompts the user.
 

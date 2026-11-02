@@ -5,7 +5,7 @@ The skill keeps issue selection and the user's confirmation. This helper owns th
 
   detect                                        Report whether this session runs in a usable Conductor cloud
                                                 workspace, with its project ID and this session's model.
-  launch --project-id ID --item ISSUE AGENT MODEL [--item ...]
+  launch --project-id ID [--adversarial-review] --item ISSUE AGENT MODEL [--item ...]
                                                 Create one cloud workspace per confirmed issue, in order, whose
                                                 first message runs kramme:linear:issue-to-pr ISSUE --ship.
 
@@ -211,7 +211,7 @@ def create_workspace(command: Sequence[str], wait_budget: int) -> tuple[CliResul
     return created, wait_budget
 
 
-def launch(project_id: str, raw_items: Sequence[Sequence[str]]) -> JsonDict:
+def launch(project_id: str, raw_items: Sequence[Sequence[str]], adversarial_review: bool = False) -> JsonDict:
     if os.environ.get("CONDUCTOR_IS_LOCAL") != "0":
         raise Stop("not_cloud", "launch runs only in a Conductor cloud workspace.")
     if not valid_id(project_id):
@@ -224,6 +224,8 @@ def launch(project_id: str, raw_items: Sequence[Sequence[str]]) -> JsonDict:
     wait_budget = RATE_LIMIT_WAIT_BUDGET
     for issue, agent, model in items:
         message = f"{INVOCATIONS[agent]} {issue} --ship"
+        if adversarial_review:
+            message += " --adversarial-review"
         entry: JsonDict = {"issue": issue, "agent": agent, "model": model, "message": message}
         results.append(entry)
         if stopped:
@@ -251,6 +253,7 @@ def build_parser() -> JsonArgumentParser:
     commands.add_parser("detect", help="Report whether this is a usable Conductor cloud workspace.")
     launch_parser = commands.add_parser("launch", help="Start confirmed issues in new Conductor cloud workspaces.")
     launch_parser.add_argument("--project-id", required=True)
+    launch_parser.add_argument("--adversarial-review", action="store_true")
     launch_parser.add_argument("--item", nargs=3, action="append", required=True, metavar=("ISSUE", "AGENT", "MODEL"))
     return parser
 
@@ -267,7 +270,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         command = args.command
         if command == "detect":
             return emit(command, detect())
-        return emit(command, launch(args.project_id, args.item))
+        return emit(command, launch(args.project_id, args.item, args.adversarial_review))
     except Stop as stop:
         return emit(command, {"status": "error", "reason": stop.reason, "message": stop.message})
 

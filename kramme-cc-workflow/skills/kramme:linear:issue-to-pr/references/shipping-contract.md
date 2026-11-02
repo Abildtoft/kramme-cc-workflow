@@ -28,11 +28,11 @@ Every shared grant applies to the current Linear issue branch only. `--ship` add
 
   The Linear workflow has no committed-path scope beyond the issue branch itself, so the committed-path proof and its final recheck reduce to confirming the current branch is still the Linear issue branch.
 
-- `{create-invocation}`: `kramme:pr:create --linear-issue {issue-id} --require-generated-description`. The explicit issue identifier is authoritative; do not re-extract it from the branch name.
+- `{create-invocation}`: `kramme:pr:create --linear-issue {issue-id} --require-generated-description`. The explicit issue identifier is authoritative; do not re-extract it from the branch name. When `ADVERSARIAL_REVIEW=true`, append `--independent-review-line <line>` with the checked, immutable pre-publication `{independent-review-line}` from `cross-provider-review.md`, as one inert quoted argument. This carries the record into the generated PR body before publication.
 - `{post-create-hook}`: none.
 - `{fix-ci-invocation}`: `kramme:pr:fix-ci --no-consolidate`.
 - `{fix-ci-guard}`: none.
-- `{validation-extra-args}`: none.
+- `{validation-extra-args}`: resolve immediately before shared Step 8's validation-only invocation, after fix-ci has finished. When `ADVERSARIAL_REVIEW=false`, bind to `none`. Otherwise compute the final change patch ID using the shared Independent Review Record reference named in SKILL.md. If a checked completed different-provider result from this invocation has an identical patch ID, bind to `none` and record `same change patch` with both IDs and the retained earlier attestation. Otherwise bind to `--adversarial-review`, including when the initial review was skipped for the light profile. Missing or failed patch computation is a blocker; never silently disable the review. After the pass returns, when the flag was forwarded, apply `cross-provider-review.md`'s Handoff Checks to its `Adversarial review:` line for `{final-tree}` and retain that checked result for the final report. With same-patch reuse, retain the earlier result and the successful comparison instead; do not interpret the pass's `not requested` line as a new review.
 - `{blocked-handoff}`: stop with the Pull Request URL, or the pushed branch when no Pull Request exists, and the delegated skill's exact blocker, then end this top-level invocation. After the blocker is resolved in a later session, invoke `kramme:pr:fix-ci --no-consolidate` directly as the existing-PR workflow; do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume.
 
 ## Linear Failure Notes

@@ -36,8 +36,20 @@ Codes = Tuple[int, ...]
 
 SCHEMA_VERSION = 1
 STATE_TOOL = "kramme:linear:issue-to-pr/preflight"
-SUPPORTED_FLAGS = ["--continue", "--strict", "--cycles <1-5>", "--depth <balanced|full>", "--ship"]
-BOOLEAN_FLAGS = {"--continue": "continue_mode", "--strict": "strict_review", "--ship": "ship_mode"}
+SUPPORTED_FLAGS = [
+    "--continue",
+    "--strict",
+    "--cycles <1-5>",
+    "--depth <balanced|full>",
+    "--adversarial-review",
+    "--ship",
+]
+BOOLEAN_FLAGS = {
+    "--continue": "continue_mode",
+    "--strict": "strict_review",
+    "--adversarial-review": "adversarial_review",
+    "--ship": "ship_mode",
+}
 VALUE_FLAGS = ("--cycles", "--depth")
 DEFAULT_CYCLES = 2
 DEPTHS = ("balanced", "full")

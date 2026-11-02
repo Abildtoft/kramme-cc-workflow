@@ -132,8 +132,10 @@ required_skill = [
     "--adversarial-model",
     "ADVERSARIAL_REVIEW",
     "reject an explicit provider equal to `HOST_PROVIDER` during this parse step",
-    "internal callers never hold the user's cross-provider consent",
+    "Accept `--adversarial-review` only with the archive key `linear-issue-to-pr`",
     "A model that invokes this skill never adds it on its own initiative",
+    "ADVERSARIAL_FORWARDED",
+    "change patch",
 ]
 required_policy = [
     "Gate 5: Adversarial Model Review",
@@ -143,6 +145,8 @@ required_policy = [
     "final adversarial review matches the final verified tree",
     "never pass `--base`",
     "exists only because the user requested `--adversarial-review`",
+    "runs Gate 5 only in the `balanced` and `full` profiles",
+    "becomes a `blocked` finding instead",
 ]
 missing = [phrase for phrase in required_skill if phrase not in skill]
 missing += [phrase for phrase in required_policy if phrase not in policy]
@@ -151,16 +155,21 @@ PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
-@test "internal convergence callers never forward the adversarial opt-in" {
+@test "only issue-to-pr forwards the user's adversarial opt-in" {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    for caller in skills/kramme:linear:issue-to-pr/SKILL.md skills/kramme:linear:issue-to-pr/references/shipping-contract.md skills/kramme:code:plan-to-pr/SKILL.md skills/kramme:code:plan-to-pr/references/shipping-contract.md; do
+    for caller in skills/kramme:code:plan-to-pr/SKILL.md skills/kramme:code:plan-to-pr/references/shipping-contract.md; do
       if grep -qF -- "--adversarial-review" "$caller"; then echo "$caller forwards --adversarial-review"; exit 1; fi
     done
-    grep -qF "never forwards \`--adversarial-review\`" skills/kramme:linear:issue-to-pr/references/delegated-skills.md
+    grep -qF -- "[--depth {depth}] [--adversarial-review] [--isolated] --requirements {issue-requirements}" skills/kramme:linear:issue-to-pr/SKILL.md
+    grep -qF "Append \`--adversarial-review\` only when \`ADVERSARIAL_REVIEW=true\`" skills/kramme:linear:issue-to-pr/SKILL.md
+    grep -qF "Nothing stored turns it on" skills/kramme:linear:issue-to-pr/references/cross-provider-review.md
+    grep -qF "Never add the flag on your own initiative" skills/kramme:linear:issue-to-pr/references/cross-provider-review.md
+    grep -qF "also require \`kramme:pr:adversarial-review\`" skills/kramme:linear:issue-to-pr/references/delegated-skills.md
     grep -qF "### Hand-off repair exceptions" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
     grep -qF "is model-invocable only as Gate 5 of \`kramme:pr:review-convergence\`" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
+    grep -qF "\`kramme:code:plan-to-pr\` never forwards the flag" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -169,4 +178,23 @@ PY
 @test "adversarial review source provenance is declared" {
 	grep -qF 'conductor-parallel-agents' "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/references/sources.yaml"
 	grep -qF 'conductor-api' "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/references/sources.yaml"
+}
+
+@test "forwarded disagreements retain original provider severity through child triage" {
+    run python3 - "$BATS_TEST_DIRNAME/.." <<'PYTEST'
+import pathlib
+import sys
+root = pathlib.Path(sys.argv[1])
+child = (root / "skills/kramme:pr:adversarial-review/SKILL.md").read_text()
+policy = (root / "skills/kramme:pr:review-convergence/references/review-convergence.md").read_text()
+assert "Preserve the provider's original claim and severity as `reported_severity` before host triage" in child
+assert "Return every provider finding, including rejected and demoted ones" in child
+for field in ("reported_severity", "validated_severity", "disposition", "rationale"):
+    assert field in child and field in policy, field
+assert "Apply that decision rule to each provider finding's immutable `reported_severity`" in policy
+assert "including any delegated wrapper's compact output" in policy
+assert "Missing original-severity evidence blocks the gate" in policy
+assert "A child-side rejection or downgrade" in policy
+PYTEST
+    [ "$status" -eq 0 ] || { echo "$output"; false; }
 }

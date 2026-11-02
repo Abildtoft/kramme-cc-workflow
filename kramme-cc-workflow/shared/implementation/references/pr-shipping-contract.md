@@ -16,7 +16,7 @@ Apply this contract only after the caller supplied `--ship`, `kramme:pr:review-c
 | `{post-create-hook}` | Caller work that must finish after the initial shipped result is proven and before CI stabilization. |
 | `{fix-ci-invocation}` | The exact `kramme:pr:fix-ci --no-consolidate` invocation, including caller scope arguments; also the recovery invocation for a later session. |
 | `{fix-ci-guard}` | Caller check applied before every fix commit or push made by `{fix-ci-invocation}`. |
-| `{validation-extra-args}` | Additional arguments for the validation-only convergence pass. |
+| `{validation-extra-args}` | Additional arguments for the validation-only convergence pass; resolve a conditional caller binding immediately before Step 8's invocation against the final state. |
 | `{blocked-handoff}` | How the caller stops once publication has started: the report it returns with the publication state, Pull Request URL or absence, exact blocker, and recovery. |
 
 ## Authorization Boundary

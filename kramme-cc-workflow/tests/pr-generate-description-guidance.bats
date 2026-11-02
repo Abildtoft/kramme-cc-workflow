@@ -137,7 +137,7 @@ PY
     test -f "$check"
     test ! -e "skills/kramme:pr:verify-description"
     grep -qF "disable-model-invocation: false" "$skill"
-    grep -qF "argument-hint: \"[--manual] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>]\"" "$skill"
+    grep -qF "argument-hint: \"[--manual] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>] [--independent-review-line <line>]\"" "$skill"
     grep -qF "Check mode accepts only \`--base <ref>\`, \`--strict\`, and \`--no-update\`." "$skill"
     grep -qF "reject \`--check\` combined with \`--manual\` (check mode owns its own confirmation), \`--base-commit\`, or \`--linear-issue\`, and reject \`--strict\` without \`--check\`" "$skill"
     grep -qF "Every model-initiated invocation must include \`--no-update\`" "$skill"

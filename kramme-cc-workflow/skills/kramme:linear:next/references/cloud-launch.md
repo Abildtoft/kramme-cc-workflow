@@ -10,10 +10,11 @@ List every shortlisted issue you leave out with the checklist item it fails. If 
 
 ## 2. Ask once
 
-Ask both questions in one message and wait for the answer:
+Ask these questions in one message and wait for the answer:
 
 1. Whether to start the offered issues (all of them, a named subset, or none), each in its own new Conductor cloud workspace whose first message runs `kramme:linear:issue-to-pr {ISSUE-ID} --ship`. Say that each workspace implements the issue, reviews it, and opens and stabilizes a Pull Request. Name every offered issue whose state type is not `backlog`, such as a To-do issue: `kramme:linear:issue-to-pr` asks once in that workspace before moving such an issue to its started status, and waits there for a yes. Repeat any coordination caveat from the report, such as two issues that edit the same files.
 2. Only when at least one offered issue has Medium or High UI/UX work: whether those issues should use a different model than the None and Low ones. Name the default, this session's agent and `session_model` from `detect`. Run `conductor model` and show its output so the user can pick a model id and its agent.
+3. Whether the launched runs should use `--adversarial-review`: send their tracked snapshot, committed diff, and frozen issue requirements to the provider opposite each workspace's host for medium- and high-risk review. Explain that disagreements can pause a run for the user's decision. Only an explicit yes to this question in this session enables it; an unanswered question means no independent review, even when the user confirmed launching the issues.
 
 Treat anything other than a clear yes with a selection as no, and start nothing. When `session_model` is null, also ask which model the other issues should use. Accept only the `claude` and `codex` agents, because other agents cannot run this plugin's skills.
 
@@ -22,12 +23,13 @@ Treat anything other than a clear yes with a selection as no, and start nothing.
 Run the helper once with every confirmed issue, in ranked order:
 
 ```bash
-python3 "{cloud-launch-helper}" launch --project-id '{project_id}' --item '{ISSUE-ID}' '{agent}' '{model}' [--item ...]
+python3 "{cloud-launch-helper}" launch --project-id '{project_id}' [--adversarial-review] --item '{ISSUE-ID}' '{agent}' '{model}' [--item ...]
 ```
 
 - The default agent is `claude` when this session runs in Claude Code and `codex` when it runs in Codex, with `session_model` or the model the user named.
 - Medium and High UI/UX issues use the agent and model the user picked for them; every other issue uses the default.
 - Validate each issue identifier and model id before interpolating it, and pass every value as its own single-quoted argument.
+- Pass `--adversarial-review` only after that separate explicit yes. The helper writes the flag into each first message; never compose or edit a launch message yourself, and never infer consent from settings, environment variables, installed CLIs, or an earlier session.
 
 The helper builds each first message for its agent, creates the workspaces one at a time, and stops at the first failure. Conductor does not deduplicate workspace creation, so a lost response may still have created a workspace. The helper retries only an HTTP 429 rate limit, which creates nothing, after the wait Conductor names, and waits at most one minute in total across the run. Run it in the foreground with the longest command timeout the host allows, at least 10 minutes, because a killed helper reports nothing. Never run `launch` again for the same issues in this run, and never create workspaces with `conductor` directly.
 

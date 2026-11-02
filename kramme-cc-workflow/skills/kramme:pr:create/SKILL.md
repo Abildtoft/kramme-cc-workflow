@@ -1,7 +1,7 @@
 ---
 name: kramme:pr:create
 description: "Publish a new PR: narrative commits, generated title and body, self-assignment, lease-protected first push. Use when asked or delegated by kramme:linear:issue-to-pr or kramme:code:plan-to-pr --ship."
-argument-hint: "[--manual] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--require-generated-description] [--authorize-history-rewrite]"
+argument-hint: "[--manual] [--draft] [--rebase] [--base <branch>] [--linear-issue <ISSUE-ID>] [--independent-review-line <line>] [--require-generated-description] [--authorize-history-rewrite]"
 disable-model-invocation: false
 user-invocable: true
 ---
@@ -83,6 +83,7 @@ Parse `$ARGUMENTS` for optional flags before starting:
 - `--rebase` (alias: `--rebase-first`) -> set `REBASE_FIRST=true` and remove the flag from the remaining arguments. Both spellings are equivalent; supplying both is the same as supplying one. The delegated rebase runs before feature-branch selection and the workflow restarts after it completes.
 - `--base <branch>` -> store one explicit workbench branch as `BASE_BRANCH_OVERRIDE` and remove the flag and value. Reject a missing or duplicate value. Apply the ref trust boundary in `references/branch-and-platform-handling.md` before passing this value to the shared resolver; never interpret it as permission to create a stacked PR.
 - `--linear-issue <ISSUE-ID>` -> validate the value against `[A-Za-z0-9]+-[0-9]+`, normalize it to uppercase, store it as `LINEAR_ISSUE_OVERRIDE`, and remove the flag and value. Reject a missing or invalid value before pre-validation. This caller-supplied identifier is authoritative and takes precedence over branch-name extraction.
+- `--independent-review-line <line>` -> read `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/independent-review.md` and validate the bounded, inert one-line record before repository work. Store it as `INDEPENDENT_REVIEW_LINE`; default to absent. Reject duplicate, missing, or malformed values. This carries checked review evidence from issue-to-pr; it never enables a review or supplies provider consent. After resolving the base, check the record's tree and patch identities against the prepared branch as the shared reference requires.
 - `--require-generated-description` -> set `REQUIRE_GENERATED_DESCRIPTION=true` and remove the flag. This orchestration-only safety mode forbids placeholder fallback when `kramme:pr:generate-description` returns no usable output.
 - `--authorize-history-rewrite` -> set `AUTHORIZE_HISTORY_REWRITE=true` and remove the flag. This explicit capability lets a `--manual` invocation skip the nested, backup-protected unstacked reset confirmation. Stacked branches are rejected before state preservation and must use `kramme:pr:stack`; this flag never widens `pr:create` into a stacked-PR workflow. Auto mode does not set this variable. Neither mode relaxes branch, existing-PR, or path-specific remote-state checks. Backup and remote absence apply to the fresh-remote rewrite path; exact-tip recovery never pushes; clean remote fast-forward mode preserves local history; remote append rewrites only the unpublished tail after its captured remote OID. Every existing-remote publication uses a lease tied to that OID.
 
@@ -378,6 +379,8 @@ Recovery:
 
 Invoke `kramme:pr:generate-description` via the Skill tool. Always pass `--no-update --base {base-source-ref} --base-commit {base-ref}`, and never `--manual`, because this orchestrator owns the review/edit gate, the sub-skill must use the same pinned base commit while retaining branch metadata, and it must neither prompt mid-flow nor mutate an existing PR before Step 8 confirmation. When `{linear-issue-id}` is set, also pass `--linear-issue {linear-issue-id}` so the generator uses the validated identifier instead of re-extracting it from the branch.
 
+When `INDEPENDENT_REVIEW_LINE` is present, also pass `--independent-review-line <line>` as one inert quoted argument, unchanged. Recheck its reviewed tree and full change patch after any history rewriting using the shared Independent Review Record reference; stop under the ordinary description-failure/rollback rules on mismatch.
+
 The skill will:
 
 - Analyze git diff and commit history
@@ -390,6 +393,8 @@ When it returns, continue to Step 8. See the "Workflow rule" near the top of thi
 ### 7.2 Capture the Title and Description
 
 Capture the generated title, the full description for Step 8, and any uppercase output markers from the generator.
+
+When `INDEPENDENT_REVIEW_LINE` is present, require exactly one body line beginning `Independent review:`, equal byte-for-byte to `INDEPENDENT_REVIEW_LINE`. Missing, changed, or duplicate evidence makes the generated body unusable. Keep this invariant through any edit in Step 8 and recheck it immediately before publication.
 
 Before preview or publication, require a usable title and body:
 

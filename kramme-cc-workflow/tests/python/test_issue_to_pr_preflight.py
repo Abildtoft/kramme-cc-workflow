@@ -212,6 +212,7 @@ class ArgumentTests(HelperCase):
             "issue_id": "DISC-202",
             "continue_mode": False,
             "strict_review": False,
+            "adversarial_review": False,
             "ship_mode": False,
             "cycles": 2,
             "cycles_explicit": False,
@@ -224,10 +225,11 @@ class ArgumentTests(HelperCase):
         self.assertEqual(json.loads(state_file.read_text(encoding="utf-8"))["args"], expected)
 
     def test_flags_parse_once_each_in_any_order(self) -> None:
-        payload = self.invoke("args", "--", "--ship --cycles 5 abc-7 --strict --continue")
+        payload = self.invoke("args", "--", "--ship --cycles 5 abc-7 --adversarial-review --strict --continue")
         self.assert_status(payload, "ok")
         self.assertEqual(payload["issue_id"], "ABC-7")
         self.assertTrue(payload["continue_mode"] and payload["strict_review"] and payload["ship_mode"])
+        self.assertIs(payload["adversarial_review"], True)
         self.assertEqual((payload["cycles"], payload["cycles_explicit"]), (5, True))
         self.assertIsNone(payload["depth"])
         for depth in ("balanced", "full"):
@@ -248,6 +250,7 @@ class ArgumentTests(HelperCase):
             "DISC-1 --ship --ship": "duplicate_flag",
             "--continue DISC-1 --continue": "duplicate_flag",
             "DISC-1 --cycles 2 --cycles 3": "duplicate_flag",
+            "DISC-1 --adversarial-review --adversarial-review": "duplicate_flag",
             "DISC-1 --force": "unknown_flag",
             "DISC-1 --cycles=3": "unknown_flag",
             "DISC-1 --STRICT": "unknown_flag",
@@ -288,7 +291,14 @@ class ArgumentTests(HelperCase):
                 self.assert_status(payload, "blocked", reason)
                 self.assertEqual(
                     payload["supported_flags"],
-                    ["--continue", "--strict", "--cycles <1-5>", "--depth <balanced|full>", "--ship"],
+                    [
+                        "--continue",
+                        "--strict",
+                        "--cycles <1-5>",
+                        "--depth <balanced|full>",
+                        "--adversarial-review",
+                        "--ship",
+                    ],
                 )
                 self.assertNotIn("state_file", payload)
         self.assertEqual(list(self.state_dir.iterdir()), [])

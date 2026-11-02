@@ -6,6 +6,8 @@ Use this reference for `/kramme:pr:create` Steps 8–9 after the branch is prepa
 
 ## Step 8: Confirmation and Creation
 
+When `INDEPENDENT_REVIEW_LINE` is present, preserve Step 7's exact single-line evidence invariant through every edit and immediately before any push or `gh pr create`. Recheck the reviewed tree and full change patch against the prepared branch. A missing, changed, duplicate, or stale record blocks publication under the normal description-failure/rollback rules; never repair it with a separate PR comment or status.
+
 ### 8.1 Preview Summary
 
 Show the user what will be created.
