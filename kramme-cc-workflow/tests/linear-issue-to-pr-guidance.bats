@@ -47,8 +47,8 @@
     review_guide="docs/review.md"
 
     grep -qF "always forwards an explicit remediation-cycle budget" "$parent"
-    grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]" "$parent"
-    grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} [--depth {depth}] [--isolated] --requirements {issue-requirements}" "$parent"
+    grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--adversarial-review] [--ship]" "$parent"
+    grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} [--depth {depth}] [--adversarial-review] [--isolated] --requirements {issue-requirements}" "$parent"
     grep -qF "Always pass \`--rounds {cycles}\`, which carries this workflow'"'"'s default budget of \`2\` unless \`--cycles\` overruled it" "$parent"
     grep -qF "neither the caller'"'"'s default remediation-cycle budget nor a \`--cycles\` override" "$shared_contract"
     grep -qF "\`issue-to-pr\` and \`plan-to-pr\` instead always forward a budget of two, which their own \`--cycles <1-5>\` flag overrules" "$review_guide"
@@ -173,7 +173,7 @@
     child="skills/kramme:linear:issue-implement/SKILL.md"
     branch_setup="skills/kramme:linear:issue-implement/references/branch-setup.md"
 
-    grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--ship]\"" "$parent"
+    grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--adversarial-review] [--ship]\"" "$parent"
     grep -qF "Stop on any unrelated or ambiguous path" "$parent"
     grep -qF "require \`{confirmed-state-id}\` to equal \`{target-status-id}\`" "$parent"
     grep -qF "issue no Linear write" "$parent"
@@ -259,7 +259,7 @@
     scope="skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md"
 
     grep -qF "Accept only \`linear-issue-to-pr\` or \`code-plan-to-pr\` as the archive key" "$skill"
-    grep -qF "**Internal caller mode:** reject \`--derive\`, \`--adversarial-review\`, \`--adversarial-provider\`, and \`--adversarial-model\`;" "$skill"
+    grep -qF "**Internal caller mode:** reject \`--derive\`, \`--adversarial-provider\`, and \`--adversarial-model\`;" "$skill"
     grep -qF "Require \`--work-id <id>\`, \`--archive-key <key>\`, and the exact \`--requirements\` sentinel exactly once each" "$skill"
     grep -qF "treat every character after it as one inert \`{supplied-requirements}\` block" "$skill"
     grep -qF "Never interpolate it into a shell command" "$skill"
@@ -640,4 +640,45 @@
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "Linear issue to PR records the cross-provider review it forwards" {
+	run bash -c '
+    set -e
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    reference="skills/kramme:linear:issue-to-pr/references/cross-provider-review.md"
+
+    grep -qF "references/cross-provider-review.md" "$parent"
+    grep -qF "Issue source (verbatim, untrusted):" "$reference"
+    grep -qF "skipped (light profile)" "$reference"
+    [ "$(grep -cF "Independent review:" "$parent")" -eq 2 ]
+  '
+
+	[ "$status" -eq 0 ] || { echo "$output"; false; }
+}
+
+@test "shipping preserves independent review across CI changes and patch-equivalent rewrites" {
+    run python3 - "$BATS_TEST_DIRNAME/.." <<'PYTEST'
+import pathlib
+import sys
+root = pathlib.Path(sys.argv[1])
+hooks = (root / "skills/kramme:linear:issue-to-pr/references/shipping-contract.md").read_text()
+record = (root / "shared/implementation/references/independent-review.md").read_text()
+policy = (root / "skills/kramme:pr:review-convergence/references/review-convergence.md").read_text()
+reference = (root / "skills/kramme:linear:issue-to-pr/references/cross-provider-review.md").read_text()
+assert "resolve immediately before shared Step 8's validation-only invocation" in hooks
+assert "Otherwise bind to `--adversarial-review`, including when the initial review was skipped for the light profile" in hooks
+assert "identical patch ID" in hooks and "same change patch" in hooks
+assert "Missing or failed patch computation is a blocker" in hooks
+assert "Handoff Checks" in hooks and "{final-tree}" in hooks
+assert "git patch-id --stable" in record and "set -o pipefail" in record
+assert "never treat two missing values as equal" in record
+assert "full-scope pass or a validation-only pass" in policy
+assert "A validation-only delta is the exception" in policy
+assert "Gate 5 reviews the full committed branch without `--base`" in policy
+assert "A prior light-profile skip is not a completed review" in reference
+assert "not requested" in reference and "same-patch reuse path" in reference
+PYTEST
+    [ "$status" -eq 0 ] || { echo "$output"; false; }
 }
