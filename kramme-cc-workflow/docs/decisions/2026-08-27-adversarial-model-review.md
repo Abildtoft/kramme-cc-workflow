@@ -2,7 +2,7 @@
 
 - Status: ACCEPTED
 - Date: 2026-08-27
-- Last amended: 2026-10-21
+- Last amended: 2026-11-02
 - Deciders: repository maintainers
 - First adoption review: 2026-11-27
 
@@ -59,3 +59,5 @@ Rejected because canonical behavior should work in ordinary local Claude Code an
 ## Amendment
 
 On 2026-10-21 the [model-invocable orchestration children record](2026-08-29-model-invocable-orchestration-children.md) let `kramme:pr:review-convergence` invoke this skill through the Skill tool as its Gate 5. A model invocation is not consent by itself: the user's own `--adversarial-review` request for that convergence run is the repository-scoped consent, and it covers only that run. Internal callers never forward the flag, and no other parent may invoke the skill automatically. Every read-only, provider-difference, isolation, and fail-closed rule above is unchanged.
+
+On 2026-11-02 the [issue-to-pr cross-provider review record](2026-11-02-issue-to-pr-cross-provider-review.md) let `kramme:linear:issue-to-pr` forward the user's own `--adversarial-review` to review convergence. That request is the user's consent for that one invocation, nothing stored can turn it on, and `kramme:code:plan-to-pr` still never forwards the flag. Every read-only, provider-difference, isolation, and fail-closed rule above is unchanged.
