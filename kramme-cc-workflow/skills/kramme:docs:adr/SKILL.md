@@ -2,7 +2,7 @@
 name: kramme:docs:adr
 description: "Author Architecture Decision Records for significant, long-lived decisions. Creates ADRs in docs/decisions/ with sequential numbering and lifecycle states (PROPOSED / ACCEPTED / SUPERSEDED / DEPRECATED). Detects and preserves existing ADR format when one is in use; falls back to a Nygard-style template otherwise. Use when adopting a new pattern, committing to a dependency, changing a public interface, changing the data model, or rejecting an alternative a future maintainer might reasonably re-propose. Initiative-local SIW decisions stay in the spec and LOG for transfer to Linear."
 argument-hint: "[decision title]"
-disable-model-invocation: true
+disable-model-invocation: false
 user-invocable: true
 ---
 
@@ -10,7 +10,12 @@ user-invocable: true
 
 Author an ADR for a significant, long-lived decision: state the problem, the choice, the alternatives rejected, and the consequences.
 
-This skill writes ADR files and may update predecessor ADRs, so it runs only after explicit user invocation.
+The model may run this skill without a user request. Every run that writes an ADR file, whoever started it, must announce the write with the `ADR WRITTEN` callout in step 6.
+
+When the model started the skill and the user did not ask for an ADR in this session:
+
+- Create only a new ADR file, with Status PROPOSED.
+- Emit `ASK FIRST` before editing, superseding, or deprecating an existing ADR, and before creating an ADR directory the project does not have.
 
 ## When to use
 
@@ -145,7 +150,7 @@ ASK FIRST: about to supersede #0003 (ACCEPTED, authored by @alice 2024-06). Conf
 
 ## Core workflow
 
-Five steps. Do not skip steps.
+Six steps. Do not skip steps.
 
 ### 1. Detect significance
 
@@ -198,6 +203,24 @@ Emit a `PLAN` marker first. Then:
 4. Keep both files (see Preservation rule).
 
 If the predecessor was authored by someone else, emit `ASK FIRST` before proceeding.
+
+### 6. Announce the write
+
+Skip this step only when the run left no ADR file created or edited. Otherwise, start the final message to the user with this block, before any other text, even when the ADR was a side step of a larger task:
+
+```text
+> [!IMPORTANT]
+> **ADR WRITTEN — review before you commit**
+> - Created: `docs/decisions/0007-session-storage.md` (Status: PROPOSED)
+> - Edited: `docs/decisions/0003-cookie-sessions.md` (Status: SUPERSEDED by #0007)
+> - Started by: model, no user request
+> - Decision: store sessions in Postgres instead of Redis
+> - Undo: delete #0007; in #0003 restore Status ACCEPTED and remove the successor reference added by this run
+```
+
+Send the block as Markdown, not inside a code fence, so it renders as a callout. List one line per created or edited file. Set `Started by` to `user` or `model, no user request`. Do not fold the block into prose, shorten it, or move it below a summary. A skill or workflow that invoked this skill must repeat the block unchanged at the top of its own final message.
+
+Tailor `Undo` to the actual changes: name the files this run created and the exact edits to reverse in existing ADRs. Preserve pre-existing and later edits. Never recommend whole-file `git restore` for an edited ADR.
 
 ## Integration with other skills
 

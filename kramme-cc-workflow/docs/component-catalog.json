@@ -129,7 +129,7 @@
     },
     {
       "name": "kramme:docs:adr",
-      "invocation": "User",
+      "invocation": "User, Auto",
       "path": "kramme-cc-workflow/skills/kramme:docs:adr/SKILL.md"
     },
     {
