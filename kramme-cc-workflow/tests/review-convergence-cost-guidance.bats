@@ -189,7 +189,7 @@ PY
 		'Always pass `--rounds {cycles}`, so the remediation budget defaults to two cycles' \
 		"Both are review-convergence controls: never pass them to the validator."
 	require_phrases "$LINEAR_SKILL" \
-		"[--depth {depth}] [--isolated] --requirements {issue-requirements}" \
+		"[--depth {depth}] [--adversarial-review] [--isolated] --requirements {issue-requirements}" \
 		"run the invocation inside one delegated agent on this session's model and add \`--isolated\`" \
 		'On Codex, or when nesting is unavailable, invoke the skill directly without `--isolated`.'
 	require_phrases "$SHARED_SHIPPING" 'Also pass `--depth {prior-depth}`' 'Never forward `--rounds` or `--cycles` here'
