@@ -1,6 +1,6 @@
 sources:
   - id: mattpocock-wizard
-    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/in-progress/wizard/SKILL.md
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/wizard/SKILL.md
     title: "Matt Pocock skills - wizard"
     rationale: "The stage-scoping workflow is adapted from the upstream wizard skill, and assets/template.sh is copied from upstream commit d574778f94cf620fcc8ce741584093bc650a61d3 with local attribution."
     usage: copied

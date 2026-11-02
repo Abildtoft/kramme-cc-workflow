@@ -7,11 +7,12 @@ sources:
     last_reviewed_at: 2026-07-29
     baseline_hash: "sha256:4f946a40643c47cb5212a62be5ce643223341765b991241fa9aff615f5d1bdfe"
   - id: pocock-write-a-skill
-    url: https://github.com/mattpocock/skills/tree/221ffca96736afefdc08ca7cf0b3965e9ea83f41/skills/productivity/write-a-skill
-    title: "Matt Pocock skills - write-a-skill"
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/productivity/writing-for-agents/SKILL.md
+    title: "Matt Pocock skills - writing-for-agents (formerly write-a-skill)"
     rationale: "The description-as-system-prompt-real-estate framing in Phase 4 (the description is the only thing the agent sees when picking a skill to load), the no-time-sensitive-info validation rule, and the references-one-level-deep validation rule are adapted from this source."
     usage: inspiration
     last_reviewed_at: 2026-07-29
+    baseline_commit: "221ffca96736afefdc08ca7cf0b3965e9ea83f41"
     baseline_hash: "sha256:450f8fbf4ef54e691798ba200b199507049bdaf0a033098f9745e4414b797b03"
   - id: posthog-writing-agent-skills
     url: https://newsletter.posthog.com/p/what-nobody-tells-you-about-writing
