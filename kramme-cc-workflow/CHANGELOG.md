@@ -33,6 +33,34 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - `/kramme:pr:generate-description` now finds repository PR templates when the agent's shell is zsh. The lookup looped over a variable named `path`, which zsh ties to `PATH`, so every later command in the lookup failed and it reported no template.
 
+## [0.91.0] - 2026-11-02
+
+### Added
+
+- **BREAKING:** Run shipping skills unattended by default (#1064)
+- Add --for planned-change mode (#1061)
+- Review stacks and narrow re-reviews (#1059)
+- Add a skill that turns agent mistakes into checks (#1057)
+- Add a post-prototype PRD skill (#1056)
+- Add an agentic coding practice audit (#1055)
+- Add OpenAI organization credit pools (#1051)
+- Check name collisions when writing and auditing (#1050)
+- Record plugin versions and flag capture gaps (#1043)
+
+### Changed
+
+- Restructure and move deep reference to docs (#1049)
+
+### Fixed
+
+- Qualify skill name and retry rate-limited launches (#1063)
+- Make inline feedback clear before the ask (#1060)
+- Run the cold read in non-interactive runs (#1062)
+- Make review agents read-only on Claude Code (#1058)
+- Default next selection to unstarted issues (#1053)
+- Clarify updates for local plugin installs (#1054)
+- Resolve delta-round commit bases locally (#1052)
+
 ## [0.90.0] - 2026-10-28
 
 ### Added
@@ -1202,6 +1230,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[0.91.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.90.0...v0.91.0
 [0.90.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.89.0...v0.90.0
 [0.89.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.88.0...v0.89.0
 [0.88.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.87.0...v0.88.0
