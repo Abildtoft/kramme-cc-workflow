@@ -1,10 +1,11 @@
 sources:
   - id: getsentry-commit-skill
-    url: https://agentskills.so/skills/getsentry-skills-commit
+    url: https://raw.githubusercontent.com/getsentry/skills/main/skills/commit/SKILL.md
     title: "getsentry/skills - commit skill"
     rationale: "Commit message structure and pre-commit checks are derived from this skill."
     usage: inspiration
     last_reviewed_at: 2026-07-29
+    baseline_commit: "e7a87fa72645158f9b5e722cbb1c7e09266f48f1"
     baseline_hash: "sha256:1946e97492c13d198b76f86720eec8e499cfbd9c189b2b9a9b8cb202b97ccf25"
   - id: addy-git-workflow-versioning
     url: https://raw.githubusercontent.com/addyosmani/agent-skills/main/skills/git-workflow-and-versioning/SKILL.md
