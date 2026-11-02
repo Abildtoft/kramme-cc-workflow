@@ -363,6 +363,89 @@ test("build writes a marketplace with skills, shared runtime, and rewritten plug
   });
 });
 
+test("build marks manual-only skills and commands explicit-only for Codex", async () => {
+  await withTempDir(async (root) => {
+    const pluginRoot = path.join(root, "plugin");
+    await writeJson(path.join(pluginRoot, ".claude-plugin", "plugin.json"), {
+      name: "policy-plugin",
+      version: "1.0.0",
+    });
+    const writeSkill = (
+      /** @type {string} */ name,
+      /** @type {string} */ disableModelInvocation,
+    ) =>
+      writeFile(
+        path.join(pluginRoot, "skills", name, "SKILL.md"),
+        [
+          "---",
+          `name: ${name}`,
+          "description: Demo skill.",
+          `disable-model-invocation: ${disableModelInvocation}`,
+          "user-invocable: true",
+          "---",
+          "Body.",
+          "",
+        ].join("\n"),
+      );
+    await writeSkill("kramme:demo:manual", "true");
+    await writeSkill("kramme:demo:auto", "false");
+    await writeFile(
+      path.join(pluginRoot, "commands", "manual-command.md"),
+      "---\nname: Manual Command\ndescription: Runs by hand.\ndisable-model-invocation: true\n---\nRun it.\n",
+    );
+    await writeFile(
+      path.join(pluginRoot, "commands", "auto-command.md"),
+      "---\nname: Auto Command\ndescription: Runs on request.\n---\nRun it.\n",
+    );
+    await writeFile(
+      path.join(pluginRoot, "agents", "demo-reviewer.md"),
+      "---\nname: Demo Reviewer\ndescription: Reviews demos.\n---\nReview the demo.\n",
+    );
+
+    const bundle = convertClaudeToCodex(await loadClaudePlugin(pluginRoot));
+    const explicitOnly = [
+      ...bundle.skillDirs,
+      ...bundle.generatedSkills,
+      ...bundle.agentSkills,
+    ]
+      .filter((skill) => skill.allowImplicitInvocation === false)
+      .map((skill) => skill.name)
+      .sort();
+    assert.deepEqual(explicitOnly, ["kramme:demo:manual", "manual-command"]);
+
+    const built = await buildCodexMarketplace(
+      path.join(root, "marketplace"),
+      bundle,
+    );
+    assert.equal(built.skillCount, 5, "policy files are not counted as skills");
+    const skillsRoot = path.join(built.pluginRoot, "skills");
+    for (const name of explicitOnly) {
+      assert.equal(
+        await readText(path.join(skillsRoot, name, "agents", "openai.yaml")),
+        "policy:\n  allow_implicit_invocation: false\n",
+        name,
+      );
+    }
+    for (const name of ["kramme:demo:auto", "auto-command", "demo-reviewer"]) {
+      assert.equal(
+        await pathExists(path.join(skillsRoot, name, "SKILL.md")),
+        true,
+        name,
+      );
+      assert.equal(
+        await pathExists(path.join(skillsRoot, name, "agents")),
+        false,
+        name,
+      );
+    }
+    assert.match(
+      await readText(path.join(skillsRoot, "kramme:demo:manual", "SKILL.md")),
+      /^disable-model-invocation: true$/m,
+      "the Claude frontmatter key is still preserved",
+    );
+  });
+});
+
 test("build refuses non-empty output roots and duplicate skill names", async () => {
   await withTempDir(async (root) => {
     const occupied = path.join(root, "occupied");
