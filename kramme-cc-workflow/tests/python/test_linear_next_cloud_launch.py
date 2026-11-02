@@ -157,6 +157,32 @@ class CloudLaunchTest(unittest.TestCase):
             ],
         )
 
+    def test_launch_adds_confirmed_adversarial_review_for_both_hosts(self) -> None:
+        code, result = self.run_helper(
+            "launch", "--project-id", "proj_1", "--adversarial-review",
+            "--item", "DISC-1", "claude", "opus-5-5-1m",
+            "--item", "DISC-2", "codex", "gpt-5.5",
+            responses=[created(1), created(2)],
+        )  # fmt: skip
+        self.assertEqual((code, result["status"]), (0, "ok"))
+        messages = [entry["message"] for entry in result["results"]]
+        self.assertEqual(
+            messages,
+            [
+                "/kramme-cc-workflow:kramme-linear-issue-to-pr DISC-1 --ship --adversarial-review",
+                "$kramme:linear:issue-to-pr DISC-2 --ship --adversarial-review",
+            ],
+        )
+        self.assertEqual([call[call.index("--message") + 1] for call in self.calls()], messages)
+
+    def test_launch_never_infers_review_consent_from_environment(self) -> None:
+        code, result = self.run_helper(
+            "launch", "--project-id", "proj_1", "--item", "DISC-1", "codex", "gpt-5.5",
+            responses=[created(1)], ADVERSARIAL_REVIEW="true", KRAMME_ADVERSARIAL_REVIEW="1",
+        )  # fmt: skip
+        self.assertEqual(code, 0)
+        self.assertEqual(result["results"][0]["message"], "$kramme:linear:issue-to-pr DISC-1 --ship")
+
     def test_launch_retries_a_rate_limited_creation_after_the_named_wait(self) -> None:
         stderr = "error: Rate limit exceeded for workspace creation. Retry after 8 seconds. (HTTP 429)\n"
         limited = {"exit": 1, "stderr": stderr}
