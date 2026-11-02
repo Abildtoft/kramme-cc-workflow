@@ -370,6 +370,20 @@ function buildKnownAgentSkillNames(agentSkillDefinitions) {
 }
 
 /**
+ * Codex ignores the `disable-model-invocation` frontmatter key; its
+ * explicit-only switch is `policy.allow_implicit_invocation` in the skill's
+ * `agents/openai.yaml`, which the builder writes for entries marked here.
+ *
+ * @param {unknown} disableModelInvocation
+ * @returns {Pick<CodexSkillFile, "allowImplicitInvocation">}
+ */
+function codexInvocationPolicy(disableModelInvocation) {
+  return disableModelInvocation === true
+    ? { allowImplicitInvocation: false }
+    : {};
+}
+
+/**
  * @param {ClaudeCommand} command
  * @param {Set<string>} knownCommands
  * @param {string} name
@@ -399,7 +413,11 @@ function convertCommandSkill(command, knownCommands, name, knownAgentSkills) {
     frontmatter,
     body.length > 0 ? body : command.body,
   );
-  return { name, content };
+  return {
+    name,
+    content,
+    ...codexInvocationPolicy(command.disableModelInvocation),
+  };
 }
 
 /**
@@ -434,7 +452,12 @@ function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
     frontmatter,
     body.length > 0 ? body : skill.body,
   );
-  return { name: skill.name, sourceDir: skill.sourceDir, content };
+  return {
+    name: skill.name,
+    sourceDir: skill.sourceDir,
+    content,
+    ...codexInvocationPolicy(skill.disableModelInvocation),
+  };
 }
 
 /**

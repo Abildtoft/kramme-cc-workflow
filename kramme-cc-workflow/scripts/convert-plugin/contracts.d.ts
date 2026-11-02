@@ -60,6 +60,14 @@ export interface CodexSkillFile {
   name: string;
   content: string;
   sourceDir?: string;
+  /**
+   * `false` when the source sets `disable-model-invocation: true`. Codex
+   * ignores that frontmatter key, so the builder writes the skill's
+   * `agents/openai.yaml` with `policy.allow_implicit_invocation: false`;
+   * Codex then runs the skill only when the user names it with `$name`.
+   * Omitted keeps Codex's default (implicit invocation allowed).
+   */
+  allowImplicitInvocation?: boolean;
 }
 
 export interface CodexSourceSkillFile extends CodexSkillFile {
