@@ -76,7 +76,7 @@ question: |
   Record as an ADR?
 options:
   - label: "Author ADR"
-    description: "Get the /kramme:docs:adr command to run next"
+    description: "Invoke /kramme:docs:adr now"
   - label: "Skip"
     description: "Don't author, and don't ask again about this decision"
   - label: "Defer"
@@ -86,7 +86,7 @@ multiSelect: false
 
 Prompt at most once per decision: track which decisions have already been offered in the current session (by title or stable identifier) and do not re-offer them. `Skip` and `Defer` differ here: `Skip` suppresses re-offers of that decision for the lifetime of the session; `Defer` allows a re-offer only if the same decision resurfaces in a later workflow step.
 
-On "Author ADR", give the user the exact `/kramme:docs:adr` command to run next, with a decision title and short context summary as its arguments. `kramme:docs:adr` is user-triggered only, so do not call it through the Skill tool, and do not author the ADR inside this skill.
+On "Author ADR", invoke `kramme:docs:adr` with a decision title and short context summary as its arguments, and repeat its `ADR WRITTEN` callout at the top of your final message. Do not author the ADR inside this skill.
 
 ## Progress tracking
 
