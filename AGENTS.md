@@ -47,6 +47,7 @@ color: <appropriate-color>
 ```
 
 - **ALWAYS** add `disallowedTools: Write, Edit, NotebookEdit` to the frontmatter of every agent that reports findings instead of changing code, and keep its `**Read-only agent.**` body rule, because Bash can still write files and the Codex converter drops the field.
+- **ALWAYS** launch an agent that must read as an outsider through the `kramme:cold-reader` contract in `kramme-cc-workflow/shared/agents/references/cold-reader.md`, and **NEVER** set `omitClaudeMd` on any other agent, because project rules are a reviewer's input, per [docs/decisions/2026-11-02-cold-reader-isolation.md](kramme-cc-workflow/docs/decisions/2026-11-02-cold-reader-isolation.md).
 
 ### Skills
 
