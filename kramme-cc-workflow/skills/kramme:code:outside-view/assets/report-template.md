@@ -71,7 +71,8 @@ Use this structure when writing `OUTSIDE_VIEW_REPORT.md` or a custom `--output` 
 
 ## Coverage Notes
 
-- **Elicitation mode:** {concurrent subagents | sequential (reduced isolation)}
+- **Elicitation mode:** {concurrent subagents | sequential}
+- **Rater isolation:** {cold readers without project instructions | project instructions loaded (reduced isolation): {host or reason}}
 - **Failed raters:** {none | which and why}
 - **Cross-model rater:** {ran via {cli} | unavailable | failed: reason}
 - **Rater footprints (self-reported):**

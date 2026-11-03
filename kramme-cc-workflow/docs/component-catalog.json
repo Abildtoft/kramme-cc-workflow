@@ -465,6 +465,10 @@
       "path": "kramme-cc-workflow/agents/kramme:codebase-pattern-reviewer.md"
     },
     {
+      "name": "kramme:cold-reader",
+      "path": "kramme-cc-workflow/agents/kramme:cold-reader.md"
+    },
+    {
       "name": "kramme:comment-analyzer",
       "path": "kramme-cc-workflow/agents/kramme:comment-analyzer.md"
     },

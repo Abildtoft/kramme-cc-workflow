@@ -37,3 +37,26 @@
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
+
+@test "feature spec keeps rejected approaches inside its six areas" {
+  run bash -c '
+    set -euo pipefail
+    cd "'"$BATS_TEST_DIRNAME"'/.."
+    skill="skills/kramme:docs:feature-spec/SKILL.md"
+    template="skills/kramme:docs:feature-spec/assets/feature-spec-template.md"
+
+    scope=$(grep -nxF "## 2. Scope & Non-goals" "$template" | cut -d: -f1)
+    rejected=$(grep -nxF "### Rejected approaches" "$template" | cut -d: -f1)
+    boundaries=$(grep -nxF "## 3. Boundaries" "$template" | cut -d: -f1)
+    [ "$scope" -lt "$rejected" ]
+    [ "$rejected" -lt "$boundaries" ]
+    [ "$(grep -cE "^## [0-9]+\\. " "$template")" -eq 6 ]
+
+    grep -qF "Omit this subsection when no real alternative was weighed." "$template"
+    grep -qF "Do not invent alternatives to fill the subsection" "$skill"
+    grep -qF "Copy the six-area structure" "$skill"
+    grep -qF "Rejected approaches: <count>" "$skill"
+  '
+
+  [ "$status" -eq 0 ] || { echo "$output"; false; }
+}

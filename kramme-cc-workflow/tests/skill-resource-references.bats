@@ -436,7 +436,7 @@ write_plugin_fixture() {
 	# Readiness-only re-runs carry product findings forward instead of dropping them.
 	grep -qF '## P7: Carry Product Findings Forward (Step 5.2)' "$product_mode"
 	grep -qF 'Copy every `PROD-NNN` finding from the previous active run into the new report unchanged' "$product_mode"
-	grep -qF 'Keep the carried findings in severity totals and the overall assessment' "$product_mode"
+	grep -qF 'in severity totals and the overall assessment exactly as P5 step 7 requires' "$product_mode"
 	grep -qF 'If `PRODUCT_MODE=false` and the previous report'"'"'s active run contains `PROD-NNN` findings, read `references/product-mode.md` and follow P7' "$spec_skill"
 	grep -qF 'add --product if the report contains PROD-NNN findings' "$skills/kramme:siw:spec-audit/assets/auto-fix-summary.md"
 	grep -qF 'no open `PROD-NNN` finding is Critical or Major' "$skills/kramme:siw:spec-audit/references/apply-report-update.md"

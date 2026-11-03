@@ -94,10 +94,12 @@ Check for:
 
 6. **Task-to-objective alignment.** Do the defined tasks collectively achieve the stated objectives? Are there objectives with no corresponding tasks?
 
+7. **Defensive accretion.** Requirements, mechanisms, options, or caveats that answer a past review comment or a speculative risk rather than a stated objective: a mitigation for a failure the spec never establishes, a setting no requirement uses, handling for a case nobody named. When your prompt has a `Previously Resolved Findings` block, check that the text addressing each listed finding stays within what the finding needed. Do not reopen a decision the spec records as settled.
+
 **Severity guide:**
 
 - Critical: No scope definition at all, objectives don't match tasks
-- Major: Implicit inclusions that could derail timeline, unclear phase boundaries
+- Major: Implicit inclusions that could derail timeline, unclear phase boundaries, an added requirement or mechanism that no objective needs
 - Minor: Missing out-of-scope declarations for unlikely features
 
 ---
@@ -120,10 +122,12 @@ Check for:
 
 7. **Ordering and dependency clarity.** Is it clear which tasks must be done before others? Are blocking dependencies explicit?
 
+8. **Decisions left to the implementer.** Could someone new to the codebase carry out each task correctly on the first attempt without making a design decision? Flag every choice the spec leaves open: a schema, an API shape or path, a dependency, an error or edge-case policy. Mechanical choices with one defensible answer, such as a file name, are not findings.
+
 **Severity guide:**
 
-- Critical: Tasks so vague they can't be started
-- Major: Missing acceptance criteria, tasks too large to estimate
+- Critical: Tasks so vague they can't be started; an open decision that sets architecture, a public contract, or a data shape
+- Major: Missing acceptance criteria, tasks too large to estimate, any other design decision left to the implementer
 - Minor: Minor dependency gaps, slightly over-granular tasks
 
 ---

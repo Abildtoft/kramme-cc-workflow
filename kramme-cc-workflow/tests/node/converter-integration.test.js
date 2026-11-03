@@ -227,7 +227,28 @@ test("canonical plugin build preserves runtime path dependency closure", async (
     assert.match(policy, /`--subagent-model inherit` uses the orchestrator/);
     assert.match(policy, /Insert it before `--requirements`/);
 
+    const coldReaderContract = await readText(
+      path.join(
+        built.pluginRoot,
+        "shared",
+        "agents",
+        "references",
+        "cold-reader.md",
+      ),
+    );
+    assert.match(coldReaderContract, /fork_context: false/);
+    assert.match(coldReaderContract, /have it use \$kramme:cold-reader skill/);
+
     const skillsRoot = path.join(built.pluginRoot, "skills");
+    const { data: coldReader } = parseFrontmatter(
+      await readText(path.join(skillsRoot, "kramme:cold-reader", "SKILL.md")),
+    );
+    assert.equal(coldReader.name, "kramme:cold-reader");
+    assert.equal(
+      coldReader.omitClaudeMd,
+      undefined,
+      "Codex has no such field, so the converter must not pass it through",
+    );
     for (const name of [
       "code-review",
       "convention-review",

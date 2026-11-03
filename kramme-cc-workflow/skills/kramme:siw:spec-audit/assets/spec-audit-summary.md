@@ -8,6 +8,8 @@ Findings: Critical: {N} Major: {N} Minor: {N} Total: {N} {If preserved critical 
 
 Overall: {Ready for implementation / Needs revision / Significant gaps}
 
+Comprehension read: {status} Current-state claims: {status} {If contested findings were carried forward:} Contested: {N} (not counted; evidence in the report)
+
 Report: {report_path} {If a prior report was replaced in auto mode:} Replaced previous audit dated {previous_date}. {If product findings were carried forward:} Carried {N} PROD findings from the product pass dated {date}.
 
 {If direct apply ran:} Applied Now: {N} finding(s) updated spec files directly. Issues Created: 0. {If issues created:} Issues Created: {N} (G-{start} through G-{end}) See siw/OPEN_ISSUES_OVERVIEW.md for the full list.

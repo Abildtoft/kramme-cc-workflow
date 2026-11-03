@@ -48,3 +48,17 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-08-16
     baseline_hash: "sha256:3c5d71b1e244484c5f7ecc911bbe81245ca1b6c692a1417f6e3687ae9f53638d"
+  - id: egm-claude-integration
+    url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/docs/claude.md
+    title: "google/elephant-goldfish-model - Claude Code integration"
+    rationale: "Running the cold read in a plugin agent that starts without the project's instruction files is informed by this source's reviewer-isolation guidance; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
+    usage: inspiration
+    last_reviewed_at: 2026-11-02
+    baseline_hash: "sha256:b2723722b419b1c368db423885a4421dda71278cf1f22b9928c7b722a0ab6730"
+  - id: egm-codex-integration
+    url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/docs/codex.md
+    title: "google/elephant-goldfish-model - Codex integration"
+    rationale: "Naming the Codex fork_context spawn variant for the cold read is informed by this source; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
+    usage: inspiration
+    last_reviewed_at: 2026-11-02
+    baseline_hash: "sha256:6042c8eb7639c7fee9f61b1036027c038009a1a91175cf73551c4e5c75178301"

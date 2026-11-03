@@ -8,7 +8,7 @@ user-invocable: true
 
 # Audit Specification Quality
 
-Evaluate specification documents for implementation readiness across 8 dimensions before implementation begins. Use this skill when the question is whether implementation can proceed correctly without guessing. The Rationale Documentation dimension checks whether product rationale is documented clearly enough to guide implementation, but does not decide whether the product problem, solution, prioritization, or strategy is correct. Add `--product` when the question is also whether the specification proposes the right product for the right users. The standard workflow is spec-only; `--team` also runs a bounded codebase pattern reviewer that checks whether the spec introduces new implementation patterns without rationale.
+Evaluate specification documents for implementation readiness across 8 dimensions before implementation begins. Use this skill when the question is whether implementation can proceed correctly without guessing. The Rationale Documentation dimension checks whether product rationale is documented clearly enough to guide implementation, but does not decide whether the product problem, solution, prioritization, or strategy is correct. Add `--product` when the question is also whether the specification proposes the right product for the right users. The dimension auditors read only the spec. Alongside them, a cold reader tests whether the spec stands on its own, and when the spec names existing code, a bounded reviewer checks that what it says about that code is true. `--team` widens that reviewer to also check whether the spec introduces new implementation patterns without rationale.
 
 Check every section of the specification against every quality dimension before reporting. A dimension with no findings is a valid result when you can say what you checked.
 
@@ -42,7 +42,7 @@ If `$ARGUMENTS` contains `--product`, set `PRODUCT_MODE=true`, read `references/
 [Step 2: Read Specs and Extract Structure] -> Read fully, detect type, extract elements
     |
     v
-[Step 3: Launch Parallel Analysis] -> Explore agents per dimension group (+ product reviewer with --product)
+[Step 3: Launch Parallel Analysis] -> Explore agents per dimension group, comprehension read, current-state claims check (+ product reviewer with --product)
     |
     v
 [Step 4: Analyze Findings] -> Classify, deduplicate, assign severity and scores
@@ -89,6 +89,7 @@ For each spec file, identify and extract:
 | Edge Cases | Boundary conditions, error scenarios, exceptional flows |
 | Out of Scope | Explicit exclusions |
 | Technical Architecture | Data models, API contracts, system design, component boundaries |
+| Current-State References | Existing files, symbols, endpoints, tables, commands, or behavior the spec presents as already there |
 
 For each element, capture:
 
@@ -182,17 +183,29 @@ For each agent group, launch an Explore agent using the Task tool (`subagent_typ
 
 **Default model:** `opus`. Override with `--model sonnet` or `--model haiku` for faster/cheaper runs.
 
-**All agents run in parallel** — launch them in a single message with multiple Task tool calls. If `PRODUCT_MODE=true`, launch the product reviewer from product mode P4 in the same message.
+**All agents run in parallel** — launch them in a single message with multiple Task tool calls, together with the comprehension read (Step 3.5) and any current-state claims check (Step 3.6). If `PRODUCT_MODE=true`, launch the product reviewer from product mode P4 in the same message.
 
 ### 3.3 Explore Agent Prompt Structure
 
 Each agent receives the full spec text and analysis instructions for its assigned dimensions. Read `references/audit-agent-prompt.md`, populate the placeholders for the assigned dimension group, and omit the Work Context Adjustments block when the work context is Production Feature or unspecified.
+
+When a previous report exists at the Step 5.1 target path, fill the group that audits Scope with its Previously Resolved Findings block: every finding in the previous report's active run marked `**Status:** [Auto-fixed]` or `**Status:** [Applied directly]`, or carrying an `Existing issue:` note for an issue that is `DONE` in `siw/OPEN_ISSUES_OVERVIEW.md`. Otherwise omit the block.
 
 ### 3.4 Dimension Analysis Instructions
 
 Read the dimension-specific instructions from `references/dimension-instructions.md` and include the relevant dimension blocks in each agent's prompt based on its assigned dimensions.
 
 The 8 dimensions are: Coherence, Completeness, Clarity, Scope, Actionability, Testability, Rationale Documentation, Technical Design. Each includes check items and a severity guide.
+
+### 3.5 Launch the Comprehension Read
+
+Read `${CLAUDE_PLUGIN_ROOT}/shared/writing/references/comprehension-read.md` and launch one cold reader as `${CLAUDE_PLUGIN_ROOT}/shared/agents/references/cold-reader.md` describes, with the absolute paths in `spec_files` as `{document-paths}`.
+
+### 3.6 Launch the Current-State Claims Check
+
+Skip this check and record `skipped (spec names no existing code)` when Step 2.2 found no Current-State References.
+
+Otherwise read `references/claims-check-prompt.md`, fill its placeholders, and launch it with the host runtime's subagent mechanism when it exposes the `kramme:codebase-pattern-reviewer` reviewer. If it does not, run the same check in the main thread after the readiness agents return, using the mission from `agents/kramme:codebase-pattern-reviewer.md`.
 
 ---
 
@@ -204,6 +217,8 @@ After all Explore agents complete:
 
 Gather all findings from every agent. Deduplicate — if multiple dimensions flagged the same issue, merge into one finding and note all affected dimensions.
 
+Turn the comprehension reply into Clarity findings using the rules in the reference from Step 3.5, and add `**Source:** Comprehension Read` to each. Add the claims check's findings under their mapped Technical Design dimension, keeping the severity it assigned and `**Source:** Current-State Claims`. Record each pass's status for the report, including any claims the reviewer could not verify.
+
 If `PRODUCT_MODE=true`, collect the product reviewer's findings separately and process them with product mode P5; Steps 4.2 through 4.4 below govern `SPEC-NNN` findings only, except where P5 says otherwise.
 
 Read `references/post-processing-rules.md` once at the start of Step 4 and apply it throughout: merged-finding handling here in 4.1, severity-cap accounting in 4.3.5, final fix-confidence normalization in 4.3.6, dimension-score effects in 4.4, and issue eligibility in Step 6.
@@ -213,6 +228,8 @@ Read `references/post-processing-rules.md` once at the start of Step 4 and apply
 If a previous report exists at the target path from Step 5.1 (`siw/AUDIT_SPEC_REPORT.md`, or `AUDIT_SPEC_REPORT.md` in the project root), read it and record the highest previously reported `SPEC-NNN` as `previous_max_id`. Findings that match a previously reported finding (same issue, even if reworded) retain their existing IDs; new findings get sequential IDs starting at `previous_max_id + 1`, ordered by severity (Critical first, then Major, then Minor). If no previous report exists, number all findings `SPEC-001`, `SPEC-002`, etc. in severity order.
 
 This keeps IDs stable across re-runs so commits, SIW issues (e.g. `/kramme:siw:resolve-audit` filenames `ISSUE-G-XXX-{finding-id}-*.md`), and external references stay valid.
+
+A finding that matches one marked `**Status:** [Contested]` in the previous report stays settled unless the spec text or the cited evidence has changed, so a dispute does not reopen on its own. Keep its ID and status line and report it under `## Contested Findings`. The Contested Findings section of `references/post-processing-rules.md` says what it no longer counts toward.
 
 ### 4.3 Assign Severity
 
@@ -329,7 +346,7 @@ Before prompting, determine whether SIW issue creation is available:
 - Apply the "Issue-Eligible Findings" section of `references/post-processing-rules.md` using the **Critical and major only** selection to compute `ISSUE_ELIGIBLE_FINDINGS`.
 - Set `ISSUE_CREATION_AVAILABLE=true` only if all `references/issue-creation.md` eligibility requirements are met: `siw/OPEN_ISSUES_OVERVIEW.md` exists, `siw/issues/` exists or can be created, `siw/LOG.md` exists or can be created, and `ISSUE_ELIGIBLE_FINDINGS` is not empty.
 - If `ISSUE_CREATION_AVAILABLE=false`, do not show any issue-creation options.
-- In both prompts below, `{S}` counts `SPEC-NNN` findings and `{P}` counts `PROD-NNN` findings; drop the `and {P} product findings` clause when `{P}` is 0. If `{S}` is 0, omit the **Apply now** option, and when no other option but **Keep report only** remains, keep the report without asking and point the product findings to `/kramme:siw:resolve-audit`.
+- In both prompts below, `{S}` counts `SPEC-NNN` findings and `{P}` counts `PROD-NNN` findings, leaving out contested findings; drop the `and {P} product findings` clause when `{P}` is 0. If `{S}` is 0, omit the **Apply now** option, and when no other option but **Keep report only** remains, keep the report without asking and point the product findings to `/kramme:siw:resolve-audit`.
 
 If `ISSUE_CREATION_AVAILABLE=false`, ask the user which follow-up path to take:
 
@@ -396,6 +413,7 @@ Use the summary template from `assets/spec-audit-summary.md`, then end the turn.
 - If an agent returns incomplete results: Note affected dimensions as "Incomplete analysis" in the report.
 - If an agent times out: Report which dimension was affected, suggest re-running.
 - If the product reviewer fails or times out, follow the failure handling in `references/product-mode.md`.
+- If the comprehension read or the claims check fails or times out, record its status in the report and continue. Neither counts as a clean result, and neither blocks the audit.
 
 ### SIW Workflow Not Active
 

@@ -24,6 +24,7 @@
       "kramme-cc-workflow/scripts/convert-plugin/loader.js",
       "kramme-cc-workflow/scripts/lib/skill-usage-cost.js",
       "kramme-cc-workflow/scripts/lib/skill-usage-hosts.js",
+      "kramme-cc-workflow/scripts/probe-cold-reader-isolation.js",
       "kramme-cc-workflow/scripts/schemas/skill-contracts.js"
     ],
     "contract_only": {
@@ -66,6 +67,7 @@
       "kramme-cc-workflow/hooks/lib/command_safety/vocabulary.py",
       "kramme-cc-workflow/hooks/lib/git_command_parser.py",
       "kramme-cc-workflow/scripts/changelog.py",
+      "kramme-cc-workflow/scripts/check-doc-citations.py",
       "kramme-cc-workflow/scripts/json_object.py",
       "kramme-cc-workflow/scripts/lint-skill-contracts.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/catalog.py",
@@ -655,6 +657,40 @@
         "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
         "kramme-cc-workflow/skills/kramme:test:audit/SKILL.md",
         "kramme-cc-workflow/skills/kramme:visual:explain/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/cold-reader-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:code:outside-view/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:docs:review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/comprehension-read-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:docs:review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/spec-audit-guidance.bats",
+      "skills": ["kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "kramme-cc-workflow/tests/finding-disputes-guidance.bats",
+      "skills": [
+        "kramme-cc-workflow/skills/kramme:pr:github-review-reply/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:pr:resolve-review/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md",
+        "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"
       ]
     }
   ],

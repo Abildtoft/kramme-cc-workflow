@@ -1,0 +1,15 @@
+sources:
+  - id: egm-claude-integration
+    url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/docs/claude.md
+    title: "google/elephant-goldfish-model - Claude Code integration"
+    rationale: "Launching in-repo raters as cold readers that start without the project's instruction files, and recording reduced isolation when a host cannot exclude them, is informed by this source's omitClaudeMd reviewer adapters; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
+    usage: inspiration
+    last_reviewed_at: 2026-11-02
+    baseline_hash: "sha256:b2723722b419b1c368db423885a4421dda71278cf1f22b9928c7b722a0ab6730"
+  - id: egm-codex-integration
+    url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/docs/codex.md
+    title: "google/elephant-goldfish-model - Codex integration"
+    rationale: "Recording that a fresh Codex agent may still receive project instructions is informed by this source; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
+    usage: inspiration
+    last_reviewed_at: 2026-11-02
+    baseline_hash: "sha256:6042c8eb7639c7fee9f61b1036027c038009a1a91175cf73551c4e5c75178301"

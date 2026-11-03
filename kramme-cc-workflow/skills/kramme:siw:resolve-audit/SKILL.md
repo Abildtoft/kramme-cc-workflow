@@ -16,22 +16,22 @@ Turn an audit report into decision-ready SIW issues by walking findings one at a
 
 **This command triages audit findings and creates planning issues.**
 
-- **DOES**: Read audit report, summarize each finding, propose alternatives, recommend an option, capture user preference or auto-select a resolution, create SIW issue(s)
+- **DOES**: Read audit report, check each finding, summarize it, propose alternatives, recommend an option, capture user preference or auto-select a resolution, create SIW issue(s)
 - **DOES NOT**: Implement code changes
 
 Implementation stays separate. After the local findings and issue set are approved, migrate them with `/kramme:siw:transfer-to-linear`.
 
 ## Hard Constraints
 
-**One finding at a time, every time.** Each finding completes its full cycle — executive summary → alternatives → recommendation → resolution → SIW issue — before the next finding is presented. Never batch, group, summarize, or preview multiple findings in a single message during Steps 4–6.
+**One finding at a time, every time.** Each finding completes its full cycle — executive summary → alternatives → recommendation → resolution → SIW issue — before the next finding is presented, unless Step 4.0 ends that cycle by contesting or escalating the finding. Never batch, group, summarize, or preview multiple findings in a single message during Steps 4–6.
 
-**Default mode:** the per-finding AskUserQuestion (Step 4.4) is mandatory. STOP after asking and wait for the user's response before creating the issue or advancing.
+**Default mode:** the per-finding AskUserQuestion (Step 4.4) is mandatory, and a disputed finding takes the Step 4.0 question instead. STOP after asking and wait for the user's response before creating the issue or advancing.
 
-**`--auto` mode:** do not ask the user to choose. Select the strongest option, create the issue, continue.
+**`--auto` mode:** do not ask the user to choose. Select the strongest option, create the issue, continue. A finding escalated in Step 4.0 gets no issue; report it instead.
 
 ## Required Review Style
 
-For every finding, follow this structure:
+Check every finding first (Step 4.0). For every finding that stands, follow this structure:
 
 1. Executive summary (with code references when available)
 2. Alternative options
@@ -50,9 +50,9 @@ For every finding, follow this structure:
     ↓
 [Optionally filter to user-selected finding IDs; skip findings already linked to a G-* issue]
     ↓
-[Process one finding at a time]
+[Process one finding at a time: accept, contest, or escalate]
     ↓
-[Create SIW issue for chosen option]
+[Create SIW issue for chosen option on accepted findings]
     ↓
 [Repeat until all selected findings are handled]
     ↓
@@ -101,6 +101,7 @@ Ignore:
 - Non-actionable uncertain rows unless explicitly requested
 - Findings marked `**Status:** [Auto-fixed]` (already resolved by `/kramme:siw:spec-audit --apply`)
 - Findings marked `**Status:** [Applied directly]` (legacy marker from older `/kramme:siw:spec-audit --apply` runs)
+- Findings marked `**Status:** [Contested]` (already disputed with evidence in Step 4.0), unless the arguments name their ids
 
 ## Step 3: Select Scope
 
@@ -117,6 +118,7 @@ If the parsed arguments include finding ids (example: `DIV-002 EXT-001 SPEC-003`
 - The finding carries an `Existing issue:` annotation that references a `G-*` / `ISSUE-G-*` issue and that issue resolves to an existing file under `siw/issues/` (for example, `G-012` resolves to `siw/issues/ISSUE-G-012*.md`).
 - The finding is marked `**Status:** [Auto-fixed]`.
 - The finding is marked `**Status:** [Applied directly]`.
+- The finding is marked `**Status:** [Contested]` and the arguments do not name its id. Naming the id reopens it at Step 4.0.
 - A file matching `siw/issues/ISSUE-G-*-{finding-id}-*.md` exists.
 
 Drop skipped findings from the queue and report each skip with the matched verified issue file, status marker, or issue file in the Step 7 summary under "Skipped - already handled". If an `Existing issue:` annotation points to no file on disk, treat it as stale metadata, keep the finding in the queue, and mention the stale annotation in the summary. This keeps re-runs idempotent across resolve-audit, spec-audit apply, and auto-fix without suppressing unresolved findings.
@@ -125,7 +127,35 @@ Drop skipped findings from the queue and report each skip with the matched verif
 
 ## Step 4: One-Finding Triage Loop
 
-Detect the finding type from its ID prefix and use the matching Step 4.1–4.3 style below. Step 4.4 (resolution selection) is shared by all finding types.
+Check the finding in Step 4.0. If it stands, detect the finding type from its ID prefix and use the matching Step 4.1–4.3 style below. Step 4.4 (resolution selection) is shared by all finding types.
+
+### 4.0 Check the Finding
+
+Read `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/disputing-findings.md` once, then sort the finding. An audit can be wrong, but doubt alone does not make it wrong.
+
+- **Accept:** remove any earlier `[Contested]` line, then continue with Steps 4.1–4.4 and Step 5.
+- **Contest:** name the evidence: file and line, quote, or decision entry. With `--auto`, contest it without asking, unless it is Critical or its `Severity Note` says `from Critical`. A wrong call there is too costly to make unattended, so handle it as an escalated finding. Otherwise ask the question below.
+- **Escalate:** name the unrecorded fact. With `--auto`, do not ask, annotate, or create an issue. Keep the fact for the Step 7 summary and move on; a later run without `--auto` picks the finding up again. Otherwise ask the question below.
+
+Ask as a standalone message, and STOP for the answer:
+
+```yaml
+header: "Dispute Finding"
+question: "{finding_id}: This looks wrong because {the evidence or the unrecorded fact}. Do you agree?"
+options:
+  - label: "Yes, contest it"
+    description: "Mark it contested and create no issue"
+  - label: "No, the finding stands"
+    description: "Resolve it through the normal options"
+```
+
+On **No, the finding stands**, continue as an accepted finding.
+
+To contest a finding:
+
+1. Create no issue. Add `**Status:** [Contested] {the evidence}` to the source report entry after any severity metadata. For an escalated finding, the evidence is `Decided by user on {date}: {the fact}`. If the report cannot be edited, do not fail the run; warn in the final summary.
+2. For an escalated finding, also append a numbered entry with the date, the decision, and the finding id under `## Decision Log` when `siw/LOG.md` has that heading.
+3. Send a standalone completion message naming the evidence. For an escalated finding, add that readers of the spec will not see the fact unless it is added to the spec. Then return to this step for the next finding.
 
 ---
 
@@ -319,14 +349,14 @@ If any issue file, overview, source-report annotation, or log write fails after 
 
 ## Step 6: Continue Until Done
 
-After creating the SIW issue for one finding:
+After creating the SIW issue for one finding, or ending its cycle at Step 4.0:
 
 1. Send a standalone completion message for that finding to the user
 2. **Return to Step 4** for the next finding in the queue
 3. In a separate subsequent message, present the next finding's full executive summary (Step 4.1) — do not skip or abbreviate
 4. With `--auto`, continue immediately after the completion message without waiting for user input
 
-**NEVER** process the next finding without completing the full cycle (Steps 4 through 5) for the current one.
+**NEVER** process the next finding without completing the full cycle (Steps 4 through 5) for the current one, or ending it at Step 4.0.
 
 **STOP** only when all selected findings are handled or the user asks to stop.
 
@@ -337,10 +367,12 @@ At the end, report:
 - Findings processed count
 - Issues created (`G-xxx` list)
 - Findings intentionally deferred
+- Contested (finding ids + the evidence)
+- Escalated - needs your decision (finding ids + the unrecorded fact, or the evidence for a Critical finding held back from contesting)
 - Skipped - already handled (finding ids + matched `Existing issue`, status marker, or issue file)
 - Skipped - not in report (finding ids passed in arguments that did not match the active report)
 - Recommended transfer command and any findings that still block migration
 
-This final summary is allowed only after all selected findings complete the full Steps 4-5 cycle.
+This final summary is allowed only after all selected findings complete the full Steps 4-5 cycle or end it at Step 4.0.
 
 Then stop and wait for user instruction.

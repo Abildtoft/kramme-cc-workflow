@@ -18,7 +18,7 @@ Do not combine a pre-clustered handoff with any other source. If a matching path
 8. `QA_REPORT.md`
 9. `DEPENDENCY_AUDIT.md`
 
-User-supplied paths are accepted regardless of filename — this list only controls auto-detection. Spec-audit reports (`AUDIT_SPEC_REPORT.md`, `siw/AUDIT_SPEC_REPORT.md`) are not auto-detected because SIW audit decisions route through `kramme:siw:resolve-audit`; an explicitly passed spec-audit report is still accepted.
+User-supplied paths are accepted regardless of filename — this list only controls auto-detection. Spec-audit reports (`AUDIT_SPEC_REPORT.md`, `siw/AUDIT_SPEC_REPORT.md`) are not auto-detected because SIW audit decisions route through `kramme:siw:resolve-audit`; an explicitly passed spec-audit report is still accepted, without its findings marked `**Status:** [Contested]`.
 
 ## Sibling worktree reports
 

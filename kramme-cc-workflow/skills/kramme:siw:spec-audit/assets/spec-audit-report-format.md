@@ -43,9 +43,25 @@
 
 {Severity counts include `PROD-NNN` findings when product mode ran.}
 
+{If contested findings were carried forward:} **Contested:** {count} (not counted above; see Contested Findings)
+
 {If preserved critical caps exist:} **Preserved Critical Caps:** {count} (reported as Minor due to Work Context but still decision-required)
 
 **Overall Assessment:** {Ready for implementation / Needs revision / Significant gaps}
+
+**Comprehension read:** {ran / ran with project instructions loaded / skipped (reason) / failed (reason)}
+
+**Current-state claims:** {checked / checked, {N} unverified: {the claims} / skipped (spec names no existing code) / not run (reason)}
+
+## Comprehension Read
+
+{Include this section only when the read ran. Copy the reader's two restatements verbatim, even when it reported nothing else.}
+
+**The proposal, as a first reader understood it:** {THE PROPOSAL}
+
+**The system today, as a first reader understood it:** {THE SYSTEM TODAY}
+
+Compare these with what the spec is meant to say. A wrong restatement means the spec misleads its first reader, even if every section reads well on its own.
 
 ## Critical Findings
 
@@ -54,6 +70,8 @@
 **Dimension:** {dimension}
 
 **Severity:** Critical
+
+{If the finding came from the comprehension read or the claims check:} **Source:** {Comprehension Read / Current-State Claims}
 
 **Fix Confidence:** {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
 
@@ -96,6 +114,10 @@
 ## Minor Findings
 
 {Same format, without Impact field. If Work Context capped a higher-severity finding into Minor, include `**Severity Note:** [Deprioritized — capped at Minor from {original_severity}]` immediately after the Severity line.}
+
+## Contested Findings
+
+{Include this section only when Step 4.2 carried contested findings forward. Use the finding format above with its `**Status:** [Contested] {evidence}` line. Re-run `/kramme:siw:resolve-audit {report_path} {finding-id}` to reopen one.}
 
 ## Dimension Details
 

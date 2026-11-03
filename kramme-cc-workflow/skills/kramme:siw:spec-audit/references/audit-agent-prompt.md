@@ -32,6 +32,14 @@ Analyze the spec against each dimension below. For each finding, report:
 
 {Dimension-specific instructions inserted here — see Section 3.4}
 
+{Only when this group audits Scope and a previous report lists resolved findings:}
+
+## Previously Resolved Findings
+
+These findings from the previous audit were addressed. Apply the Scope check for defensive accretion to the text that addressed them. If a listed gap still exists, report it as usual.
+
+{For each: finding ID, title, location, and recommendation}
+
 ## Work Context Adjustments
 
 This spec has Work Type: {work_context.work_type}

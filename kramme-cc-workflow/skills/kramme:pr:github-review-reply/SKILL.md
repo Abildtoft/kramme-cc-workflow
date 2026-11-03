@@ -210,6 +210,7 @@ If any item is classified as `needs-code-change` and `IMPLEMENT` resolved to imp
    - `skipped-out-of-scope` → reclassify as `out-of-scope`, carrying resolve-review's rationale into the draft reply.
    - `skipped-invalid` or `disagreed` → reclassify as `disagree`, carrying resolve-review's rationale into the draft reply.
    - `blocked-implementation` or `blocked-validation` → keep the item as `needs-code-change`, mark `Implementation status: blocked`, and stop before posting replies.
+   - A `blocked-implementation` whose `rationale` starts `Needs author decision:` is a question rather than a failed fix. Put it in the plan and ask the user. If they confirm the fact, reclassify the item as `disagree`, citing their decision in the draft reply. Otherwise make the fix yourself with their answer, on top of the first run's uncommitted changes. Do not invoke resolve-review again: its checkpoint would stash those changes, validate the new fix without them, and could leave them in the stash. Run `kramme:verify:run --fast` on the combined tree, then reconcile the item as `implemented`.
    - Record the validation commands and outcomes resolve-review reported.
 
    Always verify each claim against the actual diff; never trust the summary's status alone.

@@ -163,8 +163,10 @@ Then, for each finding, ask: **"Is this within the PR's scope?"**
 
 For external reviews:
 
-- **Assess validity** — Determine if you agree with the reviewer's comment
-- **If you disagree** — Note your reasoning; you may still implement if it's a matter of preference, or skip if the suggestion would harm code quality
+- **Assess validity** — Read `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/disputing-findings.md`, then decide whether the finding holds. This is a safety net that also runs under `--implement-only`.
+- **If you can contest it** — The finding is wrong and you can cite evidence the reviewer could have read. Skip it, and record that evidence as the reason. Under `--implement-only`, return `disagreed` with the evidence as the `rationale`.
+- **If only unrecorded knowledge says it is wrong** — Do not skip it on your own. Ask the user. Under `--implement-only`, return `blocked-implementation` with a `rationale` that starts `Needs author decision:` and names the unrecorded fact, so the parent stops and asks instead of drafting a disagreement.
+- **If it is a matter of preference** — You may still implement it, or dismiss it under Step 2e. A preference is not a dispute. Under `--implement-only`, implement it, because the parent already accepted the change.
 - **If you agree** — Proceed with the fix
 
 For internal reviews (self-generated): Skip this substep and proceed directly to implementation.
@@ -305,7 +307,7 @@ Each commit should be self-contained and pass linting/formatting on its own. If 
   }
   ```
 
-  `blocked-implementation` means the fix could not be completed. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
+  `blocked-implementation` means the fix could not be completed, or, with a `rationale` that starts `Needs author decision:`, that it needs a fact only the author can settle. `blocked-validation` means a fix was attempted but validation failed. Then skip the Generate summary bullet below.
 
 - **Generate summary** — Write resolutions back to the source review file (see Output format below). If the source was `PRODUCT_REVIEW_OVERVIEW.md`, `COPY_REVIEW_OVERVIEW.md`, `CONVENTION_REVIEW_OVERVIEW.md`, or `OVERENGINEERING_REVIEW_OVERVIEW.md`, update that file in place. A chat or payload review carrying `Review producer: kramme:pr:overengineering-review` writes to `OVERENGINEERING_REVIEW_OVERVIEW.md`; other external, chat, and Conductor-sourced reviews write to `REVIEW_OVERVIEW.md`.
   - Use `Resolution status: addressed` only when the finding was implemented, already satisfied by the current code, or otherwise fully resolved.

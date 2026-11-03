@@ -29,7 +29,7 @@ Use this format for each comment:
 
 **Assessment:** Agree / Agree With Modifications / Disagree
 
-**Rationale:** [Why you agree or disagree with this feedback]
+**Rationale:** [Why you agree or disagree with this feedback. A disagreement cites evidence the reviewer could have read, such as a file and line, a test, or a recorded decision.]
 
 **Resolution status:** open | addressed | deferred | acknowledged | skipped
 
