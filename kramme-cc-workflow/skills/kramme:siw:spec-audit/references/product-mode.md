@@ -71,10 +71,10 @@ If the spec has no clear product elements, proceed anyway; the absence of produc
 | **Minor** | Low-risk product concerns. Missing edge states, suboptimal naming, cosmetic flow issues. |
 
 3. Merge product findings that several product sub-dimensions flagged for the same issue and list every affected sub-dimension. Do not merge a `PROD-NNN` finding into a `SPEC-NNN` finding, or the reverse, even when they share a root cause; add `Related: {other-id}` to both instead, so mechanical spec fixes stay separate from product decisions.
-4. Assign IDs: still-open findings from P4 keep their `PROD-NNN` IDs; new findings get sequential IDs from `previous_max_prod_id + 1` (or `PROD-001` when there is no previous report), ordered Critical, Major, then Minor.
+4. Assign IDs: still-open findings from P4 keep their `PROD-NNN` IDs; new findings get sequential IDs from `previous_max_prod_id + 1` (or `PROD-001` when there is no previous report), ordered Critical, Major, then Minor. A finding that matches one marked `**Status:** [Contested]` in the previous report follows the Step 4.2 rule for contested findings.
 5. Product findings are exempt from Work Context severity caps (Step 4.3.5) and from Fix Confidence scoring and normalization (Step 4.3.6).
 6. Score the **Product** row with the Step 4.4 Strong / Adequate / Weak / Missing rule over `PROD-NNN` findings, using Missing when the spec has no product elements at all. Also assess each product sub-dimension for the report's Product Dimension section.
-7. Count product findings in the report's severity totals and overall assessment: any Critical product finding rules out `Ready for implementation`.
+7. Count product findings, except contested ones, in the report's severity totals and overall assessment: any uncontested Critical product finding rules out `Ready for implementation`.
 8. Cross-reference existing SIW issues in Step 4.5 for product findings exactly as for spec findings.
 
 ## P6: Report and Downstream Handling
@@ -87,10 +87,10 @@ If the spec has no clear product elements, proceed anyway; the absence of produc
 
 Run this when `PRODUCT_MODE=false` (not requested, or skipped by P1) and the active run of the report at the Step 5.1 target path contains `### PROD-NNN:` findings. It applies to Replace, Append, and inline output, so a readiness-only run never drops product findings that resolve-audit still needs.
 
-1. Copy every `PROD-NNN` finding from the previous active run into the new report unchanged, including `Existing issue:` annotations and `Related:` links, in the matching severity sections.
+1. Copy every `PROD-NNN` finding from the previous active run into the new report unchanged, including `Existing issue:` annotations and `Related:` links, in the matching severity sections, or under `## Contested Findings` for one marked `**Status:** [Contested]`.
 2. Copy the previous Product Dimension section unchanged and add `Carried from the product pass dated {previous report date}; re-run with --product to refresh.` at its top.
 3. Show the Product row from the previous run with `(carried {date})` after its score.
-4. Keep the carried findings in severity totals and the overall assessment exactly as P5 step 7 requires.
+4. Keep the carried findings, except those marked `**Status:** [Contested]`, in severity totals and the overall assessment exactly as P5 step 7 requires.
 
 ## Failure Handling
 

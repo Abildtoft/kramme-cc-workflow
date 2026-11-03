@@ -20,11 +20,17 @@ After final severity assignment and any Work Context downgrades, recompute each 
 
 ## Product Findings
 
-`PROD-NNN` findings from product mode skip the Merged Findings, Final Fix Confidence, and severity-cap rules above: they carry no `Fix Confidence` and are never capped. They count toward severity totals and the overall assessment, and the Issue-Eligible Findings rules below select them by visible severity.
+`PROD-NNN` findings from product mode skip the Merged Findings, Final Fix Confidence, and severity-cap rules above: they carry no `Fix Confidence` and are never capped. Unless contested, they count toward severity totals and the overall assessment, and the Issue-Eligible Findings rules below select them by visible severity.
+
+## Contested Findings
+
+A finding under `## Contested Findings` stays in the report so its evidence stays visible. It does not count toward severity totals, dimension scores, preserved-critical caps, or the overall assessment.
+
+A finding marked `**Status:** [Contested]` after a report was written leaves that report's counts unchanged, as an auto-fixed finding does, until the next audit applies the rule above.
 
 ## Issue-Eligible Findings
 
-Before creating issue files, determine the selected findings set:
+Before creating issue files, determine the selected findings set. Leave out every finding marked `**Status:** [Contested]`, whichever selection applies:
 
 - **Critical and major only** → include all visible Critical and Major findings, plus any Minor finding with `**Severity Note:** [Deprioritized — capped at Minor from Critical]` or `**Severity Note:** [Deprioritized — capped at Minor from Major]`
 - **All findings** → include every finding

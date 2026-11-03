@@ -109,6 +109,7 @@ For each finding, extract:
 
 - Already marked `**Status:** [Auto-fixed]` (from a previous run)
 - Already marked `**Status:** [Applied directly]` (legacy marker from older `/kramme:siw:spec-audit --apply` runs)
+- Already marked `**Status:** [Contested]` (disputed with evidence by `/kramme:siw:resolve-audit`)
 - Contains `Existing issue:` note (already tracked via SIW)
 
 If no actionable findings remain:
@@ -119,6 +120,7 @@ No actionable findings to process.
 {If all auto-fixed:} All {N} findings were previously auto-fixed.
 {If all legacy-applied:} All {N} findings were previously applied directly with the legacy marker.
 {If all have issues:} All {N} findings already have SIW issues.
+{If any are contested:} {N} findings are contested; see their `**Status:**` lines.
 ```
 
 **Action:** Stop.
@@ -169,7 +171,7 @@ Requires decision ({M} findings):
 
 Skipped: {K}
 {For each:}
-  {SPEC-NNN}: {reason — already auto-fixed or has SIW issue}
+  {SPEC-NNN}: {reason — already auto-fixed, contested, or has SIW issue}
 ```
 
 If no findings at or above threshold:

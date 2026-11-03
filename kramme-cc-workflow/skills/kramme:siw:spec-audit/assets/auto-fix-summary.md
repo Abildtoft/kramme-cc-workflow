@@ -2,7 +2,7 @@
 
 Report: {report_path} Threshold: {CONFIDENCE_THRESHOLD}/100 Spec files modified: {list of modified files, or "none" if dry-run} SIW log: {updated | skipped — no siw/LOG.md | not updated (missing Current Progress section) | not applicable}
 
-Results: Fixed: {N} (avg confidence: {avg_score}) Failed verification: {N} (reclassified to requires-decision) Below threshold: {M} (requires decision) Guardrail-blocked: {G} (requires decision despite score) Safety-capped: {S} (always requires decision) Skipped: {K} (already fixed or has SIW issue) Product findings left for decisions: {P} (PROD-NNN; never auto-fixed)
+Results: Fixed: {N} (avg confidence: {avg_score}) Failed verification: {N} (reclassified to requires-decision) Below threshold: {M} (requires decision) Guardrail-blocked: {G} (requires decision despite score) Safety-capped: {S} (always requires decision) Skipped: {K} (already fixed, contested, or has SIW issue) Product findings left for decisions: {P} (PROD-NNN; never auto-fixed)
 
 {If CONFIDENCE_THRESHOLD != 80:} Note: Using custom threshold {CONFIDENCE_THRESHOLD}. Default is 80.
 
@@ -14,6 +14,8 @@ Results: Fixed: {N} (avg confidence: {avg_score}) Failed verification: {N} (recl
 - Review remaining findings: /kramme:siw:resolve-audit {report_path}
 - Or auto-resolve: /kramme:siw:resolve-audit {report_path} --auto
 - Re-audit after all fixes: /kramme:siw:spec-audit {add --product if the report contains PROD-NNN findings}
+
+{If any findings are contested:} Contested: {N}; review their evidence in the report.
 
 {If no requires-decision findings and zero open PROD findings remain:} Next steps:
 

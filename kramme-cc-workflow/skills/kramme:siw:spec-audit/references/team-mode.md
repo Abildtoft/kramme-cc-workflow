@@ -1,6 +1,6 @@
 # Team-Based Spec Quality Audit
 
-Evaluate specification documents for quality across 8 dimensions using multi-agent execution. Each dimension auditor runs with its own context window and can cross-validate findings with other auditors. A codebase pattern reviewer checks whether the spec introduces new implementation patterns without rationale. A cross-reviewer meta-reviews all findings for completeness.
+Evaluate specification documents for quality across 8 dimensions using multi-agent execution. Each dimension auditor runs with its own context window and can cross-validate findings with other auditors. A codebase pattern reviewer checks whether the spec introduces new implementation patterns without rationale and whether what it says about today's code is true. A cold reader tests whether the spec stands on its own. A cross-reviewer meta-reviews all findings for completeness.
 
 This reference is loaded by `/kramme:siw:spec-audit --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
@@ -50,10 +50,12 @@ Spawn **4 dimension auditors**, **1 codebase pattern reviewer**, and **1 cross-r
 | `clarity-auditor` | Clarity, Actionability | Vague requirements are also non-actionable; a single agent can flag both the ambiguity and its implementation impact |
 | `validation-auditor` | Testability, Scope | Untestable criteria often stem from scope problems (implicit inclusions, missing boundaries) |
 | `design-auditor` | Rationale Documentation, Technical Design | Checks that product intent is recorded clearly enough to guide technical choices, then audits those choices without re-deciding product strategy |
-| `codebase-pattern-reviewer` | Technical Design support | Checks whether proposed implementation choices follow existing codebase patterns or introduce new ones without rationale |
+| `codebase-pattern-reviewer` | Technical Design support | Checks whether proposed implementation choices follow existing codebase patterns or introduce new ones without rationale, and whether the spec's statements about current code hold |
 | `cross-reviewer` | Meta-review | Cross-dimension pattern detection, suspiciously-clean challenge, duplicate detection |
 
 If `PRODUCT_MODE=true`, also spawn a `product-reviewer` teammate (7 agents total) for the Product dimension. It runs the `kramme:product-reviewer` mission with the prompt from product mode P4 and reports `PROD-NNN` findings to the lead.
+
+The lead also launches the comprehension read from `/kramme:siw:spec-audit` Step 3.5 alongside Phase 1. Launch it as an ordinary subagent, not a teammate, because a teammate joins the team's context and receives an agent's mission rather than its definition. Process its reply as Step 4 of the standard workflow describes, and add its findings to the Phase 1 findings the cross-reviewer receives. Start the cross-reviewer only after the reply is back or the read has failed.
 
 ### Step 3: Create and Assign Tasks
 
@@ -91,6 +93,8 @@ Read these files completely:
 ## Your Assigned Dimensions
 
 {Paste the relevant blocks from references/dimension-instructions.md}
+
+{For the auditor that owns Scope, when a previous report lists resolved findings, add the Previously Resolved Findings block from references/audit-agent-prompt.md here.}
 
 ## Finding Format
 
@@ -162,7 +166,8 @@ The `codebase-pattern-reviewer` runs in parallel with the dimension auditors. Us
 
 ```
 You are reviewing a specification before implementation to identify whether it
-introduces new codebase patterns without rationale.
+introduces new codebase patterns without rationale, and whether what it says
+about the code today is true.
 
 ## Spec Files
 
@@ -171,7 +176,8 @@ Read these files completely:
 
 ## Codebase Context Boundaries
 
-You may read bounded codebase context only for pattern comparison:
+You may read bounded codebase context only for pattern comparison and for
+settling the spec's statements about current code:
 - repo instruction files (`AGENTS.md`, `CLAUDE.md`, or equivalents)
 - README and architecture/design docs relevant to named areas
 - package manifests, framework configs, route maps, schema files, and test config
@@ -181,7 +187,8 @@ You may read bounded codebase context only for pattern comparison:
 
 Do not perform an implementation conformance audit. Use codebase evidence only
 to determine whether the spec follows established patterns, intentionally
-introduces a new pattern, or accidentally invents one.
+introduces a new pattern, or accidentally invents one, and whether what it
+presents as existing today actually exists and behaves that way.
 
 ## Output Requirements
 
@@ -189,12 +196,14 @@ Use the output format from `agents/kramme:codebase-pattern-reviewer.md`.
 For any issue that should become a spec-audit finding, add this mapping:
 - **Finding ID**: SPEC-{NNN}
 - **Dimension**: Technical Design
-- **Source**: Codebase Pattern Review
+- **Source**: Codebase Pattern Review, or Current-State Claims for a `CLAIM-NNN` finding
 - **Fix Confidence**: {score}/100 ({MECHANICAL|HIGH_CONFIDENCE|MODERATE_CONFIDENCE|REQUIRES_DECISION})
 
 Score provisional `Fix Confidence` using the rubric at `{fix-confidence rubric path}`.
 Most pattern-fit findings are REQUIRES_DECISION unless the fix is simply "reuse
-the clearly established pattern at {path}".
+the clearly established pattern at {path}". A contradiction is usually
+REQUIRES_DECISION too, because either the spec or the code may be the side that
+is right.
 
 When done, message the lead with your complete findings and pattern summary.
 Mark your task complete.
@@ -220,7 +229,7 @@ the audit is complete and internally consistent.
 
 ## All Phase 1 Findings
 
-{Collected findings from all 4 dimension auditors and the codebase pattern reviewer}
+{Collected findings from all 4 dimension auditors, the codebase pattern reviewer, and the comprehension read}
 
 {If PRODUCT_MODE=true:} ## Product Findings (reference only)
 
@@ -298,6 +307,8 @@ Review the codebase pattern reviewer output for report fit:
   reuse guidance, rationale, migration guidance, or an explicit decision.
 - Mark findings as FYI, not SPEC findings, if they only express a coding
   preference or would require inspecting implementation that does not exist yet.
+- Keep current-state claim findings. They report whether the spec is accurate,
+  not a design preference.
 - Recommend merges when a design-auditor Technical Design finding and a pattern
   reviewer finding share the same root cause.
 - Preserve pattern evidence in the merged finding's Details or Recommendation.
@@ -310,7 +321,7 @@ your task complete.
 
 After the cross-reviewer completes:
 
-1. Collect all findings from dimension auditors, the codebase pattern reviewer, and the cross-reviewer
+1. Collect all findings from dimension auditors, the codebase pattern reviewer, the comprehension read, and the cross-reviewer
 2. Apply cross-reviewer annotations:
    - Merge root-cause-linked findings
    - Add cross-reviewer challenge findings
@@ -333,7 +344,7 @@ After the cross-reviewer completes:
 - 4 dimension auditors + 1 codebase pattern reviewer + 1 cross-reviewer participated {+ 1 product reviewer with --product}
 - Cross-validation messages: {N} sent, {M} produced additional findings
 - Cross-reviewer challenges: {N} dimensions challenged, {M} additional findings
-- Codebase pattern review: {N} established patterns confirmed, {M} intentional new patterns acknowledged, {K} unacknowledged pattern findings
+- Codebase pattern review: {N} established patterns confirmed, {M} intentional new patterns acknowledged, {K} unacknowledged pattern findings, {C} current-state claim findings
 - Duplicates merged: {N}
 
 ## Cross-Review Notes

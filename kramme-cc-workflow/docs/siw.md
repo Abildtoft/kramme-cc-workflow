@@ -100,6 +100,13 @@ Discovery and audits move specifications toward `planning-ready`. `generate-phas
 
 `/kramme:siw:spec-audit` reviews coherence, completeness, clarity, implementation-scope consistency, actionability, testability, rationale documentation, and technical design. Use it when the question is whether implementation can proceed correctly without guessing. Its Rationale Documentation dimension checks that product rationale is explicit and internally consistent without judging whether it is right.
 
+Two passes go beyond reading the spec against those dimensions:
+
+- A comprehension read has a cold reader, who knows neither the conversation nor the project, restate the spec in its own words. The report shows that restatement so you can compare it with what you meant.
+- When the spec names existing code, a bounded check confirms that what it says about today's code is true. A statement the code contradicts is Critical, because every later reader inherits it.
+
+These flags change what runs:
+
 - `--product` adds the Product dimension: target users, problem/solution fit, user states, critical moments, product scope, success criteria, prioritization, and strategy alignment. Use it when the question is also whether the specification proposes the right product for the right users. Product findings (`PROD-NNN`) share the report but are never auto-fixed; resolve them with `/kramme:siw:resolve-audit`.
 - `--inline` returns a read-only report.
 - `--apply` auto-fixes mechanical findings after the audit; `--apply <report>` fixes an existing report without re-auditing. `--threshold 60-100` and `--allow-dirty` modify either form. `--dry-run` requires `--apply <report>` and previews fixes without changing files; audit-first dry runs are rejected before auditing. Use `--inline` without `--apply` for a read-only audit.
@@ -108,7 +115,7 @@ Discovery and audits move specifications toward `planning-ready`. `generate-phas
 
 Use `/kramme:siw:spec-audit --apply <report>` for deterministic report findings such as broken cross-references, terminology inconsistencies, numbering mistakes, formatting problems, and wording whose specific replacement already exists in the spec.
 
-Use `/kramme:siw:resolve-audit` for findings requiring a choice. It presents an executive summary, alternatives, and a recommendation before creating the selected local SIW issue. Explicitly supplied legacy implementation-audit reports remain readable for migration recovery, but SIW no longer produces new implementation-audit reports.
+Use `/kramme:siw:resolve-audit` for findings requiring a choice. It checks each finding first. A finding it can disprove with evidence the auditor could have read is marked `[Contested]` and gets no issue once you agree, or straight away with `--auto`; name its ID on a later run to reopen it. A finding that looks wrong only because of something no file records always waits for you, and so does a Critical finding under `--auto`, including one capped from Critical. For the rest, it presents an executive summary, alternatives, and a recommendation before creating the selected local SIW issue. Explicitly supplied legacy implementation-audit reports remain readable for migration recovery, but SIW no longer produces new implementation-audit reports.
 
 ## Initial Issue Definition
 
