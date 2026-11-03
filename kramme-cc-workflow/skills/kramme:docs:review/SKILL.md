@@ -1,6 +1,6 @@
 ---
 name: kramme:docs:review
-description: "Review one Markdown document outside tracked SIW workflows: requirements, implementation plans, strategy drafts, README/docs drafts, proposals, and decision drafts. Classifies the document, selects focused review lenses, and returns severity-ordered findings inline by default or in a requested report file. Not for source-code review, PR diffs, live-product review, or documents under siw/; use SIW audit skills for tracked SIW artifacts."
+description: "Review one Markdown document outside tracked SIW workflows: requirements, implementation plans, strategy drafts, README/docs drafts, proposals, and decision drafts. Classifies the document, tests it with a fresh reader, selects focused review lenses, and returns severity-ordered findings inline by default or in a requested report file. Not for source-code review, PR diffs, live-product review, or documents under siw/; use SIW audit skills for tracked SIW artifacts."
 argument-hint: "[markdown-path] [--inline|--file|--output <path>]"
 disable-model-invocation: true
 user-invocable: true
@@ -16,7 +16,7 @@ Review one Markdown document without changing it. Classify the document, apply f
 
 This skill reviews document quality only.
 
-- **Does:** Review one Markdown document for coherence, scope, feasibility, product fit, security/privacy risk, design implications, and reader usefulness when those lenses apply.
+- **Does:** Review one Markdown document for comprehension, coherence, scope, feasibility, product fit, security/privacy risk, design implications, and reader usefulness when those lenses apply.
 - **Does:** Return findings inline by default, or write a generated report only when `--file` or `--output <path>` is present.
 - **Does not:** Edit the source document, review source code, inspect PR diffs, test running software, or create tracking issues.
 - **Does not:** Replace SIW audits. Documents under `siw/` route to `/kramme:siw:spec-audit`, with `--product` for product judgment.
@@ -63,6 +63,7 @@ This skill reviews document quality only.
 
 6. **Select review lenses**
    - Always apply:
+     - `comprehension`: whether a first reader can say what the document means, tested by the cold reader in step 7.
      - `coherence`: internal consistency, terminology, narrative order, contradictions, missing connective tissue.
      - `scope`: boundaries, non-goals, unowned work, vague commitments, hidden expansion.
    - Apply `feasibility` to requirements, implementation plans, proposals, migrations, timelines, staffing assumptions, or technical commitments, including deployment and rollout ordering.
@@ -71,7 +72,11 @@ This skill reviews document quality only.
    - Apply `design-ux` when the document describes UI, onboarding, workflows, user behavior, navigation, copy, accessibility, or service/API experience.
    - Apply `reader-success` to README/docs documents, runbooks, tutorials, API docs, onboarding docs, and documents intended to help someone complete a task.
 
-7. **Review for findings**
+7. **Run the comprehension read**
+   - Read `${CLAUDE_PLUGIN_ROOT}/shared/writing/references/comprehension-read.md` and launch one cold reader as `${CLAUDE_PLUGIN_ROOT}/shared/agents/references/cold-reader.md` describes, with the document's absolute path as `{document-paths}`. The rest of this review shares your context, so this reader is the only part that shows what the document gets across without it.
+   - You may continue with step 8 while it runs. Add its findings with the `comprehension` lens before step 9, using the rules in that reference, and record its status for the report.
+
+8. **Review for findings**
    - Findings must be grounded in the document. Cite the nearest section heading and line number when available.
    - Admit a finding above `Nit` only when the document's instructions contradict each other or its stated goal, or when a reader who follows it as written (plus what it references) would do the wrong thing or measurably avoidable work. Judge omissions against what a competent reader or implementer can already infer: a missing section, extra detail, a finer threshold, or a restated point is not a finding by itself.
    - Before reporting something as missing or contradictory, search the rest of the document and drop the finding if another section already answers it. Do not reopen a decision the document records as settled (a decision log, non-goals, a cited ADR) unless that decision itself causes a concrete defect. When two lenses disagree, resolve it against the document's stated goal, and report a tradeoff only when the text leaves the choice open.
@@ -85,7 +90,7 @@ This skill reviews document quality only.
      - `Minor`: clarity, completeness, or sequencing issue that creates friction but is unlikely to cause the wrong work by itself.
      - `Nit`: small wording or structure edit with a concrete reader benefit; drop pure preferences.
 
-8. **Synthesize the report**
+9. **Synthesize the report**
    - Lead with findings ordered by severity, then by document order.
    - Use stable IDs: `DOC-001`, `DOC-002`, etc.
    - Each finding must use this structure:
@@ -102,32 +107,48 @@ This skill reviews document quality only.
    Concrete fix: <specific edit or decision that would resolve it>
    ```
 
-   - After findings, include:
+   - After findings, include the following. Omit the Comprehension Read section when the read did not run:
 
    ```text
+   ## Comprehension Read
+
+   **The proposal, as a first reader understood it:** <THE PROPOSAL, verbatim>
+   **The system today, as a first reader understood it:** <THE SYSTEM TODAY, verbatim>
+
+   Compare these with what you meant. A wrong restatement means the document misleads its first reader.
+
    ## Coverage
 
    **Document type:** <primary type; secondary: ... if applicable>
    **Lenses reviewed:** <comma-separated list>
+   **Comprehension read:** <status from the reference>
    **Residual risk:** <unverified assumptions, source-code claims not checked, missing context, or "None identified">
    ```
 
-   - If there are no findings, say:
+   - If there are no findings, say the following, again omitting the Comprehension Read section when the read did not run:
 
    ```text
    No findings.
+
+   ## Comprehension Read
+
+   **The proposal, as a first reader understood it:** <THE PROPOSAL, verbatim>
+   **The system today, as a first reader understood it:** <THE SYSTEM TODAY, verbatim>
+
+   Compare these with what you meant. A wrong restatement means the document misleads its first reader.
 
    ## Coverage
 
    **Document type:** <primary type>
    **Lenses reviewed:** <comma-separated list>
+   **Comprehension read:** <status from the reference>
    **Residual risk:** <coverage caveats or "None identified">
    ```
 
-9. **Deliver output**
-   - If `OUTPUT_MODE=inline`, return the report in the final response.
-   - If `OUTPUT_MODE=file`, write the report to `OUTPUT_PATH` and return a brief summary with the path and finding counts by severity.
-   - Treat `DOC_REVIEW.md` as a working artifact that should not be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`.
+10. **Deliver output**
+    - If `OUTPUT_MODE=inline`, return the report in the final response.
+    - If `OUTPUT_MODE=file`, write the report to `OUTPUT_PATH` and return a brief summary with the path and finding counts by severity.
+    - Treat `DOC_REVIEW.md` as a working artifact that should not be committed and can be cleaned up by `/kramme:workflow:cleanup-artifacts`.
 
 ## Error Handling
 
@@ -140,6 +161,7 @@ This skill reviews document quality only.
 | Path under `siw/` | Route to the relevant SIW audit skill and do not run this generic review. |
 | Output path equals input path | Reject and ask for a different output path or use inline output. |
 | Source-code verification needed | Mark as residual risk or `UNVERIFIED`; do not inspect code as part of this skill. |
+| Comprehension read cannot run or fails | Record the status under Coverage, omit the Comprehension Read section, and finish the other lenses. Never write the restatements yourself. |
 
 ## Examples
 
