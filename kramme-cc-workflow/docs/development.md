@@ -284,6 +284,16 @@ node --test kramme-cc-workflow/tests/node/review-execution.test.js kramme-cc-wor
 
 The [completion evaluation guide](../evals/review-completion/README.md) provides seven early-stop and control cases for live model checks. Passing fixture tests is not a claim that Astra passed those live cases.
 
+### Cold Reader Isolation Probe
+
+`kramme:cold-reader` promises to start without the project's instruction files. The offline tests check the probe's logic; only a live run checks the promise, so run it after a Claude Code or Agent SDK upgrade that touches subagent startup. It runs the `claude` on your `PATH`, uses your Claude login or `ANTHROPIC_API_KEY`, and spends a few short sessions of model usage:
+
+```bash
+node kramme-cc-workflow/scripts/probe-cold-reader-isolation.js
+```
+
+Pass `--model <model>` to change the default `sonnet`, `--variant isolated`, `control`, or `unreadable` to run one variant, or `--claude-path <path>` to test another binary. It prints a JSON report naming the Claude Code version it tested and exits `0` when every variant passes. The `isolated` variant needs the `control` variant to mean anything: if a normal agent cannot see the planted markers either, the setup is broken and the cold reader's result proves nothing. See the [decision](decisions/2026-11-02-cold-reader-isolation.md).
+
 ### Test Structure
 
 This is a representative inventory by test language, not an exhaustive list of the top-level Bats contracts:
