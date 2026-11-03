@@ -588,7 +588,8 @@ Specialized subagents for PR review and UX audit tasks. Review skills such as `/
 | `kramme:architecture-strategist` | Reviews module design: deep modules, use of public interfaces, change locality, and whether new seams have real variation. |
 | `kramme:cleanup-reviewer` | Reviews changes for code to delete, replace with existing tools, reuse, or simplify, and checks that removals are safe. |
 | `kramme:code-reviewer` | Reviews recent code against project guidelines, CLAUDE.md conventions, and established patterns. |
-| `kramme:codebase-pattern-reviewer` | Checks a spec or design for new patterns, dependencies, or abstractions introduced without rationale. |
+| `kramme:codebase-pattern-reviewer` | Checks a spec or design for new patterns or dependencies without rationale, and for statements about today's code that the code contradicts. |
+| `kramme:cold-reader` | Reads material as an outsider, without the conversation or project instructions, for cold reads, comprehension reads, and unprimed ratings. |
 | `kramme:comment-analyzer` | Reviews code comments for accuracy, necessity, completeness, and long-term maintainability. |
 | `kramme:convention-drift-reviewer` | Flags drift from the codebase's established practice and overly defensive code, citing peer-file evidence. |
 | `kramme:copy-reviewer` | Flags UI text that merely restates what the interface already communicates. |
@@ -835,6 +836,17 @@ Copied prose, scripts, templates, and substantial assets must be permitted by a 
 - Codex converter: Inspired by the plugin's converter approach.
 - External-source adaptation policy, copied-script attribution guardrails, and artifact-lifecycle prompts: Informed by [the repository at commit `6f9ab03a031c054a8046659926251fb6c149269f`](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f), including representative skills `ce-compound`, `ce-compound-refresh`, `ce-plan`, `ce-code-review`, and `ce-optimize`.
 - Shared dev-server detection scripts and browser-facing auto URL detection contract: Adapted from [ce-polish](https://github.com/EveryInc/compound-engineering-plugin/tree/6f9ab03a031c054a8046659926251fb6c149269f/plugins/compound-engineering/skills/ce-polish), reviewed at commit `6f9ab03a031c054a8046659926251fb6c149269f`.
+
+### From [google/elephant-goldfish-model](https://github.com/google/elephant-goldfish-model)
+
+Reviewed at commit `403d8881d62022490637d740657b33f01e321ea8`. These are ideas rewritten in this plugin's own words; no upstream text is retained.
+
+- `kramme:cold-reader`, its launch contract, and the marker technique in `scripts/probe-cold-reader-isolation.js`: Informed by its [Claude Code](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/docs/claude.md) and [Codex](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/docs/codex.md) integration guides and [isolation probe](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/tests/integration/test_claude.py).
+- The comprehension read in `kramme:docs:review` and `kramme:siw:spec-audit`: Informed by its [comprehension reviewer](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/agents/comprehension.md).
+- The current-state claims check in `kramme:codebase-pattern-reviewer`: Informed by its [codebase details reviewer](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/agents/codebase_details.md).
+- The `kramme:siw:spec-audit` checks for decisions left to the implementer and for defensive additions: Informed by its [readiness standard](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/resources/document_standards/implementation-readiness-standard.md) and [review design](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/docs/designs/review.md).
+- Rejected approaches in `kramme:docs:feature-spec`: Informed by [egm-draft](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/skills/egm-draft/SKILL.md).
+- The contest and escalate rules in `kramme:siw:resolve-audit` and `kramme:pr:resolve-review`: Informed by [egm-resolve](https://github.com/google/elephant-goldfish-model/blob/403d8881d62022490637d740657b33f01e321ea8/skills/egm-resolve/SKILL.md).
 
 ### Other sources
 
