@@ -34,3 +34,10 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-10-19
     baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"
+  - id: egm-draft
+    url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/skills/egm-draft/SKILL.md
+    title: "google/elephant-goldfish-model - egm-draft"
+    rationale: "Writing rejected alternatives into the spec, because a later session cannot recover them from memory, is informed by this source; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
+    usage: inspiration
+    last_reviewed_at: 2026-11-02
+    baseline_hash: "sha256:7908cb6d6b9ab82fef416211988ab9abd6681d4c783b2c31b1a8c40f97009ab0"

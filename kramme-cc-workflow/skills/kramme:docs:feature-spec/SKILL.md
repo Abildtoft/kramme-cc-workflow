@@ -161,13 +161,15 @@ Before writing, check whether the destination file already exists. If it does, d
 Copy the six-area structure from `assets/feature-spec-template.md` and fill each area. The areas are:
 
 1. **Objective** — one paragraph: problem statement + intended outcome.
-2. **Scope & Non-goals** — what's in, what's explicitly out.
+2. **Scope & Non-goals** — what's in, what's explicitly out, and any approaches weighed and rejected.
 3. **Boundaries** — Always Do / Ask First / Never Do, feature-scoped.
 4. **Testing Strategy** — what gets covered, at which tier (unit / integration / e2e).
 5. **Open Questions** — unresolved items flagged for user input.
 6. **Success Criteria** — testable statements that let anyone confirm "done".
 
 Consider user experience (UX: clear, reliable task completion), developer experience (DX: understanding, changing, testing, and debugging), and agent experience (AX: discovering context, executing predictably, recovering, and verifying). Prefer outcomes that improve all three within scope; unchanged or inapplicable dimensions are acceptable. Put relevant measurable outcomes in Success Criteria, record established behavior and contracts outside the intended change plus the intentional changes themselves in Boundaries, and put regression coverage in Testing Strategy. Make material tradeoffs explicit without inventing requirements or adding a seventh area.
+
+Record every approach the conversation, assumptions, or grounded context weighed and turned down under Rejected approaches, one line each with the reason. Implementation often runs in a later session that cannot recover why an option lost, so the spec is the only place that keeps it. Do not invent alternatives to fill the subsection; omit it when none were weighed.
 
 When the feature adds or changes a module's public interface, record that under Boundaries as an Ask First rule naming the module and its interface impact (`new` or `changed`), so the interface stays a human decision while the implementation behind it proceeds. Name modules by their domain names, not file paths, and add no such rule for implementation-only work.
 
@@ -194,7 +196,7 @@ After writing the file, emit a `PLAN:` block summarizing the spec shape — area
 ```
 PLAN: Drafted <slug>-spec.md with:
 - Objective: <one-line summary>
-- Scope: <in>, Non-goals: <out>
+- Scope: <in>, Non-goals: <out>, Rejected approaches: <count>
 - Boundaries: <count> Always, <count> Ask First, <count> Never Do rules
 - Testing: <tiers covered>
 - Open Questions: <count> (<count> flagged POTENTIAL CONCERNS)

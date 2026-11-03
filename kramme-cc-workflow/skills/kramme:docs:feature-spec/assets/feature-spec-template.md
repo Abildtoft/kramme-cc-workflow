@@ -18,6 +18,12 @@
 - <What this feature will explicitly not do, so reviewers can catch scope creep.>
 - <Additional out-of-scope item.>
 
+### Rejected approaches
+
+Approaches weighed and turned down, so a later session or reviewer does not propose them again. Omit this subsection when no real alternative was weighed.
+
+- <Approach> — <why it was rejected.>
+
 ## 3. Boundaries
 
 Feature-scoped rules the implementer should follow. Keep project-wide rules out of this spec.
