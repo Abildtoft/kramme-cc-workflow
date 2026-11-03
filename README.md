@@ -533,7 +533,7 @@ Decision records, specs, solution notes, document review and conversion, and pla
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:docs:adr` | User | `[decision title]` | Write an Architecture Decision Record for a significant, long-lived decision, following the project's existing ADR format. |
+| `/kramme:docs:adr` | User, Auto | `[decision title]` | Write an Architecture Decision Record for a significant, long-lived decision, following the project's existing ADR format. |
 | `/kramme:docs:feature-spec` | User | `[feature name or brief description] [--synthesize\|--auto]` | Write a lightweight PRD-style feature spec before coding, for features that need written alignment but not the full SIW workflow. |
 | `/kramme:docs:track-rejected-enhancements` | User | `<record\|check\|append\|reconsider> <concept>` | (experimental) Record rejected enhancement ideas in `.out-of-scope/` and check new requests against them. |
 | `/kramme:docs:review` | User | `[markdown-path] [--inline\|--file\|--output <path>]` | Review one Markdown document, such as a plan, proposal, or README draft, and get severity-ordered findings. |
