@@ -61,7 +61,7 @@ Read `references/personas.md`, then assemble the rater set:
 
 ### 3. Elicit
 
-Run each rater in a fresh subagent context with only its persona frame and the elicitation contract below. Run raters concurrently when subagent execution is available; otherwise run them sequentially, each starting from a clean context, and record reduced isolation in the report. Never show one rater another rater's output, prior reports, or any hint of expected findings.
+Launch each in-repo rater as a cold reader under `${CLAUDE_PLUGIN_ROOT}/shared/agents/references/cold-reader.md`, passing only its persona frame and the elicitation contract below. On Claude Code that rater starts without the project's instruction files, which is what keeps it outside the frame; when the launch cannot exclude them, as on Codex, record `project instructions loaded` as reduced isolation in the report. Run raters concurrently when the host allows it; otherwise launch them one at a time, each as a new agent, and record the sequential mode in the report. Never show one rater another rater's output, prior reports, or any hint of expected findings.
 
 Every rater is a stage 1 roster entry whose `launch` records its persona id and the exact prompt wording (and the isolation profile for the cross-model rater). On resume, never re-rotate personas or re-word prompts, and never relaunch a rater that has a result, including a failed one: a rater runs at most once per run unless its session was interrupted before it returned. Raters never receive the run directory path or any result file. Count the quorum over persisted results.
 
@@ -120,7 +120,7 @@ Reply with:
 - blind-spot count and any promotion candidates
 - model diversity status (which alternative model rated, or none)
 - footprint breadth: which areas raters examined and which areas no rater visited
-- degraded modes: sequential elicitation, failed raters, missing comparison report
+- degraded modes: sequential elicitation, raters with project instructions loaded, failed raters, missing comparison report
 
 ## Artifact Lifecycle
 

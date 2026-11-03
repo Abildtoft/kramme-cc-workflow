@@ -20,7 +20,7 @@ After each stage, save its result as `references/resume.md` describes. When a re
 
 ## Readers
 
-- Launch each reader through the host's agent-invocation mechanism, passing only its filled prompt from `references/clarity-check-prompts.md`: no conversation history, no report, and no review evidence. A reader who knows your intent tests nothing. On Codex, spawn it with `fork_turns="none"`, because a full-history fork would hand it the conversation.
+- Launch each reader through the host's agent-invocation mechanism, passing only its filled prompt from `references/clarity-check-prompts.md`: no conversation history, no report, and no review evidence. A reader who knows your intent tests nothing. On Codex, spawn it with `fork_turns="none"`, or `fork_context: false` when the spawn tool exposes that field instead, because a full-history fork would hand it the conversation. These readers play people who know the repository, so launch them as ordinary agents that keep the project's instructions, not as the `kramme:cold-reader` agent.
 - Launch readers on the session's model. `--subagent-model` and `KRAMME_REVIEW_SUBAGENT_LEVEL` select reviewer models and do not apply to readers.
 - Run the stage 1 freshness gate again right before launching any reader.
 - If the host cannot launch an agent without the conversation history, do not run the check. Set `CLARITY_CHECK_STATUS="not run — host cannot launch isolated readers"` and continue to Step 11. Never simulate a reader in your own context.
