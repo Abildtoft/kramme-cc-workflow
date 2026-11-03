@@ -4,7 +4,7 @@ Defines what `scripts/normalize.py` strips and keeps when turning a transient fe
 
 ## Goals
 
-1. **Stable hash for unchanged content.** Cosmetic noise (timestamps, build IDs, ad slots) must not flip the hash.
+1. **Stable hash for unchanged content.** Cosmetic noise (timestamps, build IDs, ad slots) must not flip the hash, and the input must come from the same fetch mode (see **Fetch modes**).
 2. **Preserve substance.** Headings, body prose, code blocks, lists, and tables must survive intact so the LLM comparison is meaningful.
 3. **Transient plain-text output.** Normalized content is used only for hashing and the current audit comparison; it is never committed or retained as a source-body snapshot.
 
@@ -49,9 +49,25 @@ After strip, before hashing:
 4. Strip a leading or trailing blank line from the whole document.
 5. Lowercase the URL hosts in inline links (paths stay case-sensitive). E.g. `HTTPS://Example.com/Path` → `https://example.com/Path`.
 
+## Fetch modes
+
+A hash is only as stable as its input. The audit fetches every hashed source in the local process and records how in the entry's `fetch_mode`, so a later audit compares like with like:
+
+| `fetch_mode` | How the content was fetched | `normalize.py` type |
+| --- | --- | --- |
+| `curl-markdown` | `curl -fsSL` of the URL; the final response is not HTML | `--type markdown` |
+| `curl-html` | `curl -fsSL` of the URL; the final `Content-Type` starts with `text/html` or `application/xhtml+xml` | `--type html` |
+| `graphql-helper` | `scripts/extract_graphql_definitions.py` fetches the schema in-process and prints only the named definitions | `--type markdown` |
+| `docs-mcp` | A docs MCP's Markdown output for a `context7_library` entry | `--type markdown` |
+| `availability` | An immutable post: an HTTP status check only | not hashed |
+
+Never hash content returned by the runtime's web-fetch tool: it may summarize or convert the page, so no later fetch can reproduce the hash. A stored hash with no `fetch_mode`, or with a different one, cannot prove a source unchanged.
+
+Prefer a Markdown endpoint to rendered HTML. Rendered pages often change between renders without a content change, while a `code.claude.com/docs/...` page with a `.md` suffix or a docs repository's raw file stays byte-stable. GitHub-hosted sources are detected from commit history instead of hashes, and vendored runtime libraries are not fetched; see `references/sources-yaml-schema.md`.
+
 ## Hash input
 
-The sha256 hash is computed over the **final normalized markdown** as UTF-8 bytes. Only the resulting `sha256:<hex>` value is persisted in `references/sources.yaml`; the normalized body is discarded after the audit.
+The sha256 hash is computed over the **final normalized markdown** as UTF-8 bytes. Only the resulting `sha256:<hex>` value and its `fetch_mode` are persisted in `references/sources.yaml`; the normalized body is discarded after the audit.
 
 ## Stability test
 
