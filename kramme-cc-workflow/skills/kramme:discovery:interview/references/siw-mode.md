@@ -45,7 +45,7 @@ Resolve inputs:
 - Greenfield: store topic text as `topic_hint`; if absent, ask what the user is building.
 - Refinement/Realignment: prefer explicit paths, then existing SIW spec files plus `siw/supporting-specs/*.md` and `siw/contracts/*.md`, then `siw/DISCOVERY_BRIEF.md`; switch to Greenfield if none exist.
 - For matching `.out-of-scope/` slugs, read the record and ask whether to honor the prior rejection or continue. Record an overridden rejection in synthesis.
-- If `siw/AUDIT_SPEC_REPORT.md` exists, treat every matching missing, vague, or contradictory section as Low-confidence source evidence.
+- If `siw/AUDIT_SPEC_REPORT.md` exists, treat every matching missing, vague, or contradictory section as Low-confidence source evidence, skipping findings marked `**Status:** [Contested]`.
 - Parse any `## Work Context` table for Work Type, Priority Dimensions, and Deprioritized dimensions. Use the closest Work Context profile; default to Production Feature, and treat legacy dimension lists as ordering hints only.
 
 ## Interview Settings
