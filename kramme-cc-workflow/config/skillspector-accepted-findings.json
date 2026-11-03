@@ -195,10 +195,10 @@
     {
       "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/scripts/preflight.py",
       "rule_id": "AST4",
-      "reason": "Reviewed false-positive AST4 finding: run() passes an explicit argument vector to subprocess.run with shell=False, empty stdin, captured output, a timeout, and prompts disabled. Every argv is fixed git or gh subcommands plus values the helper validates first: the Linear branch must match [A-Za-z0-9][A-Za-z0-9._/-]* and pass git check-ref-format --branch, the base comes from refs/remotes/origin/HEAD and passes the same check, and commit IDs must match the repository's object-ID pattern. No user text reaches a shell.",
+      "reason": "Reviewed false-positive AST4 finding: run() passes an explicit argument vector to subprocess.run with shell=False, empty stdin, captured output, a timeout, and prompts disabled. Every argv is fixed git or gh subcommands plus values the helper validates first: the Linear branch must match [A-Za-z0-9][A-Za-z0-9._/-]* and pass git check-ref-format --branch, the base comes from refs/remotes/origin/HEAD and passes the same check, and commit IDs must match the repository's object-ID pattern. No user text reaches a shell. Re-reviewed on 2026-11-03 after #1074 added the --adversarial-review boolean flag, which changes only the SUPPORTED_FLAGS and BOOLEAN_FLAGS constants: run(), the git wrapper, and every subprocess argument vector are unchanged. The base branch can also come from the local kramme.baseBranch setting, from the CONDUCTOR_DEFAULT_BRANCH environment variable once git show-ref confirms the matching origin ref, or from a fixed main or master fallback. Every configured value must pass git check-ref-format --branch, which rejects a leading dash, and reaches git only inside refs/heads/ or refs/remotes/origin/ prefixed arguments.",
       "owner": "kramme",
       "accepted_at": "2026-10-02",
-      "review_after": "2026-11-02"
+      "review_after": "2026-12-03"
     }
   ]
 }
