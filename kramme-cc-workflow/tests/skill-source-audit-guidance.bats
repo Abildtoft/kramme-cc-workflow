@@ -28,3 +28,10 @@ REPORT_TEMPLATE=".agents/skills/kramme:skill:audit-sources/references/report-tem
 	grep -qF '### Moved or gone sources' "$REPORT_TEMPLATE"
 	grep -qF '**Commit window:**' "$REPORT_TEMPLATE"
 }
+
+@test "source audit report lists skipped vendored runtime libraries" {
+	grep -qF 'vendored runtime libraries under `Skipped` with their pinned `version`' "$SKILL"
+	grep -qF 'moved or gone, skipped, errors, bootstrapped' "$SKILL"
+	grep -qF '| Moved or gone | Skipped |' "$REPORT_TEMPLATE"
+	grep -qF '### Skipped' "$REPORT_TEMPLATE"
+}

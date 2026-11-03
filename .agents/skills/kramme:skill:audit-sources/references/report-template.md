@@ -11,12 +11,12 @@ Fill in placeholders surrounded by `{{ }}`. Omit empty sections (no "Errors: non
 
 ## Summary
 
-| Skill | Sources | Changed | Unchanged | Moved or gone | Errors | Bootstrapped |
-| --- | --: | --: | --: | --: | --: | :-: |
-| {{kramme:code:harden-security}} | {{3}} | {{1}} | {{2}} | {{0}} | {{0}} | {{—}} |
-| {{kramme:pr:product-review}} | {{2}} | {{0}} | {{2}} | {{0}} | {{0}} | {{✓}} |
+| Skill | Sources | Changed | Unchanged | Moved or gone | Skipped | Errors | Bootstrapped |
+| --- | --: | --: | --: | --: | --: | --: | :-: |
+| {{kramme:code:harden-security}} | {{3}} | {{1}} | {{2}} | {{0}} | {{0}} | {{0}} | {{—}} |
+| {{kramme:pr:product-review}} | {{2}} | {{0}} | {{2}} | {{0}} | {{0}} | {{0}} | {{✓}} |
 
-Totals: {{X changed, Y unchanged, M moved or gone, Z errors, B bootstrapped}} across {{U}} upstreams
+Totals: {{X changed, Y unchanged, M moved or gone, S skipped, Z errors, B bootstrapped}} across {{U}} upstreams
 
 ---
 
@@ -55,6 +55,12 @@ Totals: {{X changed, Y unchanged, M moved or gone, Z errors, B bootstrapped}} ac
 {{Omit this subsection if none. These sources were not compared and their baselines stay unchanged. Otherwise:}}
 
 - {{source-id}} — {{`moved`, path `missing`; candidates: `skills/wizard/SKILL.md`}}
+
+### Skipped
+
+{{Omit this subsection if none. Vendored runtime libraries are not fetched, hashed, or compared, and their baselines stay unchanged. Otherwise:}}
+
+- {{source-id}} — {{vendored runtime library, version `7.0.1`; review its releases and advisories as a dependency}}
 
 ### Errors
 
