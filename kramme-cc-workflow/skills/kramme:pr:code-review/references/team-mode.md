@@ -2,7 +2,7 @@
 
 Read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` before creating the team. Reuse the standard workflow's selected reviewer model for every teammate and later validation spawn. Preserve `SUBAGENT_MODEL_OVERRIDE` from startup parsing; do not reset it because `--subagent-model` was already removed from the team arguments.
 
-Run a comprehensive PR review using multi-agent execution. Each reviewer runs with its own context window and can cross-validate findings with other reviewers.
+Run a comprehensive PR review using multi-agent execution. Each reviewer runs with its own context window and can cross-validate findings with other reviewers by checking the code each one cites; agreement alone does not raise a finding's confidence.
 
 This reference is loaded by `/kramme:pr:code-review --team`; assume `--team` has already been removed from `$ARGUMENTS`.
 
@@ -67,6 +67,9 @@ Spawn teammates based on applicable review aspects. Each teammate receives:
 
 - The resolved `BASE_BRANCH`, `BASE_REF`, `MERGE_BASE`, `CHANGED_FILES`, and diff commands to run (`git diff "$MERGE_BASE"...HEAD`, `git diff --cached`, `git diff`, `git ls-files --others --exclude-standard`)
 - The PR context from Step 1 (`PR_CONTEXT_JSON`) when available
+- The coding-standards guides found under standard workflow Step 7 (`CONTRIBUTING.md`, `CODING_STANDARDS.md`), with the same merge-base rule for guides the review scope changes
+- The checks and evidence requirements of the `REVIEW.md` policy files found under standard workflow Step 7, read at `MERGE_BASE`
+- When `code`, `refactor`, or `simplify` is active, the full text of `references/fowler-smell-baseline.md` for the code-reviewer and cleanup-reviewer teammates, under the same advisory limits as standard workflow Step 7: each smell finding names the smell, cites the changed location, explains why it matters in this diff, and recommends the smallest local fix, and no smell counts as a hard violation
 - When `STACK_CONTEXT` reports `stacked`, the stack context JSON and the `Reviewer rules` section of the stacked Pull Request reference
 - Their specific review mission (from the corresponding agent definition in `agents/`)
 - Instructions to **message other teammates** when they find cross-cutting issues
@@ -81,7 +84,7 @@ Use the same reviewer taxonomy as the standard workflow:
 **Always-on reviewers** (for default `all` reviews):
 
 - **code-reviewer** -- General code quality and project instruction compliance (mission from `agents/kramme:code-reviewer.md`)
-- **silent-failure-hunter** -- Error handling and silent failures (mission from `agents/kramme:silent-failure-hunter.md`)
+- **silent-failure-hunter** -- Error handling, silent failures, and verification changes that can pass while what they guard is broken, whatever the diff size (mission from `agents/kramme:silent-failure-hunter.md`)
 - **deslop-reviewer** -- AI slop pattern detection (mission from `agents/kramme:deslop-reviewer.md`)
 
 **Cross-cutting conditional reviewers:**
@@ -95,7 +98,7 @@ Use the same reviewer taxonomy as the standard workflow:
 **Stack-specific conditional reviewers:**
 
 - **performance-oracle** -- If performance-relevant changes detected: data-heavy paths, loops over large collections, DB queries, caching, hot paths, rendering bottlenecks, or expensive client bundles (mission from `agents/kramme:performance-oracle.md`)
-- **security-reviewer** -- If security-relevant changes detected (API routes, auth logic, DB queries, external calls, user input handling, crypto, secrets, session state, business-rule enforcement); one teammate runs all four lenses (mission from `agents/kramme:security-reviewer.md`)
+- **security-reviewer** -- If security-relevant changes detected (API routes, auth logic, DB queries, external calls, user input handling, crypto, secrets, session state, business-rule enforcement, feature-flag or entitlement gates, production configuration that weakens a protection); one teammate runs all four lenses (mission from `agents/kramme:security-reviewer.md`)
 
 When the user passed an explicit aspect filter, spawn only the reviewers matching that filter and the applicable conditions. Spawn **cleanup-reviewer** only when the execution ledger marks at least one cleanup dimension active; `--no-cleanup` can leave only `removal` active or exclude that teammate entirely.
 
@@ -104,7 +107,7 @@ For cleanup review, instruct cleanup-reviewer to:
 - Do not edit files.
 - Report only under the active cleanup dimensions and label every finding with its dimension.
 - Search for existing helpers, components, hooks, scripts, framework features, standard-library APIs, native platform features, and installed dependencies before recommending newly owned code, and trace the relevant call stack or data flow before line-level findings when the behavior is non-trivial.
-- For `lean`, prioritize `delete`, `stdlib`, `native`, `existing`, `dependency`, `yagni`, and `shrink` findings. For `removal`, trace every reference and state the tier. For `refactor` and `simplify`, prioritize reuse, composition, codebase consistency, and proportional cleanup, and name the existing pattern to reuse.
+- For `lean`, prioritize `delete`, `stdlib`, `native`, `existing`, `dependency`, `yagni`, and `shrink` findings. For `removal`, trace every reference and state the tier. For `refactor` and `simplify`, prioritize reuse, composition, codebase consistency, and proportional cleanup, name the existing pattern to reuse, and use the smell baseline only when it sharpens a concrete changed-code concern instead of expanding the review into a broad cleanup mandate.
 - Do not recommend removing trust-boundary validation, auth/security controls, error handling that prevents silent failure or data loss, accessibility behavior, or tests that protect non-trivial behavior.
 - If a cleanup finding could collide with a correctness, security, error-handling, or test finding, label it `COLLIDES WITH CORRECTNESS/SECURITY`, keep it advisory, and state that the higher-priority finding must be resolved first.
 
@@ -154,8 +157,8 @@ Then aggregate:
 
 1. Apply the deslop-reviewer's meta-review annotations
 2. Apply the relevance-validator's filtering
-3. Apply previous-review context (same logic as `/kramme:pr:code-review` Step 10): filter only `addressed` matches, carry forward still-relevant `open`, `deferred`, `acknowledged`, or `skipped` matches as active findings
-4. Apply the `Confidence and merge rules` section of `references/review-discipline.md` exactly.
+3. Apply previous-review context (same logic as `/kramme:pr:code-review` Step 10): filter only `addressed` matches, keep settled `acknowledged` or `skipped` matches out of the active findings, and carry forward the other still-relevant `open`, `deferred`, `acknowledged`, or `skipped` matches as active findings
+4. Apply the `Confidence and merge rules` section of `references/review-discipline.md` exactly, after applying any review policy from standard workflow Step 7 as standard Step 11 does.
 5. Apply the `Correctness and security precedence` section of `references/review-discipline.md` exactly before emphasis or action-class normalization, including its `Deletion dependencies` check.
 6. Apply emphasis using the standard `/kramme:pr:code-review` Step 11 rules.
 7. Apply the `Action classes`, `Severity and action-class compatibility`, and `Manual blocker tests` sections of `references/review-discipline.md` exactly before assigning final Finding IDs.

@@ -109,7 +109,16 @@ Look for patterns that hide errors:
 - Fallback chains that try multiple approaches without explaining why
 - Retry logic that exhausts attempts without informing the user
 
-### 5. Validate Against Project Standards
+### 5. Check Verification That Can Pass While Broken
+
+Changes to CI workflows, merge-blocking checks, build or deploy steps, coverage or lint gates, and test harnesses or mocks can make a check succeed while the thing it guards is broken. Review them whatever the diff size:
+
+- Does the check run in the real working directory, build context, inputs, environment, and command order?
+- Does a mock or stub replace the part that actually fails?
+- Does an assertion check a substitute value instead of the real result?
+- Is a failing step allowed to pass, for example through `continue-on-error`, `|| true`, an ignored exit code, or a skipped or expected-failure test?
+
+### 6. Validate Against Project Standards
 
 Ensure compliance with the project's error handling requirements:
 

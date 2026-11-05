@@ -37,8 +37,10 @@ Apply these rules before making a finding or recommending a fix:
 - Match the existing practices in the touched files and nearby code. A defensive check, validation layer, retry, log, catch block, or runtime type guard is appropriate only when it fits the local style, an explicit project rule, or a concrete failure path introduced by the review scope.
 - If the codebase relies on framework guarantees, schema validation, type narrowing, generated types, trusted internal callers, or centralized error boundaries, do not require redundant local guards unless this diff crosses a trust boundary or weakens that guarantee.
 - If the local practice looks risky but the PR does not introduce or worsen it, label it `NOTICED BUT NOT TOUCHING` instead of making it a required finding.
+- Before reporting, follow the paths into the changed code: its callers, any validation or early return that runs first, and the tests that exercise it. If they show the reported failure cannot happen, drop the finding instead of keeping it as `UNVERIFIED`; that marker is for failures the trace neither shows nor rules out.
 - If the reviewer cannot prove the failure path from the diff, label it `UNVERIFIED` or `CONFUSION` and keep the recommendation optional.
 - Security and data-loss risks may override local style, but the finding must name the concrete exploit path, information disclosure, corruption path, or user-visible failure that justifies stronger defensive handling.
+- A dimension with nothing to report returns an explicit zero-findings result. Never pad a review with speculative findings to avoid an empty report.
 
 ### Overengineering check
 
@@ -51,6 +53,13 @@ Use this reasoning sequence within the requested review scope before recommendin
 
 - Overengineering findings default to Suggestion with action class `advisory`. Classify one as Important only when the unnecessary complexity has concrete present cost: it conceals or invites a bug, materially obscures the change, or creates a public surface other code must adopt.
 - Label every finding produced by this check with `OVERENGINEERING` on its own line so aggregation applies cleanup precedence independently of the source reviewer.
+
+### Reading the review scope
+
+- Start from the changed-file list. Read hunks one file, or a small group of files, at a time by appending `-- <paths>` to the committed, staged, and unstaged diff commands, so each result stays under the host's output limit.
+- Read each file's hunks once, and come back only for a specific range that needs a second look.
+- Treat cut-off or spilled output as unread, and fetch the missing files by path.
+- Name every changed file you did not read in your result, so the gap is visible instead of silently treated as reviewed.
 
 ## Review speed norm
 
@@ -147,7 +156,7 @@ Keep a Critical or Important finding as `manual` only when at least one blocker 
 - **Non-code state** — the finding is about `PR description`, branch/review process, or release coordination.
 - **Cross-team/external ownership** — the fix needs cross-team ownership, external-system access, credentials, or human-only verification before implementation.
 - **Unresolved contradiction** — between reviewers or code paths.
-- **Incomplete trace/`UNVERIFIED`** — only after the reviewer attempted to complete the trace and verification requires resources the resolver also lacks (runtime-only behavior, external systems, production data). A merely skipped trace is not a blocker; complete it or lower confidence and downgrade.
+- **Incomplete trace/`UNVERIFIED`** — only after the reviewer attempted to complete the trace and verification requires resources the resolver also lacks (runtime-only behavior, external systems, production data). A merely skipped trace is not a blocker; complete it or lower confidence and downgrade. A protected-subject finding disputed without the refuting evidence that `Protected-subject findings` below requires also meets this test.
 - **Dead-code approval** — the finding is a **low-confidence** dead-code removal per **High-confidence dead code is auto-removable** above (confidence below 70, references not fully traced, `UNVERIFIED`, or not a mechanical deletion) and needs the author's or maintainer's answer before deletion. A high-confidence, fully traced dead-code finding does not qualify for this blocker; classify it `gated_auto`.
 
 **Tiebreaker:** when a finding plausibly fits both `gated_auto` and `manual`, choose `gated_auto` — resolver fixes land as reviewable local commits with validation and rollback, so a wrong `gated_auto` costs one rejected patch, while a wrong `manual` silently removes the finding from automation. A finding matching any blocker above does not "plausibly fit both"; in particular, a **low-confidence** dead-code finding stays `manual` until the ask is answered, while a **high-confidence, fully traced** dead-code finding (per **High-confidence dead code is auto-removable** above) is `gated_auto`.
@@ -161,10 +170,15 @@ Keep a Critical or Important finding as `manual` only when at least one blocker 
 - **0-59 confidence** means the issue is plausible but not traced. Keep the `UNVERIFIED` marker visible and avoid merge-blocking language unless another reviewer proves the same risk.
 - Merge duplicate findings only when they identify the same concrete location or review scope and the same root cause.
 - Keep the highest severity across merged duplicates, combine their evidence, and preserve every source reviewer.
-- Promote confidence only when independent reviewers agree on the same issue, not merely the same broad concern.
+- Raise confidence only on new evidence, such as a completed trace, a reproduction, or a failing expectation. Agreement alone is not evidence: reviewers in one run usually share a model, so they tend to make the same mistakes. Keep every agreeing reviewer listed as a source.
 - Do not merge findings that only share a broad theme but require different fixes.
-- Keep contradictory findings separate and record the conflict as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`; use Critical or Important only when its impact blocks approval.
+- When reviewers contradict each other, re-read the code each side cites before escalating. If the code settles it, keep the supported finding and add to its Evidence why the opposing claim does not hold; how many reviewers took each side is not evidence. Only when the code cannot settle it, keep the findings separate and record the conflict as `CONFUSION` or `MISSING REQUIREMENT` with action class `manual`; use Critical or Important only when its impact blocks approval.
 - A retained `UNVERIFIED` finding stays below 60 confidence and uses `manual` or `advisory` unless concrete evidence separately proves the risk.
+- A finding at 60 or higher must open its Evidence with the exact triggering source line or lines and their `path:line`. A claim that something is missing or unused must quote the code that would define or reach it, including framework-generated definitions; an empty text search alone does not prove absence, and a claim checked only by text search says so. Lower an unquoted finding below 60 and mark it `UNVERIFIED`.
+
+### Protected-subject findings
+
+A finding whose claimed failure falls under authentication or authorization, injection, data loss or corruption, secrets exposure, cryptography, concurrency, memory safety, or an externally consumed contract is a protected-subject finding. Judge the claim itself, not words in its title. It may leave the active report only with checkable refuting evidence: the refuting line with its `path:line`, documentation for the version in use, the `MERGE_BASE` line showing the code predates the change and the change does not reach it, or a test that exercised the alleged trigger on the reviewed revision. This applies to relevance filtering, downgrades below Important, and closeout-loop declines. When a reviewer, the validator, or the loop disputes such a finding without that evidence, keep the finding at its severity as `manual` with the `incomplete trace/UNVERIFIED` blocker, and name the missing evidence as its Next human decision. That blocker holds under `Manual blocker tests`, so neither the manual-heavy re-test nor reclassification to `gated_auto` removes it. An undisputed protected-subject finding follows the normal action-class rules.
 
 ## Correctness and security precedence
 
@@ -203,6 +217,8 @@ Before posting the review, confirm:
 - [ ] Pre-existing or out-of-scope observations are labeled `NOTICED BUT NOT TOUCHING`.
 - [ ] Every emphasized dimension in `--emphasize` actually produced findings in this review (or you noted that it didn't).
 - [ ] No finding is presented as certain when the reviewer didn't trace it — those are labeled `UNVERIFIED`.
+- [ ] Every finding at confidence 60 or higher quotes its triggering line or lines with `path:line` in Evidence; unquoted ones were lowered below 60 and marked `UNVERIFIED`.
+- [ ] No protected-subject finding left the active report without the refuting evidence its rule requires.
 - [ ] Every finding produced by the Overengineering Check is labeled `OVERENGINEERING` before cleanup precedence is applied.
 - [ ] No recommended fix introduces abstractions, layers, or hypothetical edge-case handling beyond what its evidence requires, and overengineering findings without concrete present cost sit in Suggestions as `advisory`.
 - [ ] Cleanup-dimension findings (`lean`, `refactor`, `simplify`) that collide with unresolved correctness/security findings were suppressed or kept only as advisory suggestions blocked by the higher-priority finding.

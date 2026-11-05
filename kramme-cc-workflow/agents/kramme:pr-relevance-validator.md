@@ -108,22 +108,23 @@ Parse the diff to extract:
 - For each file: which line ranges were added, removed, or modified
 - PR title/body if PR metadata was provided by the caller
 
+**Read only what the findings need.** Keep the full changed-file list for Step 2's File Check, but read hunks only for the files the findings cite, once each, by passing those paths as a pathspec to the committed, staged, and unstaged diff commands. With an immutable caller-supplied scope, read only the cited files' sections of the stored diffs, located by their per-file headers, in pieces the read tool returns whole. Open another changed file's hunks only when a finding's causation argument names that file.
+
 ### Step 2: Validate Each Finding
 
 For each finding with a `file:line` reference:
 
 1. **File Check**: Is this file in the list of modified files?
-   - If NO: Mark as "out-of-scope" and filter
+   - If NO: keep the finding only when the in-scope change makes the defect reachable (for example, a new call into the existing code), depends on it for correctness, or exposes it through interaction. Classify it `Validated` and cite the changed line that creates the link. Otherwise mark it "out-of-scope" and filter.
 
 2. **Line Check**: Is the line number within or near a changed hunk?
-   - Allow a tolerance of ~5 lines around changed regions (issues near changes may be related)
-   - If the line is far from any changes: likely pre-existing
+   - Distance alone never decides. A line far from any hunk stays in scope when the change makes it reachable, depends on it, or alters its behavior; a nearby line the change does not affect is pre-existing.
 
-3. **Causation Check**: Did the in-scope changes introduce the issue?
+3. **Causation Check**: Did the in-scope changes introduce or expose the issue?
    - For lines that were added: definitely in-scope-caused
    - For lines that were modified: likely in-scope-caused
-   - For unchanged lines in modified files: check if the issue existed before
-   - Use `git show $(git merge-base origin/$BASE_BRANCH HEAD):path/to/file` to see the file before the branch changes
+   - For unchanged lines: the issue is in scope when the change makes it reachable, depends on it for correctness, or exposes it within the same function or block; it is pre-existing only when the change neither introduced nor exposed it
+   - Use `git show "$BASE_REF:path/to/file"` to see the file before the branch changes; with a caller-resolved merge base, `BASE_REF` is that commit
 
 For each finding with location `PR description`:
 
@@ -142,10 +143,12 @@ For each finding with location `PR description`:
 For each finding, assign one of:
 
 - **Validated**: Issue is in changed code and caused by the in-scope changes
-- **Likely Validated**: Issue is near changed code, probably related
+- **Likely Related**: Issue is near or connected to changed code, but the causal link is not confirmed
 - **Validated PR Description**: The PR title/body makes a claim that the current diff does not support. The description is the suspect, not the code; resolution is to update the PR text to match what shipped.
 - **Pre-existing**: Issue existed before these changes (filter)
 - **Out-of-scope**: File not modified in the review scope (filter)
+
+For a protected-subject finding, meaning one whose claimed failure involves authentication or authorization, injection, data loss or corruption, secrets exposure, cryptography, concurrency, memory safety, or an externally consumed contract, a `Pre-existing` or `Out-of-scope` classification must cite the base line (`git show "$BASE_REF:path/to/file"` with its line number) or explain why the change cannot reach the code. Without that evidence, classify it `Likely Related`.
 
 When stack context is supplied, code that a layer below introduced is pre-existing for this review even though it is new relative to the trunk. Name the owning layer's branch and Pull Request in the reason, so the finding can go to that Pull Request instead of being dropped silently.
 
@@ -184,7 +187,7 @@ Issues near changed code that may be related:
 
 - Issue: [description]
 - Location: `file:line`
-- Validation: Within 5 lines of changed code
+- Validation: Near or connected to changed code; causal link not confirmed
 
 ### Filtered: Pre-existing (X)
 

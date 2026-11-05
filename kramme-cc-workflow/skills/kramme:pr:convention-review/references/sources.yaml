@@ -2,7 +2,7 @@ sources:
   - id: addy-git-workflow-versioning
     url: https://github.com/addyosmani/agent-skills/tree/main/skills/git-workflow-and-versioning
     title: "Addy Osmani agent-skills - git workflow and versioning"
-    rationale: "The uppercase output marker vocabulary (NOTICED BUT NOT TOUCHING, UNVERIFIED) and verification-checklist structure follow Addy's conventions as adapted by this plugin's review skills."
+    rationale: "The Noticed But Not Touching report section, which records each deliberately untouched item with its reason, and the verification-checklist structure follow the change-summary and verification conventions in Addy's git workflow skill; the marker names are this plugin's shared convention."
     usage: inspiration
     last_reviewed_at: 2026-11-04
     baseline_commit: "301b02b12bff98e4688e6984af6556802322bbde"
@@ -14,3 +14,12 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-08-24
     baseline_hash: "sha256:e3f016211467ad38f4543635237878d7f446ed6cc542e2569377449dd17f231b"
+  - id: pocock-code-review
+    url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/code-review/SKILL.md
+    title: "Matt Pocock skills - code-review"
+    rationale: "Treating the coding-standards guides CONTRIBUTING.md and CODING_STANDARDS.md as documented merge-base rules follows this source's search for standards files."
+    usage: inspiration
+    last_reviewed_at: 2026-11-05
+    baseline_commit: "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d"
+    fetch_mode: curl-markdown
+    baseline_hash: "sha256:9c921a8d88138a41401d8897ca1bb852088ab1b7b605cdd04edc13e3e8aab6dd"

@@ -23,6 +23,20 @@ Code review uses a **challenge → delete → simplify** sequence: establish the
 - When every reviewer returns zero findings, the relevance validator and slop meta-review are recorded as skipped instead of launched, and the report states each skip.
 - The execution helper's `record --manifest` command records a batch of reviewer jobs in one call.
 
+### Repository Standards and Review Policy
+
+A repository can steer reviews with files it already keeps:
+
+- `pr:code-review` and `pr:convention-review` read `CONTRIBUTING.md` and `CODING_STANDARDS.md` at the repository root, in `.github/`, or in `docs/` as documented standards.
+- `pr:code-review` also reads `REVIEW.md` at the repository root and in every ancestor directory of a changed file. Every reviewer gets the checks it adds, and its severity definitions, exclusions, and caps apply once during aggregation. `## Coverage Status` counts the findings the policy removed or regraded.
+- Both skills read these files as they exist at the merge base, so a branch cannot loosen its own review. A changed `REVIEW.md` is reported as not applied.
+
+### Closeout Loop and Re-Reviews
+
+- `pr:code-review --loop` runs only when you typed the flag or asked for review findings to be fixed; a review the model starts on its own never edits files.
+- The loop ends with a three-block summary of what it changed, what it left alone and why, and its remaining concerns. If its independent verifier fails, the loop reports termination as unverified instead of clean.
+- On a re-review, a finding marked `acknowledged` or `skipped` stays settled unless the new review brings new evidence of a real defect; a finding re-raised that way needs a maintainer decision.
+
 ### Completion Evidence
 
 `/kramme:pr:code-review` records a frozen applicability plan, actual invocation IDs, saved reviewer results, and every required post-processing stage. Default `all` runs every applicable reviewer; explicit aspect filters remain supported.
