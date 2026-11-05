@@ -4,7 +4,7 @@ Use this baseline as a shared vocabulary for maintainability findings in `code`,
 
 ## Rules
 
-- Apply documented repo standards first. If a local standard intentionally permits a pattern, suppress the smell.
+- Apply documented repo standards first: the project instruction files and any coding-standards guides passed with this baseline, such as `CONTRIBUTING.md` or `CODING_STANDARDS.md`. If a local standard intentionally permits a pattern, suppress the smell and cite the file that permits it.
 - Apply the `Reviewer calibration` rules passed with this baseline before reporting a smell. Nearby practice, framework guarantees, generated code, and existing conventions matter.
 - Report a smell only with concrete diff evidence: name the smell, cite the changed location, and explain why it matters in this change.
 - Keep tooling-enforced issues out of smell findings. If formatting, linting, type checks, or tests already own the concern, do not duplicate it.
@@ -71,9 +71,9 @@ Watch for: the same concept edited in many files, wide fan-out from a small requ
 
 ### Divergent Change
 
-One file or module is changed for several unrelated reasons.
+One file, module, or function is changed for several unrelated reasons.
 
-Minimal fix: split responsibilities so unrelated reasons to change live in separate modules, functions, or components. Avoid splitting merely because a file is long if the responsibilities are cohesive.
+Minimal fix: split responsibilities so unrelated reasons to change live in separate modules, functions, or components. A recommended split must separate responsibilities; length alone is never the reason, so avoid splitting a long file or function whose responsibilities are cohesive. Do not propose a new helper that only moves lines out so the caller gets shorter: it adds owned code without hiding any complexity.
 
 Watch for: feature logic, formatting, data access, copy, and unrelated cleanup all landing in the same unit.
 
@@ -81,7 +81,7 @@ Watch for: feature logic, formatting, data access, copy, and unrelated cleanup a
 
 The diff adds abstraction, configuration, parameters, hooks, or extension points for needs that are not present.
 
-Minimal fix: inline the abstraction, remove unused options, or defer the extension point until a second real use exists. Keep generality only when an existing local pattern or current requirement proves it useful.
+Minimal fix: inline the abstraction, remove unused options, or defer the extension point until a second real use exists. Keep generality only when a documented repo standard or a current requirement calls for it; an existing local pattern alone does not justify it, matching the `Overengineering check` passed with this baseline.
 
 Watch for: one-use interfaces, unused parameters, future-proof branches, plugin points without callers, and generic names around a single concrete case.
 

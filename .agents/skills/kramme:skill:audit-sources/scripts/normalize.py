@@ -43,15 +43,23 @@ VOID_TAGS = {
     "wbr",
 }
 DROP_ATTR_PATTERN = re.compile(
-    r"(^|[\s_-])(nav|navigation|sidebar|topbar|header|footer|cookie|banner|breadcrumb|menu|toc-fixed)($|[\s_-])",
+    r"(^|[_-])(nav|navigation|sidebar|topbar|header|footer|cookie|banner|breadcrumb|menu|toc-fixed)($|[_-])",
     re.IGNORECASE,
 )
+# Only plain class names count. Utility tokens with framework syntax, such as Tailwind's
+# `[--fd-header-height:0px]` on a docs layout wrapper, name CSS variables, not page chrome.
+PLAIN_ATTR_TOKEN = re.compile(r"[A-Za-z0-9_-]+")
 HEADING_TAGS = {f"h{i}": "#" * i for i in range(1, 7)}
 BLOCK_TAGS = {"p", "div", "section", "article", "main", "li", "tr", "blockquote"}
 LIST_TAGS = {"ul", "ol"}
 PRE_TAGS = {"pre"}
 CODE_TAGS = {"code"}
 TABLE_TAGS = {"table"}
+
+
+def _names_page_chrome(value: str) -> bool:
+    """Return True when a class or id attribute names navigation, header, or other page chrome."""
+    return any(PLAIN_ATTR_TOKEN.fullmatch(token) and DROP_ATTR_PATTERN.search(token) for token in value.split())
 
 
 class _Normalizer(HTMLParser):
@@ -111,9 +119,7 @@ class _Normalizer(HTMLParser):
             self._skip_depth = 1
             return
 
-        cls = self._attr_value(attrs, "class")
-        elem_id = self._attr_value(attrs, "id")
-        if (cls and DROP_ATTR_PATTERN.search(cls)) or (elem_id and DROP_ATTR_PATTERN.search(elem_id)):
+        if _names_page_chrome(self._attr_value(attrs, "class")) or _names_page_chrome(self._attr_value(attrs, "id")):
             if tag not in VOID_TAGS:
                 self._skip_depth = 1
             return
