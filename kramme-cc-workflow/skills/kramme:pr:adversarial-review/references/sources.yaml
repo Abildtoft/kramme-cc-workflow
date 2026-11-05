@@ -13,3 +13,19 @@ sources:
     usage: inspiration
     last_reviewed_at: 2026-08-27
     baseline_hash: ""
+  - id: compound-cross-model-adversarial-review
+    url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-code-review/scripts/cross-model-adversarial-review.sh
+    title: "EveryInc compound-engineering-plugin - cross-model adversarial review script"
+    rationale: "The runner's fresh per-run token on prompt region markers, its explicit Codex isolation overrides, and the review rule that the reviewer cannot gain more access or approval are adapted from this script."
+    usage: inspiration
+    last_reviewed_at: 2026-11-05
+    baseline_commit: "a3bcedfc7136d5db2262c8339e514b6fb15b8f81"
+    baseline_hash: ""
+  - id: openclaw-autoreview-script
+    url: https://raw.githubusercontent.com/openclaw/agent-skills/main/skills/autoreview/scripts/autoreview
+    title: "OpenClaw agent-skills - autoreview script"
+    rationale: "The runner's Codex web search, project-doc, and approval isolation, its resolution of provider and helper executables outside the reviewed repository, and the review rules that treat instruction files as review material and keep credential values out of findings are adapted from this script."
+    usage: inspiration
+    last_reviewed_at: 2026-11-05
+    baseline_commit: "4de04c55d02f57caea32176005c6a6c9517200da"
+    baseline_hash: ""
