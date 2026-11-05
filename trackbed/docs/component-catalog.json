@@ -303,6 +303,11 @@
       "path": "trackbed/skills/pr:review-convergence/SKILL.md"
     },
     {
+      "name": "trackbed:pr:review-queue",
+      "invocation": "User, Auto",
+      "path": "trackbed/skills/pr:review-queue/SKILL.md"
+    },
+    {
       "name": "trackbed:pr:stack",
       "invocation": "User",
       "path": "trackbed/skills/pr:stack/SKILL.md"

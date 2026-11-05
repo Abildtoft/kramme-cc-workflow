@@ -1807,6 +1807,7 @@
       "trackbed:pr:rebase": "Rebase onto the PR's target branch and force-push with a lease, unattended by default; `--force-push` or `--manual` keeps the gates.",
       "trackbed:pr:resolve-review": "Implement fixes for code-review or Conductor diff-comment findings as commits on the current branch.",
       "trackbed:pr:review-convergence": "Take a clean committed branch through ordered review gates, bounded fixes, and verification against frozen requirements.",
+      "trackbed:pr:review-queue": "See which PRs wait on your review and where each stands: your part, CI, merge state, and linked issue; rechecks report what changed. Read-only.",
       "trackbed:pr:stack": "Create and manage GitHub stacked PRs with gh-stack when a change should land as a chain of small dependent PRs.",
       "trackbed:pr:triage-risk": "Decide how much review the branch needs: a low, medium, or high risk tier and the review commands to run. Read-only.",
       "trackbed:pr:walkthrough": "Generate a visual HTML walkthrough of a branch or PR; `--report` produces a shareable before/after architecture report.",

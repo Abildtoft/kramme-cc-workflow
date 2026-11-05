@@ -32,7 +32,7 @@ Hooks provide a third boundary, outside the agent's instructions entirely. `hook
 
 Back pressure is the principle relating the two loops: **grant autonomy in proportion to how cheaply the result can be verified, and withhold it where a wrong result is expensive or irreversible.**
 
-The repository's first application is catalog-wide and sits in frontmatter, before any question of latitude within a workflow. 49 of the 88 shipped skills set `disable-model-invocation: true`, which `AGENTS.md:77` ties directly to side effects: "**ALWAYS** set `disable-model-invocation: true` for user-triggered skills with side effects such as git mutations, file deletion, or Pull Request creation; use `false` when model auto-invocation is safe." Reproduce both numbers with `grep -l "disable-model-invocation: true" skills/*/SKILL.md | wc -l` and `ls -d skills/*/ | wc -l`. That gate decides whether an agent may start a workflow at all.
+The repository's first application is catalog-wide and sits in frontmatter, before any question of latitude within a workflow. 48 of the 89 shipped skills set `disable-model-invocation: true`, which `AGENTS.md:77` ties directly to side effects: "**ALWAYS** set `disable-model-invocation: true` for user-triggered skills with side effects such as git mutations, file deletion, or Pull Request creation; use `false` when model auto-invocation is safe." Reproduce both numbers with `grep -l "disable-model-invocation: true" skills/*/SKILL.md | wc -l` and `ls -d skills/*/ | wc -l`. That gate decides whether an agent may start a workflow at all.
 
 Within a workflow, the `--auto` flags apply the same principle one skill at a time. None is a blanket "skip confirmations" switch; each carves out a specific set of decisions it may not make.
 
