@@ -68,9 +68,9 @@ Withholding the conversation does not withhold the project's framing, because a 
 
 Maker/checker separation needs two populations. Measured after the September 2026 reviewer merge (which folded the four security reviewers into `trackbed:security-reviewer` and the lean, simplifier, and removal-planner agents into `trackbed:cleanup-reviewer`) the October 2026 change that made `trackbed:cleanup-reviewer` read-only, and the November 2026 addition of `trackbed:cold-reader`, `agents/` contains 21 agent definitions, classified by what each one produces:
 
-| Output                          | Count                        |
-| ------------------------------- | ---------------------------- |
-| Findings, audits, or validation | 20                           |
+| Output                          | Count                          |
+| ------------------------------- | ------------------------------ |
+| Findings, audits, or validation | 20                             |
 | Code changes                    | 1 — `trackbed:design-iterator` |
 
 Reproduce the total with `ls agents/*.md | wc -l`; the full roster is in the generated agent table in the root `README.md` and in `docs/component-catalog.json`. The classification is declared in frontmatter: checkers withhold the file-writing tools, so `grep -L 'disallowedTools: Write, Edit, NotebookEdit' agents/*.md` lists the makers.

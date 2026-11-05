@@ -292,7 +292,7 @@ skill-tool review and the real 400 insufficient-credit response. Its synthetic
 billing text is `Credit balance is too low` with `api_error_status: 400`; the
 iterator throws after emitting that error result, so the adapter retains the
 prior structured error category. The unchanged skill's plugin-qualified
-runtime name is normalized to `eval-review:kramme-skill-review`. Bundled SDK
+runtime name is normalized to `eval-review:skill-review`. Bundled SDK
 skills/plugins are disabled, and unexpected skill/plugin loading stops the
 attempt.
 

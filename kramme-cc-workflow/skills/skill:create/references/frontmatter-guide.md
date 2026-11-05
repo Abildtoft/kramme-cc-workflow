@@ -6,13 +6,13 @@ Every SKILL.md must declare all fields explicitly. Never rely on defaults.
 
 ### `name`
 
-Format: `trackbed:{domain}:{action}` with optional suffix segments only when they represent separate concepts. Prefer command flags such as `--team` for execution modes.
+Format: `{domain}:{action}` with optional suffix segments only when they represent separate concepts. Users invoke it as `/trackbed:{domain}:{action}`; the host adds the `trackbed:` prefix, so never write it here. Prefer command flags such as `--team` for execution modes.
 
-- 1-64 characters total
+- 1-55 characters total, so the invoked `trackbed:` name stays within 64
 - Segment-based validation: each segment (split by `:`) uses lowercase letters, numbers, and hyphens only
 - No consecutive hyphens in any segment
 - Must exactly match the parent directory name
-- Examples: `trackbed:code:refactor-pass`, `trackbed:pr:fix-ci`, `trackbed:git:commit-message`
+- Examples: `code:refactor-pass`, `pr:fix-ci`, `git:commit-message`
 
 ### `description`
 

@@ -283,12 +283,12 @@ Assign each phase issue to the mapped Linear milestone for its SIW phase when a 
 
 Use the team's issue statuses and match by state `type` (`backlog`, `unstarted`, `started`, `completed`, `canceled`) or closest exact name. Compare SIW status values case-insensitively — legacy issue-file metadata may use `Ready` while the tracker/legend uses `READY`; treat them as the same value.
 
-| SIW status | Preferred Linear state type |
-| --- | --- |
-| READY | `backlog` or `unstarted` |
-| IN PROGRESS | `started` |
-| IN REVIEW | `started` (a review state if the team has one) |
-| DONE | `completed` |
+| SIW status  | Preferred Linear state type                    |
+| ----------- | ---------------------------------------------- |
+| READY       | `backlog` or `unstarted`                       |
+| IN PROGRESS | `started`                                      |
+| IN REVIEW   | `started` (a review state if the team has one) |
+| DONE        | `completed`                                    |
 
 If no confident state match exists, omit the state field and leave the SIW status in the metadata block.
 
@@ -296,11 +296,11 @@ If no confident state match exists, omit the state field and leave the SIW statu
 
 SIW issues use only `High`, `Medium`, and `Low` (or an empty value). Map to Linear's numeric priority:
 
-| SIW priority | Linear priority |
-| --- | --- |
-| High | 2 |
-| Medium, empty | 3 |
-| Low | 4 |
+| SIW priority  | Linear priority |
+| ------------- | --------------- |
+| High          | 2               |
+| Medium, empty | 3               |
+| Low           | 4               |
 
 SIW has no "Urgent" value, so nothing maps to Linear priority 1. Leave priority 0 (No priority) only when the SIW priority is genuinely absent and 3 would misrepresent it.
 

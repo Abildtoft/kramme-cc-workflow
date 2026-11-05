@@ -182,7 +182,7 @@ The copied local file must also identify the exact upstream path and immutable c
 ## What does NOT belong in `sources.yaml`
 
 - **Illustrative URLs.** A link to "an example PR" or "a related blog post" mentioned in passing is not an inspiration source.
-- **Internal cross-references.** Links to other skills in this plugin (`kramme:code:source-driven` etc.) are not external sources.
+- **Internal cross-references.** Links to other skills in this plugin (`trackbed:<domain>:<skill>` names) are not external sources.
 - **Code dependencies.** Use `trackbed:deps:audit` for npm/pip/cargo packages. A vendored runtime library whose code ships with a skill stays here as a `usage: copied` entry for its license and notice, and the source audit skips it.
 - **Tools the skill calls but doesn't derive content from** (e.g. `gh`, `git`, `markitdown`).
 - **Fetched source bodies.** Never create or commit a `references/sources-snapshot/` directory. Store only URLs, original notes, review dates, license metadata where applicable, and hashes.

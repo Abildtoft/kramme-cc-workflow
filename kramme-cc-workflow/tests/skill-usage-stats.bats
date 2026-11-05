@@ -123,7 +123,7 @@ create_usage_plugin_root() {
 		"$REPORT_STDERR"
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r '.summary | length')" = "1" ]
-	[ "$(echo "$output" | jq -r '.summary[0].skill')" = "kramme:legacy-record" ]
+	[ "$(echo "$output" | jq -r '.summary[0].skill')" = "trackbed:legacy-record" ]
 	[ "$(echo "$output" | jq -r '.summary[0].explicit')" = "1" ]
 	[ "$(echo "$output" | jq -r '.summary[0].tool')" = "0" ]
 	[ "$(echo "$output" | jq -r '.diagnostics.skippedLines')" = "1" ]
@@ -192,7 +192,7 @@ create_usage_plugin_root() {
 	printf '%s\n' '#!/usr/bin/env node' 'process.exit(64);' >"$PLUGIN_ROOT/hooks/skill-usage.js"
 
 	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
-		'{"prompt":"/kramme:script-owner","session_id":"session-script"}' \
+		'{"prompt":"/trackbed:test:script-owner","session_id":"session-script"}' \
 		"$PLUGIN_ROOT" \
 		"$USAGE_FILE"
 	[ "$status" -eq 0 ]
@@ -200,7 +200,7 @@ create_usage_plugin_root() {
 
 	run node "$SCRIPT" report --file "$USAGE_FILE" --json
 	[ "$status" -eq 0 ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:script-owner" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "trackbed:test:script-owner" ]
 }
 
 @test "usage hook diagnoses a missing canonical recorder without using a legacy fallback" {

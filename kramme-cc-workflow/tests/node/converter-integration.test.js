@@ -83,7 +83,9 @@ test("converted skill roots contain no executable Claude controls and honor inst
     const built = await buildCodexMarketplace(outputRoot, bundle);
     const skillsRoot = path.join(built.pluginRoot, "skills");
     assert.equal(
-      await pathExists(path.join(skillsRoot, "fixture-reviewer", "SKILL.md")),
+      await pathExists(
+        path.join(skillsRoot, "fixture-plugin:fixture-reviewer", "SKILL.md"),
+      ),
       true,
       "agent skills are packaged beside converted skills",
     );
@@ -237,7 +239,10 @@ test("canonical plugin build preserves runtime path dependency closure", async (
       ),
     );
     assert.match(coldReaderContract, /fork_context: false/);
-    assert.match(coldReaderContract, /have it use \$trackbed:cold-reader skill/);
+    assert.match(
+      coldReaderContract,
+      /have it use \$trackbed:cold-reader skill/,
+    );
 
     const skillsRoot = path.join(built.pluginRoot, "skills");
     const { data: coldReader } = parseFrontmatter(
@@ -303,7 +308,7 @@ test("canonical plugin build preserves runtime path dependency closure", async (
     );
     assert.match(
       codeReview,
-      /"\$\{CODEX_HOME:-\$HOME\/\.codex\}\/plugins\/cache\/kramme-cc-workflow\/kramme-cc-workflow\/[^/]+\/scripts\/collect-review-diff\.sh"/,
+      /"\$\{CODEX_HOME:-\$HOME\/\.codex\}\/plugins\/cache\/trackbed\/trackbed\/[^/]+\/scripts\/collect-review-diff\.sh"/,
       "shared helpers resolve through the Codex plugin cache directory",
     );
   });

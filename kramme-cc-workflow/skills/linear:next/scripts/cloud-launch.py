@@ -248,7 +248,9 @@ def launch(project_id: str, raw_items: Sequence[Sequence[str]], adversarial_revi
 
 
 def build_parser() -> JsonArgumentParser:
-    parser = JsonArgumentParser(prog="cloud-launch.py", description="Conductor cloud launcher for trackbed:linear:next.")
+    parser = JsonArgumentParser(
+        prog="cloud-launch.py", description="Conductor cloud launcher for trackbed:linear:next."
+    )
     commands = parser.add_subparsers(dest="command", required=True, parser_class=JsonArgumentParser)
     commands.add_parser("detect", help="Report whether this is a usable Conductor cloud workspace.")
     launch_parser = commands.add_parser("launch", help="Start confirmed issues in new Conductor cloud workspaces.")

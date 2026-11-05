@@ -93,7 +93,7 @@ class SessionSkillUsageTests(unittest.TestCase):
                         {
                             "type": "tool_use",
                             "name": "Skill",
-                            "input": {"skill": "kramme-pr-create"},
+                            "input": {"skill": "trackbed-pr-create"},
                         }
                     ]
                 },

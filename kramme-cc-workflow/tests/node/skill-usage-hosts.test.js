@@ -153,7 +153,9 @@ async function writeCodexSessions(root) {
           {
             type: "message",
             role: "user",
-            content: [{ type: "input_text", text: "$trackbed:pr:create please" }],
+            content: [
+              { type: "input_text", text: "$trackbed:pr:create please" },
+            ],
           },
         ],
       },

@@ -88,6 +88,7 @@
       "kramme-cc-workflow/scripts/lint_skill_contracts/cli.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/frontmatter.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/markdown.py",
+      "kramme-cc-workflow/scripts/lint_skill_contracts/naming.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/readme.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/readme_summaries.py",
       "kramme-cc-workflow/scripts/lint_skill_contracts/schema.py",
@@ -230,9 +231,7 @@
     {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/adversarial-review-runner.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/pr:adversarial-review/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/pr:adversarial-review/SKILL.md"]
     },
     {
       "kind": "guidance",
@@ -256,9 +255,7 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/audit-agent-config-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/code:audit-agent-config/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/code:audit-agent-config/SKILL.md"]
     },
     {
       "kind": "guidance",
@@ -332,9 +329,7 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/find-sibling-bugs-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/debug:find-sibling-bugs/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/debug:find-sibling-bugs/SKILL.md"]
     },
     {
       "kind": "guidance",
@@ -385,9 +380,7 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/harden-security-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/code:harden-security/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/code:harden-security/SKILL.md"]
     },
     {
       "kind": "guidance",
@@ -415,9 +408,7 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/product-describe-behavior-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/product:describe-behavior/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/product:describe-behavior/SKILL.md"]
     },
     {
       "kind": "guidance",
@@ -435,23 +426,17 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-issue-define-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/linear:issue-define/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/linear:issue-define/SKILL.md"]
     },
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-issue-implement-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/linear:issue-implement/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/linear:issue-implement/SKILL.md"]
     },
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/linear-backlog-refine-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/linear:backlog-refine/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/linear:backlog-refine/SKILL.md"]
     },
     {
       "kind": "guidance",
@@ -529,9 +514,7 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/pr-generate-description-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/pr:generate-description/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/pr:generate-description/SKILL.md"]
     },
     {
       "kind": "executable",
@@ -551,9 +534,7 @@
     {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/recreate-commits-push-target.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/git:recreate-commits/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/git:recreate-commits/SKILL.md"]
     },
     {
       "kind": "guidance",
@@ -576,23 +557,17 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/session-automate-repeats-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/session:automate-repeats/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/session:automate-repeats/SKILL.md"]
     },
     {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/session-search-scripts.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/session:automate-repeats/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/session:automate-repeats/SKILL.md"]
     },
     {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/siw-issue-reservation.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/siw:generate-phases/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/siw:generate-phases/SKILL.md"]
     },
     {
       "kind": "evaluation",
@@ -625,16 +600,12 @@
     {
       "kind": "guidance",
       "suite": "kramme-cc-workflow/tests/audit-practice-guidance.bats",
-      "skills": [
-        "kramme-cc-workflow/skills/code:audit-practice/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/code:audit-practice/SKILL.md"]
     },
     {
       "kind": "executable",
       "suite": "kramme-cc-workflow/tests/python/test_audit_practice_session_signals.py",
-      "skills": [
-        "kramme-cc-workflow/skills/code:audit-practice/SKILL.md"
-      ]
+      "skills": ["kramme-cc-workflow/skills/code:audit-practice/SKILL.md"]
     },
     {
       "kind": "guidance",

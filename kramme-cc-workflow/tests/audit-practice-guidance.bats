@@ -60,10 +60,10 @@ SOURCES="skills/code:audit-practice/references/sources.yaml"
 }
 
 @test "every routed skill exists and accepts user invocation" {
-  routes=$(grep -oE '/kramme:[a-z0-9:-]+' "$RUBRIC" | sort -u)
+  routes=$(grep -oE '/trackbed:[a-z0-9:-]+' "$RUBRIC" | sort -u)
   [ -n "$routes" ]
   for route in $routes; do
-    skill="skills/${route#/}/SKILL.md"
+    skill="skills/${route#/trackbed:}/SKILL.md"
     test -f "$skill" || { echo "missing route target: $route"; return 1; }
     grep -qF "user-invocable: true" "$skill" || { echo "route is not user-invocable: $route"; return 1; }
   done

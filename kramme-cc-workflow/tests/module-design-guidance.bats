@@ -22,7 +22,7 @@ setup() {
 
 @test "every glossary consumer names the shared path and declares the glossary sources" {
 	local skill
-	for skill in trackbed:code:refactor-opportunities trackbed:code:agent-readiness trackbed:code:api-design trackbed:pr:code-review; do
+	for skill in code:refactor-opportunities code:agent-readiness code:api-design pr:code-review; do
 		grep -qF "$GLOSSARY_PATH" "skills/$skill/SKILL.md"
 		grep -qF "id: pocock-improve-codebase-architecture-language" "skills/$skill/references/sources.yaml"
 		grep -qF "id: aihero-codebases-ai-agents-love" "skills/$skill/references/sources.yaml"
@@ -65,7 +65,7 @@ setup() {
 	grep -qF "When the search finds other definitions, add the domain term the change is about" "$reference"
 	grep -qF "Keep a name that a framework or an implemented interface requires" "$reference"
 	local skill
-	for skill in trackbed:code:plan-to-pr trackbed:code:work-from-plan trackbed:linear:issue-implement; do
+	for skill in code:plan-to-pr code:work-from-plan linear:issue-implement; do
 		grep -qF '${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/context-preparation.md' "skills/$skill/SKILL.md"
 		grep -qF "id: modem-how-coding-agents-read-your-code" "skills/$skill/references/sources.yaml"
 	done

@@ -111,13 +111,18 @@ def canonical_skill_name(name: str) -> str:
     """Map a host's spelling of a known skill to its trusted frontmatter name.
 
     Claude Code records plugin skills as ``<plugin>:<name with hyphens>``
-    (``trackbed:pr-create`` for ``trackbed:pr:create``), and
-    some hosts use the hyphenated form alone. Unknown names pass through.
+    (``trackbed:pr-create`` for ``trackbed:pr:create``), and some hosts use the
+    hyphenated form alone. Unknown names pass through.
     """
     if name in known_skills:
         return name
     unqualified = name.split(":", 1)[1] if ":" in name else name
-    return hyphen_aliases.get(name) or hyphen_aliases.get(unqualified) or name
+    return (
+        hyphen_aliases.get(name)
+        or hyphen_aliases.get(name.replace(":", "-"))
+        or hyphen_aliases.get(unqualified)
+        or name
+    )
 
 
 def names_from_paths(value: object) -> Set[str]:

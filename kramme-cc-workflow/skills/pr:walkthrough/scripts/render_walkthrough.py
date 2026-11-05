@@ -11,9 +11,7 @@ from pathlib import Path
 from typing import Any
 
 D3_ASSET_PATH = Path(__file__).resolve().parents[1] / "assets" / "d3.v7.9.0.min.js"
-RUNTIME_ASSET_PATH = (
-    Path(__file__).resolve().parents[1] / "assets" / "walkthrough-runtime.js"
-)
+RUNTIME_ASSET_PATH = Path(__file__).resolve().parents[1] / "assets" / "walkthrough-runtime.js"
 REQUIRED_GRAPH_IDS = ["system-overview", "data-flow", "code-dependency", "user-action"]
 
 
@@ -50,9 +48,7 @@ def read_runtime_asset() -> str:
     try:
         source = RUNTIME_ASSET_PATH.read_text(encoding="utf-8").rstrip("\n")
     except OSError as exc:
-        raise SystemExit(
-            f"{RUNTIME_ASSET_PATH}: cannot read walkthrough runtime: {exc}"
-        ) from exc
+        raise SystemExit(f"{RUNTIME_ASSET_PATH}: cannot read walkthrough runtime: {exc}") from exc
     return textwrap.indent(source, "    ").replace("</script", "<\\/script")
 
 
@@ -62,9 +58,7 @@ def validate_minimum(data: dict[str, Any]) -> None:
         raise SystemExit("walkthrough data must include a graphs array")
     graph_ids = [graph.get("id") for graph in graphs if isinstance(graph, dict)]
     if graph_ids != REQUIRED_GRAPH_IDS:
-        raise SystemExit(
-            "graphs must appear in this exact order: " + ", ".join(REQUIRED_GRAPH_IDS)
-        )
+        raise SystemExit("graphs must appear in this exact order: " + ", ".join(REQUIRED_GRAPH_IDS))
 
 
 def html_document(data: dict[str, Any], d3_js: str, runtime_js: str) -> str:

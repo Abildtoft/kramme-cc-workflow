@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           OUT_DIR="$RUNNER_TEMP/codex-plugin"
           rm -rf "$OUT_DIR"
-          node ./kramme-cc-workflow/scripts/convert-plugin.js build kramme-cc-workflow --out "$OUT_DIR"
+          node ./kramme-cc-workflow/scripts/convert-plugin.js build trackbed --out "$OUT_DIR"
           echo "OUT_DIR=$OUT_DIR" >>"$GITHUB_ENV"
           echo "SOURCE_SHA=$(git rev-parse HEAD)" >>"$GITHUB_ENV"
 

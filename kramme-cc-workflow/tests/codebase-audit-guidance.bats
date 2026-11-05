@@ -143,7 +143,7 @@ PY
 @test "audit producers name the shared schema and emit both sections" {
 	local schema_path='${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md'
 	local skill template
-	for skill in trackbed:code:refactor-opportunities trackbed:code:agent-readiness trackbed:code:outside-view; do
+	for skill in code:refactor-opportunities code:agent-readiness code:outside-view; do
 		grep -qF "$schema_path" "skills/$skill/SKILL.md"
 	done
 	for template in \
@@ -165,7 +165,7 @@ PY
 @test "both breakdown intakes read the shared schema, provenance, and the dependency audit" {
 	local schema_path='${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md'
 	local skill
-	for skill in trackbed:code:breakdown-findings trackbed:linear:breakdown-findings; do
+	for skill in code:breakdown-findings linear:breakdown-findings; do
 		grep -qF "$schema_path" "skills/$skill/SKILL.md"
 		grep -qF '${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md' "skills/$skill/references/source-intake.md"
 	done
@@ -210,7 +210,7 @@ PY
 	local contract_path='${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md'
 	local tree_path='${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh'
 	local skill
-	for skill in trackbed:code:refactor-opportunities trackbed:code:agent-readiness trackbed:code:outside-view; do
+	for skill in code:refactor-opportunities code:agent-readiness code:outside-view; do
 		grep -qF "$contract_path" "skills/$skill/SKILL.md"
 		grep -qF "$tree_path" "skills/$skill/SKILL.md"
 	done
@@ -248,9 +248,9 @@ import sys
 root = pathlib.Path(sys.argv[1])
 policy = "${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md"
 first_step = {
-    "trackbed:code:refactor-opportunities": "## Workflow",
-    "trackbed:code:agent-readiness": "## Step 1: Detect Codebase Context",
-    "trackbed:code:outside-view": "### 1. Minimal Orient",
+    "code:refactor-opportunities": "## Workflow",
+    "code:agent-readiness": "## Step 1: Detect Codebase Context",
+    "code:outside-view": "### 1. Minimal Orient",
 }
 errors = []
 for skill, step in first_step.items():

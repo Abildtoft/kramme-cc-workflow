@@ -1,6 +1,6 @@
 ---
 name: hooks:toggle
-description: Enable, disable, list, or reset hook toggles for the kramme-cc-workflow plugin. Use when a hook is firing unwantedly, when a new hook needs to be switched on, or when the user asks about current hook state.
+description: Enable, disable, list, or reset hook toggles for the trackbed plugin. Use when a hook is firing unwantedly, when a new hook needs to be switched on, or when the user asks about current hook state.
 argument-hint: "<status|reset|hook-name> [enable|disable]"
 disable-model-invocation: true
 user-invocable: true
@@ -9,7 +9,7 @@ kramme-platforms: [claude-code, codex]
 
 # Toggle Hook
 
-Enable or disable hooks in the kramme-cc-workflow plugin.
+Enable or disable hooks in the trackbed plugin.
 
 ## Usage
 

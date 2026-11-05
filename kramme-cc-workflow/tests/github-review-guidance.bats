@@ -119,7 +119,7 @@ for child in [product, linear]:
     section = contract.search(child).group(1)
     assert "`trackbed:pr:github-review`" in section
     assert "No other parent workflow may delegate to this skill" in section
-    assert set(re.findall(r"`(kramme:[^`\s]+)`", section)) == {"trackbed:pr:github-review"}
+    assert set(re.findall(r"`(trackbed:[^`\s]+)`", section)) == {"trackbed:pr:github-review"}
 product_section = contract.search(product).group(1)
 assert '--base "$REVIEW_BASE" --inline --no-diff-comments' in product_section
 assert "never adds `--team`, an app URL, or `auto`" in product_section
@@ -146,7 +146,7 @@ for term in ["Step 5 passes exactly `--implement-only`", "`trackbed:pr:review-co
              "No other parent workflow is authorized by this model-invocation exception",
              "Under a parent delegation, never commit"]:
     assert term in section, f"resolve-review contract lost {term}"
-assert set(re.findall(r"`(kramme:[^`\s]+)`", section)) == {"trackbed:pr:github-review-reply", "trackbed:pr:review-convergence"}
+assert set(re.findall(r"`(trackbed:[^`\s]+)`", section)) == {"trackbed:pr:github-review-reply", "trackbed:pr:review-convergence"}
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }

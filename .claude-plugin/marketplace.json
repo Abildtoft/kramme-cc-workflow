@@ -1,11 +1,11 @@
 {
-  "name": "kramme-cc-workflow",
+  "name": "trackbed",
   "owner": {
-    "name": "Abildtoft"
+    "name": "trackbed"
   },
   "plugins": [
     {
-      "name": "kramme-cc-workflow",
+      "name": "trackbed",
       "source": "./kramme-cc-workflow",
       "description": "Tooling for the workflows that Abildtoft encounters in his daily work"
     }

@@ -416,9 +416,7 @@
         "### Last Completed",
         "### Next Steps"
       ],
-      "paths": [
-        "kramme-cc-workflow/skills/siw:init/assets/log-template.md"
-      ]
+      "paths": ["kramme-cc-workflow/skills/siw:init/assets/log-template.md"]
     }
   ],
   "required_file_contracts": [
@@ -1744,7 +1742,7 @@
     "skills_dir": "kramme-cc-workflow/skills",
     "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
     "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->",
-    "documented_skill_regex": "^\\|\\s*`/(?P<name>kramme:[A-Za-z0-9:_-]+)`\\s*\\|",
+    "documented_skill_regex": "^\\|\\s*`/(?P<name>trackbed:[A-Za-z0-9:_-]+)`\\s*\\|",
     "allow_readme_only_skills": ["trackbed:skill:audit-sources"],
     "max_summary_chars": 160,
     "summaries": {

@@ -135,6 +135,7 @@ export interface CodexBundle {
   agentSkills: CodexSkillFile[];
   knownCommands: Set<string>;
   knownAgentSkills: Map<string, string>;
+  skillDirectoryNames: Map<string, string>;
   mcpServers?: CodexMcpServers;
   codexPlugin: CodexPluginPackage;
 }
@@ -142,6 +143,8 @@ export interface CodexBundle {
 export interface CodexTransformOptions {
   knownCommands?: Set<string>;
   knownAgentSkills?: Map<string, string>;
+  /** Source skill folder name to Codex skill folder name. */
+  skillDirectoryNames?: Map<string, string>;
 }
 
 export interface ConfirmOptions {

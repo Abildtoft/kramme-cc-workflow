@@ -131,7 +131,7 @@ setup() {
 @test "README documents the cleanup command migration" {
   grep -qF '/kramme:code:cleanup-ai' ../README.md
   grep -qF 'does not preserve the old arguments or side effects' ../README.md
-  grep -qF '**Breaking:** Replace `/kramme:code:cleanup-ai` with `/trackbed:code:refactor-pass`.' CHANGELOG.md
+  grep -qF '**Breaking:** Replace `/kramme:code:cleanup-ai` with `/kramme:code:refactor-pass`.' CHANGELOG.md
   grep -qF 'Ship this command removal only in the next major release.' CHANGELOG.md
 }
 

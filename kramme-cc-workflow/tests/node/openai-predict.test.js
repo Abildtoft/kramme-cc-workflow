@@ -404,10 +404,7 @@ test("tool calls stay inside the staged workspace", async (t) => {
     ["Glob", { pattern: "../**", path: null }],
     ["Grep", { pattern: "x", path: stage.auth, glob: null }],
     ["Skill", { skill: SKILL, args: stage.workspace }],
-    [
-      "Skill",
-      { skill: "eval-review:kramme-skill-review", args: stage.fixture },
-    ],
+    ["Skill", { skill: "eval-review:skill-review", args: stage.fixture }],
   ])
     assert.equal(
       toolAllowed(

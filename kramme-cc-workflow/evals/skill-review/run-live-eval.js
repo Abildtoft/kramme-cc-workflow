@@ -40,10 +40,7 @@ const RUNTIME_VERSIONS = {
   anthropic: claude.runtimeVersion,
   openai: openai.runtimeVersion,
 };
-const REVIEWER = path.join(
-  REPO,
-  "kramme-cc-workflow/skills/skill:review",
-);
+const REVIEWER = path.join(REPO, "kramme-cc-workflow/skills/skill:review");
 
 /** @param {string} value */
 function shellQuote(value) {

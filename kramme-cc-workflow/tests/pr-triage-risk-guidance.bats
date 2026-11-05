@@ -74,12 +74,12 @@ setup() {
 
 @test "every lane command names a shipped skill" {
   local commands
-  commands=$(grep -oE '/kramme:[a-z-]+:[a-z-]+' "$LANES" | sort -u)
+  commands=$(grep -oE '/trackbed:[a-z-]+:[a-z-]+' "$LANES" | sort -u)
   test -n "$commands"
 
   local command
   while IFS= read -r command; do
-    test -f "skills/${command#/}/SKILL.md" || {
+    test -f "skills/${command#/trackbed:}/SKILL.md" || {
       echo "lane command has no shipped skill: $command" >&2
       return 1
     }

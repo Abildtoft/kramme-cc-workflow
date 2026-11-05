@@ -52,6 +52,7 @@ function emptyCodexBundle(overrides = {}) {
     knownAgentSkills: new Map(),
     knownCommands: new Set(),
     mcpServers: {},
+    skillDirectoryNames: new Map(),
     sharedScriptDirs: [],
     sharedScriptFiles: [],
     skillDirs: [],

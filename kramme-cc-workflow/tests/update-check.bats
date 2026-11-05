@@ -44,11 +44,11 @@ EOF
 }
 
 write_installed_version() {
-	printf '{"name":"kramme-cc-workflow","version":"%s"}\n' "$1" >"$TEST_PLUGIN_ROOT/.claude-plugin/plugin.json"
+	printf '{"name":"trackbed","version":"%s"}\n' "$1" >"$TEST_PLUGIN_ROOT/.claude-plugin/plugin.json"
 }
 
 write_remote_version() {
-	printf '{"name":"kramme-cc-workflow","version":"%s"}\n' "$1" >"$REMOTE_MANIFEST"
+	printf '{"name":"trackbed","version":"%s"}\n' "$1" >"$REMOTE_MANIFEST"
 }
 
 write_state() {
@@ -147,34 +147,34 @@ EOF
 
 	[ "$status" -eq 0 ]
 	printf '%s' "$output" | jq -e 'keys == ["systemMessage"]'
-	[ "$(system_message)" = "kramme-cc-workflow 0.90.0 is available (you have 0.89.0). Run /plugin marketplace update kramme-cc-workflow, then /reload-plugins. Turning on auto-update in /plugin → Marketplaces keeps it current. Changelog: $CHANGELOG_URL" ]
+	[ "$(system_message)" = "trackbed 0.90.0 is available (you have 0.89.0). Run /plugin marketplace update trackbed, then /reload-plugins. Turning on auto-update in /plugin → Marketplaces keeps it current. Changelog: $CHANGELOG_URL" ]
 	[ "$(state_value latestVersion)" = "0.90.0" ]
 }
 
 @test "limits Codex marketplace upgrade advice to Git installs" {
 	rm -rf "$TEST_PLUGIN_ROOT/.claude-plugin"
 	mkdir -p "$TEST_PLUGIN_ROOT/.codex-plugin"
-	printf '{"name":"kramme-cc-workflow","version":"0.89.0"}\n' >"$TEST_PLUGIN_ROOT/.codex-plugin/plugin.json"
+	printf '{"name":"trackbed","version":"0.89.0"}\n' >"$TEST_PLUGIN_ROOT/.codex-plugin/plugin.json"
 	write_remote_version "0.90.0"
 
 	run run_hook
 
 	[ "$status" -eq 0 ]
-	[ "$(system_message)" = "kramme-cc-workflow 0.90.0 is available (you have 0.89.0). For Git marketplace installs, run codex plugin marketplace upgrade kramme-cc-workflow, then codex plugin add trackbed@trackbed. For local/checkout installs (including npx), rerun your original install command. Restart Codex after updating. Changelog: $CHANGELOG_URL" ]
+	[ "$(system_message)" = "trackbed 0.90.0 is available (you have 0.89.0). For Git marketplace installs, run codex plugin marketplace upgrade trackbed, then codex plugin add trackbed@trackbed. For local/checkout installs (including npx), rerun your original install command. Restart Codex after updating. Changelog: $CHANGELOG_URL" ]
 }
 
 @test "gives local Codex installs update advice without querying Codex" {
 	rm -rf "$TEST_PLUGIN_ROOT/.claude-plugin"
 	mkdir -p "$TEST_PLUGIN_ROOT/.codex-plugin"
-	printf '{"name":"kramme-cc-workflow","version":"0.89.0"}\n' >"$TEST_PLUGIN_ROOT/.codex-plugin/plugin.json"
+	printf '{"name":"trackbed","version":"0.89.0"}\n' >"$TEST_PLUGIN_ROOT/.codex-plugin/plugin.json"
 	write_remote_version "0.90.0"
 
 	export CODEX_HOME="$BATS_TEST_TMPDIR/codex-home"
 	mkdir -p "$CODEX_HOME"
 	cat >"$CODEX_HOME/config.toml" <<EOF
-[marketplaces.kramme-cc-workflow]
+[marketplaces.trackbed]
 source_type = "local"
-source = "$CODEX_HOME/.kramme-plugin-marketplaces/kramme-cc-workflow"
+source = "$CODEX_HOME/.kramme-plugin-marketplaces/trackbed"
 EOF
 	cat >"$FAKE_BIN/codex" <<EOF
 #!/bin/sh
@@ -206,7 +206,7 @@ EOF
 
 	[ "$status" -eq 0 ]
 	[ "$(curl_calls)" = "1" ]
-	[[ "$(system_message)" == "kramme-cc-workflow 0.90.0 is available (you have 0.89.0)."* ]]
+	[[ "$(system_message)" == "trackbed 0.90.0 is available (you have 0.89.0)."* ]]
 }
 
 wait_for_fetch() {
@@ -339,7 +339,7 @@ wait_for_fetch() {
 
 	[ "$status" -eq 0 ]
 	[ "$(curl_calls)" = "0" ]
-	[ "$(system_message)" = "kramme-cc-workflow updated from 0.88.0 to 0.89.0 (2 breaking changes). Changelog: $CHANGELOG_URL" ]
+	[ "$(system_message)" = "trackbed updated from 0.88.0 to 0.89.0 (2 breaking changes). Changelog: $CHANGELOG_URL" ]
 	[ "$(state_value checkedAt)" = "0" ]
 }
 
@@ -351,7 +351,7 @@ wait_for_fetch() {
 	run run_hook
 
 	[ "$status" -eq 0 ]
-	[ "$(system_message)" = "kramme-cc-workflow updated from 0.88.0 to 0.90.0 (3 breaking changes). Changelog: $CHANGELOG_URL" ]
+	[ "$(system_message)" = "trackbed updated from 0.88.0 to 0.90.0 (3 breaking changes). Changelog: $CHANGELOG_URL" ]
 	[ "$(state_value seenVersion)" = "0.90.0" ]
 
 	run run_hook
@@ -367,14 +367,14 @@ wait_for_fetch() {
 
 	run run_hook
 
-	[ "$(system_message)" = "kramme-cc-workflow updated from 0.89.0 to 0.90.0 (1 breaking change). Changelog: $CHANGELOG_URL" ]
+	[ "$(system_message)" = "trackbed updated from 0.89.0 to 0.90.0 (1 breaking change). Changelog: $CHANGELOG_URL" ]
 
 	rm "$TEST_PLUGIN_ROOT/CHANGELOG.md"
 	write_state "{\"checkedAt\":$(recent_check),\"latestVersion\":\"0.90.0\",\"seenVersion\":\"0.89.0\"}"
 
 	run run_hook
 
-	[ "$(system_message)" = "kramme-cc-workflow updated from 0.89.0 to 0.90.0. Changelog: $CHANGELOG_URL" ]
+	[ "$(system_message)" = "trackbed updated from 0.89.0 to 0.90.0. Changelog: $CHANGELOG_URL" ]
 }
 
 @test "does not announce an older copy from another scope or project" {
@@ -395,8 +395,8 @@ wait_for_fetch() {
 	run run_hook
 
 	[ "$status" -eq 0 ]
-	[ "$(system_message | sed -n 1p)" = "kramme-cc-workflow updated from 0.88.0 to 0.89.0 (2 breaking changes). Changelog: $CHANGELOG_URL" ]
-	[[ "$(system_message | sed -n 2p)" == "kramme-cc-workflow 0.90.0 is available (you have 0.89.0)."* ]]
+	[ "$(system_message | sed -n 1p)" = "trackbed updated from 0.88.0 to 0.89.0 (2 breaking changes). Changelog: $CHANGELOG_URL" ]
+	[[ "$(system_message | sed -n 2p)" == "trackbed 0.90.0 is available (you have 0.89.0)."* ]]
 }
 
 @test "emits an empty object without side effects when toggled off" {
@@ -422,7 +422,7 @@ wait_for_fetch() {
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
-	for manifest in '{"version":"local"}' '{"name":"kramme-cc-workflow"}' 'not json'; do
+	for manifest in '{"version":"local"}' '{"name":"trackbed"}' 'not json'; do
 		printf '%s\n' "$manifest" >"$TEST_PLUGIN_ROOT/.claude-plugin/plugin.json"
 
 		run run_hook

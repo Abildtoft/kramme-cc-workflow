@@ -4,7 +4,7 @@ Use this contract when a skill launches several subagents whose results feed one
 
 ## Run Directory
 
-- Root: `.context/<skill-slug>/`, where `<skill-slug>` is the skill name without `kramme:` and with `:` replaced by `-`, for example `.context/code-refactor-opportunities/`.
+- Root: `.context/<skill-slug>/`, where `<skill-slug>` is the skill's frontmatter name with `:` replaced by `-`, for example `.context/code-refactor-opportunities/`.
 - Before reading or creating it, require `git check-ignore -q -- .context/<skill-slug>/` to succeed and `.context`, the skill root, and the run directory to be real directories below the repository root, not symlinks. If a check fails or the project is not a git repository, run without persistence, say once that resume is off for this run, and continue normally.
 - Each run lives in `.context/<skill-slug>/<run-id>/` with `manifest.json` and `results/`. `<run-id>` is the UTC start time as `YYYYMMDDTHHMMSSZ`, a hyphen, and the first 12 characters of the run key.
 

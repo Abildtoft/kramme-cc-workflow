@@ -41,7 +41,7 @@ function init(overrides = {}) {
   return {
     type: "system",
     subtype: "init",
-    plugins: [{ name: "kramme-cc-workflow" }],
+    plugins: [{ name: "trackbed" }],
     agents: [COLD_READER, CONTROL_AGENT],
     ...overrides,
   };

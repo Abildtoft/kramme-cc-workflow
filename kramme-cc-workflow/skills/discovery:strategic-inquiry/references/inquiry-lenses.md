@@ -11,16 +11,18 @@ Question shapes below use placeholders: replace them with the project's concrete
 **Evidence:** single-tenant data models, hardcoded locales/currencies/timezones, one-platform UI, synchronous designs that assume small data, auth models that assume trusted users, pricing that assumes a cost structure, docs that assume a user skill level.
 
 **Question shapes:**
+
 - "X is built as if Y will stay true. What evidence do we have that Y holds today, and what early signal would tell us it stopped holding?"
 - "Who decided Z, and was it a decision or an accident of the first implementation?"
 
-Look especially for assumptions shared by *every* component — those are invisible to reviews because no single file is wrong.
+Look especially for assumptions shared by _every_ component — those are invisible to reviews because no single file is wrong.
 
 ## 2. Coherence cross-examination
 
 **Probes:** contradictions between pairs of artifacts that are each individually defensible.
 
 **Evidence pairs worth confronting:**
+
 - stated strategy vs. where recent commits actually land
 - README/marketing claims vs. what the code can actually do
 - names vs. behavior (a `cache` that is actually the source of truth; a `draft` state that users treat as final)
@@ -54,6 +56,7 @@ Look especially for assumptions shared by *every* component — those are invisi
 **Evidence:** the schema everything joins against, the framework or vendor imported everywhere, the single integration all revenue flows through, the persona all copy addresses.
 
 **Question shapes:**
+
 - "Everything downstream assumes decision D. What is the cheapest experiment that would test D directly, and why haven't we run it?"
 - "If dependency/vendor/channel V disappeared or repriced next quarter, what is the actual exit path — and has anyone costed it?"
 
@@ -67,7 +70,7 @@ Look especially for assumptions shared by *every* component — those are invisi
 
 ## 7. Boundary and stress probing
 
-**Probes:** how the current design behaves when a boundary condition moves — not whether today's code is correct, but whether today's *shape* survives.
+**Probes:** how the current design behaves when a boundary condition moves — not whether today's code is correct, but whether today's _shape_ survives.
 
 **Scenarios to walk:** 10× the load or data; zero growth for a year (does the cost structure survive?); the largest customer leaves or demands isolation; a key dependency dies or triples its price; a regulation reaches the product's data; a competitor ships the core feature for free; the team halves.
 
@@ -82,6 +85,7 @@ Pick the 2–3 scenarios the evidence makes most plausible; do not enumerate all
 **Evidence:** commit concentration in areas the strategy calls secondary; abstractions that optimize developer convenience at user expense (or the reverse); metrics that measure activity rather than the claimed outcome; features that exist because they were interesting to build.
 
 **Question shapes:**
+
 - "N% of recent effort went to X while the strategy names Y as primary. Is the strategy stale, or is the effort misallocated?"
 - "Who is the current design actually optimized for, and is that on purpose?"
 

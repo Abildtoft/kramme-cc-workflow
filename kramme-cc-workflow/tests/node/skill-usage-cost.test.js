@@ -149,7 +149,10 @@ async function writeFixture(root) {
   await writeJsonl(path.join(projectA, "s-main.jsonl"), [
     {
       type: "user",
-      message: { role: "user", content: `${PROMPT_MARKER} /trackbed:pr:create` },
+      message: {
+        role: "user",
+        content: `${PROMPT_MARKER} /trackbed:pr:create`,
+      },
     },
     costState(1.5),
     assistant("m1", {
@@ -317,10 +320,14 @@ test("session grouper prefers the earliest explicit record over tool records", (
     recordedAt,
     kind,
   });
-  grouper.add(record("a", "trackbed:verify:run", "2026-10-01T00:00:00Z", "tool"));
+  grouper.add(
+    record("a", "trackbed:verify:run", "2026-10-01T00:00:00Z", "tool"),
+  );
   grouper.add(record("a", "trackbed:pr:create", "2026-10-02T00:00:00Z"));
   grouper.add(record("a", "trackbed:pr:rebase", "2026-10-03T00:00:00Z"));
-  grouper.add(record("b", "trackbed:verify:run", "2026-10-05T00:00:00Z", "tool"));
+  grouper.add(
+    record("b", "trackbed:verify:run", "2026-10-05T00:00:00Z", "tool"),
+  );
   grouper.add(record("", "trackbed:qa", "2026-10-05T00:00:00Z"));
 
   assert.deepEqual(grouper.entries(null), [

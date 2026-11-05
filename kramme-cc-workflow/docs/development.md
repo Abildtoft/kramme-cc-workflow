@@ -261,7 +261,7 @@ Accepted findings live in `kramme-cc-workflow/config/skillspector-accepted-findi
 {
   "accepted_findings": [
     {
-      "path": "kramme-cc-workflow/skills/kramme:example/SKILL.md",
+      "path": "kramme-cc-workflow/skills/example:skill/SKILL.md",
       "rule_id": "E4",
       "reason": "Reviewed scanner false positive; command is documented-only.",
       "owner": "Security",

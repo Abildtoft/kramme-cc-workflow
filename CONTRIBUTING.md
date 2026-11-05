@@ -1,6 +1,6 @@
 # Contributing
 
-This repository ships the `kramme-cc-workflow` Claude Code plugin. The root [README.md](README.md) is the canonical entry point for public documentation, and the guides under [kramme-cc-workflow/docs/](kramme-cc-workflow/docs/) hold the deep usage reference it links; plugin source and tests live under [kramme-cc-workflow/](kramme-cc-workflow/).
+This repository ships the `trackbed` Claude Code plugin from `kramme-cc-workflow/`. The root [README.md](README.md) is the canonical entry point for public documentation, and the guides under [kramme-cc-workflow/docs/](kramme-cc-workflow/docs/) hold the deep usage reference it links; plugin source and tests live under [kramme-cc-workflow/](kramme-cc-workflow/).
 
 ## Start Here
 

@@ -32,7 +32,7 @@ This directory contains the implementation behind `scripts/convert-plugin.js`. T
 
 ## CLI Contract
 
-`build <plugin-name|path> --out <dir>` loads and converts the plugin and writes the marketplace to `<dir>`. `install` runs legacy cleanup, builds under `<codex-home>/.kramme-plugin-marketplaces/<plugin>` (or `--marketplace-dir`), then runs `codex plugin marketplace add` and `codex plugin add --json`. `uninstall` runs `codex plugin remove` and `codex plugin marketplace remove`, deletes the generated marketplace, and runs legacy cleanup. The Codex home defaults to `$CODEX_HOME` or `~/.codex`.
+`build <plugin-name|path> --out <dir>` loads and converts the plugin and writes the marketplace to `<dir>`. Codex has no plugin prefix, so every converted skill, command skill, and agent skill is named `<plugin>:<name>`, as Claude Code shows it, and plugin-root paths to a skill's own files follow its folder. `install` runs legacy cleanup, including output recorded under the plugin's former name, builds under `<codex-home>/.kramme-plugin-marketplaces/<plugin>` (or `--marketplace-dir`), then runs `codex plugin marketplace add` and `codex plugin add --json`. `uninstall` runs `codex plugin remove` and `codex plugin marketplace remove`, deletes the generated marketplace, and runs legacy cleanup. The Codex home defaults to `$CODEX_HOME` or `~/.codex`.
 
 `stats <plugin-name|path>` loads and converts the plugin in memory without building it. Its default text output is two `key=value` lines in this order:
 

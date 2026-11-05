@@ -31,7 +31,7 @@ status: draft
 ## Key Metrics
 
 | Metric | Why It Matters | Source | Current Caveat |
-| ------ | -------------- | ------ | -------------- |
+| --- | --- | --- | --- |
 | <metric> | <outcome it represents> | <data source or MISSING PRODUCT CONTEXT: unavailable> | <known limitation> |
 
 ## Active Tracks

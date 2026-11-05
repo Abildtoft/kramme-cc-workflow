@@ -41,7 +41,7 @@ def skill_catalog_entries(
         {
             "name": name,
             "invocation": references[name].invocation,
-            "path": f"{skills_relative}/{name}/SKILL.md",
+            "path": f"{skills_relative}/{references[name].source_name}/SKILL.md",
         }
         for name in sorted(references)
     ]
@@ -55,7 +55,9 @@ def agent_catalog_entries(
     config = registry["readme_agent_sync"]
     agents_relative = config.get("agents_dir", "kramme-cc-workflow/agents")
     references = load_agent_references(root, agents_relative, failures)
-    return [{"name": name, "path": f"{agents_relative}/{name}.md"} for name in sorted(references)]
+    return [
+        {"name": name, "path": f"{agents_relative}/{references[name].source_name}.md"} for name in sorted(references)
+    ]
 
 
 def hook_catalog_entries(

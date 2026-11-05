@@ -313,7 +313,7 @@ EOF
 
   for path in "$REPO_DIR"/agents/*.md; do
     name="$(basename "$path" .md)"
-    [ "$name" = "trackbed:design-iterator" ] && continue
+    [ "$name" = "design-iterator" ] && continue
     frontmatter="$(awk 'NR == 1 { next } /^---$/ { exit } { print }' "$path")"
     if ! grep -qxF 'disallowedTools: Write, Edit, NotebookEdit' <<<"$frontmatter"; then
       printf 'agent can write files: %s\n' "$path" >&2

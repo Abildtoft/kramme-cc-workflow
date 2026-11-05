@@ -149,15 +149,15 @@ EOF
 
 write_component_catalog_tree() {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
-    "kramme:sample" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/sample/SKILL.md" \
+    "sample" \
     "Sample skill description" \
     "false" \
     "true" \
     "[target]"
   write_reference_agent \
-    "$TMP_ROOT/kramme-cc-workflow/agents/kramme:reviewer.md" \
-    "kramme:reviewer" \
+    "$TMP_ROOT/kramme-cc-workflow/agents/reviewer.md" \
+    "reviewer" \
     "Reviews fixture code"
   write_hook_manifest "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" "sample-hook"
   write_file "$TMP_ROOT/kramme-cc-workflow/hooks/sample-hook.sh" <<'EOF'
@@ -172,7 +172,7 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:sample` | User, Auto | `[target]` | Sample skill description |
+| `/trackbed:sample` | User, Auto | `[target]` | Sample skill description |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -181,7 +181,7 @@ EOF
 <!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
 | Agent | Description |
 | --- | --- |
-| `kramme:reviewer` | Reviews fixture code |
+| `trackbed:reviewer` | Reviews fixture code |
 <!-- END SOURCE-SYNCED AGENT ROWS -->
 
 ## Hooks
@@ -497,7 +497,7 @@ EOF
   local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
   local code_skill="$BATS_TEST_DIRNAME/../skills/code:copy-review/SKILL.md"
   local code_rubric="$BATS_TEST_DIRNAME/../skills/code:copy-review/references/copy-review-rubric.md"
-  local pr_skill="$BATS_TEST_DIRNAME/../skills/kramme:pr:copy-review/SKILL.md"
+  local pr_skill="$BATS_TEST_DIRNAME/../skills/pr:copy-review/SKILL.md"
 
   test -f "$code_skill"
   test -f "$code_rubric"
@@ -519,7 +519,7 @@ EOF
   local shared_reference='${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md'
 
   test -f "$shared_rubric"
-  [ ! -e "$skills/kramme:siw:apply-spec-audit-fixes" ]
+  [ ! -e "$skills/siw:apply-spec-audit-fixes" ]
   [ ! -e "$skills/siw:spec-audit/references/fix-confidence-rubric.md" ]
   grep -qF "$shared_reference" "$apply_now"
   grep -qF "$shared_reference" "$skills/siw:spec-audit/SKILL.md"
@@ -549,8 +549,8 @@ EOF
 
 @test "readme skill sync accepts source-generated frontmatter rows" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
-    "kramme:sample" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/sample/SKILL.md" \
+    "sample" \
     "Sample skill description" \
     "false" \
     "true" \
@@ -564,7 +564,7 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:sample` | User, Auto | `[target]` | Sample skill description |
+| `/trackbed:sample` | User, Auto | `[target]` | Sample skill description |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -580,14 +580,14 @@ EOF
 
 @test "readme skill sync normalizes quoted boolean frontmatter rows" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:hidden/SKILL.md" \
-    "kramme:hidden" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/hidden/SKILL.md" \
+    "hidden" \
     "Hidden quoted skill" \
     '"true"' \
     '"false"'
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:user-only/SKILL.md" \
-    "kramme:user-only" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/user-only/SKILL.md" \
+    "user-only" \
     "User-only quoted skill" \
     '"true"' \
     '"true"' \
@@ -601,8 +601,8 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `kramme:hidden` | Hidden | — | Hidden quoted skill |
-| `/kramme:user-only` | User | `[target]` | User-only quoted skill |
+| `trackbed:hidden` | Hidden | — | Hidden quoted skill |
+| `/trackbed:user-only` | User | `[target]` | User-only quoted skill |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -618,8 +618,8 @@ EOF
 
 @test "readme skill sync catches invocation arguments and description drift" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
-    "kramme:sample" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/sample/SKILL.md" \
+    "sample" \
     "Sample skill description" \
     "false" \
     "true" \
@@ -633,7 +633,7 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:sample` | User | — | Stale copied description |
+| `/trackbed:sample` | User | — | Stale copied description |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -651,15 +651,15 @@ EOF
 }
 
 @test "readme skill sync uses frontmatter fields from shared schema" {
-  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:custom/SKILL.md" <<'EOF'
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/custom/SKILL.md" <<'EOF'
 ---
-name: kramme:custom
+name: custom
 description: Custom schema skill
 prompt: "[topic]"
 no-ai: true
 manual: true
 ---
-# kramme:custom
+# trackbed:custom
 EOF
   write_file "$TMP_ROOT/schema.json" <<'EOF'
 {
@@ -699,7 +699,7 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:custom` | User | `[topic]` | Custom schema skill |
+| `/trackbed:custom` | User | `[topic]` | Custom schema skill |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -725,8 +725,8 @@ EOF
 
 @test "component reference generator check reports drift and write syncs rows" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
-    "kramme:sample" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/sample/SKILL.md" \
+    "sample" \
     "Sample skill description" \
     "false" \
     "true" \
@@ -740,7 +740,7 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:sample` | User | — | Stale copied description |
+| `/trackbed:sample` | User | — | Stale copied description |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -758,13 +758,13 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"updated README.md component reference rows."* ]]
-  [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`/kramme:sample\` | User, Auto | \`[target]\` | Sample skill description |"* ]]
+  [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`/trackbed:sample\` | User, Auto | \`[target]\` | Sample skill description |"* ]]
 }
 
 @test "component reference generator check rejects ghost skill rows" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:real/SKILL.md" \
-    "kramme:real" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/real/SKILL.md" \
+    "real" \
     "Real skill description" \
     "false" \
     "true"
@@ -777,8 +777,8 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:real` | User, Auto | — | Real skill description |
-| `/kramme:ghost` | User | — | Ghost skill description |
+| `/trackbed:real` | User, Auto | — | Real skill description |
+| `/trackbed:ghost` | User | — | Ghost skill description |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -790,14 +790,14 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"component reference sync failed:"* ]]
-  [[ "$output" == *"documents 'kramme:ghost'"* ]]
+  [[ "$output" == *"documents 'trackbed:ghost'"* ]]
   [[ "$output" == *"does not exist"* ]]
 }
 
 @test "readme agent sync catches missing source agent rows" {
   write_reference_agent \
-    "$TMP_ROOT/kramme-cc-workflow/agents/kramme:reviewer.md" \
-    "kramme:reviewer" \
+    "$TMP_ROOT/kramme-cc-workflow/agents/reviewer.md" \
+    "reviewer" \
     "Reviews fixture code"
   write_file "$TMP_ROOT/README.md" <<'EOF'
 # Fixture
@@ -824,7 +824,7 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"readme agent sync"* ]]
-  [[ "$output" == *"missing agent 'kramme:reviewer'"* ]]
+  [[ "$output" == *"missing agent 'trackbed:reviewer'"* ]]
 }
 
 @test "readme hook sync catches missing hook rows" {
@@ -862,8 +862,8 @@ EOF
 
 @test "component reference generator writes agent and hook rows" {
   write_reference_agent \
-    "$TMP_ROOT/kramme-cc-workflow/agents/kramme:reviewer.md" \
-    "kramme:reviewer" \
+    "$TMP_ROOT/kramme-cc-workflow/agents/reviewer.md" \
+    "reviewer" \
     "Reviews fixture code"
   write_hook_manifest "$TMP_ROOT/kramme-cc-workflow/hooks/hooks.json" "sample-hook" "PostToolUse" "Write|Edit"
   write_file "$TMP_ROOT/README.md" <<'EOF'
@@ -907,7 +907,7 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"updated README.md component reference rows."* ]]
-  [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`kramme:reviewer\` | Reviews fixture code |"* ]]
+  [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`trackbed:reviewer\` | Reviews fixture code |"* ]]
   [[ "$(cat "$TMP_ROOT/README.md")" == *"| \`sample-hook\` | PostToolUse (Write\\|Edit) | Runs a sample hook |"* ]]
 }
 
@@ -939,8 +939,8 @@ print(json.dumps(document["hooks"]))
   [ "$status" -eq 0 ]
   [[ "$output" == *"README.md"* ]]
   [[ "$output" == *"kramme-cc-workflow/scripts/generate-component-reference.py"* ]]
-  [[ "$output" == *'{"name": "kramme:sample", "invocation": "User, Auto", "path": "kramme-cc-workflow/skills/kramme:sample/SKILL.md"}'* ]]
-  [[ "$output" == *'{"name": "kramme:reviewer", "path": "kramme-cc-workflow/agents/kramme:reviewer.md"}'* ]]
+  [[ "$output" == *'{"name": "trackbed:sample", "invocation": "User, Auto", "path": "kramme-cc-workflow/skills/sample/SKILL.md"}'* ]]
+  [[ "$output" == *'{"name": "trackbed:reviewer", "path": "kramme-cc-workflow/agents/reviewer.md"}'* ]]
   [[ "$output" == *'{"name": "sample-hook", "event": "PreToolUse (Bash)", "path": "kramme-cc-workflow/hooks/sample-hook.sh"}'* ]]
 
   # No component description is copied into the catalog; the README stays canonical.
@@ -952,8 +952,8 @@ print(json.dumps(document["hooks"]))
 @test "component generator normalizes supported invocation scalars in README and catalog" {
   write_component_catalog_tree
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
-    "kramme:sample" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/sample/SKILL.md" \
+    "sample" \
     "Sample skill description" \
     '"true" # User invocation only' \
     'true' \
@@ -961,14 +961,14 @@ print(json.dumps(document["hooks"]))
 
   run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
   [ "$status" -eq 0 ]
-  grep -qF '| `/kramme:sample` | User | `[target]` | Sample skill description |' "$TMP_ROOT/README.md"
+  grep -qF '| `/trackbed:sample` | User | `[target]` | Sample skill description |' "$TMP_ROOT/README.md"
   run python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["skills"][0]["invocation"])' "$(catalog_path)"
   [ "$status" -eq 0 ]
   [ "$output" = "User" ]
 
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
-    "kramme:sample" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/sample/SKILL.md" \
+    "sample" \
     "Sample skill description" \
     $'|-\n  true' \
     '"\x66alse" # Not in slash menu' \
@@ -976,7 +976,7 @@ print(json.dumps(document["hooks"]))
 
   run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
   [ "$status" -eq 0 ]
-  grep -qF '| `kramme:sample` | Hidden | — | Sample skill description |' "$TMP_ROOT/README.md"
+  grep -qF '| `trackbed:sample` | Hidden | — | Sample skill description |' "$TMP_ROOT/README.md"
   run python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["skills"][0]["invocation"])' "$(catalog_path)"
   [ "$status" -eq 0 ]
   [ "$output" = "Hidden" ]
@@ -1020,8 +1020,8 @@ print(json.dumps(document["hooks"]))
   [ "$status" -eq 0 ]
 
   write_reference_agent \
-    "$TMP_ROOT/kramme-cc-workflow/agents/kramme:auditor.md" \
-    "kramme:auditor" \
+    "$TMP_ROOT/kramme-cc-workflow/agents/auditor.md" \
+    "auditor" \
     "Audits fixture code"
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
@@ -1029,8 +1029,8 @@ print(json.dumps(document["hooks"]))
   [[ "$output" == *"component catalog: kramme-cc-workflow/docs/component-catalog.json is stale"* ]]
   [[ "$output" == *"run python3 kramme-cc-workflow/scripts/generate-component-reference.py --write"* ]]
 
-  rm "$TMP_ROOT/kramme-cc-workflow/agents/kramme:auditor.md"
-  rm -r "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample"
+  rm "$TMP_ROOT/kramme-cc-workflow/agents/auditor.md"
+  rm -r "$TMP_ROOT/kramme-cc-workflow/skills/sample"
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
   [ "$status" -eq 1 ]
@@ -1054,14 +1054,14 @@ print(json.dumps(document["hooks"]))
   run python3 "$COMPONENT_GENERATOR" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml" --write
   [ "$status" -eq 0 ]
 
-  write_file "$TMP_ROOT/kramme-cc-workflow/skills/kramme:broken/SKILL.md" <<'EOF'
-# kramme:broken without frontmatter
+  write_file "$TMP_ROOT/kramme-cc-workflow/skills/broken/SKILL.md" <<'EOF'
+# trackbed:broken without frontmatter
 EOF
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"readme skill sync: kramme-cc-workflow/skills/kramme:broken/SKILL.md is missing YAML frontmatter"* ]]
+  [[ "$output" == *"readme skill sync: kramme-cc-workflow/skills/broken/SKILL.md is missing YAML frontmatter"* ]]
   [[ "$output" == *"component catalog: cannot generate kramme-cc-workflow/docs/component-catalog.json until component source metadata is valid"* ]]
 
   # The catalog defers to the owning check instead of repeating its diagnostics.
@@ -1772,7 +1772,7 @@ EOF
   [[ "$generate_phases_text" == *'Before approving replacement, read `references/publication-recovery.md`'* ]]
   [[ "$generate_phases_text" == *'Before Phase 6 performs its first mutation, read `references/publication-recovery.md`'* ]]
 
-  [ ! -e "$BATS_TEST_DIRNAME/../skills/kramme:siw:issue-define" ]
+  [ ! -e "$BATS_TEST_DIRNAME/../skills/siw:issue-define" ]
   ! grep -rqF "siw:issue-define" "$BATS_TEST_DIRNAME/../skills" || false
 
   [[ "$generate_phases_text" == *'plan exactly one General issue'* ]]
@@ -2271,8 +2271,8 @@ EOF
 
 @test "skill directory missing from readme fails" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:sample/SKILL.md" \
-    "kramme:sample" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/sample/SKILL.md" \
+    "sample" \
     "Sample skill description" \
     "false" \
     "true"
@@ -2293,19 +2293,19 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"readme skill sync"* ]]
-  [[ "$output" == *"missing skill 'kramme:sample'"* ]]
+  [[ "$output" == *"missing skill 'trackbed:sample'"* ]]
 }
 
 @test "readme sync requires exact documented skill rows" {
   write_reference_skill \
     "$TMP_ROOT/kramme-cc-workflow/skills/qa/SKILL.md" \
-    "trackbed:qa" \
+    "qa" \
     "QA skill description" \
     "false" \
     "true"
   write_reference_skill \
     "$TMP_ROOT/kramme-cc-workflow/skills/qa:intake/SKILL.md" \
-    "trackbed:qa:intake" \
+    "qa:intake" \
     "QA intake skill description" \
     "true" \
     "true"
@@ -2337,8 +2337,8 @@ EOF
 
 @test "readme sync accepts background skill rows but ignores agent rows" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:background/SKILL.md" \
-    "kramme:background" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/background/SKILL.md" \
+    "background" \
     "Background skill description" \
     "false" \
     "false"
@@ -2353,7 +2353,7 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `kramme:background` | Background | — | Background skill description |
+| `trackbed:background` | Background | — | Background skill description |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -2361,7 +2361,7 @@ EOF
 
 | Agent | Description |
 | --- | --- |
-| `kramme:missing-agent` | Agent, not a skill. |
+| `trackbed:missing-agent` | Agent, not a skill. |
 EOF
   write_readme_skill_sync_registry
 
@@ -2373,8 +2373,8 @@ EOF
 
 @test "readme ghost skill fails" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:real/SKILL.md" \
-    "kramme:real" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/real/SKILL.md" \
+    "real" \
     "Real skill description" \
     "false" \
     "true"
@@ -2387,8 +2387,8 @@ EOF
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:real` | User, Auto | — | Real skill description |
-| `/kramme:ghost` | User | — | Ghost skill description |
+| `/trackbed:real` | User, Auto | — | Real skill description |
+| `/trackbed:ghost` | User | — | Ghost skill description |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -2399,7 +2399,7 @@ EOF
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"documents 'kramme:ghost'"* ]]
+  [[ "$output" == *"documents 'trackbed:ghost'"* ]]
   [[ "$output" == *"does not exist"* ]]
 }
 
@@ -3175,7 +3175,7 @@ EOF
 }
 
 @test "mechanical agent frontmatter name must match filename" {
-  write_file "$TMP_ROOT/kramme-cc-workflow/agents/kramme:sample-agent.md" <<'EOF'
+  write_file "$TMP_ROOT/kramme-cc-workflow/agents/other-agent.md" <<'EOF'
 ---
 name: sample-agent
 description: Test agent
@@ -3195,7 +3195,7 @@ EOF
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"frontmatter name 'sample-agent' does not match agent filename 'kramme:sample-agent'"* ]]
+  [[ "$output" == *"frontmatter name 'sample-agent' does not match agent filename 'other-agent'"* ]]
 }
 
 @test "skill contract coverage accepts one suite protecting multiple skills" {
@@ -3419,7 +3419,8 @@ EOF
 }
 
 write_routing_skill() {
-  local name="$1"
+  # Frontmatter names and folders carry no prefix; prose uses the qualified name.
+  local name="${1#trackbed:}"
   local description="$2"
   local disable_model_invocation="${3:-false}"
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/$name/SKILL.md" <<EOF
@@ -3489,7 +3490,8 @@ EOF
 }
 
 write_invocation_skill() {
-  local name="$1"
+  # Frontmatter names and folders carry no prefix; prose uses the qualified name.
+  local name="${1#trackbed:}"
   local body="$2"
   local disable_model_invocation="${3:-false}"
   local user_invocable="${4:-true}"
@@ -3518,41 +3520,41 @@ EOF
 }
 
 @test "invocation graph fails a hand-off to a model-disabled skill" {
-  write_invocation_skill "kramme:test:parent" 'Then invoke `kramme:test:child` with the plan.'
-  write_invocation_skill "kramme:test:child" "Body." true
+  write_invocation_skill "trackbed:test:parent" 'Then invoke `trackbed:test:child` with the plan.'
+  write_invocation_skill "trackbed:test:child" "Body." true
   write_invocation_registry
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"::error::invocation graph: kramme-cc-workflow/skills/kramme:test:parent/SKILL.md:7 hands off to kramme:test:child (invoke), but kramme:test:child sets disable-model-invocation: true"* ]]
+  [[ "$output" == *"::error::invocation graph: kramme-cc-workflow/skills/test:parent/SKILL.md:7 hands off to trackbed:test:child (invoke), but trackbed:test:child sets disable-model-invocation: true"* ]]
   [[ "$output" == *"add an invocation_graph.allowlist entry with a reason"* ]]
 }
 
 @test "invocation graph fails a slash command for a hidden skill" {
-  write_invocation_skill "kramme:test:parent" 'Record the rule with `/kramme:test:child`.'
-  write_invocation_skill "kramme:test:child" "Body." false false
+  write_invocation_skill "trackbed:test:parent" 'Record the rule with `/trackbed:test:child`.'
+  write_invocation_skill "trackbed:test:child" "Body." false false
   write_invocation_registry
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"::error::invocation graph: kramme-cc-workflow/skills/kramme:test:parent/SKILL.md:7 tells the user to run /kramme:test:child, but kramme:test:child sets user-invocable: false"* ]]
+  [[ "$output" == *"::error::invocation graph: kramme-cc-workflow/skills/test:parent/SKILL.md:7 tells the user to run /trackbed:test:child, but trackbed:test:child sets user-invocable: false"* ]]
 }
 
 @test "invocation graph allowlist suppresses a reasoned hand-off and warns on unused entries" {
-  write_invocation_skill "kramme:test:parent" 'Then invoke `kramme:test:child` with the plan.'
-  write_invocation_skill "kramme:test:child" "Body." true
+  write_invocation_skill "trackbed:test:parent" 'Then invoke `trackbed:test:child` with the plan.'
+  write_invocation_skill "trackbed:test:child" "Body." true
   write_invocation_registry '[
-    {"source": "kramme-cc-workflow/skills/kramme:test:parent/SKILL.md", "target": "kramme:test:child", "reason": "The user runs this step."},
-    {"source": "kramme-cc-workflow/skills/kramme:test:parent/SKILL.md", "target": "kramme:test:gone", "reason": "Removed skill."}
+    {"source": "kramme-cc-workflow/skills/test:parent/SKILL.md", "target": "trackbed:test:child", "reason": "The user runs this step."},
+    {"source": "kramme-cc-workflow/skills/test:parent/SKILL.md", "target": "trackbed:test:gone", "reason": "Removed skill."}
   ]'
 
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 0 ]
   [[ "$output" != *"hands off to"* ]]
-  [[ "$output" == *"::warning::invocation graph: allowlist entry kramme-cc-workflow/skills/kramme:test:parent/SKILL.md -> kramme:test:gone matches no finding; remove it"* ]]
+  [[ "$output" == *"::warning::invocation graph: allowlist entry kramme-cc-workflow/skills/test:parent/SKILL.md -> trackbed:test:gone matches no finding; remove it"* ]]
   [[ "$output" == *"skill contract lint passed."* ]]
 }
 
@@ -3831,9 +3833,9 @@ EOF
   local synced_tail
   local index
   local skill_paths=(
-    'trackbed:pr:convention-review'
-    'trackbed:pr:overengineering-review'
-    'trackbed:pr:product-review'
+    'pr:convention-review'
+    'pr:overengineering-review'
+    'pr:product-review'
   )
   local finding_ids=('CONV-NNN' 'OE-NNN' 'PROD-NNN')
   local model_invocations=('false' 'false' 'false')
@@ -3864,7 +3866,7 @@ EOF
 
     [ "$synced_tail" = "$canonical_tail" ]
     [[ "$reference_text" == 'Synced Conductor diff-comment contract (keep aligned across review producers):'* ]]
-    [[ "$reference_text" == *"Producer: \`${skill_paths[$index]}\`"* ]]
+    [[ "$reference_text" == *"Producer: \`trackbed:${skill_paths[$index]}\`"* ]]
     [[ "$reference_text" == *"Current finding IDs: \`${finding_ids[$index]}\`"* ]]
     [[ "$reference_text" == *"Location field: \`${location_fields[$index]}"* ]]
     [[ "$reference_text" == *"Body classification: ${classifications[$index]}"* ]]

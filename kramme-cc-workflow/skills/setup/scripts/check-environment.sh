@@ -300,7 +300,7 @@ detect_codex_plugin() {
     echo "not checked (HOME and CODEX_HOME unset)"
     return
   fi
-  versions="$(cached_versions "$codex_home/plugins/cache/kramme-cc-workflow/kramme-cc-workflow")"
+  versions="$(cached_versions "$codex_home/plugins/cache/trackbed/trackbed")"
   if [ -n "$versions" ]; then
     echo "installed (cached $versions)"
   else
@@ -337,7 +337,7 @@ detect_claude_plugin_cache() {
     echo "not checked (HOME, CLAUDE_CONFIG_DIR, and CLAUDE_CODE_PLUGIN_CACHE_DIR unset)"
     return
   fi
-  cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
+  cache_dir="$plugins_root/cache/trackbed/trackbed"
   versions="$(cached_versions "$cache_dir")"
   if [ -z "$versions" ]; then
     echo "none"
@@ -447,8 +447,8 @@ claude_auto_update_setting() {
        else .additionalMarketplaces end) as $marketplaces
     | if $marketplaces == null then "absent"
       elif ($marketplaces | type) != "object" then error("marketplaces is not an object")
-      elif ($marketplaces | has("kramme-cc-workflow") | not) then "absent"
-      else $marketplaces["kramme-cc-workflow"]
+      elif ($marketplaces | has("trackbed") | not) then "absent"
+      else $marketplaces["trackbed"]
         | if type != "object" then error("marketplace entry is not an object")
           elif has("autoUpdate") | not then "inherit"
           elif (.autoUpdate | type) != "boolean" then error("autoUpdate is not boolean")
@@ -520,7 +520,7 @@ detect_claude_auto_update() {
     echo "not registered"
     return
   fi
-  if ! value="$(jq -er 'if has("kramme-cc-workflow") then (.["kramme-cc-workflow"].autoUpdate == true | tostring) else "absent" end' "$file" 2> /dev/null)"; then
+  if ! value="$(jq -er 'if has("trackbed") then (.["trackbed"].autoUpdate == true | tostring) else "absent" end' "$file" 2> /dev/null)"; then
     echo "unknown (unreadable: $file)"
     return
   fi

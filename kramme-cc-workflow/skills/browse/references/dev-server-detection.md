@@ -1,7 +1,6 @@
 # Dev Server Detection
 
-Auto-detect a running development server for live inspection. The detector
-resolves an already running local app; it does not start a server.
+Auto-detect a running development server for live inspection. The detector resolves an already running local app; it does not start a server.
 
 ## Command
 
@@ -21,14 +20,10 @@ ${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh --launch-config web
 
 ## Detection Order
 
-Use explicit caller values first. If no explicit URL or port is provided, the
-detector resolves candidates in this order:
+Use explicit caller values first. If no explicit URL or port is provided, the detector resolves candidates in this order:
 
-1. `.claude/launch.json` `port` from the selected launch configuration. If
-   multiple launch configs exist and no config is selected, only configured
-   launch ports are considered.
-2. Framework config files such as `next.config.*`, `vite.config.*`,
-   `nuxt.config.*`, and `astro.config.*`.
+1. `.claude/launch.json` `port` from the selected launch configuration. If multiple launch configs exist and no config is selected, only configured launch ports are considered.
+2. Framework config files such as `next.config.*`, `vite.config.*`, `nuxt.config.*`, and `astro.config.*`.
 3. Rails `config/puma.rb`.
 4. `Procfile.dev` web command.
 5. `docker-compose.yml` port mappings.
@@ -37,9 +32,7 @@ detector resolves candidates in this order:
 8. Framework defaults.
 9. Common-port listener scan as the final running-server fallback.
 
-Do not scan prose files such as `AGENTS.md`, `CLAUDE.md`, READMEs, or issue
-text for ports. Those files often contain examples and stale troubleshooting
-notes.
+Do not scan prose files such as `AGENTS.md`, `CLAUDE.md`, READMEs, or issue text for ports. Those files often contain examples and stale troubleshooting notes.
 
 ## Output Handling
 
@@ -52,6 +45,4 @@ After a URL is selected, still run the normal curl health check from the parent 
 
 ## Maintenance Source
 
-The implementation source of truth is
-`${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/`. Keep this reference self-contained
-for runtime use, and update it when the detector contract changes.
+The implementation source of truth is `${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/`. Keep this reference self-contained for runtime use, and update it when the detector contract changes.

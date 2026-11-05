@@ -134,6 +134,7 @@ async function writeSkills(pluginRoot, bundle) {
     await rewriteCodexMarkdownResourcesFromSource(skill.sourceDir, targetDir, {
       knownAgentSkills: bundle.knownAgentSkills,
       knownCommands: bundle.knownCommands,
+      skillDirectoryNames: bundle.skillDirectoryNames,
       pluginRootExpression: rootExpression,
     });
   }

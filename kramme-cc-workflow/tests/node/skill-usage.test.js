@@ -28,7 +28,7 @@ function runUsageWithGrowingFile(file) {
   const wrapper = [
     'const fs = require("node:fs");',
     "const createReadStream = fs.createReadStream;",
-    'const appendedLine = "Please run /kramme:race " + "x".repeat(6 * 1024 * 1024) + "\\n";',
+    'const appendedLine = "Please run /trackbed:race " + "x".repeat(6 * 1024 * 1024) + "\\n";',
     "fs.createReadStream = (inputFile, options) => {",
     "  const streamOptions = options && typeof options === 'object' ? options : {};",
     "  const input = createReadStream(inputFile, {",
@@ -220,7 +220,7 @@ test("report preserves valid totals and returns exact degraded diagnostics", asy
       }),
       "{malformed",
       JSON.stringify({ skill: 42, kind: "tool" }),
-      '{"skill":"kramme:truncated"',
+      '{"skill":"trackbed:truncated"',
       "",
     ].join("\n"),
   );
@@ -340,7 +340,7 @@ test("strict reports diagnose inaccessible implicit state", async (t) => {
   await fs.mkdir(usageDir, { recursive: true });
   await fs.writeFile(
     usageFile,
-    `${JSON.stringify({ skill: "kramme:hidden", kind: "explicit" })}\n`,
+    `${JSON.stringify({ skill: "trackbed:hidden", kind: "explicit" })}\n`,
   );
   await fs.chmod(stateHome, 0o000);
 
@@ -389,7 +389,10 @@ test("record reports a sanitized cause when the usage directory is unwritable", 
     }
     result = runUsageWithInput(
       ["record"],
-      JSON.stringify({ prompt: "/kramme:blocked", session_id: "session-1" }),
+      JSON.stringify({
+        prompt: "/trackbed:test:blocked",
+        session_id: "session-1",
+      }),
       { XDG_STATE_HOME: stateHome, KRAMME_SKILL_USAGE_FILE: "" },
     );
   } finally {
@@ -463,6 +466,75 @@ test("record maps Claude Code plugin skill names to frontmatter names", async (t
   );
 });
 
+test("record maps pre-1.0.0 kramme spellings to trackbed names", async (t) => {
+  const usageFile = path.join(await tempDir(t), "usage.jsonl");
+  /** @param {string} name */
+  const skill = (name) => ({ tool_name: "Skill", tool_input: { skill: name } });
+  for (const fields of [
+    skill("kramme-cc-workflow:kramme-pr-create"),
+    { prompt: "/kramme:qa smoke the cart" },
+    { prompt: "/kramme-cc-workflow:kramme:siw:init" },
+    skill("kramme-cc-workflow:kramme-not-a-real-skill"),
+  ]) {
+    const hook_event_name =
+      "prompt" in fields ? "UserPromptSubmit" : "PreToolUse";
+    const event = { hook_event_name, session_id: "session-1", ...fields };
+    const result = runUsageWithInput(
+      ["record", "--file", usageFile],
+      JSON.stringify(event),
+    );
+    assert.deepEqual([result.status, result.stderr], [0, ""]);
+  }
+
+  const records = await readUsageLines(usageFile);
+  assert.deepEqual(
+    records.map((record) => [record.skill, record.kind]),
+    [
+      ["trackbed:pr:create", "tool"],
+      ["trackbed:qa", "explicit"],
+      ["trackbed:siw:init", "explicit"],
+    ],
+  );
+});
+
+test("report counts stored kramme records under their trackbed names", async (t) => {
+  const usageFile = path.join(await tempDir(t), "usage.jsonl");
+  await fs.writeFile(
+    usageFile,
+    [
+      JSON.stringify({
+        recordedAt: "2026-07-01T10:00:00.000Z",
+        sessionId: "session-1",
+        skill: "kramme:qa",
+        kind: "explicit",
+      }),
+      JSON.stringify({
+        recordedAt: "2026-11-06T10:00:00.000Z",
+        sessionId: "session-2",
+        skill: "trackbed:qa",
+        kind: "tool",
+      }),
+      "",
+    ].join("\n"),
+  );
+
+  const result = runUsage(["report", "--file", usageFile, "--json"]);
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, "");
+  assert.deepEqual(JSON.parse(result.stdout), [
+    {
+      skill: "trackbed:qa",
+      total: 2,
+      explicit: 1,
+      tool: 1,
+      firstUsedAt: "2026-07-01T10:00:00.000Z",
+      lastUsedAt: "2026-11-06T10:00:00.000Z",
+      sessions: 2,
+    },
+  ]);
+});
+
 test("record stamps each record with the plugin manifest version", async (t) => {
   const usageFile = path.join(await tempDir(t), "usage.jsonl");
   const manifest = JSON.parse(
@@ -486,7 +558,7 @@ test("record stamps each record with the plugin manifest version", async (t) => 
 test("record keeps Skill tool events that name the plugin but no shipped skill", async (t) => {
   const usageFile = path.join(await tempDir(t), "usage.jsonl");
   for (const tool_input of [
-    { skill: "kramme-cc-workflow/kramme-pr-create" },
+    { skill: "trackbed/pr-create" },
     { skill: "anthropic-skills:pdf" },
     { skill: "other-plugin:kramme-pr-create" },
     {
@@ -512,7 +584,7 @@ test("record keeps Skill tool events that name the plugin but no shipped skill",
   assert.deepEqual(
     records.map((record) => [record.skill, record.unrecognizedSkill]),
     [
-      [undefined, "kramme-cc-workflow/kramme-pr-create"],
+      [undefined, "trackbed/pr-create"],
       ["trackbed:pr:create", undefined],
     ],
   );
@@ -775,7 +847,7 @@ test("scan tolerates corrupt lines and unreadable inputs without losing valid to
     unreadable,
     `${JSON.stringify({
       type: "user",
-      message: { content: "Use /kramme:should-not-read" },
+      message: { content: "Use /trackbed:should-not-read" },
     })}\n`,
   );
   await fs.chmod(unreadable, 0o000);
@@ -862,10 +934,10 @@ test("scan preserves pruning, traversal order and since/limit with aliases", asy
   await fs.mkdir(transcripts);
   const transcript = path.join(transcripts, "events.jsonl");
   const entries = [
-    ["kramme:old", "2026-06-01T00:00:00.000Z"],
+    ["trackbed:old", "2026-06-01T00:00:00.000Z"],
     ["trackbed:qa", "2026-07-01T00:00:00.000Z"],
     ["trackbed:qa", "2026-07-02T00:00:00.000Z"],
-    ["kramme:other", "2026-07-03T00:00:00.000Z"],
+    ["trackbed:other", "2026-07-03T00:00:00.000Z"],
   ].map(([skill, timestamp]) =>
     JSON.stringify({
       type: "user",
@@ -991,12 +1063,12 @@ test("scan reads a complete JSON document before classifying JSONL", async (t) =
   const entries = [
     {
       type: "user",
-      message: { content: "Use /kramme:first" },
+      message: { content: "Use /trackbed:test:first" },
       session_id: "session-1",
     },
     {
       type: "user",
-      message: { content: "Use /kramme:second" },
+      message: { content: "Use /trackbed:test:second" },
       session_id: "session-2",
     },
   ];
@@ -1014,7 +1086,7 @@ test("scan reads a complete JSON document before classifying JSONL", async (t) =
   );
   assert.deepEqual(
     summary.map((row) => row.skill),
-    ["kramme:first", "kramme:second"],
+    ["trackbed:test:first", "trackbed:test:second"],
   );
 });
 
@@ -1027,14 +1099,14 @@ test("scan preserves array-valued JSONL records", async (t) => {
       JSON.stringify([
         {
           type: "assistant",
-          message: { content: "Mention /kramme:assistant-only" },
+          message: { content: "Mention /trackbed:test:assistant-only" },
           session_id: "assistant-session",
         },
       ]),
       JSON.stringify([
         {
           type: "user",
-          message: { content: "Run /kramme:user-only" },
+          message: { content: "Run /trackbed:test:user-only" },
           session_id: "user-session",
         },
       ]),
@@ -1048,7 +1120,7 @@ test("scan preserves array-valued JSONL records", async (t) => {
   assert.equal(result.stderr, "");
   assert.deepEqual(JSON.parse(result.stdout), [
     {
-      skill: "kramme:user-only",
+      skill: "trackbed:test:user-only",
       total: 1,
       explicit: 1,
       tool: 0,
@@ -1064,7 +1136,7 @@ test("scan rejects an oversized minified top-level JSON array", async (t) => {
   const transcript = path.join(root, "oversized-array.json");
   const entry = {
     type: "user",
-    message: { content: "Use /kramme:array" },
+    message: { content: "Use /trackbed:test:array" },
     session_id: "shared-session",
   };
   await fs.writeFile(transcript, JSON.stringify(Array(16_000).fill(entry)));
@@ -1091,7 +1163,7 @@ test("scan rejects an oversized multiline top-level JSON array", async (t) => {
   const transcript = path.join(root, "oversized-multiline-array.json");
   const entries = Array.from({ length: 20_000 }, (_, index) => ({
     type: "user",
-    message: { content: `Use /kramme:array-${index}` },
+    message: { content: `Use /trackbed:test:array-${index}` },
     session_id: `session-${index}`,
   }));
   await fs.writeFile(

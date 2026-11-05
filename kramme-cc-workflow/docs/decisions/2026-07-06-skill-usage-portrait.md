@@ -255,18 +255,18 @@ I treated the last 100 commits with GitHub PR numbers in their subject as the la
 
 Recent effort by top-level area:
 
-| Area | File touches | PRs touched |
-| --- | --- | --- |
-| skills | 302 | 47 |
-| scripts | 111 | 45 |
-| tests | 111 | 65 |
-| hooks | 35 | 20 |
-| README.md | 21 | 21 |
-| docs | 15 | 10 |
-| .github | 13 | 5 |
-| package.json | 10 | 7 |
-| evals | 7 | 5 |
-| Makefile | 7 | 7 |
+| Area         | File touches | PRs touched |
+| ------------ | ------------ | ----------- |
+| skills       | 302          | 47          |
+| scripts      | 111          | 45          |
+| tests        | 111          | 65          |
+| hooks        | 35           | 20          |
+| README.md    | 21           | 21          |
+| docs         | 15           | 10          |
+| .github      | 13           | 5           |
+| package.json | 10           | 7           |
+| evals        | 7            | 5           |
+| Makefile     | 7            | 7           |
 
 Skill directories with the most direct PR effort:
 

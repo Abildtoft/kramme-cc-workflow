@@ -365,7 +365,7 @@ assert_context_value() {
 @test "reports a cached native codex plugin without exposing or changing config" {
 	setup_all_tools_path
 	local codex_home="$BATS_TEST_TMPDIR/codex home"
-	local cache_dir="$codex_home/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$codex_home/plugins/cache/trackbed/trackbed"
 	mkdir -p "$cache_dir/0.88.0"
 	printf 'api_key = "setup-test-decoy"\n' >"$codex_home/config.toml"
 	cp "$codex_home/config.toml" "$BATS_TEST_TMPDIR/config.before"
@@ -390,7 +390,7 @@ assert_context_value() {
 @test "reports no native codex plugin for missing, empty, or file-only caches" {
 	setup_all_tools_path
 	local codex_home="$BATS_TEST_TMPDIR/codex"
-	local cache_dir="$codex_home/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$codex_home/plugins/cache/trackbed/trackbed"
 
 	run env PATH="$FAKE_BIN" CODEX_HOME="$codex_home" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
@@ -411,7 +411,7 @@ assert_context_value() {
 @test "lists native codex cache versions in glob order through the HOME fallback" {
 	setup_all_tools_path
 	local test_home="$BATS_TEST_TMPDIR/home"
-	local cache_dir="$test_home/.codex/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$test_home/.codex/plugins/cache/trackbed/trackbed"
 	mkdir -p "$cache_dir/0.88.0" "$cache_dir/0.87.0"
 	touch "$cache_dir/not-a-version"
 
@@ -442,7 +442,7 @@ assert_context_value() {
 	setup_all_tools_path
 	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
 	local claude_root="$BATS_TEST_TMPDIR/claude home"
-	local cache_dir="$claude_root/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$claude_root/plugins/cache/trackbed/trackbed"
 	mkdir -p "$cache_dir/0.88.0/.in_use" "$cache_dir/0.87.0/.in_use"
 	touch "$cache_dir/0.87.0/.in_use/1234" "$cache_dir/not-a-version"
 	printf '{"plugins":{"trackbed@trackbed":[{"installPath":"%s/0.88.0","version":"0.88.0"}]}}\n' \
@@ -468,7 +468,7 @@ assert_context_value() {
 	setup_all_tools_path
 	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
 	local claude_root="$BATS_TEST_TMPDIR/claude"
-	local cache_dir="$claude_root/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$claude_root/plugins/cache/trackbed/trackbed"
 	mkdir -p "$cache_dir/0.87.0" "$cache_dir/0.88.0" "$cache_dir/0.89.0"
 	"$REAL_JQ" -n --arg cache "$cache_dir" '{plugins: {
 		"trackbed@trackbed": [
@@ -492,8 +492,8 @@ assert_context_value() {
 	setup_all_tools_path
 	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
 	local plugins_root="$BATS_TEST_TMPDIR/custom plugins"
-	local cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
-	local default_cache="$CLAUDE_CONFIG_DIR/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$plugins_root/cache/trackbed/trackbed"
+	local default_cache="$CLAUDE_CONFIG_DIR/plugins/cache/trackbed/trackbed"
 	mkdir -p "$cache_dir/0.88.0" "$default_cache/0.87.0"
 	printf '{"plugins":{"trackbed@trackbed":[{"installPath":"%s/0.88.0"}]}}\n' \
 		"$cache_dir" >"$plugins_root/installed_plugins.json"
@@ -517,7 +517,7 @@ assert_context_value() {
 @test "still lists Claude cache versions when jq is missing or registration JSON is invalid" {
 	setup_core_path
 	local plugins_root="$BATS_TEST_TMPDIR/plugins"
-	local cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$plugins_root/cache/trackbed/trackbed"
 	mkdir -p "$cache_dir/0.88.0"
 	printf '{"plugins":{"trackbed@trackbed":[{"installPath":"%s/0.88.0"}]}}\n' \
 		"$cache_dir" >"$plugins_root/installed_plugins.json"
@@ -537,7 +537,7 @@ assert_context_value() {
 	setup_all_tools_path
 	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
 	local test_home="$BATS_TEST_TMPDIR/home"
-	local cache_dir="$test_home/.claude/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$test_home/.claude/plugins/cache/trackbed/trackbed"
 	mkdir -p "$cache_dir/0.88.0"
 
 	run env -u CLAUDE_CONFIG_DIR HOME="$test_home" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
@@ -555,7 +555,7 @@ assert_context_value() {
 @test "reports no Claude cache versions for missing, empty, or file-only caches" {
 	setup_all_tools_path
 	local claude_root="$BATS_TEST_TMPDIR/claude"
-	local cache_dir="$claude_root/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
+	local cache_dir="$claude_root/plugins/cache/trackbed/trackbed"
 
 	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
@@ -625,7 +625,7 @@ assert_context_value() {
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "not registered"
 
-	printf '{"kramme-cc-workflow":{"source":{"source":"github","repo":"trackbed/skills"},"autoUpdate":true}}\n' >"$record"
+	printf '{"trackbed":{"source":{"source":"github","repo":"trackbed/skills"},"autoUpdate":true}}\n' >"$record"
 	cp "$record" "$BATS_TEST_TMPDIR/record.before"
 	run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
@@ -633,7 +633,7 @@ assert_context_value() {
 	cmp -s "$record" "$BATS_TEST_TMPDIR/record.before"
 
 	for entry in '{"autoUpdate":false}' '{"autoUpdate":null}' '{}'; do
-		printf '{"kramme-cc-workflow":%s}\n' "$entry" >"$record"
+		printf '{"trackbed":%s}\n' "$entry" >"$record"
 		run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT"
 		[ "$status" -eq 0 ]
 		assert_text_row "Claude auto-update" "off (local files; confirm session policy in /plugin)"
@@ -658,14 +658,14 @@ assert_context_value() {
 	local settings_dir="$project_root/.claude"
 	local record="$claude_root/plugins/known_marketplaces.json"
 	mkdir -p "$claude_root/plugins" "$settings_dir"
-	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$record"
+	printf '{"trackbed":{"autoUpdate":true}}\n' >"$record"
 
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$settings_dir/settings.local.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$settings_dir/settings.local.json"
 	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
 
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$settings_dir/settings.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":true}}}\n' >"$settings_dir/settings.json"
 	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
@@ -676,7 +676,7 @@ assert_context_value() {
 	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
 
 	rm "$settings_dir/settings.json"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$claude_root/settings.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$claude_root/settings.json"
 	run env PATH="$FAKE_BIN" CLAUDE_CONFIG_DIR="$claude_root" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
@@ -688,9 +688,9 @@ assert_context_value() {
 	local settings_dir="$BATS_TEST_TMPDIR/repo/.claude"
 	local record="$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
 	mkdir -p "$settings_dir" "${record%/*}"
-	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$record"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$CLAUDE_CONFIG_DIR/settings.json"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"source":{"source":"directory","path":"/example"}}}}\n' >"$settings_dir/settings.local.json"
+	printf '{"trackbed":{"autoUpdate":true}}\n' >"$record"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$CLAUDE_CONFIG_DIR/settings.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"source":{"source":"directory","path":"/example"}}}}\n' >"$settings_dir/settings.local.json"
 	cp "$settings_dir/settings.local.json" "$BATS_TEST_TMPDIR/settings.before"
 
 	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
@@ -706,9 +706,9 @@ assert_context_value() {
 	local root_settings="$BATS_TEST_TMPDIR/repo/.claude"
 	local record="$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
 	mkdir -p "$session_dir/.claude" "$root_settings" "${record%/*}"
-	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$record"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$root_settings/settings.json"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$session_dir/.claude/settings.json"
+	printf '{"trackbed":{"autoUpdate":true}}\n' >"$record"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":true}}}\n' >"$root_settings/settings.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$session_dir/.claude/settings.json"
 
 	cd "$session_dir"
 	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
@@ -721,12 +721,12 @@ assert_context_value() {
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
 
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$session_dir/.claude/settings.local.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":true}}}\n' >"$session_dir/.claude/settings.local.json"
 	run env PATH="$FAKE_BIN" CLAUDE_PROJECT_DIR="$session_dir" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
 
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$root_settings/settings.local.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$root_settings/settings.local.json"
 	run env PATH="$FAKE_BIN" CLAUDE_PROJECT_DIR="$session_dir" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
@@ -744,8 +744,8 @@ assert_context_value() {
 	"$real_git" -C "$main_checkout" -c user.name=Test -c user.email=test@example.com -c core.hooksPath=/dev/null commit -qm 'Initial test commit' --allow-empty
 	"$real_git" -C "$main_checkout" worktree add -q --detach "$worktree"
 	mkdir -p "$main_checkout/.claude" "$worktree/.claude"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$main_checkout/.claude/settings.local.json"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$worktree/.claude/settings.local.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$main_checkout/.claude/settings.local.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":true}}}\n' >"$worktree/.claude/settings.local.json"
 	cp "$main_checkout/.claude/settings.local.json" "$BATS_TEST_TMPDIR/main.before"
 	cp "$worktree/.claude/settings.local.json" "$BATS_TEST_TMPDIR/worktree.before"
 
@@ -774,8 +774,8 @@ assert_context_value() {
 	ln -sf "$real_git" "$FAKE_BIN/git"
 	local session_dir="$BATS_TEST_TMPDIR/plain"
 	mkdir -p "$session_dir/.claude"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$session_dir/.claude/settings.local.json"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$session_dir/.claude/settings.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$session_dir/.claude/settings.local.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":true}}}\n' >"$session_dir/.claude/settings.json"
 	cd "$session_dir"
 	run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
@@ -786,7 +786,7 @@ assert_context_value() {
 	setup_all_tools_path
 	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
 	mkdir -p "$CLAUDE_CONFIG_DIR/plugins"
-	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
+	printf '{"trackbed":{"autoUpdate":true}}\n' >"$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
 	run env PATH="$FAKE_BIN" CLAUDE_PROJECT_DIR="$BATS_TEST_TMPDIR/missing" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "unknown (session settings directory unavailable; check /plugin)"
@@ -798,7 +798,7 @@ assert_context_value() {
 	local test_home="$BATS_TEST_TMPDIR/home"
 	local settings="$test_home/.claude/settings.json"
 	mkdir -p "${settings%/*}"
-	printf '{"additionalMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$settings"
+	printf '{"additionalMarketplaces":{"trackbed":{"autoUpdate":true}}}\n' >"$settings"
 
 	# User settings use HOME even with a separate plugin-cache override, and a
 	# settings declaration can exist before known_marketplaces.json is written.
@@ -806,7 +806,7 @@ assert_context_value() {
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "on (local files; confirm session policy in /plugin)"
 
-	printf '{"additionalMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}},"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$settings"
+	printf '{"additionalMarketplaces":{"trackbed":{"autoUpdate":true}},"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$settings"
 	run env -u CLAUDE_CONFIG_DIR HOME="$test_home" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "off (local files; confirm session policy in /plugin)"
@@ -819,8 +819,8 @@ assert_context_value() {
 	local program_files="$BATS_TEST_TMPDIR/Program Files"
 	local managed="$program_files/ClaudeCode/managed-settings.json"
 	mkdir -p "${managed%/*}" "$CLAUDE_CONFIG_DIR"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"$CLAUDE_CONFIG_DIR/settings.json"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":false}}}\n' >"$managed"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":true}}}\n' >"$CLAUDE_CONFIG_DIR/settings.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":false}}}\n' >"$managed"
 	cp "$managed" "$BATS_TEST_TMPDIR/managed.before"
 
 	run env PROGRAMFILES="$program_files" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
@@ -829,7 +829,7 @@ assert_context_value() {
 	cmp -s "$managed" "$BATS_TEST_TMPDIR/managed.before"
 
 	mkdir -p "${managed%/*}/managed-settings.d"
-	printf '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":true}}}\n' >"${managed%/*}/managed-settings.d/10-policy.json"
+	printf '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":true}}}\n' >"${managed%/*}/managed-settings.d/10-policy.json"
 	run env PROGRAMFILES="$program_files" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "unknown (managed settings fragments; check /plugin)"
@@ -842,8 +842,8 @@ assert_context_value() {
 	local record="$CLAUDE_CONFIG_DIR/plugins/known_marketplaces.json"
 	mkdir -p "$settings_dir" "${record%/*}"
 	local resolved_settings_dir="$(cd "$settings_dir" && pwd -P)"
-	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$record"
-	for content in 'invalid json' '{"extraKnownMarketplaces":{"kramme-cc-workflow":{"autoUpdate":"false"}}}'; do
+	printf '{"trackbed":{"autoUpdate":true}}\n' >"$record"
+	for content in 'invalid json' '{"extraKnownMarketplaces":{"trackbed":{"autoUpdate":"false"}}}'; do
 		printf '%s\n' "$content" >"$settings_dir/settings.local.json"
 		run env PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
 		[ "$status" -eq 0 ]
@@ -919,7 +919,7 @@ assert_context_value() {
 	local plugins_root="$BATS_TEST_TMPDIR/plugins"
 	local state_file="$XDG_STATE_HOME/kramme-cc-workflow/update-check.json"
 	mkdir -p "$plugins_root" "${state_file%/*}"
-	printf '{"kramme-cc-workflow":{"autoUpdate":true}}\n' >"$plugins_root/known_marketplaces.json"
+	printf '{"trackbed":{"autoUpdate":true}}\n' >"$plugins_root/known_marketplaces.json"
 	printf '{"latestVersion":"0.90.0"}\n' >"$state_file"
 
 	run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT" --json

@@ -129,12 +129,7 @@ function walk(entry) {
  * @param {string} workspace @param {string} name @param {Record<string, unknown>} args */
 function runTool(workspace, name, args) {
   if (name === "Skill") {
-    const directory = path.join(
-      workspace,
-      "plugin",
-      "skills",
-      "trackbed:skill:review",
-    );
+    const directory = path.join(workspace, "plugin", "skills", "skill:review");
     const body = fs.readFileSync(path.join(directory, "SKILL.md"), "utf8");
     return `Base directory for this skill: ${directory}\n\n${body}\n\nARGUMENTS: ${args.args}`;
   }

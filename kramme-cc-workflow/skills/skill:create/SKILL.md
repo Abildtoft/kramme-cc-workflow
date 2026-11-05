@@ -15,7 +15,7 @@ Guide the creation of a new plugin skill with best-practice structure, frontmatt
 ## Phase 1: Parse Arguments
 
 1. Inspect `$ARGUMENTS` and classify it:
-   - Contains `kramme:` followed by colon-separated segments → treat as a candidate skill name.
+   - Colon-separated segments, optionally prefixed with `trackbed:` → treat as a candidate skill name and drop the prefix.
    - Other non-empty input → treat as free-text context for the design interview.
    - Empty → proceed to Phase 2 with no preset.
 2. Defer strict name validation to Phase 3, where `references/naming-conventions.md` is loaded.
@@ -108,7 +108,7 @@ Capture as `artifact_lifecycle` for use in Phase 5.
 1. Read the naming conventions from `references/naming-conventions.md`.
 
 2. If Phase 1 produced a candidate skill name, validate it against the rules:
-   - Format: `trackbed:{domain}:{action}` with optional qualifier segments when they represent separate concepts. Prefer flags such as `--team` for execution modes.
+   - Format: `{domain}:{action}` with optional qualifier segments when they represent separate concepts; users invoke it as `/trackbed:{domain}:{action}`. Prefer flags such as `--team` for execution modes.
    - 1-64 characters total
    - Each segment uses lowercase letters, numbers, and hyphens only (no consecutive hyphens)
    - On any format violation, stop and ask for a corrected name (see the Error Handling section).
@@ -300,7 +300,7 @@ If the consumer plugin maintains a published skills index:
 1. Generate a skill-index table row:
 
    ```
-   | `/{skill-name}` | {User[, Auto]} | {argument-hint or —} | {One-sentence description} |
+   | `/trackbed:{skill-name}` | {User[, Auto]} | {argument-hint or —} | {One-sentence description} |
    ```
 
 2. Suggest the best-fitting section based on the skill's domain (e.g., SIW skills under a SIW heading, PR skills under a Pull Requests heading, code skills under a code-quality heading).
@@ -335,7 +335,7 @@ Next steps:
 
 ## Error Handling
 
-- **Invalid skill name** (segments contain uppercase letters, `--`, exceed 64 chars, or omit the `kramme:` prefix) — stop, display the rules from `references/naming-conventions.md`, and ask for a corrected name.
+- **Invalid skill name** (segments contain uppercase letters, `--`, exceed 55 chars, or include the `trackbed:` prefix) — stop, display the rules from `references/naming-conventions.md`, and ask for a corrected name.
 - **Name collision** (`skills/{skill-name}/` already exists) — stop and ask for a different name. Do not overwrite.
 - **Pre-existing target files** during Phase 5 — abort and report the conflicting path. To regenerate, the user must remove the existing skill directory first. Do not partially overwrite.
 - **Missing `skills/` parent** — the working directory does not look like a plugin repo. Stop and ask the user to confirm the target plugin root before retrying.

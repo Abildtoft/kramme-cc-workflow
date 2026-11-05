@@ -19,9 +19,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import Any
 
-SCRIPT_PATH = (
-    Path(__file__).resolve().parents[2] / "skills" / "code:audit-practice" / "scripts" / "session-signals.py"
-)
+SCRIPT_PATH = Path(__file__).resolve().parents[2] / "skills" / "code:audit-practice" / "scripts" / "session-signals.py"
 SPEC = importlib.util.spec_from_file_location("session_signals", SCRIPT_PATH)
 assert SPEC is not None
 assert SPEC.loader is not None

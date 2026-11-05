@@ -16,8 +16,8 @@ This file is the persistent record for findings or plan candidates deliberately 
 
 {{During --reconcile, append status changes here without deleting the original record. Use statuses such as ACTIVE, RECONSIDER, RESOLVED_OUTSIDE_PLAN, SUPERSEDED, or CONFIRMED_NOT_TOUCHING.}}
 
-| Date | ID | Change | Reason |
-| --- | --- | --- | --- |
+| Date     | ID             | Change                         | Reason  |
+| -------- | -------------- | ------------------------------ | ------- |
 | {{date}} | `REJECTED-001` | {{status change or "Created"}} | {{why}} |
 
 ## Empty Record

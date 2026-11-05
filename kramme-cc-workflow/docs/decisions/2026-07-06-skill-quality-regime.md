@@ -17,8 +17,8 @@ The other verification layers are valuable but do not generally exercise skill b
 
 The 90-day local usage report on 2026-07-06 showed the top five skills as:
 
-| Rank | Skill                         | 90-day uses | Sessions |
-| ---- | ----------------------------- | ----------: | -------: |
+| Rank | Skill                           | 90-day uses | Sessions |
+| ---- | ------------------------------- | ----------: | -------: |
 | 1    | `trackbed:pr:resolve-review`    |         204 |      176 |
 | 2    | `trackbed:skill:review`         |         195 |      190 |
 | 3    | `trackbed:pr:code-review`       |          44 |       36 |

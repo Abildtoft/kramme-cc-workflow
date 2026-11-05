@@ -1,22 +1,22 @@
 """Check that skills only hand work to skills the model and the user can invoke.
 
-Rule (a) fails when a skill tells the model to invoke or delegate to a kramme
+Rule (a) fails when a skill tells the model to invoke or delegate to a shipped
 skill that sets ``disable-model-invocation: true``; Claude Code rejects that
 Skill-tool call. Rule (b) fails when any line, fenced or not, references
-``/kramme:x`` or ``$kramme:x`` for a skill that sets ``user-invocable: false``,
+``/trackbed:x`` or ``$trackbed:x`` for a skill that sets ``user-invocable: false``,
 because that command never appears in the slash menu.
 
 Rule (a) favours precision over recall and matches only explicit model-executed
 hand-off shapes: ``invoke``, ``delegate``, ``skill-tool``, ``engine``,
 ``conditional-use``, and ``fenced-command``. It deliberately does not match:
 
-- "Run `/kramme:x`", "hand off to", "use `kramme:x` for ...", and "pass ... to",
+- "Run `/trackbed:x`", "hand off to", "use `trackbed:x` for ...", and "pass ... to",
   which appear far more often as user routes or descriptions than as hand-offs;
 - negated, user-addressed, or second-person clauses ("do not invoke", "suggest",
   "the user", "your"), which describe what a person may run;
-- adjective uses such as "the invoking `kramme:x` workflow";
-- content dependencies ("apply the `kramme:x` contract", "follow the protocol
-  from `kramme:x`") and the generic "read the installed `SKILL.md`" fallback,
+- adjective uses such as "the invoking `trackbed:x` workflow";
+- content dependencies ("apply the `trackbed:x` contract", "follow the protocol
+  from `trackbed:x`") and the generic "read the installed `SKILL.md`" fallback,
   which are self-containment concerns rather than invocation edges;
 - hand-offs to model-invocable children whose model-invocation contract does not
   name the parent, which need a separate guarded-parent check.
@@ -35,6 +35,7 @@ from typing import Any
 
 from ..frontmatter import parse_frontmatter, parse_frontmatter_bool
 from ..io import read_text, rel, skill_paths
+from ..naming import PLUGIN_NAMESPACE, qualified_name
 from .types import CheckResult, LintContext
 
 DEFAULT_SKILL_GLOB = "kramme-cc-workflow/skills/*/SKILL.md"
@@ -44,7 +45,9 @@ DEFAULT_SCAN_GLOBS = (
     "kramme-cc-workflow/agents/*.md",
 )
 
-NAME_PATTERN = re.compile(r"(?<![A-Za-z0-9_:-])([/$]?)(kramme:[a-z0-9-]+(?::[a-z0-9-]+)?)(?![A-Za-z0-9_-])")
+NAME_PATTERN = re.compile(
+    rf"(?<![A-Za-z0-9_:-])([/$]?)({re.escape(PLUGIN_NAMESPACE)}:[a-z0-9-]+(?::[a-z0-9-]+)?)(?![A-Za-z0-9_-])"
+)
 FENCE_PATTERN = re.compile(r"^\s*(```|~~~)")
 SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\*{0,2}\s+")
 CLAUSE_SPLIT = re.compile(r"[;,]\s+|:\s+|\s+[—–]\s+|—")
@@ -91,7 +94,7 @@ def skill_inventory(root: Path, pattern: str) -> tuple[dict[str, SkillInfo], dic
     owners: dict[str, str] = {}
     for path in skill_paths(root, pattern):
         frontmatter = parse_frontmatter(read_text(path)) or {}
-        name = frontmatter.get("name") or path.parent.name
+        name = qualified_name(frontmatter.get("name") or path.parent.name)
         directory = rel(path.parent, root)
         skills[name] = SkillInfo(
             model_disabled=parse_frontmatter_bool(frontmatter, "disable-model-invocation"),
@@ -226,12 +229,12 @@ def parse_allowlist(config: dict[str, Any], result: CheckResult) -> list[tuple[s
             not isinstance(source, str)
             or not source.strip()
             or not isinstance(target, str)
-            or not target.startswith("kramme:")
+            or not target.startswith(f"{PLUGIN_NAMESPACE}:")
             or not isinstance(reason, str)
             or not reason.strip()
         ):
             result.failures.append(
-                f"invocation graph: allowlist entry {number} requires a source path, a kramme skill target, "
+                f"invocation graph: allowlist entry {number} requires a source path, a shipped skill target, "
                 "and a non-empty reason"
             )
             continue

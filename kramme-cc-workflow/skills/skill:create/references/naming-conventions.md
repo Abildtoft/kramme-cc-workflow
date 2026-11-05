@@ -3,8 +3,10 @@
 ## Name Format
 
 ```
-trackbed:{domain}:{action}[:{qualifier}...]
+{domain}:{action}[:{qualifier}...]
 ```
+
+This is the frontmatter `name` and the skill directory name. Users and models invoke the skill as `/trackbed:{domain}:{action}`: Claude Code puts the plugin name in front, and the Codex converter adds the same prefix. Never write the `trackbed:` prefix into the frontmatter name.
 
 - **domain** — category grouping related skills
 - **action** — what the skill does, following word-order patterns below
@@ -51,7 +53,7 @@ Use when the skill name describes what it is, not what it does.
 
 ## Validation Rules
 
-1. Total name must be 1-64 characters
+1. Name must be 1-55 characters, so the invoked `trackbed:` name stays within 64
 2. Segment-based validation: each segment (split by `:`) uses lowercase letters, numbers, and hyphens only
 3. No consecutive hyphens (`--`) in any segment
 4. Name must match the parent directory name exactly

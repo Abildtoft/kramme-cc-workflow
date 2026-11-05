@@ -59,11 +59,11 @@ class MarkdownTableHelpersTest(unittest.TestCase):
         self.assertEqual(
             lint_skill_contracts.render_agent_reference_row(
                 lint_skill_contracts.AgentReference(
-                    name="kramme:reviewer",
+                    name="trackbed:reviewer",
                     description="Use a | b",
                 )
             ),
-            r"| `kramme:reviewer` | Use a \| b |",
+            r"| `trackbed:reviewer` | Use a \| b |",
         )
         self.assertEqual(
             lint_skill_contracts.render_hook_reference_row(
@@ -207,9 +207,7 @@ class FrontmatterContractHelpersTest(unittest.TestCase):
             lint_skill_contracts.render_skill_reference_row(reference),
             f"| `{display}` | {invocation} | {arguments} | Test skill |",
         )
-        self.assertEqual(
-            catalog, [{"name": "trackbed:test", "invocation": invocation, "path": "skills/test/SKILL.md"}]
-        )
+        self.assertEqual(catalog, [{"name": "trackbed:test", "invocation": invocation, "path": "skills/test/SKILL.md"}])
 
     def test_invocation_missing_fields_keep_false_defaults(self) -> None:
         self.assert_generated_invocation("", "Background", False)
@@ -631,30 +629,30 @@ COMPONENT_CATALOG_REGISTRY = {
 
 class ComponentCatalogTest(unittest.TestCase):
     def _write_tree(self, root: Path) -> None:
-        skill = root / "skills" / "kramme:sample"
+        skill = root / "skills" / "sample"
         skill.mkdir(parents=True)
         (skill / "SKILL.md").write_text(
             """
 ---
-name: kramme:sample
+name: sample
 description: Sample skill
 disable-model-invocation: true
 user-invocable: true
 ---
-# kramme:sample
+# trackbed:sample
 """.strip()
             + "\n",
             encoding="utf-8",
         )
         agents = root / "agents"
         agents.mkdir()
-        (agents / "kramme:reviewer.md").write_text(
+        (agents / "reviewer.md").write_text(
             """
 ---
-name: kramme:reviewer
+name: reviewer
 description: Reviews code
 ---
-# kramme:reviewer
+# trackbed:reviewer
 """.strip()
             + "\n",
             encoding="utf-8",
@@ -717,15 +715,15 @@ description: Reviews code
             document["skills"],
             [
                 {
-                    "name": "kramme:sample",
+                    "name": "trackbed:sample",
                     "invocation": "User",
-                    "path": "skills/kramme:sample/SKILL.md",
+                    "path": "skills/sample/SKILL.md",
                 }
             ],
         )
         self.assertEqual(
             document["agents"],
-            [{"name": "kramme:reviewer", "path": "agents/kramme:reviewer.md"}],
+            [{"name": "trackbed:reviewer", "path": "agents/reviewer.md"}],
         )
         self.assertEqual(
             document["hooks"],
@@ -802,30 +800,30 @@ SUMMARY_REGISTRY = {
         "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
         "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->",
         "max_summary_chars": 40,
-        "summaries": {"kramme:sample": "Short sample summary"},
+        "summaries": {"trackbed:sample": "Short sample summary"},
     },
     "readme_agent_sync": {
         "agents_dir": "agents",
         "start_marker": "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
         "end_marker": "<!-- END SOURCE-SYNCED AGENT ROWS -->",
-        "summaries": {"kramme:reviewer": "Short reviewer summary"},
+        "summaries": {"trackbed:reviewer": "Short reviewer summary"},
     },
 }
 
 
 class ReadmeSummariesTest(unittest.TestCase):
     def _write_tree(self, root: Path, skill_description: str) -> None:
-        skill = root / "skills" / "kramme:sample"
+        skill = root / "skills" / "sample"
         skill.mkdir(parents=True)
         (skill / "SKILL.md").write_text(
-            "---\nname: kramme:sample\ndescription: Sample skill\n"
-            "disable-model-invocation: true\nuser-invocable: true\n---\n# kramme:sample\n",
+            "---\nname: sample\ndescription: Sample skill\n"
+            "disable-model-invocation: true\nuser-invocable: true\n---\n# trackbed:sample\n",
             encoding="utf-8",
         )
         agents = root / "agents"
         agents.mkdir()
-        (agents / "kramme:reviewer.md").write_text(
-            "---\nname: kramme:reviewer\ndescription: Reviews code\n---\n# kramme:reviewer\n",
+        (agents / "reviewer.md").write_text(
+            "---\nname: reviewer\ndescription: Reviews code\n---\n# trackbed:reviewer\n",
             encoding="utf-8",
         )
         self._write_readme(root, skill_description)
@@ -839,7 +837,7 @@ class ReadmeSummariesTest(unittest.TestCase):
                     "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
                     "| Skill | Invocation | Arguments | Description |",
                     "| --- | --- | --- | --- |",
-                    f"| `/kramme:sample` | User | — | {skill_description} |",
+                    f"| `/trackbed:sample` | User | — | {skill_description} |",
                     "<!-- END SOURCE-SYNCED SKILL ROWS -->",
                     "",
                     "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
@@ -859,8 +857,8 @@ class ReadmeSummariesTest(unittest.TestCase):
 
         self.assertEqual(failures, [])
         assert rendered is not None
-        self.assertIn("| `/kramme:sample` | User | — | Short sample summary |", rendered)
-        self.assertIn("| `kramme:reviewer` | Short reviewer summary |", rendered)
+        self.assertIn("| `/trackbed:sample` | User | — | Short sample summary |", rendered)
+        self.assertIn("| `trackbed:reviewer` | Short reviewer summary |", rendered)
         self.assertNotIn("Reviews code", rendered)
 
     def test_check_compares_description_cells_with_summaries(self) -> None:
@@ -879,7 +877,7 @@ class ReadmeSummariesTest(unittest.TestCase):
             )
 
         self.assertEqual(len(stale), 1)
-        self.assertIn("'kramme:sample' description differs from source metadata", stale[0])
+        self.assertIn("'trackbed:sample' description differs from source metadata", stale[0])
         self.assertEqual(synced, [])
 
     def test_summaries_cover_every_component_within_the_length_budget(self) -> None:
@@ -896,24 +894,24 @@ class ReadmeSummariesTest(unittest.TestCase):
         summarized = lint_skill_contracts.apply_readme_summaries(
             "readme skill sync",
             "skill",
-            {"kramme:long": reference("kramme:long"), "kramme:missing": reference("kramme:missing")},
-            {"summaries": {"kramme:long": "x" * 11, "kramme:gone": "Stale"}, "max_summary_chars": 10},
+            {"trackbed:long": reference("trackbed:long"), "trackbed:missing": reference("trackbed:missing")},
+            {"summaries": {"trackbed:long": "x" * 11, "trackbed:gone": "Stale"}, "max_summary_chars": 10},
             failures,
         )
 
         self.assertEqual(
             failures,
             [
-                "readme skill sync: summaries names unknown skill 'kramme:gone'",
-                "readme skill sync: summary for 'kramme:long' is 11 chars, exceeds 10",
-                "readme skill sync: summaries is missing skill 'kramme:missing'",
+                "readme skill sync: summaries names unknown skill 'trackbed:gone'",
+                "readme skill sync: summary for 'trackbed:long' is 11 chars, exceeds 10",
+                "readme skill sync: summaries is missing skill 'trackbed:missing'",
             ],
         )
-        self.assertEqual(summarized["kramme:long"].description, "x" * 11)
-        self.assertEqual(summarized["kramme:missing"].description, "Full routing description")
+        self.assertEqual(summarized["trackbed:long"].description, "x" * 11)
+        self.assertEqual(summarized["trackbed:missing"].description, "Full routing description")
 
     def test_source_descriptions_stay_without_summaries(self) -> None:
-        references = {"kramme:reviewer": lint_skill_contracts.AgentReference("kramme:reviewer", "Reviews code")}
+        references = {"trackbed:reviewer": lint_skill_contracts.AgentReference("trackbed:reviewer", "Reviews code")}
         failures: list[str] = []
 
         result = lint_skill_contracts.apply_readme_summaries("readme agent sync", "agent", references, {}, failures)
@@ -1291,11 +1289,11 @@ class MechanicalCheckTest(unittest.TestCase):
     def test_agent_description_uses_yaml_value_and_canonical_hard_limit(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
-            agent_path = root / "agents" / "kramme:example.md"
+            agent_path = root / "agents" / "example.md"
             agent_path.parent.mkdir(parents=True)
             agent_path.write_text(
                 """---
-name: kramme:example
+name: example
 description: >-
   abc
   def
@@ -1306,9 +1304,9 @@ color: blue
 """,
                 encoding="utf-8",
             )
-            (agent_path.parent / "kramme:missing.md").write_text(
+            (agent_path.parent / "missing.md").write_text(
                 """---
-name: kramme:missing
+name: missing
 model: inherit
 color: blue
 ---
@@ -1333,8 +1331,8 @@ color: blue
         self.assertEqual(
             result.failures,
             [
-                "mechanical: agents/kramme:example.md description is 7 chars, exceeds 6",
-                "mechanical: agents/kramme:missing.md is missing frontmatter field 'description'",
+                "mechanical: agents/example.md description is 7 chars, exceeds 6",
+                "mechanical: agents/missing.md is missing frontmatter field 'description'",
             ],
         )
 

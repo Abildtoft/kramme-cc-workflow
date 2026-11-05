@@ -1,4 +1,4 @@
-# kramme-cc-workflow
+# trackbed
 
 A cross-host agent workflow plugin for Claude Code and Codex that automates the daily development lifecycle:
 
@@ -127,7 +127,7 @@ Marketplace install (recommended) — run inside a Claude Code session:
 /plugin install trackbed@trackbed
 ```
 
-Then turn on auto-update so new releases install themselves: run `/plugin`, open **Marketplaces**, select `kramme-cc-workflow`, and choose **Enable auto-update**. Claude Code leaves auto-update off for third-party marketplaces until you do.
+Then turn on auto-update so new releases install themselves: run `/plugin`, open **Marketplaces**, select `trackbed`, and choose **Enable auto-update**. Claude Code leaves auto-update off for third-party marketplaces until you do.
 
 Other installs — run from your terminal:
 
@@ -136,7 +136,7 @@ Other installs — run from your terminal:
 claude /plugin install git+https://github.com/trackbed/skills
 
 # Local development
-claude /plugin install /path/to/kramme-cc-workflow/kramme-cc-workflow
+claude /plugin install /path/to/skills/kramme-cc-workflow
 ```
 
 ### Codex
@@ -155,10 +155,10 @@ Or build and install it yourself:
 ```bash
 # From a checkout
 npm install
-node kramme-cc-workflow/scripts/convert-plugin.js install kramme-cc-workflow
+node kramme-cc-workflow/scripts/convert-plugin.js install trackbed
 
 # With npx, without a clone
-npx --yes github:trackbed/skills install kramme-cc-workflow
+npx --yes github:trackbed/skills install trackbed
 
 # Local development from this repository
 ./kramme-cc-workflow/scripts/install-codex.sh
@@ -171,10 +171,10 @@ To uninstall:
 ```bash
 # Published install
 codex plugin remove trackbed@trackbed
-codex plugin marketplace remove kramme-cc-workflow
+codex plugin marketplace remove trackbed
 
 # Checkout install, including the marketplace and any legacy output
-node kramme-cc-workflow/scripts/convert-plugin.js uninstall kramme-cc-workflow
+node kramme-cc-workflow/scripts/convert-plugin.js uninstall trackbed
 ```
 
 ### Updating
@@ -183,9 +183,9 @@ When a new release is out, the `update-check` hook tells you at the start of a s
 
 | Install | How to update |
 | --- | --- |
-| Claude Code marketplace | Auto-update, `/plugin marketplace update kramme-cc-workflow` in a session, or `claude plugin update trackbed@trackbed` from a terminal |
+| Claude Code marketplace | Auto-update, `/plugin marketplace update trackbed` in a session, or `claude plugin update trackbed@trackbed` from a terminal |
 | Claude Code Git or local | Re-run the install command |
-| Codex published | `codex plugin marketplace upgrade kramme-cc-workflow`, then `codex plugin add trackbed@trackbed` |
+| Codex published | `codex plugin marketplace upgrade trackbed`, then `codex plugin add trackbed@trackbed` |
 | Codex checkout | Re-run the install command; it rebuilds the marketplace and reinstalls the plugin into the Codex cache |
 
 Codex update notices include both paths. `marketplace upgrade` requires a Git marketplace; local installs made from a checkout or through `npx` must re-run their original install command.
@@ -627,6 +627,24 @@ Event handlers defined once in the plugin source and packaged for both hosts. Ea
 ## Renamed and Removed Commands
 
 Update saved prompts and automation before upgrading; the old names no longer resolve. [CHANGELOG.md](kramme-cc-workflow/CHANGELOG.md) has the release-by-release detail.
+
+### From `kramme-cc-workflow` to `trackbed`
+
+Release 1.0.0 renamed the plugin and its marketplace from `kramme-cc-workflow` to `trackbed`, and the repository moved to `trackbed/skills`. Every skill and agent kept its name but moved from the `kramme:` prefix to the plugin namespace: `/kramme-cc-workflow:kramme:pr:code-review` in Claude Code and `$kramme:pr:code-review` in Codex both become `trackbed:pr:code-review`. The [decision record](kramme-cc-workflow/docs/decisions/2026-11-05-trackbed-plugin-namespace.md) explains why.
+
+Existing installs do not move on their own. Remove the old plugin and marketplace, then install `trackbed` as in [Installation & Updating](#installation--updating):
+
+```bash
+# Claude Code, inside a session
+/plugin uninstall kramme-cc-workflow@kramme-cc-workflow
+/plugin marketplace remove kramme-cc-workflow
+
+# Codex, from your terminal
+codex plugin remove kramme-cc-workflow@kramme-cc-workflow
+codex plugin marketplace remove kramme-cc-workflow
+```
+
+Usage records from before the rename count toward the new names. Hook toggles, the update-check state, and other settings under `kramme-cc-workflow` state and config directories keep working unchanged.
 
 ### Renamed
 

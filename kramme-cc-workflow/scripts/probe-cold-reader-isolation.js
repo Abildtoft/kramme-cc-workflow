@@ -24,8 +24,8 @@ const path = require("node:path");
 /** @typedef {{variant: Variant, agent: string, version: string | null, passed: boolean, answer: string | null, problems: string[]}} VariantResult */
 
 const PLUGIN_ROOT = path.resolve(__dirname, "..");
-const PLUGIN_NAME = "kramme-cc-workflow";
-const COLD_READER = `${PLUGIN_NAME}:trackbed:cold-reader`;
+const PLUGIN_NAME = "trackbed";
+const COLD_READER = `${PLUGIN_NAME}:cold-reader`;
 const CONTROL_AGENT = "general-purpose";
 /** @type {Variant[]} */
 const VARIANTS = ["isolated", "control", "unreadable"];

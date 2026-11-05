@@ -198,11 +198,7 @@ def validate_node_urls(
 ) -> list[str]:
     errors: list[str] = []
     for index, file_entry in enumerate(collections["files"]):
-        if (
-            isinstance(file_entry, dict)
-            and file_entry.get("url")
-            and not is_safe_href(file_entry["url"])
-        ):
+        if isinstance(file_entry, dict) and file_entry.get("url") and not is_safe_href(file_entry["url"]):
             errors.append(f"{graph_id}/{node_id}: file {index} uses an unsafe URL")
     for index, link in enumerate(collections["links"]):
         if isinstance(link, dict) and link.get("url") and not is_safe_href(link["url"]):
@@ -288,17 +284,13 @@ def validate_data(data: dict[str, Any]) -> list[str]:
                 errors.append(f"{graph_id}: node {node_index} id must be a non-empty string")
                 node_id = f"node {node_index}"
 
-            collections, collection_errors = validate_node_collections(
-                graph_id, node_id, node
-            )
+            collections, collection_errors = validate_node_collections(graph_id, node_id, node)
             errors.extend(collection_errors)
             if not node.get("title"):
                 errors.append(f"{graph_id}/{node_id}: node missing title")
             if not node_text(node):
                 errors.append(f"{graph_id}/{node_id}: node needs explanatory text")
-            if not isinstance(node.get("x"), (int, float)) or not isinstance(
-                node.get("y"), (int, float)
-            ):
+            if not isinstance(node.get("x"), (int, float)) or not isinstance(node.get("y"), (int, float)):
                 errors.append(f"{graph_id}/{node_id}: node needs numeric x and y coordinates")
             if graph_id == "system-overview":
                 for key in ("files", "comments", "media"):
@@ -333,9 +325,7 @@ def validate_data(data: dict[str, Any]) -> list[str]:
             if not is_non_empty_string(tour_node_id):
                 errors.append(f"{graph_id}: tour step {index} nodeId must be a non-empty string")
             elif cast(str, tour_node_id) not in node_ids:
-                errors.append(
-                    f"{graph_id}: tour step {index} points at missing node {tour_node_id}"
-                )
+                errors.append(f"{graph_id}: tour step {index} points at missing node {tour_node_id}")
             if not step.get("body") and not step.get("summary"):
                 errors.append(f"{graph_id}: tour step {index} needs explanatory text")
     return errors
@@ -372,9 +362,7 @@ def validate_runtime_javascript(runtime_scripts: list[str]) -> list[str]:
     return [f"runtime JavaScript syntax check failed: {bounded}"]
 
 
-def validate_html_surface(
-    html_text: str, runtime_scripts: list[str], script_srcs: list[str]
-) -> list[str]:
+def validate_html_surface(html_text: str, runtime_scripts: list[str], script_srcs: list[str]) -> list[str]:
     errors = []
     runtime_surface = "\n".join([*runtime_scripts, *script_srcs])
     if re.search(r"\bfetch\s*\(", runtime_surface):

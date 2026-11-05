@@ -1,6 +1,6 @@
 ---
 name: docs:solution-note
-description: "Create a reusable solved-problem note in docs/solutions/ after a bug fix, migration, repeated workflow, tricky refactor, or implementation lesson: failed approaches, final approach, code references, verification, and reuse cautions. With --refresh, audit existing notes against the codebase as keep, update, consolidate, or delete, confirming deletions and consolidations. Not for ADRs (trackbed:docs:adr), domain vocabulary (trackbed:docs:ubiquitous-language), feature specs, or rejected enhancements."
+description: "Create a reusable solved-problem note in docs/solutions/ after a bug fix, migration, repeated workflow, tricky refactor, or implementation lesson: failed approaches, final approach, code references, verification, and reuse cautions. With --refresh, audit existing notes against the code as keep, update, consolidate, or delete, confirming deletions and consolidations. Not for ADRs (trackbed:docs:adr), domain vocabulary (trackbed:docs:ubiquitous-language), feature specs, or rejected enhancements."
 argument-hint: "[problem, lesson, or context] | --refresh [solution-note-path|--all] [--apply]"
 disable-model-invocation: true
 user-invocable: true

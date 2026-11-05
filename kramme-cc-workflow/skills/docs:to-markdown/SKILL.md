@@ -45,17 +45,17 @@ Before passing `-o` (or redirecting to a file), check whether the output path ex
 -c CHARSET         # Hint charset (e.g., UTF-8)
 -d, --use-docintel # Use Azure Document Intelligence
 -e, --endpoint ENDPOINT
-                   # Document Intelligence endpoint
+# Document Intelligence endpoint
 --use-cu, --use-content-understanding
-                   # Use Azure Content Understanding instead of offline conversion
+# Use Azure Content Understanding instead of offline conversion
 --cu-endpoint ENDPOINT
-                   # Content Understanding endpoint
---cu-analyzer ID   # Optional Content Understanding analyzer ID
+# Content Understanding endpoint
+--cu-analyzer ID # Optional Content Understanding analyzer ID
 --cu-file-types TYPES
-                   # Comma-separated CU-routed file types, e.g. pdf,jpeg,mp4
--p, --use-plugins  # Enable 3rd-party plugins
---list-plugins     # Show installed plugins
---keep-data-uris   # Keep data URIs in output
+# Comma-separated CU-routed file types, e.g. pdf,jpeg,mp4
+-p, --use-plugins # Enable 3rd-party plugins
+--list-plugins    # Show installed plugins
+--keep-data-uris  # Keep data URIs in output
 ```
 
 Azure Document Intelligence (`-d` / `-e`) and Azure Content Understanding (`--use-cu` / `--cu-endpoint`) are mutually exclusive cloud extraction paths. Use Document Intelligence for improved document layout extraction; use Content Understanding when you need multimodal extraction, custom analyzers, or structured fields in YAML front matter. Content Understanding calls are billable Azure API calls; use `--cu-file-types` to restrict which formats route through CU.

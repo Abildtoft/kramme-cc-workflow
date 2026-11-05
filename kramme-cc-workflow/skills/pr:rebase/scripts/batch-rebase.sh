@@ -117,7 +117,7 @@ resolve_push_url() {
       case "$url_authority" in *@*) url_userinfo=${url_authority%@*} ;; esac
       case "$url_scheme" in
         [Hh][Tt][Tt][Pp] | [Hh][Tt][Tt][Pp][Ss] | [Ss][Ss][Hh] | [Gg][Ii][Tt] | [Ff][Ii][Ll][Ee] | \
-        [Ff][Tt][Pp] | [Ff][Tt][Pp][Ss] | [Gg][Ii][Tt]+[Ss][Ss][Hh] | [Ss][Ss][Hh]+[Gg][Ii][Tt]) ;;
+          [Ff][Tt][Pp] | [Ff][Tt][Pp][Ss] | [Gg][Ii][Tt]+[Ss][Ss][Hh] | [Ss][Ss][Hh]+[Gg][Ii][Tt]) ;;
         *) die "Remote 'origin' push URL uses an unsupported transport before batch rebasing." ;;
       esac
       case "$url_scheme" in

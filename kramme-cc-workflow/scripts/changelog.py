@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Changelog generator for kramme-cc-workflow plugin.
+Changelog generator for the trackbed plugin.
 
 Generates "Keep a Changelog" format entries from conventional commits.
 """
@@ -45,10 +45,7 @@ def _git_log_error_message(exc: subprocess.CalledProcessError) -> str:
         or "ambiguous argument 'head'" in lower_details
         or "unknown revision or path not in the working tree" in lower_details
     ):
-        return (
-            "No commits found in repository history; create an initial commit "
-            "before generating a changelog."
-        )
+        return "No commits found in repository history; create an initial commit before generating a changelog."
 
     if details:
         return f"Unable to read git history: {details}"
@@ -124,9 +121,7 @@ class CommitParser:
                 return None
 
             description = match.group("description")
-            is_breaking = (
-                match.group("breaking") == "!" or "BREAKING" in commit.body.upper()
-            )
+            is_breaking = match.group("breaking") == "!" or "BREAKING" in commit.body.upper()
 
             category = self.TYPE_TO_CATEGORY.get(commit_type, "Changed")
 
@@ -142,17 +137,13 @@ class CommitParser:
         # Fall back to keyword-based categorization
         return self._categorize_by_keywords(clean_subject, pr_number)
 
-    def _categorize_by_keywords(
-        self, subject: str, pr_number: str | None
-    ) -> ChangelogEntry | None:
+    def _categorize_by_keywords(self, subject: str, pr_number: str | None) -> ChangelogEntry | None:
         """Categorize non-conventional commits by keywords."""
         lower_subject = subject.lower()
 
         for category, keywords in self.KEYWORD_HINTS.items():
             for keyword in keywords:
-                if lower_subject.startswith(
-                    keyword
-                ) or f" {keyword} " in f" {lower_subject} ":
+                if lower_subject.startswith(keyword) or f" {keyword} " in f" {lower_subject} ":
                     return ChangelogEntry(
                         category=category,
                         message=self._format_message(subject),
@@ -237,9 +228,7 @@ class ChangelogGenerator:
 
     def generate_entries(self, commits: list[Commit]) -> dict[str, list[ChangelogEntry]]:
         """Generate categorized changelog entries from commits."""
-        categorized: dict[str, list[ChangelogEntry]] = {
-            cat: [] for cat in self.CATEGORY_ORDER
-        }
+        categorized: dict[str, list[ChangelogEntry]] = {cat: [] for cat in self.CATEGORY_ORDER}
 
         for commit in commits:
             entry = self.parser.parse(commit)
@@ -273,9 +262,7 @@ class ChangelogGenerator:
 
         return "\n".join(lines)
 
-    def format_link_reference(
-        self, version: str, repo_url: str, prev_version: str | None = None
-    ) -> str:
+    def format_link_reference(self, version: str, repo_url: str, prev_version: str | None = None) -> str:
         """Generate the link reference for the version."""
         if prev_version:
             return f"[{version}]: {repo_url}/compare/{prev_version}...v{version}"

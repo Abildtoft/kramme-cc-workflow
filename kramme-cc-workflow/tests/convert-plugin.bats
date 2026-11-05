@@ -12,8 +12,8 @@ setup() {
 	AGENTS_HOME_DIR="$TMP_DIR/agents-home"
 	FAKE_LOG="$TMP_DIR/codex.log"
 	PLUGIN_VERSION="$(jq -r '.version' "$REPO_ROOT/.claude-plugin/plugin.json")"
-	CACHE_ROOT="$CODEX_HOME_DIR/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/$PLUGIN_VERSION"
-	MARKETPLACE_ROOT="$CODEX_HOME_DIR/.kramme-plugin-marketplaces/kramme-cc-workflow"
+	CACHE_ROOT="$CODEX_HOME_DIR/plugins/cache/trackbed/trackbed/$PLUGIN_VERSION"
+	MARKETPLACE_ROOT="$CODEX_HOME_DIR/.kramme-plugin-marketplaces/trackbed"
 	chmod +x "$MOCK_BIN/codex"
 }
 
@@ -254,7 +254,7 @@ MD
 
 @test "stats resolves the marketplace slug from the repository root" {
 	require_node
-	run bash -c 'cd "$1" && node "$2" stats kramme-cc-workflow --json' _ "$REPO_ROOT/.." "$SCRIPT"
+	run bash -c 'cd "$1" && node "$2" stats trackbed --json' _ "$REPO_ROOT/.." "$SCRIPT"
 	[ "$status" -eq 0 ]
 	[ "$(printf '%s' "$output" | jq -r '.codex_skills > 0 and .agent_skills > 0')" = "true" ]
 }
@@ -264,20 +264,20 @@ MD
 	local out="$TMP_DIR/marketplace"
 	run node "$SCRIPT" build "$REPO_ROOT" --out "$out"
 	[ "$status" -eq 0 ]
-	[[ "$output" == "Built kramme-cc-workflow $PLUGIN_VERSION ("*" skills) to $out" ]]
+	[[ "$output" == "Built trackbed $PLUGIN_VERSION ("*" skills) to $out" ]]
 
-	local plugin_root="$out/plugins/kramme-cc-workflow"
-	[ "$(jq -r '.name' "$out/.agents/plugins/marketplace.json")" = "kramme-cc-workflow" ]
-	[ "$(jq -r '.plugins[0].source.path' "$out/.agents/plugins/marketplace.json")" = "./plugins/kramme-cc-workflow" ]
+	local plugin_root="$out/plugins/trackbed"
+	[ "$(jq -r '.name' "$out/.agents/plugins/marketplace.json")" = "trackbed" ]
+	[ "$(jq -r '.plugins[0].source.path' "$out/.agents/plugins/marketplace.json")" = "./plugins/trackbed" ]
 	[ "$(jq -r '.version' "$plugin_root/.codex-plugin/plugin.json")" = "$PLUGIN_VERSION" ]
 	[ "$(jq -r '.skills' "$plugin_root/.codex-plugin/plugin.json")" = "./skills/" ]
 	[ "$(jq -r '.hooks' "$plugin_root/.codex-plugin/plugin.json")" = "./hooks/hooks.json" ]
 	[ -f "$plugin_root/hooks/hooks.json" ]
 	[ ! -e "$plugin_root/hooks/hook-state.json" ]
 	[ -x "$plugin_root/scripts/collect-review-diff.sh" ]
-	[ -f "$plugin_root/skills/pr:create/SKILL.md" ]
-	[ -x "$plugin_root/skills/pr:adversarial-review/scripts/run-adversarial-review.sh" ]
-	[ -f "$plugin_root/skills/a11y-auditor/SKILL.md" ]
+	[ -f "$plugin_root/skills/trackbed:pr:create/SKILL.md" ]
+	[ -x "$plugin_root/skills/trackbed:pr:adversarial-review/scripts/run-adversarial-review.sh" ]
+	[ -f "$plugin_root/skills/trackbed:a11y-auditor/SKILL.md" ]
 
 	eval "$(node "$SCRIPT" stats "$REPO_ROOT" | sed 's/^/EXPECTED_/')"
 	local skill_count
@@ -286,7 +286,7 @@ MD
 
 	run grep -rl '\${CLAUDE_PLUGIN_ROOT' "$plugin_root/skills" --include='*.md'
 	[ "$status" -eq 1 ]
-	run grep -c 'plugins/cache/kramme-cc-workflow/kramme-cc-workflow/'"$PLUGIN_VERSION"'/scripts/collect-review-diff.sh' "$plugin_root/skills/pr:code-review/SKILL.md"
+	run grep -c 'plugins/cache/trackbed/trackbed/'"$PLUGIN_VERSION"'/scripts/collect-review-diff.sh' "$plugin_root/skills/trackbed:pr:code-review/SKILL.md"
 	[ "$status" -eq 0 ]
 	[ ! -e "$out/AGENTS.md" ]
 }
@@ -310,11 +310,11 @@ MD
 	require_node
 	install_repo_plugin
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Installed kramme-cc-workflow $PLUGIN_VERSION to $CACHE_ROOT"* ]]
+	[[ "$output" == *"Installed trackbed $PLUGIN_VERSION to $CACHE_ROOT"* ]]
 
 	[ -f "$MARKETPLACE_ROOT/.agents/plugins/marketplace.json" ]
-	[ -f "$MARKETPLACE_ROOT/plugins/kramme-cc-workflow/.codex-plugin/plugin.json" ]
-	[ -f "$CACHE_ROOT/skills/pr:create/SKILL.md" ]
+	[ -f "$MARKETPLACE_ROOT/plugins/trackbed/.codex-plugin/plugin.json" ]
+	[ -f "$CACHE_ROOT/skills/trackbed:pr:create/SKILL.md" ]
 	[ ! -e "$CODEX_HOME_DIR/skills" ]
 	[ ! -e "$AGENTS_HOME_DIR/skills" ]
 	[ ! -e "$CODEX_HOME_DIR/AGENTS.md" ]
@@ -365,7 +365,7 @@ plugin add trackbed@trackbed --json" ]
 	require_node
 	mkdir -p "$TMP_DIR/foreign/.agents/plugins"
 	cat >"$TMP_DIR/foreign/.agents/plugins/marketplace.json" <<JSON
-{"name":"kramme-cc-workflow"}
+{"name":"trackbed"}
 JSON
 	printf 'mine\n' >"$TMP_DIR/foreign/notes.txt"
 	install_repo_plugin --marketplace-dir "$TMP_DIR/foreign"
@@ -404,10 +404,10 @@ JSON
 
 	run_with_fake_codex node "$SCRIPT" uninstall "$REPO_ROOT" --codex-home "$CODEX_HOME_DIR" --agents-home "$AGENTS_HOME_DIR" --yes
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"Uninstalled kramme-cc-workflow from $CODEX_HOME_DIR"* ]]
+	[[ "$output" == *"Uninstalled trackbed from $CODEX_HOME_DIR"* ]]
 	[ "$(cat "$FAKE_LOG")" = "plugin marketplace list --json
 plugin remove trackbed@trackbed
-plugin marketplace remove kramme-cc-workflow" ]
+plugin marketplace remove trackbed" ]
 	[ ! -e "$MARKETPLACE_ROOT" ]
 	[ ! -e "$CACHE_ROOT" ]
 	[ ! -e "$CODEX_HOME_DIR/skills/kramme:legacy:skill" ]
@@ -437,7 +437,7 @@ JSON
 {
   "plugins": [
     {
-      "name": "kramme-cc-workflow",
+      "name": "trackbed",
       "source": "kramme-cc-workflow"
     }
   ]
@@ -445,7 +445,7 @@ JSON
 JSON
 	cat >"$isolated/kramme-cc-workflow/.claude-plugin/plugin.json" <<'JSON'
 {
-  "name": "kramme-cc-workflow",
+  "name": "trackbed",
   "version": "1.0.0",
   "agents": [],
   "commands": [],
@@ -469,8 +469,8 @@ SH
 	[ "$status" -eq 0 ]
 	[ "$(cat "$TMP_DIR/npm-called")" = "install --omit=dev --no-audit --no-fund" ]
 	[ -f "$MARKETPLACE_ROOT/.agents/plugins/marketplace.json" ]
-	[ -f "$CODEX_HOME_DIR/plugins/cache/kramme-cc-workflow/kramme-cc-workflow/1.0.0/.codex-plugin/plugin.json" ]
-	[[ "$output" == *"Installed kramme-cc-workflow 1.0.0 to"* ]]
+	[ -f "$CODEX_HOME_DIR/plugins/cache/trackbed/trackbed/1.0.0/.codex-plugin/plugin.json" ]
+	[[ "$output" == *"Installed trackbed 1.0.0 to"* ]]
 }
 
 @test "every command rejects malformed or unsupported options before loading converter modules" {

@@ -20,9 +20,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-SCRIPT_PATH = (
-    Path(__file__).resolve().parents[2] / "skills" / "pr:github-review" / "scripts" / "stack-overview.py"
-)
+SCRIPT_PATH = Path(__file__).resolve().parents[2] / "skills" / "pr:github-review" / "scripts" / "stack-overview.py"
 SPEC = importlib.util.spec_from_file_location("stack_overview", SCRIPT_PATH)
 assert SPEC is not None
 assert SPEC.loader is not None

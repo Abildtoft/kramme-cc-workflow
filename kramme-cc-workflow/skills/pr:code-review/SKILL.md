@@ -47,7 +47,7 @@ If `$ARGUMENTS` contains `--team`, remove that flag, read `references/review-dis
 
    ```bash
    [ -x "${CLAUDE_PLUGIN_ROOT:-}/scripts/collect-review-diff.sh" ] || {
-     echo "collect-review-diff.sh not found under CLAUDE_PLUGIN_ROOT — is the kramme-cc-workflow plugin installed?" >&2
+     echo "collect-review-diff.sh not found under CLAUDE_PLUGIN_ROOT — is the trackbed plugin installed?" >&2
      exit 1
    }
    COLLECT_ARGS=(--strict --format nul --stack-context)

@@ -418,7 +418,9 @@ def preflight(options: argparse.Namespace, facts: JsonDict) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = JsonArgumentParser(prog="pr-create-preflight.py", description="Read-only preflight for trackbed:pr:create.")
+    parser = JsonArgumentParser(
+        prog="pr-create-preflight.py", description="Read-only preflight for trackbed:pr:create."
+    )
     parser.add_argument("--base")
     parser.add_argument("--feature-branch")
     parser.add_argument("--linear-issue")

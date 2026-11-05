@@ -781,7 +781,7 @@ class SkillContractTests(unittest.TestCase):
         self.assertRegex(text, r"For every helper call[^.]*`status` other than `ok` is a blocker")
 
     def test_issue_implement_recomputes_the_handoff_with_the_helper_commands(self) -> None:
-        setup = SKILL_DIR.parent / "trackbed:linear:issue-implement" / "references" / "branch-setup.md"
+        setup = SKILL_DIR.parent / "linear:issue-implement" / "references" / "branch-setup.md"
         text = setup.read_text(encoding="utf-8")
         self.assertIn("`git " + " ".join(preflight.STATUS_ARGS) + "`", text)
         self.assertIn("`git " + " ".join(preflight.COMMITTED_DIFF_ARGS) + " <captured base> HEAD`", text)
