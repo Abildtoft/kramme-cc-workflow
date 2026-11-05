@@ -4,7 +4,8 @@ sources:
     title: "EveryInc compound-engineering-plugin - ce-doc-review"
     rationale: "Document classification, conditional review-lens selection, severity-ordered finding schema, and synthesis flow are adapted from this source."
     usage: inspiration
-    last_reviewed_at: 2026-07-29
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "7dc50943bbf959dbe6a93a175e41e5fff8395e00"
     baseline_hash: "sha256:2c47b2744759567b2066301898d604f3d0c6b3f368b9c5f45b69b2ffe6f399c1"
   - id: egm-comprehension-persona
     url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/agents/comprehension.md
@@ -12,4 +13,5 @@ sources:
     rationale: "Testing a document with a fresh reader who restates it, and showing the author that restatement, is informed by this source; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
     usage: inspiration
     last_reviewed_at: 2026-11-02
+    baseline_commit: "6a8001ea31ccf72430ba0603a467ec6df9f69dd7"
     baseline_hash: "sha256:974f4972f717dc7b102a9b1407b3a625749149f2ae905727241e919f43cc3fa5"

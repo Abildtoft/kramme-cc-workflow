@@ -4,5 +4,6 @@ sources:
     title: "Matt Pocock skills - github-triage (.out-of-scope/ knowledge base)"
     rationale: "The .out-of-scope/ directory convention (one markdown file per rejected enhancement concept, with substantive reason and prior-requests list) and the concept-similarity matching for prior-rejection deduplication are adapted from this skill's OUT-OF-SCOPE.md reference."
     usage: inspiration
-    last_reviewed_at: 2026-07-29
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d"
     baseline_hash: "sha256:2526f998fd7ca5e956d3f6f234bcc2431a5971ee769f1148ddc60b92f04d5914"
