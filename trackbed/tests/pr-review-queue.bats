@@ -386,3 +386,13 @@ EOF
 	grep -Fq -- '--since <previous checkedAt>' "$SKILL"
 	grep -Fq '"Asked to review" means `user-review-requested:@me`.' "$SKILL"
 }
+
+@test "SKILL.md covers a re-request after any earlier review" {
+	grep -Fq '| `requestedOfMe`, `myLastReview` set |' "$SKILL"
+	grep -Fq 'Re-requested after your <approval / changes request / comment / dismissed review>' "$SKILL"
+}
+
+@test "SKILL.md diagnosis commands use quoted variables, not shell-redirect placeholders" {
+	grep -Fq 'gh run view "$RUN_ID" -R "$REPO" --log-failed' "$SKILL"
+	! grep -Eq '< (run|repo|head) >' "$SKILL"
+}

@@ -44,7 +44,7 @@ Exit code 2 means malformed arguments: show the script's message and stop. On an
 | Field | Meaning | Say |
 | --- | --- | --- |
 | `myPendingComments > 0` | You started a review and never submitted it, so the author cannot see it | "Your pending review with N comments is unsubmitted" |
-| `myLastReview.state == "APPROVED"`, `onHead` false, `requestedOfMe` | The author pushed after your approval and re-requested you | "Re-requested after a push; your approval is on an older commit" |
+| `requestedOfMe`, `myLastReview` set | The author re-requested you after your review, usually after addressing it | "Re-requested after your <approval / changes request / comment / dismissed review> at <time>", adding "the author pushed since" when `onHead` is false, or "your approval is on an older commit" for a stale approval |
 | `myOpenThreads > 0` | Threads you opened are still unresolved; threads in your pending review are not counted | "N of your threads are unresolved", and whether the author pushed since your review (`onHead` false) |
 | `myLastReview` set, `requestedOfMe` false | You reviewed; the next move is the author's or the merger's | "You approved / requested changes / commented at <time>" |
 | `requestedOfMe`, `myLastReview` null | Not reviewed | "Not reviewed", plus approvals from `otherReviews` |
@@ -79,15 +79,15 @@ Mark a `draft` PR as a draft; its author has not asked for a final review yet.
 
 ## Step 3: Diagnose Failing CI
 
-For each `failing` entry that has a `run`:
+For each `failing` entry that has a `run`, set `RUN_ID` to that `run`, `REPO` to the repository part of `pr`, and `HEAD_SHA` to `head`:
 
 ```bash
-gh run view < run > -R < repo > --log-failed | grep -iE 'error|failed|✖' | head -40
-gh api "repos/<repo>/actions/runs?head_sha=<head>&per_page=100" \
+gh run view "$RUN_ID" -R "$REPO" --log-failed | grep -iE 'error|failed|✖' | head -40
+gh api "repos/$REPO/actions/runs?head_sha=$HEAD_SHA&per_page=100" \
   --jq '.workflow_runs[] | "\(.id) \(.name) [\(.event)] \(.conclusion) \(.created_at)"'
 ```
 
-- **Likely flake:** the error is infrastructure (a cache or filesystem race, the network, a lost runner, a timeout), and the same workflow passed earlier on this same head SHA. Say so and name the fix (`gh run rerun <run> --failed`) without running it.
+- **Likely flake:** the error is infrastructure (a cache or filesystem race, the network, a lost runner, a timeout), and the same workflow passed earlier on this same head SHA. Say so and name the fix (`gh run rerun "$RUN_ID" -R "$REPO" --failed`) without running it.
 - **Real failure:** quote the first meaningful error line and the failing project or target.
 - **No `run`:** a status context or an external check, such as a visual-test service or a review bot. Name it; its details live outside GitHub Actions.
 
@@ -105,7 +105,7 @@ When a tool for the repository's tracker is available, such as Linear's `get_iss
 4. **Suggested order:** one line per PR, with the reason:
    1. Your unsubmitted pending reviews. The author cannot see them yet.
    2. Your open threads where the author has pushed since: check them, then approve.
-   3. Re-approvals after a push.
+   3. Re-requests after your earlier review: a re-approval after a push, or a re-check after you requested changes.
    4. Small or mechanical PRs with green CI and a clean merge state, as quick unblocks.
    5. Larger or higher-risk PRs (auth, personal data, migrations, infrastructure, dependency upgrades), which need focused time.
    6. PRs blocked on the author (conflicts, red CI). The review can still happen first, but merging waits.
