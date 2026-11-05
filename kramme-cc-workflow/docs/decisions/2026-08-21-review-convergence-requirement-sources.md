@@ -8,7 +8,7 @@
 
 ## Context
 
-The initial extraction of `kramme:pr:review-convergence` required every direct invocation to repeat an authoritative `--requirements` block. That boundary kept the convergence phase independent from issue intake, but it made an already-established conversation or a referenced Linear issue unusable as the direct invocation's requirement source. Some prepared branches also arrive without enough authoritative conversation context even though their implementation evidence can seed a useful draft, provided the user remains the authority. Internal Linear and plan callers freeze their own contracts before delegation and must retain that stronger handoff.
+The initial extraction of `trackbed:pr:review-convergence` required every direct invocation to repeat an authoritative `--requirements` block. That boundary kept the convergence phase independent from issue intake, but it made an already-established conversation or a referenced Linear issue unusable as the direct invocation's requirement source. Some prepared branches also arrive without enough authoritative conversation context even though their implementation evidence can seed a useful draft, provided the user remains the authority. Internal Linear and plan callers freeze their own contracts before delegation and must retain that stronger handoff.
 
 ## Decision
 

@@ -2,11 +2,11 @@
 
 setup() {
 	REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-	RECREATE="$REPO_ROOT/skills/kramme:git:recreate-commits/SKILL.md"
-	CREATE="$REPO_ROOT/skills/kramme:pr:create/SKILL.md"
-	FIX_CI="$REPO_ROOT/skills/kramme:pr:fix-ci/SKILL.md"
-	DESCRIBE="$REPO_ROOT/skills/kramme:pr:generate-description/SKILL.md"
-	REBASE="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	RECREATE="$REPO_ROOT/skills/git:recreate-commits/SKILL.md"
+	CREATE="$REPO_ROOT/skills/pr:create/SKILL.md"
+	FIX_CI="$REPO_ROOT/skills/pr:fix-ci/SKILL.md"
+	DESCRIBE="$REPO_ROOT/skills/pr:generate-description/SKILL.md"
+	REBASE="$REPO_ROOT/skills/pr:rebase/SKILL.md"
 	SHIPPING_SKILLS=("$RECREATE" "$CREATE" "$FIX_CI" "$DESCRIBE" "$REBASE")
 }
 
@@ -29,7 +29,7 @@ setup() {
 	done
 	grep -qF 'Auto mode is reserved for a direct user invocation and for that guarded delegation.' "$RECREATE"
 	grep -qF 'Auto mode is reserved for a direct user invocation and for those two parent delegations, which always pass `--require-generated-description`.' "$CREATE"
-	grep -qF 'Auto mode is reserved for a direct user invocation and for that `kramme:pr:rebase` delegation.' "$FIX_CI"
+	grep -qF 'Auto mode is reserved for a direct user invocation and for that `trackbed:pr:rebase` delegation.' "$FIX_CI"
 
 	grep -qF "$direct" "$REBASE"
 	grep -qF 'Every other invocation without `--force-push` runs as `--manual`, whether or not it passes that flag, including one where the model picks this skill for a request that does not name it.' "$REBASE"
@@ -64,20 +64,20 @@ setup() {
 	grep -qF 'If both `--manual` and `--force-push` are present, stop with a usage error' "$REBASE"
 	! grep -qF 'wins because it is the broader dangerous mode' "$REBASE"
 
-	grep -qF 'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism' "$FIX_CI"
-	grep -qF 'invoke `kramme:pr:rebase` with `--force-push --base {base-branch}`' "$CREATE"
+	grep -qF 'Invoke `$trackbed:pr:rebase --force-push --base <BASE>` through the platform skill mechanism' "$FIX_CI"
+	grep -qF 'invoke `trackbed:pr:rebase` with `--force-push --base {base-branch}`' "$CREATE"
 }
 
 @test "rebase recovery guidance never points at the dangerous default" {
 	grep -qF 'rerun with --manual after addressing the concern.' "$REBASE"
 	! grep -qF 'rerun without --force-push' "$REBASE"
-	grep -qF 'needs a single-branch `/kramme:pr:rebase --manual` in its own workspace.' \
-		"$REPO_ROOT/skills/kramme:pr:rebase/references/batch-mode.md"
+	grep -qF 'needs a single-branch `/trackbed:pr:rebase --manual` in its own workspace.' \
+		"$REPO_ROOT/skills/pr:rebase/references/batch-mode.md"
 }
 
 @test "rebase --fix-ci carries the rebase mode into fix-ci" {
-	grep -qF -- '- When `AUTO_MODE=true`, invoke `$kramme:pr:fix-ci` with no additional flags' "$REBASE"
-	grep -qF -- '- Otherwise, invoke `$kramme:pr:fix-ci --manual`.' "$REBASE"
+	grep -qF -- '- When `AUTO_MODE=true`, invoke `$trackbed:pr:fix-ci` with no additional flags' "$REBASE"
+	grep -qF -- '- Otherwise, invoke `$trackbed:pr:fix-ci --manual`.' "$REBASE"
 	grep -qF "or the rebase caller's no-flag auto mode or \`--manual\`." "$FIX_CI"
 }
 
@@ -89,10 +89,10 @@ setup() {
 	grep -qF 'It also turns off auto mode in that delegated skill' "$contract"
 	grep -qF 'This contract does not authorize rewriting an existing remote branch, force-pushing an already-open Pull Request' "$contract"
 
-	grep -qF -- '`{fix-ci-invocation}`: `kramme:pr:fix-ci --no-consolidate`.' \
-		"$REPO_ROOT/skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
-	grep -qF '$kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}' \
-		"$REPO_ROOT/skills/kramme:code:plan-to-pr/references/shipping-contract.md"
+	grep -qF -- '`{fix-ci-invocation}`: `trackbed:pr:fix-ci --no-consolidate`.' \
+		"$REPO_ROOT/skills/linear:issue-to-pr/references/shipping-contract.md"
+	grep -qF '$trackbed:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}' \
+		"$REPO_ROOT/skills/code:plan-to-pr/references/shipping-contract.md"
 }
 
 @test "modes with their own gates do not inherit auto mode" {

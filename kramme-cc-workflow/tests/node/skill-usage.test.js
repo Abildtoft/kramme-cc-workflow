@@ -175,7 +175,7 @@ test("report preserves valid JSON output byte-for-byte", async (t) => {
       JSON.stringify({
         recordedAt: "2026-07-01T10:00:00.000Z",
         sessionId: "session-1",
-        skill: "kramme:qa",
+        skill: "trackbed:qa",
         kind: "explicit",
       }),
       "",
@@ -191,7 +191,7 @@ test("report preserves valid JSON output byte-for-byte", async (t) => {
     `${JSON.stringify(
       [
         {
-          skill: "kramme:qa",
+          skill: "trackbed:qa",
           total: 1,
           explicit: 1,
           tool: 0,
@@ -215,7 +215,7 @@ test("report preserves valid totals and returns exact degraded diagnostics", asy
       JSON.stringify({
         recordedAt: "2026-07-01T10:00:00.000Z",
         sessionId: "session-1",
-        skill: "kramme:qa",
+        skill: "trackbed:qa",
         kind: "explicit",
       }),
       "{malformed",
@@ -231,7 +231,7 @@ test("report preserves valid totals and returns exact degraded diagnostics", asy
   assert.deepEqual(JSON.parse(result.stdout), {
     summary: [
       {
-        skill: "kramme:qa",
+        skill: "trackbed:qa",
         total: 1,
         explicit: 1,
         tool: 0,
@@ -263,7 +263,7 @@ test("strict mode exits non-zero after rendering a degraded snapshot", async (t)
     [
       JSON.stringify({
         sessionId: "session-1",
-        skill: "kramme:qa",
+        skill: "trackbed:qa",
         kind: "explicit",
       }),
       "{truncated",
@@ -430,11 +430,11 @@ test("record maps Claude Code plugin skill names to frontmatter names", async (t
   /** @param {string} name */
   const skill = (name) => ({ tool_name: "Skill", tool_input: { skill: name } });
   for (const fields of [
-    skill("kramme-cc-workflow:kramme-pr-create"),
-    { prompt: "/kramme-cc-workflow:kramme-qa smoke the cart" },
-    skill("kramme-cc-workflow:kramme-not-a-real-skill"),
+    skill("trackbed:pr-create"),
+    { prompt: "/trackbed:qa smoke the cart" },
+    skill("trackbed:not-a-real-skill"),
     { prompt: "/kramme-verify-run before the push" },
-    skill("kramme-cc-workflow:kramme:setup"),
+    skill("trackbed:setup"),
   ]) {
     const hook_event_name =
       "prompt" in fields ? "UserPromptSubmit" : "PreToolUse";
@@ -454,11 +454,11 @@ test("record maps Claude Code plugin skill names to frontmatter names", async (t
       record.kind,
     ]),
     [
-      ["kramme:pr:create", undefined, "tool"],
-      ["kramme:qa", undefined, "explicit"],
-      [undefined, "kramme-cc-workflow:kramme-not-a-real-skill", "tool"],
-      ["kramme:verify:run", undefined, "explicit"],
-      ["kramme:setup", undefined, "tool"],
+      ["trackbed:pr:create", undefined, "tool"],
+      ["trackbed:qa", undefined, "explicit"],
+      [undefined, "trackbed:not-a-real-skill", "tool"],
+      ["trackbed:verify:run", undefined, "explicit"],
+      ["trackbed:setup", undefined, "tool"],
     ],
   );
 });
@@ -475,7 +475,7 @@ test("record stamps each record with the plugin manifest version", async (t) => 
 
   const result = runUsageWithInput(
     ["record", "--file", usageFile],
-    JSON.stringify({ prompt: "/kramme:qa", session_id: "session-1" }),
+    JSON.stringify({ prompt: "/trackbed:qa", session_id: "session-1" }),
   );
 
   assert.deepEqual([result.status, result.stderr], [0, ""]);
@@ -491,9 +491,9 @@ test("record keeps Skill tool events that name the plugin but no shipped skill",
     { skill: "other-plugin:kramme-pr-create" },
     {
       skill: "other-plugin:helper",
-      command: "/kramme-cc-workflow:kramme-gone",
+      command: "/trackbed:gone",
     },
-    { skill: "kramme-cc-workflow:kramme-pr-create" },
+    { skill: "trackbed:pr-create" },
   ]) {
     const event = {
       hook_event_name: "PreToolUse",
@@ -513,7 +513,7 @@ test("record keeps Skill tool events that name the plugin but no shipped skill",
     records.map((record) => [record.skill, record.unrecognizedSkill]),
     [
       [undefined, "kramme-cc-workflow/kramme-pr-create"],
-      ["kramme:pr:create", undefined],
+      ["trackbed:pr:create", undefined],
     ],
   );
   const [unrecognized] = records;
@@ -537,7 +537,7 @@ test("report skips unrecognized skill events inside the selected window", async 
     {
       recordedAt: recent,
       sessionId: "session-1",
-      skill: "kramme:qa",
+      skill: "trackbed:qa",
       kind: "explicit",
     },
     {
@@ -566,7 +566,7 @@ test("report skips unrecognized skill events inside the selected window", async 
   assert.deepEqual(JSON.parse(windowed.stdout), {
     summary: [
       {
-        skill: "kramme:qa",
+        skill: "trackbed:qa",
         total: 1,
         explicit: 1,
         tool: 0,
@@ -615,9 +615,9 @@ test("report filters usage records by plugin version", async (t) => {
   await writeUsageLines(
     usageFile,
     [
-      ["kramme:pr:create", "0.89.0"],
-      ["kramme:qa", "0.90.0"],
-      ["kramme:verify:run", undefined],
+      ["trackbed:pr:create", "0.89.0"],
+      ["trackbed:qa", "0.90.0"],
+      ["trackbed:verify:run", undefined],
     ].map(([skill, pluginVersion], index) => ({
       recordedAt: `2026-10-1${index}T10:00:00.000Z`,
       sessionId: `session-${index}`,
@@ -636,15 +636,15 @@ test("report filters usage records by plugin version", async (t) => {
     );
   };
 
-  assert.deepEqual(skills("--plugin-version", "0.90.0"), ["kramme:qa"]);
-  assert.deepEqual(skills("--plugin-version=0.89.0"), ["kramme:pr:create"]);
+  assert.deepEqual(skills("--plugin-version", "0.90.0"), ["trackbed:qa"]);
+  assert.deepEqual(skills("--plugin-version=0.89.0"), ["trackbed:pr:create"]);
   assert.deepEqual(skills("--plugin-version", "unknown"), [
-    "kramme:verify:run",
+    "trackbed:verify:run",
   ]);
   assert.deepEqual(skills(), [
-    "kramme:pr:create",
-    "kramme:qa",
-    "kramme:verify:run",
+    "trackbed:pr:create",
+    "trackbed:qa",
+    "trackbed:verify:run",
   ]);
 
   const table = runUsage([
@@ -672,7 +672,7 @@ test("report warns on stderr when the last 7 days fall far below the weekly medi
             now - (week * 7 + 3) * DAY_MS - index * 1000,
           ).toISOString(),
           sessionId: `session-${week}-${index}`,
-          skill: "kramme:qa",
+          skill: "trackbed:qa",
           kind: "tool",
         })),
       ),
@@ -711,8 +711,8 @@ test("report warns on stderr when the last 7 days fall far below the weekly medi
 test("scan counts Claude Code command-name transcript records", async (t) => {
   const transcript = path.join(await tempDir(t), "session.jsonl");
   const content =
-    "<command-message>kramme-cc-workflow:kramme-qa</command-message>\n" +
-    "<command-name>/kramme-cc-workflow:kramme-qa</command-name>";
+    "<command-message>trackbed:qa</command-message>\n" +
+    "<command-name>/trackbed:qa</command-name>";
   const record = { type: "user", session_id: "s1", message: { content } };
   await fs.writeFile(transcript, `${JSON.stringify(record)}\n`);
 
@@ -723,7 +723,7 @@ test("scan counts Claude Code command-name transcript records", async (t) => {
   );
   assert.deepEqual(
     summary.map((row) => [row.skill, row.total]),
-    [["kramme:qa", 1]],
+    [["trackbed:qa", 1]],
   );
 });
 
@@ -763,7 +763,7 @@ test("scan tolerates corrupt lines and unreadable inputs without losing valid to
     [
       JSON.stringify({
         type: "user",
-        message: { content: "Use /kramme:pr:create" },
+        message: { content: "Use /trackbed:pr:create" },
         session_id: "session-1",
       }),
       "{malformed",
@@ -791,7 +791,7 @@ test("scan tolerates corrupt lines and unreadable inputs without losing valid to
   assert.deepEqual(JSON.parse(result.stdout), {
     summary: [
       {
-        skill: "kramme:pr:create",
+        skill: "trackbed:pr:create",
         total: 1,
         explicit: 1,
         tool: 0,
@@ -822,7 +822,7 @@ test("scan counts physical files once across aliases, cycles and overlapping roo
   const transcript = path.join(transcripts, "original.jsonl");
   const line = `${JSON.stringify({
     type: "user",
-    message: { content: "Use /kramme:qa" },
+    message: { content: "Use /trackbed:qa" },
     session_id: "session-1",
   })}\n`;
   await fs.writeFile(transcript, line.repeat(2));
@@ -845,7 +845,7 @@ test("scan counts physical files once across aliases, cycles and overlapping roo
   assert.equal(result.stderr, "");
   assert.deepEqual(JSON.parse(result.stdout), [
     {
-      skill: "kramme:qa",
+      skill: "trackbed:qa",
       total: 4,
       explicit: 4,
       tool: 0,
@@ -863,8 +863,8 @@ test("scan preserves pruning, traversal order and since/limit with aliases", asy
   const transcript = path.join(transcripts, "events.jsonl");
   const entries = [
     ["kramme:old", "2026-06-01T00:00:00.000Z"],
-    ["kramme:qa", "2026-07-01T00:00:00.000Z"],
-    ["kramme:qa", "2026-07-02T00:00:00.000Z"],
+    ["trackbed:qa", "2026-07-01T00:00:00.000Z"],
+    ["trackbed:qa", "2026-07-02T00:00:00.000Z"],
     ["kramme:other", "2026-07-03T00:00:00.000Z"],
   ].map(([skill, timestamp]) =>
     JSON.stringify({
@@ -898,7 +898,7 @@ test("scan preserves pruning, traversal order and since/limit with aliases", asy
   assert.deepEqual(JSON.parse(result.stdout), {
     summary: [
       {
-        skill: "kramme:qa",
+        skill: "trackbed:qa",
         total: 2,
         explicit: 2,
         tool: 0,
@@ -918,7 +918,7 @@ test("scan preserves pruning, traversal order and since/limit with aliases", asy
 test("scan recreates visited identities for each invocation in one process", async (t) => {
   const root = await tempDir(t);
   const transcript = path.join(root, "events.jsonl");
-  const line = `${JSON.stringify({ type: "user", message: { content: "Use /kramme:qa" } })}\n`;
+  const line = `${JSON.stringify({ type: "user", message: { content: "Use /trackbed:qa" } })}\n`;
   await fs.writeFile(transcript, line);
   const wrapper = [
     `const { runCli } = require(${JSON.stringify(SCRIPT)});`,
@@ -948,7 +948,7 @@ test("scan retains one strict read failure for an unreadable file with aliases",
   const root = await tempDir(t);
   const transcript = path.join(root, "unreadable.jsonl");
   const alias = path.join(root, "alias.jsonl");
-  await fs.writeFile(transcript, "Use /kramme:qa\n");
+  await fs.writeFile(transcript, "Use /trackbed:qa\n");
   await fs.link(transcript, alias);
   await fs.chmod(transcript, 0o000);
   let result;
@@ -976,13 +976,13 @@ test("scan retains one strict read failure for an unreadable file with aliases",
 test("scan keeps the bounded non-JSONL compatibility fallback", async (t) => {
   const root = await tempDir(t);
   const notes = path.join(root, "notes.txt");
-  await fs.writeFile(notes, "Please run /kramme:qa before wrapping up.\n");
+  await fs.writeFile(notes, "Please run /trackbed:qa before wrapping up.\n");
 
   const result = runUsage(["scan", notes, "--json"]);
 
   assert.equal(result.status, 0);
   assert.equal(result.stderr, "");
-  assert.equal(JSON.parse(result.stdout)[0].skill, "kramme:qa");
+  assert.equal(JSON.parse(result.stdout)[0].skill, "trackbed:qa");
 });
 
 test("scan reads a complete JSON document before classifying JSONL", async (t) => {
@@ -1123,7 +1123,7 @@ test("scan rejects an oversized multiline top-level JSON array", async (t) => {
 test("scan accepts non-JSONL input exactly at the compatibility limit", async (t) => {
   const root = await tempDir(t);
   const notes = path.join(root, "exact-notes.txt");
-  const prefix = "Please run /kramme:qa before wrapping up. ";
+  const prefix = "Please run /trackbed:qa before wrapping up. ";
   await fs.writeFile(notes, prefix + "x".repeat(MIB - prefix.length));
 
   const result = runUsage(["scan", notes, "--json", "--strict"]);
@@ -1131,13 +1131,13 @@ test("scan accepts non-JSONL input exactly at the compatibility limit", async (t
   assert.equal((await fs.stat(notes)).size, MIB);
   assert.equal(result.status, 0);
   assert.equal(result.stderr, "");
-  assert.equal(JSON.parse(result.stdout)[0].skill, "kramme:qa");
+  assert.equal(JSON.parse(result.stdout)[0].skill, "trackbed:qa");
 });
 
 test("scan measures CRLF compatibility input by actual file size", async (t) => {
   const root = await tempDir(t);
   const notes = path.join(root, "large-crlf-notes.txt");
-  const prefix = "Please run /kramme:qa ";
+  const prefix = "Please run /trackbed:qa ";
   const lineLength = 510;
   const firstLine = prefix + "x".repeat(lineLength - prefix.length);
   const otherLine = "x".repeat(lineLength);
@@ -1166,7 +1166,7 @@ test("scan diagnoses non-JSONL input beyond the compatibility limit", async (t) 
   const notes = path.join(root, "large-notes.txt");
   await fs.writeFile(
     notes,
-    `Please run /kramme:qa before wrapping up. ${"x".repeat(MIB)}\n`,
+    `Please run /trackbed:qa before wrapping up. ${"x".repeat(MIB)}\n`,
   );
 
   const tolerant = runUsage(["scan", notes, "--json"]);
@@ -1220,7 +1220,7 @@ test(
     const transcript = path.join(root, "large.jsonl");
     const line = `${JSON.stringify({
       type: "user",
-      message: { content: "Use /kramme:qa" },
+      message: { content: "Use /trackbed:qa" },
       session_id: "shared-session",
     })}\n`;
     await writeRepeatedFile(transcript, line, 48 * MIB);
@@ -1238,7 +1238,7 @@ test(
     const line = `${JSON.stringify({
       recordedAt: "2026-07-01T10:00:00.000Z",
       sessionId: "shared-session",
-      skill: "kramme:qa",
+      skill: "trackbed:qa",
       kind: "explicit",
     })}\n`;
     await writeRepeatedFile(usageFile, line, 48 * MIB);

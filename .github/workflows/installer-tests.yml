@@ -72,7 +72,7 @@ jobs:
           VERSION=$(node -e "console.log(require('./kramme-cc-workflow/.claude-plugin/plugin.json').version)")
           CACHE_ROOT="$CODEX_HOME/plugins/cache/$plugin/$plugin/$VERSION"
           test -f "$CACHE_ROOT/.codex-plugin/plugin.json"
-          test -f "$CACHE_ROOT/skills/kramme:pr:create/SKILL.md"
+          test -f "$CACHE_ROOT/skills/pr:create/SKILL.md"
           test -f "$CACHE_ROOT/hooks/hooks.json"
           test ! -e "$CODEX_HOME/skills"
           test ! -e "$CODEX_HOME/AGENTS.md"

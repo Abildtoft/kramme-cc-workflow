@@ -29,21 +29,21 @@ SIW does:
 
 SIW does not implement issues, prepare Pull Requests, maintain a long-running local backlog, or audit completed implementations. Use the Linear workflows after transfer.
 
-For an initiative too foggy to fit in one planning session, start with `/kramme:discovery:wayfinder`. Wayfinder stores a temporary decision map under `.context/` and hands a planning-ready result into SIW or another workflow.
+For an initiative too foggy to fit in one planning session, start with `/trackbed:discovery:wayfinder`. Wayfinder stores a temporary decision map under `.context/` and hands a planning-ready result into SIW or another workflow.
 
 ## Quick Start
 
 ```bash
-/kramme:discovery:interview --siw "build a notification system" # optional deep discovery
-/kramme:siw:init siw/DISCOVERY_BRIEF.md                         # create the SIW container and spec
-/kramme:siw:spec-audit --apply                                  # validate and safely fix the spec; add --product to pressure-test product quality
-/kramme:siw:generate-phases                                     # create the initial issue set
-/kramme:siw:transfer-to-linear --dry-run                        # review the migration plan
-/kramme:siw:transfer-to-linear                                  # make Linear the source of truth
-/kramme:workflow:cleanup-artifacts --siw                        # retire local files after verification
+/trackbed:discovery:interview --siw "build a notification system" # optional deep discovery
+/trackbed:siw:init siw/DISCOVERY_BRIEF.md                         # create the SIW container and spec
+/trackbed:siw:spec-audit --apply                                  # validate and safely fix the spec; add --product to pressure-test product quality
+/trackbed:siw:generate-phases                                     # create the initial issue set
+/trackbed:siw:transfer-to-linear --dry-run                        # review the migration plan
+/trackbed:siw:transfer-to-linear                                  # make Linear the source of truth
+/trackbed:workflow:cleanup-artifacts --siw                        # retire local files after verification
 ```
 
-`generate-phases` plans a single issue when the spec describes one coherent change that fits a single XS–L task. Larger changes receive a phased breakdown. To add work before transfer, update the spec and rerun it with **Append**; after transfer, use `/kramme:linear:issue-define`. Use `/kramme:siw:resolve-audit` when audit findings require decisions rather than mechanical edits.
+`generate-phases` plans a single issue when the spec describes one coherent change that fits a single XS–L task. Larger changes receive a phased breakdown. To add work before transfer, update the spec and rerun it with **Append**; after transfer, use `/trackbed:linear:issue-define`. Use `/trackbed:siw:resolve-audit` when audit findings require decisions rather than mechanical edits.
 
 ## Files and Lifecycle
 
@@ -90,7 +90,7 @@ Discovery and audits move specifications toward `planning-ready`. `generate-phas
 
 ### Discovery
 
-`/kramme:discovery:interview --siw` runs the discovery interview in SIW mode, before or after a specification exists:
+`/trackbed:discovery:interview --siw` runs the discovery interview in SIW mode, before or after a specification exists:
 
 - Greenfield mode writes `siw/DISCOVERY_BRIEF.md`.
 - Refinement mode writes `siw/SPEC_STRENGTHENING_PLAN.md` and can apply approved changes with `--apply` after an in-session confirmation; only a direct user request enables `--apply`.
@@ -98,7 +98,7 @@ Discovery and audits move specifications toward `planning-ready`. `generate-phas
 
 ### Specification audit
 
-`/kramme:siw:spec-audit` reviews coherence, completeness, clarity, implementation-scope consistency, actionability, testability, rationale documentation, and technical design. Use it when the question is whether implementation can proceed correctly without guessing. Its Rationale Documentation dimension checks that product rationale is explicit and internally consistent without judging whether it is right.
+`/trackbed:siw:spec-audit` reviews coherence, completeness, clarity, implementation-scope consistency, actionability, testability, rationale documentation, and technical design. Use it when the question is whether implementation can proceed correctly without guessing. Its Rationale Documentation dimension checks that product rationale is explicit and internally consistent without judging whether it is right.
 
 Two passes go beyond reading the spec against those dimensions:
 
@@ -107,21 +107,21 @@ Two passes go beyond reading the spec against those dimensions:
 
 These flags change what runs:
 
-- `--product` adds the Product dimension: target users, problem/solution fit, user states, critical moments, product scope, success criteria, prioritization, and strategy alignment. Use it when the question is also whether the specification proposes the right product for the right users. Product findings (`PROD-NNN`) share the report but are never auto-fixed; resolve them with `/kramme:siw:resolve-audit`.
+- `--product` adds the Product dimension: target users, problem/solution fit, user states, critical moments, product scope, success criteria, prioritization, and strategy alignment. Use it when the question is also whether the specification proposes the right product for the right users. Product findings (`PROD-NNN`) share the report but are never auto-fixed; resolve them with `/trackbed:siw:resolve-audit`.
 - `--inline` returns a read-only report.
 - `--apply` auto-fixes mechanical findings after the audit; `--apply <report>` fixes an existing report without re-auditing. `--threshold 60-100` and `--allow-dirty` modify either form. `--dry-run` requires `--apply <report>` and previews fixes without changing files; audit-first dry runs are rejected before auditing. Use `--inline` without `--apply` for a read-only audit.
 - `--team` performs cross-validated multi-agent analysis when the runtime supports it.
 - `--auto` selects the documented non-interactive behavior but does not bypass safety gates.
 
-Use `/kramme:siw:spec-audit --apply <report>` for deterministic report findings such as broken cross-references, terminology inconsistencies, numbering mistakes, formatting problems, and wording whose specific replacement already exists in the spec.
+Use `/trackbed:siw:spec-audit --apply <report>` for deterministic report findings such as broken cross-references, terminology inconsistencies, numbering mistakes, formatting problems, and wording whose specific replacement already exists in the spec.
 
-Use `/kramme:siw:resolve-audit` for findings requiring a choice. It checks each finding first. A finding it can disprove with evidence the auditor could have read is marked `[Contested]` and gets no issue once you agree, or straight away with `--auto`; name its ID on a later run to reopen it. A finding that looks wrong only because of something no file records always waits for you, and so does a Critical finding under `--auto`, including one capped from Critical. For the rest, it presents an executive summary, alternatives, and a recommendation before creating the selected local SIW issue. Explicitly supplied legacy implementation-audit reports remain readable for migration recovery, but SIW no longer produces new implementation-audit reports.
+Use `/trackbed:siw:resolve-audit` for findings requiring a choice. It checks each finding first. A finding it can disprove with evidence the auditor could have read is marked `[Contested]` and gets no issue once you agree, or straight away with `--auto`; name its ID on a later run to reopen it. A finding that looks wrong only because of something no file records always waits for you, and so does a Critical finding under `--auto`, including one capped from Critical. For the rest, it presents an executive summary, alternatives, and a recommendation before creating the selected local SIW issue. Explicitly supplied legacy implementation-audit reports remain readable for migration recovery, but SIW no longer produces new implementation-audit reports.
 
 ## Initial Issue Definition
 
 ### Issue set
 
-`/kramme:siw:generate-phases` decomposes a planning-ready specification into atomic XS/S/M/L issues with acceptance criteria, verification, dependencies, parallelization guidance, and `AUTO` or justified `HITL` mode.
+`/trackbed:siw:generate-phases` decomposes a planning-ready specification into atomic XS/S/M/L issues with acceptance criteria, verification, dependencies, parallelization guidance, and `AUTO` or justified `HITL` mode.
 
 When the specification describes one coherent change that fits a single XS–L task, `generate-phases` plans exactly one General issue (`G-NNN`) and no phases. Larger coherent changes still use the normal phase decomposition. To add work to an existing issue set before transfer, record it in the specification and rerun `generate-phases` with **Append**, which drafts issues only for work no existing issue covers. The single-issue SIW definition command was removed on 2026-10-21; refine an existing local issue by editing its file directly and keep its `siw/OPEN_ISSUES_OVERVIEW.md` row and `siw/LOG.md` entry in sync.
 
@@ -131,7 +131,7 @@ The new workflow normally transfers issues while they are `READY`. Legacy `IN PR
 
 ## Transfer to Linear
 
-`/kramme:siw:transfer-to-linear` is a one-way migration, not synchronization.
+`/trackbed:siw:transfer-to-linear` is a one-way migration, not synchronization.
 
 It can:
 
@@ -152,14 +152,14 @@ Always review the generated migration plan. Use `--dry-run` for a no-write previ
 After a clean transfer:
 
 ```bash
-/kramme:linear:issue-implement TEAM-123
+/trackbed:linear:issue-implement TEAM-123
 # or
-/kramme:linear:issue-to-pr TEAM-123 --ship
+/trackbed:linear:issue-to-pr TEAM-123 --ship
 ```
 
 ## Cleanup
 
-`/kramme:workflow:cleanup-artifacts --siw` is deliberately separate from transfer because deletion has a different permission boundary. It is a direct-user-only mode: it never runs with `--auto`, and model-invoked cleanup never selects it. It scopes cleanup to `siw/`, including `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md`, which plain cleanup leaves alone. It uses recoverable deletion when available, inventories the exact target set, and requires confirmation for permanent specification files.
+`/trackbed:workflow:cleanup-artifacts --siw` is deliberately separate from transfer because deletion has a different permission boundary. It is a direct-user-only mode: it never runs with `--auto`, and model-invoked cleanup never selects it. It scopes cleanup to `siw/`, including `siw/DISCOVERY_BRIEF.md` and `siw/SPEC_STRENGTHENING_PLAN.md`, which plain cleanup leaves alone. It uses recoverable deletion when available, inventories the exact target set, and requires confirmation for permanent specification files.
 
 When retiring a successfully transferred run, use it only after:
 
@@ -169,19 +169,19 @@ When retiring a successfully transferred run, use it only after:
 - non-Markdown artifacts were relocated or uploaded;
 - every created Linear issue has a retry marker in its source SIW issue file.
 
-An explicitly abandoned preparation run may skip transfer and use `/kramme:workflow:cleanup-artifacts --siw` directly under the same inventory, recoverable-deletion, and confirmation safeguards.
+An explicitly abandoned preparation run may skip transfer and use `/trackbed:workflow:cleanup-artifacts --siw` directly under the same inventory, recoverable-deletion, and confirmation safeguards.
 
 ## Commands
 
 | Skill | Arguments | Purpose |
 | --- | --- | --- |
-| `/kramme:discovery:interview --siw` | `[topic \| spec paths \| siw] [--apply] [--decision-tree]` | Discover or strengthen requirements |
-| `/kramme:siw:init` | `[spec paths \| folder \| discover] [--auto]` | Create the local preparation container |
-| `/kramme:siw:spec-audit` | `[spec paths \| report \| siw] [--product] [--auto] [--apply [--dry-run] [--threshold 60-100] [--allow-dirty]] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality, plus product quality with `--product` |
-| `/kramme:siw:resolve-audit` | `[report] [finding IDs] [--auto]` | Resolve decision findings into local issues |
-| `/kramme:siw:generate-phases` | `[spec path] [--auto]` | Generate the initial issue set |
-| `/kramme:siw:transfer-to-linear` | `[siw-dir] [--project ...] [--team ...] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | Migrate planning artifacts into Linear |
-| `/kramme:workflow:cleanup-artifacts` | `--siw` | Retire local SIW files after transfer or abandonment |
+| `/trackbed:discovery:interview --siw` | `[topic \| spec paths \| siw] [--apply] [--decision-tree]` | Discover or strengthen requirements |
+| `/trackbed:siw:init` | `[spec paths \| folder \| discover] [--auto]` | Create the local preparation container |
+| `/trackbed:siw:spec-audit` | `[spec paths \| report \| siw] [--product] [--auto] [--apply [--dry-run] [--threshold 60-100] [--allow-dirty]] [--inline] [--team] [--model opus\|sonnet\|haiku]` | Audit specification quality, plus product quality with `--product` |
+| `/trackbed:siw:resolve-audit` | `[report] [finding IDs] [--auto]` | Resolve decision findings into local issues |
+| `/trackbed:siw:generate-phases` | `[spec path] [--auto]` | Generate the initial issue set |
+| `/trackbed:siw:transfer-to-linear` | `[siw-dir] [--project ...] [--team ...] [--dry-run] [--skip-done] [--skip-existing\|--retry]` | Migrate planning artifacts into Linear |
+| `/trackbed:workflow:cleanup-artifacts` | `--siw` | Retire local SIW files after transfer or abandonment |
 
 ## Migration from the Former Local Implementation Workflow
 
@@ -189,15 +189,15 @@ The local implementation lifecycle was removed on 2026-08-26. Update old command
 
 | Former command | Current route |
 | --- | --- |
-| `/kramme:siw:wayfinder` | `/kramme:discovery:wayfinder` |
+| `/kramme:siw:wayfinder` | `/trackbed:discovery:wayfinder` |
 | `/kramme:siw:continue` | Inspect `siw/LOG.md` and invoke the next retained preparation command directly |
-| `/kramme:siw:issue-implement` | Transfer, then `/kramme:linear:issue-implement` |
-| `/kramme:siw:issue-to-pr` | Transfer, then `/kramme:linear:issue-to-pr` |
-| `/kramme:siw:implementation-audit` | No direct whole-initiative equivalent; use `/kramme:linear:issue-to-pr` for per-issue review convergence and final verification, or `/kramme:linear:review-pr` to audit an existing Pull Request against its issue |
+| `/kramme:siw:issue-implement` | Transfer, then `/trackbed:linear:issue-implement` |
+| `/kramme:siw:issue-to-pr` | Transfer, then `/trackbed:linear:issue-to-pr` |
+| `/kramme:siw:implementation-audit` | No direct whole-initiative equivalent; use `/trackbed:linear:issue-to-pr` for per-issue review convergence and final verification, or `/trackbed:linear:review-pr` to audit an existing Pull Request against its issue |
 | `/kramme:siw:issue-reindex` | Preserve stable local IDs and manage issues in Linear after transfer |
 | `/kramme:siw:reset` | Start a separate SIW preparation run when a new initial issue set is required |
-| `/kramme:siw:close` | Transfer durable context, then `/kramme:workflow:cleanup-artifacts --siw` |
-| `/kramme:siw:breakdown-findings` | `/kramme:siw:resolve-audit` |
+| `/kramme:siw:close` | Transfer durable context, then `/trackbed:workflow:cleanup-artifacts --siw` |
+| `/kramme:siw:breakdown-findings` | `/trackbed:siw:resolve-audit` |
 
 See [the decision record](decisions/2026-08-26-siw-ends-at-linear-transfer.md) for the rationale and rejected alternatives.
 

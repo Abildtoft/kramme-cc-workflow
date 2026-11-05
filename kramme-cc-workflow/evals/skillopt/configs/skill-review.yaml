@@ -1,4 +1,4 @@
-# Conservative SkillOpt pilot template for kramme:skill:review.
+# Conservative SkillOpt pilot template for trackbed:skill:review.
 #
 # The runner overrides env.skill_init, env.split_dir, and env.out_root with
 # absolute local paths. Keep this file free of credentials and machine-specific
@@ -47,7 +47,7 @@ evaluation:
 
 env:
   name: kramme_skill_review
-  skill_init: skills/kramme:skill:review/SKILL.md
+  skill_init: skills/skill:review/SKILL.md
   split_mode: split_dir
   split_dir: evals/skill-review/items
   out_root: .context/skillopt-runs/skill-review

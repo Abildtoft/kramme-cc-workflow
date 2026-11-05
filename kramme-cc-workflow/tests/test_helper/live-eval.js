@@ -39,7 +39,7 @@ function sandbox(t, providerId = "anthropic") {
     KRAMME_LIVE_EVAL_STATE: path.join(root, "state"),
     KRAMME_LIVE_EVAL_RUN: "test-run",
   };
-  const reviewer = path.resolve(__dirname, "../../skills/kramme:skill:review");
+  const reviewer = path.resolve(__dirname, "../../skills/skill:review");
   const fixture = path.resolve(
     __dirname,
     "../../evals/skill-review/fixtures/good-skill",

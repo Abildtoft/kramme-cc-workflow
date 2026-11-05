@@ -27,7 +27,7 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const CAPTURE_BASELINE_WEEKS = 8;
 const CAPTURE_DROP_RATIO = 0.25;
 const CAPTURE_MIN_WEEKLY_MEDIAN = 20;
-// Claude Code names plugin skills `kramme-cc-workflow:kramme-pr-create` and
+// Claude Code names plugin skills `trackbed:pr-create` and
 // records typed slash commands inside `<command-name>` tags, so accept the
 // plugin prefix, hyphenated names, and a `>` before the slash, then map every
 // match back to the `kramme:` frontmatter name.

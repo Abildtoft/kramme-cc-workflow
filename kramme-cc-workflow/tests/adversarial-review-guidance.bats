@@ -2,9 +2,9 @@
 
 setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
-	SKILL="$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/SKILL.md"
-	CONVERGENCE="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/SKILL.md"
-	POLICY="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/references/review-convergence.md"
+	SKILL="$PLUGIN_ROOT/skills/pr:adversarial-review/SKILL.md"
+	CONVERGENCE="$PLUGIN_ROOT/skills/pr:review-convergence/SKILL.md"
+	POLICY="$PLUGIN_ROOT/skills/pr:review-convergence/references/review-convergence.md"
 }
 
 @test "adversarial review is explicit, different-provider, and fail-closed" {
@@ -33,7 +33,7 @@ PY
 }
 
 @test "adversarial review declares shell access and uses scanner-safe cleanup and modes" {
-	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/scripts/run-adversarial-review.sh" <<'PY'
+	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/pr:adversarial-review/scripts/run-adversarial-review.sh" <<'PY'
 import pathlib
 import sys
 
@@ -150,7 +150,7 @@ required_skill = [
 ]
 required_policy = [
     "Gate 5: Adversarial Model Review",
-    "kramme:pr:adversarial-review",
+    "trackbed:pr:adversarial-review",
     "different-provider review",
     "restart the next quality round at applicability evaluation followed by Gate 1",
     "final adversarial review matches the final verified tree",
@@ -170,27 +170,27 @@ PY
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    for caller in skills/kramme:code:plan-to-pr/SKILL.md skills/kramme:code:plan-to-pr/references/shipping-contract.md; do
+    for caller in skills/code:plan-to-pr/SKILL.md skills/code:plan-to-pr/references/shipping-contract.md; do
       if grep -qF -- "--adversarial-review" "$caller"; then echo "$caller forwards --adversarial-review"; exit 1; fi
     done
-    grep -qF -- "[--depth {depth}] [--adversarial-review] [--isolated] --requirements {issue-requirements}" skills/kramme:linear:issue-to-pr/SKILL.md
-    grep -qF "Append \`--adversarial-review\` only when \`ADVERSARIAL_REVIEW=true\`" skills/kramme:linear:issue-to-pr/SKILL.md
-    grep -qF "Nothing stored turns it on" skills/kramme:linear:issue-to-pr/references/cross-provider-review.md
-    grep -qF "Never add the flag on your own initiative" skills/kramme:linear:issue-to-pr/references/cross-provider-review.md
-    grep -qF "also require \`kramme:pr:adversarial-review\`" skills/kramme:linear:issue-to-pr/references/delegated-skills.md
+    grep -qF -- "[--depth {depth}] [--adversarial-review] [--isolated] --requirements {issue-requirements}" skills/linear:issue-to-pr/SKILL.md
+    grep -qF "Append \`--adversarial-review\` only when \`ADVERSARIAL_REVIEW=true\`" skills/linear:issue-to-pr/SKILL.md
+    grep -qF "Nothing stored turns it on" skills/linear:issue-to-pr/references/cross-provider-review.md
+    grep -qF "Never add the flag on your own initiative" skills/linear:issue-to-pr/references/cross-provider-review.md
+    grep -qF "also require \`trackbed:pr:adversarial-review\`" skills/linear:issue-to-pr/references/delegated-skills.md
     grep -qF "### Hand-off repair exceptions" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
-    grep -qF "is model-invocable only as Gate 5 of \`kramme:pr:review-convergence\`" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
-    grep -qF "\`kramme:code:plan-to-pr\` never forwards the flag" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
+    grep -qF "is model-invocable only as Gate 5 of \`trackbed:pr:review-convergence\`" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
+    grep -qF "\`trackbed:code:plan-to-pr\` never forwards the flag" docs/decisions/2026-08-29-model-invocable-orchestration-children.md
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
 @test "adversarial review source provenance is declared" {
-	grep -qF 'conductor-parallel-agents' "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/references/sources.yaml"
-	grep -qF 'conductor-api' "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/references/sources.yaml"
-	grep -qF 'compound-cross-model-adversarial-review' "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/references/sources.yaml"
-	grep -qF 'openclaw-autoreview-script' "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/references/sources.yaml"
+	grep -qF 'conductor-parallel-agents' "$PLUGIN_ROOT/skills/pr:adversarial-review/references/sources.yaml"
+	grep -qF 'conductor-api' "$PLUGIN_ROOT/skills/pr:adversarial-review/references/sources.yaml"
+	grep -qF 'compound-cross-model-adversarial-review' "$PLUGIN_ROOT/skills/pr:adversarial-review/references/sources.yaml"
+	grep -qF 'openclaw-autoreview-script' "$PLUGIN_ROOT/skills/pr:adversarial-review/references/sources.yaml"
 }
 
 @test "forwarded disagreements retain original provider severity through child triage" {
@@ -198,8 +198,8 @@ PY
 import pathlib
 import sys
 root = pathlib.Path(sys.argv[1])
-child = (root / "skills/kramme:pr:adversarial-review/SKILL.md").read_text()
-policy = (root / "skills/kramme:pr:review-convergence/references/review-convergence.md").read_text()
+child = (root / "skills/pr:adversarial-review/SKILL.md").read_text()
+policy = (root / "skills/pr:review-convergence/references/review-convergence.md").read_text()
 assert "Preserve the provider's original claim and severity as `reported_severity` before host triage" in child
 assert "Return every provider finding, including rejected and demoted ones" in child
 for field in ("reported_severity", "validated_severity", "disposition", "rationale"):

@@ -7,7 +7,7 @@
 
 ## Context
 
-`kramme:linear:issue-to-pr` and `kramme:code:plan-to-pr` delegate review to `kramme:pr:review-convergence`, which ran the same gates at the same depth on every branch. On 2026-10-20 the maintainer asked how simple Pull Requests could get through review faster and with fewer tokens. A measurement of the 38 Claude Code runs of those two workflows recorded between 2026-10-06 and 2026-10-20 (17 `issue-to-pr`, 21 `plan-to-pr`) found:
+`trackbed:linear:issue-to-pr` and `trackbed:code:plan-to-pr` delegate review to `trackbed:pr:review-convergence`, which ran the same gates at the same depth on every branch. On 2026-10-20 the maintainer asked how simple Pull Requests could get through review faster and with fewer tokens. A measurement of the 38 Claude Code runs of those two workflows recorded between 2026-10-06 and 2026-10-20 (17 `issue-to-pr`, 21 `plan-to-pr`) found:
 
 - **Review dominated.** The review phase took a median 11.3M weighted tokens (input + 1.25 × cache write + 0.1 × cache read + 5 × output), 83% of each run's tokens and 77% of its active time, about 14 times the implementation phase.
 - **Small changes were not cheap.** Branches under 100 changed lines still took a median 7.1M weighted tokens, 37 active minutes, and 24 agents, about a third of a 300-line branch. Cost tracked remediation cycles, main-thread turns, and agent count (rank correlation about 0.8), not diff size (0.39).
@@ -28,11 +28,11 @@ Review convergence chooses a **review profile** from evidence the branch cannot 
 - **Gate sets.** `light` runs Gate 0, Gate 1 without the advisory cleanup dimensions, Gate 2 only on an explicit convention trigger, and Gate 3, and never runs the advisory refactor scan. `balanced` runs every gate by applicability except that Gate 2 needs a convention trigger. `full` keeps the previous applicability rules.
 - **Loop shape.** `full` keeps the delta round and the full confirmation pass. `light` and `balanced` follow each fix batch with one full-scope closing pass that runs Gate 1 without cleanup dimensions plus only the gates the batch made relevant, and the loop closes on a pass that changes nothing.
 - **Only required findings open a batch** in standard mode: an accepted Critical or Important finding, an accepted `OVERDONE` finding, or a verification failure. Advisory items may ride along in an open batch; otherwise they are deferred and reported.
-- **Callers.** `kramme:code:plan-to-pr` forwards a two-cycle budget, matching `kramme:linear:issue-to-pr`, and gains `--cycles`; both callers accept `--depth` and forward the earlier profile to their post-CI validation-only pass so it never reviews more lightly. On hosts where a delegated agent may invoke skills and launch agents, both callers run convergence inside one delegated agent and pass `--isolated`, and convergence then runs its gates directly instead of wrapping each in its own agent.
+- **Callers.** `trackbed:code:plan-to-pr` forwards a two-cycle budget, matching `trackbed:linear:issue-to-pr`, and gains `--cycles`; both callers accept `--depth` and forward the earlier profile to their post-CI validation-only pass so it never reviews more lightly. On hosts where a delegated agent may invoke skills and launch agents, both callers run convergence inside one delegated agent and pass `--isolated`, and convergence then runs its gates directly instead of wrapping each in its own agent.
 - **Code-review bookkeeping.** The relevance and slop meta-review stages may be recorded as `skipped` when no finding reaches them, with `Skipped:` evidence and a matching report line the seal requires. `review-execution.js record --manifest` records a batch of jobs in one call. This amends the [review execution evidence record](2026-09-08-review-execution-evidence.md): every applicable reviewer still runs, and a skip launches no agent and needs evidence.
 - **Cleanup.** Review instructions stop telling the model or its reviewers to delete scratch directories with `rm -rf`.
 
-Direct invocations of `kramme:pr:review-convergence` keep their five-cycle default and per-gate wrappers on hosts that nest agents.
+Direct invocations of `trackbed:pr:review-convergence` keep their five-cycle default and per-gate wrappers on hosts that nest agents.
 
 ## Consequences
 

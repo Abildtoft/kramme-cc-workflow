@@ -4,17 +4,17 @@ load 'test_helper/common'
 
 setup() {
   REPO_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-  RUN_SKILL="$REPO_DIR/skills/kramme:verify:run/SKILL.md"
-  CACHE_REF="$REPO_DIR/skills/kramme:verify:run/references/discovery-cache.md"
-  RESOLVE_SKILL="$REPO_DIR/skills/kramme:pr:resolve-review/SKILL.md"
-  RESOLVE_TEAM="$REPO_DIR/skills/kramme:pr:resolve-review/references/team-mode.md"
-  CLAIMS_REF="$REPO_DIR/skills/kramme:verify:run/references/completion-claims.md"
-  CONVERGENCE_SKILL="$REPO_DIR/skills/kramme:pr:review-convergence/SKILL.md"
-  IMPLEMENT_SKILL="$REPO_DIR/skills/kramme:linear:issue-implement/SKILL.md"
-  IMPLEMENT_WORKFLOWS="$REPO_DIR/skills/kramme:linear:issue-implement/references/implementation-workflows.md"
+  RUN_SKILL="$REPO_DIR/skills/verify:run/SKILL.md"
+  CACHE_REF="$REPO_DIR/skills/verify:run/references/discovery-cache.md"
+  RESOLVE_SKILL="$REPO_DIR/skills/pr:resolve-review/SKILL.md"
+  RESOLVE_TEAM="$REPO_DIR/skills/pr:resolve-review/references/team-mode.md"
+  CLAIMS_REF="$REPO_DIR/skills/verify:run/references/completion-claims.md"
+  CONVERGENCE_SKILL="$REPO_DIR/skills/pr:review-convergence/SKILL.md"
+  IMPLEMENT_SKILL="$REPO_DIR/skills/linear:issue-implement/SKILL.md"
+  IMPLEMENT_WORKFLOWS="$REPO_DIR/skills/linear:issue-implement/references/implementation-workflows.md"
   SHARED_SHIPPING="$REPO_DIR/shared/implementation/references/pr-shipping-contract.md"
-  PLAN_WORK_SKILL="$REPO_DIR/skills/kramme:code:work-from-plan/SKILL.md"
-  PLAN_WORK_DIRECT="$REPO_DIR/skills/kramme:code:work-from-plan/references/direct-execution.md"
+  PLAN_WORK_SKILL="$REPO_DIR/skills/code:work-from-plan/SKILL.md"
+  PLAN_WORK_DIRECT="$REPO_DIR/skills/code:work-from-plan/references/direct-execution.md"
 }
 
 @test "verify run selects a tier and reports the verified tree" {
@@ -36,7 +36,7 @@ setup() {
 
 @test "verify run caches discovery and accepts a pinned base" {
   grep -qFx '## Discovery Cache' "$RUN_SKILL"
-  grep -qF '"${CLAUDE_PLUGIN_ROOT}/skills/kramme:verify:run/scripts/discovery-cache.sh" key' "$RUN_SKILL"
+  grep -qF '"${CLAUDE_PLUGIN_ROOT}/skills/verify:run/scripts/discovery-cache.sh" key' "$RUN_SKILL"
   grep -qF 'Unless `--force` is present and while `enabled` is true, run its `read <key>`' "$RUN_SKILL"
   grep -qF '`--force` also discovers fresh and saves.' "$RUN_SKILL"
   grep -qF 'Still read nested instruction files for the affected paths' "$RUN_SKILL"
@@ -49,10 +49,10 @@ setup() {
 }
 
 @test "resolve review validates with the fast tier" {
-  grep -qF 'Run `kramme:verify:run --fast` and fix any new lint/format/test issues' "$RESOLVE_SKILL"
+  grep -qF 'Run `trackbed:verify:run --fast` and fix any new lint/format/test issues' "$RESOLVE_SKILL"
   grep -qF 'the full sweep runs once before the first push or Pull Request, or CI supplies it after the push' "$RESOLVE_SKILL"
-  grep -qF 'Run `kramme:verify:run --fast` to check for integration issues' "$RESOLVE_TEAM"
-  run grep -nE 'kramme:verify:run`' "$RESOLVE_SKILL" "$RESOLVE_TEAM"
+  grep -qF 'Run `trackbed:verify:run --fast` to check for integration issues' "$RESOLVE_TEAM"
+  run grep -nE 'trackbed:verify:run`' "$RESOLVE_SKILL" "$RESOLVE_TEAM"
   [ "$status" -eq 1 ]
 }
 
@@ -134,22 +134,22 @@ TEST
 }
 
 @test "review convergence skips its final sweep on an already verified tree" {
-  grep -qF 'Invoke `kramme:verify:run --full`.' "$CONVERGENCE_SKILL"
+  grep -qF 'Invoke `trackbed:verify:run --full`.' "$CONVERGENCE_SKILL"
   grep -qF 'same resolved `BASE_REF` commit OID and `MERGE_BASE`' "$CONVERGENCE_SKILL"
   grep -qF 'Narrowed Retry by the Caller procedure' "$CONVERGENCE_SKILL"
 }
 
 @test "issue implement uses the fast tier and leaves the full sweep to publication" {
-  grep -qF 'Use `kramme:verify:run --fast`' "$IMPLEMENT_SKILL"
+  grep -qF 'Use `trackbed:verify:run --fast`' "$IMPLEMENT_SKILL"
   grep -qF 'Do not run the full pre-push or pre-PR sweep here.' "$IMPLEMENT_SKILL"
-  grep -qF 'Invoke `kramme:verify:run --fast`' "$IMPLEMENT_WORKFLOWS"
+  grep -qF 'Invoke `trackbed:verify:run --fast`' "$IMPLEMENT_WORKFLOWS"
   run grep -qF 'for full verification' "$IMPLEMENT_WORKFLOWS"
   [ "$status" -eq 1 ]
 }
 
 @test "work-from-plan uses the fast tier and leaves the full sweep to publication" {
   for work in "$PLAN_WORK_SKILL" "$PLAN_WORK_DIRECT"; do
-    grep -qF 'kramme:verify:run --fast' "$work"
+    grep -qF 'trackbed:verify:run --fast' "$work"
     grep -qF 'Do not run the full pre-push or pre-PR sweep here.' "$work"
     run grep -qF 'for final verification when available' "$work"
     [ "$status" -eq 1 ]
@@ -159,5 +159,5 @@ TEST
 @test "shared shipping contract reuses green CI instead of a local final-tree sweep" {
   grep -qF 'Passing check buckets alone do not prove full verification coverage.' "$SHARED_SHIPPING"
   grep -qF 'Map every applicable check from the project'"'"'s full verification tier' "$SHARED_SHIPPING"
-  grep -qF 'invoke `kramme:verify:run` with `--full` on the final tree' "$SHARED_SHIPPING"
+  grep -qF 'invoke `trackbed:verify:run` with `--full` on the final tree' "$SHARED_SHIPPING"
 }

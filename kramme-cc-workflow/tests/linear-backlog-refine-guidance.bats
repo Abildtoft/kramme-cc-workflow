@@ -4,12 +4,12 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:backlog-refine/SKILL.md"
-    rubric="skills/kramme:linear:backlog-refine/references/refinement-rubric.md"
+    skill="skills/linear:backlog-refine/SKILL.md"
+    rubric="skills/linear:backlog-refine/references/refinement-rubric.md"
 
     test -f "$skill"
     test -f "$rubric"
-    grep -qF "name: kramme:linear:backlog-refine" "$skill"
+    grep -qF "name: linear:backlog-refine" "$skill"
     grep -qF "disable-model-invocation: true" "$skill"
     grep -qF "user-invocable: true" "$skill"
     grep -qF "MISSING REQUIREMENT: Linear MCP is required to refine the backlog" "$skill"
@@ -19,8 +19,8 @@
     grep -qF "The workflow does not perform a Linear archive operation." "$skill"
     grep -qF "Do not refine issues someone is already working on." "$skill"
     grep -qF "references/refinement-rubric.md" "$skill"
-    grep -qF "kramme:linear:issue-define" "$skill"
-    grep -qF "kramme:linear:next" "$skill"
+    grep -qF "trackbed:linear:issue-define" "$skill"
+    grep -qF "trackbed:linear:next" "$skill"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -30,8 +30,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:backlog-refine/SKILL.md"
-    rubric="skills/kramme:linear:backlog-refine/references/refinement-rubric.md"
+    skill="skills/linear:backlog-refine/SKILL.md"
+    rubric="skills/linear:backlog-refine/references/refinement-rubric.md"
 
     grep -qF "Proposing \`cancel\` just because an issue is old while it carries priority, a customer need, or blocks other work." "$skill"
     grep -qF "Do not guess; the action is \`rewrite\` or \`ask\`, never \`split\`." "$rubric"
@@ -48,8 +48,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:backlog-refine/SKILL.md"
-    rubric="skills/kramme:linear:backlog-refine/references/refinement-rubric.md"
+    skill="skills/linear:backlog-refine/SKILL.md"
+    rubric="skills/linear:backlog-refine/references/refinement-rubric.md"
 
     grep -qF "\`resolution-evidence\`: \`delivered\`" "$skill"
     grep -qF "Apply those rules in the listed first-match order: delivered work is \`complete\`, cancellation-supported work is \`cancel\`, then duplicates are \`merge\`" "$skill"
@@ -77,10 +77,10 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:backlog-refine/SKILL.md"
-    rubric="skills/kramme:linear:backlog-refine/references/refinement-rubric.md"
+    skill="skills/linear:backlog-refine/SKILL.md"
+    rubric="skills/linear:backlog-refine/references/refinement-rubric.md"
 
-    grep -qF "an autonomous agent (for example \`kramme:linear:issue-to-pr\`) can pick them up and deliver quality work" "$skill"
+    grep -qF "an autonomous agent (for example \`trackbed:linear:issue-to-pr\`) can pick them up and deliver quality work" "$skill"
     grep -qF "\`agent-readiness\`: \`agent-ready\`, \`needs-refinement\`, or \`human-only\`" "$skill"
     grep -qF "Agent-ready now (verified specifications): {a} | projected after applying validated drafts: {b} | human-only: {c}" "$skill"
     grep -qF "missing decisions are an \`ask\`, not a guess" "$skill"
@@ -102,7 +102,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:backlog-refine/SKILL.md"
+    skill="skills/linear:backlog-refine/SKILL.md"
 
     grep -qF "**Search for conflicts.** Explicitly search the graded set for issues that contradict each other or pull in different directions, whether from a product or a technical perspective" "$skill"
     grep -qF "Start from the clusters, but compare across them too" "$skill"
@@ -131,7 +131,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    rubric="skills/kramme:linear:backlog-refine/references/refinement-rubric.md"
+    rubric="skills/linear:backlog-refine/references/refinement-rubric.md"
 
     grep -qF "## Conflicts" "$rubric"
     grep -qF "| \`contradiction\` | The issues cannot all be delivered as written" "$rubric"

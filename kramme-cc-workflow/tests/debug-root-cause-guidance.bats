@@ -3,8 +3,8 @@
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
   PROCEDURE="shared/debug/references/root-cause-investigation.md"
-  TRIAGE="skills/kramme:debug:triage-to-issue/SKILL.md"
-  INVESTIGATE="skills/kramme:debug:investigate/SKILL.md"
+  TRIAGE="skills/debug:triage-to-issue/SKILL.md"
+  INVESTIGATE="skills/debug:investigate/SKILL.md"
 }
 
 @test "triage and investigate load one plugin-level root-cause procedure" {
@@ -15,7 +15,7 @@ setup() {
     done
   done
   for resource in references/bisect-guide.md references/investigation-patterns.md assets/investigation-log.md; do
-    test ! -e "skills/kramme:debug:investigate/$resource"
+    test ! -e "skills/debug:investigate/$resource"
   done
 }
 
@@ -33,7 +33,7 @@ setup() {
   if grep -qF 'installed skills directory' "$TRIAGE"; then false; fi
   grep -qF 'do not invoke that skill or read its files' "$TRIAGE"
   grep -qF 'Triage never proposes, applies, or verifies a fix' "$TRIAGE"
-  grep -qF 'id: addy-debugging-and-error-recovery' skills/kramme:debug:triage-to-issue/references/sources.yaml
+  grep -qF 'id: addy-debugging-and-error-recovery' skills/debug:triage-to-issue/references/sources.yaml
 }
 
 @test "triage resolves Linear issue inputs before investigation even in unattended mode" {

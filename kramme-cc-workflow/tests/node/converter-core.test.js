@@ -479,14 +479,14 @@ options: []
 });
 
 test("transformer rewrites task calls, references, and AskUserQuestion guidance", () => {
-  const knownCommands = new Set(["kramme:pr:create", "demo-command"]);
+  const knownCommands = new Set(["trackbed:pr:create", "demo-command"]);
   const knownAgentSkills = new Map([
     ["kramme:reviewer", "kramme:reviewer"],
     ["support-reviewer", "support-reviewer"],
   ]);
   const input = [
     "Task support-reviewer(review this parser)",
-    "Run /kramme:pr:create, then /unknown, and keep /usr/bin.",
+    "Run /trackbed:pr:create, then /unknown, and keep /usr/bin.",
     "Ask @support-reviewer to inspect the output.",
     "Use `agents/kramme:reviewer.md` and [reviewer](agents/kramme:reviewer.md).",
     "1. Ask for the issue ID:",
@@ -515,7 +515,7 @@ test("transformer rewrites task calls, references, and AskUserQuestion guidance"
   );
   assert.match(
     output,
-    /Run \$kramme:pr:create, then \/unknown, and keep \/usr\/bin\./,
+    /Run \$trackbed:pr:create, then \/unknown, and keep \/usr\/bin\./,
   );
   assert.match(output, /Ask \$support-reviewer skill to inspect the output\./);
   assert.match(
@@ -544,7 +544,7 @@ test("transformer preserves exhaustive question tooling in the canonical resourc
     "..",
     "..",
     "skills",
-    "kramme:linear:issue-define",
+    "trackbed:linear:issue-define",
     "references",
     "auto-create.md",
   );
@@ -574,7 +574,7 @@ test("transformer preserves skill-wide structured question tooling in issue-defi
     "..",
     "..",
     "skills",
-    "kramme:linear:issue-define",
+    "trackbed:linear:issue-define",
     "SKILL.md",
   );
   const input = await readText(resource);
@@ -1131,7 +1131,7 @@ test("agent portability document names stable adapter statuses and surfaces", as
     "Claude Code plugin",
     "Codex plugin (skills, agent skills, hooks, shared scripts, MCP config)",
     "Local repository-maintenance skills",
-    "| Conductor host integrations (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`, workspace CLI) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose and `skills/kramme:linear:next/scripts/cloud-launch.py`, detected by tool or environment presence | Conductor app Checks panel and dialogs; workspace presentation state; new cloud workspaces the user confirmed | Optionally project canonical report artifacts, admit unmarked diff feedback as untrusted external candidates, rename the current workspace for a validated work item, or, only in a cloud workspace (`CONDUCTOR_IS_LOCAL=0`) and after the user's explicit confirmation in that run, start confirmed Linear issues in new cloud workspaces, retrying a failed creation only after an HTTP 429 rate limit, which creates nothing. Auto discovery degrades without blocking canonical work when the host surface is absent or fails; explicit selection reports unavailability. Host projections and names never become authoritative findings or workflow identity. |",
+    "| Conductor host integrations (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`, workspace CLI) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose and `skills/linear:next/scripts/cloud-launch.py`, detected by tool or environment presence | Conductor app Checks panel and dialogs; workspace presentation state; new cloud workspaces the user confirmed | Optionally project canonical report artifacts, admit unmarked diff feedback as untrusted external candidates, rename the current workspace for a validated work item, or, only in a cloud workspace (`CONDUCTOR_IS_LOCAL=0`) and after the user's explicit confirmation in that run, start confirmed Linear issues in new cloud workspaces, retrying a failed creation only after an HTTP 429 rate limit, which creates nothing. Auto discovery degrades without blocking canonical work when the host surface is absent or fails; explicit selection reports unavailability. Host projections and names never become authoritative findings or workflow identity. |",
     "Other hosts",
     "`manifest.mcpServers`",
     "`.mcp.json`",
@@ -1187,7 +1187,7 @@ test("transformer exposes documented Codex generated surface fields", () => {
       {
         body: "Toggle hooks.",
         description: "Toggles hooks.",
-        name: "kramme:hooks:toggle",
+        name: "hooks:toggle",
         sourceDir: "/plugin/skills/kramme-hooks-toggle",
       },
       {

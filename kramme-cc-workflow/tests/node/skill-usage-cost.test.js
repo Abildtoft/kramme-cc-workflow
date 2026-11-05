@@ -128,28 +128,28 @@ async function writeFixture(root) {
   const projectB = path.join(projects, "-work-b");
 
   await writeJsonl(usageFile, [
-    usage("s-main", "kramme:verify:run", "2026-10-10T09:00:00.000Z", {
+    usage("s-main", "trackbed:verify:run", "2026-10-10T09:00:00.000Z", {
       kind: "tool",
       source: "tool_input",
     }),
-    usage("s-main", "kramme:pr:create", "2026-10-10T10:00:00.000Z"),
-    usage("s-main", "kramme:pr:rebase", "2026-10-10T11:00:00.000Z"),
-    usage("s-limit", "kramme:pr:create", "2026-10-11T10:00:00.000Z"),
-    usage("s-tool", "kramme:verify:run", "2026-10-12T10:00:00.000Z", {
+    usage("s-main", "trackbed:pr:create", "2026-10-10T10:00:00.000Z"),
+    usage("s-main", "trackbed:pr:rebase", "2026-10-10T11:00:00.000Z"),
+    usage("s-limit", "trackbed:pr:create", "2026-10-11T10:00:00.000Z"),
+    usage("s-tool", "trackbed:verify:run", "2026-10-12T10:00:00.000Z", {
       kind: "tool",
       source: "tool_input",
     }),
-    usage("s-codex", "kramme:pr:code-review", "2026-10-12T10:00:00.000Z", {
+    usage("s-codex", "trackbed:pr:code-review", "2026-10-12T10:00:00.000Z", {
       platform: "codex",
     }),
-    usage("s-old", "kramme:code:plan-to-pr", "2026-09-01T10:00:00.000Z"),
-    usage("s-missing", "kramme:qa", "2026-10-13T10:00:00.000Z"),
+    usage("s-old", "trackbed:code:plan-to-pr", "2026-09-01T10:00:00.000Z"),
+    usage("s-missing", "trackbed:qa", "2026-10-13T10:00:00.000Z"),
   ]);
 
   await writeJsonl(path.join(projectA, "s-main.jsonl"), [
     {
       type: "user",
-      message: { role: "user", content: `${PROMPT_MARKER} /kramme:pr:create` },
+      message: { role: "user", content: `${PROMPT_MARKER} /trackbed:pr:create` },
     },
     costState(1.5),
     assistant("m1", {
@@ -180,7 +180,7 @@ async function writeFixture(root) {
   ]);
   await writeJsonl(path.join(subagents, "agent-a1.meta.json"), [
     {
-      agentType: "kramme-cc-workflow:kramme:code-reviewer",
+      agentType: "trackbed:code-reviewer",
       description: DESCRIPTION_MARKER,
     },
   ]);
@@ -224,7 +224,7 @@ async function writeFixture(root) {
 }
 
 const EXPECTED_PR_CREATE = {
-  entrySkill: "kramme:pr:create",
+  entrySkill: "trackbed:pr:create",
   sessions: 2,
   sessionsWithTranscript: 2,
   sessionsWithCost: 2,
@@ -238,7 +238,7 @@ const EXPECTED_PR_CREATE = {
   subagentShare: 0.6522,
   agentTypes: [
     {
-      agentType: "kramme-cc-workflow:kramme:code-reviewer",
+      agentType: "trackbed:code-reviewer",
       launches: 1,
       modelOverrides: 0,
       weightedTokens: 500,
@@ -281,7 +281,7 @@ function plainRow(entrySkill, cost) {
 }
 
 const EXPECTED_MISSING = {
-  ...plainRow("kramme:qa", 0),
+  ...plainRow("trackbed:qa", 0),
   sessionsWithTranscript: 0,
   sessionsWithCost: 0,
   medianCostUSD: null,
@@ -317,14 +317,14 @@ test("session grouper prefers the earliest explicit record over tool records", (
     recordedAt,
     kind,
   });
-  grouper.add(record("a", "kramme:verify:run", "2026-10-01T00:00:00Z", "tool"));
-  grouper.add(record("a", "kramme:pr:create", "2026-10-02T00:00:00Z"));
-  grouper.add(record("a", "kramme:pr:rebase", "2026-10-03T00:00:00Z"));
-  grouper.add(record("b", "kramme:verify:run", "2026-10-05T00:00:00Z", "tool"));
-  grouper.add(record("", "kramme:qa", "2026-10-05T00:00:00Z"));
+  grouper.add(record("a", "trackbed:verify:run", "2026-10-01T00:00:00Z", "tool"));
+  grouper.add(record("a", "trackbed:pr:create", "2026-10-02T00:00:00Z"));
+  grouper.add(record("a", "trackbed:pr:rebase", "2026-10-03T00:00:00Z"));
+  grouper.add(record("b", "trackbed:verify:run", "2026-10-05T00:00:00Z", "tool"));
+  grouper.add(record("", "trackbed:qa", "2026-10-05T00:00:00Z"));
 
   assert.deepEqual(grouper.entries(null), [
-    { sessionId: "a", entrySkill: "kramme:pr:create" },
+    { sessionId: "a", entrySkill: "trackbed:pr:create" },
     { sessionId: "b", entrySkill: TOOL_ONLY_ROW },
   ]);
   assert.deepEqual(grouper.entries(new Date("2026-10-04T00:00:00Z")), [
@@ -353,7 +353,7 @@ test("summarizeSession keeps the last snapshot, dedupes messages, and counts onl
   assert.equal(main.weightedTokens, 400);
   assert.deepEqual(main.subagents, [
     {
-      agentType: "kramme-cc-workflow:kramme:code-reviewer",
+      agentType: "trackbed:code-reviewer",
       modelOverride: false,
       weightedTokens: 500,
     },
@@ -464,7 +464,7 @@ test("cost reports entry-skill rows with diagnostics and excludes Codex sessions
     strictResult.summary.map(
       (/** @type {{ entrySkill: string }} */ row) => row.entrySkill,
     ),
-    ["kramme:code:plan-to-pr", "kramme:pr:create"],
+    ["trackbed:code:plan-to-pr", "trackbed:pr:create"],
   );
 });
 
@@ -499,11 +499,11 @@ test("cost renders a labelled table and keeps private text off stdout", async (t
   );
   assert.match(
     result.stdout,
-    /kramme:pr:create\s+2\s+2\s+14\.25\s+7\.13\s+1\s+65\.2%\s+kramme:code-reviewer 43\.5%, general-purpose 17\.4%, \(unknown\) 4\.3%\n/,
+    /trackbed:pr:create\s+2\s+2\s+14\.25\s+7\.13\s+1\s+65\.2%\s+trackbed:code-reviewer 43\.5%, general-purpose 17\.4%, \(unknown\) 4\.3%\n/,
   );
   assert.match(
     result.stdout,
-    /kramme:qa\s+1\s+0\s+0\.00\s+-\s+0\s+0\.0%\s+-\n/,
+    /trackbed:qa\s+1\s+0\s+0\.00\s+-\s+0\s+0\.0%\s+-\n/,
   );
   assert.equal(
     lines.at(-2),
@@ -528,7 +528,7 @@ test("cost returns a plain array for healthy input and tolerates an empty projec
   const usageFile = path.join(root, "usage.jsonl");
   const projects = path.join(root, "projects");
   await writeJsonl(usageFile, [
-    usage("s1", "kramme:pr:create", "2026-10-10T10:00:00.000Z"),
+    usage("s1", "trackbed:pr:create", "2026-10-10T10:00:00.000Z"),
   ]);
   await writeJsonl(path.join(projects, "p", "s1.jsonl"), [costState(1.234)]);
 
@@ -543,14 +543,14 @@ test("cost returns a plain array for healthy input and tolerates an empty projec
   ]);
   assert.equal(healthy.status, 0, healthy.stderr);
   assert.deepEqual(JSON.parse(healthy.stdout), [
-    plainRow("kramme:pr:create", 1.23),
+    plainRow("trackbed:pr:create", 1.23),
   ]);
 
   const empty = path.join(root, "empty");
   await fs.mkdir(empty);
   const missing = runUsage(["cost", "--file", usageFile, "--projects", empty]);
   assert.equal(missing.status, 0, missing.stderr);
-  assert.match(missing.stdout, /kramme:pr:create\s+1\s+0\s+0\.00\s+-/);
+  assert.match(missing.stdout, /trackbed:pr:create\s+1\s+0\s+0\.00\s+-/);
 
   const noSessions = renderCost(
     [],
@@ -573,7 +573,7 @@ test("cost counts unreadable transcripts and missing projects as read failures",
   const usageFile = path.join(root, "usage.jsonl");
   const projects = path.join(root, "projects");
   await writeJsonl(usageFile, [
-    usage("s1", "kramme:pr:create", "2026-10-10T10:00:00.000Z"),
+    usage("s1", "trackbed:pr:create", "2026-10-10T10:00:00.000Z"),
   ]);
   const transcript = path.join(projects, "p", "s1.jsonl");
   await writeJsonl(transcript, [costState(1)]);

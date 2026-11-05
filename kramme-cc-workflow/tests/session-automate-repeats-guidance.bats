@@ -4,7 +4,7 @@ setup() {
   cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:session:automate-repeats/SKILL.md"
+SKILL="skills/session:automate-repeats/SKILL.md"
 
 @test "recurring friction signals are extracted alongside repeated workflows" {
   test -f "$SKILL"
@@ -77,7 +77,7 @@ SKILL="skills/kramme:session:automate-repeats/SKILL.md"
 }
 
 @test "run-evidence improvement framing is attributed" {
-  grep -qF "posthog-writing-agent-skills" "skills/kramme:session:automate-repeats/references/sources.yaml"
+  grep -qF "posthog-writing-agent-skills" "skills/session:automate-repeats/references/sources.yaml"
   grep -qF "the PostHog agent-skills post for the run-evidence improvement framing" "$SKILL"
 }
 
@@ -121,7 +121,7 @@ SKILL="skills/kramme:session:automate-repeats/SKILL.md"
 }
 
 @test "skill-doctor inspirations are attributed individually" {
-  SOURCES="skills/kramme:session:automate-repeats/references/sources.yaml"
+  SOURCES="skills/session:automate-repeats/references/sources.yaml"
   grep -qF "warp-skill-doctor-workflow" "$SOURCES"
   grep -qF "warp-skill-doctor-improvement-guidelines" "$SOURCES"
   grep -qF "warp-skill-doctor-efficiency-scorer" "$SOURCES"

@@ -396,7 +396,7 @@ def get_repo_url(repo_root: Path) -> str:
         text=True,
     )
     if result.returncode != 0:
-        return "https://github.com/Abildtoft/kramme-cc-workflow"
+        return "https://github.com/trackbed/skills"
 
     url = result.stdout.strip()
     # Convert SSH to HTTPS format

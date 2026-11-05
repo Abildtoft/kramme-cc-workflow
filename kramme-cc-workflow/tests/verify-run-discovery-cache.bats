@@ -6,7 +6,7 @@ setup() {
   REPO_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   TMP_DIR="$(mktemp -d)"
   SKILL_COPY="$TMP_DIR/skill"
-  cp -R "$REPO_DIR/skills/kramme:verify:run" "$SKILL_COPY"
+  cp -R "$REPO_DIR/skills/verify:run" "$SKILL_COPY"
   HELPER="$SKILL_COPY/scripts/discovery-cache.sh"
   TREE_ID="$REPO_DIR/scripts/worktree-tree-id.sh"
   WORK="$TMP_DIR/work"

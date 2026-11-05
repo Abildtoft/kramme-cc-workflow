@@ -2,12 +2,12 @@
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
-  SKILL="skills/kramme:pr:code-review/SKILL.md"
-  DISCIPLINE="skills/kramme:pr:code-review/references/review-discipline.md"
-  TEMPLATE="skills/kramme:pr:code-review/references/output-template.md"
-  TEAM="skills/kramme:pr:code-review/references/team-mode.md"
-  SMELLS="skills/kramme:pr:code-review/references/fowler-smell-baseline.md"
-  VALIDATOR="agents/kramme:pr-relevance-validator.md"
+  SKILL="skills/pr:code-review/SKILL.md"
+  DISCIPLINE="skills/pr:code-review/references/review-discipline.md"
+  TEMPLATE="skills/pr:code-review/references/output-template.md"
+  TEAM="skills/pr:code-review/references/team-mode.md"
+  SMELLS="skills/pr:code-review/references/fowler-smell-baseline.md"
+  VALIDATOR="agents/pr-relevance-validator.md"
 }
 
 absent() {
@@ -57,10 +57,10 @@ absent() {
 
 @test "the reviewer roster covers checks that pass while broken and feature gates" {
   grep -qF "verification changes that can pass while what they guard is broken" "$SKILL"
-  grep -qF "### 5. Check Verification That Can Pass While Broken" agents/kramme:silent-failure-hunter.md
+  grep -qF "### 5. Check Verification That Can Pass While Broken" agents/silent-failure-hunter.md
   grep -qF "feature-flag or entitlement gates that decide whether functionality is reachable" "$SKILL"
-  grep -qF "**Feature and entitlement gates**" agents/kramme:security-reviewer.md
-  grep -qF "unless the diff changes that flag's default or where its guard runs" agents/kramme:security-reviewer.md
+  grep -qF "**Feature and entitlement gates**" agents/security-reviewer.md
+  grep -qF "unless the diff changes that flag's default or where its guard runs" agents/security-reviewer.md
 }
 
 @test "team mode passes the smell baseline and the baseline narrows its exemptions" {

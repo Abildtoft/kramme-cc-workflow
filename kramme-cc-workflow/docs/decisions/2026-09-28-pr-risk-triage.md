@@ -7,7 +7,7 @@
 
 ## Context
 
-The plugin already covers most stages of a risk-routed review pipeline. Authors implement and ship through `kramme:linear:issue-to-pr`, `kramme:code:plan-to-pr`, `kramme:pr:create`, `kramme:pr:fix-ci`, and `kramme:pr:github-review-reply`. Deep review runs through `kramme:pr:code-review` and `kramme:pr:review-convergence`, independent review through `kramme:pr:adversarial-review`, and reviewer-side drafting through `kramme:pr:github-review`.
+The plugin already covers most stages of a risk-routed review pipeline. Authors implement and ship through `trackbed:linear:issue-to-pr`, `trackbed:code:plan-to-pr`, `trackbed:pr:create`, `trackbed:pr:fix-ci`, and `trackbed:pr:github-review-reply`. Deep review runs through `trackbed:pr:code-review` and `trackbed:pr:review-convergence`, independent review through `trackbed:pr:adversarial-review`, and reviewer-side drafting through `trackbed:pr:github-review`.
 
 Every one of those entry points starts at full depth. Nothing decides, before review begins, how much review a change needs or which decisions need a person rather than an agent. A one-line copy fix and a session-handling rewrite get the same multi-agent review, and a reviewer gets no signal that a migration or CI change needs explicit human sign-off.
 
@@ -17,7 +17,7 @@ A risk analyzer that relies only on model judgment inherits a prompt-injection p
 
 ## Decision
 
-Add `kramme:pr:triage-risk` as a read-only, model-invocable Pull Request skill. It is the first stage of the pipeline and the only stage this record decides.
+Add `trackbed:pr:triage-risk` as a read-only, model-invocable Pull Request skill. It is the first stage of the pipeline and the only stage this record decides.
 
 - **Scope.** It triages the committed diff between the resolved base and `HEAD`, using the shared `collect-review-diff.sh` collector to resolve the base. Uncommitted paths are counted and reported as untriaged.
 - **Deterministic signals.** A skill-local script, `scripts/risk-signals.py`, classifies every changed file, scans added lines for a small set of high-signal patterns (credential shapes, dynamic-execution, shell, raw-HTML, and unsafe-deserialization sinks, and disabled, focused, or expected-failure tests), and emits a JSON report of signals with fixed levels. It reports paths, line numbers, and pattern names only, never file content. It computes a `floor` (highest level) and a `hard_floor` (highest level among non-discountable signals).
@@ -31,7 +31,7 @@ Each of these needs its own record before implementation:
 
 - A router that runs the recommended lanes automatically.
 - Auto-approval of low-tier changes, including the approving identity and branch-protection interaction.
-- A pair-review mode in which an agent brings findings and a human makes the calls, likely as a mode of `kramme:pr:github-review` under the catalog merge rule.
+- A pair-review mode in which an agent brings findings and a human makes the calls, likely as a mode of `trackbed:pr:github-review` under the catalog merge rule.
 - A review memory that captures, distills, and shares human review signals.
 - Triage of a Pull Request by number, and running triage in CI.
 
@@ -39,8 +39,8 @@ Each of these needs its own record before implementation:
 
 The [skill catalog shape policy](2026-07-29-skill-catalog-shape.md) requires this evidence for a new skill.
 
-- **Usage.** Reports run on 2026-09-28 with `node kramme-cc-workflow/scripts/skill-usage.js report --since 30d --json` and `--since 90d`. The 30-day window recorded 61 invocations across 17 skills; the 90-day window recorded 298 across 33. Review-family counts (30-day / 90-day): `kramme:pr:code-review` 4 / 41, `kramme:pr:resolve-review` 7 / 35, `kramme:pr:github-review` 2 / 5, `kramme:pr:review-convergence` 1 / 1, `kramme:pr:gut-check` 0 / 0. Full-depth review is among the most used workflows, which is the cost triage routes.
-- **Nearest domain and skills.** `pr`. The nearest skills are `kramme:pr:gut-check` (a first-reader reaction with no rubric or scores), `kramme:pr:code-review` (defect findings in a report), `kramme:pr:plan-split` (slicing an oversized change), and `kramme:deps:audit` (repository-wide dependency risk).
+- **Usage.** Reports run on 2026-09-28 with `node kramme-cc-workflow/scripts/skill-usage.js report --since 30d --json` and `--since 90d`. The 30-day window recorded 61 invocations across 17 skills; the 90-day window recorded 298 across 33. Review-family counts (30-day / 90-day): `trackbed:pr:code-review` 4 / 41, `trackbed:pr:resolve-review` 7 / 35, `trackbed:pr:github-review` 2 / 5, `trackbed:pr:review-convergence` 1 / 1, `trackbed:pr:gut-check` 0 / 0. Full-depth review is among the most used workflows, which is the cost triage routes.
+- **Nearest domain and skills.** `pr`. The nearest skills are `trackbed:pr:gut-check` (a first-reader reaction with no rubric or scores), `trackbed:pr:code-review` (defect findings in a report), `kramme:pr:plan-split` (slicing an oversized change), and `trackbed:deps:audit` (repository-wide dependency risk).
 - **Positive routing boundary.** Decide how much review a branch needs, and which decisions need a person, before any reviewer runs.
 - **Differences.** Input is the committed branch diff only. Output is an inline tier, lane list, and human-decision list, not findings. It has no side effects beyond the collector fetching the base. Base or diff failures stop the skill, while an invalid policy escalates the tier instead of failing.
 - **First adoption review: 2026-12-28.** Inspect invocation counts, how often the recommended lanes were run, the discount rate per signal, signals that were discounted almost every time (false-positive candidates), and whether high-tier branches drew more review findings than low-tier ones.
@@ -55,11 +55,11 @@ The [skill catalog shape policy](2026-07-29-skill-catalog-shape.md) requires thi
 
 ## Alternatives Considered
 
-### Add triage as a mode of `kramme:pr:gut-check`
+### Add triage as a mode of `trackbed:pr:gut-check`
 
 Rejected. Gut-check is deliberately a reaction with no rubric, scores, or thresholds. Triage is a rubric with fixed levels and a scoring floor. Folding one into the other would break the contract that makes gut-check useful.
 
-### Add triage as a mode of `kramme:pr:code-review`
+### Add triage as a mode of `trackbed:pr:code-review`
 
 Rejected. Triage runs in a different workflow phase, before any reviewer is chosen, and produces routing rather than findings. Code review writes `REVIEW_OVERVIEW.md` and launches reviewer agents; triage must stay cheap enough to run first.
 
@@ -77,4 +77,4 @@ Rejected. Reading policy from the branch would let a branch lower its own triage
 
 ## Amendment
 
-On 2026-10-20 the [risk-routed review convergence record](2026-10-20-risk-routed-review-convergence.md) decided routing automation for `kramme:pr:review-convergence`: it maps the deterministic floor, without discounts, to its review profile. `risk-signals.py` and `risk_patterns.py` moved to plugin-level `scripts/` because both skills run them. Auto-approval, pair review, review memory, and Pull Request-number or CI triage remain undecided.
+On 2026-10-20 the [risk-routed review convergence record](2026-10-20-risk-routed-review-convergence.md) decided routing automation for `trackbed:pr:review-convergence`: it maps the deterministic floor, without discounts, to its review profile. `risk-signals.py` and `risk_patterns.py` moved to plugin-level `scripts/` because both skills run them. Auto-approval, pair review, review memory, and Pull Request-number or CI triage remain undecided.

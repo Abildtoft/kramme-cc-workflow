@@ -2,8 +2,8 @@
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
-  CODE_REVIEW="skills/kramme:pr:code-review"
-  CONVENTION_REVIEW="skills/kramme:pr:convention-review"
+  CODE_REVIEW="skills/pr:code-review"
+  CONVENTION_REVIEW="skills/pr:convention-review"
   GUIDES='`CONTRIBUTING.md` and `CODING_STANDARDS.md` at the repository root, in `.github/`, or in `docs/`'
 }
 

@@ -1,13 +1,13 @@
 # Skill Review Eval Harness
 
-This harness provides deterministic fixture scoring for `kramme:skill:review`.
+This harness provides deterministic fixture scoring for `trackbed:skill:review`.
 By default, it is local-only: it does not invoke a model, call SkillOpt, reach
 external services, or modify candidate skills. The committed fixtures are
 synthetic examples used as eval data.
 
 ## Pilot Scope
 
-This pilot targets `kramme:skill:review` only. Do not generalize its split,
+This pilot targets `trackbed:skill:review` only. Do not generalize its split,
 fixtures, or scores to another skill without creating a separate deterministic
 train/val/test split and candidate gate for that skill.
 
@@ -74,7 +74,7 @@ prediction text:
 ```bash
 node evals/skill-review/run-eval.js \
   --split train \
-  --skill skills/kramme:skill:review \
+  --skill skills/skill:review \
   --prediction-command "./scripts/review-skill-fixture.sh" \
   --json
 ```
@@ -146,7 +146,7 @@ test targets above when validating only the deterministic harness.
 
 ## Live Provider Adapters
 
-The optional live evaluator runs `kramme:skill:review` against the existing
+The optional live evaluator runs `trackbed:skill:review` against the existing
 synthetic fixtures with Claude or OpenAI models. Each provider has its own
 ordered organization pool. The evaluator uses organization A until a
 recognized insufficient-credit error, restarts the unfinished case on B, and

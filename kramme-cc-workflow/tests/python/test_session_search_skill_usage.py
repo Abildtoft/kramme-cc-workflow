@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[2]
-EXTRACTOR = PLUGIN_ROOT / "skills" / "kramme:session:automate-repeats" / "scripts" / "extract-skill-usage.py"
+EXTRACTOR = PLUGIN_ROOT / "skills" / "session:automate-repeats" / "scripts" / "extract-skill-usage.py"
 
 
 class SessionSkillUsageTests(unittest.TestCase):
@@ -23,10 +23,10 @@ class SessionSkillUsageTests(unittest.TestCase):
 
     def test_ignores_slash_command_mentions_in_user_prose(self):
         session = """\
-{"type":"user","message":{"content":"Document /kramme:qa but do not invoke it."}}
+{"type":"user","message":{"content":"Document /trackbed:qa but do not invoke it."}}
 """
 
-        evidence = self.run_skill_usage(session, "kramme:qa")
+        evidence = self.run_skill_usage(session, "trackbed:qa")
         self.assertEqual(evidence["skills"], [])
         self.assertEqual(evidence["skill_events"], 0)
         self.assertEqual(evidence["unknown_skill_events"], 0)
@@ -37,16 +37,16 @@ class SessionSkillUsageTests(unittest.TestCase):
                 "type": "user",
                 "message": {
                     "content": (
-                        "<command-message>kramme-cc-workflow:kramme-qa</command-message>\n"
-                        "<command-name>/kramme-cc-workflow:kramme-qa</command-name>\n"
+                        "<command-message>trackbed:qa</command-message>\n"
+                        "<command-name>/trackbed:qa</command-name>\n"
                         "<command-args>smoke the checkout flow</command-args>"
                     )
                 },
             }
         )
 
-        evidence = self.run_skill_usage(session, "kramme:qa")
-        self.assertEqual(evidence["skills"], ["kramme:qa"])
+        evidence = self.run_skill_usage(session, "trackbed:qa")
+        self.assertEqual(evidence["skills"], ["trackbed:qa"])
         self.assertEqual(evidence["skill_events"], 1)
         self.assertEqual(evidence["unknown_skill_events"], 0)
 
@@ -54,11 +54,11 @@ class SessionSkillUsageTests(unittest.TestCase):
         session = json.dumps(
             {
                 "type": "user",
-                "message": {"content": "The log showed <command-name>/kramme:qa</command-name> earlier."},
+                "message": {"content": "The log showed <command-name>/trackbed:qa</command-name> earlier."},
             }
         )
 
-        evidence = self.run_skill_usage(session, "kramme:qa")
+        evidence = self.run_skill_usage(session, "trackbed:qa")
         self.assertEqual(evidence["skills"], [])
         self.assertEqual(evidence["skill_events"], 0)
         self.assertEqual(evidence["unknown_skill_events"], 0)
@@ -72,15 +72,15 @@ class SessionSkillUsageTests(unittest.TestCase):
                         {
                             "type": "tool_use",
                             "name": "Skill",
-                            "input": {"skill": "kramme-cc-workflow:kramme-pr-create"},
+                            "input": {"skill": "trackbed:pr-create"},
                         }
                     ]
                 },
             }
         )
 
-        evidence = self.run_skill_usage(session, "kramme:pr:create", "kramme:qa")
-        self.assertEqual(evidence["skills"], ["kramme:pr:create"])
+        evidence = self.run_skill_usage(session, "trackbed:pr:create", "trackbed:qa")
+        self.assertEqual(evidence["skills"], ["trackbed:pr:create"])
         self.assertEqual(evidence["skill_events"], 1)
         self.assertEqual(evidence["unknown_skill_events"], 0)
 
@@ -100,8 +100,8 @@ class SessionSkillUsageTests(unittest.TestCase):
             }
         )
 
-        evidence = self.run_skill_usage(session, "kramme:pr:create", "kramme:qa")
-        self.assertEqual(evidence["skills"], ["kramme:pr:create"])
+        evidence = self.run_skill_usage(session, "trackbed:pr:create", "trackbed:qa")
+        self.assertEqual(evidence["skills"], ["trackbed:pr:create"])
         self.assertEqual(evidence["skill_events"], 1)
         self.assertEqual(evidence["unknown_skill_events"], 0)
 
@@ -142,7 +142,7 @@ class SessionSkillUsageTests(unittest.TestCase):
             }
         )
 
-        evidence = self.run_skill_usage(session, "kramme:pr:create")
+        evidence = self.run_skill_usage(session, "trackbed:pr:create")
         self.assertEqual(evidence["skills"], [])
         self.assertEqual(evidence["skill_events"], 0)
         self.assertEqual(evidence["unknown_skill_events"], 1)
@@ -151,13 +151,13 @@ class SessionSkillUsageTests(unittest.TestCase):
         session = json.dumps(
             {
                 "role": "user",
-                "message": {"content": "<user_query>\n/kramme:qa check the cart\n</user_query>"},
+                "message": {"content": "<user_query>\n/trackbed:qa check the cart\n</user_query>"},
             }
         )
 
-        evidence = self.run_skill_usage(session, "kramme:qa")
+        evidence = self.run_skill_usage(session, "trackbed:qa")
         self.assertEqual(evidence["platforms"], ["cursor"])
-        self.assertEqual(evidence["skills"], ["kramme:qa"])
+        self.assertEqual(evidence["skills"], ["trackbed:qa"])
         self.assertEqual(evidence["skill_events"], 1)
 
     def test_ignores_unsupported_raw_custom_tool_inputs(self):
@@ -178,7 +178,7 @@ class SessionSkillUsageTests(unittest.TestCase):
                             "input": (
                                 "const result = await tools.exec_command({cmd: "
                                 "\"rtk sed -n '1,80p' "
-                                '/tmp/.codex/skills/kramme:qa/SKILL.md"});'
+                                '/tmp/.codex/skills/trackbed:qa/SKILL.md"});'
                             ),
                         },
                     }
@@ -186,7 +186,7 @@ class SessionSkillUsageTests(unittest.TestCase):
             )
         )
 
-        evidence = self.run_skill_usage(session, "kramme:qa")
+        evidence = self.run_skill_usage(session, "trackbed:qa")
         self.assertEqual(evidence["skills"], [])
         self.assertEqual(evidence["skill_events"], 0)
         self.assertEqual(evidence["unknown_skill_events"], 0)
@@ -194,15 +194,15 @@ class SessionSkillUsageTests(unittest.TestCase):
 
     def test_requires_skill_path_in_same_read_only_shell_segment(self):
         cases = (
-            ("sed -n '1,80p' /tmp/.codex/skills/kramme:qa/SKILL.md", ["kramme:qa"]),
-            ("cat > /tmp/.codex/skills/kramme:qa/SKILL.md <<EOF", []),
+            ("sed -n '1,80p' /tmp/.codex/skills/trackbed:qa/SKILL.md", ["trackbed:qa"]),
+            ("cat > /tmp/.codex/skills/trackbed:qa/SKILL.md <<EOF", []),
             (
-                "printf x > /tmp/.codex/skills/kramme:qa/SKILL.md && cat README.md",
+                "printf x > /tmp/.codex/skills/trackbed:qa/SKILL.md && cat README.md",
                 [],
             ),
-            ("cat README.md && rm /tmp/.codex/skills/kramme:qa/SKILL.md", []),
-            ("cat README.md\nrm /tmp/.codex/skills/kramme:qa/SKILL.md", []),
-            ("sed -i.bak s/old/new/ /tmp/.codex/skills/kramme:qa/SKILL.md", []),
+            ("cat README.md && rm /tmp/.codex/skills/trackbed:qa/SKILL.md", []),
+            ("cat README.md\nrm /tmp/.codex/skills/trackbed:qa/SKILL.md", []),
+            ("sed -i.bak s/old/new/ /tmp/.codex/skills/trackbed:qa/SKILL.md", []),
         )
 
         for command, expected_skills in cases:
@@ -221,7 +221,7 @@ class SessionSkillUsageTests(unittest.TestCase):
                         },
                     }
                 )
-                evidence = self.run_skill_usage(session, "kramme:qa")
+                evidence = self.run_skill_usage(session, "trackbed:qa")
                 self.assertEqual(evidence["skills"], expected_skills)
                 self.assertEqual(evidence["skill_events"], int(bool(expected_skills)))
                 self.assertEqual(evidence["unknown_skill_events"], 0)

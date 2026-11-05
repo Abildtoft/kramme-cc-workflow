@@ -2,10 +2,10 @@
 
 setup() {
   ROOT="$BATS_TEST_DIRNAME/.."
-  RENDERER="$ROOT/skills/kramme:pr:walkthrough/scripts/render_walkthrough.py"
-  VALIDATOR="$ROOT/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py"
-  RUNTIME="$ROOT/skills/kramme:pr:walkthrough/assets/walkthrough-runtime.js"
-  SKILL="$ROOT/skills/kramme:pr:walkthrough/SKILL.md"
+  RENDERER="$ROOT/skills/pr:walkthrough/scripts/render_walkthrough.py"
+  VALIDATOR="$ROOT/skills/pr:walkthrough/scripts/validate_walkthrough.py"
+  RUNTIME="$ROOT/skills/pr:walkthrough/assets/walkthrough-runtime.js"
+  SKILL="$ROOT/skills/pr:walkthrough/SKILL.md"
   TMP_DIR="$(mktemp -d)"
   WALKTHROUGH_CHROME_PID=""
 }
@@ -192,7 +192,7 @@ PY
 }
 
 @test "guided walkthrough keeps explicit local refs and names automatic base correctly" {
-  run python3 - "$SKILL" "$ROOT/skills/kramme:qa/references/addy-conventions.md" "$ROOT/skills/kramme:git:recreate-commits/SKILL.md" <<'PY'
+  run python3 - "$SKILL" "$ROOT/skills/qa/references/addy-conventions.md" "$ROOT/skills/git:recreate-commits/SKILL.md" <<'PY'
 import pathlib
 import sys
 

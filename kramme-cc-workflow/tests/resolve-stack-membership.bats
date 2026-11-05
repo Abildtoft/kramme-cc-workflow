@@ -292,24 +292,24 @@ load_assignments() {
 @test "stack skills use the shared fail-closed membership resolver" {
 	local consumer
 	for consumer in \
-		"$REPO_ROOT/skills/kramme:git:fixup/SKILL.md" \
-		"$REPO_ROOT/skills/kramme:git:recreate-commits/SKILL.md" \
-		"$REPO_ROOT/skills/kramme:pr:fix-ci/SKILL.md" \
-		"$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md" \
-		"$REPO_ROOT/skills/kramme:pr:stack/SKILL.md"; do
+		"$REPO_ROOT/skills/git:fixup/SKILL.md" \
+		"$REPO_ROOT/skills/git:recreate-commits/SKILL.md" \
+		"$REPO_ROOT/skills/pr:fix-ci/SKILL.md" \
+		"$REPO_ROOT/skills/pr:rebase/SKILL.md" \
+		"$REPO_ROOT/skills/pr:stack/SKILL.md"; do
 		grep -F 'resolve-stack-membership.sh' "$consumer"
 	done
 
 	! grep -R -E 'gh stack view --json.*&& IN_STACK=true' \
-		"$REPO_ROOT/skills/kramme:git:fixup" \
-		"$REPO_ROOT/skills/kramme:git:recreate-commits" \
-		"$REPO_ROOT/skills/kramme:pr:fix-ci" \
-		"$REPO_ROOT/skills/kramme:pr:rebase"
+		"$REPO_ROOT/skills/git:fixup" \
+		"$REPO_ROOT/skills/git:recreate-commits" \
+		"$REPO_ROOT/skills/pr:fix-ci" \
+		"$REPO_ROOT/skills/pr:rebase"
 }
 
 @test "stack command examples preserve operand and placeholder boundaries" {
-	local stack_skill="$REPO_ROOT/skills/kramme:pr:stack/SKILL.md"
-	local strategies="$REPO_ROOT/skills/kramme:code:breakdown-findings/references/split-strategies.md"
+	local stack_skill="$REPO_ROOT/skills/pr:stack/SKILL.md"
+	local strategies="$REPO_ROOT/skills/code:breakdown-findings/references/split-strategies.md"
 
 	grep -F 'git check-ref-format --branch "$branch"' "$stack_skill"
 	grep -F 'gh stack init --base "$BASE_BRANCH" "${STACK_BRANCHES[@]}"' "$stack_skill"
@@ -320,20 +320,20 @@ load_assignments() {
 }
 
 @test "stack workflow does not delegate mutating description generation" {
-	local stack_skill="$REPO_ROOT/skills/kramme:pr:stack/SKILL.md"
+	local stack_skill="$REPO_ROOT/skills/pr:stack/SKILL.md"
 
-	grep -F 'Do not invoke `kramme:pr:generate-description` from inside this skill' "$stack_skill"
+	grep -F 'Do not invoke `trackbed:pr:generate-description` from inside this skill' "$stack_skill"
 	grep -F 'every model-initiated call to that child must use output-only `--no-update`' "$stack_skill"
-	grep -F 'ask the user to invoke `/kramme:pr:generate-description` directly' "$stack_skill"
-	! grep -F 'run `kramme:pr:generate-description` per PR' "$stack_skill"
+	grep -F 'ask the user to invoke `/trackbed:pr:generate-description` directly' "$stack_skill"
+	! grep -F 'run `trackbed:pr:generate-description` per PR' "$stack_skill"
 }
 
 @test "history rewrite flows restack before their stack-wide push" {
 	local flow
 	for flow in \
-		"$REPO_ROOT/skills/kramme:pr:fix-ci/SKILL.md" \
-		"$REPO_ROOT/skills/kramme:pr:fix-ci/references/fixup-flow.md" \
-		"$REPO_ROOT/skills/kramme:pr:fix-ci/references/consolidation-flow.md"; do
+		"$REPO_ROOT/skills/pr:fix-ci/SKILL.md" \
+		"$REPO_ROOT/skills/pr:fix-ci/references/fixup-flow.md" \
+		"$REPO_ROOT/skills/pr:fix-ci/references/consolidation-flow.md"; do
 		local rebase_line
 		local push_line
 		rebase_line=$(grep -n 'gh stack rebase --upstack --no-trunk' "$flow" | tail -1 | cut -d: -f1)
@@ -345,7 +345,7 @@ load_assignments() {
 }
 
 @test "fixup restacks locally without publishing the stack" {
-	local fixup="$REPO_ROOT/skills/kramme:git:fixup/SKILL.md"
+	local fixup="$REPO_ROOT/skills/git:fixup/SKILL.md"
 	local report_step
 	report_step=$(sed -n '/### Step 7: Report Results/,/## Error Handling/p' "$fixup")
 
@@ -355,7 +355,7 @@ load_assignments() {
 }
 
 @test "recreate-commits restacks before no-push and local-only exits" {
-	local recreate="$REPO_ROOT/skills/kramme:git:recreate-commits/SKILL.md"
+	local recreate="$REPO_ROOT/skills/git:recreate-commits/SKILL.md"
 	local restack_line
 	local no_push_line
 	local local_only_line
@@ -368,8 +368,8 @@ load_assignments() {
 }
 
 @test "merge and conflict guidance match gh-stack semantics" {
-	local stack_skill="$REPO_ROOT/skills/kramme:pr:stack/SKILL.md"
-	local rules="$REPO_ROOT/skills/kramme:pr:stack/references/cli-agent-rules.md"
+	local stack_skill="$REPO_ROOT/skills/pr:stack/SKILL.md"
+	local rules="$REPO_ROOT/skills/pr:stack/references/cli-agent-rules.md"
 
 	grep -F 'highest PR the user intends to land' "$stack_skill"
 	grep -F 'use the top PR to land the entire stack' "$stack_skill"
@@ -382,14 +382,14 @@ load_assignments() {
 }
 
 @test "rebase verification keeps the revision range in one shell argument" {
-	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local rebase_skill="$REPO_ROOT/skills/pr:rebase/SKILL.md"
 
 	grep -F 'git log --oneline "origin/$BASE_BRANCH..HEAD"' "$rebase_skill"
 	! grep -F 'git log --oneline origin/ < base-branch > ..HEAD' "$rebase_skill"
 }
 
 @test "rebase fix-ci mode is opt-in and delegates only after a successful push" {
-	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local rebase_skill="$REPO_ROOT/skills/pr:rebase/SKILL.md"
 	local opt_in_guard_line
 	local push_guard_line
 	local manual_delegate_line
@@ -401,8 +401,8 @@ load_assignments() {
 
 	opt_in_guard_line=$(grep -nF 'If `FIX_CI_MODE` is not true, skip to Step 7.' "$rebase_skill" | cut -d: -f1)
 	push_guard_line=$(grep -nF 'Require `PUSH_COMPLETED=true` before delegating.' "$rebase_skill" | cut -d: -f1)
-	manual_delegate_line=$(grep -nF 'invoke `$kramme:pr:fix-ci --manual`' "$rebase_skill" | cut -d: -f1)
-	auto_delegate_line=$(grep -nF 'invoke `$kramme:pr:fix-ci` with no additional flags' "$rebase_skill" | cut -d: -f1)
+	manual_delegate_line=$(grep -nF 'invoke `$trackbed:pr:fix-ci --manual`' "$rebase_skill" | cut -d: -f1)
+	auto_delegate_line=$(grep -nF 'invoke `$trackbed:pr:fix-ci` with no additional flags' "$rebase_skill" | cut -d: -f1)
 	[ -n "$opt_in_guard_line" ]
 	[ -n "$push_guard_line" ]
 	[ -n "$manual_delegate_line" ]
@@ -421,16 +421,16 @@ load_assignments() {
 }
 
 @test "rebase model invocation is limited to the guarded fix-ci child call" {
-	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local rebase_skill="$REPO_ROOT/skills/pr:rebase/SKILL.md"
 
 	grep -qF 'disable-model-invocation: false' "$rebase_skill"
-	grep -F 'Invoke automatically only as a delegated child of `kramme:pr:fix-ci`, with the exact `--force-push` argument selected by that parent.' "$rebase_skill"
+	grep -F 'Invoke automatically only as a delegated child of `trackbed:pr:fix-ci`, with the exact `--force-push` argument selected by that parent.' "$rebase_skill"
 	grep -F 'Never omit `--force-push`, and do not add `--fix-ci` or an invented `--base` override.' "$rebase_skill"
 	grep -F 'No other parent workflow is authorized by this model-invocation exception.' "$rebase_skill"
 }
 
 @test "rebase pins its force-with-lease to the remote OID captured before rebasing" {
-	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local rebase_skill="$REPO_ROOT/skills/pr:rebase/SKILL.md"
 	local capture_line
 	local ancestry_stop_line
 	local rebase_line
@@ -455,7 +455,7 @@ load_assignments() {
 }
 
 @test "rebase exits early when the branch already contains the base tip" {
-	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local rebase_skill="$REPO_ROOT/skills/pr:rebase/SKILL.md"
 	local early_exit_line
 	local rebase_line
 
@@ -522,7 +522,7 @@ load_assignments() {
 }
 
 @test "rebase lease handoff preserves apostrophes and shell syntax in branch names" {
-	local rebase_skill="$REPO_ROOT/skills/kramme:pr:rebase/SKILL.md"
+	local rebase_skill="$REPO_ROOT/skills/pr:rebase/SKILL.md"
 	local remote="$BATS_TEST_TMPDIR/remote.git"
 	local publisher="$BATS_TEST_TMPDIR/publisher"
 	local branch="topic/o'brien-"'$(touch${IFS}branch-name-executed)'

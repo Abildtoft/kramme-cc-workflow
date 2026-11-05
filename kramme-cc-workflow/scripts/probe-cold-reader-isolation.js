@@ -2,7 +2,7 @@
 // @ts-check
 "use strict";
 
-// Live check of the kramme:cold-reader isolation contract. Each variant runs a
+// Live check of the trackbed:cold-reader isolation contract. Each variant runs a
 // short Agent SDK session that loads this plugin in a throwaway workspace whose
 // CLAUDE.md and imported AGENTS.md hold random markers, then inspects what the
 // launched subagent could see. It runs the `claude` on PATH, because the promise
@@ -25,7 +25,7 @@ const path = require("node:path");
 
 const PLUGIN_ROOT = path.resolve(__dirname, "..");
 const PLUGIN_NAME = "kramme-cc-workflow";
-const COLD_READER = `${PLUGIN_NAME}:kramme:cold-reader`;
+const COLD_READER = `${PLUGIN_NAME}:trackbed:cold-reader`;
 const CONTROL_AGENT = "general-purpose";
 /** @type {Variant[]} */
 const VARIANTS = ["isolated", "control", "unreadable"];

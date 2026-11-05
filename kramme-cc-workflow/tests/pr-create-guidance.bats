@@ -31,7 +31,7 @@ init_single_commit_fixture() {
 	block="$BATS_TEST_TMPDIR/fast-path.sh"
 	MESSAGE_FILE="$BATS_TEST_TMPDIR/message.txt"
 	extract_single_commit_fast_path_block \
-		"$BATS_TEST_DIRNAME/../skills/kramme:git:recreate-commits/SKILL.md" "$block"
+		"$BATS_TEST_DIRNAME/../skills/git:recreate-commits/SKILL.md" "$block"
 	init_test_git_repo "$repo"
 	cd "$repo"
 	RESET_POINT=$(git rev-parse HEAD)
@@ -51,11 +51,11 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
-    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
-    recreate="skills/kramme:git:recreate-commits/SKILL.md"
-    description="skills/kramme:pr:generate-description/SKILL.md"
+    create="skills/pr:create/SKILL.md"
+    branch="skills/pr:create/references/branch-and-platform-handling.md"
+    confirmation="skills/pr:create/references/confirmation-and-creation.md"
+    recreate="skills/git:recreate-commits/SKILL.md"
+    description="skills/pr:generate-description/SKILL.md"
 
     grep -qF "disable-model-invocation: false" "$create"
     grep -qF "disable-model-invocation: false" "$recreate"
@@ -64,24 +64,24 @@ file_mode() {
     grep -qF "### Model Invocation Contract" "$create"
     grep -qF "No other parent workflow is authorized by this model-invocation exception" "$create"
     grep -qF "No other parent workflow is authorized by the model-invocation exception" "$recreate"
-    grep -qF "Outside that exact \`kramme:pr:create\` delegation, never invent \`--authorize-history-rewrite\`" "$recreate"
+    grep -qF "Outside that exact \`trackbed:pr:create\` delegation, never invent \`--authorize-history-rewrite\`" "$recreate"
     grep -qF "The model must never invent \`--force-backup\`" "$recreate"
-    grep -qF "only with the exact retry-safe value supplied by \`kramme:pr:create\`" "$recreate"
+    grep -qF "only with the exact retry-safe value supplied by \`trackbed:pr:create\`" "$recreate"
     grep -qF "Every model-initiated invocation must include \`--no-update\`" "$description"
     grep -qF "[--authorize-history-rewrite]" "$create"
     grep -qF "AUTHORIZE_HISTORY_REWRITE=true" "$create"
     grep -qF "Auto mode does not set this variable" "$create"
     grep -qF -- "args: \"--manual --base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"" "$create"
     grep -qF -- "args: \"--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\"" "$create"
-    [ "$(grep -cF "skill: \"kramme:git:recreate-commits\", args:" "$create")" -eq 5 ]
+    [ "$(grep -cF "skill: \"trackbed:git:recreate-commits\", args:" "$create")" -eq 5 ]
     while IFS= read -r invocation; do
       [[ "$invocation" == *"--base {base-source-ref} --base-commit {base-ref}"* ]]
       [[ "$invocation" == *"--backup-ref {recreate-backup-ref}"* ]]
       [[ "$invocation" == *"--require-unstacked --no-push"* ]]
-    done < <(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create")
-    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--manual ")" -eq 2 ]
-    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--authorize-history-rewrite")" -eq 2 ]
-    [ "$(grep -F "skill: \"kramme:git:recreate-commits\", args:" "$create" | grep -cF -- "--after {observed-origin-oid}")" -eq 1 ]
+    done < <(grep -F "skill: \"trackbed:git:recreate-commits\", args:" "$create")
+    [ "$(grep -F "skill: \"trackbed:git:recreate-commits\", args:" "$create" | grep -cF -- "--manual ")" -eq 2 ]
+    [ "$(grep -F "skill: \"trackbed:git:recreate-commits\", args:" "$create" | grep -cF -- "--authorize-history-rewrite")" -eq 2 ]
+    [ "$(grep -F "skill: \"trackbed:git:recreate-commits\", args:" "$create" | grep -cF -- "--after {observed-origin-oid}")" -eq 1 ]
     grep -qF "pass \`--authorize-history-rewrite\` only when the user supplied that flag" "$create"
     ! grep -qF "args: \"--no-push\"" "$create"
     grep -qF "Always pass \`--base {base-source-ref} --base-commit {base-ref} --backup-ref {recreate-backup-ref} --require-unstacked --no-push\`" "$create"
@@ -128,7 +128,7 @@ file_mode() {
     grep -qF "A \`--manual\` stacked invocation may instead use separate interactive confirmations" docs/shipping.md
     grep -qF "## Step 4.5: Reject Stacked Branches" "$create"
     grep -qF "\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh" "$create"
-    grep -qF "kramme:pr:create does not publish stacked branches; use kramme:pr:stack instead." "$create"
+    grep -qF "trackbed:pr:create does not publish stacked branches; use trackbed:pr:stack instead." "$create"
     grep -qF "Both locally tracked and server-side stacks stop here" "$create"
     grep -qF "any later stack detection is state drift" "$create"
     ! grep -qF "leaves any stacked rewrite to the nested skill" "$create"
@@ -159,10 +159,10 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+    recreate="skills/git:recreate-commits/SKILL.md"
 
     grep -qF "If \`IN_STACK=true\` and neither \`--manual\` nor \`--authorize-history-rewrite\` was passed, stop before the reset" "$recreate"
-    grep -qF "When \`REQUIRE_UNSTACKED=true\` and \`--no-push\` was passed (the \`kramme:pr:create\` delegation), skip this initial resolution and set \`IN_STACK=false\`" "$recreate"
+    grep -qF "When \`REQUIRE_UNSTACKED=true\` and \`--no-push\` was passed (the \`trackbed:pr:create\` delegation), skip this initial resolution and set \`IN_STACK=false\`" "$recreate"
     grep -qF "Under \`REQUIRE_UNSTACKED=true\`, any local or server-side membership is state drift" "$recreate"
     grep -qF "stop before the reset, even in auto mode or when \`--authorize-history-rewrite\` was passed" "$recreate"
     grep -qF "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches" "$recreate"
@@ -182,7 +182,7 @@ file_mode() {
     grep -qF -- "--base-branch \"\$BASE_BRANCH\"" "$recreate"
     grep -qF "[ \"\$(git symbolic-ref --quiet --short HEAD)\" = \"\$ORIGINAL_BRANCH\" ]" "$recreate"
     grep -qF "verify-rewrite-state.sh" "$recreate"
-    publication="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    publication="skills/pr:create/references/confirmation-and-creation.md"
     grep -qF "Do not publish or create a default-base Pull Request from stale unstacked authorization." "$publication"
     authorization_line=$(grep -nF "Do not publish or create a default-base Pull Request from stale unstacked authorization." "$publication" | cut -d: -f1)
     first_guard_line=$(grep -nF "FINAL_STACK_RESOLVED=" "$publication" | head -1 | cut -d: -f1)
@@ -203,7 +203,7 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+    recreate="skills/git:recreate-commits/SKILL.md"
 
     grep -qF "[--manual] [--coarse|--granular]" "$recreate"
     grep -qF -- "\`--coarse\` — Force coarse decomposition: one commit per major grouping" "$recreate"
@@ -225,7 +225,7 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    recreate="skills/kramme:git:recreate-commits/SKILL.md"
+    recreate="skills/git:recreate-commits/SKILL.md"
 
     [ "$(grep -c "^## Single-Commit Fast Path$" "$recreate")" -eq 1 ]
     grep -qF "If the Step 4 storyline is exactly one commit and no \`{branch_name}-clean\` branch is in use, follow \`## Single-Commit Fast Path\` instead of the reset and rebuild bullets below, then continue with Step 6." "$recreate"
@@ -372,7 +372,7 @@ file_mode() {
 @test "OID lease publishes the immutable strict fast-forward without widening or retargeting" {
 	remote="$BATS_TEST_TMPDIR/remote.git"
 	publisher="$BATS_TEST_TMPDIR/publisher"
-	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	resolver="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/resolve-origin-push-url.sh"
 	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
 	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
 
@@ -461,7 +461,7 @@ file_mode() {
 @test "serialized push URL remains inert across shell invocations" {
 	remote="$BATS_TEST_TMPDIR/remote-\$(touch injected-by-url).git"
 	publisher="$BATS_TEST_TMPDIR/publisher"
-	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	resolver="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/resolve-origin-push-url.sh"
 	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
 	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
 
@@ -485,7 +485,7 @@ file_mode() {
 @test "origin push URL resolver rejects inline credentials without echoing them" {
 	remote="$BATS_TEST_TMPDIR/remote.git"
 	publisher="$BATS_TEST_TMPDIR/publisher"
-	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	resolver="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/resolve-origin-push-url.sh"
 	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
 	git -C "$publisher" remote set-url --push origin "https://oauth2:secret-token@example.invalid/repo.git"
 
@@ -500,7 +500,7 @@ file_mode() {
 @test "origin push URL resolver rejects executable and unknown transports" {
 	remote="$BATS_TEST_TMPDIR/remote.git"
 	publisher="$BATS_TEST_TMPDIR/publisher"
-	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	resolver="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/resolve-origin-push-url.sh"
 	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
 
 	for push_url in "ext::sh -c touch% payload-marker" "custom-helper::payload-marker" "custom://payload-marker"; do
@@ -515,7 +515,7 @@ file_mode() {
 }
 
 @test "dirty append preserves the published prefix for exact and ancestor tips" {
-	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	resolver="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/resolve-origin-push-url.sh"
 
 	for mode in exact ancestor; do
 		remote="$BATS_TEST_TMPDIR/$mode-remote.git"
@@ -574,7 +574,7 @@ file_mode() {
 @test "dirty append can safely restore its pre-publication state" {
 	remote="$BATS_TEST_TMPDIR/rollback-remote.git"
 	publisher="$BATS_TEST_TMPDIR/rollback-publisher"
-	clean_check="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	clean_check="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/verify-clean-worktree.sh"
 	init_test_git_repo "$publisher" --origin "$remote" --file tracked.txt
 	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
 	git -C "$publisher" checkout -b feature >/dev/null
@@ -612,7 +612,7 @@ file_mode() {
 @test "dirty append can restore a safe pre-recreation input after child failure" {
 	remote="$BATS_TEST_TMPDIR/pre-recreation-remote.git"
 	publisher="$BATS_TEST_TMPDIR/pre-recreation-publisher"
-	clean_check="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	clean_check="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/verify-clean-worktree.sh"
 	init_test_git_repo "$publisher" --origin "$remote" --file tracked.txt
 	git --git-dir="$remote" symbolic-ref HEAD refs/heads/main
 	git -C "$publisher" checkout -b feature >/dev/null
@@ -645,7 +645,7 @@ file_mode() {
 
 @test "dirty append rollback refuses work added after its final guard" {
 	repo="$BATS_TEST_TMPDIR/rollback-drift-repo"
-	clean_check="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	clean_check="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/verify-clean-worktree.sh"
 	init_test_git_repo "$repo" --file tracked.txt
 	original_commit=$(git -C "$repo" rev-parse HEAD)
 
@@ -670,7 +670,7 @@ file_mode() {
 	remote="$BATS_TEST_TMPDIR/remote.git"
 	mirror="$BATS_TEST_TMPDIR/mirror.git"
 	publisher="$BATS_TEST_TMPDIR/publisher"
-	resolver="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/resolve-origin-push-url.sh"
+	resolver="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/resolve-origin-push-url.sh"
 	init_test_git_repo "$publisher" --origin "$remote" --file file.txt
 	git clone --bare "$remote" "$mirror" >/dev/null
 	git -C "$publisher" remote set-url --push origin "$remote"
@@ -687,10 +687,10 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
-    state="skills/kramme:pr:create/references/state-and-rollback.md"
-    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    create="skills/pr:create/SKILL.md"
+    branch="skills/pr:create/references/branch-and-platform-handling.md"
+    state="skills/pr:create/references/state-and-rollback.md"
+    confirmation="skills/pr:create/references/confirmation-and-creation.md"
 
     grep -qF "REMOTE_RECOVERY_MODE=true" "$create"
     grep -qF "REMOTE_FAST_FORWARD_MODE=true" "$create"
@@ -712,7 +712,7 @@ file_mode() {
     grep -qF "rewrites only the unpublished tail after the observed remote tip" "$create"
     grep -qF "Never adopt a remote branch selected from a different entry checkout" "$branch"
     grep -qF "continue only when it returns no matching ref" "$state"
-    grep -qF "stop before branch creation or \`kramme:git:recreate-commits\`" "$state"
+    grep -qF "stop before branch creation or \`trackbed:git:recreate-commits\`" "$state"
     grep -qF "cannot atomically prevent another actor from opening a Pull Request" "$state"
     grep -qF "REMOTE_RECOVERY_MODE=true" "$confirmation"
     grep -qF "REMOTE_FAST_FORWARD_MODE=true" "$confirmation"
@@ -743,10 +743,10 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    state="skills/kramme:pr:create/references/state-and-rollback.md"
-    abort="skills/kramme:pr:create/references/abort-and-rollback.md"
-    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    create="skills/pr:create/SKILL.md"
+    state="skills/pr:create/references/state-and-rollback.md"
+    abort="skills/pr:create/references/abort-and-rollback.md"
+    confirmation="skills/pr:create/references/confirmation-and-creation.md"
 
     grep -qF "REMOTE_APPEND_MODE=true" "$create"
     grep -qF "require \`AUTO_MODE=true\`" "$create"
@@ -792,7 +792,7 @@ file_mode() {
 }
 
 @test "pr-create clean-worktree verifier overrides hidden-untracked configuration" {
-	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	verifier="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/verify-clean-worktree.sh"
 	repo="$BATS_TEST_TMPDIR/repo"
 
 	git init "$repo"
@@ -810,7 +810,7 @@ file_mode() {
 }
 
 @test "pr-create clean-worktree verifier rejects modified assume-unchanged content" {
-	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	verifier="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/verify-clean-worktree.sh"
 	repo="$BATS_TEST_TMPDIR/repo"
 
 	git init "$repo"
@@ -828,7 +828,7 @@ file_mode() {
 }
 
 @test "pr-create verifier detects skip-worktree edits while allowing visible work" {
-	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	verifier="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/verify-clean-worktree.sh"
 	repo="$BATS_TEST_TMPDIR/repo"
 
 	git init "$repo"
@@ -857,7 +857,7 @@ file_mode() {
 }
 
 @test "pr-create verifier accepts clean sparse-checkout omissions" {
-	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	verifier="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/verify-clean-worktree.sh"
 	repo="$BATS_TEST_TMPDIR/sparse-repo"
 
 	git init "$repo"
@@ -882,7 +882,7 @@ file_mode() {
 }
 
 @test "pr-create clean-worktree verifier fails closed when status inspection fails" {
-	verifier="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+	verifier="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/verify-clean-worktree.sh"
 	repo="$BATS_TEST_TMPDIR/repo"
 	fake_bin="$BATS_TEST_TMPDIR/fake-bin"
 	real_git=$(command -v git)
@@ -901,17 +901,17 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    preflight="skills/kramme:pr:create/references/pre-validation-checks.md"
-    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
-    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    create="skills/pr:create/SKILL.md"
+    preflight="skills/pr:create/references/pre-validation-checks.md"
+    branch="skills/pr:create/references/branch-and-platform-handling.md"
+    confirmation="skills/pr:create/references/confirmation-and-creation.md"
 
     test -f "$create"
     test -f "$preflight"
     test -f "$branch"
     test -f "$confirmation"
-    test -x "skills/kramme:pr:create/scripts/validate-branch-name.sh"
-    test -x "skills/kramme:pr:create/scripts/verify-clean-worktree.sh"
+    test -x "skills/pr:create/scripts/validate-branch-name.sh"
+    test -x "skills/pr:create/scripts/verify-clean-worktree.sh"
 
     grep -qF "references/pre-validation-checks.md" "$create"
     grep -qF "references/branch-and-platform-handling.md" "$create"
@@ -959,7 +959,7 @@ file_mode() {
 }
 
 @test "pr-create restores the original index when the include commit fails" {
-	state="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/state-and-rollback.md"
+	state="$BATS_TEST_DIRNAME/../skills/pr:create/references/state-and-rollback.md"
 	block="$BATS_TEST_TMPDIR/commit-and-include.sh"
 	repo="$BATS_TEST_TMPDIR/repo"
 	extract_commit_and_include_block "$state" "$block"
@@ -1000,7 +1000,7 @@ file_mode() {
 }
 
 @test "pr-create preserves the index backup when restoration fails" {
-	state="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/state-and-rollback.md"
+	state="$BATS_TEST_DIRNAME/../skills/pr:create/references/state-and-rollback.md"
 	block="$BATS_TEST_TMPDIR/commit-and-include.sh"
 	repo="$BATS_TEST_TMPDIR/repo"
 	fake_bin="$BATS_TEST_TMPDIR/fake-bin"
@@ -1042,8 +1042,8 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    state="skills/kramme:pr:create/references/state-and-rollback.md"
-    abort="skills/kramme:pr:create/references/abort-and-rollback.md"
+    state="skills/pr:create/references/state-and-rollback.md"
+    abort="skills/pr:create/references/abort-and-rollback.md"
 
     test -f "$state"
     test -f "$abort"
@@ -1076,8 +1076,8 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    state="skills/kramme:pr:create/references/state-and-rollback.md"
+    create="skills/pr:create/SKILL.md"
+    state="skills/pr:create/references/state-and-rollback.md"
 
     grep -qF "include all uncommitted changes by selecting **Commit and include**" "$create"
     grep -qF "\`--manual\` -> set \`AUTO_MODE=false\`" "$create"
@@ -1096,10 +1096,10 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
-    state="skills/kramme:pr:create/references/state-and-rollback.md"
-    confirmation="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    create="skills/pr:create/SKILL.md"
+    branch="skills/pr:create/references/branch-and-platform-handling.md"
+    state="skills/pr:create/references/state-and-rollback.md"
+    confirmation="skills/pr:create/references/confirmation-and-creation.md"
 
     grep -qF "Auto mode is fully non-interactive" "$create"
     grep -qF "never ask the user a question, wait for free-form user input, or allow Git/GitHub credential prompts" "$create"
@@ -1135,7 +1135,7 @@ file_mode() {
 }
 
 @test "branch validator rejects shell-active names that Git itself accepts" {
-	validator="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/scripts/validate-branch-name.sh"
+	validator="$BATS_TEST_DIRNAME/../skills/pr:create/scripts/validate-branch-name.sh"
 	cd "$BATS_TEST_TMPDIR"
 
 	for hostile in \
@@ -1155,8 +1155,8 @@ file_mode() {
 }
 
 @test "new feature branch starts at immutable entry commit and rollback restores entry checkout" {
-	branch_guidance="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/branch-and-platform-handling.md"
-	state_guidance="$BATS_TEST_DIRNAME/../skills/kramme:pr:create/references/state-and-rollback.md"
+	branch_guidance="$BATS_TEST_DIRNAME/../skills/pr:create/references/branch-and-platform-handling.md"
+	state_guidance="$BATS_TEST_DIRNAME/../skills/pr:create/references/state-and-rollback.md"
 	repo="$BATS_TEST_TMPDIR/repo"
 	grep -qF 'git diff --name-only "{base-ref}"...HEAD' "$branch_guidance"
 	grep -qF "stop without deleting any ref" "$state_guidance"
@@ -1194,8 +1194,8 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
+    create="skills/pr:create/SKILL.md"
+    branch="skills/pr:create/references/branch-and-platform-handling.md"
 
     grep -qE "^argument-hint: .*\[--rebase\]" "$create"
     grep -qF -- "- \`--rebase\` (alias: \`--rebase-first\`) -> set \`REBASE_FIRST=true\`" "$create"
@@ -1211,16 +1211,16 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    prevalidation="skills/kramme:pr:create/references/pre-validation-checks.md"
-    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
+    create="skills/pr:create/SKILL.md"
+    prevalidation="skills/pr:create/references/pre-validation-checks.md"
+    branch="skills/pr:create/references/branch-and-platform-handling.md"
 
-    test -f "skills/kramme:pr:create/scripts/pr-create-preflight.py"
+    test -f "skills/pr:create/scripts/pr-create-preflight.py"
     [ "$(grep -c "^## Preflight Helper$" "$create")" -eq 1 ]
     helper_line=$(grep -n "^## Preflight Helper$" "$create" | cut -d: -f1)
     step_one_line=$(grep -n "^## Step 1: Pre-Validation$" "$create" | cut -d: -f1)
     [ "$helper_line" -lt "$step_one_line" ]
-    grep -qF "python3 \"\${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py\"" "$create"
+    grep -qF "python3 \"\${CLAUDE_PLUGIN_ROOT}/skills/pr:create/scripts/pr-create-preflight.py\"" "$create"
     grep -qF "parse it as JSON and never \`eval\` or source it" "$create"
     grep -qF "rerun the helper with the same flags plus \`--feature-branch \"{validated-candidate}\"\`" "$create"
     grep -qF "starting at \"If they differ, freeze the one effective push endpoint\"" "$create"
@@ -1244,9 +1244,9 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
-    recreate="skills/kramme:git:recreate-commits/SKILL.md"
-    publication="skills/kramme:pr:create/references/confirmation-and-creation.md"
+    create="skills/pr:create/SKILL.md"
+    recreate="skills/git:recreate-commits/SKILL.md"
+    publication="skills/pr:create/references/confirmation-and-creation.md"
 
     ! grep -qF "STACK_RESOLVED=\$(" "$create" || exit 1
     grep -qF "The helper resolves stack membership for the current feature branch" "$create"
@@ -1273,7 +1273,7 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill_dir="skills/kramme:pr:create"
+    skill_dir="skills/pr:create"
 
     ! grep -rqF "Step 10 from \`state-and-rollback.md\`" "$skill_dir" || exit 1
     ! grep -rqF "Step 10 in \`references/state-and-rollback.md\`" "$skill_dir" || exit 1
@@ -1291,7 +1291,7 @@ file_mode() {
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create/SKILL.md"
+    create="skills/pr:create/SKILL.md"
 
     keep_line=$(grep -n "^### 6.0 Keep Well-Formed Commits$" "$create" | cut -d: -f1)
     confirm_line=$(grep -n "^### 6.1 Confirm Commit Restructuring Approach$" "$create" | cut -d: -f1)
@@ -1310,10 +1310,10 @@ file_mode() {
     grep -qF "label: \"Narrative\"" "$create"
     grep -qF "Otherwise:" "$create"
     grep -qF "keep unpublished fresh-branch commits that pass Step 6.0" "$create"
-    grep -qF "kramme:pr:create --base {base-branch} --require-generated-description" \
-      "skills/kramme:code:plan-to-pr/references/shipping-contract.md"
-    grep -qF "kramme:pr:create --linear-issue {issue-id} --require-generated-description" \
-      "skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    grep -qF "trackbed:pr:create --base {base-branch} --require-generated-description" \
+      "skills/code:plan-to-pr/references/shipping-contract.md"
+    grep -qF "trackbed:pr:create --linear-issue {issue-id} --require-generated-description" \
+      "skills/linear:issue-to-pr/references/shipping-contract.md"
     grep -qF "keeps unpublished commits that already follow the repository'\''s commit conventions" docs/shipping.md
   '
 
@@ -1321,7 +1321,7 @@ file_mode() {
 }
 
 @test "generate-description skips its resolver for a caller-pinned base" {
-	guidance="$BATS_TEST_DIRNAME/../skills/kramme:pr:generate-description/references/base-branch-resolution.md"
+	guidance="$BATS_TEST_DIRNAME/../skills/pr:generate-description/references/base-branch-resolution.md"
 	block="$BATS_TEST_TMPDIR/pinned-base.sh"
 	repo="$BATS_TEST_TMPDIR/repo"
 	python3 - "$guidance" "$block" <<'PY'
@@ -1356,10 +1356,10 @@ PY
 import pathlib
 import sys
 root = pathlib.Path(sys.argv[1])
-create = (root / "skills/kramme:pr:create/SKILL.md").read_text()
-generate = (root / "skills/kramme:pr:generate-description/SKILL.md").read_text()
-publish = (root / "skills/kramme:pr:create/references/confirmation-and-creation.md").read_text()
-hooks = (root / "skills/kramme:linear:issue-to-pr/references/shipping-contract.md").read_text()
+create = (root / "skills/pr:create/SKILL.md").read_text()
+generate = (root / "skills/pr:generate-description/SKILL.md").read_text()
+publish = (root / "skills/pr:create/references/confirmation-and-creation.md").read_text()
+hooks = (root / "skills/linear:issue-to-pr/references/shipping-contract.md").read_text()
 record = (root / "shared/implementation/references/independent-review.md").read_text()
 for skill in (create, generate):
     assert "${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/independent-review.md" in skill

@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
-# Tests for skills/kramme:setup/scripts/check-environment.sh.
+# Tests for skills/setup/scripts/check-environment.sh.
 
 setup() {
-	SCRIPT="$BATS_TEST_DIRNAME/../skills/kramme:setup/scripts/check-environment.sh"
+	SCRIPT="$BATS_TEST_DIRNAME/../skills/setup/scripts/check-environment.sh"
 	BASH_PATH="$(command -v bash)"
 	REAL_JQ="$(command -v jq)"
 	FAKE_BIN="$BATS_TEST_TMPDIR/bin"
@@ -445,7 +445,7 @@ assert_context_value() {
 	local cache_dir="$claude_root/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
 	mkdir -p "$cache_dir/0.88.0/.in_use" "$cache_dir/0.87.0/.in_use"
 	touch "$cache_dir/0.87.0/.in_use/1234" "$cache_dir/not-a-version"
-	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.88.0","version":"0.88.0"}]}}\n' \
+	printf '{"plugins":{"trackbed@trackbed":[{"installPath":"%s/0.88.0","version":"0.88.0"}]}}\n' \
 		"$cache_dir" >"$claude_root/plugins/installed_plugins.json"
 	cp "$claude_root/plugins/installed_plugins.json" "$BATS_TEST_TMPDIR/installed.before"
 	local before_listing
@@ -471,7 +471,7 @@ assert_context_value() {
 	local cache_dir="$claude_root/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
 	mkdir -p "$cache_dir/0.87.0" "$cache_dir/0.88.0" "$cache_dir/0.89.0"
 	"$REAL_JQ" -n --arg cache "$cache_dir" '{plugins: {
-		"kramme-cc-workflow@kramme-cc-workflow": [
+		"trackbed@trackbed": [
 			{scope: "project", projectPath: "/another/project", installPath: ($cache + "/0.87.0")},
 			{scope: "user", installPath: ($cache + "/0.88.0")},
 			{scope: "local", projectPath: "/another/project", installPath: ($cache + "/0.88.0")}
@@ -495,9 +495,9 @@ assert_context_value() {
 	local cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
 	local default_cache="$CLAUDE_CONFIG_DIR/plugins/cache/kramme-cc-workflow/kramme-cc-workflow"
 	mkdir -p "$cache_dir/0.88.0" "$default_cache/0.87.0"
-	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.88.0"}]}}\n' \
+	printf '{"plugins":{"trackbed@trackbed":[{"installPath":"%s/0.88.0"}]}}\n' \
 		"$cache_dir" >"$plugins_root/installed_plugins.json"
-	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.87.0"}]}}\n' \
+	printf '{"plugins":{"trackbed@trackbed":[{"installPath":"%s/0.87.0"}]}}\n' \
 		"$default_cache" >"$CLAUDE_CONFIG_DIR/plugins/installed_plugins.json"
 	local before_listing
 	before_listing="$(find "$plugins_root" -print | LC_ALL=C sort)"
@@ -519,7 +519,7 @@ assert_context_value() {
 	local plugins_root="$BATS_TEST_TMPDIR/plugins"
 	local cache_dir="$plugins_root/cache/kramme-cc-workflow/kramme-cc-workflow"
 	mkdir -p "$cache_dir/0.88.0"
-	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.88.0"}]}}\n' \
+	printf '{"plugins":{"trackbed@trackbed":[{"installPath":"%s/0.88.0"}]}}\n' \
 		"$cache_dir" >"$plugins_root/installed_plugins.json"
 
 	run env CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
@@ -545,7 +545,7 @@ assert_context_value() {
 	[ "$status" -eq 0 ]
 	assert_context_value claudePluginCache "0.88.0"
 
-	printf '{"plugins":{"kramme-cc-workflow@kramme-cc-workflow":[{"installPath":"%s/0.88.0-superseded"}]}}\n' "$cache_dir" >"$test_home/.claude/plugins/installed_plugins.json"
+	printf '{"plugins":{"trackbed@trackbed":[{"installPath":"%s/0.88.0-superseded"}]}}\n' "$cache_dir" >"$test_home/.claude/plugins/installed_plugins.json"
 	run env -u CLAUDE_CONFIG_DIR HOME="$test_home" PATH="$FAKE_BIN" "$BASH_PATH" "$SCRIPT" --json
 
 	[ "$status" -eq 0 ]
@@ -594,7 +594,7 @@ assert_context_value() {
 @test "falls back to the Codex manifest or an unknown plugin copy version" {
 	setup_all_tools_path
 	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
-	local copied_script="$plugin_root/skills/kramme:setup/scripts/check-environment.sh"
+	local copied_script="$plugin_root/skills/setup/scripts/check-environment.sh"
 	mkdir -p "${copied_script%/*}" "$plugin_root/.claude-plugin" "$plugin_root/.codex-plugin"
 	cp "$SCRIPT" "$copied_script"
 
@@ -625,7 +625,7 @@ assert_context_value() {
 	[ "$status" -eq 0 ]
 	assert_context_value claudeAutoUpdate "not registered"
 
-	printf '{"kramme-cc-workflow":{"source":{"source":"github","repo":"Abildtoft/kramme-cc-workflow"},"autoUpdate":true}}\n' >"$record"
+	printf '{"kramme-cc-workflow":{"source":{"source":"github","repo":"trackbed/skills"},"autoUpdate":true}}\n' >"$record"
 	cp "$record" "$BATS_TEST_TMPDIR/record.before"
 	run env PATH="$FAKE_BIN" CLAUDE_CODE_PLUGIN_CACHE_DIR="$plugins_root" "$BASH_PATH" "$SCRIPT" --json
 	[ "$status" -eq 0 ]
@@ -855,7 +855,7 @@ assert_context_value() {
 	setup_all_tools_path
 	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
 	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
-	local copied_script="$plugin_root/skills/kramme:setup/scripts/check-environment.sh"
+	local copied_script="$plugin_root/skills/setup/scripts/check-environment.sh"
 	local state_file="$XDG_STATE_HOME/kramme-cc-workflow/update-check.json"
 	mkdir -p "${copied_script%/*}" "$plugin_root/.claude-plugin" "${state_file%/*}"
 	cp "$SCRIPT" "$copied_script"
@@ -893,7 +893,7 @@ assert_context_value() {
 	setup_all_tools_path
 	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
 	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
-	local copied_script="$plugin_root/skills/kramme:setup/scripts/check-environment.sh"
+	local copied_script="$plugin_root/skills/setup/scripts/check-environment.sh"
 	local override="$BATS_TEST_TMPDIR/custom/update-check.json"
 	local home_state="$BATS_TEST_TMPDIR/home/.local/state/kramme-cc-workflow/update-check.json"
 	mkdir -p "${copied_script%/*}" "${override%/*}" "${home_state%/*}"

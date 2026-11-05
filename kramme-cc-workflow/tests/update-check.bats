@@ -4,7 +4,7 @@
 
 load 'test_helper/common'
 
-CHANGELOG_URL="https://github.com/Abildtoft/kramme-cc-workflow/blob/main/kramme-cc-workflow/CHANGELOG.md"
+CHANGELOG_URL="https://github.com/trackbed/skills/blob/main/kramme-cc-workflow/CHANGELOG.md"
 
 setup() {
 	TEST_PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
@@ -137,7 +137,7 @@ EOF
 	[ "$(state_value checkedAt)" -gt "$(stale_check)" ]
 	[ "$(curl_calls)" = "1" ]
 	grep -F -- "--max-time 2" "$CURL_LOG"
-	grep -F -- "https://raw.githubusercontent.com/Abildtoft/kramme-cc-workflow/main/kramme-cc-workflow/.claude-plugin/plugin.json" "$CURL_LOG"
+	grep -F -- "https://raw.githubusercontent.com/trackbed/skills/main/kramme-cc-workflow/.claude-plugin/plugin.json" "$CURL_LOG"
 }
 
 @test "announces a newer release with the Claude Code update commands" {
@@ -160,7 +160,7 @@ EOF
 	run run_hook
 
 	[ "$status" -eq 0 ]
-	[ "$(system_message)" = "kramme-cc-workflow 0.90.0 is available (you have 0.89.0). For Git marketplace installs, run codex plugin marketplace upgrade kramme-cc-workflow, then codex plugin add kramme-cc-workflow@kramme-cc-workflow. For local/checkout installs (including npx), rerun your original install command. Restart Codex after updating. Changelog: $CHANGELOG_URL" ]
+	[ "$(system_message)" = "kramme-cc-workflow 0.90.0 is available (you have 0.89.0). For Git marketplace installs, run codex plugin marketplace upgrade kramme-cc-workflow, then codex plugin add trackbed@trackbed. For local/checkout installs (including npx), rerun your original install command. Restart Codex after updating. Changelog: $CHANGELOG_URL" ]
 }
 
 @test "gives local Codex installs update advice without querying Codex" {

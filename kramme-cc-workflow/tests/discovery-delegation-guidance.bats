@@ -5,7 +5,7 @@
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
 
-    interview_dir="skills/kramme:discovery:interview"
+    interview_dir="skills/discovery:interview"
     interview_skill="$interview_dir/SKILL.md"
     decision_tree="$interview_dir/references/decision-tree-mode.md"
     probing="$interview_dir/references/probing-techniques.md"
@@ -67,7 +67,7 @@
     grep -qF "PLAN: Written to siw/SPEC_STRENGTHENING_PLAN.md." "$siw_mode"
     grep -qF "Artifact readiness: <requirements-only|planning-ready> — <reason>" "$siw_mode"
     grep -qF "EnterPlanMode" "$siw_mode"
-    grep -qF "When \`kramme:siw:init\` invoked this run for its discover handoff, skip the plan-mode offer and the next-command suggestion" "$siw_mode"
+    grep -qF "When \`trackbed:siw:init\` invoked this run for its discover handoff, skip the plan-mode offer and the next-command suggestion" "$siw_mode"
     grep -qF "references/siw-synthesis-checklist.md" "$siw_mode"
     grep -qF "references/siw-apply-protocol.md" "$siw_mode"
     grep -qF "validated \`INTERVIEW RESULT:\` and its artifact impact map" "$apply_protocol"
@@ -79,7 +79,7 @@
 	run python3 \
 		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
 		discovery-result-schema \
-		"$BATS_TEST_DIRNAME/../skills/kramme:discovery:interview/references/siw-mode.md"
+		"$BATS_TEST_DIRNAME/../skills/discovery:interview/references/siw-mode.md"
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
@@ -88,22 +88,22 @@
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
 
-    interview_skill="skills/kramme:discovery:interview/SKILL.md"
-    siw_mode="skills/kramme:discovery:interview/references/siw-mode.md"
-    apply_protocol="skills/kramme:discovery:interview/references/siw-apply-protocol.md"
-    handoff="skills/kramme:siw:init/references/greenfield-discovery-handoff.md"
+    interview_skill="skills/discovery:interview/SKILL.md"
+    siw_mode="skills/discovery:interview/references/siw-mode.md"
+    apply_protocol="skills/discovery:interview/references/siw-apply-protocol.md"
+    handoff="skills/siw:init/references/greenfield-discovery-handoff.md"
 
     grep -qF "Honor \`apply_changes=true\` only when the user'\''s own message typed \`--apply\` or explicitly asked in this session to apply the strengthening plan." "$interview_skill"
-    grep -qF "A model-initiated invocation, including a call from another skill such as \`kramme:siw:init\`, must not add \`--apply\`" "$interview_skill"
+    grep -qF "A model-initiated invocation, including a call from another skill such as \`trackbed:siw:init\`, must not add \`--apply\`" "$interview_skill"
     grep -qF "If \`apply_changes=true\` but the run is not SIW Refinement (no SIW mode, or SIW context resolves to Greenfield), tell the user \`--apply\` only applies to SIW Refinement, ignore it, and continue." "$interview_skill"
     grep -qF "\`--apply\` has no effect in Greenfield" "$siw_mode"
     grep -qF "Proceed only on explicit approval in this session; otherwise stop and leave the plan in place." "$apply_protocol"
     grep -qF "If \`trash\` is installed, run \`trash siw/SPEC_STRENGTHENING_PLAN.md\` without suppressing errors." "$apply_protocol"
 
-    grep -qF "Invoke \`kramme:discovery:interview\` through the Skill tool with exactly \`--siw <topic>\`" "$handoff"
+    grep -qF "Invoke \`trackbed:discovery:interview\` through the Skill tool with exactly \`--siw <topic>\`" "$handoff"
     grep -qF "skips its plan-mode offer and next-command suggestion" "$handoff"
     grep -qF "Never pass \`--apply\`." "$handoff"
-    grep -qF "If the runtime cannot invoke the skill, stop and tell the user to run \`/kramme:discovery:interview --siw <topic>\` and then \`/kramme:siw:init siw/DISCOVERY_BRIEF.md\`." "$handoff"
+    grep -qF "If the runtime cannot invoke the skill, stop and tell the user to run \`/trackbed:discovery:interview --siw <topic>\` and then \`/trackbed:siw:init siw/DISCOVERY_BRIEF.md\`." "$handoff"
     grep -qF "If the discovery run does not create \`siw/DISCOVERY_BRIEF.md\`, stop without creating SIW workflow files." "$handoff"
     ! grep -qF "kramme:siw:discovery" "$handoff"
   '

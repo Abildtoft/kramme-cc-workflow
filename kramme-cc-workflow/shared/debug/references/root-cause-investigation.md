@@ -1,6 +1,6 @@
 # Root-Cause Investigation
 
-This procedure is shared by `kramme:debug:investigate` (its Steps 2–5) and `kramme:debug:triage-to-issue` (its Phase 3). It reproduces, isolates, and traces one bug and records evidence. It never edits code, writes tests, or proposes or applies a fix; the calling skill owns anything after the hand-back.
+This procedure is shared by `trackbed:debug:investigate` (its Steps 2–5) and `trackbed:debug:triage-to-issue` (its Phase 3). It reproduces, isolates, and traces one bug and records evidence. It never edits code, writes tests, or proposes or applies a fix; the calling skill owns anything after the hand-back.
 
 ## Caller Inputs
 

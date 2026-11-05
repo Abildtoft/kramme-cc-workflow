@@ -7,9 +7,9 @@
 
 ## Context
 
-`kramme:pr:create --auto` promises to include all current uncommitted work, but previously stopped whenever the selected feature branch already existed remotely. This made an exact-tip remote—often left by a successful push followed by failed Pull Request creation—a recurring manual-commit blocker even though no remote-only or divergent work existed.
+`trackbed:pr:create --auto` promises to include all current uncommitted work, but previously stopped whenever the selected feature branch already existed remotely. This made an exact-tip remote—often left by a successful push followed by failed Pull Request creation—a recurring manual-commit blocker even though no remote-only or divergent work existed.
 
-The workflow already supports an exact-OID lease for fast-forwarding an existing remote and `kramme:git:recreate-commits` already supports `--after <commit>`, which keeps the named commit and all earlier history intact.
+The workflow already supports an exact-OID lease for fast-forwarding an existing remote and `trackbed:git:recreate-commits` already supports `--after <commit>`, which keeps the named commit and all earlier history intact.
 
 ## Decision
 
@@ -32,7 +32,7 @@ Non-auto invocations with dirty existing branches remain blocked until a future 
 
 ## Consequences
 
-- `kramme:pr:create --auto` now matches its documented promise to include local work when the existing branch is safely reusable.
+- `trackbed:pr:create --auto` now matches its documented promise to include local work when the existing branch is safely reusable.
 - Published commits are never rewritten by this path; only the unpublished tail after the captured remote OID may be recreated.
 - Concurrent remote changes remain hard blockers through frozen-endpoint checks and the exact lease.
 - The workflow gains rollback state in one existing-remote mode, so pre-publication failures must distinguish remote append from clean recovery and clean fast-forward modes, while every ambiguous publication attempt retains its prepared local recovery state.

@@ -6,15 +6,15 @@
 
 ## Context
 
-The repository already separates maker from checker, and some workflows ask for a reader who has not seen the work: the Pull Request description cold read and the in-repo raters of `kramme:code:outside-view`. Those workflows keep the conversation away from the reader. They did not keep the project's own framing away. On Claude Code, a general-purpose or custom subagent loads every `CLAUDE.md` level at startup, including the `AGENTS.md` this repository imports. Outside-view promised that "the project's self-image cannot constrain what they see" while only telling raters not to open files that were already in their context. The cold read carried the same gap as a stated caveat.
+The repository already separates maker from checker, and some workflows ask for a reader who has not seen the work: the Pull Request description cold read and the in-repo raters of `trackbed:code:outside-view`. Those workflows keep the conversation away from the reader. They did not keep the project's own framing away. On Claude Code, a general-purpose or custom subagent loads every `CLAUDE.md` level at startup, including the `AGENTS.md` this repository imports. Outside-view promised that "the project's self-image cannot constrain what they see" while only telling raters not to open files that were already in their context. The cold read carried the same gap as a stated caveat.
 
 Reviewing [google/elephant-goldfish-model](https://github.com/google/elephant-goldfish-model) at commit `403d8881d62022490637d740657b33f01e321ea8` surfaced the direct fix: the `omitClaudeMd` subagent field, available from Claude Code 2.1.271. A live probe confirmed the problem and the fix. In otherwise identical sessions, a `general-purpose` subagent reported random markers planted in `CLAUDE.md` and in the `AGENTS.md` it imports, and a plugin agent with the field reported neither.
 
 ## Decision
 
-- Add one read-only plugin agent, `kramme:cold-reader`, with `omitClaudeMd: true`, and one launch contract, `shared/agents/references/cold-reader.md`.
-- Launch outsider readers through it: outside-view's in-repo raters, the Pull Request description cold read, and the comprehension read in `kramme:docs:review` and `kramme:siw:spec-audit`.
-- Keep project instructions for readers who are meant to know the project: the author and teammate clarity readers in `kramme:pr:github-review`, and reviewers that check project rules, such as `kramme:code-reviewer` and `kramme:convention-drift-reviewer`.
+- Add one read-only plugin agent, `trackbed:cold-reader`, with `omitClaudeMd: true`, and one launch contract, `shared/agents/references/cold-reader.md`.
+- Launch outsider readers through it: outside-view's in-repo raters, the Pull Request description cold read, and the comprehension read in `trackbed:docs:review` and `trackbed:siw:spec-audit`.
+- Keep project instructions for readers who are meant to know the project: the author and teammate clarity readers in `trackbed:pr:github-review`, and reviewers that check project rules, such as `trackbed:code-reviewer` and `trackbed:convention-drift-reviewer`.
 - Skip and record a read when the host cannot start the reader without the conversation. Never simulate one in the calling context. A reader that cannot read named material replies `UNREADABLE: <path>` and the read counts as failed.
 - On Codex, spawn a new agent with `fork_turns="none"`, or `fork_context: false` when the spawn tool exposes that field. Codex has no equivalent of the field and the converter drops it, so an adopting skill that reports isolation records it as reduced there.
 - Check the host contract with `scripts/probe-cold-reader-isolation.js`, on demand. It runs the cold reader, a positive control with a normal agent, and a denied read.

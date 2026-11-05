@@ -16,7 +16,7 @@ The capability must remain optional because it sends repository content to anoth
 
 ## Decision
 
-Create user-invocable `kramme:pr:adversarial-review` as the canonical cross-provider primitive. Invocation is explicit repository-scoped consent to send the tracked `HEAD` snapshot, committed diff, and supplied requirements to the selected provider. The selected provider must differ from the active Claude Code or Codex host; provider failure never degrades to a same-provider pass.
+Create user-invocable `trackbed:pr:adversarial-review` as the canonical cross-provider primitive. Invocation is explicit repository-scoped consent to send the tracked `HEAD` snapshot, committed diff, and supplied requirements to the selected provider. The selected provider must differ from the active Claude Code or Codex host; provider failure never degrades to a same-provider pass.
 
 Use a skill-local runner and structured result schema:
 
@@ -25,7 +25,7 @@ Use a skill-local runner and structured result schema:
 - Require normalized findings, positive observations, and coverage. Revalidate every external finding against the real prepared repository and preserve concrete disagreement evidence.
 - Return results inline. Temporary local inputs and outputs are deleted; a Conductor cloud session remains in workspace history as execution evidence.
 
-Add `--adversarial-review` to `kramme:pr:review-convergence`. When requested, Gate 5 runs only after all ordinary active gates reach a no-change candidate. Accepted code-changing findings consume the existing remediation budget and restart the next round at Gate 1; the alternative provider then reviews the later candidate again. Final completion requires an adversarial result for the final verified tree.
+Add `--adversarial-review` to `trackbed:pr:review-convergence`. When requested, Gate 5 runs only after all ordinary active gates reach a no-change candidate. Accepted code-changing findings consume the existing remediation budget and restart the next round at Gate 1; the alternative provider then reviews the later candidate again. Final completion requires an adversarial result for the final verified tree.
 
 The skill is platform-neutral at the instruction level and its directory is copied by the existing Codex converter. A conversion contract test requires the runner to retain executable permissions in the generated install.
 
@@ -58,6 +58,6 @@ Rejected because canonical behavior should work in ordinary local Claude Code an
 
 ## Amendment
 
-On 2026-10-21 the [model-invocable orchestration children record](2026-08-29-model-invocable-orchestration-children.md) let `kramme:pr:review-convergence` invoke this skill through the Skill tool as its Gate 5. A model invocation is not consent by itself: the user's own `--adversarial-review` request for that convergence run is the repository-scoped consent, and it covers only that run. Internal callers never forward the flag, and no other parent may invoke the skill automatically. Every read-only, provider-difference, isolation, and fail-closed rule above is unchanged.
+On 2026-10-21 the [model-invocable orchestration children record](2026-08-29-model-invocable-orchestration-children.md) let `trackbed:pr:review-convergence` invoke this skill through the Skill tool as its Gate 5. A model invocation is not consent by itself: the user's own `--adversarial-review` request for that convergence run is the repository-scoped consent, and it covers only that run. Internal callers never forward the flag, and no other parent may invoke the skill automatically. Every read-only, provider-difference, isolation, and fail-closed rule above is unchanged.
 
-On 2026-11-02 the [issue-to-pr cross-provider review record](2026-11-02-issue-to-pr-cross-provider-review.md) let `kramme:linear:issue-to-pr` forward the user's own `--adversarial-review` to review convergence. That request is the user's consent for that one invocation, nothing stored can turn it on, and `kramme:code:plan-to-pr` still never forwards the flag. Every read-only, provider-difference, isolation, and fail-closed rule above is unchanged.
+On 2026-11-02 the [issue-to-pr cross-provider review record](2026-11-02-issue-to-pr-cross-provider-review.md) let `trackbed:linear:issue-to-pr` forward the user's own `--adversarial-review` to review convergence. That request is the user's consent for that one invocation, nothing stored can turn it on, and `trackbed:code:plan-to-pr` still never forwards the flag. Every read-only, provider-difference, isolation, and fail-closed rule above is unchanged.

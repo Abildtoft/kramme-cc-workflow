@@ -164,7 +164,7 @@ test("fixture SubagentStart hook events are preserved in generated hook config",
       ],
     };
     const sourceRoot = path.join(root, "source-plugin");
-    const controlSkills = [hookControlSkill(sourceRoot, "kramme:hooks:toggle")];
+    const controlSkills = [hookControlSkill(sourceRoot, "trackbed:hooks:toggle")];
     for (const skill of controlSkills) {
       await writeFile(path.join(skill.sourceDir, "SKILL.md"), "control\n");
     }

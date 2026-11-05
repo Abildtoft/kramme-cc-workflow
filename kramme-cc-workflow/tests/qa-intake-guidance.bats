@@ -2,7 +2,7 @@
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
-  SKILL="skills/kramme:qa:intake/SKILL.md"
+  SKILL="skills/qa:intake/SKILL.md"
 }
 
 @test "qa intake keeps its clarification and breakdown approval boundaries" {

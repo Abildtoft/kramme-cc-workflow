@@ -3,7 +3,7 @@
 @test "feature spec template preserves raw marker prefixes" {
 	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    template="skills/kramme:docs:feature-spec/assets/feature-spec-template.md"
+    template="skills/docs:feature-spec/assets/feature-spec-template.md"
 
     grep -q -- "^- POTENTIAL CONCERNS:" "$template" ||
       { echo "missing raw POTENTIAL CONCERNS marker"; exit 1; }
@@ -21,7 +21,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:docs:update-agents-md/SKILL.md"
+    skill="skills/docs:update-agents-md/SKILL.md"
     frontmatter="$(awk "/^---\$/{n++; next} n==1" "$skill")"
 
     grep -qx "disable-model-invocation: true" <<<"$frontmatter" ||
@@ -29,9 +29,9 @@
     grep -qx "user-invocable: true" <<<"$frontmatter" ||
       { echo "update-agents-md must appear in the slash menu"; exit 1; }
 
-    for route in skills/kramme:docs:feature-spec/SKILL.md skills/kramme:docs:adr/SKILL.md; do
-      grep -qF "/kramme:docs:update-agents-md" "$route" ||
-        { echo "$route no longer routes to /kramme:docs:update-agents-md"; exit 1; }
+    for route in skills/docs:feature-spec/SKILL.md skills/docs:adr/SKILL.md; do
+      grep -qF "/trackbed:docs:update-agents-md" "$route" ||
+        { echo "$route no longer routes to /trackbed:docs:update-agents-md"; exit 1; }
     done
   '
 
@@ -42,8 +42,8 @@
   run bash -c '
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:docs:feature-spec/SKILL.md"
-    template="skills/kramme:docs:feature-spec/assets/feature-spec-template.md"
+    skill="skills/docs:feature-spec/SKILL.md"
+    template="skills/docs:feature-spec/assets/feature-spec-template.md"
 
     scope=$(grep -nxF "## 2. Scope & Non-goals" "$template" | cut -d: -f1)
     rejected=$(grep -nxF "### Rejected approaches" "$template" | cut -d: -f1)

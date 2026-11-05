@@ -19,8 +19,8 @@ This repo packages a personal workflow plugin for Claude Code and includes a Cod
 | Hooks | `hooks/hooks.json`, `hooks/*.sh`, `hooks/lib/` | Claude Code lifecycle hooks for command safety, formatting, review confirmation, usage stats, and update notices. |
 | Shared scripts | `scripts/*.sh`, `scripts/*.py`, `scripts/*.js`, `scripts/dev-server/` | Helpers shared by skills, hooks, release workflows, and browser-facing workflows, plus maintainer checks such as `check-doc-citations.py` and `probe-cold-reader-isolation.js`. |
 | Codex converter | `scripts/convert-plugin.js`, `scripts/convert-plugin/` | Loads the Claude plugin, transforms components for Codex, and writes managed output under a Codex home. |
-| Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals, optional live Claude SDK and OpenAI Responses adapters with per-provider sequential credit failover/checkpoints, and the local SkillOpt adapter for the `kramme:skill:review` pilot. |
-| Review completion | `skills/kramme:pr:code-review/scripts/review-execution.js`, `evals/review-completion/` | Self-attested execution ledger, scope/report validation, and independently observed completion evaluations; consumed by review convergence. |
+| Evals | `evals/skill-review/`, `evals/skillopt/` | Deterministic fixture evals, optional live Claude SDK and OpenAI Responses adapters with per-provider sequential credit failover/checkpoints, and the local SkillOpt adapter for the `trackbed:skill:review` pilot. |
+| Review completion | `skills/pr:code-review/scripts/review-execution.js`, `evals/review-completion/` | Self-attested execution ledger, scope/report validation, and independently observed completion evaluations; consumed by review convergence. |
 | Tests | `tests/*.bats`, `tests/node/`, `tests/python/`, `tests/test_helper/` | Bats integration suites plus focused Node and Python unit suites, converter contracts, eval harnesses, and skill guidance contracts. |
 
 ## Runtime Flow

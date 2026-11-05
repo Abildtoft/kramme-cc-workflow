@@ -20,7 +20,7 @@ setup_check_deps_repo() {
   CHECK_DEPS_REPO="$BATS_TEST_TMPDIR/repo"
   CHECK_DEPS_BIN="$BATS_TEST_TMPDIR/bin"
   mkdir -p \
-    "$CHECK_DEPS_REPO/kramme-cc-workflow/skills/kramme:test" \
+    "$CHECK_DEPS_REPO/kramme-cc-workflow/skills/test" \
     "$CHECK_DEPS_REPO/node_modules/.bin" \
     "$CHECK_DEPS_BIN"
   cp "$BATS_TEST_DIRNAME/../Makefile" "$CHECK_DEPS_REPO/kramme-cc-workflow/Makefile"
@@ -31,9 +31,9 @@ setup_check_deps_repo() {
   create_fake_tool "$CHECK_DEPS_REPO/node_modules/.bin/prettier"
   create_fake_tool "$CHECK_DEPS_REPO/node_modules/.bin/tsc"
 
-  cat >"$CHECK_DEPS_REPO/kramme-cc-workflow/skills/kramme:test/SKILL.md" <<'MD'
+  cat >"$CHECK_DEPS_REPO/kramme-cc-workflow/skills/test/SKILL.md" <<'MD'
 ---
-name: kramme:test
+name: test
 description: Test skill
 ---
 MD
@@ -369,7 +369,7 @@ SH
 
 @test "check-deps requires skillspector when a skill directory changed" {
   setup_check_deps_repo
-  printf '\nChanged.\n' >>"$CHECK_DEPS_REPO/kramme-cc-workflow/skills/kramme:test/SKILL.md"
+  printf '\nChanged.\n' >>"$CHECK_DEPS_REPO/kramme-cc-workflow/skills/test/SKILL.md"
 
   run env PATH="$CHECK_DEPS_BIN:/usr/bin:/bin" make -C "$CHECK_DEPS_REPO/kramme-cc-workflow" --no-print-directory check-deps SKILLSPECTOR_BASE=main
 
@@ -473,7 +473,7 @@ SH
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"unittest discover -s tests/python -p 'test_*.py'"* ]]
-  [[ "$output" == *"unittest discover -s ../.agents/skills/kramme:skill:audit-sources/scripts -p 'test_*.py'"* ]]
+  [[ "$output" == *"unittest discover -s ../.agents/skills/trackbed:skill:audit-sources/scripts -p 'test_*.py'"* ]]
 }
 
 @test "Python static inventory accepts every registered production module" {

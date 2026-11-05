@@ -4,10 +4,10 @@ setup() {
   cd "$BATS_TEST_DIRNAME/.."
   REFERENCE="shared/findings/references/disputing-findings.md"
   REFERENCE_PATH='${CLAUDE_PLUGIN_ROOT}/shared/findings/references/disputing-findings.md'
-  RESOLVE_AUDIT="skills/kramme:siw:resolve-audit/SKILL.md"
-  RESOLVE_REVIEW="skills/kramme:pr:resolve-review/SKILL.md"
-  APPLY_NOW="skills/kramme:siw:spec-audit/references/apply-now.md"
-  SPEC_AUDIT="skills/kramme:siw:spec-audit"
+  RESOLVE_AUDIT="skills/siw:resolve-audit/SKILL.md"
+  RESOLVE_REVIEW="skills/pr:resolve-review/SKILL.md"
+  APPLY_NOW="skills/siw:spec-audit/references/apply-now.md"
+  SPEC_AUDIT="skills/siw:spec-audit"
 }
 
 @test "a dispute needs evidence the reviewer could have read" {
@@ -64,7 +64,7 @@ setup() {
   grep -qF -- '- Findings marked `**Status:** [Contested]`' "$RESOLVE_AUDIT"
   grep -qF -- '- Already marked `**Status:** [Contested]`' "$APPLY_NOW"
   grep -qF 'Contested (finding ids + the evidence)' "$RESOLVE_AUDIT"
-  grep -qF 'skipping findings marked `**Status:** [Contested]`' "skills/kramme:discovery:interview/references/siw-mode.md"
+  grep -qF 'skipping findings marked `**Status:** [Contested]`' "skills/discovery:interview/references/siw-mode.md"
   grep -qF 'without its findings marked `**Status:** [Contested]`' "shared/findings/references/findings-intake.md"
 }
 
@@ -89,13 +89,13 @@ setup() {
   grep -qF "$REFERENCE_PATH" "$RESOLVE_REVIEW"
   grep -qF 'return `disagreed` with the evidence as the `rationale`' "$RESOLVE_REVIEW"
   grep -qF 'return `blocked-implementation` with a `rationale` that starts `Needs author decision:`' "$RESOLVE_REVIEW"
-  grep -qF 'A disagreement cites evidence the reviewer could have read' "skills/kramme:pr:resolve-review/references/resolution-output.md"
+  grep -qF 'A disagreement cites evidence the reviewer could have read' "skills/pr:resolve-review/references/resolution-output.md"
   grep -qF 'or, with a `rationale` that starts `Needs author decision:`, that it needs a fact only the author can settle' "$RESOLVE_REVIEW"
   grep -qF 'Under `--implement-only`, implement it, because the parent already accepted the change.' "$RESOLVE_REVIEW"
 }
 
 @test "github-review-reply stops on the status an escalation returns and asks" {
-  local reply="skills/kramme:pr:github-review-reply/SKILL.md"
+  local reply="skills/pr:github-review-reply/SKILL.md"
 
   grep -qF '`blocked-implementation` or `blocked-validation` → keep the item as `needs-code-change`, mark `Implementation status: blocked`, and stop before posting replies.' "$reply"
   grep -qF 'A `blocked-implementation` whose `rationale` starts `Needs author decision:` is a question rather than a failed fix.' "$reply"

@@ -16,8 +16,8 @@ source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "update-check" "json"
 
 PLUGIN_NAME="kramme-cc-workflow"
-LATEST_MANIFEST_URL="https://raw.githubusercontent.com/Abildtoft/kramme-cc-workflow/main/kramme-cc-workflow/.claude-plugin/plugin.json"
-CHANGELOG_URL="https://github.com/Abildtoft/kramme-cc-workflow/blob/main/kramme-cc-workflow/CHANGELOG.md"
+LATEST_MANIFEST_URL="https://raw.githubusercontent.com/trackbed/skills/main/kramme-cc-workflow/.claude-plugin/plugin.json"
+CHANGELOG_URL="https://github.com/trackbed/skills/blob/main/kramme-cc-workflow/CHANGELOG.md"
 CHECK_INTERVAL_SECONDS=86400
 FETCH_TIMEOUT_SECONDS=2
 NEWLINE=$'\n'

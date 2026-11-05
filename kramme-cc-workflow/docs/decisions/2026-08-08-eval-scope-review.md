@@ -6,7 +6,7 @@
 
 ## Context
 
-The [skill quality regime](2026-07-06-skill-quality-regime.md) record capped committed eval investment at the `kramme:skill:review` pilot and set its own revisit condition under [Consequences](2026-07-06-skill-quality-regime.md#consequences):
+The [skill quality regime](2026-07-06-skill-quality-regime.md) record capped committed eval investment at the `trackbed:skill:review` pilot and set its own revisit condition under [Consequences](2026-07-06-skill-quality-regime.md#consequences):
 
 > Revisit this ADR only when a candidate skill has deterministic fixtures, false-positive cases, and a candidate gate that meet the existing SkillOpt expansion criteria.
 
@@ -22,13 +22,13 @@ The cap applies to _committed_ artifacts. Prototyping under `.context/` is permi
 
 | Skill | 90d uses (sessions) | 30d uses (sessions) | Last used | 2026-07-06 90d |
 | --- | --: | --: | --- | --: |
-| `kramme:pr:resolve-review` | 230 (194) | 8 (7) | 2026-07-18 | 204 |
-| `kramme:skill:review` | 196 (191) | 1 (1) | 2026-07-25 | 195 |
-| `kramme:pr:code-review` | 73 (62) | 23 (21) | 2026-08-05 | 44 |
-| `kramme:pr:rebase` | 42 (29) | 8 (6) | 2026-08-06 | 34 |
-| `kramme:code:agent-readiness` | 41 (32) | 4 (4) | 2026-07-26 | 31 |
+| `trackbed:pr:resolve-review` | 230 (194) | 8 (7) | 2026-07-18 | 204 |
+| `trackbed:skill:review` | 196 (191) | 1 (1) | 2026-07-25 | 195 |
+| `trackbed:pr:code-review` | 73 (62) | 23 (21) | 2026-08-05 | 44 |
+| `trackbed:pr:rebase` | 42 (29) | 8 (6) | 2026-08-06 | 34 |
+| `trackbed:code:agent-readiness` | 41 (32) | 4 (4) | 2026-07-26 | 31 |
 
-The 90-day ordering of the first two candidates in the "next candidate skills" list under [Expansion Criteria](../../evals/skillopt/README.md#expansion-criteria) still holds; the third, `kramme:session:automate-repeats`, has no recorded usage in either window. The 30-day window diverges: `kramme:pr:code-review` leads it, and `kramme:pr:resolve-review` has not been used since 2026-07-18. Recorded, not acted on — this record does not re-rank the candidate order.
+The 90-day ordering of the first two candidates in the "next candidate skills" list under [Expansion Criteria](../../evals/skillopt/README.md#expansion-criteria) still holds; the third, `trackbed:session:automate-repeats`, has no recorded usage in either window. The 30-day window diverges: `trackbed:pr:code-review` leads it, and `trackbed:pr:resolve-review` has not been used since 2026-07-18. Recorded, not acted on — this record does not re-rank the candidate order.
 
 ### What was prototyped
 
@@ -52,7 +52,7 @@ The Criterion column below is shorthand, in the order the criteria appear under 
 | # | Criterion | Verdict | Reasoning |
 | --- | --- | --- | --- |
 | 1 | Usage or impact justifies the maintenance cost | Pass | Highest blast radius in the catalog: the [Risk Table](2026-07-06-skill-quality-regime.md#risk-table) notes a regression costs "one real PR branch" including incorrect source changes and a bad force-push. 90-day usage still ranks first. The 30-day decline weakens the usage half of the argument but not the impact half. |
-| 2 | Output is checkable with deterministic fixtures | Fail | The decisive result. `wrong-fix` — which answered findings with bare comments in three files instead of fixes and inverted an off-by-one — scored `text_hard` 1.00 and `diff_hard` 0.86. It was caught on exactly one item, the only one carrying an executable behavior probe (`page([1,2,3,4,5], 1, 2)` returned `[1,2,3]` instead of `[1,2]`). Checking that a fix is _correct_, rather than that a file was _touched_, requires each fixture to be a runnable miniature repository with its own test suite. That is the "closer to an integration test matrix than a prompt fixture split" cost [Expand SkillOpt as QA](2026-07-06-skill-quality-regime.md#expand-skillopt-as-qa) predicted for `kramme:pr:rebase`; it applies here too. |
+| 2 | Output is checkable with deterministic fixtures | Fail | The decisive result. `wrong-fix` — which answered findings with bare comments in three files instead of fixes and inverted an off-by-one — scored `text_hard` 1.00 and `diff_hard` 0.86. It was caught on exactly one item, the only one carrying an executable behavior probe (`page([1,2,3,4,5], 1, 2)` returned `[1,2,3]` instead of `[1,2]`). Checking that a fix is _correct_, rather than that a file was _touched_, requires each fixture to be a runnable miniature repository with its own test suite. That is the "closer to an integration test matrix than a prompt fixture split" cost [Expand SkillOpt as QA](2026-07-06-skill-quality-regime.md#expand-skillopt-as-qa) predicted for `trackbed:pr:rebase`; it applies here too. |
 | 3 | Distinct train/val/test items; test items not used for tuning | Pass | Seven distinct items across a 3/2/2 split with no fixture shared between splits. Nothing about this skill obstructs split hygiene. |
 | 4 | Fixtures include false-positive cases so optimization cannot win by reporting more findings indiscriminately | Fail | Under a stricter reading than the criterion's wording requires. As written the criterion is met: three false-positive fixtures were built and `churner`, the indiscriminate actor, fails all three (its 0.29 is the aggregate across all seven items, and it also fails the action-class and validation items). This record fails it anyway, because for a skill whose output is a patch, adversaries that only punish over-action do not deliver what the criterion exists to buy. They do not catch inaction: `lazy` scored a perfect 1.00 on every false-positive item, because "did not edit `src/total.js`" is precisely what a correct resolver does there. Restraint and inertia are the same shape on the diff channel, and the text channel cannot separate them because any resolver can emit the right words. On the validation item, `lazy` claimed "Implemented the throw, but validation failed" while changing nothing, and scored perfectly. |
 | 5 | Generated output stays under `.context/`, never `skills/**` | Pass | The prototype's generated output stays under `.context/`, and it applies candidate edits in an OS temporary directory rather than in place. Verified: `kramme-cc-workflow/skills/` and `kramme-cc-workflow/evals/` are both clean. A path-scoped status check on `.context/` proves nothing here, because that path is excluded per-clone via `.git/info/exclude` rather than the committed `.gitignore`. |
@@ -69,11 +69,11 @@ Review parsing and action-class routing are genuinely deterministic and non-subj
 
 **Recommended: reaffirm the cap, with a dated review trigger.**
 
-`kramme:pr:resolve-review` does not meet the expansion criteria. Four of seven fail, but they do not carry equal weight. Criterion 2, deterministic checkability, fails on its own terms and is the one that decides the answer. Criterion 4 fails only on the stricter reading argued above; on the canonical wording it passes. Criteria 6 and 7 are consequences of those two rather than independent failures. Even taking criterion 2 alone, expanding on this evidence would buy a green number that does not mean what it appears to mean.
+`trackbed:pr:resolve-review` does not meet the expansion criteria. Four of seven fail, but they do not carry equal weight. Criterion 2, deterministic checkability, fails on its own terms and is the one that decides the answer. Criterion 4 fails only on the stricter reading argued above; on the canonical wording it passes. Criteria 6 and 7 are consequences of those two rather than independent failures. Even taking criterion 2 alone, expanding on this evidence would buy a green number that does not mean what it appears to mean.
 
 This is a re-decision, not a continuation. The cap in [Decision](2026-07-06-skill-quality-regime.md#decision) stands, and the original record is unchanged. What changes is that it now rests on tested evidence rather than on an untested assumption.
 
-Next review: 2027-02-08, or earlier if `node kramme-cc-workflow/scripts/skill-usage.js report --since 30d` puts `kramme:pr:resolve-review` above 30 in the `Total` column, restoring the usage half of criterion 1. It reads 8 today.
+Next review: 2027-02-08, or earlier if `node kramme-cc-workflow/scripts/skill-usage.js report --since 30d` puts `trackbed:pr:resolve-review` above 30 in the `Total` column, restoring the usage half of criterion 1. It reads 8 today.
 
 The only thing that would change the answer is a fixture design that verifies fix _correctness_ without requiring a runnable test suite per fixture. None is in view, and no schedule would surface one, so it is recorded here as the blocker to watch rather than as a review trigger that nobody would ever check.
 
@@ -99,7 +99,7 @@ Rejected as premature. A criteria-based gate is only as good as the criteria, an
 
 ### Narrow the target: eval the annotation output, not the code edits
 
-The most interesting alternative, and not recommended yet. A committed eval scoring only `kramme:pr:resolve-review`'s lifecycle annotations — action-class routing, field placement, verbatim preservation of unprocessed entries, `Waiting on` versus `To proceed` selection — would pass criterion 3 on the prototype evidence, and that half of the output is text the committed scorer already handles.
+The most interesting alternative, and not recommended yet. A committed eval scoring only `trackbed:pr:resolve-review`'s lifecycle annotations — action-class routing, field placement, verbatim preservation of unprocessed entries, `Waiting on` versus `To proceed` selection — would pass criterion 3 on the prototype evidence, and that half of the output is text the committed scorer already handles.
 
 Criteria 2, 4, and 7 are untested for this narrower target and should not be assumed. No resolver in the prototype attacked the text channel — all four emit byte-identical review text, so the scorer was never shown rejecting a wrong annotation. The prototype's false-positive adversaries attack the diff (act when you should not); an annotation-only eval needs adversaries that attack the text, such as a resolver that attaches `Recommended resolution` to a finding that needs no decision. Those fixtures were not built.
 
@@ -115,7 +115,7 @@ Positive:
 
 Negative:
 
-- `kramme:pr:resolve-review` keeps the largest blast radius in the catalog with no committed behavioral eval, and this record extends that state by up to six months.
+- `trackbed:pr:resolve-review` keeps the largest blast radius in the catalog with no committed behavioral eval, and this record extends that state by up to six months.
 - Trigger selection for 34 auto-invocable skills stays unmeasured pending the ruling above.
 - The prototype is untracked, so it decays. If `.context/` is cleared, the next attempt repeats the build. That is the cost of the cap's own structure.
 

@@ -12,7 +12,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import Any
 
-SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "kramme:pr:triage-risk"
+SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "pr:triage-risk"
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "risk-signals.py"
 SPEC = importlib.util.spec_from_file_location("risk_signals", SCRIPT_PATH)
 assert SPEC is not None

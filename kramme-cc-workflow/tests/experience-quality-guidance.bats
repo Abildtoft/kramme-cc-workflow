@@ -5,14 +5,14 @@ setup() {
 }
 
 SKILLS=(
-	"skills/kramme:code:agent-readiness/SKILL.md"
-	"skills/kramme:code:api-design/SKILL.md"
-	"skills/kramme:docs:feature-spec/SKILL.md"
-	"skills/kramme:linear:issue-implement/SKILL.md"
-	"skills/kramme:pr:resolve-review/SKILL.md"
-	"skills/kramme:skill:create/SKILL.md"
-	"skills/kramme:skill:review/SKILL.md"
-	"skills/kramme:verify:run/SKILL.md"
+	"skills/code:agent-readiness/SKILL.md"
+	"skills/code:api-design/SKILL.md"
+	"skills/docs:feature-spec/SKILL.md"
+	"skills/linear:issue-implement/SKILL.md"
+	"skills/pr:resolve-review/SKILL.md"
+	"skills/skill:create/SKILL.md"
+	"skills/skill:review/SKILL.md"
+	"skills/verify:run/SKILL.md"
 )
 
 assert_core_principle() {
@@ -36,14 +36,14 @@ assert_core_principle() {
 @test "public and supporting guidance carries the same compatibility boundary" {
 	assert_core_principle "../README.md"
 
-	api_comparison="skills/kramme:code:api-design/references/design-it-twice.md"
+	api_comparison="skills/code:api-design/references/design-it-twice.md"
 	grep -qF "UX/DX/AX" "$api_comparison"
 	grep -qi "outside the intended change" "$api_comparison"
 	grep -qi "intentional contract change" "$api_comparison"
 	grep -qi "compatibility or migration effects" "$api_comparison"
 	grep -qi "material tradeoffs" "$api_comparison"
 
-	plan="skills/kramme:linear:issue-implement/assets/technical-plan.md"
+	plan="skills/linear:issue-implement/assets/technical-plan.md"
 	grep -qF "UX/DX/AX" "$plan"
 	grep -qi "unchanged or inapplicable" "$plan"
 	grep -qi "outside the intended change" "$plan"
@@ -68,9 +68,9 @@ assert_core_principle() {
 	done
 
 	for skill in \
-		"kramme-cc-workflow/skills/kramme:code:agent-readiness/SKILL.md" \
-		"kramme-cc-workflow/skills/kramme:code:api-design/SKILL.md" \
-		"kramme-cc-workflow/skills/kramme:verify:run/SKILL.md"; do
+		"kramme-cc-workflow/skills/code:agent-readiness/SKILL.md" \
+		"kramme-cc-workflow/skills/code:api-design/SKILL.md" \
+		"kramme-cc-workflow/skills/verify:run/SKILL.md"; do
 		jq -e --arg skill "$skill" \
 			'.skill_contract_coverage.mechanical_only | index($skill) == null' \
 			"$registry" >/dev/null

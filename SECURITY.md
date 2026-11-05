@@ -4,7 +4,7 @@
 
 Please do not disclose security vulnerabilities in public issues, pull requests, or discussions.
 
-Use GitHub private vulnerability reporting for `Abildtoft/kramme-cc-workflow` when available. If private reporting is not available, open a minimal public issue asking for a private disclosure channel without including exploit details.
+Use GitHub private vulnerability reporting for `trackbed/skills` when available. If private reporting is not available, open a minimal public issue asking for a private disclosure channel without including exploit details.
 
 Include the affected commit or version, the vulnerable area, reproduction steps, expected impact, and any suggested mitigation.
 

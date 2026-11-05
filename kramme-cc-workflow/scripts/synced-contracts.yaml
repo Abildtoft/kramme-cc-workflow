@@ -3,7 +3,7 @@
   "contract_schema": "kramme-cc-workflow/scripts/schemas/skill-contracts.json",
   "notes": [
     "This file is JSON-compatible YAML so scripts/lint-skill-contracts.py can parse it with Python stdlib only.",
-    "allow_empty_fields records pre-existing baseline_hash debt. Remove entries as kramme:skill:audit-sources backfills hashes.",
+    "allow_empty_fields records pre-existing baseline_hash debt. Remove entries as trackbed:skill:audit-sources backfills hashes.",
     "allow_line_count_over records legacy SKILL.md files over 500 lines. Remove entries as those skills are split into references.",
     "warn_skill_lines and warn_description_chars report prompt-footprint review queues without failing the lint.",
     "skill_contract_coverage points to the many-to-many behavioral-suite registry and keeps uncovered skills in an explicit warning-only burndown."
@@ -13,12 +13,12 @@
       "name": "linear-agent-readiness-rubric",
       "extract_regex": "(?s)Synced Linear agent-readiness contract \\(keep aligned across Linear readiness workflows\\):\\s*(An issue is `?agent-ready`? only when every item passes\\..*?Never promote an issue while required evidence is unknown\\.)",
       "inventory": {
-        "glob": "kramme-cc-workflow/skills/kramme:linear:*/references/*.md",
+        "glob": "kramme-cc-workflow/skills/linear:*/references/*.md",
         "marker": "Synced Linear agent-readiness contract (keep aligned across Linear readiness workflows):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:linear:backlog-refine/references/refinement-rubric.md",
-        "kramme-cc-workflow/skills/kramme:linear:next/references/scoring-rubric.md"
+        "kramme-cc-workflow/skills/linear:backlog-refine/references/refinement-rubric.md",
+        "kramme-cc-workflow/skills/linear:next/references/scoring-rubric.md"
       ]
     },
     {
@@ -29,24 +29,24 @@
         "marker": "Synced standalone archive identity contract (keep aligned across archive consumers):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/attachment-input.md",
-        "kramme-cc-workflow/skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md",
-        "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md",
-        "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/reconcile-workflow.md"
+        "kramme-cc-workflow/skills/code:plan-to-pr/references/attachment-input.md",
+        "kramme-cc-workflow/skills/pr:review-convergence/references/standalone-scope-handoff.md",
+        "kramme-cc-workflow/skills/pr:fix-ci/references/scoped-plan.md",
+        "kramme-cc-workflow/skills/code:breakdown-findings/references/reconcile-workflow.md"
       ]
     },
     {
       "name": "scoped-plan-recovery-payload",
-      "extract_regex": "Synced scoped recovery payload contract \\(keep aligned across plan recovery\\):\\s*(\\$kramme:pr:fix-ci --no-consolidate --scope-plan \\{validated-scope-plan\\})\\.",
+      "extract_regex": "Synced scoped recovery payload contract \\(keep aligned across plan recovery\\):\\s*(\\$trackbed:pr:fix-ci --no-consolidate --scope-plan \\{validated-scope-plan\\})\\.",
       "inventory": {
         "glob": "kramme-cc-workflow/skills/**/*.md",
         "marker": "Synced scoped recovery payload contract (keep aligned across plan recovery):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/attachment-input.md",
-        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/shipping-contract.md",
-        "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
+        "kramme-cc-workflow/skills/code:plan-to-pr/SKILL.md",
+        "kramme-cc-workflow/skills/code:plan-to-pr/references/attachment-input.md",
+        "kramme-cc-workflow/skills/code:plan-to-pr/references/shipping-contract.md",
+        "kramme-cc-workflow/skills/pr:fix-ci/references/scoped-plan.md"
       ]
     },
     {
@@ -57,8 +57,8 @@
         "marker": "Synced atomic scoped archive update contract (keep aligned across plan recovery):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/shipping-contract.md",
-        "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/scoped-plan.md"
+        "kramme-cc-workflow/skills/code:plan-to-pr/references/shipping-contract.md",
+        "kramme-cc-workflow/skills/pr:fix-ci/references/scoped-plan.md"
       ]
     },
     {
@@ -69,10 +69,10 @@
         "marker": "Synced Conductor diff-comment contract (keep aligned across review producers):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:pr:code-review/references/output-template.md",
-        "kramme-cc-workflow/skills/kramme:pr:convention-review/references/conductor-diff-comments.md",
-        "kramme-cc-workflow/skills/kramme:pr:overengineering-review/references/conductor-diff-comments.md",
-        "kramme-cc-workflow/skills/kramme:pr:product-review/references/conductor-diff-comments.md"
+        "kramme-cc-workflow/skills/pr:code-review/references/output-template.md",
+        "kramme-cc-workflow/skills/pr:convention-review/references/conductor-diff-comments.md",
+        "kramme-cc-workflow/skills/pr:overengineering-review/references/conductor-diff-comments.md",
+        "kramme-cc-workflow/skills/pr:product-review/references/conductor-diff-comments.md"
       ]
     },
     {
@@ -83,11 +83,11 @@
         "marker": "Synced Conductor workspace boundary contract (keep aligned across git-mutating workflow skills):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/split-mode.md",
-        "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md"
+        "kramme-cc-workflow/skills/code:breakdown-findings/references/split-mode.md",
+        "kramme-cc-workflow/skills/git:recreate-commits/SKILL.md",
+        "kramme-cc-workflow/skills/pr:create/SKILL.md",
+        "kramme-cc-workflow/skills/pr:rebase/SKILL.md",
+        "kramme-cc-workflow/skills/pr:stack/SKILL.md"
       ]
     },
     {
@@ -98,13 +98,13 @@
         "marker": "Synced SIW spec-exclusion contract (keep aligned across SIW spec detectors):"
       },
       "paths": [
-        "kramme-cc-workflow/skills/kramme:discovery:interview/references/siw-mode.md",
-        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md",
-        "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md",
-        "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/references/siw-mode.md"
+        "kramme-cc-workflow/skills/discovery:interview/references/siw-mode.md",
+        "kramme-cc-workflow/skills/siw:generate-phases/SKILL.md",
+        "kramme-cc-workflow/skills/siw:init/SKILL.md",
+        "kramme-cc-workflow/skills/siw:spec-audit/SKILL.md",
+        "kramme-cc-workflow/skills/siw:spec-audit/references/spec-resolution.md",
+        "kramme-cc-workflow/skills/siw:transfer-to-linear/references/artifact-extraction.md",
+        "kramme-cc-workflow/skills/workflow:cleanup-artifacts/references/siw-mode.md"
       ]
     },
     {
@@ -112,26 +112,26 @@
       "extract_regex": "(READY\\s*(?:\\||,)\\s*IN PROGRESS\\s*(?:\\||,)\\s*IN REVIEW\\s*(?:\\||,)\\s*DONE)",
       "normalizer": "status_vocabulary",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:generate-phases/references/tracker-schema.md"
+        "kramme-cc-workflow/skills/siw:generate-phases/references/tracker-schema.md"
       ]
     },
     {
       "name": "siw-main-spec-ambiguity-rule",
       "extract_regex": "Synced SIW main-spec ambiguity contract \\(keep aligned across SIW spec detectors\\):\\s*(when multiple spec candidates remain after deterministic heading/filename matching, auto mode stops with MISSING REQUIREMENT and interactive mode asks the user which file is the main spec\\.)",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md"
+        "kramme-cc-workflow/skills/siw:generate-phases/SKILL.md",
+        "kramme-cc-workflow/skills/siw:transfer-to-linear/references/artifact-extraction.md"
       ]
     },
     {
       "name": "siw-issue-state-triad",
       "extract_regex": "Synced SIW issue-state contract \\(keep aligned across SIW issue creators\\):\\s*(every SIW issue creation or tracker-visible issue update keeps the issue file, siw/OPEN_ISSUES_OVERVIEW\\.md, and siw/LOG\\.md synchronized as one issue-state change; partial write failures must be surfaced instead of accepted silently\\.)",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:debug:triage-to-issue/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:resolve-audit/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/issue-creation.md"
+        "kramme-cc-workflow/skills/debug:triage-to-issue/SKILL.md",
+        "kramme-cc-workflow/skills/qa:intake/SKILL.md",
+        "kramme-cc-workflow/skills/siw:generate-phases/SKILL.md",
+        "kramme-cc-workflow/skills/siw:resolve-audit/SKILL.md",
+        "kramme-cc-workflow/skills/siw:spec-audit/references/issue-creation.md"
       ]
     },
     {
@@ -139,27 +139,27 @@
       "extract_regex": "(?s)(\\[ -n \"\\$\\{BASE_BRANCH_OVERRIDE:-\\}\" \\] && COLLECT_ARGS\\+=\\(--base \"\\$BASE_BRANCH_OVERRIDE\"\\).*?fi\\s*rm -f \"\\$REVIEW_DIFF_FIELDS\")",
       "normalizer": "linewise",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:triage-risk/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md"
+        "kramme-cc-workflow/skills/pr:code-review/SKILL.md",
+        "kramme-cc-workflow/skills/pr:product-review/SKILL.md",
+        "kramme-cc-workflow/skills/code:copy-review/SKILL.md",
+        "kramme-cc-workflow/skills/pr:convention-review/SKILL.md",
+        "kramme-cc-workflow/skills/pr:overengineering-review/SKILL.md",
+        "kramme-cc-workflow/skills/pr:gut-check/SKILL.md",
+        "kramme-cc-workflow/skills/pr:triage-risk/SKILL.md",
+        "kramme-cc-workflow/skills/debug:find-sibling-bugs/SKILL.md"
       ]
     },
     {
       "name": "canonical-base-diff-scope-rule",
       "extract_regex": "Synced base/diff scope contract \\(keep aligned across base-aware and diff-aware skills\\):\\s*(use the shared resolve-base\\.sh script for base refs; use the shared collect-review-diff\\.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE\\.\\.\\.HEAD plus staged, unstaged, and untracked paths\\.)",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
-        "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
-        "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:test:audit/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
+        "kramme-cc-workflow/skills/pr:generate-description/references/base-branch-resolution.md",
+        "kramme-cc-workflow/skills/qa/references/diff-scope.md",
+        "kramme-cc-workflow/skills/verify:run/SKILL.md",
+        "kramme-cc-workflow/skills/test:audit/SKILL.md",
+        "kramme-cc-workflow/skills/code:refactor-pass/SKILL.md",
+        "kramme-cc-workflow/skills/git:fixup/SKILL.md",
+        "kramme-cc-workflow/skills/pr:github-review/SKILL.md"
       ]
     },
     {
@@ -167,19 +167,19 @@
       "extract_regex": "Synced quote_assignment helper \\(keep aligned across standalone shell scripts\\):\\s*(quote_assignment\\(\\)\\s*\\{\\s*local name=\"\\$1\"\\s*local value=\"\\$\\{2-\\}\"\\s*printf '%s=%q\\\\n' \\\"\\$name\\\" \\\"\\$value\\\"\\s*\\})",
       "paths": [
         "kramme-cc-workflow/scripts/lib/shell-helpers.sh",
-        "kramme-cc-workflow/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh"
+        "kramme-cc-workflow/skills/git:recreate-commits/scripts/resolve-push-target.sh"
       ]
     }
   ],
   "base_diff_scope": {
     "paths": [
-      "kramme-cc-workflow/skills/kramme:pr:generate-description/references/base-branch-resolution.md",
-      "kramme-cc-workflow/skills/kramme:qa/references/diff-scope.md",
-      "kramme-cc-workflow/skills/kramme:verify:run/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/reconcile-workflow.md",
-      "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:pr:github-review/SKILL.md"
+      "kramme-cc-workflow/skills/pr:generate-description/references/base-branch-resolution.md",
+      "kramme-cc-workflow/skills/qa/references/diff-scope.md",
+      "kramme-cc-workflow/skills/verify:run/SKILL.md",
+      "kramme-cc-workflow/skills/code:refactor-pass/SKILL.md",
+      "kramme-cc-workflow/skills/code:breakdown-findings/references/reconcile-workflow.md",
+      "kramme-cc-workflow/skills/git:fixup/SKILL.md",
+      "kramme-cc-workflow/skills/pr:github-review/SKILL.md"
     ],
     "forbidden_patterns": [
       {
@@ -208,11 +208,11 @@
     {
       "name": "pr-ui-relevance-path-contract",
       "contract_id": "ui-relevance-path-contract-v1",
-      "canonical_path": "kramme-cc-workflow/skills/kramme:pr:product-review/references/ui-relevance-heuristics.md",
+      "canonical_path": "kramme-cc-workflow/skills/pr:product-review/references/ui-relevance-heuristics.md",
       "paths": [
-        "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:qa/SKILL.md",
-        "kramme-cc-workflow/skills/kramme:pr:github-review/references/ui-relevance.md"
+        "kramme-cc-workflow/skills/pr:product-review/SKILL.md",
+        "kramme-cc-workflow/skills/qa/SKILL.md",
+        "kramme-cc-workflow/skills/pr:github-review/references/ui-relevance.md"
       ],
       "required_terms": [
         "*.tsx",
@@ -417,7 +417,7 @@
         "### Next Steps"
       ],
       "paths": [
-        "kramme-cc-workflow/skills/kramme:siw:init/assets/log-template.md"
+        "kramme-cc-workflow/skills/siw:init/assets/log-template.md"
       ]
     }
   ],
@@ -439,7 +439,7 @@
     },
     {
       "name": "git-commit-conventions-commit-message-consumer",
-      "path": "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md",
+      "path": "kramme-cc-workflow/skills/git:commit-message/SKILL.md",
       "contains": [
         "${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md",
         "Resolve once per repository per session",
@@ -449,7 +449,7 @@
     },
     {
       "name": "git-commit-conventions-recreate-commits-consumer",
-      "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+      "path": "kramme-cc-workflow/skills/git:recreate-commits/SKILL.md",
       "contains": [
         "${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md",
         "the `BASE_REF` value Step 1 printed",
@@ -459,9 +459,9 @@
     },
     {
       "name": "work-from-plan-invocation-shape",
-      "path": "kramme-cc-workflow/skills/kramme:code:work-from-plan/SKILL.md",
+      "path": "kramme-cc-workflow/skills/code:work-from-plan/SKILL.md",
       "frontmatter": {
-        "name": "kramme:code:work-from-plan",
+        "name": "code:work-from-plan",
         "argument-hint": "[plan path | inline plan]",
         "disable-model-invocation": "false",
         "user-invocable": "true"
@@ -470,17 +470,17 @@
         "`PR_PLAN_*.md` file, pasted plan, or one-off implementation checklist",
         "PLAN ROUTE:",
         "MISSING REQUIREMENT",
-        "kramme:siw:transfer-to-linear",
-        "kramme:linear:issue-implement",
+        "trackbed:siw:transfer-to-linear",
+        "trackbed:linear:issue-implement",
         "Read `references/direct-execution.md`",
         "No other parent workflow is authorized by this model-invocation exception"
       ]
     },
     {
       "name": "refactor-pass-mode-and-recovery-contract",
-      "path": "kramme-cc-workflow/skills/kramme:code:refactor-pass/SKILL.md",
+      "path": "kramme-cc-workflow/skills/code:refactor-pass/SKILL.md",
       "frontmatter": {
-        "name": "kramme:code:refactor-pass",
+        "name": "code:refactor-pass",
         "argument-hint": "[scope ... | --rewrite]",
         "disable-model-invocation": "true",
         "user-invocable": "true"
@@ -495,7 +495,7 @@
         "Run initial read-only discovery before creating any checkpoint commit.",
         "references/protected-workflow-artifacts.txt",
         "must never enter the checkpoint path set",
-        "Launch `kramme:deslop-reviewer` in code review mode against `REFACTOR_SCOPE_PATHS`.",
+        "Launch `trackbed:deslop-reviewer` in code review mode against `REFACTOR_SCOPE_PATHS`.",
         "Do not treat a failed reviewer call as an empty finding set or report the scope clean.",
         "Visual redesign findings are not behavior-preserving simplifications.",
         "Treat every reported slop finding as a candidate, not an instruction.",
@@ -527,9 +527,9 @@
     },
     {
       "name": "pr-code-review-invocation-shape",
-      "path": "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:code-review/SKILL.md",
       "frontmatter": {
-        "name": "kramme:pr:code-review",
+        "name": "pr:code-review",
         "argument-hint": "[--subagent-model <model>] [aspects] [--emphasize <dim>...] [--base <branch>] [--previous-review <path>] [--no-cleanup] [--parallel] [parallel] [--team] [--inline] [--loop] [--no-diff-comments]",
         "disable-model-invocation": "false",
         "user-invocable": "true"
@@ -547,7 +547,7 @@
     },
     {
       "name": "pr-code-review-closeout-loop-independent-verification",
-      "path": "kramme-cc-workflow/skills/kramme:pr:code-review/references/closeout-loop.md",
+      "path": "kramme-cc-workflow/skills/pr:code-review/references/closeout-loop.md",
       "contains": [
         "The agent that applied the fixes is not the sole judge of loop termination.",
         "Before stopping the loop, delegate the accept/terminate assessment to an independent verifier with its own context window.",
@@ -564,9 +564,9 @@
     },
     {
       "name": "pr-convention-review-evidence-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:convention-review/SKILL.md",
       "frontmatter": {
-        "name": "kramme:pr:convention-review",
+        "name": "pr:convention-review",
         "argument-hint": "[--subagent-model <model>] [--base <branch>] [--threshold 0-100] [--baseline <path>] [--inline] [--no-diff-comments]",
         "disable-model-invocation": "false",
         "user-invocable": "true"
@@ -585,16 +585,16 @@
     },
     {
       "name": "pr-resolve-review-team-specialized-overviews",
-      "path": "kramme-cc-workflow/skills/kramme:pr:resolve-review/references/team-mode.md",
+      "path": "kramme-cc-workflow/skills/pr:resolve-review/references/team-mode.md",
       "contains": [
         "Honor explicit `REVIEW_SOURCE=local` or `REVIEW_SOURCE=online` selection before considering chat context",
         "In auto mode, prefer a structured review in the immediately preceding assistant message when the current request refers to it",
-        "if chat or payload content carries `Review producer: kramme:pr:overengineering-review`, write to `OVERENGINEERING_REVIEW_OVERVIEW.md`"
+        "if chat or payload content carries `Review producer: trackbed:pr:overengineering-review`, write to `OVERENGINEERING_REVIEW_OVERVIEW.md`"
       ]
     },
     {
       "name": "pr-relevance-validator-immutable-scope",
-      "path": "kramme-cc-workflow/agents/kramme:pr-relevance-validator.md",
+      "path": "kramme-cc-workflow/agents/pr-relevance-validator.md",
       "contains": [
         "Prefer an immutable caller-supplied scope.",
         "Do not fetch, resolve the base branch again, recompute the merge base",
@@ -603,7 +603,7 @@
     },
     {
       "name": "pr-create-gh-prevalidation",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/pre-validation-checks.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/pre-validation-checks.md",
       "contains": [
         "MISSING REQUIREMENT: gh CLI not installed",
         "ORIGIN_URL=$(git remote get-url origin",
@@ -613,12 +613,12 @@
         "GH_HOST=${GH_HOST##*@}",
         "gh auth status --active --hostname \"$GH_HOST\"",
         "gh auth login --hostname $GH_HOST",
-        "Do not invoke `kramme:git:recreate-commits`"
+        "Do not invoke `trackbed:git:recreate-commits`"
       ]
     },
     {
       "name": "pr-create-description-generation-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:create/SKILL.md",
       "contains": [
         "Always pass `--no-update --base {base-source-ref} --base-commit {base-ref}`",
         "also pass `--linear-issue {linear-issue-id}`",
@@ -636,14 +636,14 @@
     },
     {
       "name": "pr-create-history-rewrite-authorization",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:create/SKILL.md",
       "contains": [
         "[--authorize-history-rewrite]",
         "AUTHORIZE_HISTORY_REWRITE=true",
         "Auto mode does not set this variable",
         "pass `--authorize-history-rewrite` only when the user supplied that flag",
         "## Step 4.5: Reject Stacked Branches",
-        "use kramme:pr:stack instead",
+        "use trackbed:pr:stack instead",
         "Both locally tracked and server-side stacks stop here",
         "any later stack detection is state drift",
         "Auto mode is fully non-interactive",
@@ -656,7 +656,7 @@
     },
     {
       "name": "pr-create-existing-pr-preflight",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:create/SKILL.md",
       "contains": [
         "## Step 3.5: Reject an Existing Pull Request",
         "Inspect the agent-tracked value directly",
@@ -664,12 +664,12 @@
         "git check-ref-format --branch \"{feature-branch}\"",
         "gh pr list --head \"{feature-branch}\" --state open --limit 100 --json number,url,state,headRefName",
         "errors are blockers, not evidence that no Pull Request exists",
-        "update it directly or use `kramme:pr:fix-ci --no-consolidate`"
+        "update it directly or use `trackbed:pr:fix-ci --no-consolidate`"
       ]
     },
     {
       "name": "pr-create-ref-trust-boundary",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/branch-and-platform-handling.md",
       "contains": [
         "Treat every ref-shaped value from Git metadata, Linear, user input, or generated suggestions as untrusted data",
         "Do not put an unvalidated candidate into a shell command even inside quotes",
@@ -684,7 +684,7 @@
     },
     {
       "name": "pr-create-branch-validator-script",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/scripts/validate-branch-name.sh",
+      "path": "kramme-cc-workflow/skills/pr:create/scripts/validate-branch-name.sh",
       "contains": [
         "^[A-Za-z0-9][A-Za-z0-9._/-]*$",
         "git check-ref-format --branch \"$branch_name\"",
@@ -693,7 +693,7 @@
     },
     {
       "name": "pr-create-origin-push-url-helper",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/scripts/resolve-origin-push-url.sh",
+      "path": "kramme-cc-workflow/skills/pr:create/scripts/resolve-origin-push-url.sh",
       "contains": [
         "git remote get-url --push --all -- origin",
         "must resolve to exactly one push URL",
@@ -702,7 +702,7 @@
     },
     {
       "name": "pr-create-deferred-upstream-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/branch-and-platform-handling.md",
       "contains": [
         "without creating, deleting, or switching branches",
         "Do not push or change upstream configuration",
@@ -716,7 +716,7 @@
     },
     {
       "name": "pr-create-absence-lease-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "contains": [
         "Step 5 proved that `{rollback-origin-ref}` was absent",
         "If any actor creates the remote branch after Step 5, the lease fails",
@@ -734,7 +734,7 @@
     },
     {
       "name": "pr-create-stack-publication-boundary",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "contains": [
         "Do not publish or create a default-base Pull Request from stale unstacked authorization.",
         "FINAL_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
@@ -747,7 +747,7 @@
     },
     {
       "name": "pr-create-push-failure-rollback",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "contains": [
         "If the push command exits non-zero, its remote outcome is ambiguous",
         "Execute Step 10 from `abort-and-rollback.md`",
@@ -759,7 +759,7 @@
     },
     {
       "name": "pr-create-existing-remote-orchestration",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:create/SKILL.md",
       "contains": [
         "## Step 4.4: Finalize the Remote Mode",
         "FRESH_REMOTE_MODE=true",
@@ -771,12 +771,12 @@
         "git merge-base --is-ancestor \"{observed-origin-oid}\" \"{entry-commit}\"",
         "scripts/verify-clean-worktree.sh",
         "detects modified assume-unchanged tracked content",
-        "never invokes `kramme:git:recreate-commits`"
+        "never invokes `trackbed:git:recreate-commits`"
       ]
     },
     {
       "name": "pr-create-existing-remote-append-orchestration",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:create/SKILL.md",
       "contains": [
         "When `AUTO_MODE=true`, route dirty existing-remote work to `REMOTE_APPEND_MODE`",
         "Resolve and freeze `{origin-push-url-assignment}`",
@@ -790,7 +790,7 @@
     },
     {
       "name": "pr-create-existing-remote-append-state",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/state-and-rollback.md",
       "contains": [
         "When `REMOTE_APPEND_MODE=true`",
         "set `{rollback-origin-oid}` to `{observed-origin-oid}`",
@@ -802,7 +802,7 @@
     },
     {
       "name": "pr-create-existing-remote-append-publication",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "contains": [
         "Publication: Existing remote branch; append local work with an OID lease",
         "When `REMOTE_FAST_FORWARD_MODE=true` or `REMOTE_APPEND_MODE=true`",
@@ -815,7 +815,7 @@
     },
     {
       "name": "pr-create-clean-worktree-helper",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/scripts/verify-clean-worktree.sh",
+      "path": "kramme-cc-workflow/skills/pr:create/scripts/verify-clean-worktree.sh",
       "contains": [
         "git status --porcelain --untracked-files=all",
         "Could not inspect the working tree",
@@ -829,7 +829,7 @@
     },
     {
       "name": "pr-create-existing-remote-classification",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/branch-and-platform-handling.md",
       "contains": [
         "capture its exact full OID as `{observed-origin-oid}`",
         "Never adopt a remote branch selected from a different entry checkout",
@@ -846,7 +846,7 @@
     },
     {
       "name": "pr-create-existing-remote-publication",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "contains": [
         "#### Existing exact-tip recovery",
         "Require `HEAD` to remain exactly `{entry-commit}`",
@@ -867,7 +867,7 @@
     },
     {
       "name": "pr-create-remote-absence-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/state-and-rollback.md",
       "contains": [
         "continue only when it returns no matching ref",
         "A Git ref lease can protect a branch OID",
@@ -878,16 +878,16 @@
     },
     {
       "name": "recreate-commits-deferred-push-contract",
-      "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+      "path": "kramme-cc-workflow/skills/git:recreate-commits/SKILL.md",
       "contains": [
         "disable-model-invocation: false",
         "### Model Invocation Contract",
         "No other parent workflow is authorized by the model-invocation exception",
-        "Outside that exact `kramme:pr:create` delegation, never invent `--authorize-history-rewrite`",
+        "Outside that exact `trackbed:pr:create` delegation, never invent `--authorize-history-rewrite`",
         "The model must never invent `--force-backup`",
-        "only with the exact retry-safe value supplied by `kramme:pr:create`",
+        "only with the exact retry-safe value supplied by `trackbed:pr:create`",
         "[--require-unstacked] [--no-push] [--authorize-history-rewrite]",
-        "When `REQUIRE_UNSTACKED=true` and `--no-push` was passed (the `kramme:pr:create` delegation), skip this initial resolution and set `IN_STACK=false`",
+        "When `REQUIRE_UNSTACKED=true` and `--no-push` was passed (the `trackbed:pr:create` delegation), skip this initial resolution and set `IN_STACK=false`",
         "stop before the reset, even in auto mode or when `--authorize-history-rewrite` was passed",
         "Do not reinterpret an unstacked-only parent authorization as approval to rewrite or restack multiple branches",
         "LATEST_STACK_RESOLVED=$(\"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-membership.sh\")",
@@ -914,7 +914,7 @@
     },
     {
       "name": "recreate-commits-push-target-helper",
-      "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh",
+      "path": "kramme-cc-workflow/skills/git:recreate-commits/scripts/resolve-push-target.sh",
       "contains": [
         "--base-branch",
         "read_branch_config",
@@ -1002,7 +1002,7 @@
         "Record `Checks: none configured` and continue",
         "After feedback collection, take the final publication snapshot",
         "Require both GitHub queries to succeed, reading the check query under the exit-status rules in item 2",
-        "invoke `kramme:pr:review-convergence` exactly once",
+        "invoke `trackbed:pr:review-convergence` exactly once",
         "--work-id {work-id} --archive-key {archive-key} --validation-only",
         "the exact frozen sentinel-last `--requirements {work-requirements}` block",
         "A hook bound to `none` is skipped at the step that names it",
@@ -1013,7 +1013,7 @@
         "Mode: validation-only",
         "auto mode carries the invocation through the backup-protected local reset without prompting",
         "has no invocation-owned creation provenance",
-        "invoke `kramme:verify:run`",
+        "invoke `trackbed:verify:run`",
         "gh pr view --json reviewDecision",
         "gh api --paginate \"repos/{owner}/{repo}/pulls/{pr-number}/reviews\"",
         "gh api --paginate \"repos/{owner}/{repo}/pulls/{pr-number}/comments\"",
@@ -1032,32 +1032,32 @@
     },
     {
       "name": "linear-issue-to-pr-shipping-hooks",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/references/shipping-contract.md",
+      "path": "kramme-cc-workflow/skills/linear:issue-to-pr/references/shipping-contract.md",
       "contains": [
         "{pr-shipping-contract}",
-        "- `{fix-ci-invocation}`: `kramme:pr:fix-ci --no-consolidate`.",
-        "do not rerun `kramme:linear:issue-to-pr` or claim a cross-session Step 7 resume",
-        "kramme:pr:create --linear-issue {issue-id} --require-generated-description",
-        "kramme:workflow:cleanup-artifacts --auto"
+        "- `{fix-ci-invocation}`: `trackbed:pr:fix-ci --no-consolidate`.",
+        "do not rerun `trackbed:linear:issue-to-pr` or claim a cross-session Step 7 resume",
+        "trackbed:pr:create --linear-issue {issue-id} --require-generated-description",
+        "trackbed:workflow:cleanup-artifacts --auto"
       ]
     },
     {
       "name": "code-plan-to-pr-shipping-hooks",
-      "path": "kramme-cc-workflow/skills/kramme:code:plan-to-pr/references/shipping-contract.md",
+      "path": "kramme-cc-workflow/skills/code:plan-to-pr/references/shipping-contract.md",
       "contains": [
         "{pr-shipping-contract}",
-        "kramme:pr:create --base {base-branch} --require-generated-description",
+        "trackbed:pr:create --base {base-branch} --require-generated-description",
         "`--scope-plan {validated-scope-plan}`",
         "Completion disposition: published_blocked"
       ]
     },
     {
       "name": "pr-review-convergence-owned-review-budget",
-      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/references/review-convergence.md",
+      "path": "kramme-cc-workflow/skills/pr:review-convergence/references/review-convergence.md",
       "contains": [
         "review-skill-owned code-edit batch",
         "Delegated quality gates are read-only",
-        "kramme:pr:code-review --parallel --inline",
+        "trackbed:pr:code-review --parallel --inline",
         "exact sentinel-last arguments `--requirements {work-requirements}`",
         "Pass the requirements remainder through the platform skill mechanism as inert data",
         "Pass the exact same frozen `{work-requirements}` block to every invocation for this tree lineage.",
@@ -1070,7 +1070,7 @@
     },
     {
       "name": "pr-review-convergence-artifact-isolation-errors",
-      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:review-convergence/SKILL.md",
       "contains": [
         "never use `mkdir -p` across unchecked components",
         "real non-symlink directory whose canonical path remains strictly below the repository root",
@@ -1081,15 +1081,15 @@
     },
     {
       "name": "linear-issue-to-pr-nonship-handoff",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/SKILL.md",
+      "path": "kramme-cc-workflow/skills/linear:issue-to-pr/SKILL.md",
       "contains": [
         "SHIP_MODE=false",
         "Before interpolating `{issue-branch}` into any shell command",
         "stop before delegated branch setup",
-        "If `SHIP_MODE=false`, stop without invoking artifact cleanup or `kramme:pr:create`.",
-        "Next: $kramme:workflow:cleanup-artifacts --auto",
-        "Then: $kramme:pr:create --linear-issue {issue-id} --require-generated-description",
-        "Then: $kramme:pr:fix-ci --no-consolidate"
+        "If `SHIP_MODE=false`, stop without invoking artifact cleanup or `trackbed:pr:create`.",
+        "Next: $trackbed:workflow:cleanup-artifacts --auto",
+        "Then: $trackbed:pr:create --linear-issue {issue-id} --require-generated-description",
+        "Then: $trackbed:pr:fix-ci --no-consolidate"
       ]
     },
     {
@@ -1097,7 +1097,7 @@
       "path": "kramme-cc-workflow/docs/shipping.md",
       "contains": [
         "verifies that it has no existing Pull Request or remote branch on `origin`",
-        "delegates the prepared branch to `kramme:pr:review-convergence`"
+        "delegates the prepared branch to `trackbed:pr:review-convergence`"
       ]
     },
     {
@@ -1107,12 +1107,12 @@
         "with no requirement argument it derives the contract from the current conversation",
         "with `--derive` it drafts a contract from conversation and committed branch evidence",
         "set its maximum to one through five fix-and-rerun rounds with `--rounds <1-5>`",
-        "The same phase is also used by `kramme:code:plan-to-pr`"
+        "The same phase is also used by `trackbed:code:plan-to-pr`"
       ]
     },
     {
       "name": "pr-create-linear-id-normalization",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:create/SKILL.md",
       "contains": [
         "Default to `Closes {linear-issue-id}`",
         "replace that line with `Closes {linear-issue-id}`",
@@ -1125,7 +1125,7 @@
     },
     {
       "name": "pr-create-branch-linear-state",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/branch-and-platform-handling.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/branch-and-platform-handling.md",
       "contains": [
         "Track `{linear-issue-id}` as nullable workflow state",
         "normalize it to uppercase, and capture it as `{linear-issue-id}`",
@@ -1136,7 +1136,7 @@
     },
     {
       "name": "pr-create-body-file-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "contains": [
         "PR_TITLE_FILE=$(mktemp \"/tmp/kramme-pr-title.XXXXXX\")",
         "PR_BODY_FILE=$(mktemp \"/tmp/kramme-pr-body.XXXXXX\")",
@@ -1150,7 +1150,7 @@
     },
     {
       "name": "pr-create-edit-loop-linear-normalization",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "contains": [
         "After each description edit, if `{linear-issue-id}` is present",
         "unless the user explicitly asked for that alternative keyword",
@@ -1159,7 +1159,7 @@
     },
     {
       "name": "pr-create-state-restoration-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/state-and-rollback.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/state-and-rollback.md",
       "contains": [
         "If uncommitted changes are present and `AUTO_MODE=true`, do not prompt.",
         "Select **Commit and include** and execute that path below.",
@@ -1196,9 +1196,9 @@
     },
     {
       "name": "pr-create-abort-and-rollback",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/abort-and-rollback.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/abort-and-rollback.md",
       "contains": [
-        "Use this reference for `/kramme:pr:create` Step 10 only",
+        "Use this reference for `/trackbed:pr:create` Step 10 only",
         "## Step 10: Abort and Rollback",
         "### 10.0 Refuse Rollback After Local Drift",
         "derive `{rollback-expected-tip}`",
@@ -1222,10 +1222,10 @@
     },
     {
       "name": "pr-create-preflight-helper",
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:create/SKILL.md",
       "contains": [
         "## Preflight Helper",
-        "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:create/scripts/pr-create-preflight.py\"",
+        "python3 \"${CLAUDE_PLUGIN_ROOT}/skills/pr:create/scripts/pr-create-preflight.py\"",
         "it never creates branches, commits, stashes, pushes, or changes configuration, and never prints the origin URL",
         "parse it as JSON and never `eval` or source it",
         "`feature_branch_required` (exit 3)",
@@ -1241,7 +1241,7 @@
     },
     {
       "name": "pr-generate-description-subskill-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/SKILL.md",
       "contains": [
         "disable-model-invocation: false",
         "### Sub-Skill Invocation Contract",
@@ -1256,7 +1256,7 @@
     },
     {
       "name": "pr-generate-description-check-mode-update",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/direct-update.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/direct-update.md",
       "contains": [
         "### Step 3 for a check-mode confirmed update",
         "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
@@ -1276,7 +1276,7 @@
     },
     {
       "name": "pr-generate-description-check-mode-snapshot",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/check-mode.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/check-mode.md",
       "contains": [
         "exactly as `--no-update --base {base-branch} --base-commit {base-commit}` would",
         "**Skip this phase if `OUTPUT_ONLY=true`.**",
@@ -1301,7 +1301,7 @@
     },
     {
       "name": "pr-generate-description-main-guidance",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/SKILL.md",
       "contains": [
         "When drafting the Test Plan, apply the Test Plan section in `assets/section-templates.md` and the Test Plans rules in `references/best-practices.md`.",
         "Read `references/direct-update.md` and follow it.",
@@ -1322,7 +1322,7 @@
     },
     {
       "name": "pr-generate-description-template-discovery",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/context-gathering.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/context-gathering.md",
       "contains": [
         "ALWAYS** check whether the repository has a GitHub pull request template before drafting",
         "GitHub applies PR templates from the repository default branch",
@@ -1341,7 +1341,7 @@
     },
     {
       "name": "pr-generate-description-template-and-test-plan-rules",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/best-practices.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/best-practices.md",
       "contains": [
         "NEVER** skip GitHub PR template lookup",
         "Repository PR Templates",
@@ -1359,7 +1359,7 @@
     },
     {
       "name": "pr-generate-description-section-template-rules",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/assets/section-templates.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/assets/section-templates.md",
       "contains": [
         "map each default section into the closest template prompt instead of duplicating headings",
         "The Test Plan is for future reviewer or QA execution. It is not a transcript",
@@ -1369,7 +1369,7 @@
     },
     {
       "name": "pr-generate-description-output-cleanliness",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/verification-checklist.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/verification-checklist.md",
       "contains": [
         "GitHub PR template lookup completed against the repository default branch",
         "`## Screenshots / Videos` appears only for UI-facing changes",
@@ -1384,7 +1384,7 @@
     },
     {
       "name": "pr-generate-description-antipattern-examples",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/anti-patterns.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/anti-patterns.md",
       "contains": [
         "Local Environment Noise",
         "CORRECT: Manual Scenarios Only",
@@ -1395,7 +1395,7 @@
     },
     {
       "name": "pr-generate-description-cold-read-gate",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/readability-pass.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/readability-pass.md",
       "contains": [
         "## When to Skip the Cold Read",
         "at most 3 changed files",
@@ -1407,7 +1407,7 @@
     },
     {
       "name": "pr-generate-description-direct-update-safety",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/direct-update.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/direct-update.md",
       "contains": [
         "do not mutate tracked files",
         "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
@@ -1422,7 +1422,7 @@
     },
     {
       "name": "pr-generate-description-save-and-checklist-contract",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/SKILL.md",
       "contains": [
         "SAVE_NAMESPACE=\"$REPO_ROOT/.kramme-cc-workflow\"",
         "PR description save path is indirect; no file was written.",
@@ -1433,7 +1433,7 @@
     },
     {
       "name": "pr-generate-description-direct-update-checklist",
-      "path": "kramme-cc-workflow/skills/kramme:pr:generate-description/references/verification-checklist.md",
+      "path": "kramme-cc-workflow/skills/pr:generate-description/references/verification-checklist.md",
       "contains": [
         "captured one validated private `/tmp` directory as agent state",
         "mandatory title/body JSON backup",
@@ -1443,7 +1443,7 @@
     },
     {
       "name": "linear-issue-implement-reference-mapping",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/SKILL.md",
+      "path": "kramme-cc-workflow/skills/linear:issue-implement/SKILL.md",
       "contains": [
         "[Reference Mapping] -> Fetch linked Linear issues/docs and record inaccessible assets",
         "includeRelations: true",
@@ -1457,7 +1457,7 @@
     },
     {
       "name": "linear-issue-implement-status-transition",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/references/status-transition.md",
+      "path": "kramme-cc-workflow/skills/linear:issue-implement/references/status-transition.md",
       "contains": [
         "Follow this reference only when `SET_IN_PROGRESS=true`",
         "Reject direct, incomplete, mismatched, or duplicate use of the handoff",
@@ -1472,7 +1472,7 @@
     },
     {
       "name": "linear-issue-implement-display-template",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/references/display-templates.md",
+      "path": "kramme-cc-workflow/skills/linear:issue-implement/references/display-templates.md",
       "contains": [
         "Referenced Linear Context Used:",
         "Inaccessible Referenced Context:"
@@ -1480,7 +1480,7 @@
     },
     {
       "name": "linear-issue-implement-plan-template",
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-implement/assets/technical-plan.md",
+      "path": "kramme-cc-workflow/skills/linear:issue-implement/assets/technical-plan.md",
       "contains": ["## Referenced Linear Context"]
     },
     {
@@ -1492,13 +1492,13 @@
     },
     {
       "name": "visual-check-slop-guidance",
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/SKILL.md",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/SKILL.md",
       "contains": [
-        "${CLAUDE_PLUGIN_ROOT}/skills/kramme:visual:check-slop",
+        "${CLAUDE_PLUGIN_ROOT}/skills/visual:check-slop",
         "Without `--fix`, do not modify",
         "Do not fetch or execute the upstream npm package",
         "Do not add subjective judgment to this report",
-        "hand off to `kramme:pr:product-review`",
+        "hand off to `trackbed:pr:product-review`",
         "only when the user explicitly requested broader critique",
         "node \"$CHECK_SLOP_RUNTIME\" check \"$TARGET\" --json",
         "node \"$CHECK_SLOP_RUNTIME\" fix \"$TARGET\" --write --json"
@@ -1506,7 +1506,7 @@
     },
     {
       "name": "visual-check-slop-source-manifest",
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/sources.yaml",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/references/sources.yaml",
       "contains": [
         "gesso-anti-slop",
         "node-html-parser-runtime",
@@ -1515,7 +1515,7 @@
     },
     {
       "name": "visual-check-slop-third-party-notices",
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/THIRD_PARTY_NOTICES.md",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/references/THIRD_PARTY_NOTICES.md",
       "contains": [
         "Copyright (c) 2026 Gesso Build, Inc.",
         "Copyright 2019 Tao Qiufeng"
@@ -1523,12 +1523,12 @@
     },
     {
       "name": "code-optimize-shell-permission",
-      "path": "kramme-cc-workflow/skills/kramme:code:optimize/SKILL.md",
+      "path": "kramme-cc-workflow/skills/code:optimize/SKILL.md",
       "contains": ["permissions:", "  - shell"]
     },
     {
       "name": "code-optimize-source-manifest",
-      "path": "kramme-cc-workflow/skills/kramme:code:optimize/references/sources.yaml",
+      "path": "kramme-cc-workflow/skills/code:optimize/references/sources.yaml",
       "contains": [
         "compound-ce-optimize",
         "ce-optimize",
@@ -1537,9 +1537,9 @@
     },
     {
       "name": "pr-plan-generation-artifact-shape",
-      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/SKILL.md",
+      "path": "kramme-cc-workflow/skills/code:breakdown-findings/SKILL.md",
       "frontmatter": {
-        "name": "kramme:code:breakdown-findings",
+        "name": "code:breakdown-findings",
         "argument-hint": "[--auto] [--resume|--reconcile|--split] [--all | plan-file ...] [--worktree <path>] [--source <ref>] [--base <ref>] [--] [source ...]",
         "disable-model-invocation": "true",
         "user-invocable": "true"
@@ -1555,7 +1555,7 @@
     },
     {
       "name": "pr-plan-reconcile-safety",
-      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/reconcile-workflow.md",
+      "path": "kramme-cc-workflow/skills/code:breakdown-findings/references/reconcile-workflow.md",
       "contains": [
         "every plan path referenced by `PR_PLAN_INDEX.md`",
         "Load every indexed plan that exists read-only",
@@ -1582,7 +1582,7 @@
     },
     {
       "name": "pr-plan-split-reconcile-scope",
-      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/references/split-mode.md",
+      "path": "kramme-cc-workflow/skills/code:breakdown-findings/references/split-mode.md",
       "contains": [
         "reconcile each slice against its own evidence",
         "Omit the plan path only when the evidence root or source represents the complete indexed plan set"
@@ -1593,12 +1593,12 @@
       "path": "README.md",
       "contains": [
         "Former no-scope calls must add `--all`",
-        "zero-scope reconcile intentionally retains `kramme:code:breakdown-findings`'s existing all-indexed behavior"
+        "zero-scope reconcile intentionally retains `trackbed:code:breakdown-findings`'s existing all-indexed behavior"
       ]
     },
     {
       "name": "pr-plan-template-artifact-names",
-      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/assets/plan-template.md",
+      "path": "kramme-cc-workflow/skills/code:breakdown-findings/assets/plan-template.md",
       "contains": [
         "**File:** `PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md`",
         "**Execution label:** `{{W##L}}`",
@@ -1609,7 +1609,7 @@
     },
     {
       "name": "pr-plan-index-artifact-names",
-      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/assets/index-template.md",
+      "path": "kramme-cc-workflow/skills/code:breakdown-findings/assets/index-template.md",
       "contains": [
         "**Rejection record:** `PR_PLAN_REJECTIONS.md`",
         "`PR_PLAN_{{EXECUTION_LABEL}}_{{SLUG}}.md`",
@@ -1619,7 +1619,7 @@
     },
     {
       "name": "pr-plan-rejections-artifact-names",
-      "path": "kramme-cc-workflow/skills/kramme:code:breakdown-findings/assets/rejections-template.md",
+      "path": "kramme-cc-workflow/skills/code:breakdown-findings/assets/rejections-template.md",
       "contains": [
         "# PR Plan Rejections",
         "REJECTED-001",
@@ -1629,9 +1629,9 @@
     },
     {
       "name": "workflow-artifact-cleanup-names",
-      "path": "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/SKILL.md",
+      "path": "kramme-cc-workflow/skills/workflow:cleanup-artifacts/SKILL.md",
       "frontmatter": {
-        "name": "kramme:workflow:cleanup-artifacts",
+        "name": "workflow:cleanup-artifacts",
         "argument-hint": "[--auto | --siw]",
         "disable-model-invocation": "false",
         "user-invocable": "true"
@@ -1651,7 +1651,7 @@
     },
     {
       "name": "workflow-artifact-cleanup-registry",
-      "path": "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml",
+      "path": "kramme-cc-workflow/skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml",
       "contains": [
         "REVIEW_OVERVIEW.md",
         "CONVENTION_REVIEW_OVERVIEW.md",
@@ -1745,97 +1745,97 @@
     "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
     "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->",
     "documented_skill_regex": "^\\|\\s*`/(?P<name>kramme:[A-Za-z0-9:_-]+)`\\s*\\|",
-    "allow_readme_only_skills": ["kramme:skill:audit-sources"],
+    "allow_readme_only_skills": ["trackbed:skill:audit-sources"],
     "max_summary_chars": 160,
     "summaries": {
-      "kramme:browse": "(experimental) Drive a live app through whichever browser MCP is available: navigate, screenshot, interact, and capture evidence.",
-      "kramme:code:agent-readiness": "Score how well a codebase suits AI coding agents across five dimensions and get a prioritized refactoring plan.",
-      "kramme:code:api-design": "(experimental) Design stable APIs and module boundaries for endpoints, public modules, and SDKs; `--design-twice` compares alternative shapes first.",
-      "kramme:code:audit-agent-config": "Audit the repository's agent instructions, skills, hooks, MCP servers, and permissions for redundant, outdated, or conflicting entries. Read-only.",
-      "kramme:code:audit-practice": "Check how you work with coding agents against 18 common mistakes, from effort and alignment to review and steering, and get the fixes to make first.",
-      "kramme:code:audit-security": "Audit a repository's security posture and attack surfaces before remediation, producing an evidence-ranked report with coverage gaps.",
-      "kramme:code:breakdown-findings": "Cluster validated review, audit, or QA findings into PR-sized `PR_PLAN_*.md` files; `--split` plans slices of a branch and `--reconcile` updates plan sets.",
-      "kramme:code:copy-review": "Find unnecessary, redundant, or duplicated UI text across the codebase, or in the branch diff when run on a feature branch.",
-      "kramme:code:deprecate": "Plan and run the deprecation of code, features, APIs, or persistent data shapes: build the replacement, announce, migrate incrementally, then remove.",
-      "kramme:code:encode-constraint": "Turn an observed agent mistake or review nit into a type, lint rule, or check that rejects it, proven to fail on the mistake and pass on the repository.",
-      "kramme:code:harden-security": "Apply secure defaults when code handles untrusted input, authentication, sessions, dependencies, or personal data.",
-      "kramme:code:migrate": "(experimental) Plan and run framework or library version upgrades, such as Angular, React, or Node, in phases with verification gates.",
-      "kramme:code:optimize": "(experimental) Run repeatable, metric-driven optimization experiments when a measurable outcome needs variants instead of guess-and-check.",
-      "kramme:code:outside-view": "Rate a codebase with unprimed raters to surface unknown-unknown quality problems, especially in AI-engineered code.",
-      "kramme:code:plan-to-pr": "Implement one self-contained `PR_PLAN_*.md` on a fresh branch, then review, verify, and optionally ship it as a PR.",
-      "kramme:code:refactor-opportunities": "Find refactoring candidates and tech debt in a codebase, PR, path, or feature, or before a planned change (`--for`); `--ranked` ranks the biggest weaknesses.",
-      "kramme:code:refactor-pass": "Simplify recent changes and clean up AI slop slice by slice without changing behavior; `--rewrite` redoes mediocre recent work properly.",
-      "kramme:code:work-from-plan": "Execute one standalone implementation plan, such as a `PR_PLAN_*.md` file or a pasted checklist, as bounded work on the current branch.",
-      "kramme:debug:find-sibling-bugs": "Use a bug-fix branch as a worked example and search the codebase for other places with the same flaw.",
-      "kramme:debug:investigate": "Investigate a bug step by step: reproduce it, isolate it, trace the root cause, and fix it.",
-      "kramme:debug:triage-to-issue": "(experimental) Turn a bug into an implementation-ready Linear or SIW issue with root-cause evidence and a red-green TDD fix plan.",
-      "kramme:deps:audit": "(experimental) Audit dependencies for outdated packages, vulnerabilities, and staleness, and get a prioritized upgrade plan.",
-      "kramme:discovery:interview": "Interview you about a topic, proposal, or spec to uncover requirements, priorities, and non-goals, then write a plan; `--siw` feeds an SIW spec.",
-      "kramme:discovery:strategic-inquiry": "Generate ranked strategic questions about hidden assumptions, contradictions, and load-bearing decisions in a codebase or area.",
-      "kramme:discovery:wayfinder": "Chart a huge or foggy initiative as a local decision map and resolve one open question per session until it is ready for planning.",
-      "kramme:docs:adr": "Write an Architecture Decision Record for a significant, long-lived decision, following the project's existing ADR format.",
-      "kramme:docs:feature-spec": "Write a lightweight PRD-style feature spec before coding, for features that need written alignment but not the full SIW workflow.",
-      "kramme:docs:review": "Review one Markdown document, such as a plan, proposal, or README draft, and get severity-ordered findings.",
-      "kramme:docs:solution-note": "Record a solved problem in `docs/solutions/` after a fix, migration, or lesson; `--refresh` audits existing notes against the code.",
-      "kramme:docs:sync-release": "Compare install, usage, architecture, and contract docs against a release range and report drift; `--apply` fixes it.",
-      "kramme:docs:to-markdown": "Convert PDF, Office, HTML, image, audio, and other files to Markdown with MarkItDown.",
-      "kramme:docs:track-rejected-enhancements": "(experimental) Record rejected enhancement ideas in `.out-of-scope/` and check new requests against them.",
-      "kramme:docs:ubiquitous-language": "Extract a DDD-style glossary of domain terms from the conversation into `UBIQUITOUS_LANGUAGE.md`, flagging ambiguous terms.",
-      "kramme:docs:update-agents-md": "Add or update guidelines in AGENTS.md, such as a no-compatibility-code policy, in a structured, keyword-based style.",
-      "kramme:git:commit-message": "Write commit messages that follow the repository's commit convention, with a pre-commit checklist and AI-attribution rules.",
-      "kramme:git:fixup": "Fold unstaged changes into the commits they belong to on the current branch, validate, and autosquash.",
-      "kramme:git:recreate-commits": "Rewrite unpublished branch history into narrative commits behind a backup ref, unattended unless `--manual`. Not for merged or shared branches.",
-      "kramme:hooks:toggle": "Enable, disable, list, or reset this plugin's hooks.",
-      "kramme:learn:verify-understanding": "Confirm that you understand a PR, feature, spec, or other topic through questions and a checklist before calling it done.",
-      "kramme:linear:backlog-refine": "Grade a Linear team's open backlog and propose completing, cancelling, merging, splitting, or rewriting issues. Read-only unless `--apply`.",
-      "kramme:linear:breakdown-findings": "Turn reviewed audit, review, scan, or QA findings into coordinated, PR-sized Linear issues.",
-      "kramme:linear:issue-define": "Create or improve a Linear issue that fits one PR; larger work becomes a parent with sub-issues. `--auto` drafts from rough input.",
-      "kramme:linear:issue-implement": "Implement one Linear issue: branch setup, reference mapping, planning, coding, and fast verification.",
-      "kramme:linear:issue-to-pr": "Take one Linear issue through implementation, review convergence, and verification; `--ship` also opens the PR and fixes CI.",
-      "kramme:linear:next": "Find up to 10 valuable, unstarted Linear issues by default, with plain-language summaries, when deciding what to pick up next.",
-      "kramme:linear:review-pr": "Check that an existing PR implements its Linear issue, tracing each requirement to diff, code, and test evidence. Read-only.",
-      "kramme:pr:adversarial-review": "Get one read-only review of your branch from a different model provider than the host you are using.",
-      "kramme:pr:code-review": "Review branch changes for bugs, tests, errors, types, architecture, security, performance, and cleanup; writes `REVIEW_OVERVIEW.md`.",
-      "kramme:pr:convention-review": "Flag drift from documented rules and established codebase practice, plus overcautious code, with evidence for every finding.",
-      "kramme:pr:create": "Publish a new PR unattended: narrative commits, a generated title and body, and a lease-protected first push; `--manual` keeps the prompts.",
-      "kramme:pr:fix-ci": "Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass; `--manual` keeps the prompts.",
-      "kramme:pr:generate-description": "Write a PR title and body from the diff, commits, and Linear context, updating an open PR unless `--manual`; `--check` reports drift.",
-      "kramme:pr:github-review": "Review someone else's GitHub PR or its whole stack, including linked Linear issues. Report-only unless you ask for a pending review.",
-      "kramme:pr:github-review-reply": "Triage review comments on your own PR, make the needed changes, and draft or post replies.",
-      "kramme:pr:gut-check": "Get a fast first-reader reaction: does anything on this branch look strange, unusual, or unnecessary?",
-      "kramme:pr:overengineering-review": "Flag speculative generality and unlikely edge-case handling that the requirements do not need.",
-      "kramme:pr:product-review": "Review the product value, UX, visual consistency, and accessibility of your changes with specialist agents.",
-      "kramme:pr:rebase": "Rebase onto the PR's target branch and force-push with a lease, unattended by default; `--force-push` or `--manual` keeps the gates.",
-      "kramme:pr:resolve-review": "Implement fixes for code-review or Conductor diff-comment findings as commits on the current branch.",
-      "kramme:pr:review-convergence": "Take a clean committed branch through ordered review gates, bounded fixes, and verification against frozen requirements.",
-      "kramme:pr:stack": "Create and manage GitHub stacked PRs with gh-stack when a change should land as a chain of small dependent PRs.",
-      "kramme:pr:triage-risk": "Decide how much review the branch needs: a low, medium, or high risk tier and the review commands to run. Read-only.",
-      "kramme:pr:walkthrough": "Generate a visual HTML walkthrough of a branch or PR; `--report` produces a shareable before/after architecture report.",
-      "kramme:product:describe-behavior": "Document how an existing product behaves from the user's perspective, grounded in code, tests, and the running app.",
-      "kramme:product:design-critic": "(experimental) Critique product UI and UX, including flows, hierarchy, trust, and jobs-to-be-done, rather than visual polish alone.",
-      "kramme:product:prd": "Write a PRD after prototyping that records which candidate ships and why, how success is measured, and when to roll back; log results after launch.",
-      "kramme:product:review": "(experimental) Review a live product across flows for navigation, discoverability, onboarding, consistency, dead ends, and trust.",
-      "kramme:product:strategy": "Create or update `STRATEGY.md`, a concise product anchor covering problem, users, metrics, active tracks, and non-goals.",
-      "kramme:product:validate-demand": "Judge whether a product idea has enough demand evidence to justify more work: GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE.",
-      "kramme:qa": "Test a running app with smoke, diff-aware, or targeted checks and get `QA_REPORT.md` with screenshots, repro steps, and severity.",
-      "kramme:qa:intake": "Log several bugs from a manual QA pass as Linear or SIW tickets through a light, quick conversation.",
-      "kramme:research": "Answer a question from primary sources, such as official docs, specs, or source code, and save one cited Markdown artifact.",
-      "kramme:session:automate-repeats": "Review recent agent sessions for repeated work and friction, and suggest skill improvements or new automation.",
-      "kramme:setup": "Run a read-only health check of the tools, repository context, plugin version, and workspace this plugin depends on.",
-      "kramme:siw:generate-phases": "Break the spec into atomic, phase-based issues with tests and validation.",
-      "kramme:siw:init": "Initialize SIW documents in `siw/`: the spec, `LOG.md`, and issues.",
-      "kramme:siw:resolve-audit": "Resolve spec-audit findings one by one with summaries, alternatives, a recommendation, and SIW issue creation.",
-      "kramme:siw:spec-audit": "Audit specs for implementation readiness; `--product` adds product checks and `--apply` fixes mechanical findings.",
-      "kramme:siw:transfer-to-linear": "Move a planned SIW initiative into Linear for good: one project with its documents, milestones, and issues. One-way.",
-      "kramme:skill:create": "Scaffold a new plugin skill with best-practice structure, frontmatter, and progressive disclosure.",
-      "kramme:skill:review": "Review a skill for focused scope, progressive disclosure, portability, safety, and documentation quality.",
-      "kramme:test:audit": "Find low-value, brittle, obsolete, or duplicated tests and get a read-only report of what to remove, repair, or consolidate.",
-      "kramme:text:clarify": "Rewrite prose so readers can understand and act on it quickly; `--humanize` removes AI-writing patterns instead.",
-      "kramme:verify:run": "Run the project's tests, linting, formatting, builds, and type checks for affected code; `--fast` runs the quick tier.",
-      "kramme:visual:check-slop": "Run a deterministic check for AI-style UI patterns in HTML screens; `--fix` applies safe fixes.",
-      "kramme:visual:explain": "Generate a self-contained HTML page that explains a system, change, plan, or data visually; `--onboarding` builds a codebase guide.",
-      "kramme:workflow:cleanup-artifacts": "Delete disposable workflow artifacts such as review, audit, and QA reports, plans, and diagrams; `--siw` retires the `siw/` workspace.",
-      "kramme:workflow:wizard": "Generate an interactive Bash wizard for manual procedures such as third-party setup, one-off migrations, or CI secrets."
+      "trackbed:browse": "(experimental) Drive a live app through whichever browser MCP is available: navigate, screenshot, interact, and capture evidence.",
+      "trackbed:code:agent-readiness": "Score how well a codebase suits AI coding agents across five dimensions and get a prioritized refactoring plan.",
+      "trackbed:code:api-design": "(experimental) Design stable APIs and module boundaries for endpoints, public modules, and SDKs; `--design-twice` compares alternative shapes first.",
+      "trackbed:code:audit-agent-config": "Audit the repository's agent instructions, skills, hooks, MCP servers, and permissions for redundant, outdated, or conflicting entries. Read-only.",
+      "trackbed:code:audit-practice": "Check how you work with coding agents against 18 common mistakes, from effort and alignment to review and steering, and get the fixes to make first.",
+      "trackbed:code:audit-security": "Audit a repository's security posture and attack surfaces before remediation, producing an evidence-ranked report with coverage gaps.",
+      "trackbed:code:breakdown-findings": "Cluster validated review, audit, or QA findings into PR-sized `PR_PLAN_*.md` files; `--split` plans slices of a branch and `--reconcile` updates plan sets.",
+      "trackbed:code:copy-review": "Find unnecessary, redundant, or duplicated UI text across the codebase, or in the branch diff when run on a feature branch.",
+      "trackbed:code:deprecate": "Plan and run the deprecation of code, features, APIs, or persistent data shapes: build the replacement, announce, migrate incrementally, then remove.",
+      "trackbed:code:encode-constraint": "Turn an observed agent mistake or review nit into a type, lint rule, or check that rejects it, proven to fail on the mistake and pass on the repository.",
+      "trackbed:code:harden-security": "Apply secure defaults when code handles untrusted input, authentication, sessions, dependencies, or personal data.",
+      "trackbed:code:migrate": "(experimental) Plan and run framework or library version upgrades, such as Angular, React, or Node, in phases with verification gates.",
+      "trackbed:code:optimize": "(experimental) Run repeatable, metric-driven optimization experiments when a measurable outcome needs variants instead of guess-and-check.",
+      "trackbed:code:outside-view": "Rate a codebase with unprimed raters to surface unknown-unknown quality problems, especially in AI-engineered code.",
+      "trackbed:code:plan-to-pr": "Implement one self-contained `PR_PLAN_*.md` on a fresh branch, then review, verify, and optionally ship it as a PR.",
+      "trackbed:code:refactor-opportunities": "Find refactoring candidates and tech debt in a codebase, PR, path, or feature, or before a planned change (`--for`); `--ranked` ranks the biggest weaknesses.",
+      "trackbed:code:refactor-pass": "Simplify recent changes and clean up AI slop slice by slice without changing behavior; `--rewrite` redoes mediocre recent work properly.",
+      "trackbed:code:work-from-plan": "Execute one standalone implementation plan, such as a `PR_PLAN_*.md` file or a pasted checklist, as bounded work on the current branch.",
+      "trackbed:debug:find-sibling-bugs": "Use a bug-fix branch as a worked example and search the codebase for other places with the same flaw.",
+      "trackbed:debug:investigate": "Investigate a bug step by step: reproduce it, isolate it, trace the root cause, and fix it.",
+      "trackbed:debug:triage-to-issue": "(experimental) Turn a bug into an implementation-ready Linear or SIW issue with root-cause evidence and a red-green TDD fix plan.",
+      "trackbed:deps:audit": "(experimental) Audit dependencies for outdated packages, vulnerabilities, and staleness, and get a prioritized upgrade plan.",
+      "trackbed:discovery:interview": "Interview you about a topic, proposal, or spec to uncover requirements, priorities, and non-goals, then write a plan; `--siw` feeds an SIW spec.",
+      "trackbed:discovery:strategic-inquiry": "Generate ranked strategic questions about hidden assumptions, contradictions, and load-bearing decisions in a codebase or area.",
+      "trackbed:discovery:wayfinder": "Chart a huge or foggy initiative as a local decision map and resolve one open question per session until it is ready for planning.",
+      "trackbed:docs:adr": "Write an Architecture Decision Record for a significant, long-lived decision, following the project's existing ADR format.",
+      "trackbed:docs:feature-spec": "Write a lightweight PRD-style feature spec before coding, for features that need written alignment but not the full SIW workflow.",
+      "trackbed:docs:review": "Review one Markdown document, such as a plan, proposal, or README draft, and get severity-ordered findings.",
+      "trackbed:docs:solution-note": "Record a solved problem in `docs/solutions/` after a fix, migration, or lesson; `--refresh` audits existing notes against the code.",
+      "trackbed:docs:sync-release": "Compare install, usage, architecture, and contract docs against a release range and report drift; `--apply` fixes it.",
+      "trackbed:docs:to-markdown": "Convert PDF, Office, HTML, image, audio, and other files to Markdown with MarkItDown.",
+      "trackbed:docs:track-rejected-enhancements": "(experimental) Record rejected enhancement ideas in `.out-of-scope/` and check new requests against them.",
+      "trackbed:docs:ubiquitous-language": "Extract a DDD-style glossary of domain terms from the conversation into `UBIQUITOUS_LANGUAGE.md`, flagging ambiguous terms.",
+      "trackbed:docs:update-agents-md": "Add or update guidelines in AGENTS.md, such as a no-compatibility-code policy, in a structured, keyword-based style.",
+      "trackbed:git:commit-message": "Write commit messages that follow the repository's commit convention, with a pre-commit checklist and AI-attribution rules.",
+      "trackbed:git:fixup": "Fold unstaged changes into the commits they belong to on the current branch, validate, and autosquash.",
+      "trackbed:git:recreate-commits": "Rewrite unpublished branch history into narrative commits behind a backup ref, unattended unless `--manual`. Not for merged or shared branches.",
+      "trackbed:hooks:toggle": "Enable, disable, list, or reset this plugin's hooks.",
+      "trackbed:learn:verify-understanding": "Confirm that you understand a PR, feature, spec, or other topic through questions and a checklist before calling it done.",
+      "trackbed:linear:backlog-refine": "Grade a Linear team's open backlog and propose completing, cancelling, merging, splitting, or rewriting issues. Read-only unless `--apply`.",
+      "trackbed:linear:breakdown-findings": "Turn reviewed audit, review, scan, or QA findings into coordinated, PR-sized Linear issues.",
+      "trackbed:linear:issue-define": "Create or improve a Linear issue that fits one PR; larger work becomes a parent with sub-issues. `--auto` drafts from rough input.",
+      "trackbed:linear:issue-implement": "Implement one Linear issue: branch setup, reference mapping, planning, coding, and fast verification.",
+      "trackbed:linear:issue-to-pr": "Take one Linear issue through implementation, review convergence, and verification; `--ship` also opens the PR and fixes CI.",
+      "trackbed:linear:next": "Find up to 10 valuable, unstarted Linear issues by default, with plain-language summaries, when deciding what to pick up next.",
+      "trackbed:linear:review-pr": "Check that an existing PR implements its Linear issue, tracing each requirement to diff, code, and test evidence. Read-only.",
+      "trackbed:pr:adversarial-review": "Get one read-only review of your branch from a different model provider than the host you are using.",
+      "trackbed:pr:code-review": "Review branch changes for bugs, tests, errors, types, architecture, security, performance, and cleanup; writes `REVIEW_OVERVIEW.md`.",
+      "trackbed:pr:convention-review": "Flag drift from documented rules and established codebase practice, plus overcautious code, with evidence for every finding.",
+      "trackbed:pr:create": "Publish a new PR unattended: narrative commits, a generated title and body, and a lease-protected first push; `--manual` keeps the prompts.",
+      "trackbed:pr:fix-ci": "Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass; `--manual` keeps the prompts.",
+      "trackbed:pr:generate-description": "Write a PR title and body from the diff, commits, and Linear context, updating an open PR unless `--manual`; `--check` reports drift.",
+      "trackbed:pr:github-review": "Review someone else's GitHub PR or its whole stack, including linked Linear issues. Report-only unless you ask for a pending review.",
+      "trackbed:pr:github-review-reply": "Triage review comments on your own PR, make the needed changes, and draft or post replies.",
+      "trackbed:pr:gut-check": "Get a fast first-reader reaction: does anything on this branch look strange, unusual, or unnecessary?",
+      "trackbed:pr:overengineering-review": "Flag speculative generality and unlikely edge-case handling that the requirements do not need.",
+      "trackbed:pr:product-review": "Review the product value, UX, visual consistency, and accessibility of your changes with specialist agents.",
+      "trackbed:pr:rebase": "Rebase onto the PR's target branch and force-push with a lease, unattended by default; `--force-push` or `--manual` keeps the gates.",
+      "trackbed:pr:resolve-review": "Implement fixes for code-review or Conductor diff-comment findings as commits on the current branch.",
+      "trackbed:pr:review-convergence": "Take a clean committed branch through ordered review gates, bounded fixes, and verification against frozen requirements.",
+      "trackbed:pr:stack": "Create and manage GitHub stacked PRs with gh-stack when a change should land as a chain of small dependent PRs.",
+      "trackbed:pr:triage-risk": "Decide how much review the branch needs: a low, medium, or high risk tier and the review commands to run. Read-only.",
+      "trackbed:pr:walkthrough": "Generate a visual HTML walkthrough of a branch or PR; `--report` produces a shareable before/after architecture report.",
+      "trackbed:product:describe-behavior": "Document how an existing product behaves from the user's perspective, grounded in code, tests, and the running app.",
+      "trackbed:product:design-critic": "(experimental) Critique product UI and UX, including flows, hierarchy, trust, and jobs-to-be-done, rather than visual polish alone.",
+      "trackbed:product:prd": "Write a PRD after prototyping that records which candidate ships and why, how success is measured, and when to roll back; log results after launch.",
+      "trackbed:product:review": "(experimental) Review a live product across flows for navigation, discoverability, onboarding, consistency, dead ends, and trust.",
+      "trackbed:product:strategy": "Create or update `STRATEGY.md`, a concise product anchor covering problem, users, metrics, active tracks, and non-goals.",
+      "trackbed:product:validate-demand": "Judge whether a product idea has enough demand evidence to justify more work: GO, PIVOT, KILL, or INSUFFICIENT EVIDENCE.",
+      "trackbed:qa": "Test a running app with smoke, diff-aware, or targeted checks and get `QA_REPORT.md` with screenshots, repro steps, and severity.",
+      "trackbed:qa:intake": "Log several bugs from a manual QA pass as Linear or SIW tickets through a light, quick conversation.",
+      "trackbed:research": "Answer a question from primary sources, such as official docs, specs, or source code, and save one cited Markdown artifact.",
+      "trackbed:session:automate-repeats": "Review recent agent sessions for repeated work and friction, and suggest skill improvements or new automation.",
+      "trackbed:setup": "Run a read-only health check of the tools, repository context, plugin version, and workspace this plugin depends on.",
+      "trackbed:siw:generate-phases": "Break the spec into atomic, phase-based issues with tests and validation.",
+      "trackbed:siw:init": "Initialize SIW documents in `siw/`: the spec, `LOG.md`, and issues.",
+      "trackbed:siw:resolve-audit": "Resolve spec-audit findings one by one with summaries, alternatives, a recommendation, and SIW issue creation.",
+      "trackbed:siw:spec-audit": "Audit specs for implementation readiness; `--product` adds product checks and `--apply` fixes mechanical findings.",
+      "trackbed:siw:transfer-to-linear": "Move a planned SIW initiative into Linear for good: one project with its documents, milestones, and issues. One-way.",
+      "trackbed:skill:create": "Scaffold a new plugin skill with best-practice structure, frontmatter, and progressive disclosure.",
+      "trackbed:skill:review": "Review a skill for focused scope, progressive disclosure, portability, safety, and documentation quality.",
+      "trackbed:test:audit": "Find low-value, brittle, obsolete, or duplicated tests and get a read-only report of what to remove, repair, or consolidate.",
+      "trackbed:text:clarify": "Rewrite prose so readers can understand and act on it quickly; `--humanize` removes AI-writing patterns instead.",
+      "trackbed:verify:run": "Run the project's tests, linting, formatting, builds, and type checks for affected code; `--fast` runs the quick tier.",
+      "trackbed:visual:check-slop": "Run a deterministic check for AI-style UI patterns in HTML screens; `--fix` applies safe fixes.",
+      "trackbed:visual:explain": "Generate a self-contained HTML page that explains a system, change, plan, or data visually; `--onboarding` builds a codebase guide.",
+      "trackbed:workflow:cleanup-artifacts": "Delete disposable workflow artifacts such as review, audit, and QA reports, plans, and diagrams; `--siw` retires the `siw/` workspace.",
+      "trackbed:workflow:wizard": "Generate an interactive Bash wizard for manual procedures such as third-party setup, one-off migrations, or CI secrets."
     }
   },
   "readme_agent_sync": {
@@ -1845,27 +1845,27 @@
     "end_marker": "<!-- END SOURCE-SYNCED AGENT ROWS -->",
     "max_summary_chars": 160,
     "summaries": {
-      "kramme:a11y-auditor": "Audits UI code for WCAG 2.1 AA issues: semantics, ARIA, keyboard and focus handling, screen readers, and contrast.",
-      "kramme:architecture-strategist": "Reviews module design: deep modules, use of public interfaces, change locality, and whether new seams have real variation.",
-      "kramme:cleanup-reviewer": "Reviews changes for code to delete, replace with existing tools, reuse, or simplify, and checks that removals are safe.",
-      "kramme:code-reviewer": "Reviews recent code against project guidelines, CLAUDE.md conventions, and established patterns.",
-      "kramme:codebase-pattern-reviewer": "Checks a spec or design for new patterns or dependencies without rationale, and for statements about today's code that the code contradicts.",
-      "kramme:cold-reader": "Reads material as an outsider, without the conversation or project instructions, for cold reads, comprehension reads, and unprimed ratings.",
-      "kramme:comment-analyzer": "Reviews code comments for accuracy, necessity, completeness, and long-term maintainability.",
-      "kramme:convention-drift-reviewer": "Flags drift from the codebase's established practice and overly defensive code, citing peer-file evidence.",
-      "kramme:copy-reviewer": "Flags UI text that merely restates what the interface already communicates.",
-      "kramme:design-iterator": "Refines a design over several screenshot-review rounds when it still feels off.",
-      "kramme:deslop-reviewer": "Detects AI-generated slop in code changes, or in review suggestions that would introduce it.",
-      "kramme:overengineering-reviewer": "Asks whether a change is overdone, needlessly complex, or hedging against unlikely edge cases, then defends or confirms each finding.",
-      "kramme:performance-oracle": "Reviews code for performance and scalability risks: complexity, queries, memory, caching, and contention.",
-      "kramme:pr-relevance-validator": "Filters review findings down to those the current changes caused, dropping pre-existing issues.",
-      "kramme:pr-test-analyzer": "Reviews a PR's test coverage for untested behavior, edge cases, and regressions.",
-      "kramme:product-reviewer": "Reviews PRs, specs, or live flows from a product perspective: discoverability, flows, edge cases, copy, and fit.",
-      "kramme:security-reviewer": "Reviews changes for exploitable flaws: injection, authentication and access control, secrets and crypto, and business-logic bugs.",
-      "kramme:silent-failure-hunter": "Finds swallowed errors, weak error propagation, and misleading fallbacks.",
-      "kramme:type-design-analyzer": "Reviews new or changed types for encapsulation, invariants, usefulness, and enforcement.",
-      "kramme:ux-reviewer": "Reviews changes for usability with Nielsen's heuristics: missing states, confusing flows, poor feedback, and weak recovery.",
-      "kramme:visual-reviewer": "Reviews visual consistency and responsive behavior: design tokens, spacing, typography, color, and breakpoints."
+      "trackbed:a11y-auditor": "Audits UI code for WCAG 2.1 AA issues: semantics, ARIA, keyboard and focus handling, screen readers, and contrast.",
+      "trackbed:architecture-strategist": "Reviews module design: deep modules, use of public interfaces, change locality, and whether new seams have real variation.",
+      "trackbed:cleanup-reviewer": "Reviews changes for code to delete, replace with existing tools, reuse, or simplify, and checks that removals are safe.",
+      "trackbed:code-reviewer": "Reviews recent code against project guidelines, CLAUDE.md conventions, and established patterns.",
+      "trackbed:codebase-pattern-reviewer": "Checks a spec or design for new patterns or dependencies without rationale, and for statements about today's code that the code contradicts.",
+      "trackbed:cold-reader": "Reads material as an outsider, without the conversation or project instructions, for cold reads, comprehension reads, and unprimed ratings.",
+      "trackbed:comment-analyzer": "Reviews code comments for accuracy, necessity, completeness, and long-term maintainability.",
+      "trackbed:convention-drift-reviewer": "Flags drift from the codebase's established practice and overly defensive code, citing peer-file evidence.",
+      "trackbed:copy-reviewer": "Flags UI text that merely restates what the interface already communicates.",
+      "trackbed:design-iterator": "Refines a design over several screenshot-review rounds when it still feels off.",
+      "trackbed:deslop-reviewer": "Detects AI-generated slop in code changes, or in review suggestions that would introduce it.",
+      "trackbed:overengineering-reviewer": "Asks whether a change is overdone, needlessly complex, or hedging against unlikely edge cases, then defends or confirms each finding.",
+      "trackbed:performance-oracle": "Reviews code for performance and scalability risks: complexity, queries, memory, caching, and contention.",
+      "trackbed:pr-relevance-validator": "Filters review findings down to those the current changes caused, dropping pre-existing issues.",
+      "trackbed:pr-test-analyzer": "Reviews a PR's test coverage for untested behavior, edge cases, and regressions.",
+      "trackbed:product-reviewer": "Reviews PRs, specs, or live flows from a product perspective: discoverability, flows, edge cases, copy, and fit.",
+      "trackbed:security-reviewer": "Reviews changes for exploitable flaws: injection, authentication and access control, secrets and crypto, and business-logic bugs.",
+      "trackbed:silent-failure-hunter": "Finds swallowed errors, weak error propagation, and misleading fallbacks.",
+      "trackbed:type-design-analyzer": "Reviews new or changed types for encapsulation, invariants, usefulness, and enforcement.",
+      "trackbed:ux-reviewer": "Reviews changes for usability with Nielsen's heuristics: missing states, confusing flows, poor feedback, and weak recovery.",
+      "trackbed:visual-reviewer": "Reviews visual consistency and responsive behavior: design tokens, spacing, typography, color, and breakpoints."
     }
   },
   "readme_hook_sync": {
@@ -1884,21 +1884,21 @@
   "skill_contract_coverage": {
     "inventory": "kramme-cc-workflow/config/coverage-production-sources.json",
     "mechanical_only": [
-      "kramme-cc-workflow/skills/kramme:browse/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:code:audit-security/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:deps:audit/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:discovery:strategic-inquiry/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:docs:to-markdown/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:docs:track-rejected-enhancements/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:docs:ubiquitous-language/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:hooks:toggle/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:product:design-critic/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:product:review/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:product:strategy/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:product:validate-demand/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:research/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:discovery:wayfinder/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:workflow:wizard/SKILL.md"
+      "kramme-cc-workflow/skills/browse/SKILL.md",
+      "kramme-cc-workflow/skills/code:audit-security/SKILL.md",
+      "kramme-cc-workflow/skills/deps:audit/SKILL.md",
+      "kramme-cc-workflow/skills/discovery:strategic-inquiry/SKILL.md",
+      "kramme-cc-workflow/skills/docs:to-markdown/SKILL.md",
+      "kramme-cc-workflow/skills/docs:track-rejected-enhancements/SKILL.md",
+      "kramme-cc-workflow/skills/docs:ubiquitous-language/SKILL.md",
+      "kramme-cc-workflow/skills/hooks:toggle/SKILL.md",
+      "kramme-cc-workflow/skills/product:design-critic/SKILL.md",
+      "kramme-cc-workflow/skills/product:review/SKILL.md",
+      "kramme-cc-workflow/skills/product:strategy/SKILL.md",
+      "kramme-cc-workflow/skills/product:validate-demand/SKILL.md",
+      "kramme-cc-workflow/skills/research/SKILL.md",
+      "kramme-cc-workflow/skills/discovery:wayfinder/SKILL.md",
+      "kramme-cc-workflow/skills/workflow:wizard/SKILL.md"
     ]
   },
   "component_catalog": {
@@ -1981,9 +1981,9 @@
     "warn_description_chars": 500,
     "skill_description_report_limit": 20,
     "allow_line_count_over": [
-      "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md",
-      "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md"
+      "kramme-cc-workflow/skills/siw:generate-phases/SKILL.md",
+      "kramme-cc-workflow/skills/siw:init/SKILL.md",
+      "kramme-cc-workflow/skills/siw:spec-audit/SKILL.md"
     ],
     "file_line_budgets": [
       {
@@ -2023,7 +2023,7 @@
           "kramme-cc-workflow/scripts/skill-usage.js": 1165
         },
         "excluded": [
-          "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js"
+          "kramme-cc-workflow/skills/pr:walkthrough/assets/d3.v7.9.0.min.js"
         ]
       },
       {

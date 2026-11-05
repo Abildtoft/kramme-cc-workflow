@@ -13,7 +13,7 @@ repo_root() {
 }
 
 source_skill() {
-  printf "%s/skills/kramme:skill:review/SKILL.md" "$(workflow_root)"
+  printf "%s/skills/skill:review/SKILL.md" "$(workflow_root)"
 }
 
 boundary_dir() {
@@ -142,7 +142,7 @@ boundary_dir() {
     test -f "$review_dir/review.md"
 
     grep -Fq "Manual apply only" "$review_dir/review.md"
-    grep -Fq "kramme-cc-workflow/skills/kramme:skill:review/SKILL.md" "$review_dir/diff.patch"
+    grep -Fq "kramme-cc-workflow/skills/skill:review/SKILL.md" "$review_dir/diff.patch"
     git -C "$repo_root" apply --check "$review_dir/diff.patch"
 
     node -e "

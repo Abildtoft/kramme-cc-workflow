@@ -15,7 +15,7 @@ Store these as `OUTPUT_PATH` and `MAX_FINDINGS`. The caller resolves the shared 
 
 ## Orientation
 
-Reuse the caller's resolved scope, stack, conventions, accepted ADRs, glossary, and any supplied history signals. Preserve its rejection policy when filtering candidates. Use the caller's recorded provenance; refactor-opportunities records it in `SKILL.md` Phase 1 (Producer `kramme:code:refactor-opportunities --ranked`).
+Reuse the caller's resolved scope, stack, conventions, accepted ADRs, glossary, and any supplied history signals. Preserve its rejection policy when filtering candidates. Use the caller's recorded provenance; refactor-opportunities records it in `SKILL.md` Phase 1 (Producer `trackbed:code:refactor-opportunities --ranked`).
 
 Detect prior report artifacts (`CODEBASE_WEAKNESS_REPORT.md`, `OUTSIDE_VIEW_REPORT.md`, `REFACTOR_OPPORTUNITIES_OVERVIEW.md`, `AGENT_NATIVE_AUDIT.md`, `REVIEW_OVERVIEW.md`) only as context. Treat outside-view complaint clusters as unverified leads worth checking against evidence. Do not copy findings without re-validating evidence in the current tree.
 
@@ -173,7 +173,7 @@ The orchestrator, not a teammate, owns final ranking and report writing. Enforce
 1. Read `${CLAUDE_PLUGIN_ROOT}/shared/codebase-audit/assets/report-template.md`.
 2. Write the report to `OUTPUT_PATH`, overwriting any previous report at that path. Include the resolved scope and date in the header so an overwritten report remains understandable. Write `## Report Provenance` and name the detailed findings section `## Breakdown-Ready Finding Data`, per `${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md`.
 3. Include all required sections from the template, including the Team Review block in team mode only; omit that block for `--solo` runs. If no major weakness is found, keep the same header, provenance, scorecard, filtered candidates, impressions, and coverage notes, and write `None.` under `## Breakdown-Ready Finding Data`. Replace the other findings sections with: `No major weaknesses met the evidence bar in this scope.` Explain the scope, evidence reviewed, and residual risks instead of inventing findings.
-4. Treat the report as a working artifact that should not be committed. It is consumed by the user, by `/kramme:code:breakdown-findings` when turning validated findings into implementation plans, and by `/kramme:code:outside-view` comparisons. It is retired by `/kramme:workflow:cleanup-artifacts` when no longer useful, or manual deletion.
+4. Treat the report as a working artifact that should not be committed. It is consumed by the user, by `/trackbed:code:breakdown-findings` when turning validated findings into implementation plans, and by `/trackbed:code:outside-view` comparisons. It is retired by `/trackbed:workflow:cleanup-artifacts` when no longer useful, or manual deletion.
 
 ## Summarize
 
@@ -195,5 +195,5 @@ End the run with `Agents launched: N` — the research and challenge reviewers l
 - Correctness findings must name a plausible failure path or missing invariant.
 - Maintainability findings must explain how future changes become riskier or slower.
 - Readability findings must explain what a maintainer would misunderstand or fail to find.
-- Impressions are the escape hatch for rubric blind spots: report them honestly and label them unverified rather than suppressing them or dressing them up as findings. Recurring impressions belong in `/kramme:code:outside-view` runs and eventual rubric amendments.
+- Impressions are the escape hatch for rubric blind spots: report them honestly and label them unverified rather than suppressing them or dressing them up as findings. Recurring impressions belong in `/trackbed:code:outside-view` runs and eventual rubric amendments.
 - Do not implement fixes. This skill ranks and explains weaknesses; separate implementation work belongs in follow-up tasks.

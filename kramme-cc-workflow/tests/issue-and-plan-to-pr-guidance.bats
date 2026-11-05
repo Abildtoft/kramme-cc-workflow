@@ -5,23 +5,23 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-	    skill="skills/kramme:code:plan-to-pr/SKILL.md"
-	    validator="skills/kramme:code:plan-to-pr/scripts/validate-plan-state.py"
-	    attachment="skills/kramme:code:plan-to-pr/references/attachment-input.md"
-	    breakdown="skills/kramme:code:breakdown-findings/SKILL.md"
-		    plan_template="skills/kramme:code:breakdown-findings/assets/plan-template.md"
-		    generated_index_template="skills/kramme:code:breakdown-findings/assets/index-template.md"
-		    reconcile="skills/kramme:code:breakdown-findings/references/reconcile-workflow.md"
-	    plan_requirements="skills/kramme:code:breakdown-findings/references/plan-content-requirements.md"
-	    generation_checks="skills/kramme:code:breakdown-findings/references/generation-checks.md"
-    convergence="skills/kramme:pr:review-convergence/SKILL.md"
-    handoff="skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md"
-    review="skills/kramme:pr:review-convergence/references/review-convergence.md"
-    shipping="skills/kramme:code:plan-to-pr/references/shipping-contract.md"
-    fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
-    fix_ci_scope="skills/kramme:pr:fix-ci/references/scoped-plan.md"
-    index_asset="skills/kramme:code:plan-to-pr/assets/standalone-index-template.md"
-    rejections_asset="skills/kramme:code:plan-to-pr/assets/standalone-rejections-template.md"
+	    skill="skills/code:plan-to-pr/SKILL.md"
+	    validator="skills/code:plan-to-pr/scripts/validate-plan-state.py"
+	    attachment="skills/code:plan-to-pr/references/attachment-input.md"
+	    breakdown="skills/code:breakdown-findings/SKILL.md"
+		    plan_template="skills/code:breakdown-findings/assets/plan-template.md"
+		    generated_index_template="skills/code:breakdown-findings/assets/index-template.md"
+		    reconcile="skills/code:breakdown-findings/references/reconcile-workflow.md"
+	    plan_requirements="skills/code:breakdown-findings/references/plan-content-requirements.md"
+	    generation_checks="skills/code:breakdown-findings/references/generation-checks.md"
+    convergence="skills/pr:review-convergence/SKILL.md"
+    handoff="skills/pr:review-convergence/references/standalone-scope-handoff.md"
+    review="skills/pr:review-convergence/references/review-convergence.md"
+    shipping="skills/code:plan-to-pr/references/shipping-contract.md"
+    fix_ci="skills/pr:fix-ci/SKILL.md"
+    fix_ci_scope="skills/pr:fix-ci/references/scoped-plan.md"
+    index_asset="skills/code:plan-to-pr/assets/standalone-index-template.md"
+    rejections_asset="skills/code:plan-to-pr/assets/standalone-rejections-template.md"
 
     test -f "$skill"
 	    test -f "$validator"
@@ -147,7 +147,7 @@
 		    grep -qF "Keep the detached plan'\''s archived plan/index status unchanged while proving prerequisites in this step" "$skill"
 		    grep -qF "do not persist \`READY\`" "$skill"
 	    grep -qF "one bounded exception only when \`detached_recovery_required: true\` to recover a detached generated attachment" "$skill"
-    grep -qF "kramme:code:breakdown-findings --reconcile" "$skill"
+    grep -qF "trackbed:code:breakdown-findings --reconcile" "$skill"
     grep -qF "Keep the established archive in place." "$skill"
     grep -qF "never retain a root or attachment source path as the active plan" "$skill"
     grep -qF "preserves either the complete generated plan set or the normalized singleton attachment" "$skill"
@@ -170,14 +170,14 @@
     grep -qF "git diff --name-only \"{proven-base-commit}\"..\"{checkpoint-head}\"" "$skill"
     grep -qF "git merge-base \"{checkpoint-head}\" \"origin/{base-branch}\"" "$skill"
     grep -qF "set \`{branch-base-commit}\` from \`{proven-base-commit}\`" "$skill"
-	    grep -qF "When \`COMPLETION_RESUME=true\`, do not invoke \`kramme:code:work-from-plan\` again" "$skill"
+	    grep -qF "When \`COMPLETION_RESUME=true\`, do not invoke \`trackbed:code:work-from-plan\` again" "$skill"
 	    grep -qF "Stage: IMPLEMENTED" "$skill"
 	    grep -qF "Stage: QUALITY_BLOCKED" "$skill"
 	    grep -qF "Stage: PUBLISHED_BLOCKED" "$skill"
 	    grep -qF "structured disposition to be \`prepublication_blocked\` or \`published_blocked\`" "$skill"
 	    grep -qF "The mere appearance of a concurrent remote branch is never evidence" "$skill"
 	    grep -qF "out-of-scope post-publication path" "$skill"
-    grep -qF "kramme:code:work-from-plan" "$skill"
+    grep -qF "trackbed:code:work-from-plan" "$skill"
     grep -qF "route \`direct\`" "$skill"
     ! grep -qF -- "--archive-key code-plan-to-pr" "$skill"
     grep -qF -- "--scope-plan {validated-scope-plan}" "$skill"
@@ -271,7 +271,7 @@
     grep -qF "every path touched by each commit against its sole parent" "$fix_ci_scope"
     grep -qF "atomically refresh only the workflow-state checkpoint head/tree" "$fix_ci_scope"
     grep -qF "repeat every archive identity, base, same-repository Pull Request identity, head agreement, tree, exact-file eligibility, and committed-path proof" "$fix_ci_scope"
-    grep -qF "When \`PLAN_SCOPE_ACTIVE=true\`, fail closed without invoking \`/kramme:pr:rebase\` or changing history" "$fix_ci"
+    grep -qF "When \`PLAN_SCOPE_ACTIVE=true\`, fail closed without invoking \`/trackbed:pr:rebase\` or changing history" "$fix_ci"
     grep -qF "require a refreshed or explicitly re-authorized scoped plan before continuing" "$fix_ci"
     grep -qF "capture the full current \`HEAD\` as \`{validated-push-head}\`" "$fix_ci"
     grep -qF "git push origin \"{validated-push-head}:refs/heads/{validated-plan-branch}\"" "$fix_ci"
@@ -305,10 +305,10 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		skill="skills/kramme:code:breakdown-findings/SKILL.md"
-		intake="skills/kramme:code:breakdown-findings/references/source-intake.md"
+		skill="skills/code:breakdown-findings/SKILL.md"
+		intake="skills/code:breakdown-findings/references/source-intake.md"
 		shared_intake="shared/findings/references/findings-intake.md"
-		generation="skills/kramme:code:breakdown-findings/references/generation-workflow.md"
+		generation="skills/code:breakdown-findings/references/generation-workflow.md"
 
 		test -f "$skill"
 		test -f "$intake"
@@ -389,10 +389,10 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:code:plan-to-pr/SKILL.md"
-    convergence="skills/kramme:pr:review-convergence/SKILL.md"
-    review="skills/kramme:pr:review-convergence/references/review-convergence.md"
-    shipping="skills/kramme:code:plan-to-pr/references/shipping-contract.md"
+    skill="skills/code:plan-to-pr/SKILL.md"
+    convergence="skills/pr:review-convergence/SKILL.md"
+    review="skills/pr:review-convergence/references/review-convergence.md"
+    shipping="skills/code:plan-to-pr/references/shipping-contract.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
 
     test -f "$skill"
@@ -410,16 +410,16 @@
     grep -qF "Stop before history rewriting or publication on the first mismatch" "$shipping"
     grep -qF "gh pr list --head \"{work-branch}\" --state all" "$skill"
     grep -qF "git ls-remote --heads origin \"refs/heads/{work-branch}\"" "$skill"
-    grep -qF "kramme:pr:review-convergence" "$skill"
+    grep -qF "trackbed:pr:review-convergence" "$skill"
     grep -qF "JSON-decode its \`Requirements JSON\` field" "$skill"
     grep -qF "equal \`{work-requirements}\` byte-for-byte" "$skill"
     grep -qF "Produce this structured completion result, then continue to the archive finalization below" "$skill"
     grep -qF "**Internal \`code-plan-to-pr\`:** treat the validated plan—not \`{supplied-requirements}\`—as authoritative" "$convergence"
     grep -qF "validation-only mode permits later caller-authorized CI/review commits" "$convergence"
-    grep -qF "kramme:pr:code-review --parallel --inline" "$review"
-    grep -qF "kramme:pr:convention-review --inline" "$review"
-    grep -qF "kramme:code:refactor-opportunities" "$review"
-	    grep -qF "kramme:verify:run" "$convergence"
+    grep -qF "trackbed:pr:code-review --parallel --inline" "$review"
+    grep -qF "trackbed:pr:convention-review --inline" "$review"
+    grep -qF "trackbed:code:refactor-opportunities" "$review"
+	    grep -qF "trackbed:verify:run" "$convergence"
 	    grep -qF "Completion disposition: success | prepublication_blocked | published_blocked" "$skill"
 	    grep -qF "Pre-publication quality and verification: passed" "$skill"
 	    grep -qF "Publication state: absent | remote branch only | open Pull Request" "$skill"
@@ -430,11 +430,11 @@
     grep -qF "Do not consume a cycle or restart applicability." "$review"
     grep -qF ".context/{archive-key}/reviews/" "$review"
 
-	    grep -qF "kramme:pr:create --base {base-branch} --require-generated-description" "$shipping"
+	    grep -qF "trackbed:pr:create --base {base-branch} --require-generated-description" "$shipping"
 	    ! grep -qF -- "--authorize-history-rewrite" "$shipping"
-	    grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
-	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$skill")" -eq 3 ]
-	    [ "$(grep -cF "kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$shipping")" -eq 1 ]
+	    grep -qF "trackbed:pr:fix-ci --no-consolidate" "$shipping"
+	    [ "$(grep -cF "trackbed:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$skill")" -eq 3 ]
+	    [ "$(grep -cF "trackbed:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}" "$shipping")" -eq 1 ]
 		    grep -qF "It also turns off auto mode in that delegated skill" "$shared_contract"
 	    grep -qF "Completion disposition: published_blocked" "$shipping"
 	    grep -qF "Work branch: {work-branch}" "$shipping"
@@ -446,7 +446,7 @@
     grep -qF "gh pr checks --json name,state,bucket,link,workflow" "$shared_contract"
     grep -qF "no checks reported" "$shared_contract"
     grep -qF "reviewThreads(first: 100, after: \$endCursor)" "$shared_contract"
-    grep -qF "kramme:verify:run" "$shared_contract"
+    grep -qF "trackbed:verify:run" "$shared_contract"
     grep -qF "exact frozen sentinel-last \`--requirements {work-requirements}\` block" "$shared_contract"
     grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shared_contract"
 
@@ -462,7 +462,7 @@
 	run python3 \
 		"$BATS_TEST_DIRNAME/test_helper/guidance_contracts.py" \
 		review-gate-order \
-		"$BATS_TEST_DIRNAME/../skills/kramme:pr:review-convergence/references/review-convergence.md"
+		"$BATS_TEST_DIRNAME/../skills/pr:review-convergence/references/review-convergence.md"
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
 
@@ -471,8 +471,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:code:plan-to-pr/SKILL.md"
-    shipping="skills/kramme:code:plan-to-pr/references/shipping-contract.md"
+    parent="skills/code:plan-to-pr/SKILL.md"
+    shipping="skills/code:plan-to-pr/references/shipping-contract.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
 
     grep -qF "\${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/pr-shipping-contract.md" "$parent"
@@ -497,7 +497,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
+    registry="skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
 
     grep -qF "\"path\": \".context/code-plan-to-pr/reviews/REVIEW_OVERVIEW.md\"" "$registry"
     grep -qF "\"path\": \".context/code-plan-to-pr/reviews/CONVENTION_REVIEW_OVERVIEW.md\"" "$registry"
@@ -519,19 +519,19 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:code:work-from-plan/SKILL.md"
-    routing="skills/kramme:code:work-from-plan/references/routing.md"
-    triage="skills/kramme:debug:triage-to-issue/SKILL.md"
+    skill="skills/code:work-from-plan/SKILL.md"
+    routing="skills/code:work-from-plan/references/routing.md"
+    triage="skills/debug:triage-to-issue/SKILL.md"
 
 	    skill_route=$(sed -n "/If the route is \`siw\`/,/If the route is \`recommend-siw\`/p" "$skill")
 	    routing_route=$(sed -n "/^### SIW$/,/^### Recommend SIW$/p" "$routing")
-	    skill_contract="then recommend \`/kramme:siw:transfer-to-linear\`; after migration, implementation belongs to \`kramme:linear:issue-implement\`"
-	    routing_contract="Route the SIW project through \`kramme:siw:transfer-to-linear\`, then use \`kramme:linear:issue-implement\`"
+	    skill_contract="then recommend \`/trackbed:siw:transfer-to-linear\`; after migration, implementation belongs to \`trackbed:linear:issue-implement\`"
+	    routing_contract="Route the SIW project through \`trackbed:siw:transfer-to-linear\`, then use \`trackbed:linear:issue-implement\`"
 
 	    grep -qF "stop local SIW issues with a transfer-to-Linear recommendation" "$skill"
 	    printf "%s\n" "$skill_route" | grep -qF "$skill_contract"
 	    printf "%s\n" "$routing_route" | grep -qF "$routing_contract"
-	    grep -qF "A local SIW ticket reaches it through \`kramme:siw:transfer-to-linear\`" "$triage"
+	    grep -qF "A local SIW ticket reaches it through \`trackbed:siw:transfer-to-linear\`" "$triage"
 
 	    ! grep -qF "kramme:siw:issue-implement" "$skill"
 	    ! grep -qF "kramme:siw:issue-implement" "$routing"
@@ -545,7 +545,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    triage="skills/kramme:debug:triage-to-issue/SKILL.md"
+    triage="skills/debug:triage-to-issue/SKILL.md"
 
     test ! -e "skills/kramme:test:tdd/SKILL.md"
     grep -qF "Build the TDD plan directly from the investigation evidence" "$triage"
@@ -563,8 +563,8 @@
 	run bash -c '
 	    set -e
 	    cd "'"$BATS_TEST_DIRNAME"'/.."
-	    skill="skills/kramme:siw:init/SKILL.md"
-	    report="skills/kramme:siw:init/references/success-report.md"
+	    skill="skills/siw:init/SKILL.md"
+	    report="skills/siw:init/references/success-report.md"
 
 	    grep -qF "Read the Phase 5 success-report templates from \`references/success-report.md\`, display the applicable summary sections" "$skill"
 	    grep -qF "capture every authoritative linked source" "$report"
@@ -581,7 +581,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:siw:resolve-audit/SKILL.md"
+    skill="skills/siw:resolve-audit/SKILL.md"
 
     discovery=$(sed -n "/Otherwise, use the first report that exists, in this order:/,/The spec audit report holds both/p" "$skill")
     printf "%s\n" "$discovery" | grep -qF "siw/AUDIT_SPEC_REPORT.md"
@@ -600,8 +600,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    reconcile="skills/kramme:code:breakdown-findings/references/reconcile-workflow.md"
-    index_template="skills/kramme:code:breakdown-findings/assets/index-template.md"
+    reconcile="skills/code:breakdown-findings/references/reconcile-workflow.md"
+    index_template="skills/code:breakdown-findings/assets/index-template.md"
 
     grep -qFx "### Merged Plan Branch Evidence" "$reconcile"
     grep -qF "This is the only evidence from which reconcile may infer \`DONE\`." "$reconcile"
@@ -623,7 +623,7 @@
     grep -qF "Never add or rewrite it on a plan already \`DONE\`." "$reconcile"
     grep -qF "Do not infer \`DONE\` solely because source files changed." "$reconcile"
 
-    grep -qF "or a merged plan branch from \`kramme:code:plan-to-pr\` is proven and recorded with its Pull Request and landed commit" "$index_template"
+    grep -qF "or a merged plan branch from \`trackbed:code:plan-to-pr\` is proven and recorded with its Pull Request and landed commit" "$index_template"
     grep -qF "Generation and reconcile never infer or assign it from source changes alone" "$index_template"
   '
 
@@ -634,21 +634,21 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:code:plan-to-pr/SKILL.md"
-    child="skills/kramme:code:work-from-plan/SKILL.md"
+    parent="skills/code:plan-to-pr/SKILL.md"
+    child="skills/code:work-from-plan/SKILL.md"
     adr="docs/decisions/2026-08-29-model-invocable-orchestration-children.md"
 
     grep -qF "disable-model-invocation: false" "$child"
-    grep -qF "delegated by kramme:code:plan-to-pr" "$child"
+    grep -qF "delegated by trackbed:code:plan-to-pr" "$child"
     grep -qF "### Model Invocation Contract" "$child"
-    grep -qF "Invoke automatically only as the implementation delegate of \`kramme:code:plan-to-pr\`" "$child"
+    grep -qF "Invoke automatically only as the implementation delegate of \`trackbed:code:plan-to-pr\`" "$child"
     grep -qF "No other parent workflow is authorized by this model-invocation exception" "$child"
-    grep -qF "without invoking \`kramme:linear:issue-implement\`" "$child"
+    grep -qF "without invoking \`trackbed:linear:issue-implement\`" "$child"
     grep -qF "any route other than \`direct\` ends this run" "$child"
-    grep -qF "Then invoke \`kramme:code:work-from-plan\` with exactly \`{active-plan}\` as its only argument" "$parent"
+    grep -qF "Then invoke \`trackbed:code:work-from-plan\` with exactly \`{active-plan}\` as its only argument" "$parent"
     grep -qF "route \`direct\`" "$parent"
     grep -qF "### Hand-off repair exceptions" "$adr"
-    grep -qF "is model-invocable only as the implementation delegate of \`kramme:code:plan-to-pr\`" "$adr"
+    grep -qF "is model-invocable only as the implementation delegate of \`trackbed:code:plan-to-pr\`" "$adr"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -658,10 +658,10 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		skill="skills/kramme:code:breakdown-findings/SKILL.md"
-		generation="skills/kramme:code:breakdown-findings/references/generation-workflow.md"
-		checks="skills/kramme:code:breakdown-findings/references/generation-checks.md"
-		registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
+		skill="skills/code:breakdown-findings/SKILL.md"
+		generation="skills/code:breakdown-findings/references/generation-workflow.md"
+		checks="skills/code:breakdown-findings/references/generation-checks.md"
+		registry="skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
 
 		grep -qFx "## Delegated Drafting" "$generation"
 		grep -qF "For each confirmed theme (inside each drafter when **Delegated Drafting** below applies):" "$generation"
@@ -709,7 +709,7 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		dir="skills/kramme:code:breakdown-findings"
+		dir="skills/code:breakdown-findings"
 		skill="$dir/SKILL.md"
 		autodetect="shared/findings/references/findings-intake.md"
 		intake="$dir/references/source-intake.md"
@@ -737,10 +737,10 @@
 		grep -qF "explicit \`none (not a git repository)\` sentinel" "$autodetect"
 
 		[ "$(grep -cF "LAUNCH SHEET:" "$templates")" -ge 2 ]
-		grep -qF "/kramme:code:plan-to-pr PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md --ship" "$templates"
+		grep -qF "/trackbed:code:plan-to-pr PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md --ship" "$templates"
 		grep -qF "List every generated plan exactly once." "$templates"
 		grep -qF "implement in its own worktree per the plan'"'"'s Implementation Setup" "$templates"
-		grep -qF "/kramme:code:breakdown-findings --reconcile PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md [--worktree <path> | --source <ref>]" "$templates"
+		grep -qF "/trackbed:code:breakdown-findings --reconcile PR_PLAN_{EXECUTION_LABEL}_{SLUG}.md [--worktree <path> | --source <ref>]" "$templates"
 		! grep -qF "Recommended first PR" "$templates"
 
 		grep -qF "The template'"'"'s \`LAUNCH SHEET:\` block is mandatory" "$skill"
@@ -760,8 +760,8 @@
 		cd "'"$BATS_TEST_DIRNAME"'/.."
 		shared="shared/findings/references/findings-intake.md"
 		shared_path="\${CLAUDE_PLUGIN_ROOT}/$shared"
-		code="skills/kramme:code:breakdown-findings"
-		linear="skills/kramme:linear:breakdown-findings"
+		code="skills/code:breakdown-findings"
+		linear="skills/linear:breakdown-findings"
 
 		test -f "$shared"
 		test ! -e "$code/references/auto-detect-sources.md"
@@ -782,9 +782,9 @@
 		candidates=$(sed -n "/^## Auto-detect candidates/,/^## /p" "$shared" | grep -E "^[0-9]+\. \`")
 		[ -n "$candidates" ]
 		! printf "%s\n" "$candidates" | grep -qF "AUDIT_SPEC_REPORT.md"
-		grep -qF "SIW audit decisions route through \`kramme:siw:resolve-audit\`" "$shared"
+		grep -qF "SIW audit decisions route through \`trackbed:siw:resolve-audit\`" "$shared"
 		grep -qF "an explicitly passed spec-audit report is still accepted" "$shared"
-		! grep -qF "kramme:siw:spec-audit" "$shared"
+		! grep -qF "trackbed:siw:spec-audit" "$shared"
 
 		grep -qF "effort (\`S\`, \`M\`, or \`L\`)" "$shared"
 		grep -qF "| **XL** | **9+ files - split into a series** |" "$shared"
@@ -805,7 +805,7 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		dir="skills/kramme:code:breakdown-findings"
+		dir="skills/code:breakdown-findings"
 		skill="$dir/SKILL.md"
 		split="$dir/references/split-mode.md"
 

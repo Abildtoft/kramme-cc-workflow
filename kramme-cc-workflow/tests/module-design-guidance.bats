@@ -22,17 +22,17 @@ setup() {
 
 @test "every glossary consumer names the shared path and declares the glossary sources" {
 	local skill
-	for skill in kramme:code:refactor-opportunities kramme:code:agent-readiness kramme:code:api-design kramme:pr:code-review; do
+	for skill in trackbed:code:refactor-opportunities trackbed:code:agent-readiness trackbed:code:api-design trackbed:pr:code-review; do
 		grep -qF "$GLOSSARY_PATH" "skills/$skill/SKILL.md"
 		grep -qF "id: pocock-improve-codebase-architecture-language" "skills/$skill/references/sources.yaml"
 		grep -qF "id: aihero-codebases-ai-agents-love" "skills/$skill/references/sources.yaml"
 	done
-	test ! -e "skills/kramme:code:refactor-opportunities/references/architecture-language.md"
+	test ! -e "skills/code:refactor-opportunities/references/architecture-language.md"
 }
 
 @test "agent readiness scores module depth, boundaries, and interface tests instead of file length" {
-	local rubrics="skills/kramme:code:agent-readiness/references/dimension-rubrics.md"
-	local skill="skills/kramme:code:agent-readiness/SKILL.md"
+	local rubrics="skills/code:agent-readiness/references/dimension-rubrics.md"
+	local skill="skills/code:agent-readiness/SKILL.md"
 	if grep -qF "All files under 500 lines" "$rubrics"; then
 		echo "Traversable must not reward file length" >&2
 		return 1
@@ -43,20 +43,20 @@ setup() {
 	grep -qF "Count internal imports" "$rubrics"
 	grep -qF "8. **Boundary enforcement.**" "$rubrics"
 	grep -qF "Behavioral assertions through module interfaces." "$rubrics"
-	grep -qF "{architecture_glossary_path}" "skills/kramme:code:agent-readiness/references/dimension-agent.md"
+	grep -qF "{architecture_glossary_path}" "skills/code:agent-readiness/references/dimension-agent.md"
 	grep -qF "| **Phase 3: Structural** | High or Medium impact + Significant effort |" "$skill"
 	grep -qF "| **Phase 4: Polish** | Low impact + Moderate or Significant effort |" "$skill"
-	grep -qF "### Phase 3: Structural" "skills/kramme:code:agent-readiness/assets/audit-report.md"
+	grep -qF "### Phase 3: Structural" "skills/code:agent-readiness/assets/audit-report.md"
 }
 
 @test "agent readiness measures search uniqueness and treats wildcard re-exports as weak entry points" {
-	local rubrics="skills/kramme:code:agent-readiness/references/dimension-rubrics.md"
+	local rubrics="skills/code:agent-readiness/references/dimension-rubrics.md"
 	grep -qF "9. **Search uniqueness.**" "$rubrics"
 	grep -qF "report the share with exactly one definition plus the worst collisions" "$rubrics"
 	grep -qF 'names a framework requires, such as `index.*`, `page.*`, and `__init__.py`, do not count.' "$rubrics"
 	grep -qF 'a wildcard re-export (`export *`, `from x import *`) forwards everything and hides which file defines each name.' "$rubrics"
 	grep -qF "Does a file-name search for a source file's name also find its test" "$rubrics"
-	grep -qF "id: modem-how-coding-agents-read-your-code" "skills/kramme:code:agent-readiness/references/sources.yaml"
+	grep -qF "id: modem-how-coding-agents-read-your-code" "skills/code:agent-readiness/references/sources.yaml"
 }
 
 @test "implementation context searches for a new exported name before adding it" {
@@ -65,30 +65,30 @@ setup() {
 	grep -qF "When the search finds other definitions, add the domain term the change is about" "$reference"
 	grep -qF "Keep a name that a framework or an implemented interface requires" "$reference"
 	local skill
-	for skill in kramme:code:plan-to-pr kramme:code:work-from-plan kramme:linear:issue-implement; do
+	for skill in trackbed:code:plan-to-pr trackbed:code:work-from-plan trackbed:linear:issue-implement; do
 		grep -qF '${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/context-preparation.md' "skills/$skill/SKILL.md"
 		grep -qF "id: modem-how-coding-agents-read-your-code" "skills/$skill/references/sources.yaml"
 	done
 }
 
 @test "refactor opportunities collects co-change evidence and reports deepening candidates" {
-	local skill="skills/kramme:code:refactor-opportunities/SKILL.md"
+	local skill="skills/code:refactor-opportunities/SKILL.md"
 	grep -qF "**Collect co-change evidence**" "$skill"
 	grep -qF 'Store the pairs whose files both still exist as `CO_CHANGE`' "$skill"
 	grep -qF 'Pass it `CO_CHANGE` and the resolved glossary path' "$skill"
-	grep -qF "## Deepening Candidates" "skills/kramme:code:refactor-opportunities/assets/report-template.md"
-	grep -qF "Deepening candidates — behavior that belongs behind one smaller interface" "skills/kramme:code:refactor-opportunities/references/checklist.md"
+	grep -qF "## Deepening Candidates" "skills/code:refactor-opportunities/assets/report-template.md"
+	grep -qF "Deepening candidates — behavior that belongs behind one smaller interface" "skills/code:refactor-opportunities/references/checklist.md"
 }
 
 @test "refactor opportunities looks for behavior that is hard to test through its interface" {
-	local checklist="skills/kramme:code:refactor-opportunities/references/checklist.md"
+	local checklist="skills/code:refactor-opportunities/references/checklist.md"
 	grep -qF "  - Hard to test through its interface:" "$checklist"
 	grep -qF "names the interface-level tests the deepening makes possible" "$checklist"
-	grep -qF "id: aihero-improve-codebase-architecture-guide" "skills/kramme:code:refactor-opportunities/references/sources.yaml"
+	grep -qF "id: aihero-improve-codebase-architecture-guide" "skills/code:refactor-opportunities/references/sources.yaml"
 }
 
 @test "the co-change pipeline counts repeated pairs across separate modules only" {
-	local skill="$PWD/skills/kramme:code:refactor-opportunities/SKILL.md"
+	local skill="$PWD/skills/code:refactor-opportunities/SKILL.md"
 	local pipeline
 	pipeline=$(awk '
 		index($0, "git log --since=\"12 months ago\" --no-merges") { grab = 1 }
@@ -122,13 +122,13 @@ setup() {
 }
 
 @test "code review runs the architecture reviewer as a conditional dimension with the shared glossary" {
-	local skill="skills/kramme:pr:code-review/SKILL.md"
-	local agent="agents/kramme:architecture-strategist.md"
-	grep -qF '`kramme:architecture-strategist` — if the diff adds, removes, or moves a module' "$skill"
+	local skill="skills/pr:code-review/SKILL.md"
+	local agent="agents/architecture-strategist.md"
+	grep -qF '`trackbed:architecture-strategist` — if the diff adds, removes, or moves a module' "$skill"
 	grep -qF '`architecture` → architecture-strategist' "$skill"
-	grep -qF "pass \`kramme:architecture-strategist\` the resolved path of \`$GLOSSARY_PATH\`" "$skill"
-	grep -qF "**architecture-strategist** -- If module structure changed" "skills/kramme:pr:code-review/references/team-mode.md"
-	grep -qF '"architecture": {' "skills/kramme:pr:code-review/references/execution-contract.md"
+	grep -qF "pass \`trackbed:architecture-strategist\` the resolved path of \`$GLOSSARY_PATH\`" "$skill"
+	grep -qF "**architecture-strategist** -- If module structure changed" "skills/pr:code-review/references/team-mode.md"
+	grep -qF '"architecture": {' "skills/pr:code-review/references/execution-contract.md"
 	grep -qF "**Read-only agent.**" "$agent"
 	grep -qF 'end with one FYI finding at location `review-scope` that lists each changed interface' "$agent"
 	if grep -qF "SOLID" "$agent"; then
@@ -138,32 +138,32 @@ setup() {
 }
 
 @test "specs, issues, and plans record interface impact per module" {
-	grep -qF "record that under Boundaries as an Ask First rule naming the module and its interface impact" "skills/kramme:docs:feature-spec/SKILL.md"
-	grep -qF "Module map: each module this work creates or changes" "skills/kramme:siw:init/assets/spec-templates.md"
-	grep -qF "### Module Map" "skills/kramme:discovery:interview/assets/template-feature.md"
+	grep -qF "record that under Boundaries as an Ask First rule naming the module and its interface impact" "skills/docs:feature-spec/SKILL.md"
+	grep -qF "Module map: each module this work creates or changes" "skills/siw:init/assets/spec-templates.md"
+	grep -qF "### Module Map" "skills/discovery:interview/assets/template-feature.md"
 	local template
 	for template in \
-		skills/kramme:siw:generate-phases/references/issue-template.md \
-		skills/kramme:linear:issue-define/assets/comprehensive-template.md; do
+		skills/siw:generate-phases/references/issue-template.md \
+		skills/linear:issue-define/assets/comprehensive-template.md; do
 		grep -qF "### Interface Impact" "$template"
 		grep -qF "new | changed | implementation-only" "$template"
 	done
-	grep -qF -- "- **Interface-aware** -" "skills/kramme:siw:generate-phases/SKILL.md"
-	grep -qF "HITL — needs architectural decision" "skills/kramme:siw:generate-phases/SKILL.md"
-	grep -qF "## Interfaces" "skills/kramme:linear:issue-implement/assets/technical-plan.md"
+	grep -qF -- "- **Interface-aware** -" "skills/siw:generate-phases/SKILL.md"
+	grep -qF "HITL — needs architectural decision" "skills/siw:generate-phases/SKILL.md"
+	grep -qF "## Interfaces" "skills/linear:issue-implement/assets/technical-plan.md"
 }
 
 @test "agent-instruction skills prefer enforcement and structure over compensating prose" {
-	grep -qF "**structural compensation**" "skills/kramme:code:audit-agent-config/SKILL.md"
-	grep -qF "verify the tool is configured in the repository before naming it" "skills/kramme:code:audit-agent-config/SKILL.md"
-	grep -qF "**Enforce before instructing**" "skills/kramme:docs:update-agents-md/SKILL.md"
-	grep -qF "### Module Map" "skills/kramme:docs:update-agents-md/SKILL.md"
+	grep -qF "**structural compensation**" "skills/code:audit-agent-config/SKILL.md"
+	grep -qF "verify the tool is configured in the repository before naming it" "skills/code:audit-agent-config/SKILL.md"
+	grep -qF "**Enforce before instructing**" "skills/docs:update-agents-md/SKILL.md"
+	grep -qF "### Module Map" "skills/docs:update-agents-md/SKILL.md"
 }
 
 @test "test audit, sibling bugs, onboarding, and API design apply the module-depth lens" {
-	grep -qF "imports another module's implementation files instead of its public entry point" "skills/kramme:test:audit/references/audit-rubric.md"
-	grep -qF "need the same fix invariant at three or more sites" "skills/kramme:debug:find-sibling-bugs/SKILL.md"
-	grep -qF "### Deepening Candidate" "skills/kramme:debug:find-sibling-bugs/assets/report-template.md"
-	grep -qF "roughly 7–9 top-level chunks" "skills/kramme:visual:explain/references/onboarding-exploration-dimensions.md"
-	grep -qF "Then run a **depth check** on that interface." "skills/kramme:code:api-design/SKILL.md"
+	grep -qF "imports another module's implementation files instead of its public entry point" "skills/test:audit/references/audit-rubric.md"
+	grep -qF "need the same fix invariant at three or more sites" "skills/debug:find-sibling-bugs/SKILL.md"
+	grep -qF "### Deepening Candidate" "skills/debug:find-sibling-bugs/assets/report-template.md"
+	grep -qF "roughly 7–9 top-level chunks" "skills/visual:explain/references/onboarding-exploration-dimensions.md"
+	grep -qF "Then run a **depth check** on that interface." "skills/code:api-design/SKILL.md"
 }

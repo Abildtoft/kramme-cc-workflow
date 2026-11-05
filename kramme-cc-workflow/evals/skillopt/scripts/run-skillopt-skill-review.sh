@@ -64,7 +64,7 @@ esac
 
 config_path="$workflow_root/evals/skillopt/configs/skill-review.yaml"
 split_dir="$workflow_root/evals/skill-review/items"
-skill_init="$workflow_root/skills/kramme:skill:review/SKILL.md"
+skill_init="$workflow_root/skills/skill:review/SKILL.md"
 
 if [ -z "$out_root" ]; then
   out_root="$repo_root/.context/skillopt-runs/skill-review/$run_id/skillopt-output"

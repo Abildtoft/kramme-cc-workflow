@@ -4,9 +4,9 @@ setup() {
 	cd "$BATS_TEST_DIRNAME/../.."
 }
 
-SKILL=".agents/skills/kramme:skill:audit-sources/SKILL.md"
-NORMALIZATION_RULES=".agents/skills/kramme:skill:audit-sources/references/normalization-rules.md"
-REPORT_TEMPLATE=".agents/skills/kramme:skill:audit-sources/references/report-template.md"
+SKILL=".agents/skills/trackbed:skill:audit-sources/SKILL.md"
+NORMALIZATION_RULES=".agents/skills/trackbed:skill:audit-sources/references/normalization-rules.md"
+REPORT_TEMPLATE=".agents/skills/trackbed:skill:audit-sources/references/report-template.md"
 
 @test "source audit routes raw source code through lossless plain-text normalization" {
 	grep -qF 'Use `--type markdown` as the lossless plain-text mode' "$SKILL"

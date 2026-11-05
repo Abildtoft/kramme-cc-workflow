@@ -59,7 +59,7 @@ PY
 	run bash -c '
 	    set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:generate-description"
+    skill="skills/pr:generate-description"
     direct="$skill/references/direct-update.md"
     checklist="$skill/references/verification-checklist.md"
 
@@ -130,9 +130,9 @@ PY
 	run bash -c '
 	    set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:generate-description/SKILL.md"
-    check="skills/kramme:pr:generate-description/references/check-mode.md"
-    update="skills/kramme:pr:generate-description/references/direct-update.md"
+    skill="skills/pr:generate-description/SKILL.md"
+    check="skills/pr:generate-description/references/check-mode.md"
+    update="skills/pr:generate-description/references/direct-update.md"
 
     test -f "$check"
     test ! -e "skills/kramme:pr:verify-description"
@@ -150,7 +150,7 @@ PY
     grep -qF "**Skip this phase if \`OUTPUT_ONLY=true\`.**" "$check"
     grep -qF "never prompt, generate, or update" "$check"
     grep -qF -- "exactly as \`--no-update --base {base-branch} --base-commit {base-commit}\` would" "$check"
-    grep -qF "Run \`/kramme:pr:generate-description --check\` yourself" "$check"
+    grep -qF "Run \`/trackbed:pr:generate-description --check\` yourself" "$check"
     grep -qF "Reuse only the accuracy-adjacent items of the generator" "$check"
     grep -qF "the first sentence of item 1 (from the first paragraph alone, a newcomer can say what changes and for whom) and item 7" "$check"
     grep -qF "Do not apply the style items (item 1" "$check"
@@ -168,8 +168,8 @@ PY
     grep -qF "Update unavailable: the confirmed update requires the generated base to match the Pull Request target" "$check"
     grep -qF "Update unavailable: the confirmed update is unavailable for a <PR_STATE> Pull Request" "$check"
     if grep -qF "MISSING REQUIREMENT: the confirmed update" "$check"; then exit 1; fi
-    if grep -qF "or \\\`/kramme:pr:generate-description\\\` first" "$check"; then exit 1; fi
-    grep -qF "Run \\\`/kramme:pr:create\\\` first." "$check"
+    if grep -qF "or \\\`/trackbed:pr:generate-description\\\` first" "$check"; then exit 1; fi
+    grep -qF "Run \\\`/trackbed:pr:create\\\` first." "$check"
     grep -qF "**VERDICT_TAG:** ACCURATE | MINOR_DRIFT | MATERIAL_DRIFT | INACCURATE" "$check"
     grep -qF "\`## Review notes\`" "$check"
     grep -qF "legacy \`Potential concerns\`" "$check"
@@ -247,31 +247,31 @@ PY
 	local skills="${BATS_TEST_DIRNAME}/../skills"
 	local relative
 	for relative in \
-		kramme:pr:generate-description/references/direct-update.md \
-		kramme:pr:generate-description/SKILL.md \
-		kramme:pr:generate-description/references/verification-checklist.md \
-		kramme:pr:stack/SKILL.md \
-		kramme:pr:stack/references/cli-agent-rules.md \
-		kramme:code:breakdown-findings/references/split-strategies.md; do
+		pr:generate-description/references/direct-update.md \
+		pr:generate-description/SKILL.md \
+		pr:generate-description/references/verification-checklist.md \
+		pr:stack/SKILL.md \
+		pr:stack/references/cli-agent-rules.md \
+		code:breakdown-findings/references/split-strategies.md; do
 		if grep -nF 'gh pr edit' "$skills/$relative"; then
 			false
 		fi
 	done
 	for relative in \
-		kramme:pr:generate-description/references/direct-update.md \
-		kramme:pr:stack/SKILL.md \
-		kramme:pr:stack/references/cli-agent-rules.md \
-		kramme:code:breakdown-findings/references/split-strategies.md; do
+		pr:generate-description/references/direct-update.md \
+		pr:stack/SKILL.md \
+		pr:stack/references/cli-agent-rules.md \
+		code:breakdown-findings/references/split-strategies.md; do
 		grep -qF 'gh api --method PATCH' "$skills/$relative"
 		grep -qF -- '--hostname' "$skills/$relative"
 	done
-	grep -qF 'capture its number as `{pr-number}`' "$skills/kramme:pr:generate-description/SKILL.md"
-	grep -qF "write the title and body to temporary files with the runtime's file writer" "$skills/kramme:pr:stack/SKILL.md"
-	grep -qF -- '-F body=@<body-file> --silent' "$skills/kramme:pr:stack/SKILL.md"
+	grep -qF 'capture its number as `{pr-number}`' "$skills/pr:generate-description/SKILL.md"
+	grep -qF "write the title and body to temporary files with the runtime's file writer" "$skills/pr:stack/SKILL.md"
+	grep -qF -- '-F body=@<body-file> --silent' "$skills/pr:stack/SKILL.md"
 }
 
 @test "generation-mode update uses a pinned REST target and fails closed before publication" {
-	local update="${BATS_TEST_DIRNAME}/../skills/kramme:pr:generate-description/references/direct-update.md"
+	local update="${BATS_TEST_DIRNAME}/../skills/pr:generate-description/references/direct-update.md"
 	local block="$BATS_TEST_TMPDIR/generated-update.sh"
 	local fake_bin="$BATS_TEST_TMPDIR/bin"
 	local update_dir="$BATS_TEST_TMPDIR/update"
@@ -398,7 +398,7 @@ EOF
 }
 
 @test "check-mode confirmed update publication fails closed for every captured drift" {
-	local update="${BATS_TEST_DIRNAME}/../skills/kramme:pr:generate-description/references/direct-update.md"
+	local update="${BATS_TEST_DIRNAME}/../skills/pr:generate-description/references/direct-update.md"
 	local block="$BATS_TEST_TMPDIR/confirmed-update.sh"
 	local fake_bin="$BATS_TEST_TMPDIR/bin"
 	local plugin_root="$BATS_TEST_TMPDIR/plugin"
@@ -606,7 +606,7 @@ EOF
 	run bash -c '
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:generate-description"
+    skill="skills/pr:generate-description"
     templates="$skill/assets/section-templates.md"
     examples="$skill/references/pr-examples.md"
     checklist="$skill/references/verification-checklist.md"
@@ -633,9 +633,9 @@ EOF
     if grep -rnF --exclude=anti-patterns.md "<!-- Add screenshots or videos here" "$skill"; then exit 1; fi
 
     test -f "$rubric"
-    test ! -e "skills/kramme:text:clarify/references/plain-language-rubric.md"
+    test ! -e "skills/text:clarify/references/plain-language-rubric.md"
     grep -qF "Read \`\${CLAUDE_PLUGIN_ROOT}/$rubric\` and \`references/readability-pass.md\`" "$skill/SKILL.md"
-    grep -qF "\${CLAUDE_PLUGIN_ROOT}/$rubric" "skills/kramme:text:clarify/SKILL.md"
+    grep -qF "\${CLAUDE_PLUGIN_ROOT}/$rubric" "skills/text:clarify/SKILL.md"
     for source_id in fofr-govuk-style-skill govuk-identify-user-needs govuk-clear-language govuk-a-to-z-style-guide; do
       grep -qF "id: $source_id" "$skill/references/sources.yaml"
     done
@@ -673,7 +673,7 @@ EOF
     [ "$output_line" -lt "$update_line" ]
     if grep -nF "### Phase 5" "$skill/SKILL.md"; then exit 1; fi
 
-    if grep -nF "comprehensive description" "skills/kramme:pr:create/SKILL.md"; then exit 1; fi
+    if grep -nF "comprehensive description" "skills/pr:create/SKILL.md"; then exit 1; fi
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -683,7 +683,7 @@ EOF
 	run bash -c '
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:generate-description"
+    skill="skills/pr:generate-description"
     checklist="$skill/references/verification-checklist.md"
     pass="$skill/references/readability-pass.md"
     contract="exactly one line starting \`Cold read:\`"
@@ -752,7 +752,7 @@ EOF
 	run bash -c '
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    base_ref="skills/kramme:pr:generate-description/references/base-branch-resolution.md"
+    base_ref="skills/pr:generate-description/references/base-branch-resolution.md"
 
     grep -qF "Synced base/diff scope contract" "$base_ref"
     grep -qF "shared resolve-base.sh script" "$base_ref"
@@ -804,7 +804,7 @@ EOF
     [ "$pinned_base" != "$(git rev-parse main)" ]
     [ -z "$(discover_templates "$pinned_base")" ]
     output="$(discover_templates main)"
-    if grep -nE "for (path|cdpath|fpath|manpath) in" "'"$BATS_TEST_DIRNAME"'/../skills/kramme:pr:generate-description/references/context-gathering.md"; then exit 1; fi
+    if grep -nE "for (path|cdpath|fpath|manpath) in" "'"$BATS_TEST_DIRNAME"'/../skills/pr:generate-description/references/context-gathering.md"; then exit 1; fi
     printf "%s\n" "$output" | grep -qF ".github/pull_request_template.md"
     printf "%s\n" "$output" | grep -qF ".github/PULL_REQUEST_TEMPLATE/release.md"
     ! printf "%s\n" "$output" | grep -qF "docs/pull_request_template.md"
@@ -817,8 +817,8 @@ EOF
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    create="skills/kramme:pr:create"
-    generator="skills/kramme:pr:generate-description"
+    create="skills/pr:create"
+    generator="skills/pr:generate-description"
 
     test ! -e "skills/kramme:visual:demo-reel"
     test ! -e "$create/scripts/prepare-demo-attachments.py"

@@ -134,7 +134,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime="kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs"
+          runtime="kramme-cc-workflow/skills/visual:check-slop/scripts/anti-slop.mjs"
           fixture="$(mktemp -d)"
           trap 'rm -rf -- "$fixture"' EXIT
           printf '%s\n' '<html><style>p{text-align:justify}</style><p>Copy</p></html>' >"$fixture/page.html"

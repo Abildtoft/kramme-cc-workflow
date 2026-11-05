@@ -21,7 +21,7 @@ from typing import Any
 from unittest import mock
 
 SCRIPT_PATH = (
-    Path(__file__).resolve().parents[2] / "skills" / "kramme:pr:github-review" / "scripts" / "stack-overview.py"
+    Path(__file__).resolve().parents[2] / "skills" / "pr:github-review" / "scripts" / "stack-overview.py"
 )
 SPEC = importlib.util.spec_from_file_location("stack_overview", SCRIPT_PATH)
 assert SPEC is not None

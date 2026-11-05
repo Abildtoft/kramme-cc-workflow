@@ -3,10 +3,10 @@
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
   CONTRACTS=(
-    "skills/kramme:pr:code-review/references/output-template.md"
-    "skills/kramme:pr:convention-review/references/conductor-diff-comments.md"
-    "skills/kramme:pr:overengineering-review/references/conductor-diff-comments.md"
-    "skills/kramme:pr:product-review/references/conductor-diff-comments.md"
+    "skills/pr:code-review/references/output-template.md"
+    "skills/pr:convention-review/references/conductor-diff-comments.md"
+    "skills/pr:overengineering-review/references/conductor-diff-comments.md"
+    "skills/pr:product-review/references/conductor-diff-comments.md"
   )
 }
 
@@ -17,7 +17,7 @@ setup() {
     grep -qF "Never resolve, delete, edit, or repost a stale comment" "$contract"
     grep -qF "keep the count out of the canonical report" "$contract"
   done
-  grep -qF 'and the `Diff comments stale:` line when the synced contract reports stale comments' skills/kramme:pr:code-review/SKILL.md
+  grep -qF 'and the `Diff comments stale:` line when the synced contract reports stale comments' skills/pr:code-review/SKILL.md
 }
 
 @test "optional diff comments say they can be dismissed without a code change" {

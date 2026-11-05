@@ -5,12 +5,12 @@
 
 setup() {
 	cd "$BATS_TEST_DIRNAME/.."
-	REFACTOR_SKILL="skills/kramme:code:refactor-opportunities/SKILL.md"
-	RANKED_MODE="skills/kramme:code:refactor-opportunities/references/ranked-mode.md"
+	REFACTOR_SKILL="skills/code:refactor-opportunities/SKILL.md"
+	RANKED_MODE="skills/code:refactor-opportunities/references/ranked-mode.md"
 	AUDIT_WORKFLOW="shared/codebase-audit/references/audit-workflow.md"
 	AUDIT_RUBRIC="shared/codebase-audit/references/audit-rubric.md"
 	AUDIT_TEMPLATE="shared/codebase-audit/assets/report-template.md"
-	CONVERGENCE_POLICY="skills/kramme:pr:review-convergence/references/review-convergence.md"
+	CONVERGENCE_POLICY="skills/pr:review-convergence/references/review-convergence.md"
 }
 
 @test "refactor opportunities advertises ranked mode and keeps it user-only" {
@@ -23,7 +23,7 @@ setup() {
 }
 
 @test "review convergence passes only the PR scope to the refactor gate" {
-	grep -qF 'invoke `kramme:code:refactor-opportunities` with `pr`' "$CONVERGENCE_POLICY"
+	grep -qF 'invoke `trackbed:code:refactor-opportunities` with `pr`' "$CONVERGENCE_POLICY"
 	run grep -qF -- '--ranked' "$CONVERGENCE_POLICY"
 	[ "$status" -eq 1 ]
 }
@@ -53,8 +53,8 @@ setup() {
 		[ -f "$resource" ]
 	done
 	grep -qF "\${CLAUDE_PLUGIN_ROOT}/$AUDIT_WORKFLOW" "$RANKED_MODE"
-	[ ! -e skills/kramme:code:refactor-opportunities/references/ranked-rubric.md ]
-	[ ! -e skills/kramme:code:refactor-opportunities/assets/ranked-report-template.md ]
+	[ ! -e skills/code:refactor-opportunities/references/ranked-rubric.md ]
+	[ ! -e skills/code:refactor-opportunities/assets/ranked-report-template.md ]
 }
 
 @test "ranked adapter preserves mode gates and rejection handling" {
@@ -87,17 +87,17 @@ setup() {
 	grep -qF 'report that the planned change needs no preparatory refactor' "$REFACTOR_SKILL"
 	grep -qF 'Full, path, and feature runs without `--for` skip this step.' "$REFACTOR_SKILL"
 	grep -qF '**With `PLANNED_CHANGE` set, apply the change relevance gate.**' "$REFACTOR_SKILL"
-	grep -qF -- '- **Change relevance** — only when the caller set `PLANNED_CHANGE`' "skills/kramme:code:refactor-opportunities/references/checklist.md"
-	grep -qF 'add a `Change Relevance` column in the same position instead' "skills/kramme:code:refactor-opportunities/assets/report-template.md"
+	grep -qF -- '- **Change relevance** — only when the caller set `PLANNED_CHANGE`' "skills/code:refactor-opportunities/references/checklist.md"
+	grep -qF 'add a `Change Relevance` column in the same position instead' "skills/code:refactor-opportunities/assets/report-template.md"
 }
 
 @test "refactor opportunities hands off one chosen item and never blocks a calling skill" {
 	grep -qF '10. **Hand off one item.** Unless another skill invoked this one' "$REFACTOR_SKILL"
 	grep -qF 'Do not design or implement it in this run.' "$REFACTOR_SKILL"
 	grep -qF "pass the next step only that item's report blocks and the report's \`## Report Provenance\` section, not the whole report" "$REFACTOR_SKILL"
-	grep -qF '`kramme:discovery:interview --decision-tree`' "$REFACTOR_SKILL"
-	grep -qF '`kramme:code:api-design --design-twice`' "$REFACTOR_SKILL"
-	grep -qF '`/kramme:linear:breakdown-findings`' "$REFACTOR_SKILL"
+	grep -qF '`trackbed:discovery:interview --decision-tree`' "$REFACTOR_SKILL"
+	grep -qF '`trackbed:code:api-design --design-twice`' "$REFACTOR_SKILL"
+	grep -qF '`/trackbed:linear:breakdown-findings`' "$REFACTOR_SKILL"
 	grep -qF "passing the report's \`## Report Provenance\` section followed by that item's \`## Breakdown-Ready Finding Data\` block as the source" "$REFACTOR_SKILL"
 	grep -qF 'To schedule every remaining item instead' "$REFACTOR_SKILL"
 	grep -qF '9. **Close the rejection loop.**' "$REFACTOR_SKILL"
@@ -108,12 +108,12 @@ setup() {
 	[ ! -e "skills/kramme:code:weakness-audit" ]
 	run grep -rqF 'weakness-audit' skills shared
 	[ "$status" -eq 1 ]
-	grep -qF '/kramme:code:refactor-opportunities --ranked' "skills/kramme:code:outside-view/SKILL.md"
-	grep -qF 'kramme:code:refactor-opportunities --ranked' "skills/kramme:code:outside-view/assets/report-template.md"
-	grep -qF '$kramme:code:refactor-opportunities --ranked' "shared/findings/references/findings-intake.md"
-	grep -qF 'kramme:code:refactor-opportunities --ranked' "skills/kramme:discovery:strategic-inquiry/SKILL.md"
-	grep -qF '`/kramme:code:weakness-audit` → `/kramme:code:refactor-opportunities --ranked`' ../README.md
-	run python3 - "skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
+	grep -qF '/trackbed:code:refactor-opportunities --ranked' "skills/code:outside-view/SKILL.md"
+	grep -qF 'trackbed:code:refactor-opportunities --ranked' "skills/code:outside-view/assets/report-template.md"
+	grep -qF '$trackbed:code:refactor-opportunities --ranked' "shared/findings/references/findings-intake.md"
+	grep -qF 'trackbed:code:refactor-opportunities --ranked' "skills/discovery:strategic-inquiry/SKILL.md"
+	grep -qF '`/kramme:code:weakness-audit` → `/trackbed:code:refactor-opportunities --ranked`' ../README.md
+	run python3 - "skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
 import json
 import pathlib
 import sys
@@ -123,7 +123,7 @@ entries = [
     for entry in json.loads(pathlib.Path(sys.argv[1]).read_text())["artifacts"]
     if entry["path"] == "CODEBASE_WEAKNESS_REPORT.md"
 ]
-ok = len(entries) == 1 and entries[0]["producer"] == "kramme:code:refactor-opportunities"
+ok = len(entries) == 1 and entries[0]["producer"] == "trackbed:code:refactor-opportunities"
 raise SystemExit(0 if ok else "CODEBASE_WEAKNESS_REPORT.md must have one entry produced by refactor-opportunities")
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -135,7 +135,7 @@ PY
 	for phrase in '## Report Provenance' '## Breakdown-Ready Finding Data' '**Scanned commit:**' '**Base branch:**' \
 		'**Generated:**' '**Severity:**' '**Confidence:**' '**Locations:**' '**Evidence:**' '**Suggested fix:**' \
 		'**Effort:**' 'Schema: `breakdown-ready-findings v1`.' \
-		'| `kramme:code:agent-readiness` | Critical / Important / Suggestion | critical / high / suggestion |'; do
+		'| `trackbed:code:agent-readiness` | Critical / Important / Suggestion | critical / high / suggestion |'; do
 		grep -qF -- "$phrase" "$schema"
 	done
 }
@@ -143,29 +143,29 @@ PY
 @test "audit producers name the shared schema and emit both sections" {
 	local schema_path='${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md'
 	local skill template
-	for skill in kramme:code:refactor-opportunities kramme:code:agent-readiness kramme:code:outside-view; do
+	for skill in trackbed:code:refactor-opportunities trackbed:code:agent-readiness trackbed:code:outside-view; do
 		grep -qF "$schema_path" "skills/$skill/SKILL.md"
 	done
 	for template in \
-		"skills/kramme:code:refactor-opportunities/assets/report-template.md" \
+		"skills/code:refactor-opportunities/assets/report-template.md" \
 		"shared/codebase-audit/assets/report-template.md" \
-		"skills/kramme:code:agent-readiness/assets/audit-report.md" \
-		"skills/kramme:code:outside-view/assets/report-template.md"; do
+		"skills/code:agent-readiness/assets/audit-report.md" \
+		"skills/code:outside-view/assets/report-template.md"; do
 		grep -qF '## Report Provenance' "$template"
 		grep -qF '## Breakdown-Ready Finding Data' "$template"
 	done
-	grep -qF '### RO-001:' "skills/kramme:code:refactor-opportunities/assets/report-template.md"
+	grep -qF '### RO-001:' "skills/code:refactor-opportunities/assets/report-template.md"
 	run grep -qF '## Detailed Findings' "shared/codebase-audit/assets/report-template.md"
 	[ "$status" -eq 1 ]
-	grep -qF 'Suggested fix:' "skills/kramme:code:agent-readiness/references/dimension-agent.md"
-	run grep -qF 'Findings (with IDs, severity, details)' "skills/kramme:code:agent-readiness/SKILL.md"
+	grep -qF 'Suggested fix:' "skills/code:agent-readiness/references/dimension-agent.md"
+	run grep -qF 'Findings (with IDs, severity, details)' "skills/code:agent-readiness/SKILL.md"
 	[ "$status" -eq 1 ]
 }
 
 @test "both breakdown intakes read the shared schema, provenance, and the dependency audit" {
 	local schema_path='${CLAUDE_PLUGIN_ROOT}/shared/findings/references/breakdown-ready-findings.md'
 	local skill
-	for skill in kramme:code:breakdown-findings kramme:linear:breakdown-findings; do
+	for skill in trackbed:code:breakdown-findings trackbed:linear:breakdown-findings; do
 		grep -qF "$schema_path" "skills/$skill/SKILL.md"
 		grep -qF '${CLAUDE_PLUGIN_ROOT}/shared/findings/references/findings-intake.md' "skills/$skill/references/source-intake.md"
 	done
@@ -179,9 +179,9 @@ PY
 	local schema="shared/findings/references/breakdown-ready-findings.md"
 	local source
 	for source in \
-		"skills/kramme:code:outside-view/SKILL.md" \
-		"skills/kramme:code:refactor-opportunities/SKILL.md" \
-		"skills/kramme:code:agent-readiness/SKILL.md"; do
+		"skills/code:outside-view/SKILL.md" \
+		"skills/code:refactor-opportunities/SKILL.md" \
+		"skills/code:agent-readiness/SKILL.md"; do
 		grep -qF 'none (not a git repository)' "$source"
 	done
 	grep -qF 'dirty (<N> paths)' "$schema"
@@ -210,20 +210,20 @@ PY
 	local contract_path='${CLAUDE_PLUGIN_ROOT}/shared/agents/references/resumable-fanout.md'
 	local tree_path='${CLAUDE_PLUGIN_ROOT}/scripts/worktree-tree-id.sh'
 	local skill
-	for skill in kramme:code:refactor-opportunities kramme:code:agent-readiness kramme:code:outside-view; do
+	for skill in trackbed:code:refactor-opportunities trackbed:code:agent-readiness trackbed:code:outside-view; do
 		grep -qF "$contract_path" "skills/$skill/SKILL.md"
 		grep -qF "$tree_path" "skills/$skill/SKILL.md"
 	done
-	grep -qF 'the challenge reviewer is stage 2' "skills/kramme:code:refactor-opportunities/references/ranked-mode.md"
-	grep -qF 'never relaunch a rater that has a result' "skills/kramme:code:outside-view/SKILL.md"
-	grep -qF 'Raters never receive the run directory path' "skills/kramme:code:outside-view/SKILL.md"
-	grep -qF 'the resolved `OUTPUT_PATH`' "skills/kramme:code:outside-view/SKILL.md"
-	grep -qF 'the execution mode (`team` or `solo`)' "skills/kramme:code:refactor-opportunities/SKILL.md"
-	grep -qF -- '--exclude AGENT_NATIVE_AUDIT.md' "skills/kramme:code:agent-readiness/SKILL.md"
-	grep -qF -- '--exclude "$OUTPUT_PATH"' "skills/kramme:code:outside-view/SKILL.md"
-	grep -qF -- '--exclude <each report output path this skill can write>' "skills/kramme:code:refactor-opportunities/SKILL.md"
-	grep -qF 'End the run with `Agents launched: N`' "skills/kramme:code:refactor-opportunities/SKILL.md"
-	run python3 - "skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
+	grep -qF 'the challenge reviewer is stage 2' "skills/code:refactor-opportunities/references/ranked-mode.md"
+	grep -qF 'never relaunch a rater that has a result' "skills/code:outside-view/SKILL.md"
+	grep -qF 'Raters never receive the run directory path' "skills/code:outside-view/SKILL.md"
+	grep -qF 'the resolved `OUTPUT_PATH`' "skills/code:outside-view/SKILL.md"
+	grep -qF 'the execution mode (`team` or `solo`)' "skills/code:refactor-opportunities/SKILL.md"
+	grep -qF -- '--exclude AGENT_NATIVE_AUDIT.md' "skills/code:agent-readiness/SKILL.md"
+	grep -qF -- '--exclude "$OUTPUT_PATH"' "skills/code:outside-view/SKILL.md"
+	grep -qF -- '--exclude <each report output path this skill can write>' "skills/code:refactor-opportunities/SKILL.md"
+	grep -qF 'End the run with `Agents launched: N`' "skills/code:refactor-opportunities/SKILL.md"
+	run python3 - "skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
 import json
 import pathlib
 import sys
@@ -248,9 +248,9 @@ import sys
 root = pathlib.Path(sys.argv[1])
 policy = "${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md"
 first_step = {
-    "kramme:code:refactor-opportunities": "## Workflow",
-    "kramme:code:agent-readiness": "## Step 1: Detect Codebase Context",
-    "kramme:code:outside-view": "### 1. Minimal Orient",
+    "trackbed:code:refactor-opportunities": "## Workflow",
+    "trackbed:code:agent-readiness": "## Step 1: Detect Codebase Context",
+    "trackbed:code:outside-view": "### 1. Minimal Orient",
 }
 errors = []
 for skill, step in first_step.items():
@@ -267,6 +267,6 @@ for skill, step in first_step.items():
 raise SystemExit("\n".join(errors) if errors else 0)
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
-	grep -qF 'with the model selected under **Subagent models**' "skills/kramme:code:refactor-opportunities/references/ranked-mode.md"
-	grep -qF 'keeps its own provider and isolation policy' "skills/kramme:code:outside-view/SKILL.md"
+	grep -qF 'with the model selected under **Subagent models**' "skills/code:refactor-opportunities/references/ranked-mode.md"
+	grep -qF 'keeps its own provider and isolation policy' "skills/code:outside-view/SKILL.md"
 }

@@ -4,7 +4,7 @@ load 'test_helper/common'
 
 setup() {
 	REPO_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-	SCRIPT="$REPO_ROOT/skills/kramme:git:recreate-commits/scripts/resolve-push-target.sh"
+	SCRIPT="$REPO_ROOT/skills/git:recreate-commits/scripts/resolve-push-target.sh"
 	TMP_DIR="$(mktemp -d)"
 	REMOTE="$TMP_DIR/remote.git"
 	WORK="$TMP_DIR/work"

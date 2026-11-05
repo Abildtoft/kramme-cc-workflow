@@ -1,6 +1,6 @@
 # Skill Expansion Roadmap
 
-**Status: completed (historical record).** Every skill in this roadmap has shipped: `/kramme:pr:product-review`, `/kramme:siw:product-audit`, `/kramme:browse`, `/kramme:qa`, and `/kramme:product:review`. This document is kept as a record of the original plan and rationale, not a list of pending work. For the current skill catalog, see the root [README.md](../../README.md#skills).
+**Status: completed (historical record).** Every skill in this roadmap has shipped: `/trackbed:pr:product-review`, `/kramme:siw:product-audit`, `/trackbed:browse`, `/trackbed:qa`, and `/trackbed:product:review`. This document is kept as a record of the original plan and rationale, not a list of pending work. For the current skill catalog, see the root [README.md](../../README.md#skills).
 
 ## Overview
 
@@ -38,19 +38,19 @@ Instead, it adapts the underlying ideas to fit `kramme-cc-workflow`:
 
 More specifically:
 
-- `/kramme:browse` takes inspiration from gstack's dedicated browser skill, but should be implemented as a wrapper around available browser MCP tools rather than a custom compiled browser runtime.
-- `/kramme:qa` takes inspiration from gstack's QA workflow, especially the emphasis on screenshots, evidence, and changed-flow validation, but should be smaller and more incremental in V1.
-- `/kramme:pr:product-review`, `/kramme:siw:product-audit`, and `/kramme:product:review` take inspiration from gstack's use of different cognitive modes for different kinds of review, but should be expressed as a shared product-review family integrated into this repo's existing skill structure.
+- `/trackbed:browse` takes inspiration from gstack's dedicated browser skill, but should be implemented as a wrapper around available browser MCP tools rather than a custom compiled browser runtime.
+- `/trackbed:qa` takes inspiration from gstack's QA workflow, especially the emphasis on screenshots, evidence, and changed-flow validation, but should be smaller and more incremental in V1.
+- `/trackbed:pr:product-review`, `/kramme:siw:product-audit`, and `/trackbed:product:review` take inspiration from gstack's use of different cognitive modes for different kinds of review, but should be expressed as a shared product-review family integrated into this repo's existing skill structure.
 
 ## Skills In Scope
 
 | Skill | Purpose | Primary Context | Depends On |
 | --- | --- | --- | --- |
-| `/kramme:pr:product-review` | Deep product review of branch and local changes | Pull requests / local diffs | Shared product-review core |
+| `/trackbed:pr:product-review` | Deep product review of branch and local changes | Pull requests / local diffs | Shared product-review core |
 | `/kramme:siw:product-audit` | Product critique of specs and SIW plans before implementation | SIW / spec review | Shared product-review core |
-| `/kramme:browse` | Browser operator skill for inspecting and interacting with a live app | Live product / debugging / QA | Browser MCP availability |
-| `/kramme:qa` | Structured QA testing with evidence and reports | Live product / branch validation | `/kramme:browse` |
-| `/kramme:product:review` | Whole-product review across flows and surfaces | Live product / broader experience review | Shared product-review core + `/kramme:browse` |
+| `/trackbed:browse` | Browser operator skill for inspecting and interacting with a live app | Live product / debugging / QA | Browser MCP availability |
+| `/trackbed:qa` | Structured QA testing with evidence and reports | Live product / branch validation | `/trackbed:browse` |
+| `/trackbed:product:review` | Whole-product review across flows and surfaces | Live product / broader experience review | Shared product-review core + `/trackbed:browse` |
 
 ## Out Of Scope
 
@@ -85,7 +85,7 @@ The review and validation flow should keep these responsibilities separate:
 
 ### 3. Browser MCP Wrapper, Not Custom Infrastructure
 
-`/kramme:browse` should standardize usage of available browser MCP tools already supported by the broader workflow, instead of introducing a bespoke browser runtime.
+`/trackbed:browse` should standardize usage of available browser MCP tools already supported by the broader workflow, instead of introducing a bespoke browser runtime.
 
 The skill should:
 
@@ -113,13 +113,13 @@ The recommended order is:
 
 The roadmap should build on existing assets already in the repo:
 
-- `agents/kramme:product-reviewer.md`
+- `agents/product-reviewer.md`
 - `skills/kramme:pr:ux-review/SKILL.md`
-- `skills/kramme:verify:run/SKILL.md`
-- `skills/kramme:pr:code-review/SKILL.md`
-- `skills/kramme:pr:generate-description/SKILL.md`
-- `skills/kramme:pr:create/SKILL.md`
-- `skills/kramme:pr:fix-ci/SKILL.md`
+- `skills/verify:run/SKILL.md`
+- `skills/pr:code-review/SKILL.md`
+- `skills/pr:generate-description/SKILL.md`
+- `skills/pr:create/SKILL.md`
+- `skills/pr:fix-ci/SKILL.md`
 - existing README skill catalog structure
 - existing Bats-based test harness in `tests/`
 
@@ -170,7 +170,7 @@ The intent is:
 - minimal vague product commentary
 - explicit distinction between blockers and suggestions
 
-## Phase 1: `/kramme:pr:product-review`
+## Phase 1: `/trackbed:pr:product-review`
 
 ### Objective
 
@@ -185,8 +185,8 @@ Create a focused product-review command for branch and local changes that goes d
 
 ### Implementation Goals
 
-- Add `skills/kramme:pr:product-review/SKILL.md`
-- Expand `agents/kramme:product-reviewer.md` to support explicit PR mode
+- Add `skills/pr:product-review/SKILL.md`
+- Expand `agents/product-reviewer.md` to support explicit PR mode
 - Reuse base branch detection and diff scoping patterns already used by `pr:ux-review`
 - Review committed, staged, unstaged, and untracked changes
 - Focus only on product concerns, not general UX/a11y/visual heuristics
@@ -264,7 +264,7 @@ The SIW-specific command should evaluate:
 - The output improves product quality before implementation starts
 - Findings can be translated into concrete SIW follow-up work
 
-## Phase 3: `/kramme:browse`
+## Phase 3: `/trackbed:browse`
 
 ### Objective
 
@@ -278,7 +278,7 @@ Introduce a reusable browser skill that gives the workflow a standardized live-p
 
 ### Implementation Goals
 
-- Add `skills/kramme:browse/SKILL.md`
+- Add `skills/browse/SKILL.md`
 - Detect available browser MCP tooling at runtime
 - Establish a consistent interaction pattern: navigate, inspect, screenshot, interact, verify, capture evidence
 - Clearly fail when no browser MCP is available
@@ -314,7 +314,7 @@ The first version should support:
 - Users understand quickly whether the environment supports it
 - Later skills can treat it as a foundation
 
-## Phase 4: `/kramme:qa`
+## Phase 4: `/trackbed:qa`
 
 ### Objective
 
@@ -328,7 +328,7 @@ Build a structured QA layer on top of `browse`.
 
 ### Implementation Goals
 
-- Add `skills/kramme:qa/SKILL.md`
+- Add `skills/qa/SKILL.md`
 - Build on the `browse` workflow rather than duplicating browser instructions
 - Generate a structured QA report with evidence
 - Support a small, focused V1 mode set
@@ -365,7 +365,7 @@ Each QA run should capture:
 - It can validate changed flows with reasonable operator consistency
 - Its artifacts are useful inputs to PR reviews
 
-## Phase 5: `/kramme:product:review`
+## Phase 5: `/trackbed:product:review`
 
 ### Objective
 
@@ -379,7 +379,7 @@ Create a whole-product review command for broader product experience analysis ac
 
 ### Implementation Goals
 
-- Add `skills/kramme:product:review/SKILL.md`
+- Add `skills/product:review/SKILL.md`
 - Require a URL, running app, or equivalent live context
 - Review the broader product experience, not just one branch diff
 - Reuse the shared rubric but adapt the emphasis to system-wide experience
@@ -441,11 +441,11 @@ The README should explain the intended lifecycle:
 
 ### Recommended Final Names
 
-- `/kramme:pr:product-review`
+- `/trackbed:pr:product-review`
 - `/kramme:siw:product-audit`
-- `/kramme:browse`
-- `/kramme:qa`
-- `/kramme:product:review`
+- `/trackbed:browse`
+- `/trackbed:qa`
+- `/trackbed:product:review`
 
 ### Naming Notes
 
@@ -469,7 +469,7 @@ If broader non-SIW plan review becomes important later, a `plan:` alias can be a
 Start with Phase 1 only:
 
 1. deepen the shared product-review foundation
-2. implement `/kramme:pr:product-review`
+2. implement `/trackbed:pr:product-review`
 3. implement `/kramme:siw:product-audit`
 
 This creates immediate user value, establishes the common rubric, and keeps early delivery independent of browser tooling.

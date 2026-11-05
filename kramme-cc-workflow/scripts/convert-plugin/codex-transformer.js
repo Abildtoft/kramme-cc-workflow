@@ -48,7 +48,7 @@ const PLATFORMS_FIELD = skillFrontmatterFieldByLoaderProperty(
   "platforms",
   "kramme-platforms",
 );
-const REQUIRED_HOOK_CONTROL_SKILLS = ["kramme:hooks:toggle"];
+const REQUIRED_HOOK_CONTROL_SKILLS = ["trackbed:hooks:toggle"];
 
 /**
  * @param {ClaudeSkill[]} skills

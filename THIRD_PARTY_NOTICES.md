@@ -6,24 +6,24 @@ Source-manifest entries marked `usage: inspiration` record ideas, facts, methods
 
 ## Every — `compound-engineering-plugin`
 
-Copied or adapted scripts and support files in `kramme:code:optimize`, `kramme:session:automate-repeats`, and `kramme:setup` come from [`EveryInc/compound-engineering-plugin`](https://github.com/EveryInc/compound-engineering-plugin), licensed under the MIT License. Each affected skill carries a complete copy of the upstream license in `references/EveryInc-LICENSE`.
+Copied or adapted scripts and support files in `trackbed:code:optimize`, `trackbed:session:automate-repeats`, and `trackbed:setup` come from [`EveryInc/compound-engineering-plugin`](https://github.com/EveryInc/compound-engineering-plugin), licensed under the MIT License. Each affected skill carries a complete copy of the upstream license in `references/EveryInc-LICENSE`.
 
 ## GitHub — `gh-stack`
 
-Portions of `kramme:pr:stack` are adapted from [`github/gh-stack`](https://github.com/github/gh-stack), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:pr:stack/references/github-gh-stack-LICENSE`.
+Portions of `trackbed:pr:stack` are adapted from [`github/gh-stack`](https://github.com/github/gh-stack), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/pr:stack/references/github-gh-stack-LICENSE`.
 
 ## Matt Pocock — `skills`
 
-The wizard template in `kramme:workflow:wizard` is adapted from [`mattpocock/skills`](https://github.com/mattpocock/skills), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:workflow:wizard/assets/mattpocock-skills-LICENSE`.
+The wizard template in `trackbed:workflow:wizard` is adapted from [`mattpocock/skills`](https://github.com/mattpocock/skills), licensed under the MIT License. The complete notice is retained in `kramme-cc-workflow/skills/workflow:wizard/assets/mattpocock-skills-LICENSE`.
 
 ## D3.js
 
-`kramme:pr:walkthrough` vendors D3.js 7.9.0, Copyright 2010–2023 Mike Bostock, under the ISC License. The complete notice is retained in `kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3-LICENSE`.
+`trackbed:pr:walkthrough` vendors D3.js 7.9.0, Copyright 2010–2023 Mike Bostock, under the ISC License. The complete notice is retained in `kramme-cc-workflow/skills/pr:walkthrough/assets/d3-LICENSE`.
 
 ## Gesso Build — `anti-slop`
 
-`kramme:visual:check-slop` vendors and adapts Gesso Build's MIT-licensed anti-slop detector, 73-rule registry, rule catalog, and tests at commit [`1c3908b7efb56ec24624436dea5c32a371eb487c`](https://github.com/Gesso-Build/skills/tree/1c3908b7efb56ec24624436dea5c32a371eb487c). Its offline runtime also bundles attributed parser dependencies. The complete Gesso and dependency notices are retained in `kramme-cc-workflow/skills/kramme:visual:check-slop/references/THIRD_PARTY_NOTICES.md`.
+`trackbed:visual:check-slop` vendors and adapts Gesso Build's MIT-licensed anti-slop detector, 73-rule registry, rule catalog, and tests at commit [`1c3908b7efb56ec24624436dea5c32a371eb487c`](https://github.com/Gesso-Build/skills/tree/1c3908b7efb56ec24624436dea5c32a371eb487c). Its offline runtime also bundles attributed parser dependencies. The complete Gesso and dependency notices are retained in `kramme-cc-workflow/skills/visual:check-slop/references/THIRD_PARTY_NOTICES.md`.
 
 ## Wikipedia contributors
 
-`kramme:text:clarify/references/ai-writing-patterns.md` is an adapted work based on Wikipedia's “Signs of AI writing” page. That file is separately offered under CC BY-SA 4.0 and carries attribution, modification, and license information in its skill-local `references/WIKIPEDIA-CONTENT-LICENSE.md`.
+`text:clarify/references/ai-writing-patterns.md` is an adapted work based on Wikipedia's “Signs of AI writing” page. That file is separately offered under CC BY-SA 4.0 and carries attribution, modification, and license information in its skill-local `references/WIKIPEDIA-CONTENT-LICENSE.md`.

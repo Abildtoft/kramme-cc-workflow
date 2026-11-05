@@ -5,7 +5,7 @@ load 'test_helper/common'
 setup() {
   PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
   WORKSPACE_ROOT="$PLUGIN_ROOT/.."
-  SKILL="$PLUGIN_ROOT/skills/kramme:visual:check-slop"
+  SKILL="$PLUGIN_ROOT/skills/visual:check-slop"
   SCRIPTS="$SKILL/scripts"
   RUNTIME="$SCRIPTS/anti-slop.mjs"
 }

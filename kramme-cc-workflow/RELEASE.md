@@ -173,11 +173,11 @@ Users update inside a Claude Code session via:
 Or from a terminal:
 
 ```bash
-claude plugin update kramme-cc-workflow@kramme-cc-workflow
+claude plugin update trackbed@trackbed
 ```
 
 Or for git installs:
 
 ```bash
-claude /plugin install git+https://github.com/Abildtoft/kramme-cc-workflow
+claude /plugin install git+https://github.com/trackbed/skills
 ```

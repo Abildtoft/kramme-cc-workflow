@@ -25,21 +25,21 @@ Remove these SIW entry points:
 - `kramme:siw:close`
 - `kramme:siw:breakdown-findings`
 
-Rename `kramme:siw:wayfinder` to `kramme:discovery:wayfinder` because it produces pre-SIW decision maps and can hand off to SIW or another execution workflow.
+Rename `kramme:siw:wayfinder` to `trackbed:discovery:wayfinder` because it produces pre-SIW decision maps and can hand off to SIW or another execution workflow.
 
 The migration routes are:
 
 | Removed entry point | Replacement |
 | --- | --- |
 | `kramme:siw:continue` | Invoke the next retained preparation command directly. |
-| `kramme:siw:issue-implement` | Transfer first, then use `kramme:linear:issue-implement`. |
-| `kramme:siw:issue-to-pr` | Transfer first, then use `kramme:linear:issue-to-pr`. |
-| `kramme:siw:implementation-audit` | No direct whole-initiative equivalent; use `kramme:linear:issue-to-pr` for per-issue review convergence and final verification, or `kramme:linear:review-pr` to audit an existing Pull Request against its issue. |
+| `kramme:siw:issue-implement` | Transfer first, then use `trackbed:linear:issue-implement`. |
+| `kramme:siw:issue-to-pr` | Transfer first, then use `trackbed:linear:issue-to-pr`. |
+| `kramme:siw:implementation-audit` | No direct whole-initiative equivalent; use `trackbed:linear:issue-to-pr` for per-issue review convergence and final verification, or `trackbed:linear:review-pr` to audit an existing Pull Request against its issue. |
 | `kramme:siw:issue-reindex` | Preserve stable local IDs until transfer; manage the resulting issues in Linear. |
 | `kramme:siw:reset` | Start a separate SIW preparation run only when a new initial issue set is needed. |
-| `kramme:siw:close` | Transfer durable specifications and decisions to Linear, then use `kramme:workflow:cleanup-artifacts --siw` (originally `kramme:siw:remove`, merged into cleanup on 2026-10-15 and renamed from `kramme:workflow-artifacts:cleanup` on 2026-10-27; see [the catalog-shape record](2026-07-29-skill-catalog-shape.md)). |
-| `kramme:siw:breakdown-findings` | Use `kramme:siw:resolve-audit`, which already provides decision-ready analysis and issue creation. |
-| `kramme:siw:wayfinder` | Use `kramme:discovery:wayfinder`. |
+| `kramme:siw:close` | Transfer durable specifications and decisions to Linear, then use `trackbed:workflow:cleanup-artifacts --siw` (originally `kramme:siw:remove`, merged into cleanup on 2026-10-15 and renamed from `kramme:workflow-artifacts:cleanup` on 2026-10-27; see [the catalog-shape record](2026-07-29-skill-catalog-shape.md)). |
+| `kramme:siw:breakdown-findings` | Use `trackbed:siw:resolve-audit`, which already provides decision-ready analysis and issue creation. |
+| `kramme:siw:wayfinder` | Use `trackbed:discovery:wayfinder`. |
 
 ## Consequences
 

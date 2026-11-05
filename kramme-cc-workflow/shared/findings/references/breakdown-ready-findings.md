@@ -2,13 +2,13 @@
 
 Schema: `breakdown-ready-findings v1`.
 
-Audit reports carry two machine-readable sections so `kramme:code:breakdown-findings` and `kramme:linear:breakdown-findings` can plan from findings without guessing: `## Report Provenance` and `## Breakdown-Ready Finding Data`. Human sections (summaries, scorecards, tables, themes) stay as each producer defines them and refer to findings by the same IDs.
+Audit reports carry two machine-readable sections so `trackbed:code:breakdown-findings` and `trackbed:linear:breakdown-findings` can plan from findings without guessing: `## Report Provenance` and `## Breakdown-Ready Finding Data`. Human sections (summaries, scorecards, tables, themes) stay as each producer defines them and refer to findings by the same IDs.
 
 ## Report Provenance
 
 Place this section directly after the report's title metadata line. Fill every field; write `none` when a field does not apply.
 
-- **Producer:** the skill name plus the mode or flags that shaped the run, for example `kramme:code:refactor-opportunities --ranked`.
+- **Producer:** the skill name plus the mode or flags that shaped the run, for example `trackbed:code:refactor-opportunities --ranked`.
 - **Scope:** the resolved scope description.
 - **Scanned commit:** the full commit ID from `git rev-parse HEAD` when the scan started, or `none (not a git repository)`.
 - **Working tree:** `clean`, `dirty (<N> paths)`, or `none (not a git repository)` when Git metadata is unavailable. A dirty scan is not reproducible from the commit alone.
@@ -40,10 +40,10 @@ Optional fields follow in this order when a producer has them: **Category**, **I
 
 | Producer | Native severity | Shared severity |
 | --- | --- | --- |
-| `kramme:code:refactor-opportunities` | high / medium / low | high / medium / low |
-| `kramme:code:refactor-opportunities --ranked` | Critical / High / Medium / Low | critical / high / medium / low |
-| `kramme:code:agent-readiness` | Critical / Important / Suggestion | critical / high / suggestion |
-| `kramme:code:outside-view` (promotion candidates) | none | suggestion |
+| `trackbed:code:refactor-opportunities` | high / medium / low | high / medium / low |
+| `trackbed:code:refactor-opportunities --ranked` | Critical / High / Medium / Low | critical / high / medium / low |
+| `trackbed:code:agent-readiness` | Critical / Important / Suggestion | critical / high / suggestion |
+| `trackbed:code:outside-view` (promotion candidates) | none | suggestion |
 
 | Producer | Native value | Shared value |
 | --- | --- | --- |

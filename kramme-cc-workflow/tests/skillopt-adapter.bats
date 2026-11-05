@@ -59,9 +59,9 @@ export_boundary_dir() {
   run bash -c '
     set -euo pipefail
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    before=$(shasum "skills/kramme:skill:review/SKILL.md")
+    before=$(shasum "skills/skill:review/SKILL.md")
     env -u SKILLOPT_REPO -u SKILLOPT_CMD bash evals/skillopt/scripts/run-skillopt-skill-review.sh --dry-run --run-id bats-dry-run > "$BATS_TEST_TMPDIR/out.txt"
-    after=$(shasum "skills/kramme:skill:review/SKILL.md")
+    after=$(shasum "skills/skill:review/SKILL.md")
     test "$before" = "$after"
     grep -q "DRY RUN: SkillOpt command preview" "$BATS_TEST_TMPDIR/out.txt"
     grep -q "SKILLOPT_REPO is not set" "$BATS_TEST_TMPDIR/out.txt"

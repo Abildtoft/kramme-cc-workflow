@@ -2,9 +2,9 @@
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
-  SKILL="skills/kramme:code:encode-constraint/SKILL.md"
-  MECHANISMS="skills/kramme:code:encode-constraint/references/mechanisms.md"
-  SOURCES="skills/kramme:code:encode-constraint/references/sources.yaml"
+  SKILL="skills/code:encode-constraint/SKILL.md"
+  MECHANISMS="skills/code:encode-constraint/references/mechanisms.md"
+  SOURCES="skills/code:encode-constraint/references/sources.yaml"
 }
 
 @test "encode constraint is a user-only file-editing skill that leaves changes uncommitted" {
@@ -47,7 +47,7 @@ setup() {
   grep -qF '5. **Write a test or check script**' "$SKILL"
   grep -qF '6. **Add an agent hook** only when the mistake is an agent action' "$SKILL"
   grep -qF '7. **Draft an instruction rule** as the fallback when no mechanism can decide the invariant.' "$SKILL"
-  grep -qF 'Do not edit instruction files; include the drafted rule in the report and suggest the user add it with `/kramme:docs:update-agents-md`.' "$SKILL"
+  grep -qF 'Do not edit instruction files; include the drafted rule in the report and suggest the user add it with `/trackbed:docs:update-agents-md`.' "$SKILL"
   grep -qF 'Then skip Steps 4 and 5, since prose has no failure message or red run, and continue at Step 6.' "$SKILL"
   grep -qF 'For an instruction fallback, omit Diagnostic, Proof, and Existing violations.' "$SKILL"
   grep -qF 'When rung 1 needs a broad refactor, do not start it here.' "$SKILL"
@@ -101,9 +101,9 @@ setup() {
 }
 
 @test "rule-writing and audit skills point enforceable findings to encode constraint" {
-  grep -qF 'suggest `/kramme:code:encode-constraint` to build and prove the check' "skills/kramme:docs:update-agents-md/SKILL.md"
-  grep -qF 'When an IMPROVE item names an enforcing mechanism, point to `/kramme:code:encode-constraint`' "skills/kramme:code:audit-agent-config/SKILL.md"
-  grep -qF 'close the report by suggesting `/kramme:code:encode-constraint`' "skills/kramme:debug:find-sibling-bugs/SKILL.md"
+  grep -qF 'suggest `/trackbed:code:encode-constraint` to build and prove the check' "skills/docs:update-agents-md/SKILL.md"
+  grep -qF 'When an IMPROVE item names an enforcing mechanism, point to `/trackbed:code:encode-constraint`' "skills/code:audit-agent-config/SKILL.md"
+  grep -qF 'close the report by suggesting `/trackbed:code:encode-constraint`' "skills/debug:find-sibling-bugs/SKILL.md"
 }
 
 @test "encode constraint declares its inspiration source" {

@@ -2,9 +2,9 @@
 
 setup() {
 	cd "$BATS_TEST_DIRNAME/.."
-	CLARIFY="skills/kramme:text:clarify"
-	REPLY="skills/kramme:pr:github-review-reply/SKILL.md"
-	GITHUB_REVIEW="skills/kramme:pr:github-review"
+	CLARIFY="skills/text:clarify"
+	REPLY="skills/pr:github-review-reply/SKILL.md"
+	GITHUB_REVIEW="skills/pr:github-review"
 }
 
 @test "humanize is merged into clarify and no skill names the removed command" {
@@ -37,18 +37,18 @@ setup() {
 	grep -qF "usage: copied" "$CLARIFY/references/sources.yaml"
 	grep -qF "notice: references/WIKIPEDIA-CONTENT-LICENSE.md" "$CLARIFY/references/sources.yaml"
 	grep -qF "id: blader-humanizer" "$CLARIFY/references/sources.yaml"
-	grep -qF 'kramme:text:clarify/references/ai-writing-patterns.md' ../THIRD_PARTY_NOTICES.md
+	grep -qF 'text:clarify/references/ai-writing-patterns.md' ../THIRD_PARTY_NOTICES.md
 }
 
 @test "GitHub review sends its humanize passes through clarify's mode" {
-	grep -qF '/kramme:text:clarify --humanize' "$GITHUB_REVIEW/references/comment-drafting.md"
-	grep -qF '/kramme:text:clarify --humanize' "$GITHUB_REVIEW/references/clarity-check.md"
+	grep -qF '/trackbed:text:clarify --humanize' "$GITHUB_REVIEW/references/comment-drafting.md"
+	grep -qF '/trackbed:text:clarify --humanize' "$GITHUB_REVIEW/references/clarity-check.md"
 	grep -qF '## Step 10: Humanize the Draft Comments' "$GITHUB_REVIEW/SKILL.md"
 }
 
 @test "GitHub review reply humanizes replies only on request" {
 	grep -E '^argument-hint:' "$REPLY" | grep -qF -- "--humanize"
-	grep -qF 'kramme:text:clarify --humanize' "$REPLY"
+	grep -qF 'trackbed:text:clarify --humanize' "$REPLY"
 	grep -qF 'HUMANIZE=false' "$REPLY"
 	grep -qF 'If `--humanize` is present, set `HUMANIZE=true`.' "$REPLY"
 	grep -qF 'Humanized: skipped' "$REPLY"
@@ -56,5 +56,5 @@ setup() {
 }
 
 @test "the Linear reviewer summary keeps clarify's default mode" {
-	! grep -qF -- "--humanize" skills/kramme:linear:issue-to-pr/SKILL.md || false
+	! grep -qF -- "--humanize" skills/linear:issue-to-pr/SKILL.md || false
 }

@@ -1,4 +1,4 @@
-"""Behavioral tests for the kramme:code:audit-practice session-signal extractor.
+"""Behavioral tests for the trackbed:code:audit-practice session-signal extractor.
 
 Every test writes synthetic Claude Code and Codex transcripts into temporary host directories and runs the
 script's entry point against them, so discovery, parsing, and the aggregate summary are exercised together.
@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 SCRIPT_PATH = (
-    Path(__file__).resolve().parents[2] / "skills" / "kramme:code:audit-practice" / "scripts" / "session-signals.py"
+    Path(__file__).resolve().parents[2] / "skills" / "code:audit-practice" / "scripts" / "session-signals.py"
 )
 SPEC = importlib.util.spec_from_file_location("session_signals", SCRIPT_PATH)
 assert SPEC is not None
@@ -89,7 +89,7 @@ class SessionSignalsTests(unittest.TestCase):
                 user("No, I meant the signup form"),
                 user("[Request interrupted by user for tool use]"),
                 user("<system_instruction>workspace rules</system_instruction>\nok, go ahead"),
-                user("<command-name>/kramme:pr:create</command-name><command-args></command-args>"),
+                user("<command-name>/trackbed:pr:create</command-name><command-args></command-args>"),
                 user("<local-command-stdout>done</local-command-stdout>"),
                 user("injected context", isMeta=True),
                 user("background notice", promptSource="system"),
@@ -111,7 +111,7 @@ class SessionSignalsTests(unittest.TestCase):
             [
                 tool_use("e3", "Edit"),
                 tool_use("b2", "Bash", command="cd app && rtk make -C pkg test-smoke"),
-                tool_use("s1", "Skill", skill="kramme-cc-workflow:kramme-verify-run"),
+                tool_use("s1", "Skill", skill="trackbed:verify-run"),
             ]
         )
         verification = self.run_signals()[0]["verification"]
@@ -155,8 +155,8 @@ class SessionSignalsTests(unittest.TestCase):
             [
                 tool_use("e2", "Edit"),
                 user("That's not what I asked for"),
-                tool_use("s1", "Skill", skill="kramme-cc-workflow:kramme-pr-resolve-review"),
-                tool_use("s2", "Skill", skill="kramme-cc-workflow:kramme-pr-github-review-reply"),
+                tool_use("s1", "Skill", skill="trackbed:pr-resolve-review"),
+                tool_use("s2", "Skill", skill="trackbed:pr-github-review-reply"),
             ]
         )
         summary = self.run_signals()[0]

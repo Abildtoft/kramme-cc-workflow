@@ -4,23 +4,23 @@ Detailed documentation for each hook. See the root [README](../../README.md#hook
 
 ## Toggling Hooks
 
-Use `/kramme:hooks:toggle` to enable or disable hooks:
+Use `/trackbed:hooks:toggle` to enable or disable hooks:
 
 ```bash
 # List all hooks and their status
-/kramme:hooks:toggle status
+/trackbed:hooks:toggle status
 
 # Disable a hook
-/kramme:hooks:toggle auto-format disable
+/trackbed:hooks:toggle auto-format disable
 
 # Enable a hook
-/kramme:hooks:toggle auto-format enable
+/trackbed:hooks:toggle auto-format enable
 
 # Toggle a hook (enable if disabled, disable if enabled)
-/kramme:hooks:toggle auto-format
+/trackbed:hooks:toggle auto-format
 
 # Reset all hooks to enabled
-/kramme:hooks:toggle reset
+/trackbed:hooks:toggle reset
 ```
 
 State is stored in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `hooks/hook-state.json`. When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
@@ -63,7 +63,7 @@ The shared safety wrapper now launches the parser as the `git_command_parser` mo
 
 ## skill-usage-stats
 
-`skill-usage-stats` records local JSONL usage events when a prompt contains a `/kramme:*` skill invocation or when a Skill tool event names a `kramme:*` skill.
+`skill-usage-stats` records local JSONL usage events when a prompt contains a `/trackbed:*` skill invocation or when a Skill tool event names a `trackbed:*` skill.
 
 Each record's `platform` field names the host that produced the event. The recorder resolves it in this order:
 
@@ -79,7 +79,7 @@ Each record's `pluginVersion` field is the `version` from the plugin manifest be
 
 When a Skill tool event names a skill that contains the plugin name `kramme-cc-workflow` but maps to no shipped skill, the recorder writes that name to an `unrecognizedSkill` field in place of `skill`. A host that changes how it names plugin skills produces these records, so the change shows up in reports instead of silently dropping events. Only the Skill tool's skill-name fields count; prompts, and therefore Codex events, never produce them.
 
-For Codex prompts, the recorder ignores everything up to the last Conductor `</system_instruction>` block and accepts both `$kramme:*` and `/kramme:*` invocations. Claude Code prompts keep the `/kramme:*` rule. The converted Codex plugin ships this hook and its recorder, but Codex has no Skill tool, so only the `UserPromptSubmit` entry fires there. Codex may also require you to trust plugin hooks before they run.
+For Codex prompts, the recorder ignores everything up to the last Conductor `</system_instruction>` block and accepts both `$trackbed:*` and `/trackbed:*` invocations. Claude Code prompts keep the `/trackbed:*` rule. The converted Codex plugin ships this hook and its recorder, but Codex has no Skill tool, so only the `UserPromptSubmit` entry fires there. Codex may also require you to trust plugin hooks before they run.
 
 Records are stored outside the repository at:
 
@@ -285,7 +285,7 @@ The hook automatically skips:
 - **A newer version is available.** At most once a day, the hook fetches `kramme-cc-workflow/.claude-plugin/plugin.json` from the `main` branch on raw.githubusercontent.com with `curl --max-time 2`. Only release Pull Requests change that version, so it is the version an update would install. When it is newer than the installed copy, the notice names both versions and the host's update instructions. The notice appears in the session that ran the check, so an update you skip is mentioned again the next day.
 - **The plugin was updated.** The first session that starts on a newer installed version names the previous and new versions once. In Claude Code it also counts the changelog entries marked breaking in between, from the plugin's bundled `CHANGELOG.md`; Codex packages do not include the changelog, so the count is omitted there.
 
-Claude Code notices recommend `/plugin marketplace update kramme-cc-workflow`, then `/reload-plugins`. Codex notices give both install paths explicitly: Git marketplaces use `codex plugin marketplace upgrade kramme-cc-workflow`, then `codex plugin add kramme-cc-workflow@kramme-cc-workflow`; local/checkout installs, including `npx`, rerun their original install command. Restart Codex after updating. The hook does not inspect Codex configuration or invoke the Codex CLI to select a path.
+Claude Code notices recommend `/plugin marketplace update kramme-cc-workflow`, then `/reload-plugins`. Codex notices give both install paths explicitly: Git marketplaces use `codex plugin marketplace upgrade kramme-cc-workflow`, then `codex plugin add trackbed@trackbed`; local/checkout installs, including `npx`, rerun their original install command. Restart Codex after updating. The hook does not inspect Codex configuration or invoke the Codex CLI to select a path.
 
 State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/update-check.json` by default; set `KRAMME_UPDATE_CHECK_FILE` to override the path. It holds three fields:
 
@@ -293,11 +293,11 @@ State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/update-
 - `latestVersion`: the newest release the last successful check found.
 - `seenVersion`: the newest version a session has started with. It only moves forward, so an older copy installed in another scope or project never triggers a notice. The first run records the installed version without a notice.
 
-`/kramme:setup` reports this record as `Plugin update` without fetching anything.
+`/trackbed:setup` reports this record as `Plugin update` without fetching anything.
 
 The hook holds a Python `fcntl` file lock across the state read, check, and write. Concurrent startups skip the check silently, leaving any pending installed-version notice for a later startup. The lock file is `<state-file>.lock`; the OS releases the lock when its processes exit, including after termination, so the file may remain without blocking future checks.
 
-The fetch is one HTTPS request a day per state file. It sends nothing beyond what any request reveals, such as your IP address and curl's user agent. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` to any non-empty value to skip it; the update notice still works because it needs no network. Turn the whole hook off with `/kramme:hooks:toggle update-check disable`.
+The fetch is one HTTPS request a day per state file. It sends nothing beyond what any request reveals, such as your IP address and curl's user agent. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` to any non-empty value to skip it; the update notice still works because it needs no network. Turn the whole hook off with `/trackbed:hooks:toggle update-check disable`.
 
 The hook is fail-open. Missing `jq`, Python file-locking support, or `curl`, an unavailable state/lock path, an installed manifest without a release version, an unreachable GitHub, or malformed state all end in `{}` with no error. Malformed state is replaced as if it were the first run.
 

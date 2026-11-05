@@ -60,13 +60,13 @@ EOF
 
 siw_spec_exclusion_expected_paths() {
   printf '%s\n' \
-    "kramme-cc-workflow/skills/kramme:discovery:interview/references/siw-mode.md" \
-    "kramme-cc-workflow/skills/kramme:siw:generate-phases/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:init/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:spec-audit/SKILL.md" \
-    "kramme-cc-workflow/skills/kramme:siw:spec-audit/references/spec-resolution.md" \
-    "kramme-cc-workflow/skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md" \
-    "kramme-cc-workflow/skills/kramme:workflow:cleanup-artifacts/references/siw-mode.md"
+    "kramme-cc-workflow/skills/discovery:interview/references/siw-mode.md" \
+    "kramme-cc-workflow/skills/siw:generate-phases/SKILL.md" \
+    "kramme-cc-workflow/skills/siw:init/SKILL.md" \
+    "kramme-cc-workflow/skills/siw:spec-audit/SKILL.md" \
+    "kramme-cc-workflow/skills/siw:spec-audit/references/spec-resolution.md" \
+    "kramme-cc-workflow/skills/siw:transfer-to-linear/references/artifact-extraction.md" \
+    "kramme-cc-workflow/skills/workflow:cleanup-artifacts/references/siw-mode.md"
 }
 
 write_reference_skill() {
@@ -295,23 +295,23 @@ shared_args = ["--strict", "--format", "nul"]
 # Review producers opt into stack context; the other consumers read an empty field.
 review_args = [*shared_args, "--stack-context"]
 expected_args = {
-    "kramme-cc-workflow/skills/kramme:pr:code-review/SKILL.md": review_args,
-    "kramme-cc-workflow/skills/kramme:pr:product-review/SKILL.md": review_args,
-    "kramme-cc-workflow/skills/kramme:code:copy-review/SKILL.md": shared_args,
-    "kramme-cc-workflow/skills/kramme:pr:convention-review/SKILL.md": review_args,
-    "kramme-cc-workflow/skills/kramme:pr:overengineering-review/SKILL.md": [
+    "kramme-cc-workflow/skills/pr:code-review/SKILL.md": review_args,
+    "kramme-cc-workflow/skills/pr:product-review/SKILL.md": review_args,
+    "kramme-cc-workflow/skills/code:copy-review/SKILL.md": shared_args,
+    "kramme-cc-workflow/skills/pr:convention-review/SKILL.md": review_args,
+    "kramme-cc-workflow/skills/pr:overengineering-review/SKILL.md": [
         *review_args,
         "--exclude-review-artifacts",
         "--require-local-artifact",
         "OVERENGINEERING_REVIEW_OVERVIEW.md",
     ],
-    "kramme-cc-workflow/skills/kramme:pr:gut-check/SKILL.md": [
+    "kramme-cc-workflow/skills/pr:gut-check/SKILL.md": [
         *shared_args,
         "--exclude-review-artifacts",
         "--stack-context",
     ],
-    "kramme-cc-workflow/skills/kramme:pr:triage-risk/SKILL.md": review_args,
-    "kramme-cc-workflow/skills/kramme:debug:find-sibling-bugs/SKILL.md": [
+    "kramme-cc-workflow/skills/pr:triage-risk/SKILL.md": review_args,
+    "kramme-cc-workflow/skills/debug:find-sibling-bugs/SKILL.md": [
         *shared_args,
         "--exclude-review-artifacts",
     ],
@@ -495,14 +495,14 @@ EOF
 
 @test "copy review rubric is owned by the code skill with automatic PR mode" {
   local registry="$BATS_TEST_DIRNAME/../scripts/synced-contracts.yaml"
-  local code_skill="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/SKILL.md"
-  local code_rubric="$BATS_TEST_DIRNAME/../skills/kramme:code:copy-review/references/copy-review-rubric.md"
+  local code_skill="$BATS_TEST_DIRNAME/../skills/code:copy-review/SKILL.md"
+  local code_rubric="$BATS_TEST_DIRNAME/../skills/code:copy-review/references/copy-review-rubric.md"
   local pr_skill="$BATS_TEST_DIRNAME/../skills/kramme:pr:copy-review/SKILL.md"
 
   test -f "$code_skill"
   test -f "$code_rubric"
   test ! -f "$pr_skill"
-  grep -qF 'Canonical owner: `kramme:code:copy-review`.' "$code_rubric"
+  grep -qF 'Canonical owner: `trackbed:code:copy-review`.' "$code_rubric"
   grep -qF 'If `FORCE_PR_MODE=true`, set `SCAN_MODE=false`' "$code_skill"
   grep -qF 'equals `BASE_BRANCH`, set `SCAN_MODE=true`' "$code_skill"
   grep -qF 'differs from `BASE_BRANCH`, set `SCAN_MODE=false`.' "$code_skill"
@@ -514,24 +514,24 @@ EOF
 
 @test "spec-audit fix-confidence rubric is one shared resource for audit and apply mode" {
   local skills="$BATS_TEST_DIRNAME/../skills"
-  local apply_now="$skills/kramme:siw:spec-audit/references/apply-now.md"
+  local apply_now="$skills/siw:spec-audit/references/apply-now.md"
   local shared_rubric="$BATS_TEST_DIRNAME/../shared/siw/references/fix-confidence-rubric.md"
   local shared_reference='${CLAUDE_PLUGIN_ROOT}/shared/siw/references/fix-confidence-rubric.md'
 
   test -f "$shared_rubric"
   [ ! -e "$skills/kramme:siw:apply-spec-audit-fixes" ]
-  [ ! -e "$skills/kramme:siw:spec-audit/references/fix-confidence-rubric.md" ]
+  [ ! -e "$skills/siw:spec-audit/references/fix-confidence-rubric.md" ]
   grep -qF "$shared_reference" "$apply_now"
-  grep -qF "$shared_reference" "$skills/kramme:siw:spec-audit/SKILL.md"
+  grep -qF "$shared_reference" "$skills/siw:spec-audit/SKILL.md"
   grep -qF 'Critical findings in Completeness, Scope, or Rationale Documentation dimensions always require decisions; treat the legacy `Value Proposition` label in older reports as Rationale Documentation.' "$apply_now"
   grep -qF 'Severity is Critical AND dimension is Completeness, Scope, or Rationale Documentation (`Value Proposition` in legacy reports)' "$shared_rubric"
 }
 
 @test "spec-audit rationale documentation contract reaches downstream consumers" {
-  local issue_template="$BATS_TEST_DIRNAME/../skills/kramme:siw:resolve-audit/assets/issue-spec.md.template"
-  local report_format="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/assets/spec-audit-report-format.md"
-  local report_summary="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/assets/spec-audit-summary.md"
-  local team_mode="$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit/references/team-mode.md"
+  local issue_template="$BATS_TEST_DIRNAME/../skills/siw:resolve-audit/assets/issue-spec.md.template"
+  local report_format="$BATS_TEST_DIRNAME/../skills/siw:spec-audit/assets/spec-audit-report-format.md"
+  local report_summary="$BATS_TEST_DIRNAME/../skills/siw:spec-audit/assets/spec-audit-summary.md"
+  local team_mode="$BATS_TEST_DIRNAME/../skills/siw:spec-audit/references/team-mode.md"
 
   grep -qF 'actionability/testability/rationale documentation/technical design' "$issue_template"
   ! grep -qF 'actionability/testability/value/technical design' "$issue_template"
@@ -1104,18 +1104,18 @@ EOF
   local emphasis_line
   local normalization_line
 
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/SKILL.md")"
-  template_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/output-template.md")"
-  discipline_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/review-discipline.md")"
-  team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/team-mode.md")"
-  relevance_validator_text="$(cat "$BATS_TEST_DIRNAME/../agents/kramme:pr-relevance-validator.md")"
-  resolver_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/SKILL.md")"
-  resolver_conductor_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/conductor-source.md")"
-  resolver_team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/team-mode.md")"
-  resolver_output_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:resolve-review/references/resolution-output.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/SKILL.md")"
+  template_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/references/output-template.md")"
+  discipline_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/references/review-discipline.md")"
+  team_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/references/team-mode.md")"
+  relevance_validator_text="$(cat "$BATS_TEST_DIRNAME/../agents/pr-relevance-validator.md")"
+  resolver_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:resolve-review/SKILL.md")"
+  resolver_conductor_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:resolve-review/references/conductor-source.md")"
+  resolver_team_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:resolve-review/references/team-mode.md")"
+  resolver_output_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:resolve-review/references/resolution-output.md")"
   dependency_adr_text="$(cat "$BATS_TEST_DIRNAME/../docs/decisions/2026-09-07-conditional-review-cleanup-dependencies.md")"
-  overengineering_skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:overengineering-review/SKILL.md")"
-  overengineering_agent_text="$(cat "$BATS_TEST_DIRNAME/../agents/kramme:overengineering-reviewer.md")"
+  overengineering_skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:overengineering-review/SKILL.md")"
+  overengineering_agent_text="$(cat "$BATS_TEST_DIRNAME/../agents/overengineering-reviewer.md")"
   collect_review_diff_text="$(cat "$BATS_TEST_DIRNAME/../scripts/collect-review-diff.sh")"
 
   [[ "$skill_text" == *"After emphasis adjustments, run an **action-class normalization pass**."* ]]
@@ -1134,7 +1134,7 @@ EOF
   [ "$normalization_line" -gt "$emphasis_line" ]
 
   [[ "$template_text" == *"## Auto-resolution Readiness"* ]]
-  [[ "$template_text" == *'Review producer: kramme:pr:code-review'* ]]
+  [[ "$template_text" == *'Review producer: trackbed:pr:code-review'* ]]
   [[ "$template_text" == *"Manual blockers: product/UX/architecture/maintainer decision X"* ]]
   [[ "$template_text" == *"Manual blocker: product/UX/architecture/maintainer decision"* ]]
   [[ "$template_text" == *"Next human decision: concrete decision"* ]]
@@ -1212,7 +1212,7 @@ EOF
   [[ "$resolver_text" == *"apply the completed-decision replacement in \`references/resolution-output.md\`"* ]]
   [[ "$resolver_text" == *"Read \`references/resolution-output.md\` before writing or updating manual findings."* ]]
   [[ "$resolver_text" == *"Before generating or updating review output, read \`references/resolution-output.md\`"* ]]
-  [[ "$resolver_text" == *"\`OVERENGINEERING_REVIEW_OVERVIEW.md\` (from \`/kramme:pr:overengineering-review\`)"* ]]
+  [[ "$resolver_text" == *"\`OVERENGINEERING_REVIEW_OVERVIEW.md\` (from \`/trackbed:pr:overengineering-review\`)"* ]]
   [[ "$resolver_text" != *'First inspect the immediately preceding assistant message when the user'"'"'s current request clearly refers to that review'* ]]
   [[ "$resolver_text" == *'`REVIEW_SOURCE=auto` — try local files first'* ]]
   [[ "$resolver_text" == *'including a structured review in the immediately preceding assistant message when the request refers to it'* ]]
@@ -1231,7 +1231,7 @@ EOF
   [[ "$resolver_conductor_text" == *'one repository-relative file path with `/` separators and no empty, `.` or `..` segment'* ]]
   [[ "$resolver_conductor_text" == *'one positive decimal line number'* ]]
   [[ "$resolver_conductor_text" == *'one non-empty comment body'* ]]
-  [[ "$resolver_conductor_text" == *'^\[kramme:pr:[a-z-]+ [A-Za-z0-9-]+\]'* ]]
+  [[ "$resolver_conductor_text" == *'^\[trackbed:pr:[a-z-]+ [A-Za-z0-9-]+\]'* ]]
   [[ "$resolver_conductor_text" == *'severity `UNVERIFIED` until the standard Step 2b assessment'* ]]
   [[ "$resolver_conductor_text" == *'record a warning naming the producer and direct the user to rerun it, then continue processing the remaining comments'* ]]
   [[ "$resolver_conductor_text" == *'discard the entire Conductor response rather than partially accepting it'* ]]
@@ -1244,7 +1244,7 @@ EOF
   [[ "$resolver_text" == *'OVERENGINEERING_REVIEW_ARTIFACT=OVERENGINEERING_REVIEW_OVERVIEW.md'* ]]
   [[ "$resolver_text" == *'[ -L "$OVERENGINEERING_REVIEW_ARTIFACT" ]'* ]]
   [[ "$resolver_text" == *'git ls-files --error-unmatch "$OVERENGINEERING_REVIEW_ARTIFACT"'* ]]
-  [[ "$resolver_text" == *'carries the exact structured marker `Review producer: kramme:pr:overengineering-review`'* ]]
+  [[ "$resolver_text" == *'carries the exact structured marker `Review producer: trackbed:pr:overengineering-review`'* ]]
   [[ "$resolver_text" == *'Exclude both `Justified` and `Previously Processed` from the active finding set'* ]]
   [[ "$resolver_text" == *"treat \`Verdict: JUDGMENT CALL\` as \`Action class: manual\`"* ]]
   [[ "$resolver_text" == *"treat \`Verdict: OVERDONE\` as \`Action class: gated_auto\` only when it has a concrete file location"* ]]
@@ -1269,7 +1269,7 @@ EOF
   [[ "$resolver_output_text" == *"Do not leave proposal-only fields on an addressed or acknowledged finding."* ]]
   [[ "$resolver_output_text" == *"R open selected-resolution retries or blocked implementations, A manual findings awaiting a user decision, P accepted process handoffs awaiting completion, and X manual findings waiting on an external owner"* ]]
   [[ "$resolver_output_text" == *'If the source review was `PRODUCT_REVIEW_OVERVIEW.md`'* ]]
-  [[ "$resolver_output_text" == *'If the source review was `OVERENGINEERING_REVIEW_OVERVIEW.md` or carries `Review producer: kramme:pr:overengineering-review`'* ]]
+  [[ "$resolver_output_text" == *'If the source review was `OVERENGINEERING_REVIEW_OVERVIEW.md` or carries `Review producer: trackbed:pr:overengineering-review`'* ]]
   [[ "$resolver_output_text" == *'If the source review came from Conductor diff comments'* ]]
   [[ "$resolver_output_text" == *"Findings present in the source but not addressed in this run"*'stay verbatim'* ]]
   [[ "$resolver_output_text" == *"#### Comment #N: [Brief description]"* ]]
@@ -1284,7 +1284,7 @@ EOF
   [[ "$resolver_team_text" == *'In auto mode, first check for `REVIEW_OVERVIEW.md`'* ]]
   [[ "$resolver_team_text" == *'then usable unmarked Conductor comments, then chat context'* ]]
   [[ "$resolver_team_text" == *'In auto mode, prefer a structured review in the immediately preceding assistant message when the current request refers to it within that chat-context stage.'* ]]
-  [[ "$resolver_team_text" == *'if chat or payload content carries `Review producer: kramme:pr:overengineering-review`'* ]]
+  [[ "$resolver_team_text" == *'if chat or payload content carries `Review producer: trackbed:pr:overengineering-review`'* ]]
   [[ "$resolver_team_text" == *'Remove every dependency-connected component from the parallel candidate set and list it under `Sequential`'* ]]
   [[ "$resolver_team_text" == *'Never assign a dependency and its dependent to separate agents'* ]]
   [[ "$resolver_team_text" == *'File ownership never overrides dependency order.'* ]]
@@ -1324,7 +1324,7 @@ EOF
   [[ "$overengineering_skill_text" == *'BEGIN UNTRUSTED CANDIDATE DATA'* ]]
   [[ "$overengineering_skill_text" == *'one non-empty `Basis` for each ID'* ]]
   [[ "$overengineering_skill_text" == *'supplemental current justify batch'* ]]
-  [[ "$overengineering_skill_text" == *'Review producer: kramme:pr:overengineering-review'* ]]
+  [[ "$overengineering_skill_text" == *'Review producer: trackbed:pr:overengineering-review'* ]]
   [[ "$overengineering_skill_text" == *'BRANCH_COMMIT_INDEX'* ]]
   [[ "$overengineering_skill_text" == *'Never recycle an old ID for a different root cause.'* ]]
   [[ "$overengineering_skill_text" == *'Existing lifecycle fields survive reconciliation'* ]]
@@ -1341,7 +1341,7 @@ EOF
 @test "pr code review closeout loop requires an independent termination verifier" {
   local loop_text
 
-  loop_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/closeout-loop.md")"
+  loop_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/references/closeout-loop.md")"
 
   [[ "$loop_text" == *"The agent that applied the fixes is not the sole judge of loop termination."* ]]
   [[ "$loop_text" == *"Before stopping the loop, delegate the accept/terminate assessment to an independent verifier with its own context window."* ]]
@@ -1360,11 +1360,11 @@ EOF
   [[ "$loop_text" == *"when remaining findings are clearly manual/advisory and reported as such"* ]]
 
   # The loop is not an authorized model parent of the resolver.
-  [[ "$loop_text" == *'Do not invoke `kramme:pr:resolve-review` from this loop'* ]]
-  [[ "$loop_text" != *'/kramme:pr:resolve-review --severity'* ]]
+  [[ "$loop_text" == *'Do not invoke `trackbed:pr:resolve-review` from this loop'* ]]
+  [[ "$loop_text" != *'/trackbed:pr:resolve-review --severity'* ]]
 
   # The description must not re-advertise a model switch the skill cannot enforce.
-  [[ "$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/SKILL.md")" != *"second-model"* ]]
+  [[ "$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/SKILL.md")" != *"second-model"* ]]
 
   assert_required_contracts_registered pr-code-review-closeout-loop-independent-verification
 }
@@ -1372,28 +1372,28 @@ EOF
 @test "pr product review keeps routing contracts without embedded usage or agent summaries" {
   local skill_text
   local team_text
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:product-review/SKILL.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:product-review/SKILL.md")"
 
   [[ "$skill_text" == *'argument-hint: "[--subagent-model <model>] [app-url|auto] [--categories a11y,ux,product,visual]'* ]]
   [[ "$skill_text" == *'If `--categories` flag → parse comma-separated list.'* ]]
-  [[ "$skill_text" == *'If `--categories product,visual` → launch kramme:product-reviewer and kramme:visual-reviewer'* ]]
+  [[ "$skill_text" == *'If `--categories product,visual` → launch trackbed:product-reviewer and trackbed:visual-reviewer'* ]]
   [[ "$skill_text" == *'If `--categories all` → launch all 4 agents'* ]]
   [[ "$skill_text" == *'The `product` category audits every file in `CHANGED_FILES`'* ]]
   [[ "$skill_text" == *'continue with the product reviewer alone'* ]]
   [[ "$skill_text" == *'If `--categories` also excludes `product`, stop instead:'* ]]
   [[ "$skill_text" == *'the reviewer brief from `references/product-lens.md`, verbatim'* ]]
-  team_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:product-review/references/team-mode.md")"
+  team_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:product-review/references/team-mode.md")"
   [[ "$team_text" == *'continue with the product reviewer alone, or stop with the same message as the base skill when `--categories` also excludes `product`'* ]]
   [[ "$team_text" == *'keep the full changed-file list as the product reviewer'* ]]
   [[ "$team_text" == *'For the product reviewer, the reviewer brief from `references/product-lens.md`, verbatim'* ]]
   [[ "$skill_text" != *'## Usage Examples'* ]]
   [[ "$skill_text" != *'## Agent Descriptions'* ]]
-  [[ "$skill_text" != *'/kramme:pr:product-review http://localhost:4200'* ]]
+  [[ "$skill_text" != *'/trackbed:pr:product-review http://localhost:4200'* ]]
 }
 
 @test "verify-understanding supports answer option prompts" {
   local skill_text
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:learn:verify-understanding/SKILL.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/learn:verify-understanding/SKILL.md")"
 
   [[ "$skill_text" == *'[--answer-options|--choices]'* ]]
   [[ "$skill_text" == *'`--answer-options` or `--choices`: Prefer verification prompts with explicit answer options.'* ]]
@@ -1407,9 +1407,9 @@ EOF
   local extraction_text
   local docs_text
 
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:transfer-to-linear/SKILL.md")"
-  mapping_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:transfer-to-linear/references/linear-mapping.md")"
-  extraction_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:transfer-to-linear/references/artifact-extraction.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/siw:transfer-to-linear/SKILL.md")"
+  mapping_text="$(cat "$BATS_TEST_DIRNAME/../skills/siw:transfer-to-linear/references/linear-mapping.md")"
+  extraction_text="$(cat "$BATS_TEST_DIRNAME/../skills/siw:transfer-to-linear/references/artifact-extraction.md")"
   docs_text="$(cat "$BATS_TEST_DIRNAME/../docs/siw.md")"
 
   [[ "$skill_text" == *'Duplicate-content preflight per `references/linear-mapping.md`'* ]]
@@ -1436,9 +1436,9 @@ EOF
   local skill_text
   local consolidation_text
   local scoped_plan_text
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
-  consolidation_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/consolidation-flow.md")"
-  scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:fix-ci/SKILL.md")"
+  consolidation_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:fix-ci/references/consolidation-flow.md")"
+  scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:fix-ci/references/scoped-plan.md")"
 
   [[ "$skill_text" == *'Auto mode is the default: run the CI fix loop unattended'* ]]
   [[ "$skill_text" == *'If `AUTO_MODE=true`, choose **Automated** without prompting'* ]]
@@ -1460,7 +1460,7 @@ EOF
   [[ "$scoped_plan_text" == *'atomically rename that sibling over the selected plan'* ]]
   [[ "$scoped_plan_text" == *'leave the previous plan intact and treat the already-published mutation as interrupted'* ]]
   [[ "$scoped_plan_text" == *'immediately after every proven push use the same atomic archive update contract to replace the archived checkpoint head/tree'* ]]
-  [[ "$scoped_plan_text" == *'$kramme:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}'* ]]
+  [[ "$scoped_plan_text" == *'$trackbed:pr:fix-ci --no-consolidate --scope-plan {validated-scope-plan}'* ]]
 
   [[ "$consolidation_text" == *'If `AUTO_MODE=true`, do not offer "Keep separate".'* ]]
   [[ "$consolidation_text" == *'Before any automated rebase, confirm one of these is true:'* ]]
@@ -1474,18 +1474,18 @@ EOF
   local resume_line
   local skip_line
   local watch_line
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:fix-ci/SKILL.md")"
 
   [[ "$skill_text" == *'neither `REBASE_MODE` nor `AUTO_MODE` has already decided, use `AskUserQuestion`'* ]]
   [[ "$skill_text" == *'**Rebase then fix CI (Recommended)**'* ]]
   [[ "$skill_text" == *'Require success and the same `BASE` recorded in Step 2'* ]]
-  [[ "$skill_text" == *'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism'* ]]
+  [[ "$skill_text" == *'Invoke `$trackbed:pr:rebase --force-push --base <BASE>` through the platform skill mechanism'* ]]
   [[ "$skill_text" == *'**Skip rebase and fix CI**'* ]]
   [[ "$skill_text" == *'do not watch the stale remote branch or silently choose the skip path'* ]]
   [[ "$skill_text" == *'Do not run `git rebase` or force-push inline from this skill'* ]]
 
   choice_line="$(grep -nF 'use `AskUserQuestion` and present exactly these choices:' <<<"$skill_text" | cut -d: -f1)"
-  delegate_line="$(grep -nF 'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism' <<<"$skill_text" | cut -d: -f1)"
+  delegate_line="$(grep -nF 'Invoke `$trackbed:pr:rebase --force-push --base <BASE>` through the platform skill mechanism' <<<"$skill_text" | cut -d: -f1)"
   resume_line="$(grep -nF 'return to Step 1 with the original parsed `fix-ci` modes still active' <<<"$skill_text" | cut -d: -f1)"
   skip_line="$(grep -nF '**Skip rebase and fix CI**' <<<"$skill_text" | cut -d: -f1)"
   watch_line="$(grep -nF '### Step 3: Check CI status first' <<<"$skill_text" | cut -d: -f1)"
@@ -1502,10 +1502,10 @@ EOF
   local auto_line
   local choice_line
   local delegate_line
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:fix-ci/SKILL.md")"
 
   grep -qE '^argument-hint: .*\[--rebase\]' <<<"$skill_text"
-  [[ "$skill_text" == *'- `--rebase` - When the branch is behind its base, rebase and push through `kramme:pr:rebase --force-push` before fixing CI, without asking.'* ]]
+  [[ "$skill_text" == *'- `--rebase` - When the branch is behind its base, rebase and push through `trackbed:pr:rebase --force-push` before fixing CI, without asking.'* ]]
   [[ "$skill_text" == *'if `--rebase` is present, set `REBASE_MODE=true`'* ]]
   [[ "$skill_text" == *'reject `--fixup` and `--rebase`, require `--no-consolidate`'* ]]
   [[ "$skill_text" == *'never invent `--rebase`, a scope plan, or a push destination'* ]]
@@ -1515,7 +1515,7 @@ EOF
 
   rebase_line="$(grep -nF 'When `PLAN_SCOPE_ACTIVE=false` and `REBASE_MODE=true`, the user already chose: take choice 1 below' <<<"$skill_text" | cut -d: -f1)"
   choice_line="$(grep -nF 'use `AskUserQuestion` and present exactly these choices:' <<<"$skill_text" | cut -d: -f1)"
-  delegate_line="$(grep -nF 'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism' <<<"$skill_text" | cut -d: -f1)"
+  delegate_line="$(grep -nF 'Invoke `$trackbed:pr:rebase --force-push --base <BASE>` through the platform skill mechanism' <<<"$skill_text" | cut -d: -f1)"
 
   auto_line="$(grep -nF '`AUTO_MODE=true`, decide from that inspection instead of asking' <<<"$skill_text" | cut -d: -f1)"
   [[ "$skill_text" == *'take choice 2 when the base movement clearly cannot affect CI for this Pull Request'* ]]
@@ -1533,8 +1533,8 @@ EOF
   local classification_line
   local initial_removal_line
   local terminal_removal_line
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/SKILL.md")"
-  scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:fix-ci/references/scoped-plan.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:fix-ci/SKILL.md")"
+  scoped_plan_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:fix-ci/references/scoped-plan.md")"
 
   classification_line="$(grep -nF 'After this classification, reject unknown, duplicate, or misplaced lifecycle sections.' <<<"$scoped_plan_text" | cut -d: -f1)"
   initial_removal_line="$(grep -nF 'In initial lifecycle, remove exactly the one workflow-state section' <<<"$scoped_plan_text" | cut -d: -f1)"
@@ -1565,8 +1565,8 @@ EOF
   [[ "$scoped_plan_text" == *'In initial lifecycle mode, immediately after every proven push use the atomic archive update contract above to replace only the archived workflow-state checkpoint head/tree'* ]]
   [[ "$scoped_plan_text" == *'never adding an execution result'* ]]
   [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=false` and neither `REBASE_MODE` nor `AUTO_MODE` has already decided, use `AskUserQuestion` and present exactly these choices:'* ]]
-  [[ "$skill_text" == *'Invoke `$kramme:pr:rebase --force-push --base <BASE>` through the platform skill mechanism'* ]]
-  [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/kramme:pr:rebase` or changing history'* ]]
+  [[ "$skill_text" == *'Invoke `$trackbed:pr:rebase --force-push --base <BASE>` through the platform skill mechanism'* ]]
+  [[ "$skill_text" == *'When `PLAN_SCOPE_ACTIVE=true`, fail closed without invoking `/trackbed:pr:rebase` or changing history'* ]]
   [[ "$skill_text" == *'require a refreshed or explicitly re-authorized scoped plan before continuing'* ]]
 }
 
@@ -1761,11 +1761,11 @@ EOF
 
 @test "siw issue creation keeps one reservation protocol after the single-issue skill removal" {
   local generate_phases_text publication_recovery_text generate_phases_contract_text tracker_schema_text triage_text
-  generate_phases_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/SKILL.md")"
-  publication_recovery_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/references/publication-recovery.md")"
+  generate_phases_text="$(cat "$BATS_TEST_DIRNAME/../skills/siw:generate-phases/SKILL.md")"
+  publication_recovery_text="$(cat "$BATS_TEST_DIRNAME/../skills/siw:generate-phases/references/publication-recovery.md")"
   generate_phases_contract_text="${generate_phases_text}"$'\n'"${publication_recovery_text}"
-  tracker_schema_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:siw:generate-phases/references/tracker-schema.md")"
-  triage_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:debug:triage-to-issue/SKILL.md")"
+  tracker_schema_text="$(cat "$BATS_TEST_DIRNAME/../skills/siw:generate-phases/references/tracker-schema.md")"
+  triage_text="$(cat "$BATS_TEST_DIRNAME/../skills/debug:triage-to-issue/SKILL.md")"
 
   [ -x "$RESERVATION_HELPER" ]
 
@@ -1973,7 +1973,7 @@ import sys
 
 registry = json.loads(pathlib.Path(sys.argv[1]).read_text())
 reconcile_path = (
-    "kramme-cc-workflow/skills/kramme:code:breakdown-findings/"
+    "kramme-cc-workflow/skills/code:breakdown-findings/"
     "references/reconcile-workflow.md"
 )
 base_diff_paths = set(registry.get("base_diff_scope", {}).get("paths", []))
@@ -2298,21 +2298,21 @@ EOF
 
 @test "readme sync requires exact documented skill rows" {
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:qa/SKILL.md" \
-    "kramme:qa" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/qa/SKILL.md" \
+    "trackbed:qa" \
     "QA skill description" \
     "false" \
     "true"
   write_reference_skill \
-    "$TMP_ROOT/kramme-cc-workflow/skills/kramme:qa:intake/SKILL.md" \
-    "kramme:qa:intake" \
+    "$TMP_ROOT/kramme-cc-workflow/skills/qa:intake/SKILL.md" \
+    "trackbed:qa:intake" \
     "QA intake skill description" \
     "true" \
     "true"
   write_file "$TMP_ROOT/README.md" <<'EOF'
 # Test README
 
-Try /kramme:qa for live checks.
+Try /trackbed:qa for live checks.
 
 ## Skills
 
@@ -2320,7 +2320,7 @@ Try /kramme:qa for live checks.
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
-| `/kramme:qa:intake` | User | — | QA intake skill description |
+| `/trackbed:qa:intake` | User | — | QA intake skill description |
 
 <!-- END SOURCE-SYNCED SKILL ROWS -->
 
@@ -2332,7 +2332,7 @@ EOF
 
   [ "$status" -eq 1 ]
   [[ "$output" == *"readme skill sync"* ]]
-  [[ "$output" == *"missing skill 'kramme:qa'"* ]]
+  [[ "$output" == *"missing skill 'trackbed:qa'"* ]]
 }
 
 @test "readme sync accepts background skill rows but ignores agent rows" {
@@ -3558,7 +3558,7 @@ EOF
 
 @test "deps audit hands SIW creation to the user" {
   local skill_text
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:deps:audit/SKILL.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/deps:audit/SKILL.md")"
 
   [[ "$skill_text" == *'Never read that skill'"'"'s `SKILL.md` and run its steps yourself.'* ]]
   [[ "$skill_text" != *"follow its steps inline"* ]]
@@ -3767,9 +3767,9 @@ EOF
   local template_text
   local sources_text
 
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/SKILL.md")"
-  template_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/output-template.md")"
-  sources_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/sources.yaml")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/SKILL.md")"
+  template_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/references/output-template.md")"
+  sources_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:code-review/references/sources.yaml")"
 
   [[ "$skill_text" == *'[--no-diff-comments]'* ]]
   [[ "$skill_text" == *'set `DIFF_COMMENTS=false` and remove that flag'* ]]
@@ -3782,7 +3782,7 @@ EOF
   [[ "$skill_text" == *'Diff comments posted: N (skipped M already present)'* ]]
 
   [[ "$template_text" == *'Synced Conductor diff-comment contract (keep aligned across review producers):'* ]]
-  [[ "$template_text" == *'Producer: `kramme:pr:code-review`'* ]]
+  [[ "$template_text" == *'Producer: `trackbed:pr:code-review`'* ]]
   [[ "$template_text" == *'Current finding IDs: `CR-NNN`'* ]]
   [[ "$template_text" == *'Location field: `Location: path/to/file.ext:line`'* ]]
   [[ "$template_text" == *'Run this projection only when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, and `mcp__conductor__DiffComment` is already present'* ]]
@@ -3831,9 +3831,9 @@ EOF
   local synced_tail
   local index
   local skill_paths=(
-    'kramme:pr:convention-review'
-    'kramme:pr:overengineering-review'
-    'kramme:pr:product-review'
+    'trackbed:pr:convention-review'
+    'trackbed:pr:overengineering-review'
+    'trackbed:pr:product-review'
   )
   local finding_ids=('CONV-NNN' 'OE-NNN' 'PROD-NNN')
   local model_invocations=('false' 'false' 'false')
@@ -3854,7 +3854,7 @@ EOF
   )
 
   canonical_tail="$(awk 'seen { print } /^## Synced contract$/ { seen=1 }' \
-    "$BATS_TEST_DIRNAME/../skills/kramme:pr:code-review/references/output-template.md")"
+    "$BATS_TEST_DIRNAME/../skills/pr:code-review/references/output-template.md")"
 
   for index in "${!skill_paths[@]}"; do
     skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/${skill_paths[$index]}/SKILL.md")"
@@ -3886,11 +3886,11 @@ EOF
     [[ "$skill_text" == *'Detect tools by presence; never call one merely to probe availability.'* ]]
   done
 
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:product-review/SKILL.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:product-review/SKILL.md")"
   [[ "$skill_text" == *'Preserve this value for Team Mode and standard review output.'* ]]
   [[ "$skill_text" == *'After its final aggregated audit succeeds, run `Post Conductor Diff Comments` below and then stop.'* ]]
 
-  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/kramme:pr:overengineering-review/SKILL.md")"
+  skill_text="$(cat "$BATS_TEST_DIRNAME/../skills/pr:overengineering-review/SKILL.md")"
   [[ "$skill_text" == *'argument-hint: "[--subagent-model <model>] [--base <branch>] [--inline] [--no-diff-comments] [--requirements <text>]"'* ]]
 
   run grep -rlF 'Synced Conductor diff-comment contract (keep aligned across review producers):' \

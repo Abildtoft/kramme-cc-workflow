@@ -9,7 +9,7 @@ Usage: review-candidate.sh <run-dir>
 Generates a candidate-review packet for a SkillOpt run that contains
 best_skill.md. The run directory must stay under this repository's
 .context/skillopt-runs/skill-review/ path. The script writes review artifacts
-only; it never modifies skills/kramme:skill:review/SKILL.md.
+only; it never modifies skills/skill:review/SKILL.md.
 EOF
 }
 
@@ -18,7 +18,7 @@ workflow_root="$(cd "$script_dir/../../.." && pwd -P)"
 repo_root="$(cd "$workflow_root/.." && pwd -P)"
 # shellcheck source=../../../scripts/lib/shell-helpers.sh
 source "$workflow_root/scripts/lib/shell-helpers.sh"
-source_skill="$workflow_root/skills/kramme:skill:review/SKILL.md"
+source_skill="$workflow_root/skills/skill:review/SKILL.md"
 source_rel="${source_skill#"$repo_root"/}"
 eval_runner="$workflow_root/evals/skill-review/run-eval.js"
 
@@ -309,7 +309,7 @@ const report = {
     note: 'Run this gate after a human applies the candidate patch in a normal source edit.',
   },
   source_manifest: {
-    obligation: 'If the candidate absorbs new external patterns, update skills/kramme:skill:review/references/sources.yaml in the manual source edit.',
+    obligation: 'If the candidate absorbs new external patterns, update skills/skill:review/references/sources.yaml in the manual source edit.',
   },
   recommendation: {
     status: recommendationStatus,

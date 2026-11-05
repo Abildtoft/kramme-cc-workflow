@@ -19,7 +19,7 @@ Use this structure when writing `CODEBASE_WEAKNESS_REPORT.md` or a custom `--out
 
 ## Report Provenance
 
-- **Producer:** kramme:code:refactor-opportunities --ranked {plus --solo when used}
+- **Producer:** trackbed:code:refactor-opportunities --ranked {plus --solo when used}
 - **Scope:** {scope description}
 - **Scanned commit:** {full git rev-parse HEAD at scan start, or none (not a git repository)}
 - **Working tree:** {clean / dirty (N paths) / none (not a git repository)}

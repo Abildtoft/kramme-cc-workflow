@@ -4,14 +4,14 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		skill="skills/kramme:linear:breakdown-findings/SKILL.md"
-		intake="skills/kramme:linear:breakdown-findings/references/source-intake.md"
-		clustering="skills/kramme:linear:breakdown-findings/references/clustering-and-recon.md"
-		publication="skills/kramme:linear:breakdown-findings/references/publication.md"
-		handoff="skills/kramme:linear:breakdown-findings/assets/issue-define-handoff.md"
-		issue_define="skills/kramme:linear:issue-define/SKILL.md"
-		auto_create="skills/kramme:linear:issue-define/references/auto-create.md"
-		mode_flow="skills/kramme:linear:issue-define/references/mode-and-review-flow.md"
+		skill="skills/linear:breakdown-findings/SKILL.md"
+		intake="skills/linear:breakdown-findings/references/source-intake.md"
+		clustering="skills/linear:breakdown-findings/references/clustering-and-recon.md"
+		publication="skills/linear:breakdown-findings/references/publication.md"
+		handoff="skills/linear:breakdown-findings/assets/issue-define-handoff.md"
+		issue_define="skills/linear:issue-define/SKILL.md"
+		auto_create="skills/linear:issue-define/references/auto-create.md"
+		mode_flow="skills/linear:issue-define/references/mode-and-review-flow.md"
 		readme="../README.md"
 
 		test -f "$skill"
@@ -22,9 +22,9 @@
 		test -f "$issue_define"
 		test -f "$auto_create"
 		test -f "$mode_flow"
-		grep -qF "name: kramme:linear:breakdown-findings" "$skill"
+		grep -qF "name: linear:breakdown-findings" "$skill"
 		grep -qF "disable-model-invocation: true" "$skill"
-		grep -qF "Requires Linear MCP and kramme:linear:issue-define" "$skill"
+		grep -qF "Requires Linear MCP and trackbed:linear:issue-define" "$skill"
 		grep -qF -- "--dry-run" "$skill"
 		grep -qF -- "--resume" "$skill"
 		grep -qF -- "--resume <partial-report-path>" "$skill"
@@ -35,7 +35,7 @@
 		grep -qF "Question mode: {exhaustive with --ask | light}" "$skill"
 		grep -qF "passing \`--auto\`, optional \`--ask\`, an explicit \`--\`" "$skill"
 		grep -qF "Never fall back to a locally reimplemented issue-definition flow." "$skill"
-		grep -qF "Invoke \`kramme:linear:issue-define\` via the Skill tool" "$skill"
+		grep -qF "Invoke \`trackbed:linear:issue-define\` via the Skill tool" "$skill"
 		grep -qF "SOURCE_SET_KEY" "$intake"
 		grep -qF "Never use model-normalized problem statements" "$intake"
 		grep -qF "compact JSON with lexicographically sorted object keys" "$intake"
@@ -167,7 +167,7 @@
 		! grep -qF "Marker verified:" "$publication" "$auto_create"
 		grep -qF "Never put agent workflow names, skill identifiers, slash commands" "$auto_create"
 		grep -qF "ask no questions in light mode" "$auto_create"
-		grep -qF "/kramme:linear:breakdown-findings" "$readme"
+		grep -qF "/trackbed:linear:breakdown-findings" "$readme"
 		grep -qF "[--resume <partial-report-path>]" "$readme"
 		grep -qF "deterministic partial-report resume" "$skill"
 	'
@@ -179,7 +179,7 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		dir="skills/kramme:linear:breakdown-findings"
+		dir="skills/linear:breakdown-findings"
 		! grep -R -F "../" "$dir/references" "$dir/assets"
 		test "$(find "$dir" -mindepth 3 -type f | wc -l | tr -d " ")" -eq 0
 	'

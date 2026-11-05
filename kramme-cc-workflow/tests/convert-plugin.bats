@@ -275,9 +275,9 @@ MD
 	[ -f "$plugin_root/hooks/hooks.json" ]
 	[ ! -e "$plugin_root/hooks/hook-state.json" ]
 	[ -x "$plugin_root/scripts/collect-review-diff.sh" ]
-	[ -f "$plugin_root/skills/kramme:pr:create/SKILL.md" ]
-	[ -x "$plugin_root/skills/kramme:pr:adversarial-review/scripts/run-adversarial-review.sh" ]
-	[ -f "$plugin_root/skills/kramme:a11y-auditor/SKILL.md" ]
+	[ -f "$plugin_root/skills/pr:create/SKILL.md" ]
+	[ -x "$plugin_root/skills/pr:adversarial-review/scripts/run-adversarial-review.sh" ]
+	[ -f "$plugin_root/skills/a11y-auditor/SKILL.md" ]
 
 	eval "$(node "$SCRIPT" stats "$REPO_ROOT" | sed 's/^/EXPECTED_/')"
 	local skill_count
@@ -286,7 +286,7 @@ MD
 
 	run grep -rl '\${CLAUDE_PLUGIN_ROOT' "$plugin_root/skills" --include='*.md'
 	[ "$status" -eq 1 ]
-	run grep -c 'plugins/cache/kramme-cc-workflow/kramme-cc-workflow/'"$PLUGIN_VERSION"'/scripts/collect-review-diff.sh' "$plugin_root/skills/kramme:pr:code-review/SKILL.md"
+	run grep -c 'plugins/cache/kramme-cc-workflow/kramme-cc-workflow/'"$PLUGIN_VERSION"'/scripts/collect-review-diff.sh' "$plugin_root/skills/pr:code-review/SKILL.md"
 	[ "$status" -eq 0 ]
 	[ ! -e "$out/AGENTS.md" ]
 }
@@ -314,13 +314,13 @@ MD
 
 	[ -f "$MARKETPLACE_ROOT/.agents/plugins/marketplace.json" ]
 	[ -f "$MARKETPLACE_ROOT/plugins/kramme-cc-workflow/.codex-plugin/plugin.json" ]
-	[ -f "$CACHE_ROOT/skills/kramme:pr:create/SKILL.md" ]
+	[ -f "$CACHE_ROOT/skills/pr:create/SKILL.md" ]
 	[ ! -e "$CODEX_HOME_DIR/skills" ]
 	[ ! -e "$AGENTS_HOME_DIR/skills" ]
 	[ ! -e "$CODEX_HOME_DIR/AGENTS.md" ]
 	[ ! -e "$MARKETPLACE_ROOT.build-"* ]
 	[ "$(cat "$FAKE_LOG")" = "plugin marketplace add $MARKETPLACE_ROOT
-plugin add kramme-cc-workflow@kramme-cc-workflow --json" ]
+plugin add trackbed@trackbed --json" ]
 
 	# Reinstalling replaces the generated marketplace in place.
 	printf 'stale\n' >"$MARKETPLACE_ROOT/stale.txt"
@@ -406,7 +406,7 @@ JSON
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"Uninstalled kramme-cc-workflow from $CODEX_HOME_DIR"* ]]
 	[ "$(cat "$FAKE_LOG")" = "plugin marketplace list --json
-plugin remove kramme-cc-workflow@kramme-cc-workflow
+plugin remove trackbed@trackbed
 plugin marketplace remove kramme-cc-workflow" ]
 	[ ! -e "$MARKETPLACE_ROOT" ]
 	[ ! -e "$CACHE_ROOT" ]

@@ -4,10 +4,10 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:review-pr/SKILL.md"
-    evidence="skills/kramme:linear:review-pr/references/requirements-and-evidence.md"
-    inspection="skills/kramme:linear:review-pr/references/pr-inspection.md"
-    report="skills/kramme:linear:review-pr/references/report-template.md"
+    skill="skills/linear:review-pr/SKILL.md"
+    evidence="skills/linear:review-pr/references/requirements-and-evidence.md"
+    inspection="skills/linear:review-pr/references/pr-inspection.md"
+    report="skills/linear:review-pr/references/report-template.md"
     readme="../README.md"
 
     test -f "$skill"
@@ -15,7 +15,7 @@
     test -f "$inspection"
     test -f "$report"
 
-    grep -qF "name: kramme:linear:review-pr" "$skill"
+    grep -qF "name: linear:review-pr" "$skill"
     grep -qF "argument-hint: \"[PR-number|PR-url] [ISSUE-ID]\"" "$skill"
     grep -qF "disable-model-invocation: false" "$skill"
     grep -qF "### Model Invocation Contract" "$skill"
@@ -45,7 +45,7 @@
     [ "$report_step" -lt "$cleanup" ]
     grep -qF "The inline report is emitted only after the cleanup attempt." "$skill"
 
-    grep -qF "kramme:linear:review-pr" "$readme"
+    grep -qF "trackbed:linear:review-pr" "$readme"
   '
 
 	[ "$status" -eq 0 ]
@@ -55,8 +55,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:review-pr/SKILL.md"
-    inspection="skills/kramme:linear:review-pr/references/pr-inspection.md"
+    skill="skills/linear:review-pr/SKILL.md"
+    inspection="skills/linear:review-pr/references/pr-inspection.md"
 
     grep -qF "PR_HEAD_OID" "$skill"
     grep -qF "PR_BASE_OID" "$skill"
@@ -91,9 +91,9 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:review-pr/SKILL.md"
-    evidence="skills/kramme:linear:review-pr/references/requirements-and-evidence.md"
-    report="skills/kramme:linear:review-pr/references/report-template.md"
+    skill="skills/linear:review-pr/SKILL.md"
+    evidence="skills/linear:review-pr/references/requirements-and-evidence.md"
+    report="skills/linear:review-pr/references/report-template.md"
 
     for status in VERIFIED PARTIAL MISSING CONTRADICTED UNVERIFIED OUT_OF_SCOPE; do
       grep -qF "\`$status\`" "$evidence"
@@ -177,7 +177,7 @@
 @test "cleanup removes its parent when worktree creation made no directory" {
 	repo="$BATS_TEST_TMPDIR/cleanup-absent-repo"
 	cleanup_script="$BATS_TEST_TMPDIR/cleanup-absent-function.sh"
-	inspection="$BATS_TEST_DIRNAME/../skills/kramme:linear:review-pr/references/pr-inspection.md"
+	inspection="$BATS_TEST_DIRNAME/../skills/linear:review-pr/references/pr-inspection.md"
 	TMP_PARENT="$BATS_TEST_TMPDIR/cleanup-absent-parent"
 	WORKTREE_DIR="$TMP_PARENT/wt"
 	ORIG_ROOT="$repo"
@@ -197,7 +197,7 @@
 @test "cleanup preserves unexpected worktree content" {
 	repo="$BATS_TEST_TMPDIR/cleanup-content-repo"
 	cleanup_script="$BATS_TEST_TMPDIR/cleanup-content-function.sh"
-	inspection="$BATS_TEST_DIRNAME/../skills/kramme:linear:review-pr/references/pr-inspection.md"
+	inspection="$BATS_TEST_DIRNAME/../skills/linear:review-pr/references/pr-inspection.md"
 	TMP_PARENT="$BATS_TEST_TMPDIR/cleanup-content-parent"
 	WORKTREE_DIR="$TMP_PARENT/wt"
 	ORIG_ROOT="$repo"

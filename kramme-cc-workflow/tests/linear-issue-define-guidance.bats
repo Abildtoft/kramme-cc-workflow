@@ -4,7 +4,7 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		dir="skills/kramme:linear:issue-define"
+		dir="skills/linear:issue-define"
 		skill="$dir/SKILL.md"
 		auto="$dir/references/auto-create.md"
 		flow="$dir/references/mode-and-review-flow.md"
@@ -55,7 +55,7 @@
 	run bash -c '
 		set -e
 		cd "'"$BATS_TEST_DIRNAME"'/.."
-		dir="skills/kramme:linear:issue-define"
+		dir="skills/linear:issue-define"
 		skill="$dir/SKILL.md"
 		rule="$dir/references/one-pr-rule.md"
 		auto="$dir/references/auto-create.md"

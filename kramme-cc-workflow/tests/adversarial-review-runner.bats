@@ -4,7 +4,7 @@ load 'test_helper/common'
 
 setup() {
 	PLUGIN_ROOT="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-	RUNNER="$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/scripts/run-adversarial-review.sh"
+	RUNNER="$PLUGIN_ROOT/skills/pr:adversarial-review/scripts/run-adversarial-review.sh"
 	TMP_DIR="$(mktemp -d)"
 	WORK="$TMP_DIR/work"
 	BIN_DIR="$TMP_DIR/bin"
@@ -269,7 +269,7 @@ link_runner_helpers() {
 	local snapshot_arg last_message_arg schema_file
 	snapshot_arg="$(awk '$0 == "-C" { getline; print; exit }' "$FAKE_ARGS_FILE")"
 	last_message_arg="$(awk '$0 == "-o" { getline; print; exit }' "$FAKE_ARGS_FILE")"
-	schema_file="$(cd "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/assets" && pwd -P)/review-result.schema.json"
+	schema_file="$(cd "$PLUGIN_ROOT/skills/pr:adversarial-review/assets" && pwd -P)/review-result.schema.json"
 	# Pin the whole argv, so no isolation flag or override can drop out unnoticed.
 	printf '%s\n' \
 		exec --sandbox read-only --ephemeral --ignore-user-config \
@@ -900,6 +900,6 @@ SH
 @test "runner and schema are syntactically valid" {
 	run bash -n "$RUNNER"
 	[ "$status" -eq 0 ]
-	run jq empty "$PLUGIN_ROOT/skills/kramme:pr:adversarial-review/assets/review-result.schema.json"
+	run jq empty "$PLUGIN_ROOT/skills/pr:adversarial-review/assets/review-result.schema.json"
 	[ "$status" -eq 0 ]
 }

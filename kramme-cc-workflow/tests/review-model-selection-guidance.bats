@@ -31,8 +31,8 @@ PY
 @test "every review producer loads the one shared policy" {
   local skill
   for skill in code-review convention-review github-review overengineering-review product-review review-convergence; do
-    [[ "$(cat "$ROOT/skills/kramme:pr:$skill/SKILL.md")" == *'read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`'* ]]
-    [ ! -e "$ROOT/skills/kramme:pr:$skill/references/model-selection.md" ]
+    [[ "$(cat "$ROOT/skills/pr:$skill/SKILL.md")" == *'read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`'* ]]
+    [ ! -e "$ROOT/skills/pr:$skill/references/model-selection.md" ]
   done
 }
 
@@ -44,7 +44,7 @@ import sys
 root = Path(sys.argv[1])
 for name in ['code-review', 'product-review', 'convention-review',
              'overengineering-review', 'github-review', 'review-convergence']:
-    text = (root / f'skills/kramme:pr:{name}/SKILL.md').read_text()
+    text = (root / f'skills/pr:{name}/SKILL.md').read_text()
     hint = next(line for line in text.splitlines() if line.startswith('argument-hint:'))
     assert '[--subagent-model <model>]' in hint, name
     body = text.split('---', 2)[2]
@@ -73,7 +73,7 @@ PY
   [[ "$policy" == *'Validate availability before repository work'* ]]
   [[ "$policy" == *'`--subagent-model inherit` uses the orchestrator'* ]]
   [[ "$policy" == *'bypasses the step-down ladder'* ]]
-  [[ "$(cat "$ROOT/skills/kramme:pr:code-review/SKILL.md")" == *'removing the model pair must not merge later positional aspects into an emphasis span'* ]]
+  [[ "$(cat "$ROOT/skills/pr:code-review/SKILL.md")" == *'removing the model pair must not merge later positional aspects into an emphasis span'* ]]
 }
 
 @test "level environment setting chooses step-down or same-level reviewers" {
@@ -118,13 +118,13 @@ PY
   policy="$(cat "$POLICY")"
   [[ "$policy" == *'Insert it before `--requirements` when that sentinel is present'* ]]
   [[ "$policy" == *'Do not place it inside the requirements block or append it after the sentinel'* ]]
-  [[ "$(cat "$ROOT/skills/kramme:pr:github-review/SKILL.md")" == *'include `--subagent-model <model>` in both the code-review and product-review invocations'* ]]
-  [[ "$(cat "$ROOT/skills/kramme:pr:code-review/references/closeout-loop.md")" == *'Restore `--subagent-model <model>` from a non-empty `SUBAGENT_MODEL_OVERRIDE` in every nested review invocation; preserve explicit `inherit` as well'* ]]
+  [[ "$(cat "$ROOT/skills/pr:github-review/SKILL.md")" == *'include `--subagent-model <model>` in both the code-review and product-review invocations'* ]]
+  [[ "$(cat "$ROOT/skills/pr:code-review/references/closeout-loop.md")" == *'Restore `--subagent-model <model>` from a non-empty `SUBAGENT_MODEL_OVERRIDE` in every nested review invocation; preserve explicit `inherit` as well'* ]]
   for skill in code-review product-review; do
-    team="$(cat "$ROOT/skills/kramme:pr:$skill/references/team-mode.md")"
+    team="$(cat "$ROOT/skills/pr:$skill/references/team-mode.md")"
     [[ "$team" == *'Preserve `SUBAGENT_MODEL_OVERRIDE` from startup parsing'* ]]
   done
-  policy="$(cat "$ROOT/skills/kramme:pr:review-convergence/references/review-convergence.md")"
+  policy="$(cat "$ROOT/skills/pr:review-convergence/references/review-convergence.md")"
   [[ "$policy" == *'forward `--subagent-model <model>` to every code-review, convention-review, and overengineering-review invocation, including reruns, validation-only mode, and bounded-stop validation'* ]]
   [[ "$policy" == *'keep the requirements remainder byte-for-byte unchanged'* ]]
   [[ "$policy" == *'`--adversarial-model` controls that gate independently'* ]]
@@ -133,9 +133,9 @@ PY
 @test "team and loop entry points preserve the reviewer selection" {
   local skill
   for skill in code-review product-review; do
-    [[ "$(cat "$ROOT/skills/kramme:pr:$skill/references/team-mode.md")" == *'selected reviewer model for every teammate and later validation spawn'* ]]
+    [[ "$(cat "$ROOT/skills/pr:$skill/references/team-mode.md")" == *'selected reviewer model for every teammate and later validation spawn'* ]]
   done
-  [[ "$(cat "$ROOT/skills/kramme:pr:code-review/references/closeout-loop.md")" == *'for review reruns and the independent termination verifier'* ]]
+  [[ "$(cat "$ROOT/skills/pr:code-review/references/closeout-loop.md")" == *'for review reruns and the independent termination verifier'* ]]
   [[ "$(cat "$POLICY")" == *"Do not step down again from a review subagent's model"* ]]
 }
 
@@ -163,8 +163,8 @@ PY
 @test "review wrappers preserve orchestrator class and forward explicit reviewer choices" {
   local file text
   for file in \
-    "$ROOT/skills/kramme:pr:github-review/SKILL.md" \
-    "$ROOT/skills/kramme:pr:review-convergence/references/review-convergence.md"; do
+    "$ROOT/skills/pr:github-review/SKILL.md" \
+    "$ROOT/skills/pr:review-convergence/references/review-convergence.md"; do
     text="$(cat "$file")"
     [[ "$text" == *"Keep delegated review orchestrators on this session's model"* ]]
     [[ "$text" == *'do not lower the orchestrator first and cause a second step-down'* ]]

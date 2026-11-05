@@ -276,7 +276,7 @@ Accepted findings are excluded from `--fail-on` threshold calculations only when
 
 ### Review Completion Checks
 
-`/kramme:pr:code-review` seals each run with local completion evidence; the [review guide](review.md#completion-evidence) describes the contract. Run the completion regression checks with:
+`/trackbed:pr:code-review` seals each run with local completion evidence; the [review guide](review.md#completion-evidence) describes the contract. Run the completion regression checks with:
 
 ```bash
 node --test kramme-cc-workflow/tests/node/review-execution.test.js kramme-cc-workflow/tests/node/review-completion-eval.test.js
@@ -286,7 +286,7 @@ The [completion evaluation guide](../evals/review-completion/README.md) provides
 
 ### Cold Reader Isolation Probe
 
-`kramme:cold-reader` promises to start without the project's instruction files. The offline tests check the probe's logic; only a live run checks the promise, so run it after a Claude Code or Agent SDK upgrade that touches subagent startup. It runs the `claude` on your `PATH`, uses your Claude login or `ANTHROPIC_API_KEY`, and spends a few short sessions of model usage:
+`trackbed:cold-reader` promises to start without the project's instruction files. The offline tests check the probe's logic; only a live run checks the promise, so run it after a Claude Code or Agent SDK upgrade that touches subagent startup. It runs the `claude` on your `PATH`, uses your Claude login or `ANTHROPIC_API_KEY`, and spends a few short sessions of model usage:
 
 ```bash
 node kramme-cc-workflow/scripts/probe-cold-reader-isolation.js
@@ -325,11 +325,11 @@ kramme-cc-workflow/tests/
 └── … other top-level *.bats           # Hook, skill, script, and guidance contracts
 ```
 
-The aggregate Python target also discovers repository-maintenance tests under `.agents/skills/kramme:skill:audit-sources/scripts/`.
+The aggregate Python target also discovers repository-maintenance tests under `.agents/skills/trackbed:skill:audit-sources/scripts/`.
 
 ## SkillOpt Adoption
 
-SkillOpt is currently a conservative pilot for `kramme:skill:review` only. The deterministic eval split lives in `kramme-cc-workflow/evals/skill-review/`, and the repo-local SkillOpt bridge lives in `kramme-cc-workflow/evals/skillopt/`. Keep the external SkillOpt checkout, model credentials, run output, and candidate review artifacts outside tracked source under `.context/`.
+SkillOpt is currently a conservative pilot for `trackbed:skill:review` only. The deterministic eval split lives in `kramme-cc-workflow/evals/skill-review/`, and the repo-local SkillOpt bridge lives in `kramme-cc-workflow/evals/skillopt/`. Keep the external SkillOpt checkout, model credentials, run output, and candidate review artifacts outside tracked source under `.context/`.
 
 The entry points are the split check, dry-run or real SkillOpt runner, candidate export, and candidate review packet documented in [`evals/skillopt/README.md`](../evals/skillopt/README.md). Generated `best_skill.md` output is never auto-applied. A candidate is eligible for a normal source edit only after the manual review packet under `.context/skillopt-runs/skill-review/<run-id>/candidate-review/` has been inspected, the patch applies cleanly, the eval scores do not regress, and the candidate gate passes:
 

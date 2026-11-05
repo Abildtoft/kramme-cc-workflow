@@ -43,8 +43,8 @@ class MarkdownTableHelpersTest(unittest.TestCase):
 
     def test_render_skill_reference_row_escapes_table_cells(self) -> None:
         reference = lint_skill_contracts.SkillReference(
-            name="kramme:test",
-            display_name="/kramme:test",
+            name="trackbed:test",
+            display_name="/trackbed:test",
             invocation="User",
             arguments="[left|right]",
             description="Use a | b",
@@ -52,7 +52,7 @@ class MarkdownTableHelpersTest(unittest.TestCase):
 
         self.assertEqual(
             lint_skill_contracts.render_skill_reference_row(reference),
-            r"| `/kramme:test` | User | `[left\|right]` | Use a \| b |",
+            r"| `/trackbed:test` | User | `[left\|right]` | Use a \| b |",
         )
 
     def test_render_agent_and_hook_reference_rows_escape_table_cells(self) -> None:
@@ -190,25 +190,25 @@ class FrontmatterContractHelpersTest(unittest.TestCase):
                     )
 
     def assert_generated_invocation(self, fields, invocation, user_invocable, schema=None) -> None:
-        text = f"---\nname: kramme:test\ndescription: Test skill\nargument-hint: '[path]'\n{fields}---\nBody.\n"
+        text = f"---\nname: test\ndescription: Test skill\nargument-hint: '[path]'\n{fields}---\nBody.\n"
         self.assertEqual(frontmatter_type_errors(text, schema), [])
         with tempfile.TemporaryDirectory() as tmp_dir:
             root = Path(tmp_dir)
-            skill_path = root / "skills/kramme:test/SKILL.md"
+            skill_path = root / "skills/test/SKILL.md"
             skill_path.parent.mkdir(parents=True)
             skill_path.write_text(text, encoding="utf-8")
             failures = []
-            reference = lint_skill_contracts.load_skill_references(root, "skills", failures, schema)["kramme:test"]
+            reference = lint_skill_contracts.load_skill_references(root, "skills", failures, schema)["trackbed:test"]
             catalog = skill_catalog_entries(root, {"readme_skill_sync": {"skills_dir": "skills"}}, schema, failures)
         self.assertEqual(failures, [])
-        display = "/kramme:test" if user_invocable else "kramme:test"
+        display = "/trackbed:test" if user_invocable else "trackbed:test"
         arguments = "`[path]`" if user_invocable else "—"
         self.assertEqual(
             lint_skill_contracts.render_skill_reference_row(reference),
             f"| `{display}` | {invocation} | {arguments} | Test skill |",
         )
         self.assertEqual(
-            catalog, [{"name": "kramme:test", "invocation": invocation, "path": "skills/kramme:test/SKILL.md"}]
+            catalog, [{"name": "trackbed:test", "invocation": invocation, "path": "skills/test/SKILL.md"}]
         )
 
     def test_invocation_missing_fields_keep_false_defaults(self) -> None:
@@ -1189,9 +1189,9 @@ class UIRelevanceContractTest(unittest.TestCase):
 class VerifyRunGuidanceTest(unittest.TestCase):
     def test_nx_affected_guidance_uses_resolved_base_ref(self) -> None:
         plugin_root = SCRIPTS_DIR.parent
-        skill_text = (plugin_root / "skills" / "kramme:verify:run" / "SKILL.md").read_text(encoding="utf-8")
+        skill_text = (plugin_root / "skills" / "verify:run" / "SKILL.md").read_text(encoding="utf-8")
         commands_text = (
-            plugin_root / "skills" / "kramme:verify:run" / "references" / "commands-by-project-type.md"
+            plugin_root / "skills" / "verify:run" / "references" / "commands-by-project-type.md"
         ).read_text(encoding="utf-8")
 
         self.assertIn("Nx `--base=$BASE_REF`", skill_text)

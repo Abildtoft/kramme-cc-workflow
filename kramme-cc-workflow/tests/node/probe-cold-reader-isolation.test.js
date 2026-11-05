@@ -241,7 +241,7 @@ test("sessions load project instructions and this plugin, persist nothing, and r
   assert.equal(settings.disableAllHooks, true);
   const plugin = /** @type {{path: string}[]} */ (options.plugins)[0];
   assert.equal(
-    fs.existsSync(path.join(plugin.path, "agents", "kramme:cold-reader.md")),
+    fs.existsSync(path.join(plugin.path, "agents", "cold-reader.md")),
     true,
   );
   assert.equal(options.stderr?.("ignored"), undefined);

@@ -4,7 +4,7 @@ setup() {
   cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:code:audit-agent-config/SKILL.md"
+SKILL="skills/code:audit-agent-config/SKILL.md"
 
 @test "audit stays read-only and repo-scoped" {
   test -f "$SKILL"

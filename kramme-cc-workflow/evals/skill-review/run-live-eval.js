@@ -42,7 +42,7 @@ const RUNTIME_VERSIONS = {
 };
 const REVIEWER = path.join(
   REPO,
-  "kramme-cc-workflow/skills/kramme:skill:review",
+  "kramme-cc-workflow/skills/skill:review",
 );
 
 /** @param {string} value */

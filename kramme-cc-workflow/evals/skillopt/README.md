@@ -17,7 +17,7 @@ References:
   `.context/skillopt-runs/skill-review/<run-id>/`.
 - Candidate export copies artifacts into
   `.context/skillopt-runs/skill-review/<run-id>/candidate-review/`.
-- Applying `best_skill.md` to `skills/kramme:skill:review/SKILL.md` is a
+- Applying `best_skill.md` to `skills/skill:review/SKILL.md` is a
   separate human review step and is not automated here.
 - Tests use dry-run and fake run directories only; they do not call live
   models.
@@ -69,7 +69,7 @@ bash evals/skillopt/scripts/run-skillopt-skill-review.sh --dry-run
 
 The default command uses SkillOpt's `scripts/train.py` entry point with
 `configs/skill-review.yaml`, the committed split directory, the current
-`kramme:skill:review` skill as `skill_init`, and an output root under
+`trackbed:skill:review` skill as `skill_init`, and an output root under
 `.context/skillopt-runs/skill-review/<run-id>/skillopt-output`.
 
 ## Real Pilot Run
@@ -125,7 +125,7 @@ bash evals/skillopt/scripts/review-candidate.sh \
 The script writes these files under
 `.context/skillopt-runs/skill-review/<run-id>/candidate-review/`:
 
-- `baseline.md` - the current committed `kramme:skill:review` skill text.
+- `baseline.md` - the current committed `trackbed:skill:review` skill text.
 - `candidate.md` - the SkillOpt `best_skill.md` candidate text.
 - `diff.patch` - a source-applicable patch for inspection.
 - `score-report.json` - eval status, score deltas, patch-check status, and
@@ -135,7 +135,7 @@ The script writes these files under
 `review-candidate.sh` runs `git apply --check` against `diff.patch`, but it
 does not apply the patch or write to `skills/**`. Manual apply only: inspect the
 packet, apply candidate edits in a normal source change, update
-`skills/kramme:skill:review/references/sources.yaml` if the candidate absorbs
+`skills/skill:review/references/sources.yaml` if the candidate absorbs
 new external patterns, then run:
 
 ```bash
@@ -149,7 +149,7 @@ status signal, not proof that generated behavior improved.
 
 ## Pilot Acceptance Checklist
 
-A SkillOpt candidate for `kramme:skill:review` is eligible for manual source
+A SkillOpt candidate for `trackbed:skill:review` is eligible for manual source
 application only when all of these are true:
 
 - `prepare-splits.sh --check-only` passes for the committed train, val, and
@@ -192,11 +192,11 @@ all of these criteria:
 
 The next candidate skills, in order, are:
 
-1. `kramme:pr:resolve-review` - high leverage because it changes source code in
+1. `trackbed:pr:resolve-review` - high leverage because it changes source code in
    response to review findings and needs strong false-positive protection.
-2. `kramme:pr:code-review` - high usage, but broader finding categories require
+2. `trackbed:pr:code-review` - high usage, but broader finding categories require
    a larger deterministic split before optimization is safe.
-3. `kramme:session:automate-repeats` - useful after the review skills because
+3. `trackbed:session:automate-repeats` - useful after the review skills because
    it depends on session-mining evidence and needs stricter privacy guardrails.
 
 Each expansion should start with a new deterministic eval split and candidate
