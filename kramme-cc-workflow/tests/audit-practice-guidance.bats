@@ -4,9 +4,9 @@ setup() {
   cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:code:audit-practice/SKILL.md"
-RUBRIC="skills/kramme:code:audit-practice/references/mistakes.md"
-SOURCES="skills/kramme:code:audit-practice/references/sources.yaml"
+SKILL="skills/code:audit-practice/SKILL.md"
+RUBRIC="skills/code:audit-practice/references/mistakes.md"
+SOURCES="skills/code:audit-practice/references/sources.yaml"
 
 @test "audit is user-invoked, read-only, and bounded in what it reads" {
   test -f "$SKILL"
@@ -23,20 +23,20 @@ SOURCES="skills/kramme:code:audit-practice/references/sources.yaml"
   grep -qF "Never open a transcript directly." "$SKILL"
   grep -qF 'never print `env` values, tokens, credentials, or MCP server commands and arguments' "$SKILL"
   grep -qF "Use only the JSON it prints." "$SKILL"
-  grep -qF "It never holds prompt text, command lines, tool output, or" "skills/kramme:code:audit-practice/scripts/session-signals.py"
+  grep -qF "It never holds prompt text, command lines, tool output, or" "skills/code:audit-practice/scripts/session-signals.py"
 }
 
 @test "arguments select the session window and reject conflicts" {
   grep -qF 'No arguments: sessions from the last 30 days, at most 30 (`--days 30 --limit 30`).' "$SKILL"
   grep -qF '`--recent N`: the N most recent sessions from the last year (`--days 365 --limit N`), where N is an integer from 1 to 100.' "$SKILL"
   grep -qF '`--recent` combined with `--no-sessions`' "$SKILL"
-  grep -qF 'Usage: /kramme:code:audit-practice [--recent N] [--no-sessions]' "$SKILL"
+  grep -qF 'Usage: /trackbed:code:audit-practice [--recent N] [--no-sessions]' "$SKILL"
 }
 
 @test "sessions are found through every worktree and archived Conductor workspaces" {
   grep -qF 'every `worktree` path from `git worktree list --porcelain`' "$SKILL"
   grep -qF 'When the root matches `*/conductor/workspaces/<repo>/<workspace>`, use `*/conductor/workspaces/<repo>` instead' "$SKILL"
-  grep -qF 'python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:code:audit-practice/scripts/session-signals.py"' "$SKILL"
+  grep -qF 'python3 "${CLAUDE_PLUGIN_ROOT}/skills/code:audit-practice/scripts/session-signals.py"' "$SKILL"
   grep -qF "If the script fails or analyzes zero sessions, record an audit gap and continue" "$SKILL"
 }
 
@@ -60,10 +60,10 @@ SOURCES="skills/kramme:code:audit-practice/references/sources.yaml"
 }
 
 @test "every routed skill exists and accepts user invocation" {
-  routes=$(grep -oE '/kramme:[a-z0-9:-]+' "$RUBRIC" | sort -u)
+  routes=$(grep -oE '/trackbed:[a-z0-9:-]+' "$RUBRIC" | sort -u)
   [ -n "$routes" ]
   for route in $routes; do
-    skill="skills/${route#/}/SKILL.md"
+    skill="skills/${route#/trackbed:}/SKILL.md"
     test -f "$skill" || { echo "missing route target: $route"; return 1; }
     grep -qF "user-invocable: true" "$skill" || { echo "route is not user-invocable: $route"; return 1; }
   done

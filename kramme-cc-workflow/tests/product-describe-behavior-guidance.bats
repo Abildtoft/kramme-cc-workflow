@@ -4,13 +4,13 @@ setup() {
 	cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:product:describe-behavior/SKILL.md"
-MODEL="skills/kramme:product:describe-behavior/references/product-modeling.md"
-SOURCES="skills/kramme:product:describe-behavior/references/sources.yaml"
-INDEX_TEMPLATE="skills/kramme:product:describe-behavior/assets/corpus-index-template.md"
-BEHAVIOR_TEMPLATE="skills/kramme:product:describe-behavior/assets/behavior-template.md"
-VERIFICATION_TEMPLATE="skills/kramme:product:describe-behavior/assets/verification-template.md"
-TRIAGE_TEMPLATE="skills/kramme:product:describe-behavior/assets/triage-template.md"
+SKILL="skills/product:describe-behavior/SKILL.md"
+MODEL="skills/product:describe-behavior/references/product-modeling.md"
+SOURCES="skills/product:describe-behavior/references/sources.yaml"
+INDEX_TEMPLATE="skills/product:describe-behavior/assets/corpus-index-template.md"
+BEHAVIOR_TEMPLATE="skills/product:describe-behavior/assets/behavior-template.md"
+VERIFICATION_TEMPLATE="skills/product:describe-behavior/assets/verification-template.md"
+TRIAGE_TEMPLATE="skills/product:describe-behavior/assets/triage-template.md"
 
 @test "behavior-description skill ships its complete self-contained contract" {
 	for file in "$SKILL" "$MODEL" "$SOURCES" "$INDEX_TEMPLATE" "$BEHAVIOR_TEMPLATE" "$VERIFICATION_TEMPLATE" "$TRIAGE_TEMPLATE"; do

@@ -4,10 +4,10 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
-    preflight="skills/kramme:linear:issue-to-pr/references/delegated-skills.md"
-    convergence="skills/kramme:pr:review-convergence/SKILL.md"
-    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+    parent="skills/linear:issue-to-pr/SKILL.md"
+    preflight="skills/linear:issue-to-pr/references/delegated-skills.md"
+    convergence="skills/pr:review-convergence/SKILL.md"
+    policy="skills/pr:review-convergence/references/review-convergence.md"
     readme="../README.md"
     review_guide="docs/review.md"
 
@@ -18,7 +18,7 @@
     grep -qF "including one transferred from SIW" "$parent"
     grep -qF "untransferred local SIW issues" "$parent"
     ! grep -qF "SIW-tracked issues" "$parent"
-    grep -qF "kramme:linear:issue-implement" "$parent"
+    grep -qF "trackbed:linear:issue-implement" "$parent"
     grep -qF "## Step 3: Freeze Linear Intent and Invoke Review Convergence" "$parent"
     grep -qF "Compose \`{issue-requirements}\` once" "$parent"
     grep -qF "read \`references/delegated-skills.md\` and complete its installed-skill preflight" "$parent"
@@ -28,10 +28,10 @@
     grep -qF -- "--requirements {issue-requirements}" "$parent"
     grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$parent"
     grep -qF "equal \`{issue-requirements}\` byte-for-byte" "$parent"
-    grep -qF "name: kramme:pr:review-convergence" "$convergence"
+    grep -qF "name: pr:review-convergence" "$convergence"
     grep -qF "user-invocable: true" "$convergence"
     grep -qF "disable-model-invocation: false" "$convergence"
-    grep -qF "The same phase is also used by \`kramme:code:plan-to-pr\`" "$review_guide"
+    grep -qF "The same phase is also used by \`trackbed:code:plan-to-pr\`" "$review_guide"
     ! grep -qF "kramme:linear:issue-review" "$parent" "$convergence" "$readme" "$review_guide"
   '
 
@@ -42,12 +42,12 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    parent="skills/linear:issue-to-pr/SKILL.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
     review_guide="docs/review.md"
 
     grep -qF "always forwards an explicit remediation-cycle budget" "$parent"
-    grep -qF "Usage: \$kramme:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--adversarial-review] [--ship]" "$parent"
+    grep -qF "Usage: \$trackbed:linear:issue-to-pr <ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--adversarial-review] [--ship]" "$parent"
     grep -qF -- "--archive-key linear-issue-to-pr [--strict] --rounds {cycles} [--depth {depth}] [--adversarial-review] [--isolated] --requirements {issue-requirements}" "$parent"
     grep -qF "Always pass \`--rounds {cycles}\`, which carries this workflow'"'"'s default budget of \`2\` unless \`--cycles\` overruled it" "$parent"
     grep -qF "neither the caller'"'"'s default remediation-cycle budget nor a \`--cycles\` override" "$shared_contract"
@@ -61,24 +61,24 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
-    implement="skills/kramme:linear:issue-implement/SKILL.md"
-    convergence="skills/kramme:pr:review-convergence/SKILL.md"
-    cleanup="skills/kramme:workflow:cleanup-artifacts/SKILL.md"
-    create="skills/kramme:pr:create/SKILL.md"
-    fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
+    parent="skills/linear:issue-to-pr/SKILL.md"
+    implement="skills/linear:issue-implement/SKILL.md"
+    convergence="skills/pr:review-convergence/SKILL.md"
+    cleanup="skills/workflow:cleanup-artifacts/SKILL.md"
+    create="skills/pr:create/SKILL.md"
+    fix_ci="skills/pr:fix-ci/SKILL.md"
 
     for skill in "$implement" "$convergence" "$cleanup" "$create" "$fix_ci"; do
       grep -qF "disable-model-invocation: false" "$skill"
       grep -qF "### Model Invocation Contract" "$skill"
       grep -qF "No other parent workflow is authorized by this model-invocation exception" "$skill"
     done
-    grep -qF "Invoke \`kramme:linear:issue-implement\` with \`{issue-id} --auto --set-in-progress\`" "$parent"
-    grep -qF "Invoke \`kramme:workflow:cleanup-artifacts --auto\`" "$parent"
-    grep -qF "Invoke \`kramme:pr:create --linear-issue {issue-id} --require-generated-description\`" "$parent"
-    grep -qF "Invoke \`kramme:pr:fix-ci --no-consolidate\`" "$parent"
-    grep -qF "Invoke automatically only as the exact child of \`kramme:linear:issue-to-pr\`" "$implement"
-    grep -qF "the exact child of \`kramme:linear:issue-to-pr --ship\`" "$cleanup"
+    grep -qF "Invoke \`trackbed:linear:issue-implement\` with \`{issue-id} --auto --set-in-progress\`" "$parent"
+    grep -qF "Invoke \`trackbed:workflow:cleanup-artifacts --auto\`" "$parent"
+    grep -qF "Invoke \`trackbed:pr:create --linear-issue {issue-id} --require-generated-description\`" "$parent"
+    grep -qF "Invoke \`trackbed:pr:fix-ci --no-consolidate\`" "$parent"
+    grep -qF "Invoke automatically only as the exact child of \`trackbed:linear:issue-to-pr\`" "$implement"
+    grep -qF "the exact child of \`trackbed:linear:issue-to-pr --ship\`" "$cleanup"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -88,12 +88,12 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:review-convergence/SKILL.md"
-    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+    skill="skills/pr:review-convergence/SKILL.md"
+    policy="skills/pr:review-convergence/references/review-convergence.md"
 
     grep -qF "Initialize \`DIFF_COMMENTS_POSTED_TOTAL=0\`" "$policy"
-    grep -qF "When active, invoke \`kramme:pr:code-review --parallel --inline\` in normal mode" "$policy"
-    grep -qF "kramme:pr:code-review --parallel --inline --no-diff-comments" "$policy"
+    grep -qF "When active, invoke \`trackbed:pr:code-review --parallel --inline\` in normal mode" "$policy"
+    grep -qF "trackbed:pr:code-review --parallel --inline --no-diff-comments" "$policy"
     grep -qF "Require exactly one producer summary line \`Diff comments posted: N (skipped M already present)\`" "$policy"
     grep -qF "add \`N\` to \`DIFF_COMMENTS_POSTED_TOTAL\`" "$policy"
     grep -qF "validation-only invocations contributed zero" "$policy"
@@ -108,8 +108,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:issue-to-pr/SKILL.md"
-    transition="skills/kramme:linear:issue-implement/references/status-transition.md"
+    skill="skills/linear:issue-to-pr/SKILL.md"
+    transition="skills/linear:issue-implement/references/status-transition.md"
 
     test -f "$transition"
     grep -qF "Capture the team identifier and a stable \`{issue-update-id}\`" "$skill"
@@ -148,7 +148,7 @@
     state_confirmation_line=$(grep -nF "If \`{confirmed-state-type}\` is anything other than \`backlog\`" "$skill" | cut -d: -f1)
     state_recheck_line=$(grep -nF "Immediately before delegation, close the confirmation race and prepare the status handoff" "$skill" | cut -d: -f1)
     state_handoff_line=$(grep -nF "as the authoritative status handoff for the delegated transition" "$skill" | cut -d: -f1)
-    delegate_line=$(grep -n "Invoke .*kramme:linear:issue-implement" "$skill" | cut -d: -f1)
+    delegate_line=$(grep -n "Invoke .*trackbed:linear:issue-implement" "$skill" | cut -d: -f1)
 
     [ "$branch_check_line" -lt "$state_refresh_line" ]
     [ "$state_refresh_line" -lt "$state_target_line" ]
@@ -169,9 +169,9 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
-    child="skills/kramme:linear:issue-implement/SKILL.md"
-    branch_setup="skills/kramme:linear:issue-implement/references/branch-setup.md"
+    parent="skills/linear:issue-to-pr/SKILL.md"
+    child="skills/linear:issue-implement/SKILL.md"
+    branch_setup="skills/linear:issue-implement/references/branch-setup.md"
 
     grep -qF "argument-hint: \"<ISSUE-ID> [--continue] [--strict] [--cycles <1-5>] [--depth <balanced|full>] [--adversarial-review] [--ship]\"" "$parent"
     grep -qF "Stop on any unrelated or ambiguous path" "$parent"
@@ -194,12 +194,12 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:issue-to-pr/SKILL.md"
+    skill="skills/linear:issue-to-pr/SKILL.md"
 
     grep -F "single quote" "$skill" | grep -qF "without running the helper"
     grep -F "Before interpolating \`{issue-branch}\` into any shell command" "$skill" | grep -qF "[A-Za-z0-9][A-Za-z0-9._/-]*"
     grep -qF "never \`eval\`" "$skill"
-    grep -F "\`pull_request_open\`" "$skill" | grep -qF "kramme:pr:fix-ci --no-consolidate"
+    grep -F "\`pull_request_open\`" "$skill" | grep -qF "trackbed:pr:fix-ci --no-consolidate"
     grep -F "\`pull_request_closed\`" "$skill" | grep -qF "new issue branch"
     grep -F "\`remote_branch_exists\`" "$skill" | grep -qF "stop before delegated branch setup"
   '
@@ -211,9 +211,9 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:issue-to-pr/SKILL.md"
-    adapter="skills/kramme:linear:issue-to-pr/references/conductor-workspace.md"
-    sources="skills/kramme:linear:issue-to-pr/references/sources.yaml"
+    skill="skills/linear:issue-to-pr/SKILL.md"
+    adapter="skills/linear:issue-to-pr/references/conductor-workspace.md"
+    sources="skills/linear:issue-to-pr/references/sources.yaml"
     portability="docs/agent-portability.md"
     shipping_guide="docs/shipping.md"
 
@@ -244,7 +244,7 @@
     grep -qF "id: conductor-environment-variables" "$sources"
 
     adapter_line=$(grep -nF "After Step 10 closes the confirmation race" "$skill" | cut -d: -f1)
-    delegate_line=$(grep -n "Invoke .*kramme:linear:issue-implement" "$skill" | cut -d: -f1)
+    delegate_line=$(grep -n "Invoke .*trackbed:linear:issue-implement" "$skill" | cut -d: -f1)
     [ "$adapter_line" -lt "$delegate_line" ]
   '
 
@@ -255,8 +255,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:review-convergence/SKILL.md"
-    scope="skills/kramme:pr:review-convergence/references/standalone-scope-handoff.md"
+    skill="skills/pr:review-convergence/SKILL.md"
+    scope="skills/pr:review-convergence/references/standalone-scope-handoff.md"
 
     grep -qF "Accept only \`linear-issue-to-pr\` or \`code-plan-to-pr\` as the archive key" "$skill"
     grep -qF "**Internal caller mode:** reject \`--derive\`, \`--adversarial-provider\`, and \`--adversarial-model\`;" "$skill"
@@ -284,8 +284,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:review-convergence/SKILL.md"
-    registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
+    skill="skills/pr:review-convergence/SKILL.md"
+    registry="skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
     review_guide="docs/review.md"
 
     grep -qF "argument-hint: \"[--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]\"" "$skill"
@@ -313,7 +313,7 @@
     grep -qF "When direct mode has \`DIRECT_REQUIREMENTS_SOURCE=conversation\` and no explicit selector" "$skill"
     grep -qF "set \`DIRECT_REQUIREMENTS_SOURCE=linear\` and \`{work-id}={linear-issue-id}\`" "$skill"
     grep -qF "Do not use the branch diff, implementation, commit messages, Pull Request metadata, or repository conventions to fill missing product intent." "$skill"
-    grep -qF "Usage: \$kramme:pr:review-convergence [--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]" "$skill"
+    grep -qF "Usage: \$trackbed:pr:review-convergence [--subagent-model <model>] [--strict] [--rounds <1-5>] [--depth <balanced|full>] [--adversarial-review [--adversarial-provider claude|codex] [--adversarial-model <id>]] [--derive | LINEAR-ISSUE | --requirements <authoritative requirements>]" "$skill"
     grep -qF "with no requirement argument it derives the contract from the current conversation" "$review_guide"
     grep -qF "with \`--derive\` it drafts a contract from conversation and committed branch evidence" "$review_guide"
     grep -qF "set its maximum to one through five fix-and-rerun rounds with \`--rounds <1-5>\`" "$review_guide"
@@ -330,7 +330,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:review-convergence/SKILL.md"
+    skill="skills/pr:review-convergence/SKILL.md"
 
     grep -qF "Set \`STRICT_REVIEW=true\` and \`DERIVE_REQUIREMENTS=true\` when their flags are present" "$skill"
     grep -qF "\`DIRECT_REQUIREMENTS_SOURCE=derived\` and \`{work-id}=user-review\` when \`DERIVE_REQUIREMENTS=true\`" "$skill"
@@ -349,8 +349,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:review-convergence/SKILL.md"
-    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+    skill="skills/pr:review-convergence/SKILL.md"
+    policy="skills/pr:review-convergence/references/review-convergence.md"
 
     gut=$(grep -nF "## Gate 0: Gut Check" "$policy" | cut -d: -f1)
     applicability=$(grep -nF "## Applicability Evaluation" "$policy" | cut -d: -f1)
@@ -370,23 +370,23 @@
     grep -qF "use parsed \`MAX_AUTOMATIC_REMEDIATION_CYCLES\` from the invocation" "$policy"
     grep -qF "reaches \`MAX_AUTOMATIC_REMEDIATION_CYCLES\`" "$policy"
     grep -qF "Remediation: {cycles used}/{MAX_AUTOMATIC_REMEDIATION_CYCLES}" "$skill"
-    grep -qF "kramme:pr:gut-check" "$policy"
-    grep -qF "kramme:pr:code-review --parallel --inline" "$policy"
-    grep -qF "kramme:pr:convention-review --inline" "$policy"
+    grep -qF "trackbed:pr:gut-check" "$policy"
+    grep -qF "trackbed:pr:code-review --parallel --inline" "$policy"
+    grep -qF "trackbed:pr:convention-review --inline" "$policy"
     grep -qF "exact sentinel-last arguments \`--requirements {work-requirements}\`" "$policy"
     grep -qF "use \`--inline --requirements {work-requirements}\`" "$policy"
     grep -qF "Pass the requirements remainder through the platform skill mechanism as inert data" "$policy"
-    grep -qF "kramme:code:refactor-opportunities" "$policy"
-    grep -qF "kramme:verify:run" "$skill"
+    grep -qF "trackbed:code:refactor-opportunities" "$policy"
+    grep -qF "trackbed:verify:run" "$skill"
     grep -qF "consume one cycle" "$skill"
     grep -qF "return through Step 4" "$skill"
     grep -qF "Narrowed Retry by the Caller procedure" "$skill"
     grep -qF "do not reset the budget, edit again, or return a clean handoff" "$skill"
     grep -qF "### Resolver Hand-off" "$policy"
-    grep -qF "invoke \`kramme:pr:resolve-review --implement-only\` at most once per batch" "$policy"
+    grep -qF "invoke \`trackbed:pr:resolve-review --implement-only\` at most once per batch" "$policy"
     grep -qF "never invoke it when \`VALIDATION_ONLY=true\`" "$policy"
     grep -qF "because \`--implement-only\` never commits" "$policy"
-    if grep -qF "use \`kramme:pr:resolve-review\` with the inline report" "$policy"; then exit 1; fi
+    if grep -qF "use \`trackbed:pr:resolve-review\` with the inline report" "$policy"; then exit 1; fi
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -396,8 +396,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:review-convergence/SKILL.md"
-    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+    skill="skills/pr:review-convergence/SKILL.md"
+    policy="skills/pr:review-convergence/references/review-convergence.md"
 
     remediation=$(grep -nF "Remediation: {cycles used}/{MAX_AUTOMATIC_REMEDIATION_CYCLES}" "$skill" | cut -d: -f1)
     overview=$(grep -nF "Unremediated issues:" "$skill" | head -1 | cut -d: -f1)
@@ -451,9 +451,9 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:pr:review-convergence/SKILL.md"
-    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
-    registry="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
+    skill="skills/pr:review-convergence/SKILL.md"
+    policy="skills/pr:review-convergence/references/review-convergence.md"
+    registry="skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
 
     grep -qF "Step 2 already created and validated \`{review-archive}\`" "$policy"
     grep -qF "REVIEW_ARCHIVE_CANONICAL" "$policy"
@@ -484,7 +484,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+    policy="skills/pr:review-convergence/references/review-convergence.md"
 
     retire=$(grep -nF "belongs to an earlier invocation" "$policy" | cut -d: -f1)
     gate=$(grep -nF "### Gate 3: Overengineering Review" "$policy" | cut -d: -f1)
@@ -509,16 +509,16 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    shipping="skills/linear:issue-to-pr/references/shipping-contract.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
 
-    grep -qF "kramme:workflow:cleanup-artifacts --auto" "$shipping"
-    grep -qF "kramme:pr:create --linear-issue {issue-id} --require-generated-description" "$shipping"
-    grep -qF "kramme:pr:fix-ci --no-consolidate" "$shipping"
+    grep -qF "trackbed:workflow:cleanup-artifacts --auto" "$shipping"
+    grep -qF "trackbed:pr:create --linear-issue {issue-id} --require-generated-description" "$shipping"
+    grep -qF "trackbed:pr:fix-ci --no-consolidate" "$shipping"
     grep -qF -- "- \`{work-id}\`: \`{issue-id}\`." "$shipping"
     grep -qF -- "- \`{archive-key}\`: \`linear-issue-to-pr\`." "$shipping"
     grep -qF -- "- \`{work-requirements}\`: \`{issue-requirements}\`" "$shipping"
-    grep -qF "invoke \`kramme:pr:review-convergence\` exactly once" "$shared_contract"
+    grep -qF "invoke \`trackbed:pr:review-convergence\` exactly once" "$shared_contract"
     grep -qF -- "--work-id {work-id} --archive-key {archive-key} --validation-only" "$shared_contract"
     grep -qF "the exact frozen sentinel-last \`--requirements {work-requirements}\` block" "$shared_contract"
     grep -qF "A hook bound to \`none\` is skipped at the step that names it" "$shared_contract"
@@ -527,9 +527,9 @@
     grep -qF "append \`{validation-extra-args}\` only when it is not \`none\`" "$shared_contract"
     grep -qF "Mode: validation-only" "$shared_contract"
     grep -qF "JSON-decode the returned \`Requirements JSON\` field" "$shared_contract"
-    grep -qF "invoke \`kramme:verify:run\` with \`--full\`" "$shared_contract"
-    ! grep -qF "kramme:pr:overengineering-review --requirements" "$shipping"
-    ! grep -qF "kramme:pr:overengineering-review --requirements" "$shared_contract"
+    grep -qF "invoke \`trackbed:verify:run\` with \`--full\`" "$shared_contract"
+    ! grep -qF "trackbed:pr:overengineering-review --requirements" "$shipping"
+    ! grep -qF "trackbed:pr:overengineering-review --requirements" "$shared_contract"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -539,8 +539,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
-    shipping="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
+    parent="skills/linear:issue-to-pr/SKILL.md"
+    shipping="skills/linear:issue-to-pr/references/shipping-contract.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
 
     grep -qF "\${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/pr-shipping-contract.md" "$parent"
@@ -553,7 +553,7 @@
       grep -qF -- "- \`$hook\`: " "$shipping" || { echo "unbound hook: $hook"; exit 1; }
     done
 
-    ! grep -qE "kramme:linear|kramme:code:plan-to-pr|workflow-artifacts" "$shared_contract"
+    ! grep -qE "trackbed:linear|trackbed:code:plan-to-pr|workflow-artifacts" "$shared_contract"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -563,11 +563,11 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:linear:issue-to-pr/references/shipping-contract.md"
-    create="skills/kramme:pr:create/SKILL.md"
-    branch="skills/kramme:pr:create/references/branch-and-platform-handling.md"
-    generate="skills/kramme:pr:generate-description/SKILL.md"
-    context="skills/kramme:pr:generate-description/references/context-gathering.md"
+    parent="skills/linear:issue-to-pr/references/shipping-contract.md"
+    create="skills/pr:create/SKILL.md"
+    branch="skills/pr:create/references/branch-and-platform-handling.md"
+    generate="skills/pr:generate-description/SKILL.md"
+    context="skills/pr:generate-description/references/context-gathering.md"
 
     grep -qF -- "--linear-issue {issue-id}" "$parent"
     grep -qF "[--linear-issue <ISSUE-ID>]" "$create"
@@ -589,11 +589,11 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
-    convergence="skills/kramme:pr:review-convergence/SKILL.md"
-    policy="skills/kramme:pr:review-convergence/references/review-convergence.md"
+    parent="skills/linear:issue-to-pr/SKILL.md"
+    convergence="skills/pr:review-convergence/SKILL.md"
+    policy="skills/pr:review-convergence/references/review-convergence.md"
     shared_contract="shared/implementation/references/pr-shipping-contract.md"
-    fix_ci="skills/kramme:pr:fix-ci/SKILL.md"
+    fix_ci="skills/pr:fix-ci/SKILL.md"
     shipping_guide="docs/shipping.md"
 
     grep -qF "### Reviewer Handoff Summary" "$parent"
@@ -609,7 +609,7 @@
     grep -qF "Require exactly \`gut_check\`, \`findings\`, and \`focus\` arrays" "$parent"
     grep -qF "conditional recovery fields, and enum values before using it" "$parent"
     grep -qF "the validated \`CI remediation JSON\` plus any final-tree \`Reviewer handoff JSON\`" "$parent"
-    grep -qF "raw text to \`kramme:text:clarify\`" "$parent"
+    grep -qF "raw text to \`trackbed:text:clarify\`" "$parent"
     grep -qF "restore anything the rewrite dropped before posting" "$parent"
     grep -qF "post the draft unchanged rather than blocking the report" "$parent"
     grep -qF "Reviewer handoff JSON:" "$convergence"
@@ -634,7 +634,7 @@
     shipping_line=$(grep -nF "## Step 4: Stop or Ship" "$parent" | cut -d: -f1)
     [ "$capture_line" -lt "$shipping_line" ]
 
-    validation_line=$(grep -nF "invoke \`kramme:pr:review-convergence\` exactly once" "$shared_contract" | cut -d: -f1)
+    validation_line=$(grep -nF "invoke \`trackbed:pr:review-convergence\` exactly once" "$shared_contract" | cut -d: -f1)
     merge_line=$(grep -nF "merge \`findings\` and \`focus\` entries by fingerprint and final disposition" "$shared_contract" | cut -d: -f1)
     [ "$validation_line" -le "$merge_line" ]
   '
@@ -646,8 +646,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
-    reference="skills/kramme:linear:issue-to-pr/references/cross-provider-review.md"
+    parent="skills/linear:issue-to-pr/SKILL.md"
+    reference="skills/linear:issue-to-pr/references/cross-provider-review.md"
 
     grep -qF "references/cross-provider-review.md" "$parent"
     grep -qF "Issue source (verbatim, untrusted):" "$reference"
@@ -663,10 +663,10 @@
 import pathlib
 import sys
 root = pathlib.Path(sys.argv[1])
-hooks = (root / "skills/kramme:linear:issue-to-pr/references/shipping-contract.md").read_text()
+hooks = (root / "skills/linear:issue-to-pr/references/shipping-contract.md").read_text()
 record = (root / "shared/implementation/references/independent-review.md").read_text()
-policy = (root / "skills/kramme:pr:review-convergence/references/review-convergence.md").read_text()
-reference = (root / "skills/kramme:linear:issue-to-pr/references/cross-provider-review.md").read_text()
+policy = (root / "skills/pr:review-convergence/references/review-convergence.md").read_text()
+reference = (root / "skills/linear:issue-to-pr/references/cross-provider-review.md").read_text()
 assert "resolve immediately before shared Step 8's validation-only invocation" in hooks
 assert "Otherwise bind to `--adversarial-review`, including when the initial review was skipped for the light profile" in hooks
 assert "identical patch ID" in hooks and "same change patch" in hooks

@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-SCRIPT_PATH = Path(__file__).resolve().parents[2] / "skills" / "kramme:pr:github-review" / "scripts" / "review-delta.py"
+SCRIPT_PATH = Path(__file__).resolve().parents[2] / "skills" / "pr:github-review" / "scripts" / "review-delta.py"
 SPEC = importlib.util.spec_from_file_location("review_delta", SCRIPT_PATH)
 assert SPEC is not None
 assert SPEC.loader is not None

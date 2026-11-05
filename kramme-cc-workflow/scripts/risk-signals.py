@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic risk signals for kramme:pr:triage-risk.
+"""Deterministic risk signals for trackbed:pr:triage-risk.
 
 Classify the paths changed between a merge base and a head commit, scan added
 lines for high-signal patterns, apply the optional risk policy read from a

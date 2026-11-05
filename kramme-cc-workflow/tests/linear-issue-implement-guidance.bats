@@ -6,14 +6,14 @@ load 'test_helper/common'
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:issue-implement"
+    skill="skills/linear:issue-implement"
 
     test -f "$skill/SKILL.md"
     test -f "$skill/references/display-templates.md"
     test -f "$skill/assets/technical-plan.md"
 
 	    grep -qF "Local SIW work must be transferred to Linear first." "$skill/SKILL.md"
-	    grep -qF "run \`kramme:siw:transfer-to-linear\` first" "$skill/SKILL.md"
+	    grep -qF "run \`trackbed:siw:transfer-to-linear\` first" "$skill/SKILL.md"
 	    ! grep -qF "kramme:siw:issue-implement" "$skill/SKILL.md"
 	    grep -qF "Reject direct, incomplete, mismatched, or duplicate use" "$skill/SKILL.md"
 	    grep -qF "Require current \`HEAD\`, committed paths, and dirty paths to equal the captured entry handoff" "$skill/references/branch-setup.md"
@@ -36,10 +36,10 @@ load 'test_helper/common'
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:issue-implement/SKILL.md"
-    transition="skills/kramme:linear:issue-implement/references/status-transition.md"
-    templates="skills/kramme:linear:issue-implement/references/display-templates.md"
-    parent="skills/kramme:linear:issue-to-pr/SKILL.md"
+    skill="skills/linear:issue-implement/SKILL.md"
+    transition="skills/linear:issue-implement/references/status-transition.md"
+    templates="skills/linear:issue-implement/references/display-templates.md"
+    parent="skills/linear:issue-to-pr/SKILL.md"
 
     test -f "$transition"
 

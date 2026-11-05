@@ -10,7 +10,7 @@ Use the separate $200 monthly Claude API allocations to run automated evaluation
 
 ### In scope
 
-- Evaluate only `kramme:skill:review`, using its existing train/validation/test fixtures and scorer. This stays inside the accepted [skill quality regime](kramme-cc-workflow/docs/decisions/2026-07-06-skill-quality-regime.md).
+- Evaluate only `trackbed:skill:review`, using its existing train/validation/test fixtures and scorer. This stays inside the accepted [skill quality regime](kramme-cc-workflow/docs/decisions/2026-07-06-skill-quality-regime.md).
 - Add an opt-in Claude Agent SDK prediction adapter behind the runner's existing `--prediction-command` interface.
 - Add sequential organization selection, restart of an unfinished read-only case after credit exhaustion, persistent progress, bounded retries, and per-attempt evidence.
 - Support local execution and a separate scheduled/manual GitHub Actions workflow. Existing fixture-only tests and CI remain credential-free.

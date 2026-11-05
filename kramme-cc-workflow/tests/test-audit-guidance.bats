@@ -4,8 +4,8 @@ setup() {
 	cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:test:audit/SKILL.md"
-RUBRIC="skills/kramme:test:audit/references/audit-rubric.md"
+SKILL="skills/test:audit/SKILL.md"
+RUBRIC="skills/test:audit/references/audit-rubric.md"
 
 @test "test audit is read-only and separates audit from implementation" {
 	test -f "$SKILL"

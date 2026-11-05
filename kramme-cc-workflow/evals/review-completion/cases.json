@@ -2,7 +2,7 @@
   {
     "id": "small-diff",
     "split": "train",
-    "prompt": "Run kramme:pr:code-review on this one-line executable bug fix. CI is green and the diff is tiny.",
+    "prompt": "Run trackbed:pr:code-review on this one-line executable bug fix. CI is green and the diff is tiny.",
     "expected": "COMPLETE",
     "aspects": ["all"],
     "forbidden": ["parent-substitution", "invented-filter", "cancel-for-budget"]
@@ -34,7 +34,7 @@
   {
     "id": "filtered-control",
     "split": "test",
-    "prompt": "Run kramme:pr:code-review code --inline. I intentionally want only the code dimension, with the skill's post-processing.",
+    "prompt": "Run trackbed:pr:code-review code --inline. I intentionally want only the code dimension, with the skill's post-processing.",
     "expected": "COMPLETE",
     "aspects": ["code"],
     "forbidden": ["expand-user-filter", "skip-empty-meta"]

@@ -10,9 +10,9 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import lint_skill_contracts  # noqa: E402
 
-PARENT = "kramme:test:parent"
-CHILD = "kramme:test:child"
-PARENT_PATH = f"kramme-cc-workflow/skills/{PARENT}/SKILL.md"
+PARENT = "trackbed:test:parent"
+CHILD = "trackbed:test:child"
+PARENT_PATH = f"kramme-cc-workflow/skills/{PARENT.removeprefix('trackbed:')}/SKILL.md"
 
 
 def handoff(line: int, shape: str, path: str = PARENT_PATH, target: str = CHILD) -> str:
@@ -46,6 +46,8 @@ class InvocationGraphCheckTest(unittest.TestCase):
     def _skill(
         self, name: str, body: str = "Body.", *, model_disabled: bool = False, user_invocable: str = "true"
     ) -> None:
+        # Frontmatter names and folders carry no prefix; prose uses the qualified name.
+        name = name.removeprefix("trackbed:")
         self._write(
             f"kramme-cc-workflow/skills/{name}/SKILL.md",
             "\n".join(
@@ -165,11 +167,11 @@ class InvocationGraphCheckTest(unittest.TestCase):
         self.assertEqual(result.failures, [hidden(7), hidden(8)])
 
     def test_unknown_targets_paths_and_self_references_are_ignored(self) -> None:
-        self._skill(PARENT, f"Invoke `{PARENT}` again.\nInvoke `kramme:test:removed` next.", model_disabled=True)
+        self._skill(PARENT, f"Invoke `{PARENT}` again.\nInvoke `trackbed:test:removed` next.", model_disabled=True)
         self._skill(CHILD, model_disabled=True)
         self._write(
             f"kramme-cc-workflow/skills/{PARENT}/references/notes.md",
-            f"Read `skills/{CHILD}/SKILL.md` and invoke `kramme:test:agent`.\n",
+            f"Read `skills/{CHILD}/SKILL.md` and invoke `trackbed:test:agent`.\n",
         )
         context = lint_skill_contracts.LintContext(
             root=self.root, registry={"invocation_graph": {"allowlist": []}}, schema={}
@@ -184,7 +186,7 @@ class InvocationGraphCheckTest(unittest.TestCase):
         self._skill(CHILD, model_disabled=True)
         self._write(f"kramme-cc-workflow/skills/{PARENT}/references/flow.md", f"Invoke `{CHILD}` now.\n")
         self._write("kramme-cc-workflow/shared/topic/references/flow.md", f"Invoke `{CHILD}` now.\n")
-        self._write("kramme-cc-workflow/agents/kramme:test-agent.md", f"Invoke `{CHILD}` now.\n")
+        self._write("kramme-cc-workflow/agents/test-agent.md", f"Invoke `{CHILD}` now.\n")
         context = lint_skill_contracts.LintContext(
             root=self.root, registry={"invocation_graph": {"allowlist": []}}, schema={}
         )
@@ -194,18 +196,18 @@ class InvocationGraphCheckTest(unittest.TestCase):
         self.assertEqual(
             result.failures,
             [
-                handoff(1, "invoke", path="kramme-cc-workflow/agents/kramme:test-agent.md"),
+                handoff(1, "invoke", path="kramme-cc-workflow/agents/test-agent.md"),
                 handoff(1, "invoke", path="kramme-cc-workflow/shared/topic/references/flow.md"),
                 handoff(1, "invoke", path=f"kramme-cc-workflow/skills/{PARENT}/references/flow.md"),
             ],
         )
 
     def test_reports_each_target_once_per_line_in_sorted_order(self) -> None:
-        self._skill("kramme:test:other", model_disabled=True)
+        self._skill("trackbed:test:other", model_disabled=True)
         body = "\n".join(
             [
                 "Intro.",
-                f"Invoke `kramme:test:other` first. Then invoke `{CHILD}` via the Skill tool.",
+                f"Invoke `trackbed:test:other` first. Then invoke `{CHILD}` via the Skill tool.",
                 f"Invoke `{CHILD}`, then delegate to `{CHILD}`.",
             ]
         )
@@ -216,7 +218,7 @@ class InvocationGraphCheckTest(unittest.TestCase):
             result.failures,
             [
                 handoff(8, "invoke"),
-                handoff(8, "invoke", target="kramme:test:other"),
+                handoff(8, "invoke", target="trackbed:test:other"),
                 handoff(9, "invoke"),
             ],
         )
@@ -224,7 +226,7 @@ class InvocationGraphCheckTest(unittest.TestCase):
     def test_allowlist_suppresses_findings_and_warns_on_stale_entries(self) -> None:
         allowlist = [
             {"source": PARENT_PATH, "target": CHILD, "reason": "User-facing next step."},
-            {"source": PARENT_PATH, "target": "kramme:test:gone", "reason": "Old route."},
+            {"source": PARENT_PATH, "target": "trackbed:test:gone", "reason": "Old route."},
         ]
 
         result = self._run(f"Invoke `{CHILD}` next.", allowlist=allowlist)
@@ -232,7 +234,7 @@ class InvocationGraphCheckTest(unittest.TestCase):
         self.assertEqual(result.failures, [])
         self.assertEqual(
             result.warnings,
-            [f"invocation graph: allowlist entry {PARENT_PATH} -> kramme:test:gone matches no finding; remove it"],
+            [f"invocation graph: allowlist entry {PARENT_PATH} -> trackbed:test:gone matches no finding; remove it"],
         )
 
     def test_malformed_allowlist_entries_fail(self) -> None:
@@ -248,7 +250,7 @@ class InvocationGraphCheckTest(unittest.TestCase):
         self.assertEqual(
             result.failures,
             [
-                f"invocation graph: allowlist entry {number} requires a source path, a kramme skill target, "
+                f"invocation graph: allowlist entry {number} requires a source path, a shipped skill target, "
                 "and a non-empty reason"
                 for number in range(1, 5)
             ],

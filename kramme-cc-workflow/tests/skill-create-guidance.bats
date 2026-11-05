@@ -4,11 +4,11 @@ setup() {
 	cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:skill:create/SKILL.md"
-BEST_PRACTICES="skills/kramme:skill:create/references/best-practices.md"
-SOURCES="skills/kramme:skill:create/references/sources.yaml"
-SIMPLE_TEMPLATE="skills/kramme:skill:create/assets/skill-md-simple.md"
-RESOURCES_TEMPLATE="skills/kramme:skill:create/assets/skill-md-with-resources.md"
+SKILL="skills/skill:create/SKILL.md"
+BEST_PRACTICES="skills/skill:create/references/best-practices.md"
+SOURCES="skills/skill:create/references/sources.yaml"
+SIMPLE_TEMPLATE="skills/skill:create/assets/skill-md-simple.md"
+RESOURCES_TEMPLATE="skills/skill:create/assets/skill-md-with-resources.md"
 
 heading_line() {
 	grep -nFx "$2" "$1" | cut -d: -f1

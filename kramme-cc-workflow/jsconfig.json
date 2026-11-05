@@ -22,5 +22,5 @@
     "evals/skill-review/*.js",
     "tests/node/*.test.js"
   ],
-  "exclude": ["skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js"]
+  "exclude": ["skills/pr:walkthrough/assets/d3.v7.9.0.min.js"]
 }

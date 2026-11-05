@@ -4,23 +4,23 @@ Detailed documentation for each hook. See the root [README](../../README.md#hook
 
 ## Toggling Hooks
 
-Use `/kramme:hooks:toggle` to enable or disable hooks:
+Use `/trackbed:hooks:toggle` to enable or disable hooks:
 
 ```bash
 # List all hooks and their status
-/kramme:hooks:toggle status
+/trackbed:hooks:toggle status
 
 # Disable a hook
-/kramme:hooks:toggle auto-format disable
+/trackbed:hooks:toggle auto-format disable
 
 # Enable a hook
-/kramme:hooks:toggle auto-format enable
+/trackbed:hooks:toggle auto-format enable
 
 # Toggle a hook (enable if disabled, disable if enabled)
-/kramme:hooks:toggle auto-format
+/trackbed:hooks:toggle auto-format
 
 # Reset all hooks to enabled
-/kramme:hooks:toggle reset
+/trackbed:hooks:toggle reset
 ```
 
 State is stored in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `hooks/hook-state.json`. When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
@@ -63,7 +63,9 @@ The shared safety wrapper now launches the parser as the `git_command_parser` mo
 
 ## skill-usage-stats
 
-`skill-usage-stats` records local JSONL usage events when a prompt contains a `/kramme:*` skill invocation or when a Skill tool event names a `kramme:*` skill.
+`skill-usage-stats` records local JSONL usage events when a prompt contains a `/trackbed:*` skill invocation or when a Skill tool event names a `trackbed:*` skill.
+
+Releases before 1.0.0 named skills `kramme:*` under the plugin name `kramme-cc-workflow`. The recorder maps those spellings, and `report` maps stored `kramme:` records, to the matching `trackbed:` name, so usage from before the rename counts toward the current name.
 
 Each record's `platform` field names the host that produced the event. The recorder resolves it in this order:
 
@@ -77,9 +79,9 @@ Codex markers are checked before `CLAUDECODE` because a Codex process started fr
 
 Each record's `pluginVersion` field is the `version` from the plugin manifest beside the recorder: `.claude-plugin/plugin.json` in Claude Code and `.codex-plugin/plugin.json` in the converted Codex plugin. It is empty when neither manifest is readable and absent from records written before the field existed; reports treat both as `unknown`. The manifest version changes only at release, so a local install of an unreleased checkout reports the last released version.
 
-When a Skill tool event names a skill that contains the plugin name `kramme-cc-workflow` but maps to no shipped skill, the recorder writes that name to an `unrecognizedSkill` field in place of `skill`. A host that changes how it names plugin skills produces these records, so the change shows up in reports instead of silently dropping events. Only the Skill tool's skill-name fields count; prompts, and therefore Codex events, never produce them.
+When a Skill tool event names a skill that contains the plugin name `trackbed` but maps to no shipped skill, the recorder writes that name to an `unrecognizedSkill` field in place of `skill`. A host that changes how it names plugin skills produces these records, so the change shows up in reports instead of silently dropping events. Only the Skill tool's skill-name fields count; prompts, and therefore Codex events, never produce them.
 
-For Codex prompts, the recorder ignores everything up to the last Conductor `</system_instruction>` block and accepts both `$kramme:*` and `/kramme:*` invocations. Claude Code prompts keep the `/kramme:*` rule. The converted Codex plugin ships this hook and its recorder, but Codex has no Skill tool, so only the `UserPromptSubmit` entry fires there. Codex may also require you to trust plugin hooks before they run.
+For Codex prompts, the recorder ignores everything up to the last Conductor `</system_instruction>` block and accepts both `$trackbed:*` and `/trackbed:*` invocations. Claude Code prompts keep the `/trackbed:*` rule. The converted Codex plugin ships this hook and its recorder, but Codex has no Skill tool, so only the `UserPromptSubmit` entry fires there. Codex may also require you to trust plugin hooks before they run.
 
 Records are stored outside the repository at:
 
@@ -142,7 +144,7 @@ Costs are API-equivalent estimates taken from Claude Code's `cost-state` records
 - **Limit hits.** A session counts in `limitHitSessions` when its main transcript has an assistant record with `isApiErrorMessage: true` whose text contains "hit your session limit". The same phrase in user or queue records, and hits inside subagent transcripts, do not count.
 - **Weighted tokens.** Each assistant `message.id` counts once per file, because Claude Code repeats the same usage on every content-block line. Weights are input + 1.25 × cache creation + 0.1 × cache read + 5 × output tokens. Subagent weights come from `<session-id>/subagents/agent-*.jsonl` and nested workflow directories, and the paired `agent-*.meta.json` supplies `agentType` and whether `model` overrides the parent model.
 
-JSON rows have `entrySkill`, `sessions`, `sessionsWithTranscript`, `sessionsWithCost`, `totalCostUSD`, `medianCostUSD`, `maxCostUSD`, `unknownModelCostSessions`, `limitHitSessions`, `mainWeightedTokens`, `subagentWeightedTokens`, `subagentShare`, and `agentTypes` (`agentType`, `launches`, `modelOverrides`, `weightedTokens`, and `share` of the row's weighted tokens). Rows are sorted by total cost. The table shows the top three agent types without the `kramme-cc-workflow:` prefix and ends with a totals line.
+JSON rows have `entrySkill`, `sessions`, `sessionsWithTranscript`, `sessionsWithCost`, `totalCostUSD`, `medianCostUSD`, `maxCostUSD`, `unknownModelCostSessions`, `limitHitSessions`, `mainWeightedTokens`, `subagentWeightedTokens`, `subagentShare`, and `agentTypes` (`agentType`, `launches`, `modelOverrides`, `weightedTokens`, and `share` of the row's weighted tokens). Rows are sorted by total cost. The table shows the top three agent types, drops the pre-1.0.0 `kramme-cc-workflow:` prefix from older records, and ends with a totals line.
 
 `cost` follows the same diagnostics and `--strict` contract as `report`. Unreadable transcript, subagent, or meta files are read failures. Malformed or overlong lines and invalid meta files are skipped lines; a subagent with invalid meta reports as `(unknown)`. Claude Code deletes old transcripts after its cleanup period, so a missing transcript is not a diagnostic; it shows as `sessions` minus `sessionsWithTranscript`. Large tool results exceed the 1 MiB line limit, so real histories usually report a few overlong-line diagnostics.
 
@@ -285,7 +287,7 @@ The hook automatically skips:
 - **A newer version is available.** At most once a day, the hook fetches `kramme-cc-workflow/.claude-plugin/plugin.json` from the `main` branch on raw.githubusercontent.com with `curl --max-time 2`. Only release Pull Requests change that version, so it is the version an update would install. When it is newer than the installed copy, the notice names both versions and the host's update instructions. The notice appears in the session that ran the check, so an update you skip is mentioned again the next day.
 - **The plugin was updated.** The first session that starts on a newer installed version names the previous and new versions once. In Claude Code it also counts the changelog entries marked breaking in between, from the plugin's bundled `CHANGELOG.md`; Codex packages do not include the changelog, so the count is omitted there.
 
-Claude Code notices recommend `/plugin marketplace update kramme-cc-workflow`, then `/reload-plugins`. Codex notices give both install paths explicitly: Git marketplaces use `codex plugin marketplace upgrade kramme-cc-workflow`, then `codex plugin add kramme-cc-workflow@kramme-cc-workflow`; local/checkout installs, including `npx`, rerun their original install command. Restart Codex after updating. The hook does not inspect Codex configuration or invoke the Codex CLI to select a path.
+Claude Code notices recommend `/plugin marketplace update trackbed`, then `/reload-plugins`. Codex notices give both install paths explicitly: Git marketplaces use `codex plugin marketplace upgrade trackbed`, then `codex plugin add trackbed@trackbed`; local/checkout installs, including `npx`, rerun their original install command. Restart Codex after updating. The hook does not inspect Codex configuration or invoke the Codex CLI to select a path.
 
 State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/update-check.json` by default; set `KRAMME_UPDATE_CHECK_FILE` to override the path. It holds three fields:
 
@@ -293,16 +295,16 @@ State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/update-
 - `latestVersion`: the newest release the last successful check found.
 - `seenVersion`: the newest version a session has started with. It only moves forward, so an older copy installed in another scope or project never triggers a notice. The first run records the installed version without a notice.
 
-`/kramme:setup` reports this record as `Plugin update` without fetching anything.
+`/trackbed:setup` reports this record as `Plugin update` without fetching anything.
 
 The hook holds a Python `fcntl` file lock across the state read, check, and write. Concurrent startups skip the check silently, leaving any pending installed-version notice for a later startup. The lock file is `<state-file>.lock`; the OS releases the lock when its processes exit, including after termination, so the file may remain without blocking future checks.
 
-The fetch is one HTTPS request a day per state file. It sends nothing beyond what any request reveals, such as your IP address and curl's user agent. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` to any non-empty value to skip it; the update notice still works because it needs no network. Turn the whole hook off with `/kramme:hooks:toggle update-check disable`.
+The fetch is one HTTPS request a day per state file. It sends nothing beyond what any request reveals, such as your IP address and curl's user agent. Set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` to any non-empty value to skip it; the update notice still works because it needs no network. Turn the whole hook off with `/trackbed:hooks:toggle update-check disable`.
 
 The hook is fail-open. Missing `jq`, Python file-locking support, or `curl`, an unavailable state/lock path, an installed manifest without a release version, an unreachable GitHub, or malformed state all end in `{}` with no error. Malformed state is replaced as if it were the first run.
 
 The check runs synchronously because Claude Code never shows a background (`async`) hook's `systemMessage` to the user; it goes to the model on the next turn instead. Claude Code lets you type while `SessionStart` hooks run, but its first response waits for them, which is why the fetch has a two-second limit and runs at most once a day. Agent SDK clients, which may include Conductor, can receive the message as an informational event, and whether it is displayed depends on the client.
 
-Claude Code's own auto-update is off by default for this marketplace. Turning it on under `/plugin` → Marketplaces → `kramme-cc-workflow` makes the available-version notice rare, because Claude Code then updates the plugin in the background and shows its own `Plugin updated` message. Codex has no auto-update; it shows `systemMessage` as a warning and asks you to review and trust a new or changed plugin hook before it runs.
+Claude Code's own auto-update is off by default for this marketplace. Turning it on under `/plugin` → Marketplaces → `trackbed` makes the available-version notice rare, because Claude Code then updates the plugin in the background and shows its own `Plugin updated` message. Codex has no auto-update; it shows `systemMessage` as a warning and asks you to review and trust a new or changed plugin hook before it runs.
 
 See [the decision record](decisions/2026-10-28-plugin-update-notices.md) for the alternatives that were rejected.

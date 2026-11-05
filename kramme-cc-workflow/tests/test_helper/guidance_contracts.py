@@ -313,20 +313,20 @@ def check_review_gate_order(path: pathlib.Path) -> None:
     anchors = (
         (
             "regular code-review invocation",
-            r"^\s*When active, invoke `kramme:pr:code-review --parallel --inline`",
+            r"^\s*When active, invoke `trackbed:pr:code-review --parallel --inline`",
         ),
         (
             "convention-review invocation",
-            r"^\s*When active, invoke `kramme:pr:convention-review --inline`",
+            r"^\s*When active, invoke `trackbed:pr:convention-review --inline`",
         ),
         (
             "overengineering-review invocation",
-            r"^\s*When active in normal mode, invoke `kramme:pr:overengineering-review` "
+            r"^\s*When active in normal mode, invoke `trackbed:pr:overengineering-review` "
             r"with the exact sentinel-last arguments `--requirements \{work-requirements\}`",
         ),
         (
             "refactor-opportunities invocation",
-            r"^\s*When active, invoke `kramme:code:refactor-opportunities` with `pr`",
+            r"^\s*When active, invoke `trackbed:code:refactor-opportunities` with `pr`",
         ),
     )
     _ordered_regex_anchors(section, anchors, "ordered gate invocations")

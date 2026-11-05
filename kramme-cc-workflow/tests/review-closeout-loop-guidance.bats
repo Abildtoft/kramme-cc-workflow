@@ -2,8 +2,8 @@
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
-  SKILL="skills/kramme:pr:code-review/SKILL.md"
-  LOOP="skills/kramme:pr:code-review/references/closeout-loop.md"
+  SKILL="skills/pr:code-review/SKILL.md"
+  LOOP="skills/pr:code-review/references/closeout-loop.md"
 }
 
 @test "the closeout loop runs only on the user's own request" {

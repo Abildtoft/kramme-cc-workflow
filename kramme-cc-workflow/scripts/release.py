@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Release script for kramme-cc-workflow plugin.
+Release script for the trackbed plugin.
 
 Usage:
     python scripts/release.py patch      # 0.2.0 -> 0.2.1
@@ -596,7 +596,7 @@ def git_commit_and_push_branch(repo_root: Path, version: str, dry_run: bool, ci_
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Release kramme-cc-workflow plugin")
+    parser = argparse.ArgumentParser(description="Release the trackbed plugin")
     parser.add_argument(
         "version_type",
         nargs="?",

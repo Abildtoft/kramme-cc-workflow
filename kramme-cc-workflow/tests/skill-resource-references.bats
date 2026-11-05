@@ -337,8 +337,8 @@ NODE
 	mkdir -p "$plugin_dir/skills"
 	cp -R "$BATS_TEST_DIRNAME/../shared" "$plugin_dir/shared"
 	cp -R \
-		"$BATS_TEST_DIRNAME/../skills/kramme:siw:spec-audit" \
-		"$plugin_dir/skills/kramme:siw:spec-audit"
+		"$BATS_TEST_DIRNAME/../skills/siw:spec-audit" \
+		"$plugin_dir/skills/siw:spec-audit"
 
 	run resource_reference_check "$plugin_dir/skills"
 
@@ -410,13 +410,13 @@ write_plugin_fixture() {
 
 @test "SIW spec audit keeps product judgment in the opt-in Product dimension" {
 	local skills="$BATS_TEST_DIRNAME/../skills"
-	local spec_skill="$skills/kramme:siw:spec-audit/SKILL.md"
-	local product_mode="$skills/kramme:siw:spec-audit/references/product-mode.md"
-	local product_prompt="$skills/kramme:siw:spec-audit/references/product-reviewer-prompt.md"
-	local dimensions="$skills/kramme:siw:spec-audit/references/dimension-instructions.md"
-	local team_mode="$skills/kramme:siw:spec-audit/references/team-mode.md"
-	local apply_now="$skills/kramme:siw:spec-audit/references/apply-now.md"
-	local work_contexts="$skills/kramme:siw:init/references/work-context-profiles.md"
+	local spec_skill="$skills/siw:spec-audit/SKILL.md"
+	local product_mode="$skills/siw:spec-audit/references/product-mode.md"
+	local product_prompt="$skills/siw:spec-audit/references/product-reviewer-prompt.md"
+	local dimensions="$skills/siw:spec-audit/references/dimension-instructions.md"
+	local team_mode="$skills/siw:spec-audit/references/team-mode.md"
+	local apply_now="$skills/siw:spec-audit/references/apply-now.md"
+	local work_contexts="$skills/siw:init/references/work-context-profiles.md"
 
 	[ ! -e "$skills/kramme:siw:product-audit" ]
 	! grep -rqF --exclude=disposable-artifacts.yaml "siw:product-audit" "$skills" || false
@@ -438,11 +438,11 @@ write_plugin_fixture() {
 	grep -qF 'Copy every `PROD-NNN` finding from the previous active run into the new report unchanged' "$product_mode"
 	grep -qF 'in severity totals and the overall assessment exactly as P5 step 7 requires' "$product_mode"
 	grep -qF 'If `PRODUCT_MODE=false` and the previous report'"'"'s active run contains `PROD-NNN` findings, read `references/product-mode.md` and follow P7' "$spec_skill"
-	grep -qF 'add --product if the report contains PROD-NNN findings' "$skills/kramme:siw:spec-audit/assets/auto-fix-summary.md"
-	grep -qF 'no open `PROD-NNN` finding is Critical or Major' "$skills/kramme:siw:spec-audit/references/apply-report-update.md"
+	grep -qF 'add --product if the report contains PROD-NNN findings' "$skills/siw:spec-audit/assets/auto-fix-summary.md"
+	grep -qF 'no open `PROD-NNN` finding is Critical or Major' "$skills/siw:spec-audit/references/apply-report-update.md"
 	# The retired report name stays excluded from spec detection and cleanable.
-	grep -qF '`AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.' "$skills/kramme:siw:spec-audit/references/spec-resolution.md"
-	grep -qF '"id": "siw-product-audit-legacy"' "$skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
+	grep -qF '`AUDIT_*.md`, `PRODUCT_AUDIT.md`, `SIW_*.md`.' "$skills/siw:spec-audit/references/spec-resolution.md"
+	grep -qF '"id": "siw-product-audit-legacy"' "$skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
 	grep -qF 'Never extract, score, or edit `### PROD-NNN:` findings.' "$apply_now"
 	grep -qF "## Dimension: Rationale Documentation" "$dimensions"
 	grep -qF "those questions belong to the opt-in Product dimension (\`--product\`)" "$dimensions"
@@ -461,9 +461,9 @@ write_plugin_fixture() {
 
 @test "SIW spec audit owns the canonical apply procedure" {
 	local skills="$BATS_TEST_DIRNAME/../skills"
-	local spec_skill="$skills/kramme:siw:spec-audit/SKILL.md"
-	local apply_now="$skills/kramme:siw:spec-audit/references/apply-now.md"
-	local spec_resolution="$skills/kramme:siw:spec-audit/references/spec-resolution.md"
+	local spec_skill="$skills/siw:spec-audit/SKILL.md"
+	local apply_now="$skills/siw:spec-audit/references/apply-now.md"
+	local spec_resolution="$skills/siw:spec-audit/references/spec-resolution.md"
 	local hint
 
 	[ ! -e "$skills/kramme:siw:apply-spec-audit-fixes" ]
@@ -858,7 +858,7 @@ write_plugin_fixture() {
 		"Read references/policy.md before continuing." \
 		"" \
 		"For example, \`../../other-skill/references/policy.md\` is outside the skill boundary." \
-		"Likewise, \`../../kramme:siw:spec-audit/references/policy.md\` is an inert example." \
+		"Likewise, \`../../siw:spec-audit/references/policy.md\` is an inert example." \
 		"" \
 		"An illustrative authoring example follows:" \
 		"\`\`\`markdown" \

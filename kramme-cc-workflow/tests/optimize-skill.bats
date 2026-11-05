@@ -5,9 +5,9 @@ load 'test_helper/common'
 @test "code optimize helper scripts pass bash syntax checks" {
 	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    bash -n "skills/kramme:code:optimize/scripts/measure.sh"
-    bash -n "skills/kramme:code:optimize/scripts/parallel-probe.sh"
-    bash -n "skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    bash -n "skills/code:optimize/scripts/measure.sh"
+    bash -n "skills/code:optimize/scripts/parallel-probe.sh"
+    bash -n "skills/code:optimize/scripts/experiment-worktree.sh"
   '
 
 	[ "$status" -eq 0 ]
@@ -16,7 +16,7 @@ load 'test_helper/common'
 @test "code optimize measurement runner forwards environment assignments" {
 	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skills/kramme:code:optimize/scripts/measure.sh \
+    skills/code:optimize/scripts/measure.sh \
       "printf \"%s\\n\" \"\$OPTIMIZE_MEASURE_TOKEN\"" \
       5 \
       . \
@@ -31,8 +31,8 @@ load 'test_helper/common'
 	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
     for spec in \
-      "skills/kramme:code:optimize/references/example-hard-spec.yaml" \
-      "skills/kramme:code:optimize/references/example-judge-spec.yaml"
+      "skills/code:optimize/references/example-hard-spec.yaml" \
+      "skills/code:optimize/references/example-judge-spec.yaml"
     do
       grep -q "^name:" "$spec"
       grep -q "^metric:" "$spec"
@@ -60,7 +60,7 @@ load 'test_helper/common'
 @test "code optimize worktree helper avoids force deletion patterns" {
 	run bash -c '
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    helper="skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    helper="skills/code:optimize/scripts/experiment-worktree.sh"
     ! grep -Eq "rm[[:space:]]+-[^[:space:]]*f" "$helper"
     ! grep -Fq "rmdir \"\$worktree_dir\"" "$helper"
   '
@@ -78,7 +78,7 @@ load 'test_helper/common'
     cd "$repo"
     printf "SECRET=value\n" > .env
 
-    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/code:optimize/scripts/experiment-worktree.sh"
     worktree_path=$("$helper" create safe-spec 1 HEAD)
 
     test ! -e "$worktree_path/.env"
@@ -96,7 +96,7 @@ load 'test_helper/common'
     init_test_git_repo "$repo"
     cd "$repo"
 
-    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/code:optimize/scripts/experiment-worktree.sh"
     if "$helper" create safe-spec 1 HEAD ../outside.txt; then
       echo "expected shared file traversal to fail"
       exit 1
@@ -115,7 +115,7 @@ load 'test_helper/common'
     init_test_git_repo "$repo"
     cd "$repo"
 
-    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/code:optimize/scripts/experiment-worktree.sh"
     for spec_name in "*" "safe/spec" "../safe"; do
       if "$helper" cleanup "$spec_name" 1; then
         echo "expected cleanup to reject spec_name: $spec_name"
@@ -150,7 +150,7 @@ load 'test_helper/common'
     init_test_git_repo "$repo"
     cd "$repo"
 
-    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/code:optimize/scripts/experiment-worktree.sh"
     worktree_path=$("$helper" create safe-spec 1 HEAD)
 
     if "$helper" cleanup-all "*"; then
@@ -174,7 +174,7 @@ load 'test_helper/common'
     init_test_git_repo "$repo"
     cd "$repo"
 
-    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/code:optimize/scripts/experiment-worktree.sh"
     worktree_path=$("$helper" create safe-spec 1 HEAD)
 
     test -d "$worktree_path"
@@ -198,7 +198,7 @@ load 'test_helper/common'
     init_test_git_repo "$repo"
     cd "$repo"
 
-    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/code:optimize/scripts/experiment-worktree.sh"
     first_path=$("$helper" create safe-spec 1 HEAD)
     second_path=$("$helper" create safe-spec 2 HEAD)
     other_path=$("$helper" create other-spec 1 HEAD)
@@ -228,7 +228,7 @@ load 'test_helper/common'
     init_test_git_repo "$repo"
     cd "$repo"
 
-    helper="'"$BATS_TEST_DIRNAME"'/../skills/kramme:code:optimize/scripts/experiment-worktree.sh"
+    helper="'"$BATS_TEST_DIRNAME"'/../skills/code:optimize/scripts/experiment-worktree.sh"
     worktree_path=$("$helper" create safe-spec 1 HEAD)
     git worktree lock "$worktree_path"
 

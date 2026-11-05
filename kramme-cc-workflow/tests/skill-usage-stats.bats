@@ -32,15 +32,15 @@ create_usage_plugin_root() {
 		skip "node is required for skill usage tests"
 	fi
 
-	run run_usage_hook '{"prompt":"Run /kramme:pr:create --draft then /kramme:verify:run","session_id":"session-1","cwd":"/tmp/repo"}'
+	run run_usage_hook '{"prompt":"Run /trackbed:pr:create --draft then /trackbed:verify:run","session_id":"session-1","cwd":"/tmp/repo"}'
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
 	run node "$SCRIPT" report --file "$USAGE_FILE" --json
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r 'length')" = "2" ]
-	[ "$(echo "$output" | jq -r '.[] | select(.skill == "kramme:pr:create") | .explicit')" = "1" ]
-	[ "$(echo "$output" | jq -r '.[] | select(.skill == "kramme:verify:run") | .explicit')" = "1" ]
+	[ "$(echo "$output" | jq -r '.[] | select(.skill == "trackbed:pr:create") | .explicit')" = "1" ]
+	[ "$(echo "$output" | jq -r '.[] | select(.skill == "trackbed:verify:run") | .explicit')" = "1" ]
 }
 
 @test "deduplicates repeated skill mentions within one prompt" {
@@ -48,13 +48,13 @@ create_usage_plugin_root() {
 		skip "node is required for skill usage tests"
 	fi
 
-	run run_usage_hook '{"prompt":"/kramme:qa and /kramme:qa again","session_id":"session-1"}'
+	run run_usage_hook '{"prompt":"/trackbed:qa and /trackbed:qa again","session_id":"session-1"}'
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
 	run node "$SCRIPT" report --file "$USAGE_FILE" --json
 	[ "$status" -eq 0 ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:qa" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "trackbed:qa" ]
 	[ "$(echo "$output" | jq -r '.[0].total')" = "1" ]
 }
 
@@ -63,7 +63,7 @@ create_usage_plugin_root() {
 		skip "node is required for skill usage tests"
 	fi
 
-	run run_usage_hook '{"prompt":"Discuss kramme:pr:create without invoking it","session_id":"session-1"}'
+	run run_usage_hook '{"prompt":"Discuss trackbed:pr:create without invoking it","session_id":"session-1"}'
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
@@ -78,13 +78,13 @@ create_usage_plugin_root() {
 		skip "node is required for skill usage tests"
 	fi
 
-	run run_usage_hook '{"tool_name":"Skill","tool_input":{"name":"kramme:verify:run"},"session_id":"session-2"}'
+	run run_usage_hook '{"tool_name":"Skill","tool_input":{"name":"trackbed:verify:run"},"session_id":"session-2"}'
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
 	run node "$SCRIPT" report --file "$USAGE_FILE" --json
 	[ "$status" -eq 0 ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:verify:run" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "trackbed:verify:run" ]
 	[ "$(echo "$output" | jq -r '.[0].tool')" = "1" ]
 	[ "$(echo "$output" | jq -r '.[0].explicit')" = "0" ]
 }
@@ -94,9 +94,9 @@ create_usage_plugin_root() {
 		skip "node is required for skill usage tests"
 	fi
 
-	run run_usage_hook '{"prompt":"/kramme:verify:run","session_id":"session-1"}'
+	run run_usage_hook '{"prompt":"/trackbed:verify:run","session_id":"session-1"}'
 	[ "$status" -eq 0 ]
-	run run_usage_hook '{"tool_name":"Skill","tool_input":{"name":"kramme:verify:run"},"session_id":"session-1"}'
+	run run_usage_hook '{"tool_name":"Skill","tool_input":{"name":"trackbed:verify:run"},"session_id":"session-1"}'
 	[ "$status" -eq 0 ]
 
 	run node "$SCRIPT" report --file "$USAGE_FILE" --kind explicit --json
@@ -123,7 +123,7 @@ create_usage_plugin_root() {
 		"$REPORT_STDERR"
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r '.summary | length')" = "1" ]
-	[ "$(echo "$output" | jq -r '.summary[0].skill')" = "kramme:legacy-record" ]
+	[ "$(echo "$output" | jq -r '.summary[0].skill')" = "trackbed:legacy-record" ]
 	[ "$(echo "$output" | jq -r '.summary[0].explicit')" = "1" ]
 	[ "$(echo "$output" | jq -r '.summary[0].tool')" = "0" ]
 	[ "$(echo "$output" | jq -r '.diagnostics.skippedLines')" = "1" ]
@@ -138,14 +138,14 @@ create_usage_plugin_root() {
 
 	TRANSCRIPT="$BATS_TEST_TMPDIR/transcript.jsonl"
 	printf '%s\n' \
-		'{"type":"user","message":{"content":"Use /kramme:pr:create"},"session_id":"session-1","timestamp":"2026-05-24T12:00:00.000Z"}' \
-		'{"type":"assistant","message":{"content":"Mention /kramme:qa without counting it"},"session_id":"session-1","timestamp":"2026-05-24T12:01:00.000Z"}' \
+		'{"type":"user","message":{"content":"Use /trackbed:pr:create"},"session_id":"session-1","timestamp":"2026-05-24T12:00:00.000Z"}' \
+		'{"type":"assistant","message":{"content":"Mention /trackbed:qa without counting it"},"session_id":"session-1","timestamp":"2026-05-24T12:01:00.000Z"}' \
 		>"$TRANSCRIPT"
 
 	run node "$SCRIPT" scan "$TRANSCRIPT" --json
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r 'length')" = "1" ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "trackbed:pr:create" ]
 	[ "$(echo "$output" | jq -r '.[0].total')" = "1" ]
 }
 
@@ -157,7 +157,7 @@ create_usage_plugin_root() {
 	TRANSCRIPT="$BATS_TEST_TMPDIR/assistant-only.jsonl"
 	printf '%s\n' \
 		'{"type":"user","message":{"content":"What should I run?"},"session_id":"session-1"}' \
-		'{"type":"assistant","message":{"content":"Try /kramme:qa"},"session_id":"session-1"}' \
+		'{"type":"assistant","message":{"content":"Try /trackbed:qa"},"session_id":"session-1"}' \
 		>"$TRANSCRIPT"
 
 	run node "$SCRIPT" scan "$TRANSCRIPT" --json
@@ -172,14 +172,14 @@ create_usage_plugin_root() {
 
 	TRANSCRIPT="$BATS_TEST_TMPDIR/tool-result.jsonl"
 	printf '%s\n' \
-		'{"type":"user","message":{"content":[{"type":"tool_result","content":"Read output mentioned /kramme:qa"}]},"session_id":"session-1"}' \
-		'{"type":"user","message":{"content":[{"type":"text","text":"Use /kramme:pr:create"}]},"session_id":"session-1"}' \
+		'{"type":"user","message":{"content":[{"type":"tool_result","content":"Read output mentioned /trackbed:qa"}]},"session_id":"session-1"}' \
+		'{"type":"user","message":{"content":[{"type":"text","text":"Use /trackbed:pr:create"}]},"session_id":"session-1"}' \
 		>"$TRANSCRIPT"
 
 	run node "$SCRIPT" scan "$TRANSCRIPT" --json
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r 'length')" = "1" ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "trackbed:pr:create" ]
 }
 
 @test "usage hook records only through the canonical scripts implementation" {
@@ -192,7 +192,7 @@ create_usage_plugin_root() {
 	printf '%s\n' '#!/usr/bin/env node' 'process.exit(64);' >"$PLUGIN_ROOT/hooks/skill-usage.js"
 
 	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
-		'{"prompt":"/kramme:script-owner","session_id":"session-script"}' \
+		'{"prompt":"/trackbed:test:script-owner","session_id":"session-script"}' \
 		"$PLUGIN_ROOT" \
 		"$USAGE_FILE"
 	[ "$status" -eq 0 ]
@@ -200,7 +200,7 @@ create_usage_plugin_root() {
 
 	run node "$SCRIPT" report --file "$USAGE_FILE" --json
 	[ "$status" -eq 0 ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:script-owner" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "trackbed:test:script-owner" ]
 }
 
 @test "usage hook diagnoses a missing canonical recorder without using a legacy fallback" {
@@ -237,7 +237,7 @@ create_usage_plugin_root() {
 
 	for skill in one two three; do
 		run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES="$5" bash "$2/hooks/skill-usage-stats.sh"' _ \
-			"{\"prompt\":\"/kramme:$skill\",\"session_id\":\"session-diag\"}" \
+			"{\"prompt\":\"/trackbed:$skill\",\"session_id\":\"session-diag\"}" \
 			"$PLUGIN_ROOT" \
 			"$USAGE_FILE" \
 			"$DIAGNOSTIC_FILE" \
@@ -318,7 +318,7 @@ create_usage_plugin_root() {
 
 	for skill in one two three; do
 		run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES="$5" bash "$2/hooks/skill-usage-stats.sh"' _ \
-			"{\"prompt\":\"/kramme:$skill\",\"session_id\":\"session-diag\"}" \
+			"{\"prompt\":\"/trackbed:$skill\",\"session_id\":\"session-diag\"}" \
 			"$PLUGIN_ROOT" \
 			"$USAGE_FILE" \
 			"$DIAGNOSTIC_FILE" \
@@ -340,7 +340,7 @@ create_usage_plugin_root() {
 	SCAN_ROOT="$BATS_TEST_TMPDIR/project"
 	mkdir -p "$SCAN_ROOT/transcripts" "$SCAN_ROOT/node_modules/pkg" "$SCAN_ROOT/dist"
 	printf '%s\n' \
-		'{"type":"user","message":{"content":"Use /kramme:pr:create"},"session_id":"session-1"}' \
+		'{"type":"user","message":{"content":"Use /trackbed:pr:create"},"session_id":"session-1"}' \
 		>"$SCAN_ROOT/transcripts/session.jsonl"
 	printf '%s\n' \
 		'{"type":"user","message":{"content":"Use /kramme:ignored-dependency"},"session_id":"session-2"}' \
@@ -352,7 +352,7 @@ create_usage_plugin_root() {
 	run node "$SCRIPT" scan "$SCAN_ROOT" --json
 	[ "$status" -eq 0 ]
 	[ "$(echo "$output" | jq -r 'length')" = "1" ]
-	[ "$(echo "$output" | jq -r '.[0].skill')" = "kramme:pr:create" ]
+	[ "$(echo "$output" | jq -r '.[0].skill')" = "trackbed:pr:create" ]
 }
 
 @test "usage hook records Codex prompts after the Conductor block as codex" {
@@ -362,7 +362,7 @@ create_usage_plugin_root() {
 
 	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
 	create_usage_plugin_root "$PLUGIN_ROOT"
-	PAYLOAD="$(jq -cn '{hook_event_name: "UserPromptSubmit", session_id: "thread-1", turn_id: "turn-1", transcript_path: null, cwd: "/tmp/repo", model: "gpt-5", permission_mode: "default", prompt: "<system_instruction>\nRun /kramme:conductor:hidden\n</system_instruction>\n$kramme:pr:create now"}')"
+	PAYLOAD="$(jq -cn '{hook_event_name: "UserPromptSubmit", session_id: "thread-1", turn_id: "turn-1", transcript_path: null, cwd: "/tmp/repo", model: "gpt-5", permission_mode: "default", prompt: "<system_instruction>\nRun /kramme:conductor:hidden\n</system_instruction>\n$trackbed:pr:create now"}')"
 
 	run bash -c 'printf "%s" "$1" | env -u CLAUDECODE -u KRAMME_AGENT_PLATFORM CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
 		"$PAYLOAD" \
@@ -372,7 +372,7 @@ create_usage_plugin_root() {
 	[ "$output" = "{}" ]
 
 	[ "$(wc -l <"$USAGE_FILE" | tr -d ' ')" = "1" ]
-	[ "$(jq -r '.skill' "$USAGE_FILE")" = "kramme:pr:create" ]
+	[ "$(jq -r '.skill' "$USAGE_FILE")" = "trackbed:pr:create" ]
 	[ "$(jq -r '.platform' "$USAGE_FILE")" = "codex" ]
 }
 
@@ -382,11 +382,11 @@ create_usage_plugin_root() {
 	fi
 
 	run bash -c 'printf "%s" "$1" | env -u KRAMME_AGENT_PLATFORM CLAUDECODE=1 bash "$2"' _ \
-		'{"hook_event_name":"UserPromptSubmit","prompt":"Run /kramme:qa","session_id":"session-1"}' \
+		'{"hook_event_name":"UserPromptSubmit","prompt":"Run /trackbed:qa","session_id":"session-1"}' \
 		"$HOOK"
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 
-	[ "$(jq -r '.skill' "$USAGE_FILE")" = "kramme:qa" ]
+	[ "$(jq -r '.skill' "$USAGE_FILE")" = "trackbed:qa" ]
 	[ "$(jq -r '.platform' "$USAGE_FILE")" = "claude-code" ]
 }

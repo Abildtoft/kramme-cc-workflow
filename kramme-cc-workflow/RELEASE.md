@@ -1,6 +1,6 @@
 # Release Process
 
-This document describes how to release a new version of kramme-cc-workflow.
+This document describes how to release a new version of the trackbed plugin.
 
 Run the commands in this document from the plugin root (`kramme-cc-workflow/`). In this file, `.claude-plugin/plugin.json` is the plugin manifest and `package.json` is the plugin package. The repository-root `package.json` is the npm installer entrypoint and is not bumped by the plugin release flow.
 
@@ -167,17 +167,17 @@ Once the release Pull Request merges, the version on `main` changes. Within a da
 Users update inside a Claude Code session via:
 
 ```bash
-/plugin marketplace update kramme-cc-workflow
+/plugin marketplace update trackbed
 ```
 
 Or from a terminal:
 
 ```bash
-claude plugin update kramme-cc-workflow@kramme-cc-workflow
+claude plugin update trackbed@trackbed
 ```
 
 Or for git installs:
 
 ```bash
-claude /plugin install git+https://github.com/Abildtoft/kramme-cc-workflow
+claude /plugin install git+https://github.com/trackbed/skills
 ```

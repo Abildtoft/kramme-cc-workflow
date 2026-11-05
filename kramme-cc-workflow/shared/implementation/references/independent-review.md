@@ -32,7 +32,7 @@ Reject a duplicate or missing `--independent-review-line` value. Keep the decode
 
 ## Publication Handoff
 
-`kramme:linear:issue-to-pr` supplies the checked line to `kramme:pr:create --independent-review-line <line>` only when that invocation requested independent review. `pr:create` forwards it to `kramme:pr:generate-description --no-update --independent-review-line <line>`. Both consumers load this reference when the flag is present. The generator accepts the flag only with `--no-update`, rejects it with `--check`, and includes the exact line once in the body, in the template's verification or review-notes location.
+`trackbed:linear:issue-to-pr` supplies the checked line to `trackbed:pr:create --independent-review-line <line>` only when that invocation requested independent review. `pr:create` forwards it to `trackbed:pr:generate-description --no-update --independent-review-line <line>`. Both consumers load this reference when the flag is present. The generator accepts the flag only with `--no-update`, rejects it with `--check`, and includes the exact line once in the body, in the template's verification or review-notes location.
 
 For a provider result, `pr:create` must also check the reviewed tree against the prepared `HEAD^{tree}` and the patch ID against the full committed change after its base is resolved. Recheck these identities after history rewriting and before publication. A rewrite may change commit IDs but must preserve this evidence. A skipped/not-requested line claims no reviewed identity.
 

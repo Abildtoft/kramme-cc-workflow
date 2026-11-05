@@ -111,16 +111,16 @@ EOF
 ## Applicability Evaluation
 
 ### First Gate — Regular Review
-When active, invoke `kramme:pr:code-review --parallel --inline`.
+When active, invoke `trackbed:pr:code-review --parallel --inline`.
 
 ### Second Gate — Convention Review
-When active, invoke `kramme:pr:convention-review --inline`.
+When active, invoke `trackbed:pr:convention-review --inline`.
 
 ### Third Gate — Overengineering Review
-When active in normal mode, invoke `kramme:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
+When active in normal mode, invoke `trackbed:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
 
 ### Fourth Gate — Refactor Discovery
-When active, invoke `kramme:code:refactor-opportunities` with `pr`.
+When active, invoke `trackbed:code:refactor-opportunities` with `pr`.
 
 ## Completion Rules
 EOF
@@ -128,19 +128,19 @@ EOF
 	write_file "$broken" <<'EOF'
 ## Applicability Evaluation
 
-The commands used here are kramme:pr:code-review, kramme:pr:convention-review, kramme:pr:overengineering-review, and kramme:code:refactor-opportunities.
+The commands used here are trackbed:pr:code-review, trackbed:pr:convention-review, trackbed:pr:overengineering-review, and trackbed:code:refactor-opportunities.
 
 ### Gate 1: Regular Code Review
-When active, invoke `kramme:code:refactor-opportunities` with `pr`.
+When active, invoke `trackbed:code:refactor-opportunities` with `pr`.
 
 ### Gate 2: Convention Review
-When active, invoke `kramme:pr:convention-review --inline`.
+When active, invoke `trackbed:pr:convention-review --inline`.
 
 ### Gate 3: Overengineering Review
-When active in normal mode, invoke `kramme:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
+When active in normal mode, invoke `trackbed:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
 
 ### Gate 4: PR-Scoped Refactor Discovery
-When active, invoke `kramme:pr:code-review --parallel --inline`.
+When active, invoke `trackbed:pr:code-review --parallel --inline`.
 
 ## Completion Rules
 EOF
@@ -148,10 +148,10 @@ EOF
 	write_file "$prohibited" <<'EOF'
 ## Applicability Evaluation
 
-Do not invoke `kramme:pr:code-review --parallel --inline`.
-Do not invoke `kramme:pr:convention-review --inline`.
-Do not invoke `kramme:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
-Do not invoke `kramme:code:refactor-opportunities` with `pr`.
+Do not invoke `trackbed:pr:code-review --parallel --inline`.
+Do not invoke `trackbed:pr:convention-review --inline`.
+Do not invoke `trackbed:pr:overengineering-review` with the exact sentinel-last arguments `--requirements {work-requirements}`.
+Do not invoke `trackbed:code:refactor-opportunities` with `pr`.
 EOF
 
 	assert_contract_passes review-gate-order "$passing"

@@ -2,20 +2,20 @@
 
 setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
-	SKILL="$PLUGIN_ROOT/skills/kramme:pr:github-review/SKILL.md"
-	CONVERSATION_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/conversation-fetch.md"
-	COMMENT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/comment-drafting.md"
-	DRAFT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/draft-review.md"
-	REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/report-template.md"
-	CLARITY_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/clarity-check.md"
-	RESUME_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/resume.md"
-	CLARITY_PROMPTS="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/clarity-check-prompts.md"
-	ANCHOR_SCRIPT="$PLUGIN_ROOT/skills/kramme:pr:github-review/scripts/check-comment-anchors.sh"
-	SUBMIT_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/submit-review.md"
-	SUBMIT_CHECK="$PLUGIN_ROOT/skills/kramme:pr:github-review/scripts/check-submit-confirmation.py"
-	UI_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/ui-relevance.md"
-	LINEAR_REFERENCE="$PLUGIN_ROOT/skills/kramme:pr:github-review/references/linear-review.md"
-	LINEAR_AUDIT_REPORT_TEMPLATE="$PLUGIN_ROOT/skills/kramme:linear:review-pr/references/report-template.md"
+	SKILL="$PLUGIN_ROOT/skills/pr:github-review/SKILL.md"
+	CONVERSATION_REFERENCE="$PLUGIN_ROOT/skills/pr:github-review/references/conversation-fetch.md"
+	COMMENT_REFERENCE="$PLUGIN_ROOT/skills/pr:github-review/references/comment-drafting.md"
+	DRAFT_REFERENCE="$PLUGIN_ROOT/skills/pr:github-review/references/draft-review.md"
+	REPORT_TEMPLATE="$PLUGIN_ROOT/skills/pr:github-review/references/report-template.md"
+	CLARITY_REFERENCE="$PLUGIN_ROOT/skills/pr:github-review/references/clarity-check.md"
+	RESUME_REFERENCE="$PLUGIN_ROOT/skills/pr:github-review/references/resume.md"
+	CLARITY_PROMPTS="$PLUGIN_ROOT/skills/pr:github-review/references/clarity-check-prompts.md"
+	ANCHOR_SCRIPT="$PLUGIN_ROOT/skills/pr:github-review/scripts/check-comment-anchors.sh"
+	SUBMIT_REFERENCE="$PLUGIN_ROOT/skills/pr:github-review/references/submit-review.md"
+	SUBMIT_CHECK="$PLUGIN_ROOT/skills/pr:github-review/scripts/check-submit-confirmation.py"
+	UI_REFERENCE="$PLUGIN_ROOT/skills/pr:github-review/references/ui-relevance.md"
+	LINEAR_REFERENCE="$PLUGIN_ROOT/skills/pr:github-review/references/linear-review.md"
+	LINEAR_AUDIT_REPORT_TEMPLATE="$PLUGIN_ROOT/skills/linear:review-pr/references/report-template.md"
 	README="$PLUGIN_ROOT/../README.md"
 	REVIEW_GUIDE="$PLUGIN_ROOT/docs/review.md"
 }
@@ -86,7 +86,7 @@ import sys
 
 skill, reference, audit_report = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
 review = skill[skill.index("## Step 6:"):skill.index("## Step 7:")]
-assert '/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"' in review
+assert '/trackbed:linear:review-pr "$PR_URL" "<ISSUE-ID>"' in review
 assert "separately for each in-scope issue" in review
 assert "before Step 7" in review, "issue findings must participate in conversation deduplication"
 for term in ["record the coverage gap rather than inventing a replacement audit", "never updates Linear", "Never run PR-head code",
@@ -101,25 +101,25 @@ PY
 }
 
 @test "github review delegates only to read-only children that name it as a parent" {
-	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/kramme:pr:product-review/SKILL.md" "$PLUGIN_ROOT/skills/kramme:linear:review-pr/SKILL.md" <<'PY'
+	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/pr:product-review/SKILL.md" "$PLUGIN_ROOT/skills/linear:review-pr/SKILL.md" <<'PY'
 import pathlib
 import re
 import sys
 
 skill, product, linear = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
 review = skill[skill.index("## Step 6:"):skill.index("## Step 7:")]
-assert '/kramme:pr:code-review --base "$REVIEW_BASE" --inline --no-diff-comments' in review
-assert '/kramme:pr:product-review --base "$REVIEW_BASE" --inline --no-diff-comments' in review
-assert '/kramme:linear:review-pr "$PR_URL" "<ISSUE-ID>"' in review
+assert '/trackbed:pr:code-review --base "$REVIEW_BASE" --inline --no-diff-comments' in review
+assert '/trackbed:pr:product-review --base "$REVIEW_BASE" --inline --no-diff-comments' in review
+assert '/trackbed:linear:review-pr "$PR_URL" "<ISSUE-ID>"' in review
 assert "never reconstruct it by reading another skill's files" in review
 contract = re.compile(r"(?ms)^### Model Invocation Contract\s*$(.*?)(?=^#{1,3} |\Z)")
 for child in [product, linear]:
     frontmatter = child.split("---", 2)[1]
     assert "disable-model-invocation: false" in frontmatter
     section = contract.search(child).group(1)
-    assert "`kramme:pr:github-review`" in section
+    assert "`trackbed:pr:github-review`" in section
     assert "No other parent workflow may delegate to this skill" in section
-    assert set(re.findall(r"`(kramme:[^`\s]+)`", section)) == {"kramme:pr:github-review"}
+    assert set(re.findall(r"`(trackbed:[^`\s]+)`", section)) == {"trackbed:pr:github-review"}
 product_section = contract.search(product).group(1)
 assert '--base "$REVIEW_BASE" --inline --no-diff-comments' in product_section
 assert "never adds `--team`, an app URL, or `auto`" in product_section
@@ -129,24 +129,24 @@ PY
 }
 
 @test "github review reply hands resolve-review only its guarded implement-only payload" {
-	run python3 - "$PLUGIN_ROOT/skills/kramme:pr:github-review-reply/SKILL.md" "$PLUGIN_ROOT/skills/kramme:pr:resolve-review/SKILL.md" <<'PY'
+	run python3 - "$PLUGIN_ROOT/skills/pr:github-review-reply/SKILL.md" "$PLUGIN_ROOT/skills/pr:resolve-review/SKILL.md" <<'PY'
 import pathlib
 import re
 import sys
 
 reply, resolver = [pathlib.Path(path).read_text() for path in sys.argv[1:]]
 step5 = reply[reply.index("## Step 5:"):reply.index("## Step 6:")]
-assert "Invoke `kramme:pr:resolve-review --implement-only` as the implementation engine" in step5
+assert "Invoke `trackbed:pr:resolve-review --implement-only` as the implementation engine" in step5
 assert "Pass `--implement-only` as the only flag" in step5
 assert "Do not pass the PR URL as the source argument and do not use `--source online`" in step5
 assert "disable-model-invocation: false" in resolver.split("---", 2)[1]
 section = re.search(r"(?ms)^### Model Invocation Contract\s*$(.*?)(?=^#{1,3} |\Z)", resolver).group(1)
-for term in ["Step 5 passes exactly `--implement-only`", "`kramme:pr:review-convergence` batch remediation",
+for term in ["Step 5 passes exactly `--implement-only`", "`trackbed:pr:review-convergence` batch remediation",
              "never in validation-only mode", "never add `--team`, `--granular`, `--source`, `--severity`, or a URL review source",
              "No other parent workflow is authorized by this model-invocation exception",
              "Under a parent delegation, never commit"]:
     assert term in section, f"resolve-review contract lost {term}"
-assert set(re.findall(r"`(kramme:[^`\s]+)`", section)) == {"kramme:pr:github-review-reply", "kramme:pr:review-convergence"}
+assert set(re.findall(r"`(trackbed:[^`\s]+)`", section)) == {"trackbed:pr:github-review-reply", "trackbed:pr:review-convergence"}
 PY
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
 }
@@ -436,7 +436,7 @@ if not line.startswith(prefix) or not line.endswith('"'):
 description = line[len(prefix):-1]
 if len(description) >= 500:
     raise SystemExit(f"description has {len(description)} characters; expected fewer than 500")
-required = ["assigned reviewer", "GitHub PR", "inline comments", "pending review", "--draft-review", "kramme:pr:code-review", "kramme:pr:github-review-reply", "kramme:pr:resolve-review"]
+required = ["assigned reviewer", "GitHub PR", "inline comments", "pending review", "--draft-review", "trackbed:pr:code-review", "trackbed:pr:github-review-reply", "trackbed:pr:resolve-review"]
 missing = [term for term in required if term not in description]
 if missing:
     raise SystemExit("description lost trigger terms: " + ", ".join(missing))
@@ -618,7 +618,7 @@ PY
     grep -qF "isMinimized" "$1"
     grep -qF "minimizedReason" "$1"
     grep -qF "| Hidden |" "$1"
-  ' _ "$PLUGIN_ROOT/skills/kramme:pr:github-review-reply/SKILL.md"
+  ' _ "$PLUGIN_ROOT/skills/pr:github-review-reply/SKILL.md"
 	[ "$status" -eq 0 ]
 }
 
@@ -668,7 +668,7 @@ clarity = skill.index("## Step 10a: Check the Draft Comments With Cold Readers")
 materialize = skill.index("## Step 11: Materialize the Markdown Report")
 assert humanize < clarity < materialize, "the clarity check must run between humanizing and the eligibility count"
 drafting = skill[skill.index("## Step 9: Draft the Review Comments"):humanize]
-assert 'ANCHOR_CHECK="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/check-comment-anchors.sh"' in drafting, \
+assert 'ANCHOR_CHECK="${CLAUDE_PLUGIN_ROOT}/skills/pr:github-review/scripts/check-comment-anchors.sh"' in drafting, \
     "the anchor check must be set before Step 10a so --no-clarity-check cannot leave it undefined for Step 11"
 step = skill[clarity:materialize]
 assert "ANCHOR_CHECK=" not in step
@@ -987,9 +987,9 @@ refused = [
     "review this PR",
     "Review PR 8683",
     "Review PR 8683 and post the review as request changes",
-    "$kramme:pr:github-review 8683",
-    "/kramme:pr:github-review https://github.com/acme/repo/pull/8683 --draft-review",
-    "$kramme:pr:github-review 8683, then post the prepared review to PR 8683 as request changes",
+    "$trackbed:pr:github-review 8683",
+    "/trackbed:pr:github-review https://github.com/acme/repo/pull/8683 --draft-review",
+    "$trackbed:pr:github-review 8683, then post the prepared review to PR 8683 as request changes",
     "yes",
     "Looks good, go ahead",
     "Request changes",
@@ -1091,8 +1091,8 @@ def writes(calls):
 # The review conversation before confirmation: none of these may reach GitHub.
 for message in [
     "review this PR",
-    "$kramme:pr:github-review 8683",
-    "/kramme:pr:github-review 8683 --draft-review",
+    "$trackbed:pr:github-review 8683",
+    "/trackbed:pr:github-review 8683 --draft-review",
     "Review PR 8683 and post the review as request changes",
     "yes",
     "The verdict is request changes",
@@ -1155,7 +1155,7 @@ PY
 }
 
 @test "github review gates every GitHub mutation behind its named authorization" {
-	run python3 - "$PLUGIN_ROOT/skills/kramme:pr:github-review" "$REVIEW_GUIDE" <<'PY'
+	run python3 - "$PLUGIN_ROOT/skills/pr:github-review" "$REVIEW_GUIDE" <<'PY'
 import pathlib
 import re
 import sys
@@ -1178,7 +1178,7 @@ for term in [
     assert term in gate, f"write gate lost: {term}"
 handoff, submit = skill.index("## Step 13: Final Handoff"), skill.index("## Step 14:")
 assert handoff < submit and "Then stop." in skill[handoff:submit]
-assert '${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/check-submit-confirmation.py' in skill[submit:]
+assert '${CLAUDE_PLUGIN_ROOT}/skills/pr:github-review/scripts/check-submit-confirmation.py' in skill[submit:]
 assert "carry the current report's `SUBMIT_STATUS` into the reference" in skill[submit:]
 assert "preserve that terminal status and do not retry" in skill[submit:]
 assert skill.count("references/submit-review.md") == 2, "only the gate and Step 14 may name the submit reference"
@@ -1254,7 +1254,7 @@ PY
 }
 
 @test "github review narrows a re-review to what changed since the reviewer's last review" {
-	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/kramme:pr:github-review/references/delta-review.md" "$RESUME_REFERENCE" "$REPORT_TEMPLATE" "$COMMENT_REFERENCE" <<'PY'
+	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/pr:github-review/references/delta-review.md" "$RESUME_REFERENCE" "$REPORT_TEMPLATE" "$COMMENT_REFERENCE" <<'PY'
 import pathlib
 import sys
 
@@ -1266,7 +1266,7 @@ step4a = skill[skill.index("## Step 4a: Scope a Re-Review"):skill.index("## Step
 for phrase in [
     'Set `REVIEW_BASE="$BASE_REF"` and `REVIEW_SCOPE=full`.',
     "Unless `FULL_REVIEW=true`, `SKIP_THREADS=true`, or `CHANGED_FILES` is empty",
-    '`REVIEW_DELTA="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/review-delta.py"`',
+    '`REVIEW_DELTA="${CLAUDE_PLUGIN_ROOT}/skills/pr:github-review/scripts/review-delta.py"`',
     "read `references/delta-review.md` and follow it",
     "`BASE_REF` and `MERGE_BASE` keep the whole PR's scope.",
 ]:
@@ -1297,7 +1297,7 @@ PY
 }
 
 @test "github review stack mode maps the whole stack without writing to GitHub" {
-	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/kramme:pr:github-review/references/stack-mode.md" "$PLUGIN_ROOT/skills/kramme:pr:github-review/references/stack-report-template.md" "$PLUGIN_ROOT/hooks/confirm-review-artifacts.txt" "$PLUGIN_ROOT/skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
+	run python3 - "$SKILL" "$PLUGIN_ROOT/skills/pr:github-review/references/stack-mode.md" "$PLUGIN_ROOT/skills/pr:github-review/references/stack-report-template.md" "$PLUGIN_ROOT/hooks/confirm-review-artifacts.txt" "$PLUGIN_ROOT/skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml" <<'PY'
 import pathlib
 import sys
 
@@ -1311,7 +1311,7 @@ assert step2.index("**Repository guard.**") < step2.index("**Author guard.**") <
 handoff = step2[step2.index("**Stack mode.**"):]
 for phrase in [
     '`STACK_HELPER="${CLAUDE_PLUGIN_ROOT}/scripts/resolve-stack-context.py"`',
-    '`STACK_OVERVIEW="${CLAUDE_PLUGIN_ROOT}/skills/kramme:pr:github-review/scripts/stack-overview.py"`',
+    '`STACK_OVERVIEW="${CLAUDE_PLUGIN_ROOT}/skills/pr:github-review/scripts/stack-overview.py"`',
     "read `references/stack-mode.md` and follow it instead of Steps 2a–14",
     "Stack mode writes nothing to GitHub.",
 ]:
@@ -1338,7 +1338,7 @@ PY
 }
 
 @test "github review uses the full scope when fetching the known stack trunk fails" {
-	run python3 - "$PLUGIN_ROOT/skills/kramme:pr:github-review/references/delta-review.md" <<'PY'
+	run python3 - "$PLUGIN_ROOT/skills/pr:github-review/references/delta-review.md" <<'PY'
 import json
 import os
 import pathlib

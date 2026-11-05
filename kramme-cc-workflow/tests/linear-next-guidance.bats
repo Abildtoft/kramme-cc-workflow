@@ -4,10 +4,10 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
+    skill="skills/linear:next/SKILL.md"
 
     test -f "$skill"
-    grep -qF "name: kramme:linear:next" "$skill"
+    grep -qF "name: linear:next" "$skill"
     grep -qF "[team or selection query]" "$skill"
     grep -qF "Accept either structured flags, a bare team name/key/ID, a free-form selection query, or a combination of them." "$skill"
     grep -qF "Please identify Linear issues that are in Backlog or To-do state that are ready for autonomous agent-driven implementation" "$skill"
@@ -27,7 +27,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
+    skill="skills/linear:next/SKILL.md"
 
     grep -qF "When no states were requested, use only states with type \`backlog\` or \`unstarted\`." "$skill"
     grep -qF "State type takes precedence over the name" "$skill"
@@ -55,8 +55,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
-    rubric="skills/kramme:linear:next/references/scoring-rubric.md"
+    skill="skills/linear:next/SKILL.md"
+    rubric="skills/linear:next/references/scoring-rubric.md"
 
     test -f "$rubric"
     grep -qF "\`--agent-ready\`: return only issues" "$skill"
@@ -83,7 +83,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
+    skill="skills/linear:next/SKILL.md"
 
     grep -qF "disable-model-invocation: true" "$skill"
     grep -qF "user-invocable: true" "$skill"
@@ -91,7 +91,7 @@
     grep -qF "Keep the analysis read-only" "$skill"
     grep -qF "create branches, change assignees, move statuses, add comments, create issues, or start implementation in this workspace." "$skill"
     grep -qF "only Step 10 may start work, and only by creating new Conductor cloud workspaces for issues the user confirms in this run." "$skill"
-    grep -qF "kramme:linear:issue-implement" "$skill"
+    grep -qF "trackbed:linear:issue-implement" "$skill"
   '
 
 	[ "$status" -eq 0 ] || { echo "$output"; false; }
@@ -101,7 +101,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
+    skill="skills/linear:next/SKILL.md"
 
     grep -qF "recommends the best one, and actively searches for 2-4 additional good issues that can be implemented in parallel with it" "$skill"
     grep -qF "and the best recommendation has four good parallel candidates, or every candidate collected in Step 4 has been enriched and assessed" "$skill"
@@ -119,7 +119,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
+    skill="skills/linear:next/SKILL.md"
 
     grep -qF "[--count <n>]" "$skill"
     grep -qF "\`--count <n>\`: number of ready issues to try to find and rank. Default 10, maximum 25." "$skill"
@@ -140,8 +140,8 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
-    rubric="skills/kramme:linear:next/references/scoring-rubric.md"
+    skill="skills/linear:next/SKILL.md"
+    rubric="skills/linear:next/references/scoring-rubric.md"
 
     grep -qF "| Rank | Issue | Plain-language summary | State | Pool | UI/UX work |" "$skill"
     grep -qF "Estimate \`UI/UX work\` as \`None\`, \`Low\`, \`Medium\` or \`High\` for every issue in the ranked shortlist" "$skill"
@@ -161,11 +161,11 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
-    launch="skills/kramme:linear:next/references/cloud-launch.md"
+    skill="skills/linear:next/SKILL.md"
+    launch="skills/linear:next/references/cloud-launch.md"
 
     test -f "$launch"
-    test -f "skills/kramme:linear:next/scripts/cloud-launch.py"
+    test -f "skills/linear:next/scripts/cloud-launch.py"
     grep -qF "10. **Offer to start the work in Conductor cloud.**" "$skill"
     grep -qF "scripts/cloud-launch.py\" detect" "$skill"
     grep -qF "A cloud workspace is one where \`CONDUCTOR_IS_LOCAL\` is \`0\`." "$skill"
@@ -176,7 +176,7 @@
     grep -qF "Pass \`--adversarial-review\` only after that separate explicit yes" "$launch"
     grep -qF "never compose or edit a launch message yourself" "$launch"
     grep -qF "Offer an issue only when it is \`agent-ready\` with startability \`ready-to-start\`" "$launch"
-    grep -qF "whose first message runs \`kramme:linear:issue-to-pr {ISSUE-ID} --ship\`" "$launch"
+    grep -qF "whose first message runs \`trackbed:linear:issue-to-pr {ISSUE-ID} --ship\`" "$launch"
     grep -qF "Name every offered issue whose state type is not \`backlog\`" "$launch"
     grep -qF "asks once in that workspace before moving such an issue to its started status" "$launch"
     grep -qF "whether those issues should use a different model than the None and Low ones" "$launch"
@@ -194,7 +194,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
+    skill="skills/linear:next/SKILL.md"
 
     grep -qF "Use one or two concise sentences that explain the problem to solve or the outcome that will change and why it matters." "$skill"
     grep -qF "Prefer familiar words and direct phrasing." "$skill"
@@ -211,7 +211,7 @@
 	run bash -c '
     set -e
     cd "'"$BATS_TEST_DIRNAME"'/.."
-    skill="skills/kramme:linear:next/SKILL.md"
+    skill="skills/linear:next/SKILL.md"
 
     grep -qF "match the longest exact leading substring against available Linear team names, keys, and IDs" "$skill"
     grep -qF "If one matches, consume it as the team and parse the remainder as the query" "$skill"

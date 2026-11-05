@@ -6,9 +6,9 @@ setup() {
 
 REFERENCE="shared/implementation/references/forward-progress.md"
 CONSUMERS=(
-  "skills/kramme:code:plan-to-pr"
-  "skills/kramme:code:work-from-plan"
-  "skills/kramme:linear:issue-implement"
+  "skills/code:plan-to-pr"
+  "skills/code:work-from-plan"
+  "skills/linear:issue-implement"
 )
 
 @test "forward progress is a shared advisory reference with explicit safety boundaries" {
@@ -23,11 +23,11 @@ CONSUMERS=(
 }
 
 @test "forward progress preserves plan, Linear, resume, verification, and publication controls" {
-  direct="skills/kramme:code:work-from-plan/references/direct-execution.md"
-  work_from_plan="skills/kramme:code:work-from-plan/SKILL.md"
-  linear="skills/kramme:linear:issue-implement/references/implementation-workflows.md"
-  linear_skill="skills/kramme:linear:issue-implement/SKILL.md"
-  plan_to_pr="skills/kramme:code:plan-to-pr/SKILL.md"
+  direct="skills/code:work-from-plan/references/direct-execution.md"
+  work_from_plan="skills/code:work-from-plan/SKILL.md"
+  linear="skills/linear:issue-implement/references/implementation-workflows.md"
+  linear_skill="skills/linear:issue-implement/SKILL.md"
+  plan_to_pr="skills/code:plan-to-pr/SKILL.md"
   resolve='Resolve `${CLAUDE_PLUGIN_ROOT}/shared/implementation/references/forward-progress.md` as `{forward-progress-reference}`'
 
   grep -qF "Read \`{forward-progress-reference}\` before applying it." "$direct"

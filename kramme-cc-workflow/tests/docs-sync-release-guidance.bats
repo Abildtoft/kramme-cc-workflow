@@ -4,7 +4,7 @@ setup() {
   cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:docs:sync-release/SKILL.md"
+SKILL="skills/docs:sync-release/SKILL.md"
 
 @test "current scope uses workbench merge-base three-dot semantics before dirty changes" {
   grep -qF 'compute `merge-base(<workbench>, HEAD)`' "$SKILL"

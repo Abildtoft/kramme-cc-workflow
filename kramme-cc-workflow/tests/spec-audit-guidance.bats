@@ -2,12 +2,12 @@
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
-  SKILL="skills/kramme:siw:spec-audit/SKILL.md"
-  DIMENSIONS="skills/kramme:siw:spec-audit/references/dimension-instructions.md"
-  CLAIMS_PROMPT="skills/kramme:siw:spec-audit/references/claims-check-prompt.md"
-  AUDIT_PROMPT="skills/kramme:siw:spec-audit/references/audit-agent-prompt.md"
-  TEAM="skills/kramme:siw:spec-audit/references/team-mode.md"
-  AGENT="agents/kramme:codebase-pattern-reviewer.md"
+  SKILL="skills/siw:spec-audit/SKILL.md"
+  DIMENSIONS="skills/siw:spec-audit/references/dimension-instructions.md"
+  CLAIMS_PROMPT="skills/siw:spec-audit/references/claims-check-prompt.md"
+  AUDIT_PROMPT="skills/siw:spec-audit/references/audit-agent-prompt.md"
+  TEAM="skills/siw:spec-audit/references/team-mode.md"
+  AGENT="agents/codebase-pattern-reviewer.md"
 }
 
 @test "the claims check tests what exists today, not whether code implements the spec" {
@@ -30,7 +30,7 @@ setup() {
 
 @test "claims the reviewer could not verify stay visible in the report" {
   grep -qF 'including any claims the reviewer could not verify' "$SKILL"
-  grep -qF 'checked, {N} unverified: {the claims}' "skills/kramme:siw:spec-audit/assets/spec-audit-report-format.md"
+  grep -qF 'checked, {N} unverified: {the claims}' "skills/siw:spec-audit/assets/spec-audit-report-format.md"
   grep -qF 'Current-state claims you could not verify' "$AGENT"
 }
 

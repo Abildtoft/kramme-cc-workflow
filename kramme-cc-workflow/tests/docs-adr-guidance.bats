@@ -2,8 +2,8 @@
 
 setup() {
 	cd "$BATS_TEST_DIRNAME/.."
-	SKILL="skills/kramme:docs:adr/SKILL.md"
-	INTERVIEW_REFS="skills/kramme:discovery:interview/references"
+	SKILL="skills/docs:adr/SKILL.md"
+	INTERVIEW_REFS="skills/discovery:interview/references"
 }
 
 @test "adr skill is model-invocable with a least-side-effect model contract" {
@@ -33,7 +33,7 @@ setup() {
 
 @test "discovery interview invokes the adr skill and repeats its callout" {
 	for ref in "$INTERVIEW_REFS/interview-operations.md" "$INTERVIEW_REFS/probing-techniques.md"; do
-		grep -qF 'invoke `kramme:docs:adr` with a decision title and short context summary as its arguments, and repeat its `ADR WRITTEN` callout at the top of your final message' "$ref"
+		grep -qF 'invoke `trackbed:docs:adr` with a decision title and short context summary as its arguments, and repeat its `ADR WRITTEN` callout at the top of your final message' "$ref"
 		! grep -qF 'user-triggered only' "$ref" || false
 	done
 }

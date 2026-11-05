@@ -48,7 +48,11 @@ const PLATFORMS_FIELD = skillFrontmatterFieldByLoaderProperty(
   "platforms",
   "kramme-platforms",
 );
-const REQUIRED_HOOK_CONTROL_SKILLS = ["kramme:hooks:toggle"];
+const REQUIRED_HOOK_CONTROL_SKILLS = ["hooks:toggle"];
+// Skill Markdown reaches its own files through the plugin root; Codex skill
+// folders carry the plugin-qualified name, so those paths are rewritten too.
+const PLUGIN_ROOT_SKILL_DIRECTORY_PATTERN =
+  /(\$\{CLAUDE_PLUGIN_ROOT(?::-[^}]*)?\}\/skills\/|\$CLAUDE_PLUGIN_ROOT\/skills\/)([A-Za-z0-9:_-]+)(?![A-Za-z0-9_.-])/g;
 
 /**
  * @param {ClaudeSkill[]} skills
@@ -81,24 +85,35 @@ function convertClaudeToCodex(plugin) {
     plugin.commands,
     "codex",
   );
+  const namespace = normalizeName(plugin.manifest.name);
+  // Copied skills keep their source spelling behind the plugin prefix; lookups
+  // use the normalized Codex form.
+  /** @param {ClaudeSkill} skill */
+  const copiedSkillName = (skill) => `${namespace}:${skill.name}`;
   const copiedSkillNames = new Set(
-    skills.map((skill) => codexName(skill.name)),
+    skills.map((skill) => qualifiedCodexName(namespace, skill.name)),
   );
   const usedSkillNames = new Set(copiedSkillNames);
   const knownCommandNames = new Set(copiedSkillNames);
   const commandSkillDefinitions = commands
     // Skill-backed commands already exist as copied skill directories.
     .filter((command) => path.basename(command.sourcePath ?? "") !== "SKILL.md")
-    .filter((command) => !copiedSkillNames.has(codexName(command.name)))
+    .filter(
+      (command) =>
+        !copiedSkillNames.has(qualifiedCodexName(namespace, command.name)),
+    )
     .map((command) => {
-      const skillName = uniqueName(codexName(command.name), usedSkillNames);
+      const skillName = uniqueName(
+        qualifiedCodexName(namespace, command.name),
+        usedSkillNames,
+      );
       knownCommandNames.add(skillName);
       return { command, skillName };
     });
 
   const agentSkillDefinitions = plugin.agents.map((agent) => ({
     agent,
-    name: uniqueName(codexName(agent.name), usedSkillNames),
+    name: uniqueName(qualifiedCodexName(namespace, agent.name), usedSkillNames),
   }));
   const knownAgentSkills = buildKnownAgentSkillNames(agentSkillDefinitions);
   const agentSkills = agentSkillDefinitions.map(({ agent, name }) =>
@@ -112,8 +127,20 @@ function convertClaudeToCodex(plugin) {
       knownAgentSkills,
     ),
   );
+  const skillDirectoryNames = new Map(
+    skills.map((skill) => [
+      path.basename(skill.sourceDir),
+      copiedSkillName(skill),
+    ]),
+  );
   const skillDirs = skills.map((skill) =>
-    convertExistingSkillForCodex(skill, knownCommandNames, knownAgentSkills),
+    convertExistingSkillForCodex(
+      skill,
+      copiedSkillName(skill),
+      knownCommandNames,
+      knownAgentSkills,
+      skillDirectoryNames,
+    ),
   );
   const sharedRuntime = sharedRuntimeFor(plugin);
 
@@ -123,6 +150,7 @@ function convertClaudeToCodex(plugin) {
     agentSkills,
     knownCommands: knownCommandNames,
     knownAgentSkills,
+    skillDirectoryNames,
     mcpServers: plugin.mcpServers,
     ...sharedRuntime,
     codexPlugin: codexPluginPackageFor(plugin, skills),
@@ -422,13 +450,21 @@ function convertCommandSkill(command, knownCommands, name, knownAgentSkills) {
 
 /**
  * @param {ClaudeSkill} skill
+ * @param {string} name
  * @param {Set<string>} knownCommands
  * @param {Map<string, string>} knownAgentSkills
+ * @param {Map<string, string>} skillDirectoryNames
  * @returns {CodexSourceSkillFile}
  */
-function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
+function convertExistingSkillForCodex(
+  skill,
+  name,
+  knownCommands,
+  knownAgentSkills,
+  skillDirectoryNames,
+) {
   const frontmatter = {
-    name: skill.name,
+    name,
     description: sanitizeDescription(
       skill.description ?? `Converted from Claude skill ${skill.name}`,
     ),
@@ -447,13 +483,14 @@ function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
   const body = transformContentForCodex(skill.body.trim(), {
     knownCommands,
     knownAgentSkills,
+    skillDirectoryNames,
   });
   const content = formatFrontmatter(
     frontmatter,
     body.length > 0 ? body : skill.body,
   );
   return {
-    name: skill.name,
+    name,
     sourceDir: skill.sourceDir,
     content,
     ...codexInvocationPolicy(skill.disableModelInvocation),
@@ -467,6 +504,7 @@ function convertExistingSkillForCodex(skill, knownCommands, knownAgentSkills) {
  */
 function transformContentForCodex(body, options = {}) {
   let result = body;
+  result = rewriteSkillDirectoryReferences(result, options.skillDirectoryNames);
   result = rewriteTaskCalls(result, options.knownAgentSkills);
   result = rewriteSlashCommandReferences(result, options.knownCommands);
   result = rewriteAgentMentions(result, options.knownAgentSkills);
@@ -506,6 +544,28 @@ function transformAgentContentForCodex(body, options) {
         default:
           return instructionFiles;
       }
+    },
+  );
+}
+
+/**
+ * Claude Code invokes plugin skills and agents as `<plugin>:<name>`. Codex has
+ * no plugin prefix, so converted skills carry the same qualified name and users
+ * type `$<plugin>:<name>` on both hosts.
+ * @param {string} namespace @param {unknown} name
+ */
+function qualifiedCodexName(namespace, name) {
+  return codexName(`${namespace}:${String(name ?? "")}`);
+}
+
+/** @param {string} text @param {Map<string, string> | undefined} skillDirectoryNames */
+function rewriteSkillDirectoryReferences(text, skillDirectoryNames) {
+  if (!skillDirectoryNames || skillDirectoryNames.size === 0) return text;
+  return text.replace(
+    PLUGIN_ROOT_SKILL_DIRECTORY_PATTERN,
+    (match, prefix, directory) => {
+      const codexDirectory = skillDirectoryNames.get(directory);
+      return codexDirectory ? `${prefix}${codexDirectory}` : match;
     },
   );
 }

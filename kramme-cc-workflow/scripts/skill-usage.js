@@ -27,21 +27,27 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const CAPTURE_BASELINE_WEEKS = 8;
 const CAPTURE_DROP_RATIO = 0.25;
 const CAPTURE_MIN_WEEKLY_MEDIAN = 20;
-// Claude Code names plugin skills `kramme-cc-workflow:kramme-pr-create` and
-// records typed slash commands inside `<command-name>` tags, so accept the
-// plugin prefix, hyphenated names, and a `>` before the slash, then map every
-// match back to the `kramme:` frontmatter name.
-const PLUGIN_NAME = "kramme-cc-workflow";
+// Claude Code names plugin skills `trackbed:pr-create` (the plugin name plus
+// the hyphenated skill folder) and records typed slash commands inside
+// `<command-name>` tags, so accept hyphenated names and a `>` before the
+// slash, then map every match to the `trackbed:<frontmatter name>` users type.
+// Releases before 1.0.0 shipped as `kramme-cc-workflow` with `kramme:` names;
+// those spellings map to the same `trackbed:` names so usage history carries
+// over.
+const PLUGIN_NAME = "trackbed";
 const PLUGIN_SKILL_PREFIX = `${PLUGIN_NAME}:`;
+const LEGACY_PLUGIN_SKILL_PREFIX = "kramme-cc-workflow:";
+const LEGACY_SKILL_PREFIX = "kramme:";
+const LEGACY_HYPHENATED_SKILL_PREFIX = "kramme-";
 const PLUGIN_ROOT = path.join(__dirname, "..");
 const SKILLS_DIR = path.join(PLUGIN_ROOT, "skills");
 const SLASH_SKILL_PATTERN =
-  /(?:^|\s|>)\/((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)/g;
-// Codex users invoke skills as `$kramme:...`; the slash form also works there.
+  /(?:^|\s|>)\/((?:trackbed:|(?:kramme-cc-workflow:)?kramme[:-])[A-Za-z0-9:_-]+)/g;
+// Codex users invoke skills as `$trackbed:...`; the slash form also works there.
 const CODEX_SKILL_PATTERN =
-  /(?:^|\s|>)[$/]((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)/g;
+  /(?:^|\s|>)[$/]((?:trackbed:|(?:kramme-cc-workflow:)?kramme[:-])[A-Za-z0-9:_-]+)/g;
 const DIRECT_SKILL_PATTERN =
-  /^\/?((?:kramme-cc-workflow:)?kramme[:-][A-Za-z0-9:_-]+)(?:\s|$)/;
+  /^\/?((?:trackbed:|(?:kramme-cc-workflow:)?kramme[:-])[A-Za-z0-9:_-]+)(?:\s|$)/;
 /** @type {Map<string, string> | null} */
 let hyphenatedSkillNames = null;
 const SCAN_PRUNED_DIRS = new Set([
@@ -558,17 +564,42 @@ function extractDirectSkillName(text) {
 }
 
 /**
- * Maps a matched skill spelling to its `kramme:` frontmatter name. Hyphenated
- * names are only trusted when they match a skill shipped next to this script.
+ * Maps a matched skill spelling to its `trackbed:<frontmatter name>` form.
+ * Colon-separated names are recorded as typed; hyphenated names are only
+ * trusted when they match a skill shipped next to this script.
  * @param {string} raw
  * @returns {string | null}
  */
 function canonicalSkillName(raw) {
-  const name = raw.startsWith(PLUGIN_SKILL_PREFIX)
-    ? raw.slice(PLUGIN_SKILL_PREFIX.length)
-    : raw;
-  if (name.startsWith("kramme:")) return name;
-  return knownHyphenatedSkillNames().get(name) ?? null;
+  let name;
+  if (raw.startsWith(PLUGIN_SKILL_PREFIX)) {
+    name = raw.slice(PLUGIN_SKILL_PREFIX.length);
+  } else {
+    const legacy = raw.startsWith(LEGACY_PLUGIN_SKILL_PREFIX)
+      ? raw.slice(LEGACY_PLUGIN_SKILL_PREFIX.length)
+      : raw;
+    if (legacy.startsWith(LEGACY_SKILL_PREFIX)) {
+      return `${PLUGIN_SKILL_PREFIX}${legacy.slice(LEGACY_SKILL_PREFIX.length)}`;
+    }
+    if (!legacy.startsWith(LEGACY_HYPHENATED_SKILL_PREFIX)) return null;
+    name = legacy.slice(LEGACY_HYPHENATED_SKILL_PREFIX.length);
+  }
+  if (!name) return null;
+  if (name.includes(":")) return `${PLUGIN_SKILL_PREFIX}${name}`;
+  const owner = knownHyphenatedSkillNames().get(name);
+  return owner ? `${PLUGIN_SKILL_PREFIX}${owner}` : null;
+}
+
+/**
+ * Reads a stored record's skill name, mapping pre-1.0.0 `kramme:` names to
+ * their `trackbed:` names so old and new records count together.
+ * @param {string} skill
+ * @returns {string}
+ */
+function recordedSkillName(skill) {
+  return skill.startsWith(LEGACY_SKILL_PREFIX)
+    ? `${PLUGIN_SKILL_PREFIX}${skill.slice(LEGACY_SKILL_PREFIX.length)}`
+    : skill;
 }
 
 /** @returns {Map<string, string>} */
@@ -585,7 +616,7 @@ function knownHyphenatedSkillNames() {
     entries = [];
   }
   for (const entry of entries) {
-    if (!entry.startsWith("kramme:")) continue;
+    if (entry.startsWith(".")) continue;
     const alias = entry.replaceAll(":", "-");
     owners.set(alias, owners.has(alias) ? null : entry);
   }
@@ -1346,7 +1377,7 @@ function normalizeUsageRecord(value) {
     source: kind === "tool" ? "tool_input" : "prompt",
   };
   if (typeof record.skill === "string") {
-    return { ...fields, skill: record.skill };
+    return { ...fields, skill: recordedSkillName(record.skill) };
   }
   if (typeof record.unrecognizedSkill === "string") {
     return { ...fields, unrecognizedSkill: record.unrecognizedSkill };

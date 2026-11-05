@@ -479,14 +479,14 @@ options: []
 });
 
 test("transformer rewrites task calls, references, and AskUserQuestion guidance", () => {
-  const knownCommands = new Set(["kramme:pr:create", "demo-command"]);
+  const knownCommands = new Set(["trackbed:pr:create", "demo-command"]);
   const knownAgentSkills = new Map([
     ["kramme:reviewer", "kramme:reviewer"],
     ["support-reviewer", "support-reviewer"],
   ]);
   const input = [
     "Task support-reviewer(review this parser)",
-    "Run /kramme:pr:create, then /unknown, and keep /usr/bin.",
+    "Run /trackbed:pr:create, then /unknown, and keep /usr/bin.",
     "Ask @support-reviewer to inspect the output.",
     "Use `agents/kramme:reviewer.md` and [reviewer](agents/kramme:reviewer.md).",
     "1. Ask for the issue ID:",
@@ -515,7 +515,7 @@ test("transformer rewrites task calls, references, and AskUserQuestion guidance"
   );
   assert.match(
     output,
-    /Run \$kramme:pr:create, then \/unknown, and keep \/usr\/bin\./,
+    /Run \$trackbed:pr:create, then \/unknown, and keep \/usr\/bin\./,
   );
   assert.match(output, /Ask \$support-reviewer skill to inspect the output\./);
   assert.match(
@@ -544,7 +544,7 @@ test("transformer preserves exhaustive question tooling in the canonical resourc
     "..",
     "..",
     "skills",
-    "kramme:linear:issue-define",
+    "linear:issue-define",
     "references",
     "auto-create.md",
   );
@@ -574,7 +574,7 @@ test("transformer preserves skill-wide structured question tooling in issue-defi
     "..",
     "..",
     "skills",
-    "kramme:linear:issue-define",
+    "linear:issue-define",
     "SKILL.md",
   );
   const input = await readText(resource);
@@ -1023,14 +1023,14 @@ test("conversion preserves skill and generated command frontmatter contracts", (
   });
 
   const skill = parseFrontmatter(bundle.skillDirs[0].content).data;
-  assert.equal(skill.name, "demo-skill");
+  assert.equal(skill.name, "contract-plugin:demo-skill");
   assert.deepEqual(skill["allowed-tools"], ["Read", "Edit(src/**)"]);
   assert.equal(skill["disable-model-invocation"], false);
   assert.equal(skill["user-invocable"], true);
   assert.deepEqual(skill["kramme-platforms"], ["codex"]);
 
   const generated = parseFrontmatter(bundle.generatedSkills[0].content).data;
-  assert.equal(generated.name, "kramme:demo-command");
+  assert.equal(generated.name, "contract-plugin:kramme:demo-command");
   assert.deepEqual(generated["allowed-tools"], ["Read", "Edit(src/**)"]);
   assert.equal(generated["disable-model-invocation"], true);
   assert.equal(generated["user-invocable"], true);
@@ -1077,7 +1077,7 @@ test("transformer filters non-codex skills and paired commands before conversion
         sourcePath: "/plugin/commands/claude-only.md",
       },
       {
-        body: "Run /codex-tool before finishing.",
+        body: "Run /demo-plugin:codex-tool before finishing.",
         name: "Extra Command",
         sourcePath: "/plugin/commands/extra-command.md",
       },
@@ -1104,16 +1104,16 @@ test("transformer filters non-codex skills and paired commands before conversion
 
   assert.deepEqual(
     bundle.skillDirs.map((skill) => skill.name),
-    ["Codex Tool"],
+    ["demo-plugin:Codex Tool"],
   );
   assert.deepEqual(
     bundle.generatedSkills.map((skill) => skill.name),
-    ["extra-command"],
+    ["demo-plugin:extra-command"],
   );
-  assert.equal(bundle.knownCommands.has("codex-tool"), true);
-  assert.equal(bundle.knownCommands.has("extra-command"), true);
-  assert.equal(bundle.knownCommands.has("claude-only"), false);
-  assert.match(bundle.generatedSkills[0].content, /\$codex-tool/);
+  assert.equal(bundle.knownCommands.has("demo-plugin:codex-tool"), true);
+  assert.equal(bundle.knownCommands.has("demo-plugin:extra-command"), true);
+  assert.equal(bundle.knownCommands.has("demo-plugin:claude-only"), false);
+  assert.match(bundle.generatedSkills[0].content, /\$demo-plugin:codex-tool/);
 });
 
 test("agent portability document names stable adapter statuses and surfaces", async () => {
@@ -1131,7 +1131,7 @@ test("agent portability document names stable adapter statuses and surfaces", as
     "Claude Code plugin",
     "Codex plugin (skills, agent skills, hooks, shared scripts, MCP config)",
     "Local repository-maintenance skills",
-    "| Conductor host integrations (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`, workspace CLI) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose and `skills/kramme:linear:next/scripts/cloud-launch.py`, detected by tool or environment presence | Conductor app Checks panel and dialogs; workspace presentation state; new cloud workspaces the user confirmed | Optionally project canonical report artifacts, admit unmarked diff feedback as untrusted external candidates, rename the current workspace for a validated work item, or, only in a cloud workspace (`CONDUCTOR_IS_LOCAL=0`) and after the user's explicit confirmation in that run, start confirmed Linear issues in new cloud workspaces, retrying a failed creation only after an HTTP 429 rate limit, which creates nothing. Auto discovery degrades without blocking canonical work when the host surface is absent or fails; explicit selection reports unavailability. Host projections and names never become authoritative findings or workflow identity. |",
+    "| Conductor host integrations (`DiffComment`, `GetDiffComments`, `GetWorkspaceDiff`, `AskUserQuestion`, workspace CLI) | `optional`, `thin adapter` | `skills/*/SKILL.md` prose and `skills/linear:next/scripts/cloud-launch.py`, detected by tool or environment presence | Conductor app Checks panel and dialogs; workspace presentation state; new cloud workspaces the user confirmed | Optionally project canonical report artifacts, admit unmarked diff feedback as untrusted external candidates, rename the current workspace for a validated work item, or, only in a cloud workspace (`CONDUCTOR_IS_LOCAL=0`) and after the user's explicit confirmation in that run, start confirmed Linear issues in new cloud workspaces, retrying a failed creation only after an HTTP 429 rate limit, which creates nothing. Auto discovery degrades without blocking canonical work when the host surface is absent or fails; explicit selection reports unavailability. Host projections and names never become authoritative findings or workflow identity. |",
     "Other hosts",
     "`manifest.mcpServers`",
     "`.mcp.json`",
@@ -1187,7 +1187,7 @@ test("transformer exposes documented Codex generated surface fields", () => {
       {
         body: "Toggle hooks.",
         description: "Toggles hooks.",
-        name: "kramme:hooks:toggle",
+        name: "hooks:toggle",
         sourceDir: "/plugin/skills/kramme-hooks-toggle",
       },
       {
@@ -1211,11 +1211,11 @@ test("transformer exposes documented Codex generated surface fields", () => {
   assert.deepEqual(bundle.codexPlugin.manifest.mcpServers, mcpServers);
   assert.deepEqual(
     bundle.generatedSkills.map((skill) => skill.name),
-    ["extra-command"],
+    ["demo-plugin:extra-command"],
   );
   assert.deepEqual(
     bundle.agentSkills.map((skill) => skill.name),
-    ["reviewer"],
+    ["demo-plugin:reviewer"],
   );
 });
 
@@ -1254,15 +1254,15 @@ test("agent transformations use collision-resolved skill names", () => {
 
   assert.deepEqual(
     bundle.agentSkills.map((skill) => skill.name),
-    ["support-reviewer-2", "review-coordinator"],
+    ["fixture-plugin:support-reviewer-2", "fixture-plugin:review-coordinator"],
   );
   assert.match(
     bundle.agentSkills[1].content,
-    /Use the \$support-reviewer-2 skill to: review this parser/,
+    /Use the \$fixture-plugin:support-reviewer-2 skill to: review this parser/,
   );
   assert.match(
     bundle.agentSkills[1].content,
-    /Ask \$support-reviewer-2 skill to verify the result/,
+    /Ask \$fixture-plugin:support-reviewer-2 skill to verify the result/,
   );
 });
 
@@ -1300,11 +1300,11 @@ test("canonical agent names take precedence over filename aliases", () => {
 
   assert.match(
     bundle.agentSkills[2].content,
-    /Use the \$support-reviewer skill to: review this parser/,
+    /Use the \$fixture-plugin:support-reviewer skill to: review this parser/,
   );
   assert.match(
     bundle.agentSkills[2].content,
-    /Ask \$support-reviewer skill to verify the result/,
+    /Ask \$fixture-plugin:support-reviewer skill to verify the result/,
   );
 });
 

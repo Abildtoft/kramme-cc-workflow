@@ -2,20 +2,20 @@
 
 setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
-	CONVERGENCE="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/SKILL.md"
-	POLICY="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/references/review-convergence.md"
-	STATE_SCRIPT="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/scripts/convergence-state.py"
-	CODE_REVIEW="$PLUGIN_ROOT/skills/kramme:pr:code-review/SKILL.md"
-	CONVENTION="$PLUGIN_ROOT/skills/kramme:pr:convention-review/SKILL.md"
-	MINING="$PLUGIN_ROOT/skills/kramme:pr:convention-review/references/baseline-mining.md"
-	OVERENGINEERING="$PLUGIN_ROOT/skills/kramme:pr:overengineering-review/SKILL.md"
-	REFACTOR="$PLUGIN_ROOT/skills/kramme:code:refactor-opportunities/SKILL.md"
+	CONVERGENCE="$PLUGIN_ROOT/skills/pr:review-convergence/SKILL.md"
+	POLICY="$PLUGIN_ROOT/skills/pr:review-convergence/references/review-convergence.md"
+	STATE_SCRIPT="$PLUGIN_ROOT/skills/pr:review-convergence/scripts/convergence-state.py"
+	CODE_REVIEW="$PLUGIN_ROOT/skills/pr:code-review/SKILL.md"
+	CONVENTION="$PLUGIN_ROOT/skills/pr:convention-review/SKILL.md"
+	MINING="$PLUGIN_ROOT/skills/pr:convention-review/references/baseline-mining.md"
+	OVERENGINEERING="$PLUGIN_ROOT/skills/pr:overengineering-review/SKILL.md"
+	REFACTOR="$PLUGIN_ROOT/skills/code:refactor-opportunities/SKILL.md"
 	SHARED_SHIPPING="$PLUGIN_ROOT/shared/implementation/references/pr-shipping-contract.md"
-	LINEAR_SKILL="$PLUGIN_ROOT/skills/kramme:linear:issue-to-pr/SKILL.md"
-	PLAN_SKILL="$PLUGIN_ROOT/skills/kramme:code:plan-to-pr/SKILL.md"
-	TRIAGE="$PLUGIN_ROOT/skills/kramme:pr:triage-risk/SKILL.md"
-	EXECUTION_CONTRACT="$PLUGIN_ROOT/skills/kramme:pr:code-review/references/execution-contract.md"
-	DISCIPLINE="$PLUGIN_ROOT/skills/kramme:pr:code-review/references/review-discipline.md"
+	LINEAR_SKILL="$PLUGIN_ROOT/skills/linear:issue-to-pr/SKILL.md"
+	PLAN_SKILL="$PLUGIN_ROOT/skills/code:plan-to-pr/SKILL.md"
+	TRIAGE="$PLUGIN_ROOT/skills/pr:triage-risk/SKILL.md"
+	EXECUTION_CONTRACT="$PLUGIN_ROOT/skills/pr:code-review/references/execution-contract.md"
+	DISCIPLINE="$PLUGIN_ROOT/skills/pr:code-review/references/review-discipline.md"
 }
 
 require_phrases() {
@@ -46,7 +46,7 @@ PY
 	require_phrases "$POLICY" \
 		"do not remediate between gates" \
 		"**Batch remediation.**" \
-		'invoke `kramme:pr:resolve-review --implement-only` at most once per batch, before any direct edit and while the worktree is clean' \
+		'invoke `trackbed:pr:resolve-review --implement-only` at most once per batch, before any direct edit and while the worktree is clean' \
 		'Never pass `--team`, `--granular`, `--source`, `--severity`, a Pull Request URL, or a request without findings' \
 		"**Delta round.**" \
 		"**Confirmation pass.**" \

@@ -5,14 +5,14 @@ load 'test_helper/common'
 setup() {
   REPO_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
   FINGERPRINT="$REPO_DIR/scripts/review-tree-fingerprint.sh"
-  SKILL="$REPO_DIR/skills/kramme:pr:code-review/SKILL.md"
-  DISCIPLINE="$REPO_DIR/skills/kramme:pr:code-review/references/review-discipline.md"
-  TEAM_MODE="$REPO_DIR/skills/kramme:pr:code-review/references/team-mode.md"
-  TEMPLATE="$REPO_DIR/skills/kramme:pr:code-review/references/output-template.md"
-  PRODUCT_SKILL="$REPO_DIR/skills/kramme:pr:product-review/SKILL.md"
-  PRODUCT_DISCIPLINE="$REPO_DIR/skills/kramme:pr:product-review/references/shared-working-tree.md"
-  PRODUCT_TEAM_MODE="$REPO_DIR/skills/kramme:pr:product-review/references/team-mode.md"
-  PRODUCT_TEMPLATE="$REPO_DIR/skills/kramme:pr:product-review/assets/product-review-report-format.md"
+  SKILL="$REPO_DIR/skills/pr:code-review/SKILL.md"
+  DISCIPLINE="$REPO_DIR/skills/pr:code-review/references/review-discipline.md"
+  TEAM_MODE="$REPO_DIR/skills/pr:code-review/references/team-mode.md"
+  TEMPLATE="$REPO_DIR/skills/pr:code-review/references/output-template.md"
+  PRODUCT_SKILL="$REPO_DIR/skills/pr:product-review/SKILL.md"
+  PRODUCT_DISCIPLINE="$REPO_DIR/skills/pr:product-review/references/shared-working-tree.md"
+  PRODUCT_TEAM_MODE="$REPO_DIR/skills/pr:product-review/references/team-mode.md"
+  PRODUCT_TEMPLATE="$REPO_DIR/skills/pr:product-review/assets/product-review-report-format.md"
   TMP_DIR="$(mktemp -d)"
   WORK="$TMP_DIR/work"
   init_test_git_repo "$WORK"
@@ -273,7 +273,7 @@ EOF
   local agent path
 
   for agent in "${agents[@]}"; do
-    path="$REPO_DIR/agents/kramme:$agent.md"
+    path="$REPO_DIR/agents/$agent.md"
     test -f "$path"
     if ! grep -qEi "read-only agent|do not edit files|never edit files" "$path"; then
       printf 'missing read-only mandate: %s\n' "$path" >&2
@@ -299,7 +299,7 @@ EOF
   local agent path
 
   for agent in "${agents[@]}"; do
-    path="$REPO_DIR/agents/kramme:$agent.md"
+    path="$REPO_DIR/agents/$agent.md"
     test -f "$path"
     if ! grep -qEi "read-only agent|do not edit files|never edit files" "$path"; then
       printf 'missing read-only mandate: %s\n' "$path" >&2
@@ -311,9 +311,9 @@ EOF
 @test "every agent except the design iterator withholds file-writing tools" {
   local path name frontmatter
 
-  for path in "$REPO_DIR"/agents/kramme:*.md; do
+  for path in "$REPO_DIR"/agents/*.md; do
     name="$(basename "$path" .md)"
-    [ "$name" = "kramme:design-iterator" ] && continue
+    [ "$name" = "design-iterator" ] && continue
     frontmatter="$(awk 'NR == 1 { next } /^---$/ { exit } { print }' "$path")"
     if ! grep -qxF 'disallowedTools: Write, Edit, NotebookEdit' <<<"$frontmatter"; then
       printf 'agent can write files: %s\n' "$path" >&2

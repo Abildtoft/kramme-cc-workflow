@@ -6,7 +6,7 @@ on:
       - ".github/workflows/skill-review-eval.yml"
       - "kramme-cc-workflow/Makefile"
       - "kramme-cc-workflow/evals/skill-review/**"
-      - "kramme-cc-workflow/skills/kramme:skill:review/**"
+      - "kramme-cc-workflow/skills/skill:review/**"
       - "package.json"
       - "package-lock.json"
   schedule:

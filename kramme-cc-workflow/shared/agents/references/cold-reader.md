@@ -4,8 +4,8 @@ Use this contract when a skill asks for a cold reader: an agent that tests what 
 
 ## Launch
 
-- **Claude Code:** launch the plugin agent `kramme:cold-reader`. Its `omitClaudeMd: true` frontmatter starts it without the user, project, and local `CLAUDE.md` files and the `AGENTS.md` they import. The field needs Claude Code 2.1.271 or later; older versions ignore it and load those files. Start a new agent for every read; never fork the conversation or resume an earlier reader.
-- **Codex:** spawn a new agent with `fork_turns="none"`, or with `fork_context: false` when the spawn tool exposes that field instead, and have it use `agents/kramme:cold-reader.md`. Codex has no equivalent of `omitClaudeMd`, so the reader may still receive project instructions such as `AGENTS.md`. Record that as reduced isolation wherever the adopting skill reports isolation.
+- **Claude Code:** launch the plugin agent `trackbed:cold-reader`. Its `omitClaudeMd: true` frontmatter starts it without the user, project, and local `CLAUDE.md` files and the `AGENTS.md` they import. The field needs Claude Code 2.1.271 or later; older versions ignore it and load those files. Start a new agent for every read; never fork the conversation or resume an earlier reader.
+- **Codex:** spawn a new agent with `fork_turns="none"`, or with `fork_context: false` when the spawn tool exposes that field instead, and have it use `agents/cold-reader.md`. Codex has no equivalent of `omitClaudeMd`, so the reader may still receive project instructions such as `AGENTS.md`. Record that as reduced isolation wherever the adopting skill reports isolation.
 - **Other hosts:** use a new agent that does not receive the conversation history.
 - Apart from that Codex skill reference, pass only the filled prompt the adopting skill names: no conversation history, no notes about what the author meant, no prior reports, and no expected findings.
 - Keep the session's model unless the adopting skill selects one.

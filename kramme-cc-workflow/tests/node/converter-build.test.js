@@ -112,7 +112,7 @@ test("plugin package describes the native Codex plugin manifest", () => {
     },
     mcpServers,
     root: "/plugin",
-    skills: [hookControlSkill("kramme:hooks:toggle")],
+    skills: [hookControlSkill("hooks:toggle")],
   };
 
   const { codexPlugin } = convertClaudeToCodex(plugin);
@@ -197,35 +197,29 @@ test("build writes a marketplace with skills, shared runtime, and rewritten plug
       version: "3.1.4",
     });
     await writeFile(
-      path.join(pluginRoot, "skills", "kramme:demo:run", "SKILL.md"),
+      path.join(pluginRoot, "skills", "demo:run", "SKILL.md"),
       [
         "---",
-        "name: kramme:demo:run",
+        "name: demo:run",
         "description: Run the demo.",
         "disable-model-invocation: false",
         "user-invocable: true",
         "---",
         '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --strict',
-        '[ -x "${CLAUDE_PLUGIN_ROOT:-}/skills/kramme:demo:run/scripts/run.sh" ]',
+        '[ -x "${CLAUDE_PLUGIN_ROOT:-}/skills/demo:run/scripts/run.sh" ]',
         "Use AskUserQuestion to ask about scope.",
         "",
       ].join("\n"),
     );
     await writeFile(
-      path.join(
-        pluginRoot,
-        "skills",
-        "kramme:demo:run",
-        "references",
-        "notes.md",
-      ),
+      path.join(pluginRoot, "skills", "demo:run", "references", "notes.md"),
       "Helper lives at ${CLAUDE_PLUGIN_ROOT}/scripts/dev-server/detect-url.sh.\nUse AskUserQuestion to confirm.\n",
     );
     await writeFile(
       path.join(
         pluginRoot,
         "skills",
-        "kramme:demo:run",
+        "demo:run",
         "references",
         "sources-snapshot",
         "fetched.txt",
@@ -233,7 +227,7 @@ test("build writes a marketplace with skills, shared runtime, and rewritten plug
       "fetched upstream body\n",
     );
     await writeFile(
-      path.join(pluginRoot, "skills", "kramme:demo:run", "scripts", "run.sh"),
+      path.join(pluginRoot, "skills", "demo:run", "scripts", "run.sh"),
       "#!/bin/sh\necho run\n",
     );
     await writeFile(
@@ -300,7 +294,7 @@ test("build writes a marketplace with skills, shared runtime, and rewritten plug
     const rootExpression =
       "${CODEX_HOME:-$HOME/.codex}/plugins/cache/build-plugin/build-plugin/3.1.4";
     const skill = await readText(
-      path.join(skillsRoot, "kramme:demo:run", "SKILL.md"),
+      path.join(skillsRoot, "build-plugin:demo:run", "SKILL.md"),
     );
     assert.match(
       skill,
@@ -310,12 +304,12 @@ test("build writes a marketplace with skills, shared runtime, and rewritten plug
     );
     assert.ok(
       skill.includes(
-        `[ -x "${rootExpression}/skills/kramme:demo:run/scripts/run.sh" ]`,
+        `[ -x "${rootExpression}/skills/build-plugin:demo:run/scripts/run.sh" ]`,
       ),
     );
     assert.doesNotMatch(skill, /AskUserQuestion|CLAUDE_PLUGIN_ROOT/);
     const notes = await readText(
-      path.join(skillsRoot, "kramme:demo:run", "references", "notes.md"),
+      path.join(skillsRoot, "build-plugin:demo:run", "references", "notes.md"),
     );
     assert.equal(
       notes,
@@ -325,7 +319,7 @@ test("build writes a marketplace with skills, shared runtime, and rewritten plug
       await pathExists(
         path.join(
           skillsRoot,
-          "kramme:demo:run",
+          "build-plugin:demo:run",
           "references",
           "sources-snapshot",
         ),
@@ -335,17 +329,21 @@ test("build writes a marketplace with skills, shared runtime, and rewritten plug
     );
     assert.equal(
       await readText(
-        path.join(skillsRoot, "kramme:demo:run", "scripts", "run.sh"),
+        path.join(skillsRoot, "build-plugin:demo:run", "scripts", "run.sh"),
       ),
       "#!/bin/sh\necho run\n",
     );
     assert.match(
-      await readText(path.join(skillsRoot, "demo-reviewer", "SKILL.md")),
-      /^---\nname: demo-reviewer\n/,
+      await readText(
+        path.join(skillsRoot, "build-plugin:demo-reviewer", "SKILL.md"),
+      ),
+      /^---\nname: build-plugin:demo-reviewer\n/,
     );
     assert.match(
-      await readText(path.join(skillsRoot, "demo-command", "SKILL.md")),
-      /^---\nname: demo-command\n/,
+      await readText(
+        path.join(skillsRoot, "build-plugin:demo-command", "SKILL.md"),
+      ),
+      /^---\nname: build-plugin:demo-command\n/,
     );
 
     const executable = async (/** @type {string} */ relativePath) =>
@@ -411,7 +409,10 @@ test("build marks manual-only skills and commands explicit-only for Codex", asyn
       .filter((skill) => skill.allowImplicitInvocation === false)
       .map((skill) => skill.name)
       .sort();
-    assert.deepEqual(explicitOnly, ["kramme:demo:manual", "manual-command"]);
+    assert.deepEqual(explicitOnly, [
+      "policy-plugin:kramme:demo:manual",
+      "policy-plugin:manual-command",
+    ]);
 
     const built = await buildCodexMarketplace(
       path.join(root, "marketplace"),
@@ -426,7 +427,11 @@ test("build marks manual-only skills and commands explicit-only for Codex", asyn
         name,
       );
     }
-    for (const name of ["kramme:demo:auto", "auto-command", "demo-reviewer"]) {
+    for (const name of [
+      "policy-plugin:kramme:demo:auto",
+      "policy-plugin:auto-command",
+      "policy-plugin:demo-reviewer",
+    ]) {
       assert.equal(
         await pathExists(path.join(skillsRoot, name, "SKILL.md")),
         true,
@@ -439,7 +444,9 @@ test("build marks manual-only skills and commands explicit-only for Codex", asyn
       );
     }
     assert.match(
-      await readText(path.join(skillsRoot, "kramme:demo:manual", "SKILL.md")),
+      await readText(
+        path.join(skillsRoot, "policy-plugin:kramme:demo:manual", "SKILL.md"),
+      ),
       /^disable-model-invocation: true$/m,
       "the Claude frontmatter key is still preserved",
     );

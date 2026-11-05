@@ -7,6 +7,14 @@ const path = require("path");
 
 const ERROR_CAUSE_DEPTH_LIMIT = 5;
 const MARKETPLACE_DIR_NAME = ".kramme-plugin-marketplaces";
+// Direct installs from before 1.0.0 recorded their output under the plugin's
+// former name, so legacy cleanup checks that name as well.
+const FORMER_PLUGIN_NAMES = new Map([["trackbed", ["kramme-cc-workflow"]]]);
+
+/** @param {string} pluginName @returns {string[]} */
+function legacyPluginNames(pluginName) {
+  return [pluginName, ...(FORMER_PLUGIN_NAMES.get(pluginName) ?? [])];
+}
 const COMMON_OPTIONS = ["to"];
 const HOME_OPTIONS = ["codex-home", "codexHome", "agents-home", "agentsHome"];
 const CONFIRM_OPTIONS = ["yes", "y", "non-interactive", "nonInteractive"];
@@ -88,13 +96,15 @@ async function runInstall(parsed) {
     codexPlugin: bundle.codexPlugin,
     marketplaceRoot,
   });
-  await cleanupLegacyInstall({
-    agentsHome,
-    codexHome,
-    confirmOptions,
-    pluginName,
-    preservePaths: [marketplaceRoot, installed.installedPath],
-  });
+  for (const legacyName of legacyPluginNames(pluginName)) {
+    await cleanupLegacyInstall({
+      agentsHome,
+      codexHome,
+      confirmOptions,
+      pluginName: legacyName,
+      preservePaths: [marketplaceRoot, installed.installedPath],
+    });
+  }
   console.log(
     `Installed ${bundle.codexPlugin.name} ${bundle.codexPlugin.version} to ${installed.installedPath}`,
   );
@@ -119,12 +129,14 @@ async function runUninstall(parsed) {
   });
   await fs.rm(marketplaceRoot, { force: true, recursive: true });
   await fs.rmdir(path.dirname(marketplaceRoot)).catch(() => {});
-  await cleanupLegacyInstall({
-    agentsHome,
-    codexHome,
-    confirmOptions,
-    pluginName,
-  });
+  for (const legacyName of legacyPluginNames(pluginName)) {
+    await cleanupLegacyInstall({
+      agentsHome,
+      codexHome,
+      confirmOptions,
+      pluginName: legacyName,
+    });
+  }
   console.log(`Uninstalled ${bundle.codexPlugin.name} from ${codexHome}`);
 }
 

@@ -6,7 +6,7 @@
 
 ## Context
 
-At the time of this decision on 2026-07-06, `kramme-cc-workflow` shipped 108 prompt-based skills. Committed deterministic behavioral evals currently cover exactly one skill: `kramme:skill:review`, through `evals/skill-review/` and the constrained SkillOpt pilot documented in `evals/skillopt/README.md`.
+At the time of this decision on 2026-07-06, `kramme-cc-workflow` shipped 108 prompt-based skills. Committed deterministic behavioral evals currently cover exactly one skill: `trackbed:skill:review`, through `evals/skill-review/` and the constrained SkillOpt pilot documented in `evals/skillopt/README.md`.
 
 The other verification layers are valuable but do not generally exercise skill behavior under a new generation model:
 
@@ -17,13 +17,13 @@ The other verification layers are valuable but do not generally exercise skill b
 
 The 90-day local usage report on 2026-07-06 showed the top five skills as:
 
-| Rank | Skill                         | 90-day uses | Sessions |
-| ---- | ----------------------------- | ----------: | -------: |
-| 1    | `kramme:pr:resolve-review`    |         204 |      176 |
-| 2    | `kramme:skill:review`         |         195 |      190 |
-| 3    | `kramme:pr:code-review`       |          44 |       36 |
-| 4    | `kramme:pr:rebase`            |          34 |       23 |
-| 5    | `kramme:code:agent-readiness` |          31 |       24 |
+| Rank | Skill                           | 90-day uses | Sessions |
+| ---- | ------------------------------- | ----------: | -------: |
+| 1    | `trackbed:pr:resolve-review`    |         204 |      176 |
+| 2    | `trackbed:skill:review`         |         195 |      190 |
+| 3    | `trackbed:pr:code-review`       |          44 |       36 |
+| 4    | `trackbed:pr:rebase`            |          34 |       23 |
+| 5    | `trackbed:code:agent-readiness` |          31 |       24 |
 
 ## Risk Table
 
@@ -31,11 +31,11 @@ If a model-generation upgrade silently degraded behavior, these are the existing
 
 | Skill | Existing signal likely to catch a model-regression | Damage before signal |
 | --- | --- | --- |
-| `kramme:pr:resolve-review` | No committed behavioral eval. The narrow `pr code review exposes resolver readiness contract` Bats test checks that `pr:code-review` emits fields the resolver expects, and SkillSpector/static contracts can catch changed instructions, but a model regression in finding triage, action-class handling, or patch implementation is caught by the user, tests, CI, review, or a failed resolution run. | Potentially one real PR branch before detection. Because the skill can edit code and commit fixes, the damage can include incorrect source changes, reviewer time, and a bad force-push if later workflows push the branch. |
-| `kramme:skill:review` | The only skill with a deterministic behavior harness and SkillOpt candidate gate. It can catch regressions when run in adapted/live prediction mode or as part of a candidate review. The default fixture eval validates the harness and fixture expectations, not every future model response. | If the live/adapted eval or smoke is skipped, the next skill audit may miss a bad skill or report false findings. Direct blast radius is review quality, with downstream risk if maintainers accept the bad review. |
-| `kramme:pr:code-review` | No committed behavioral eval. The Bats resolver-readiness contract checks action-class output structure; script tests check diff/base helpers. Missing defects, hallucinated findings, weak severity, or poor evidence are caught by human review, resolver failure, later CI, or production fallout. | Potentially one or more PRs before detection. Damage is missed bugs, false-positive churn, or bad local review artifacts that mislead `pr:resolve-review`. |
-| `kramme:pr:rebase` | No committed behavioral eval. Git itself, `--force-with-lease`, conflict markers, branch checks, user confirmation gates, and command-safety hooks catch some unsafe operations at runtime. They do not prove the model made the right semantic conflict choices. | Usually one branch/rebase attempt. Worst case is a semantically wrong conflict resolution that passes mechanically and is pushed after confirmation or dangerous `--auto` use. |
-| `kramme:code:agent-readiness` | No committed behavioral eval. Static contracts catch metadata/resource problems; the user reads the generated `AGENT_NATIVE_AUDIT.md`. There is no deterministic score-quality check. | One inaccurate report before detection. Damage is bad prioritization and planning guidance; source code is not edited except for the report artifact. |
+| `trackbed:pr:resolve-review` | No committed behavioral eval. The narrow `pr code review exposes resolver readiness contract` Bats test checks that `pr:code-review` emits fields the resolver expects, and SkillSpector/static contracts can catch changed instructions, but a model regression in finding triage, action-class handling, or patch implementation is caught by the user, tests, CI, review, or a failed resolution run. | Potentially one real PR branch before detection. Because the skill can edit code and commit fixes, the damage can include incorrect source changes, reviewer time, and a bad force-push if later workflows push the branch. |
+| `trackbed:skill:review` | The only skill with a deterministic behavior harness and SkillOpt candidate gate. It can catch regressions when run in adapted/live prediction mode or as part of a candidate review. The default fixture eval validates the harness and fixture expectations, not every future model response. | If the live/adapted eval or smoke is skipped, the next skill audit may miss a bad skill or report false findings. Direct blast radius is review quality, with downstream risk if maintainers accept the bad review. |
+| `trackbed:pr:code-review` | No committed behavioral eval. The Bats resolver-readiness contract checks action-class output structure; script tests check diff/base helpers. Missing defects, hallucinated findings, weak severity, or poor evidence are caught by human review, resolver failure, later CI, or production fallout. | Potentially one or more PRs before detection. Damage is missed bugs, false-positive churn, or bad local review artifacts that mislead `pr:resolve-review`. |
+| `trackbed:pr:rebase` | No committed behavioral eval. Git itself, `--force-with-lease`, conflict markers, branch checks, user confirmation gates, and command-safety hooks catch some unsafe operations at runtime. They do not prove the model made the right semantic conflict choices. | Usually one branch/rebase attempt. Worst case is a semantically wrong conflict resolution that passes mechanically and is pushed after confirmation or dangerous `--auto` use. |
+| `trackbed:code:agent-readiness` | No committed behavioral eval. Static contracts catch metadata/resource problems; the user reads the generated `AGENT_NATIVE_AUDIT.md`. There is no deterministic score-quality check. | One inaccurate report before detection. Damage is bad prioritization and planning guidance; source code is not edited except for the report artifact. |
 
 ## Decision
 
@@ -43,10 +43,10 @@ Amended on 2026-09-08 by [review execution evidence](2026-09-08-review-execution
 
 Use **dogfooding-is-QA** as the skill-quality regime for prompt behavior.
 
-The committed `evals/` investment is explicitly capped at the current `kramme:skill:review` pilot:
+The committed `evals/` investment is explicitly capped at the current `trackbed:skill:review` pilot:
 
 - exactly one committed behavioral eval target: `evals/skill-review/`
-- exactly one SkillOpt bridge: `evals/skillopt/` for `kramme:skill:review`
+- exactly one SkillOpt bridge: `evals/skillopt/` for `trackbed:skill:review`
 - zero additional committed skill-behavior eval directories, splits, adapters, or candidate gates until a future ADR changes this decision
 
 The default quality signal for the rest of the skill catalog is maintainer dogfooding plus lightweight post-model-upgrade smoke testing of the current top N skills, where `N = 5`.
@@ -69,11 +69,11 @@ For the 2026-07-06 top five, the smoke cases are:
 
 | Skill | Smoke case |
 | --- | --- |
-| `kramme:pr:resolve-review` | Resolve a small structured local review in a disposable branch/worktree. Verify action-class gates, manual deferral, code edits, validation, and summary behavior. |
-| `kramme:skill:review` | Run `make skill-eval-skill-review`, then perform one live review of a known good or intentionally flawed fixture skill and compare against expected rubric coverage. |
-| `kramme:pr:code-review` | Review a small known diff. Verify scoped findings, evidence, no hallucinated file references, severity, and `Auto-resolution Readiness` output. |
-| `kramme:pr:rebase` | Rebase a disposable branch with a simple conflict. Verify preflight, conflict summary, no unresolved markers, confirmation behavior, and `--force-with-lease` push gating. |
-| `kramme:code:agent-readiness` | Run against this repo or a stable fixture repo. Verify evidence-backed dimension scores, no early return, and a prioritized plan that maps to observed files/config. |
+| `trackbed:pr:resolve-review` | Resolve a small structured local review in a disposable branch/worktree. Verify action-class gates, manual deferral, code edits, validation, and summary behavior. |
+| `trackbed:skill:review` | Run `make skill-eval-skill-review`, then perform one live review of a known good or intentionally flawed fixture skill and compare against expected rubric coverage. |
+| `trackbed:pr:code-review` | Review a small known diff. Verify scoped findings, evidence, no hallucinated file references, severity, and `Auto-resolution Readiness` output. |
+| `trackbed:pr:rebase` | Rebase a disposable branch with a simple conflict. Verify preflight, conflict summary, no unresolved markers, confirmation behavior, and `--force-with-lease` push gating. |
+| `trackbed:code:agent-readiness` | Run against this repo or a stable fixture repo. Verify evidence-backed dimension scores, no early return, and a prioritized plan that maps to observed files/config. |
 
 ## Alternatives Considered
 
@@ -87,10 +87,10 @@ The current top-five list does not make expansion free:
 
 | Candidate | Criteria fit |
 | --- | --- |
-| `kramme:pr:resolve-review` | High usage and impact. Not ready because deterministic fixtures must model review parsing, action-class gates, code edits, validation, and false positives without rewarding broad churn. |
-| `kramme:pr:code-review` | High usage and already named in the SkillOpt shortlist. Not ready because broad finding categories need a larger split and strong false-positive protection. |
-| `kramme:pr:rebase` | High impact, but behavior depends on Git state, conflicts, and safety gates. A useful eval would be closer to an integration test matrix than a prompt fixture split. |
-| `kramme:code:agent-readiness` | Medium impact and checkability is subjective. Deterministic score fixtures would need stable fixture repos and rubrics before optimization is credible. |
+| `trackbed:pr:resolve-review` | High usage and impact. Not ready because deterministic fixtures must model review parsing, action-class gates, code edits, validation, and false positives without rewarding broad churn. |
+| `trackbed:pr:code-review` | High usage and already named in the SkillOpt shortlist. Not ready because broad finding categories need a larger split and strong false-positive protection. |
+| `trackbed:pr:rebase` | High impact, but behavior depends on Git state, conflicts, and safety gates. A useful eval would be closer to an integration test matrix than a prompt fixture split. |
+| `trackbed:code:agent-readiness` | Medium impact and checkability is subjective. Deterministic score fixtures would need stable fixture repos and rubrics before optimization is credible. |
 
 Expansion remains available later, but each added skill must first satisfy the documented SkillOpt expansion criteria and come with its own deterministic split and candidate gate.
 

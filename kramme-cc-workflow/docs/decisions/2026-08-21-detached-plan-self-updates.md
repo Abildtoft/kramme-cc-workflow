@@ -6,7 +6,7 @@
 
 ## Context
 
-`kramme:code:plan-to-pr` accepts detached `PR_PLAN_*.md` attachments without their source index or sibling plans. The workflow normalizes each attachment into a content-derived archive containing an immutable `ATTACHMENT_SOURCE.md` and a mutable execution copy.
+`trackbed:code:plan-to-pr` accepts detached `PR_PLAN_*.md` attachments without their source index or sibling plans. The workflow normalizes each attachment into a content-derived archive containing an immutable `ATTACHMENT_SOURCE.md` and a mutable execution copy.
 
 Generated plan guidance now offers to update stale plans in place after explaining drift and receiving explicit approval. Asking detached-plan users to supply a replacement would contradict that handoff. Mutating the attachment or its established archive, however, would break the provenance and retry guarantees used by downstream completion and CI workflows.
 

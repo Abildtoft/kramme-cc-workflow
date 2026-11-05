@@ -30,4 +30,4 @@ ensure_converter_dependencies() {
 
 ensure_converter_dependencies
 
-node "$repo_root/scripts/convert-plugin.js" install kramme-cc-workflow --to codex "$@"
+node "$repo_root/scripts/convert-plugin.js" install trackbed --to codex "$@"

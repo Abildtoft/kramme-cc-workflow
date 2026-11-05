@@ -1,24 +1,24 @@
 #!/usr/bin/env bats
 
-PROTECTED_REGISTRY="skills/kramme:code:refactor-pass/references/protected-workflow-artifacts.txt"
+PROTECTED_REGISTRY="skills/code:refactor-pass/references/protected-workflow-artifacts.txt"
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
 }
 
 @test "refactor pass discovers AI slop by default" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
 
   test -f "$skill"
   test ! -e "skills/kramme:code:cleanup-ai/SKILL.md"
   grep -qF "Default mode includes AI-slop review without a separate flag." "$skill"
   grep -qF "Rewrite mode skips this discovery step" "$skill"
-  grep -qF 'Launch `kramme:deslop-reviewer` in code review mode against `REFACTOR_SCOPE_PATHS`.' "$skill"
+  grep -qF 'Launch `trackbed:deslop-reviewer` in code review mode against `REFACTOR_SCOPE_PATHS`.' "$skill"
   grep -qF "Treat every reported slop finding as a candidate, not an instruction." "$skill"
 }
 
 @test "default scope uses the canonical review diff collector" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
 
   grep -qF "Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills)" "$skill"
   grep -qF '"${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --strict --format json' "$skill"
@@ -31,7 +31,7 @@ setup() {
 }
 
 @test "AI slop candidates use the normal refactor safety loop" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
 
   grep -qF "AI-slop findings enter the same one-slice loop, Fence, verification, commit, and recovery contract as every other candidate." "$skill"
   grep -qF "again after each verified slice" "$skill"
@@ -42,7 +42,7 @@ setup() {
 }
 
 @test "refactor safety epilogue keeps only residual completion checks" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
   local candidates
   local rewrite_verification
 
@@ -50,7 +50,7 @@ setup() {
   rewrite_verification="$(sed -n '/^For rewrite mode, confirm the end state/,/^If any applicable verification box/p' "$skill")"
 
   grep -qF "If the unchanged baseline fails, stop" "$skill"
-  grep -qF 'reuse its successful `kramme:verify:run` result after the post-checkpoint worktree equality check passes' "$skill"
+  grep -qF 'reuse its successful `trackbed:verify:run` result after the post-checkpoint worktree equality check passes' "$skill"
   grep -qF "Prefer clarity over line count." "$skill"
   grep -qF "Defensive checks that caller, type, test, and history evidence prove redundant." <<<"$candidates"
   grep -qF "No bug found during the rewrite was silently folded in — any bug fix is a separate slice." <<<"$rewrite_verification"
@@ -58,7 +58,7 @@ setup() {
 }
 
 @test "failed verification and rewrite scope retain their recovery actions" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
 
   grep -qF "revert the slice" "$skill"
   grep -qF "restore the recovery point or reclassify it as a behavior change" "$skill"
@@ -67,11 +67,11 @@ setup() {
 }
 
 @test "uncommitted input gets a separate verified recovery checkpoint" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
   local discovery_line
   local checkpoint_line
 
-  grep -qF 'Run `kramme:verify:run` on the unchanged starting tree.' "$skill"
+  grep -qF 'Run `trackbed:verify:run` on the unchanged starting tree.' "$skill"
   grep -qF 'references/protected-workflow-artifacts.txt' "$skill"
   grep -qF "must never enter the checkpoint path set" "$skill"
   grep -qF 'Create one clearly labeled recovery checkpoint commit containing the exact pre-existing changes in `REFACTOR_SCOPE_PATHS` and no cleanup.' "$skill"
@@ -91,7 +91,7 @@ setup() {
 }
 
 @test "failed commit hooks restore out-of-scope worktree mutations" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
 
   grep -qF "every tracked and untracked non-ignored worktree path" "$skill"
   grep -qF "Restore every hook-caused delta, including out-of-scope content changes, deletions, and newly created non-ignored paths" "$skill"
@@ -101,24 +101,24 @@ setup() {
 }
 
 @test "AI slop discovery keeps generated-like files out of its candidates" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
 
   grep -qF 'generated files, vendored code, lockfiles, snapshots, or `*.d.ts` files' "$skill"
   grep -qF "These exclusions apply to the AI-slop aspect" "$skill"
 }
 
 @test "AI slop discovery fails closed and excludes visual redesign" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
 
   grep -qF "Do not treat a failed reviewer call as an empty finding set or report the scope clean." "$skill"
   grep -qF "Visual redesign findings are not behavior-preserving simplifications." "$skill"
-  grep -qF 'suggest `kramme:pr:product-review` instead' "$skill"
+  grep -qF 'suggest `trackbed:pr:product-review` instead' "$skill"
   ! grep -qF "Generic AI-aesthetic UI defaults" "$skill"
   ! grep -qF "generic UI defaults" "$skill"
 }
 
 @test "simplification commits preserve complete scoped git state" {
-  local skill="skills/kramme:code:refactor-pass/SKILL.md"
+  local skill="skills/code:refactor-pass/SKILL.md"
 
   grep -qF 'Record the exact newline-delimited paths changed by this simplification as `SLICE_PATHS`.' "$skill"
   grep -qF 'Limit both staging and commit selection to `SLICE_PATHS`' "$skill"
@@ -163,7 +163,7 @@ setup() {
 # Disposability is not the criterion - every protected entry is disposable too -
 # nor is the directory, since siw/AUDIT_SPEC_REPORT.md is blocked.
 @test "protected workflow artifacts omit the disposable siw and .context paths" {
-  local disposable="skills/kramme:workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
+  local disposable="skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml"
   local disposable_path
 
   # A missing registry makes grep exit non-zero, indistinguishable from

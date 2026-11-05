@@ -3,7 +3,7 @@
 load 'test_helper/common'
 
 setup() {
-	VALIDATOR="$BATS_TEST_DIRNAME/../skills/kramme:code:plan-to-pr/scripts/validate-plan-state.py"
+	VALIDATOR="$BATS_TEST_DIRNAME/../skills/code:plan-to-pr/scripts/validate-plan-state.py"
 	TMP_DIR="$(mktemp -d)"
 	REPO="$TMP_DIR/repo"
 	init_test_git_repo "$REPO"
@@ -1414,7 +1414,7 @@ EOF
 }
 
 extract_reconcile_recipe() {
-	python3 - "$BATS_TEST_DIRNAME/../skills/kramme:code:breakdown-findings/references/reconcile-workflow.md" "$1" "$2" <<'PY'
+	python3 - "$BATS_TEST_DIRNAME/../skills/code:breakdown-findings/references/reconcile-workflow.md" "$1" "$2" <<'PY'
 import pathlib
 import sys
 

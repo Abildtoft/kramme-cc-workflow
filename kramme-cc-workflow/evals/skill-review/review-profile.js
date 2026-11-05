@@ -51,7 +51,7 @@ function stageCase(context) {
   if (
     !fs
       .readFileSync(path.join(source, "SKILL.md"), "utf8")
-      .includes("name: kramme:skill:review\n")
+      .includes("name: skill:review\n")
   )
     throw new EvalFailure("unsupported_reviewer");
   const temporary = fs.realpathSync(
@@ -63,7 +63,7 @@ function stageCase(context) {
   try {
     fs.mkdirSync(auth, { mode: 0o700 });
     // Claude loads this layout as a local plugin; other adapters read the same files.
-    copyTree(source, path.join(plugin, "skills", "kramme:skill:review"));
+    copyTree(source, path.join(plugin, "skills", "skill:review"));
     writeJson(path.join(plugin, ".claude-plugin", "plugin.json"), {
       name: "eval-review",
       version: "1.0.0",

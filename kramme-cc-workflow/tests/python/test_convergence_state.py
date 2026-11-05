@@ -11,7 +11,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 SCRIPT_PATH = (
-    Path(__file__).resolve().parents[2] / "skills" / "kramme:pr:review-convergence" / "scripts" / "convergence-state.py"
+    Path(__file__).resolve().parents[2] / "skills" / "pr:review-convergence" / "scripts" / "convergence-state.py"
 )
 RISK_SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "risk-signals.py"
 

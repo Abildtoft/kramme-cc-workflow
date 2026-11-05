@@ -2,9 +2,9 @@
 
 setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
-	SKILL="$PLUGIN_ROOT/skills/kramme:code:outside-view/SKILL.md"
-	PERSONAS="$PLUGIN_ROOT/skills/kramme:code:outside-view/references/personas.md"
-	TEMPLATE="$PLUGIN_ROOT/skills/kramme:code:outside-view/assets/report-template.md"
+	SKILL="$PLUGIN_ROOT/skills/code:outside-view/SKILL.md"
+	PERSONAS="$PLUGIN_ROOT/skills/code:outside-view/references/personas.md"
+	TEMPLATE="$PLUGIN_ROOT/skills/code:outside-view/assets/report-template.md"
 }
 
 @test "outside-view cross-model rating is opt-in, different-family, and fail-closed" {

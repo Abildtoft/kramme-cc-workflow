@@ -5,7 +5,7 @@ setup() {
 }
 
 @test "find sibling bugs is a read-only branch recurrence analysis" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
 
   test -f "$skill"
   grep -qF "Use the current branch as a worked bug report." "$skill"
@@ -15,7 +15,7 @@ setup() {
 }
 
 @test "find sibling bugs resolves complete branch and local scope" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
 
   grep -qF 'argument-hint: "[--base <branch>] [--intent <text>]"' "$skill"
   grep -qF 'COLLECT_ARGS=(--strict --format nul --exclude-review-artifacts)' "$skill"
@@ -27,7 +27,7 @@ setup() {
 }
 
 @test "find sibling bugs treats stated intent as an inert final block" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
 
   grep -qF 'Accept only `--base <branch>` and the optional sentinel `--intent <text>`:' "$skill"
   grep -qF 'Before the sentinel, `--base` may appear at most once and must be followed by a non-flag value.' "$skill"
@@ -35,11 +35,11 @@ setup() {
   grep -qF 'treat every character after it as one non-empty inert `STATED_INTENT` block' "$skill"
   grep -qF 'Do not parse quoting inside the block or reinterpret later text as flags.' "$skill"
   grep -qF 'Reject duplicate flags, unknown flags, positional arguments before the sentinel, missing values, and an empty intent block.' "$skill"
-  grep -qF 'Usage: /kramme:debug:find-sibling-bugs [--base <branch>] [--intent <text>]' "$skill"
+  grep -qF 'Usage: /trackbed:debug:find-sibling-bugs [--base <branch>] [--intent <text>]' "$skill"
 }
 
 @test "find sibling bugs derives a causal signature before searching" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
 
   grep -qF "establish the branch's actual problem and causal signature before searching" "$skill"
   grep -qF "**Before/after delta:**" "$skill"
@@ -50,7 +50,7 @@ setup() {
 }
 
 @test "find sibling bugs validates mechanism rather than textual similarity" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
 
   grep -qF "A repeated token, API name, CSS property, or component is not by itself a sibling bug." "$skill"
   grep -qF "Are the triggering preconditions possible here?" "$skill"
@@ -60,7 +60,7 @@ setup() {
 }
 
 @test "find sibling bugs searches code UX and UI peers" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
 
   grep -qF "For code patterns, follow the same API, callers, types, data flow, state machine" "$skill"
   grep -qF "For UX patterns, inspect sibling flows" "$skill"
@@ -69,8 +69,8 @@ setup() {
 }
 
 @test "find sibling bugs reports evidence and honest coverage" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
-  local template="skills/kramme:debug:find-sibling-bugs/assets/report-template.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
+  local template="skills/debug:find-sibling-bugs/assets/report-template.md"
 
   test -f "$template"
   grep -qF 'Read the report shape from `assets/report-template.md`' "$skill"
@@ -82,8 +82,8 @@ setup() {
 }
 
 @test "find sibling bugs keeps independent fixes attached to their own siblings" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
-  local template="skills/kramme:debug:find-sibling-bugs/assets/report-template.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
+  local template="skills/debug:find-sibling-bugs/assets/report-template.md"
 
   grep -qF "repeat the template's complete worked-example section once per diagnosis" "$skill"
   grep -qF "Repeat this complete worked-example section once for each independent fix." "$template"
@@ -93,7 +93,7 @@ setup() {
 }
 
 @test "find sibling bugs does not overclaim history or expose secrets" {
-  local skill="skills/kramme:debug:find-sibling-bugs/SKILL.md"
+  local skill="skills/debug:find-sibling-bugs/SKILL.md"
 
   grep -qF "Do not claim that a commit introduced the original problem unless history establishes that claim." "$skill"
   grep -qF "Never reproduce secrets found during the search. Cite only the path and line." "$skill"

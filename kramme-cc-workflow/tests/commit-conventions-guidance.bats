@@ -6,8 +6,8 @@ setup() {
   PLUGIN_ROOT=$(cd "$BATS_TEST_DIRNAME/.." && pwd)
   REPOSITORY_ROOT=$(cd "$PLUGIN_ROOT/.." && pwd)
   REFERENCE="$PLUGIN_ROOT/shared/git/references/commit-conventions.md"
-  COMMIT_MESSAGE="$PLUGIN_ROOT/skills/kramme:git:commit-message/SKILL.md"
-  RECREATE_COMMITS="$PLUGIN_ROOT/skills/kramme:git:recreate-commits/SKILL.md"
+  COMMIT_MESSAGE="$PLUGIN_ROOT/skills/git:commit-message/SKILL.md"
+  RECREATE_COMMITS="$PLUGIN_ROOT/skills/git:recreate-commits/SKILL.md"
   FIXTURE="$BATS_TEST_TMPDIR/repo"
   SIGNAL_BLOCK="$BATS_TEST_TMPDIR/collect-signals.sh"
 }
@@ -158,7 +158,7 @@ PY
   grep -qF 'the `BASE_REF` value Step 1 printed' "$RECREATE_COMMITS"
   grep -qF 'Include a subject in the resolved convention' "$RECREATE_COMMITS"
   grep -qF 'Conventional Commits title (`<type>(<scope>): <description>`' "$RECREATE_COMMITS"
-  grep -qF 'kramme:pr:generate-description' "$RECREATE_COMMITS"
+  grep -qF 'trackbed:pr:generate-description' "$RECREATE_COMMITS"
   grep -qF 'origin/<resolved-base>' "$RECREATE_COMMITS"
   ! grep -qF 'plain-English, imperative title' "$RECREATE_COMMITS"
   ! grep -qF 'Include a clear, plain-English commit message' "$RECREATE_COMMITS"
@@ -170,12 +170,12 @@ PY
 }
 
 @test "committing orchestrators load the resolver and keep their work tokens and attribution ban" {
-  local plan_to_pr="$PLUGIN_ROOT/skills/kramme:code:plan-to-pr/SKILL.md"
-  local issue_to_pr="$PLUGIN_ROOT/skills/kramme:linear:issue-to-pr/SKILL.md"
-  local issue_implement="$PLUGIN_ROOT/skills/kramme:linear:issue-implement/SKILL.md"
-  local pr_create="$PLUGIN_ROOT/skills/kramme:pr:create/SKILL.md"
-  local review_convergence="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/SKILL.md"
-  local review_policy="$PLUGIN_ROOT/skills/kramme:pr:review-convergence/references/review-convergence.md"
+  local plan_to_pr="$PLUGIN_ROOT/skills/code:plan-to-pr/SKILL.md"
+  local issue_to_pr="$PLUGIN_ROOT/skills/linear:issue-to-pr/SKILL.md"
+  local issue_implement="$PLUGIN_ROOT/skills/linear:issue-implement/SKILL.md"
+  local pr_create="$PLUGIN_ROOT/skills/pr:create/SKILL.md"
+  local review_convergence="$PLUGIN_ROOT/skills/pr:review-convergence/SKILL.md"
+  local review_policy="$PLUGIN_ROOT/skills/pr:review-convergence/references/review-convergence.md"
 
   for skill in "$plan_to_pr" "$issue_to_pr" "$issue_implement" "$pr_create" "$review_policy"; do
     grep -qF '${CLAUDE_PLUGIN_ROOT}/shared/git/references/commit-conventions.md' "$skill"

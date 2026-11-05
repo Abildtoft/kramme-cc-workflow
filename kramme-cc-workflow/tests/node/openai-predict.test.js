@@ -346,7 +346,7 @@ test("tool calls stay inside the staged workspace", async (t) => {
   assert.match(results[3].output, /^Error: Invalid regular expression/);
   assert.match(results[4].output, /\/fixture\/SKILL\.md/);
   assert.match(results[5].output, /^Base directory for this skill: /);
-  assert.match(results[5].output, /name: kramme:skill:review/);
+  assert.match(results[5].output, /name: skill:review/);
   assert.deepEqual(
     value.trace
       .filter((event) => event.event === "tool")
@@ -404,10 +404,7 @@ test("tool calls stay inside the staged workspace", async (t) => {
     ["Glob", { pattern: "../**", path: null }],
     ["Grep", { pattern: "x", path: stage.auth, glob: null }],
     ["Skill", { skill: SKILL, args: stage.workspace }],
-    [
-      "Skill",
-      { skill: "eval-review:kramme-skill-review", args: stage.fixture },
-    ],
+    ["Skill", { skill: "eval-review:skill-review", args: stage.fixture }],
   ])
     assert.equal(
       toolAllowed(

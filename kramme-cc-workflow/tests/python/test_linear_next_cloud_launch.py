@@ -1,4 +1,4 @@
-"""Behavioral tests for the kramme:linear:next Conductor cloud launcher.
+"""Behavioral tests for the trackbed:linear:next Conductor cloud launcher.
 
 Every Conductor call runs against a fake `conductor` placed first on PATH that records its argv and replays one
 configured response per call.
@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "kramme:linear:next"
+SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "linear:next"
 SCRIPT_PATH = SKILL_DIR / "scripts" / "cloud-launch.py"
 SPEC = importlib.util.spec_from_file_location("linear_next_cloud_launch", SCRIPT_PATH)
 assert SPEC is not None
@@ -151,9 +151,9 @@ class CloudLaunchTest(unittest.TestCase):
             [
                 ["--json", "workspace", "create", "--project-id", "proj_1", "--name", "DISC-1", "--agent", "claude"]
                 + ["--model", "opus-5-5-1m"]
-                + ["--message", "/kramme-cc-workflow:kramme-linear-issue-to-pr DISC-1 --ship"],
+                + ["--message", "/trackbed:linear-issue-to-pr DISC-1 --ship"],
                 ["--json", "workspace", "create", "--project-id", "proj_1", "--name", "DISC-2", "--agent", "codex"]
-                + ["--model", "gpt-5.5", "--message", "$kramme:linear:issue-to-pr DISC-2 --ship"],
+                + ["--model", "gpt-5.5", "--message", "$trackbed:linear:issue-to-pr DISC-2 --ship"],
             ],
         )
 
@@ -169,8 +169,8 @@ class CloudLaunchTest(unittest.TestCase):
         self.assertEqual(
             messages,
             [
-                "/kramme-cc-workflow:kramme-linear-issue-to-pr DISC-1 --ship --adversarial-review",
-                "$kramme:linear:issue-to-pr DISC-2 --ship --adversarial-review",
+                "/trackbed:linear-issue-to-pr DISC-1 --ship --adversarial-review",
+                "$trackbed:linear:issue-to-pr DISC-2 --ship --adversarial-review",
             ],
         )
         self.assertEqual([call[call.index("--message") + 1] for call in self.calls()], messages)
@@ -181,7 +181,7 @@ class CloudLaunchTest(unittest.TestCase):
             responses=[created(1)], ADVERSARIAL_REVIEW="true", KRAMME_ADVERSARIAL_REVIEW="1",
         )  # fmt: skip
         self.assertEqual(code, 0)
-        self.assertEqual(result["results"][0]["message"], "$kramme:linear:issue-to-pr DISC-1 --ship")
+        self.assertEqual(result["results"][0]["message"], "$trackbed:linear:issue-to-pr DISC-1 --ship")
 
     def test_launch_retries_a_rate_limited_creation_after_the_named_wait(self) -> None:
         stderr = "error: Rate limit exceeded for workspace creation. Retry after 8 seconds. (HTTP 429)\n"

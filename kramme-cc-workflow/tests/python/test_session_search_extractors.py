@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS = PLUGIN_ROOT / "skills" / "kramme:session:automate-repeats" / "scripts"
+SCRIPTS = PLUGIN_ROOT / "skills" / "session:automate-repeats" / "scripts"
 
 
 CODEX_SESSION = """\
@@ -277,26 +277,26 @@ runpy.run_path(script_path, run_name="__main__")
             (
                 """\
 {"type":"user","timestamp":"2026-06-06T11:00:00Z","gitBranch":"main","sessionId":"claude-skill-session","message":{"content":"Use the QA skill."}}
-{"type":"assistant","timestamp":"2026-06-06T11:01:00Z","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"kramme:qa","secret":"sk-abcdefghijklmnopqrstuvwxyz123456"}}]}}
+{"type":"assistant","timestamp":"2026-06-06T11:01:00Z","message":{"content":[{"type":"tool_use","name":"Skill","input":{"skill":"trackbed:qa","secret":"sk-abcdefghijklmnopqrstuvwxyz123456"}}]}}
 """,
                 "claude",
-                ["kramme:qa"],
+                ["trackbed:qa"],
             ),
             (
                 r"""\
 {"timestamp":"2026-06-06T10:00:00Z","type":"session_meta","payload":{"cwd":"/tmp/demo-repo","id":"codex-skill-session","timestamp":"2026-06-06T10:00:00Z","source":"codex"}}
-{"timestamp":"2026-06-06T10:01:00Z","type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{\"name\":\"kramme:research\",\"secret\":\"sk-abcdefghijklmnopqrstuvwxyz123456\"}"}}
+{"timestamp":"2026-06-06T10:01:00Z","type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{\"name\":\"trackbed:research\",\"secret\":\"sk-abcdefghijklmnopqrstuvwxyz123456\"}"}}
 """,
                 "codex",
-                ["kramme:research"],
+                ["trackbed:research"],
             ),
             (
                 """\
 {"role":"user","message":{"content":[{"type":"text","text":"Inspect the session skill."}]}}
-{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/.agents/skills/kramme:session:automate-repeats/SKILL.md","secret":"sk-abcdefghijklmnopqrstuvwxyz123456"}}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/.agents/skills/trackbed:session:automate-repeats/SKILL.md","secret":"sk-abcdefghijklmnopqrstuvwxyz123456"}}]}}
 """,
                 "cursor",
-                ["kramme:session:automate-repeats"],
+                ["trackbed:session:automate-repeats"],
             ),
         )
 
@@ -314,19 +314,19 @@ runpy.run_path(script_path, run_name="__main__")
         cases = (
             (
                 """\
-{"type":"user","message":{"content":"<system_instruction>Run /kramme:ignored</system_instruction>\\n/kramme:qa now."}}
+{"type":"user","message":{"content":"<system_instruction>Run /kramme:ignored</system_instruction>\\n/trackbed:qa now."}}
 """,
                 "claude",
             ),
             (
                 """\
-{"type":"event_msg","payload":{"type":"user_message","message":"/kramme:qa now."}}
+{"type":"event_msg","payload":{"type":"user_message","message":"/trackbed:qa now."}}
 """,
                 "codex",
             ),
             (
                 """\
-{"role":"user","message":{"content":[{"type":"text","text":"  /kramme:qa now."}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"  /trackbed:qa now."}]}}
 """,
                 "cursor",
             ),
@@ -336,10 +336,10 @@ runpy.run_path(script_path, run_name="__main__")
             with self.subTest(platform=platform):
                 _, evidence = self.run_skill_usage(
                     session,
-                    "kramme:qa",
+                    "trackbed:qa",
                     "kramme:ignored",
                 )
-                self.assertEqual(evidence["skills"], ["kramme:qa"])
+                self.assertEqual(evidence["skills"], ["trackbed:qa"])
                 self.assertEqual(evidence["skill_events"], 1)
                 self.assertEqual(evidence["unknown_skill_events"], 0)
 
@@ -349,7 +349,7 @@ runpy.run_path(script_path, run_name="__main__")
 {{"type":"assistant","message":{{"content":[{{"type":"tool_use","name":"Skill","input":{{"skill":"{secret}"}}}}]}}}}
 '''
 
-        result, evidence = self.run_skill_usage(session, "kramme:qa")
+        result, evidence = self.run_skill_usage(session, "trackbed:qa")
         self.assertEqual(evidence["skills"], [])
         self.assertEqual(evidence["skill_events"], 0)
         self.assertEqual(evidence["unknown_skill_events"], 1)
@@ -357,10 +357,10 @@ runpy.run_path(script_path, run_name="__main__")
 
     def test_skill_usage_ignores_skill_paths_in_non_read_tools(self):
         session = """\
-{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"/tmp/.agents/skills/kramme:qa/SKILL.md","content":"example"}}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"/tmp/.agents/skills/trackbed:qa/SKILL.md","content":"example"}}]}}
 """
 
-        _, evidence = self.run_skill_usage(session, "kramme:qa")
+        _, evidence = self.run_skill_usage(session, "trackbed:qa")
         self.assertEqual(evidence["skills"], [])
         self.assertEqual(evidence["skill_events"], 0)
         self.assertEqual(evidence["unknown_skill_events"], 0)
@@ -369,12 +369,12 @@ runpy.run_path(script_path, run_name="__main__")
         session = "\n".join(
             (
                 '{"type":"session_meta","payload":{"source":"codex"}}',
-                '{"type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{not-json /tmp/.agents/skills/kramme:qa/SKILL.md"}}',
-                r'{"type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{\"name\":\"kramme:qa\"}"}}',
+                '{"type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{not-json /tmp/.agents/skills/trackbed:qa/SKILL.md"}}',
+                r'{"type":"response_item","payload":{"type":"custom_tool_call","name":"read_skill","arguments":"{\"name\":\"trackbed:qa\"}"}}',
             )
         )
-        _, evidence = self.run_skill_usage(session, "kramme:qa")
-        self.assertEqual(evidence["skills"], ["kramme:qa"])
+        _, evidence = self.run_skill_usage(session, "trackbed:qa")
+        self.assertEqual(evidence["skills"], ["trackbed:qa"])
         self.assertEqual(evidence["skill_events"], 1)
         self.assertEqual(evidence["unknown_skill_events"], 0)
         self.assertEqual(evidence["parse_errors"], 1)
@@ -382,7 +382,7 @@ runpy.run_path(script_path, run_name="__main__")
     def test_skill_usage_ignores_skill_names_outside_tool_activity(self):
         session = CODEX_SESSION.replace(
             "Please debug the authentication script carefully.",
-            "Please read /tmp/.codex/skills/kramme:qa/SKILL.md carefully.",
+            "Please read /tmp/.codex/skills/trackbed:qa/SKILL.md carefully.",
         )
 
         result = self.run_script("extract-skill-usage.py", session)

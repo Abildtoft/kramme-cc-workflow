@@ -2,8 +2,8 @@
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
-  SKILL="skills/kramme:pr:convention-review/SKILL.md"
-  MINING="skills/kramme:pr:convention-review/references/baseline-mining.md"
+  SKILL="skills/pr:convention-review/SKILL.md"
+  MINING="skills/pr:convention-review/references/baseline-mining.md"
 }
 
 @test "each convention review marker has one meaning" {

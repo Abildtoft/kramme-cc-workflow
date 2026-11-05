@@ -29,7 +29,7 @@ SMOKE_BATS_TEST_FILE = tests/linear-issue-implement-guidance.bats
 BOOTSTRAP_BATS_TEST_FILE = tests/bootstrap-dev.bats
 PYTHON_TEST_DIR = tests/python
 PYTHON_TEST_PATTERN = test_*.py
-PYTHON_MAINTENANCE_TEST_DIR = ../.agents/skills/kramme:skill:audit-sources/scripts
+PYTHON_MAINTENANCE_TEST_DIR = ../.agents/skills/trackbed:skill:audit-sources/scripts
 PYTHON_MYPY_CONFIG = mypy.ini
 PYTHON_RUFF_CONFIG = .ruff.toml
 NODE_COVERAGE_LINES ?= 80
@@ -62,7 +62,7 @@ SHELLCHECK_FILES = \
 	skills/*/assets/*.sh
 
 JAVASCRIPT_BROWSER_ASSETS = $(filter-out \
-	skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js, \
+	skills/pr:walkthrough/assets/d3.v7.9.0.min.js, \
 	$(wildcard skills/*/assets/*.js))
 
 # Keep ShellCheck warning-clean by default so new shell risks stay visible.
@@ -72,7 +72,7 @@ lint-shell: check-shell-deps
 	@"$(SHELLCHECK)" --severity=$(SHELLCHECK_SEVERITY) $(SHELLCHECK_FILES)
 
 lint-python: check-python-deps check-ruff-deps typecheck-python
-	@"$(RUFF)" check --config "$(PYTHON_RUFF_CONFIG)" . ../.agents/skills/kramme:skill:audit-sources/scripts
+	@"$(RUFF)" check --config "$(PYTHON_RUFF_CONFIG)" . ../.agents/skills/trackbed:skill:audit-sources/scripts
 
 typecheck-python: check-python-deps check-mypy-deps check-python-static-inventory
 	@files=$$(python3 -c 'import json, sys; data = json.load(open(sys.argv[1], encoding="utf-8"))["python"]; print(" ".join(sorted([*data["measured"], *data["contract_only"]])))' "$(COVERAGE_PRODUCTION_INVENTORY)"); \
@@ -116,7 +116,7 @@ lint-js: check-js-deps
 		"$(TSC)" --allowJs --checkJs --noEmit --skipLibCheck --strict true \
 			--ignoreDeprecations 6.0 --target ES2022 --module commonjs --moduleResolution node10 \
 			--lib ES2022,DOM --types node \
-			skills/kramme:pr:walkthrough/assets/walkthrough-types.d.ts $(JAVASCRIPT_BROWSER_ASSETS)
+			skills/pr:walkthrough/assets/walkthrough-types.d.ts $(JAVASCRIPT_BROWSER_ASSETS)
 
 format-check: check-format-deps check-ruff-deps
 	@cd "$(ROOT_DIR)" && \

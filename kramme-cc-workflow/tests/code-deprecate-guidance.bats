@@ -2,9 +2,9 @@
 
 setup() {
 	PLUGIN_ROOT="$BATS_TEST_DIRNAME/.."
-	SKILL="$PLUGIN_ROOT/skills/kramme:code:deprecate/SKILL.md"
-	DECISION_CHECKLIST="$PLUGIN_ROOT/skills/kramme:code:deprecate/references/decision-checklist.md"
-	MIGRATION_PATTERNS="$PLUGIN_ROOT/skills/kramme:code:deprecate/references/migration-patterns.md"
+	SKILL="$PLUGIN_ROOT/skills/code:deprecate/SKILL.md"
+	DECISION_CHECKLIST="$PLUGIN_ROOT/skills/code:deprecate/references/decision-checklist.md"
+	MIGRATION_PATTERNS="$PLUGIN_ROOT/skills/code:deprecate/references/migration-patterns.md"
 }
 
 @test "database migration pattern is routed before generic migration cost" {
@@ -24,7 +24,7 @@ required = {
     "public skill description": "Database Expand-Migrate-Contract patterns",
     "persistent-data routing": "persisted data/schema contract → Database Expand/Migrate/Contract at every cost tier",
     "decision-checklist routing": "use Database Expand/Migrate/Contract regardless of whether dependent work is Low, Medium, or High",
-    "framework-only boundary": "framework/library-only `kramme:code:migrate` workflow",
+    "framework-only boundary": "framework/library-only `trackbed:code:migrate` workflow",
     "framework migration route": "Framework or library version migration",
 }
 texts = {

@@ -1,4 +1,4 @@
-"""Behavioral tests for the kramme:pr:create preflight helper.
+"""Behavioral tests for the trackbed:pr:create preflight helper.
 
 Every Git check runs against a real temporary repository with a bare `origin`, and every GitHub check runs
 against a fake `gh` placed first on PATH that records its argv and replays configured responses. Stack
@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "kramme:pr:create"
+SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "pr:create"
 SCRIPT_PATH = SKILL_DIR / "scripts" / "pr-create-preflight.py"
 SPEC = importlib.util.spec_from_file_location("pr_create_preflight", SCRIPT_PATH)
 assert SPEC is not None
@@ -412,7 +412,7 @@ class RemoteModeTests(PreflightCase):
         os.environ["FAKE_GH_STACK_JSON"] = json.dumps(stack)
         payload = self.invoke()
         self.assert_status(payload, "blocked", "stacked_branch")
-        self.assertIn("use kramme:pr:stack instead", payload["message"])
+        self.assertIn("use trackbed:pr:stack instead", payload["message"])
 
     def test_unresolved_stack_membership_blocks(self) -> None:
         self.feature()

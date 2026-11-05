@@ -4,14 +4,14 @@ setup() {
   cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:code:harden-security/SKILL.md"
-OWASP="skills/kramme:code:harden-security/references/owasp-top-10.md"
-CHECKLIST="skills/kramme:code:harden-security/references/security-checklist.md"
-BOUNDARY_SYSTEM="skills/kramme:code:harden-security/references/boundary-system.md"
+SKILL="skills/code:harden-security/SKILL.md"
+OWASP="skills/code:harden-security/references/owasp-top-10.md"
+CHECKLIST="skills/code:harden-security/references/security-checklist.md"
+BOUNDARY_SYSTEM="skills/code:harden-security/references/boundary-system.md"
 
 @test "routing separates dependency hardening from dependency audits" {
   grep -qF "adding, upgrading, or remediating packages" "$SKILL"
-  grep -qF "use \`kramme:deps:audit\` instead" "$SKILL"
+  grep -qF "use \`trackbed:deps:audit\` instead" "$SKILL"
   ! grep -qF "auditing packages" "$SKILL"
   ! grep -qF "auditing dependencies" "$SKILL"
 }

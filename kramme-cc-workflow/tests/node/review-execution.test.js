@@ -7,7 +7,7 @@ const path = require("node:path");
 const { execFileSync, spawnSync } = require("node:child_process");
 const helper = path.resolve(
   __dirname,
-  "../../skills/kramme:pr:code-review/scripts/review-execution.js",
+  "../../skills/pr:code-review/scripts/review-execution.js",
 );
 const { jobsFor } = require(helper);
 
@@ -213,7 +213,7 @@ test("architecture is a conditional dimension owned by architecture-strategist",
   });
   assert.equal(
     jobs["architecture-strategist"].agent,
-    "kramme:architecture-strategist",
+    "trackbed:architecture-strategist",
   );
   assert.deepEqual(coverage.architecture.reviewers, [
     "architecture-strategist",
@@ -366,7 +366,7 @@ test("shipped report template seals and passes consumer validation", (t) => {
   const template = fs.readFileSync(
     path.resolve(
       __dirname,
-      "../../skills/kramme:pr:code-review/references/output-template.md",
+      "../../skills/pr:code-review/references/output-template.md",
     ),
     "utf8",
   );

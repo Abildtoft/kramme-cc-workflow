@@ -1,7 +1,7 @@
 {
   "accepted_findings": [
     {
-      "path": "kramme-cc-workflow/skills/kramme:linear:review-pr/references/pr-inspection.md",
+      "path": "kramme-cc-workflow/skills/linear:review-pr/references/pr-inspection.md",
       "rule_id": "TM1",
       "reason": "Reviewed false-positive TM1 findings in the static-only PR inspection procedure: --no-checkout prevents Git from materializing attacker-controlled content or invoking checkout-time hooks and filters, while rmdir is limited to workflow-owned temporary directories after exact worktree registration and empty-directory checks; neither construct bypasses a safety gate. Re-reviewed on 2026-10-20 against content unchanged since the 2026-09-19 acceptance: the mandatory --no-checkout and core.hooksPath=/dev/null guards, the exact `git worktree list --porcelain` registration match, the find-based emptiness proof before any forced removal, and the rmdir-only parent cleanup are all still present.",
       "owner": "kramme",
@@ -9,7 +9,7 @@
       "review_after": "2026-11-19"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:stack/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:stack/SKILL.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed false-positive TM1 finding: the flagged force-with-lease text is a restack instruction in the maintenance section instructing the agent NOT to force-push individual stack branches. The skill's only push paths are gh stack push/submit/sync, which push all stack branches atomically with --force-with-lease and are the documented safe mechanism for stacked branches. Re-reviewed on 2026-10-28 after later edits: the only flagged line still forbids pushing a single stack branch with plain `git push --force-with-lease` and directs the atomic `gh stack push` instead.",
       "owner": "kramme",
@@ -17,15 +17,15 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:rebase/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:rebase/SKILL.md",
       "rule_id": "TM1",
-      "reason": "Reviewed intentional TM1 finding for this user-triggered rebase skill: the force-push is limited to the validated current branch, uses --force-with-lease, and requires the workflow's confirmation or explicit --force-push/--auto authorization; non-auto conflict paths additionally require passing verification or a user confirmation, and every bypassed red flag or unavailable/failed verification is reported. Re-reviewed on 2026-10-28 after later edits: the flagged push now pins its lease to the remote object ID captured before the rebase, stops if the branch no longer matches that lease, and pushes one explicit refspec with --no-follow-tags. The only model-invoked path is still kramme:pr:fix-ci delegation with --force-push, which stops on red flags before pushing; the --all-open batch mode is direct-user-only and pushes each branch with its own pinned lease after one confirmation or an explicit --force-push.",
+      "reason": "Reviewed intentional TM1 finding for this user-triggered rebase skill: the force-push is limited to the validated current branch, uses --force-with-lease, and requires the workflow's confirmation or explicit --force-push/--auto authorization; non-auto conflict paths additionally require passing verification or a user confirmation, and every bypassed red flag or unavailable/failed verification is reported. Re-reviewed on 2026-10-28 after later edits: the flagged push now pins its lease to the remote object ID captured before the rebase, stops if the branch no longer matches that lease, and pushes one explicit refspec with --no-follow-tags. The only model-invoked path is still trackbed:pr:fix-ci delegation with --force-push, which stops on red flags before pushing; the --all-open batch mode is direct-user-only and pushes each branch with its own pinned lease after one confirmation or an explicit --force-push.",
       "owner": "kramme",
       "accepted_at": "2026-10-28",
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:fix-ci/SKILL.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed false-positive TM1 findings: every flagged --no-verify occurrence explicitly forbids bypassing hooks or gates, requires root-cause fixes, and stops for user approval before any justified disablement. Re-reviewed on 2026-10-28 after later edits: the flagged --no-verify occurrence is still in the list of prohibited silent gate bypasses.",
       "owner": "kramme",
@@ -33,7 +33,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/consolidation-flow.md",
+      "path": "kramme-cc-workflow/skills/pr:fix-ci/references/consolidation-flow.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed intentional TM1 finding for post-consolidation publication: history rewriting requires an unshared branch or explicit collaborator coordination, and the push uses force-with-lease for ordinary branches or a restack followed by atomic gh stack push for stacked branches. Re-reviewed on 2026-10-28: content unchanged since the 2026-09-27 renewal, and the CI-pinned SkillSpector scan still reports only the matches described above.",
       "owner": "kramme",
@@ -41,7 +41,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:fix-ci/references/fixup-flow.md",
+      "path": "kramme-cc-workflow/skills/pr:fix-ci/references/fixup-flow.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed intentional TM1 finding for autosquash publication: history rewriting requires an unshared branch or explicit collaborator coordination, and the push uses force-with-lease for ordinary branches or a restack followed by atomic gh stack push for stacked branches. Re-reviewed on 2026-10-28 after later edits: the push still runs only when the branch is unshared or the user confirmed collaborator coordination, and it still uses --force-with-lease or a restack followed by gh stack push.",
       "owner": "kramme",
@@ -49,7 +49,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:git:recreate-commits/SKILL.md",
+      "path": "kramme-cc-workflow/skills/git:recreate-commits/SKILL.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed on 2026-10-08 after workbench guidance edits: this user-triggered history-recreation skill creates a recovery ref before reset, revalidates branch, tip, worktree, and stack membership at the rewrite boundary, and requires the final tree to match the original tip. --auto authorizes only one unstacked branch; stack-wide rewriting requires separate authorization. Publication freezes one URL, ref, and exact lease, disables tag following, and rejects remote-only commits. The flagged reset and force-with-lease instructions remain guarded workflow operations.",
       "owner": "kramme",
@@ -57,7 +57,7 @@
       "review_after": "2026-11-08"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:git:commit-message/SKILL.md",
+      "path": "kramme-cc-workflow/skills/git:commit-message/SKILL.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed false-positive TM1 finding for the commit-readiness warning: the skill explicitly prohibits using --no-verify when hooks fail and instructs the user to fix the hook failure first. Re-reviewed on 2026-10-28 after later edits: the flagged line still requires explicit user approval for --no-verify and directs fixing the hook failure first.",
       "owner": "kramme",
@@ -65,7 +65,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/confirmation-and-creation.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed intentional TM1 finding for Pull Request publication: the fresh path uses an empty-expectation lease only for a branch proven absent, while the existing-remote path freezes one push endpoint, revalidates branch, clean-tree, immutable source OID, strict-ancestor, and remote-tip state, then uses an exact observed-OID lease with one refspec and tag following disabled. Both modes fail closed on concurrent Git-ref updates and never replace remote-only work; Pull Request ownership sequencing remains a separate workflow policy decision. Re-reviewed on 2026-09-27 after later edits: both flagged pushes still use the absence lease for the proven-absent fresh ref or the exact observed-OID lease with tag following disabled, and plain --force remains forbidden. Re-reviewed on 2026-10-27 after the separate pre-publication stack check was removed: the in-shell FINAL_STACK_RESOLVED guard still runs immediately before each flagged push and before gh pr create, and both pushes keep the absence lease or the exact observed-OID lease with tag following disabled.",
       "owner": "kramme",
@@ -73,7 +73,7 @@
       "review_after": "2026-11-26"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:create/references/abort-and-rollback.md",
+      "path": "kramme-cc-workflow/skills/pr:create/references/abort-and-rollback.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed intentional TM1 finding for the Pull Request creation rollback path: remote-append rollback validates the clean worktree, branch, and exact prepared tip immediately before using reset --keep, while fresh-mode hard reset restores only the feature branch to the full original commit after strict branch-name and full-commit-ID validation; both paths preserve the recreation backup ref for manual recovery. Re-reviewed on 2026-09-27 after later edits: the flagged reset --keep still runs inside the single bounded ownership guard, and reset --hard still runs only after strict branch-name and full-commit-ID validation. Re-reviewed on 2026-10-27 after Step 10 moved verbatim from state-and-rollback.md into abort-and-rollback.md, which is read only on abort: reset --keep still runs inside the single bounded ownership guard, and reset --hard still runs only in fresh mode after strict branch-name and full-commit-ID validation.",
       "owner": "kramme",
@@ -81,7 +81,7 @@
       "review_after": "2026-11-26"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/assets/d3.v7.9.0.min.js",
+      "path": "kramme-cc-workflow/skills/pr:walkthrough/assets/d3.v7.9.0.min.js",
       "rule_id": "SC3",
       "reason": "Re-reviewed intentional SC3 finding for the vendored D3 v7.9.0 minified distribution: the file still matches the pinned SHA-256 in references/sources.yaml, its complete ISC notice ships as assets/d3-LICENSE, and it is embedded locally so private Pull Request context never depends on third-party CDN execution. Re-reviewed on 2026-10-28: content unchanged since the 2026-09-27 renewal, and the CI-pinned SkillSpector scan still reports only the matches described above.",
       "owner": "kramme",
@@ -89,7 +89,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:walkthrough/scripts/validate_walkthrough.py",
+      "path": "kramme-cc-workflow/skills/pr:walkthrough/scripts/validate_walkthrough.py",
       "rule_id": "OH1",
       "reason": "Re-reviewed false-positive OH1 finding for runtime syntax validation: subprocess.run still receives a fixed argument vector with shell execution disabled, passes walkthrough runtime text only through stdin to node --check, never executes that text, enforces a timeout, and bounds returned diagnostics before reporting them. Re-reviewed on 2026-10-28: content unchanged since the 2026-09-27 renewal, and the CI-pinned SkillSpector scan still reports only the matches described above.",
       "owner": "kramme",
@@ -97,7 +97,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:git:fixup/SKILL.md",
+      "path": "kramme-cc-workflow/skills/git:fixup/SKILL.md",
       "rule_id": "TM1",
       "reason": "Re-reviewed on 2026-10-08 after workbench guidance edits: this user-triggered fixup skill limits rewrites to the current feature branch, requires explicit flags for unattended or validation-skip modes, and aborts unattended on upstream divergence, merge commits, validation failures, stale locks, or unsafe stack state. It does not publish automatically; collaborator-coordinated force-with-lease or stack publication remains a separate step. The flagged history operations retain those guards.",
       "owner": "kramme",
@@ -105,7 +105,7 @@
       "review_after": "2026-11-08"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/references/rules.md",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/references/rules.md",
       "rule_id": "P2",
       "reason": "Reviewed false-positive P2 findings in the copied rule catalog: the flagged HTML comments label inert before/after markup examples or carry visible source attribution; they contain no agent directives and are loaded only as explanatory reference material. Re-reviewed on 2026-10-28 after the 2026-09-29 upstream refresh: the flagged comments are still good/bad labels on inert markup examples plus the source attribution header.",
       "owner": "kramme",
@@ -113,7 +113,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/scripts/anti-slop.mjs",
       "rule_id": "P2",
       "reason": "Reviewed false-positive P2 findings in the bundled offline runtime: the flagged strings are node-html-parser's literal HTML-comment parser and matcher implementation, not hidden agent instructions; the bundle is reproducibly generated from pinned maintained source. Re-reviewed on 2026-10-28 after the 2026-09-29 bundle regeneration: the flagged strings are still node-html-parser's comment serializer and comment-matching expression.",
       "owner": "kramme",
@@ -121,7 +121,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/scripts/anti-slop.mjs",
       "rule_id": "P6",
       "reason": "Reviewed false-positive P6 findings in the generated detector bundle: each match is ordinary TypeScript control flow compiled from functions that return a local rule or rules value, with no prompt or hidden-system-context access. Re-reviewed on 2026-10-28 after the 2026-09-29 bundle regeneration: every match is still a compiled helper returning a local rule or rule list.",
       "owner": "kramme",
@@ -129,7 +129,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/anti-slop.mjs",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/scripts/anti-slop.mjs",
       "rule_id": "TM1",
       "reason": "Reviewed false-positive TM1 findings in the generated detector bundle: `rm` is a local regular-expression match iterator used by CSS analysis, not the shell removal command, and the runtime does not spawn a shell or process. Re-reviewed on 2026-10-28 after the 2026-09-29 bundle regeneration: `rm` is still the CSS match iterator, and the bundle uses no process or shell API; its exec calls are RegExp.prototype.exec.",
       "owner": "kramme",
@@ -137,7 +137,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/engine-sanitize.test.ts",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/scripts/engine-sanitize.test.ts",
       "rule_id": "P1",
       "reason": "Reviewed false-positive P1 finding in the copied sanitizer test: the flagged prompt-injection phrase is inert fixture data that verifies detector evidence is escaped and never interpreted or executed. Re-reviewed on 2026-10-28 after the 2026-09-29 upstream refresh: the flagged phrase is still fixture data, and the tests assert it never reaches correction prompts.",
       "owner": "kramme",
@@ -145,7 +145,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/engine.ts",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/scripts/engine.ts",
       "rule_id": "P6",
       "reason": "Reviewed false-positive P6 findings in the maintained detector engine: the matches are ordinary functions returning local rule collections and have no prompt or hidden-system-context access. Re-reviewed on 2026-10-28 after the 2026-09-29 upstream refresh: the matches are still helpers returning local rule collections.",
       "owner": "kramme",
@@ -153,7 +153,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/rules.ts",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/scripts/rules.ts",
       "rule_id": "P6",
       "reason": "Reviewed false-positive P6 findings in the maintained rule registry: the matches are ordinary helpers returning local rule definitions and have no prompt or hidden-system-context access. Re-reviewed on 2026-10-28 after the 2026-09-29 upstream refresh: the matches are still rule checks returning the local rule definition.",
       "owner": "kramme",
@@ -161,7 +161,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:visual:check-slop/scripts/rules.ts",
+      "path": "kramme-cc-workflow/skills/visual:check-slop/scripts/rules.ts",
       "rule_id": "TM1",
       "reason": "Reviewed false-positive TM1 findings in the maintained rule registry: `rm` is a local regular-expression match iterator used to inspect CSS declarations, not the shell removal command, and this module does not spawn a shell or process. Re-reviewed on 2026-10-28 after the 2026-09-29 upstream refresh: `rm` is still the CSS match iterator, and the module uses no process or shell API.",
       "owner": "kramme",
@@ -169,7 +169,7 @@
       "review_after": "2026-11-27"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
+      "path": "kramme-cc-workflow/skills/pr:review-convergence/scripts/convergence-state.py",
       "rule_id": "AST4",
       "reason": "Reviewed false-positive AST4 findings: both subprocess.run calls use an explicit argument vector with shell=False and captured output. The git() wrapper runs the fixed git binary with fixed subcommands, an allowlisted archive key, and paths normalized by _normalize_path. The profile subcommand runs the current interpreter on the plugin's risk-signals.py (required to be a regular, non-symlink file with that exact name) with a resolved merge-base object ID, the literal HEAD, and a policy ref taken from `git symbolic-ref` or a fixed origin/main or origin/master allowlist; no user text reaches a shell. Re-reviewed on 2026-10-20 after the profile subcommand was added.",
       "owner": "kramme",
@@ -177,7 +177,7 @@
       "review_after": "2026-11-19"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/scripts/convergence-state.py",
+      "path": "kramme-cc-workflow/skills/pr:review-convergence/scripts/convergence-state.py",
       "rule_id": "OH1",
       "reason": "Reviewed false-positive OH1 finding: the git() wrapper never builds a shell string. Every argument is a fixed subcommand, an allowlisted archive key, a validated repository path (no absolute, `..`, leading `-`, or control characters), a commit message passed as one argv element after `-m`, or, for the profile subcommand, a caller --base-ref rejected when it starts with `-` and passed after `rev-parse --verify --quiet --end-of-options`, a resolved object ID, or a fixed origin ref; nothing is interpolated into command text. Re-reviewed on 2026-10-20 after the profile subcommand was added.",
       "owner": "kramme",
@@ -185,7 +185,7 @@
       "review_after": "2026-11-19"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:pr:review-convergence/SKILL.md",
+      "path": "kramme-cc-workflow/skills/pr:review-convergence/SKILL.md",
       "rule_id": "LP3",
       "reason": "Reviewed intentional LP3 finding: the run-state helper writes only inside the validated, git-ignored `.context/<archive-key>/reviews/` directory, including its review-profile ledger entries, commits only paths the convergence policy already classified, and runs the plugin's read-only risk-signals helper to pick the review profile; the skill body documents those side effects and the frontmatter schema has no permissions field. Re-reviewed on 2026-10-20.",
       "owner": "kramme",
@@ -193,7 +193,7 @@
       "review_after": "2026-11-19"
     },
     {
-      "path": "kramme-cc-workflow/skills/kramme:linear:issue-to-pr/scripts/preflight.py",
+      "path": "kramme-cc-workflow/skills/linear:issue-to-pr/scripts/preflight.py",
       "rule_id": "AST4",
       "reason": "Reviewed false-positive AST4 finding: run() passes an explicit argument vector to subprocess.run with shell=False, empty stdin, captured output, a timeout, and prompts disabled. Every argv is fixed git or gh subcommands plus values the helper validates first: the Linear branch must match [A-Za-z0-9][A-Za-z0-9._/-]* and pass git check-ref-format --branch, the base comes from refs/remotes/origin/HEAD and passes the same check, and commit IDs must match the repository's object-ID pattern. No user text reaches a shell. Re-reviewed on 2026-11-03 after #1074 added the --adversarial-review boolean flag, which changes only the SUPPORTED_FLAGS and BOOLEAN_FLAGS constants: run(), the git wrapper, and every subprocess argument vector are unchanged. The base branch can also come from the local kramme.baseBranch setting, from the CONDUCTOR_DEFAULT_BRANCH environment variable once git show-ref confirms the matching origin ref, or from a fixed main or master fallback. Every configured value must pass git check-ref-format --branch, which rejects a leading dash, and reaches git only inside refs/heads/ or refs/remotes/origin/ prefixed arguments.",
       "owner": "kramme",

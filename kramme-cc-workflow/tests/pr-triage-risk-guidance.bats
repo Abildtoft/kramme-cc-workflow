@@ -2,9 +2,9 @@
 
 setup() {
   cd "$BATS_TEST_DIRNAME/.."
-  SKILL="skills/kramme:pr:triage-risk/SKILL.md"
-  LANES="skills/kramme:pr:triage-risk/references/lanes.md"
-  SIGNALS="skills/kramme:pr:triage-risk/references/signals.md"
+  SKILL="skills/pr:triage-risk/SKILL.md"
+  LANES="skills/pr:triage-risk/references/lanes.md"
+  SIGNALS="skills/pr:triage-risk/references/signals.md"
 }
 
 @test "triage risk is read-only routing advice, never an approval" {
@@ -17,7 +17,7 @@ setup() {
 @test "triage risk accepts only a base override" {
   grep -qF 'argument-hint: "[--base <branch>]"' "$SKILL"
   grep -qF 'Accept only `--base <branch>`, at most once, followed by a non-flag value.' "$SKILL"
-  grep -qF 'Usage: /kramme:pr:triage-risk [--base <branch>]' "$SKILL"
+  grep -qF 'Usage: /trackbed:pr:triage-risk [--base <branch>]' "$SKILL"
 }
 
 @test "triage risk resolves the base with the shared collector and triages committed work only" {
@@ -33,7 +33,7 @@ setup() {
   grep -qF 'SIGNALS_SCRIPT="${CLAUDE_PLUGIN_ROOT}/scripts/risk-signals.py"' "$SKILL"
   test -f "scripts/risk-signals.py"
   test -f "scripts/risk_patterns.py"
-  test ! -e "skills/kramme:pr:triage-risk/scripts"
+  test ! -e "skills/pr:triage-risk/scripts"
   grep -qF 'POLICY_REF=$(git symbolic-ref --quiet refs/remotes/origin/HEAD 2> /dev/null) || POLICY_REF=' "$SKILL"
   grep -qF 'python3 "$SIGNALS_SCRIPT" --merge-base "$MERGE_BASE" --policy-rev "$POLICY_REF"' "$SKILL"
   if grep -qF -- '--policy-rev "$BASE_REF"' "$SKILL"; then
@@ -74,12 +74,12 @@ setup() {
 
 @test "every lane command names a shipped skill" {
   local commands
-  commands=$(grep -oE '/kramme:[a-z-]+:[a-z-]+' "$LANES" | sort -u)
+  commands=$(grep -oE '/trackbed:[a-z-]+:[a-z-]+' "$LANES" | sort -u)
   test -n "$commands"
 
   local command
   while IFS= read -r command; do
-    test -f "skills/${command#/}/SKILL.md" || {
+    test -f "skills/${command#/trackbed:}/SKILL.md" || {
       echo "lane command has no shipped skill: $command" >&2
       return 1
     }
@@ -90,7 +90,7 @@ setup() {
   local dimension
   for dimension in security tests architecture removal; do
     grep -qF "| \`$dimension\` |" "$LANES"
-    grep -qF "\`$dimension\`" "skills/kramme:pr:code-review/SKILL.md"
+    grep -qF "\`$dimension\`" "skills/pr:code-review/SKILL.md"
   done
   grep -qF 'in this order: `security`, `tests`, `architecture`, `removal`' "$LANES"
 }

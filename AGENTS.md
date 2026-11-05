@@ -2,7 +2,7 @@
 
 ## Scope
 
-- **NOTE** This file is the canonical agent-facing instruction source for the `kramme-cc-workflow` Claude Code plugin and its Codex conversion path.
+- **NOTE** This file is the canonical agent-facing instruction source for the `trackbed` Claude Code plugin, whose source lives in `kramme-cc-workflow/`, and its Codex conversion path.
 
 ## Context Map
 
@@ -34,11 +34,11 @@ kramme-cc-workflow/            # Canonical plugin source
 
 ### Agents
 
-- **ALWAYS** create agents at `kramme-cc-workflow/agents/kramme:<agent-name>.md` with this frontmatter shape:
+- **ALWAYS** create agents at `kramme-cc-workflow/agents/<agent-name>.md` with this frontmatter shape:
 
 ```yaml
 ---
-name: kramme:<agent-name>
+name: <agent-name>
 description: When and how to use this agent (shown in Task tool)
 model: inherit
 color: <appropriate-color>
@@ -47,15 +47,15 @@ color: <appropriate-color>
 ```
 
 - **ALWAYS** add `disallowedTools: Write, Edit, NotebookEdit` to the frontmatter of every agent that reports findings instead of changing code, and keep its `**Read-only agent.**` body rule, because Bash can still write files and the Codex converter drops the field.
-- **ALWAYS** launch an agent that must read as an outsider through the `kramme:cold-reader` contract in `kramme-cc-workflow/shared/agents/references/cold-reader.md`, and **NEVER** set `omitClaudeMd` on any other agent, because project rules are a reviewer's input, per [docs/decisions/2026-11-02-cold-reader-isolation.md](kramme-cc-workflow/docs/decisions/2026-11-02-cold-reader-isolation.md).
+- **ALWAYS** launch an agent that must read as an outsider through the `trackbed:cold-reader` contract in `kramme-cc-workflow/shared/agents/references/cold-reader.md`, and **NEVER** set `omitClaudeMd` on any other agent, because project rules are a reviewer's input, per [docs/decisions/2026-11-02-cold-reader-isolation.md](kramme-cc-workflow/docs/decisions/2026-11-02-cold-reader-isolation.md).
 
 ### Skills
 
-- **ALWAYS** create shipped skills at `kramme-cc-workflow/skills/kramme:<domain>:<skill-name>/SKILL.md` with this frontmatter shape:
+- **ALWAYS** create shipped skills at `kramme-cc-workflow/skills/<domain>:<skill-name>/SKILL.md` with this frontmatter shape:
 
 ```yaml
 ---
-name: kramme:<domain>:<skill-name>
+name: <domain>:<skill-name>
 description: When to auto-trigger this skill
 argument-hint: [optional-argument]
 disable-model-invocation: false
@@ -75,7 +75,7 @@ user-invocable: true
 - **PREFER** the Agent Skills directory shape below and keep `SKILL.md` focused on orchestration:
 
 ```text
-kramme:<domain>:<skill-name>/
+<domain>:<skill-name>/
 ├── SKILL.md           # Core instructions, target under 500 lines
 ├── references/        # Documentation and prompts loaded on demand
 ├── assets/            # Output and code templates
@@ -83,7 +83,7 @@ kramme:<domain>:<skill-name>/
 ```
 
 - **PREFER** moving reference data, prompts, and examples to `references/`, templates to `assets/`, and executable behavior to `scripts/`, with explicit on-demand read instructions from `SKILL.md`; see [Anthropic's skill documentation](https://code.claude.com/docs/en/skills#add-supporting-files).
-- **CAN** use `/kramme:skill:create` for guided skill scaffolding.
+- **CAN** use `/trackbed:skill:create` for guided skill scaffolding.
 
 ### Hooks
 
@@ -98,7 +98,7 @@ exit_if_hook_disabled "hook-name" "json" # PostToolUse or Stop
 
 ## Component Conventions
 
-- **ALWAYS** use namespaced `kramme:` component names with kebab-case name segments.
+- **ALWAYS** use kebab-case name segments and leave the namespace out of skill and agent frontmatter names and folders: Claude Code adds the plugin name and the Codex converter adds the same prefix, so every shipped component is invoked as `trackbed:<name>`, per [docs/decisions/2026-11-05-trackbed-plugin-namespace.md](kramme-cc-workflow/docs/decisions/2026-11-05-trackbed-plugin-namespace.md).
 - **ALWAYS** store component definitions as Markdown files with YAML frontmatter.
 - **PREFER** concise, actionable instructions.
 - **ALWAYS** document every command, skill, agent, and hook in `README.md` with what it does and when to use it; give each skill and agent a one-line summary of at most 160 characters in `summaries` under `readme_skill_sync` or `readme_agent_sync` in `kramme-cc-workflow/scripts/synced-contracts.yaml`, which the generated README rows display.
@@ -111,7 +111,7 @@ exit_if_hook_disabled "hook-name" "json" # PostToolUse or Stop
 - **ALWAYS** treat `long-description burndown` warnings at or above 500 characters as an ordered review queue, starting with the first warning and preserving trigger nouns, safety constraints, and non-derivable context while shrinking.
 - **NEVER** add `Common Rationalizations` or `Red Flags` sections to a skill; fold any real gate into the step where it applies and keep `## Verification` only for artifact contracts, consumer expectations, and test-pinned items not stated elsewhere in the body, per [docs/decisions/2026-09-07-skill-epilogue-verification-only.md](kramme-cc-workflow/docs/decisions/2026-09-07-skill-epilogue-verification-only.md).
 - **ALWAYS** keep every skill and agent `description` frontmatter value at or below 1024 characters for Codex compatibility, moving examples and extended trigger guidance into the body.
-- **ALWAYS** resolve shipped skill edits to `kramme-cc-workflow/skills/kramme:<domain>:<skill-name>/` and maintenance skill edits to `.agents/skills/<skill-name>/`.
+- **ALWAYS** resolve shipped skill edits to `kramme-cc-workflow/skills/<domain>:<skill-name>/` and maintenance skill edits to `.agents/skills/<skill-name>/`.
 - **NEVER** edit installed copies under `~/.codex/skills`, `~/.agents/skills`, `~/.claude/skills`, app bundles, or generated install output when changing repository behavior.
 - **ALWAYS** keep each skill self-contained within the installed plugin: it may use its own directory, `kramme-cc-workflow/shared/<topic>/{references,assets}/`, and runtime helpers in `kramme-cc-workflow/scripts/`, but never this repository's `AGENTS.md`, `CLAUDE.md`, `README.md`, `docs/`, or `tests/`, per [docs/decisions/2026-10-01-plugin-level-shared-skill-resources.md](kramme-cc-workflow/docs/decisions/2026-10-01-plugin-level-shared-skill-resources.md).
 - **ALWAYS** keep a file that two or more skills need in one plugin-level location instead of mirroring it, and name every `${CLAUDE_PLUGIN_ROOT}/...` path a skill uses in its `SKILL.md` body, the only place Claude Code substitutes the variable; pass resolved paths into subagent prompts through placeholders.
@@ -133,7 +133,7 @@ exit_if_hook_disabled "hook-name" "json" # PostToolUse or Stop
 
 ## Skill Naming
 
-- **ALWAYS** use exactly `kramme:<domain>:<skill-name>` for every new or renamed skill unless an accepted ADR grants an exception.
+- **ALWAYS** name every new or renamed skill exactly `<domain>:<skill-name>` in its frontmatter and folder, invoked as `trackbed:<domain>:<skill-name>`, unless an accepted ADR grants an exception.
 - **PREFER** verb-first action names such as `resolve-review`, `generate-phases`, and `fix-ci`.
 - **CAN** use object-first names such as `issue-define` and `issue-implement` when two or more skills share the object prefix.
 - **CAN** use noun compounds such as `code-review`, `spec-audit`, and `commit-message` when the name describes a thing rather than an action.

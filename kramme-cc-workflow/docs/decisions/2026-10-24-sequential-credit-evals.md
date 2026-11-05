@@ -11,7 +11,7 @@ The maintainer has several Claude API organizations, each receiving monthly cred
 
 ## Decision
 
-Add an optional, direct Claude Agent SDK adapter inside `evals/skill-review/`. Keep the existing version-1 prediction protocol, fixture mode, scorer, and PR gates. Evaluate only `kramme:skill:review`; this does not expand the July 6 eval cap or the SkillOpt pilot.
+Add an optional, direct Claude Agent SDK adapter inside `evals/skill-review/`. Keep the existing version-1 prediction protocol, fixture mode, scorer, and PR gates. Evaluate only `trackbed:skill:review`; this does not expand the July 6 eval cap or the SkillOpt pilot.
 
 Use an ordered key pool. Rotate only on a recognized insufficient-credit error from the runtime, never arbitrary model text or a status code alone. Bound same-key transient retries and session turns/runtime. Restart an unfinished read-only case after rotation. Pause when all keys are exhausted and recheck each entry after 24 hours using pending work. Different billing anniversaries do not require a shared reset date. Keep auto-reload off and do not purchase credits.
 

@@ -1,4 +1,4 @@
-"""Behavioral tests for the kramme:linear:issue-to-pr preflight helper.
+"""Behavioral tests for the trackbed:linear:issue-to-pr preflight helper.
 
 Every Git check runs against a real temporary repository with a bare `origin`, and every GitHub check runs
 against a fake `gh` placed first on PATH that records its argv and replays a configured response.
@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 from unittest import mock
 
-SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "kramme:linear:issue-to-pr"
+SKILL_DIR = Path(__file__).resolve().parents[2] / "skills" / "linear:issue-to-pr"
 SCRIPT_PATH = SKILL_DIR / "scripts" / "preflight.py"
 SPEC = importlib.util.spec_from_file_location("issue_to_pr_preflight", SCRIPT_PATH)
 assert SPEC is not None
@@ -759,7 +759,7 @@ class ContinueBranchTests(RepoCase):
 class SkillContractTests(unittest.TestCase):
     def test_skill_invokes_each_helper_subcommand_in_order_through_the_plugin_root(self) -> None:
         text = (SKILL_DIR / "SKILL.md").read_text(encoding="utf-8")
-        prefix = re.escape('python3 "${CLAUDE_PLUGIN_ROOT}/skills/kramme:linear:issue-to-pr/scripts/preflight.py" ')
+        prefix = re.escape('python3 "${CLAUDE_PLUGIN_ROOT}/skills/linear:issue-to-pr/scripts/preflight.py" ')
         invoked = list(dict.fromkeys(re.findall(prefix + r"([a-z-]+)", text)))
         self.assertEqual(invoked, ["args", "capture", "check-branch", "cleanup"])
         parser = preflight.build_parser()
@@ -781,7 +781,7 @@ class SkillContractTests(unittest.TestCase):
         self.assertRegex(text, r"For every helper call[^.]*`status` other than `ok` is a blocker")
 
     def test_issue_implement_recomputes_the_handoff_with_the_helper_commands(self) -> None:
-        setup = SKILL_DIR.parent / "kramme:linear:issue-implement" / "references" / "branch-setup.md"
+        setup = SKILL_DIR.parent / "linear:issue-implement" / "references" / "branch-setup.md"
         text = setup.read_text(encoding="utf-8")
         self.assertIn("`git " + " ".join(preflight.STATUS_ARGS) + "`", text)
         self.assertIn("`git " + " ".join(preflight.COMMITTED_DIFF_ARGS) + " <captured base> HEAD`", text)

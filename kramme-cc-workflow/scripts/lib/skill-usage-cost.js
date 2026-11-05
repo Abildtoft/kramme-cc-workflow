@@ -9,7 +9,8 @@ const UNKNOWN_AGENT_TYPE = "(unknown)";
 // Claude Code writes this phrase into the assistant API-error record it
 // appends when the subscription session limit stops a turn.
 const LIMIT_HIT_TEXT = "hit your session limit";
-const PLUGIN_PREFIX = "kramme-cc-workflow:";
+// Agent types recorded before 1.0.0 carry the old plugin name.
+const LEGACY_PLUGIN_PREFIX = "kramme-cc-workflow:";
 const SUBAGENT_FILE_PATTERN = /^agent-(.+)\.jsonl$/;
 const TABLE_AGENT_TYPES = 3;
 
@@ -164,7 +165,9 @@ async function listSubagentFiles(dir, sink) {
       result.push(...(await listSubagentFiles(child, sink)));
       continue;
     }
-    const match = entry.isFile() ? SUBAGENT_FILE_PATTERN.exec(entry.name) : null;
+    const match = entry.isFile()
+      ? SUBAGENT_FILE_PATTERN.exec(entry.name)
+      : null;
     if (!match) continue;
     result.push({
       transcript: child,
@@ -414,7 +417,7 @@ function renderTable(rows) {
       .slice(0, TABLE_AGENT_TYPES)
       .map(
         (agent) =>
-          `${agent.agentType.replace(PLUGIN_PREFIX, "")} ${percent(agent.share)}`,
+          `${agent.agentType.replace(LEGACY_PLUGIN_PREFIX, "")} ${percent(agent.share)}`,
       )
       .join(", ") || "-",
   ]);

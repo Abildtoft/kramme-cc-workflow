@@ -19,6 +19,7 @@ from .markdown import (
     normalize_markdown_cell,
     split_markdown_table_row,
 )
+from .naming import PLUGIN_NAMESPACE, qualified_name
 from .readme_summaries import apply_readme_summaries, readme_summaries_configured
 from .schema import load_contract_schema, skill_frontmatter_field_by_loader_property
 from .strings import is_empty_value, shorten
@@ -31,12 +32,14 @@ class SkillReference:
     invocation: str
     arguments: str
     description: str
+    source_name: str = ""
 
 
 @dataclass(frozen=True)
 class AgentReference:
     name: str
     description: str
+    source_name: str = ""
 
 
 @dataclass(frozen=True)
@@ -57,13 +60,15 @@ def skill_reference_from_frontmatter(
         "user-invocable",
         schema,
     )
-    display_name = f"/{name}" if parse_frontmatter_bool(frontmatter, user_invocable_field) else name
+    invocable_name = qualified_name(name)
+    display_name = f"/{invocable_name}" if parse_frontmatter_bool(frontmatter, user_invocable_field) else invocable_name
     return SkillReference(
-        name=name,
+        name=invocable_name,
         display_name=display_name,
         invocation=expected_invocation(frontmatter, schema),
         arguments=expected_arguments(frontmatter, schema),
         description=frontmatter.get("description", ""),
+        source_name=name,
     )
 
 
@@ -132,11 +137,11 @@ def name_from_readme_cell(cell: str, pattern: str) -> str | None:
 
 
 def skill_name_from_readme_cell(cell: str) -> str | None:
-    return name_from_readme_cell(cell, r"`/?(?P<name>kramme:[A-Za-z0-9:_-]+)`")
+    return name_from_readme_cell(cell, rf"`/?(?P<name>{re.escape(PLUGIN_NAMESPACE)}:[A-Za-z0-9:_-]+)`")
 
 
 def agent_name_from_readme_cell(cell: str) -> str | None:
-    return name_from_readme_cell(cell, r"`(?P<name>kramme:[A-Za-z0-9:_-]+)`")
+    return name_from_readme_cell(cell, rf"`(?P<name>{re.escape(PLUGIN_NAMESPACE)}:[A-Za-z0-9:_-]+)`")
 
 
 def hook_name_from_readme_cell(cell: str) -> str | None:
@@ -225,7 +230,8 @@ def load_skill_references(
             value = frontmatter_boolean_value(text, field)
             if value is not None:
                 frontmatter[field] = "true" if value else "false"
-        references[name] = skill_reference_from_frontmatter(name, frontmatter, schema)
+        reference = skill_reference_from_frontmatter(name, frontmatter, schema)
+        references[reference.name] = reference
     return references
 
 
@@ -259,7 +265,9 @@ def load_agent_references(
         if is_empty_value(description):
             failures.append(f"readme agent sync: {relative} is missing frontmatter description")
             continue
-        references[name] = AgentReference(name=name, description=description)
+        references[qualified_name(name)] = AgentReference(
+            name=qualified_name(name), description=description, source_name=name
+        )
     return references
 
 

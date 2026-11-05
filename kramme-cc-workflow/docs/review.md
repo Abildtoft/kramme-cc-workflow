@@ -4,7 +4,7 @@ This guide explains how the review skills behave and how to tune them. To pick a
 
 ## Code Review
 
-`/kramme:pr:code-review` runs specialized review agents on the current branch and writes `REVIEW_OVERVIEW.md`, or replies inline with `--inline`.
+`/trackbed:pr:code-review` runs specialized review agents on the current branch and writes `REVIEW_OVERVIEW.md`, or replies inline with `--inline`.
 
 ### Challenge, Delete, Simplify
 
@@ -39,7 +39,7 @@ A repository can steer reviews with files it already keeps:
 
 ### Completion Evidence
 
-`/kramme:pr:code-review` records a frozen applicability plan, actual invocation IDs, saved reviewer results, and every required post-processing stage. Default `all` runs every applicable reviewer; explicit aspect filters remain supported.
+`/trackbed:pr:code-review` records a frozen applicability plan, actual invocation IDs, saved reviewer results, and every required post-processing stage. Default `all` runs every applicable reviewer; explicit aspect filters remain supported.
 
 - All modes, including `--team`, `--inline`, and loop reruns, require a locally validated completion seal tied to the current Git scope and exact report.
 - Missing reviewers, skipped stages, or stale evidence mean `INCOMPLETE`, even with zero findings.
@@ -79,10 +79,10 @@ An explicit `--subagent-model` flag or conversational reviewer-model choice stil
 Pass `--subagent-model <model>` to any of the four review skills above, `pr:github-review`, or `pr:review-convergence`. The value can be a model class, a runtime-supported model ID, or `inherit` to use the orchestrator's model.
 
 ```text
-/kramme:pr:code-review --subagent-model opus      # Claude reviewers use Opus
-$kramme:pr:code-review --subagent-model sol      # Codex reviewers use the runtime's Sol model
-/kramme:pr:product-review --team --subagent-model inherit
-/kramme:pr:review-convergence --subagent-model inherit --requirements <authoritative requirements>
+/trackbed:pr:code-review --subagent-model opus      # Claude reviewers use Opus
+$trackbed:pr:code-review --subagent-model sol      # Codex reviewers use the runtime's Sol model
+/trackbed:pr:product-review --team --subagent-model inherit
+/trackbed:pr:review-convergence --subagent-model inherit --requirements <authoritative requirements>
 ```
 
 - The flag takes precedence over conversational reviewer-model preferences and the level setting.
@@ -93,7 +93,7 @@ $kramme:pr:code-review --subagent-model sol      # Codex reviewers use the runti
 
 ### Codebase Audits
 
-The same setting and flag select subagent models for the codebase audits: scan agents and `--ranked` reviewers in `/kramme:code:refactor-opportunities`, dimension agents in `/kramme:code:agent-readiness`, and in-repo raters in `/kramme:code:outside-view`.
+The same setting and flag select subagent models for the codebase audits: scan agents and `--ranked` reviewers in `/trackbed:code:refactor-opportunities`, dimension agents in `/trackbed:code:agent-readiness`, and in-repo raters in `/trackbed:code:outside-view`.
 
 Defaults stay on the orchestrator's model. `lower` cuts audit cost at some risk to finding depth, and outside-view's opt-in `--cross-model` rater keeps its own provider policy.
 
@@ -110,7 +110,7 @@ Review skills recognize stacked Pull Requests, from gh-stack tracking or from ch
 
 ### Reviewing a Whole Stack
 
-`/kramme:pr:github-review <pr> --stack` reviews the whole stack a Pull Request belongs to, before you review its layers one at a time. It writes `GITHUB_STACK_REVIEW_OVERVIEW.md` and nothing to GitHub.
+`/trackbed:pr:github-review <pr> --stack` reviews the whole stack a Pull Request belongs to, before you review its layers one at a time. It writes `GITHUB_STACK_REVIEW_OVERVIEW.md` and nothing to GitHub.
 
 - It measures each layer against its parent: production, test, database, generated, and other lines, plus review state, checks, and whether the layer needs a restack.
 - It reads the files several layers change as they end up at the top of the stack. It also checks the database changes as a set and flags migration numbers that collide with the trunk.
@@ -118,26 +118,26 @@ Review skills recognize stacked Pull Requests, from gh-stack tracking or from ch
 
 ## Review Convergence
 
-`/kramme:pr:review-convergence` takes a clean committed feature branch through ordered review gates, bounded remediation, and final verification against frozen requirements. `kramme:linear:issue-to-pr` delegates its prepared branch to it after implementation. The same phase is also used by `kramme:code:plan-to-pr`, which preserves its own requirements and scope contract.
+`/trackbed:pr:review-convergence` takes a clean committed feature branch through ordered review gates, bounded remediation, and final verification against frozen requirements. `trackbed:linear:issue-to-pr` delegates its prepared branch to it after implementation. The same phase is also used by `trackbed:code:plan-to-pr`, which preserves its own requirements and scope contract.
 
-The [review-convergence definition](../skills/kramme:pr:review-convergence/SKILL.md) owns this behavior.
+The [review-convergence definition](../skills/pr:review-convergence/SKILL.md) owns this behavior.
 
 ### Gates
 
-The phase opens with one `/kramme:pr:gut-check` pass, then runs applicable gates in this order:
+The phase opens with one `/trackbed:pr:gut-check` pass, then runs applicable gates in this order:
 
-1. `/kramme:pr:code-review`
-2. `/kramme:pr:convention-review`
-3. `/kramme:pr:overengineering-review`
-4. `/kramme:code:refactor-opportunities pr`
+1. `/trackbed:pr:code-review`
+2. `/trackbed:pr:convention-review`
+3. `/trackbed:pr:overengineering-review`
+4. `/trackbed:code:refactor-opportunities pr`
 
 Add `--adversarial-review` to require a final review from the opposite model provider after the ordinary gates reach a no-change candidate. Optional `--adversarial-provider` and `--adversarial-model` values select that reviewer explicitly. Any unavailable provider, malformed result, degraded coverage, or tree mutation blocks convergence.
 
-`kramme:linear:issue-to-pr --adversarial-review` forwards the same request. Convergence then runs Gate 5 only for medium- and high-risk work, and a Critical or Important finding the run wants to reject or downgrade comes to you as a decision, unless it concerns code the Pull Request didn't change.
+`trackbed:linear:issue-to-pr --adversarial-review` forwards the same request. Convergence then runs Gate 5 only for medium- and high-risk work, and a Critical or Important finding the run wants to reject or downgrade comes to you as a decision, unless it concerns code the Pull Request didn't change.
 
 ### Requirements
 
-Callers such as `issue-to-pr` and `plan-to-pr` freeze the requirements that convergence verifies against. When you invoke `/kramme:pr:review-convergence` directly on a clean committed feature branch:
+Callers such as `issue-to-pr` and `plan-to-pr` freeze the requirements that convergence verifies against. When you invoke `/trackbed:pr:review-convergence` directly on a clean committed feature branch:
 
 - with no requirement argument it derives the contract from the current conversation;
 - with `--derive` it drafts a contract from conversation and committed branch evidence, asks targeted questions, and requires explicit user approval;
@@ -160,7 +160,7 @@ In standard mode only an accepted Critical, Important, or `OVERDONE` finding, or
 
 ### Review Profiles
 
-Review depth follows the branch's deterministic risk floor, computed by the same signals `/kramme:pr:triage-risk` uses, with repository policy read only from the default branch. Both callers accept `--depth balanced|full` to raise the profile; nothing in the diff can lower it.
+Review depth follows the branch's deterministic risk floor, computed by the same signals `/trackbed:pr:triage-risk` uses, with repository policy read only from the default branch. Both callers accept `--depth balanced|full` to raise the profile; nothing in the diff can lower it.
 
 | Profile | Selected by | Gates | After each fix batch |
 | --- | --- | --- | --- |
@@ -185,7 +185,7 @@ A caller-only validation mode instead reruns the applicable gates once when auth
 
 ## Reviewing Someone Else's Pull Request
 
-`/kramme:pr:github-review` reviews a GitHub Pull Request as the assigned reviewer.
+`/trackbed:pr:github-review` reviews a GitHub Pull Request as the assigned reviewer.
 
 ### Linked Linear Issues
 
@@ -228,10 +228,10 @@ Pass `--no-clarity-check` to skip it.
 
 ## Resuming Interrupted Reviews and Audits
 
-Interrupted reviews resume. After a session-limit reset or restart, ask to continue, or re-run `/kramme:pr:code-review` on the same unchanged tree or `/kramme:pr:github-review` on the same PR head with the same review arguments within 24 hours.
+Interrupted reviews resume. After a session-limit reset or restart, ask to continue, or re-run `/trackbed:pr:code-review` on the same unchanged tree or `/trackbed:pr:github-review` on the same PR head with the same review arguments within 24 hours.
 
 - Code review reuses every reviewer that finished and relaunches only the ones that did not; a failed reviewer still needs a fresh run.
 - GitHub review reruns only the delegated passes, steps, and clarity-check stages that did not finish, saving them under `.context/pr-github-review/`, which must be git-ignored.
 - Team Mode and `--loop` reruns always start fresh.
 
-Interrupted audits resume too. After a session-limit reset, re-run `/kramme:code:refactor-opportunities` (with or without `--ranked`), `/kramme:code:agent-readiness`, or `/kramme:code:outside-view` with the same arguments on unchanged files within 24 hours. Finished agents' results are reused from `.context/`, and only unfinished agents launch again. Resume needs `.context/` to be git-ignored.
+Interrupted audits resume too. After a session-limit reset, re-run `/trackbed:code:refactor-opportunities` (with or without `--ranked`), `/trackbed:code:agent-readiness`, or `/trackbed:code:outside-view` with the same arguments on unchanged files within 24 hours. Finished agents' results are reused from `.context/`, and only unfinished agents launch again. Resume needs `.context/` to be git-ignored.

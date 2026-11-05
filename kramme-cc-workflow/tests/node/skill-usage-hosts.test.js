@@ -115,7 +115,7 @@ async function writeCodexSessions(root) {
     sessionMeta("thread-top"),
     userMessage(
       "2026-10-10T09:00:01.000Z",
-      "# AGENTS.md instructions for /repo\n\nUse /kramme:skill:create to add skills.",
+      "# AGENTS.md instructions for /repo\n\nUse /trackbed:skill:create to add skills.",
     ),
     userMessage(
       "2026-10-10T09:00:01.000Z",
@@ -129,7 +129,7 @@ async function writeCodexSessions(root) {
     userMessage(
       "2026-10-10T10:00:00.000Z",
       CONDUCTOR_BLOCK,
-      "$kramme:pr:create please",
+      "$trackbed:pr:create please",
     ),
     message("developer", "2026-10-10T10:00:00.000Z", "Try $kramme:other:dev"),
     message("assistant", "2026-10-10T10:00:01.000Z", "Ran $kramme:other:reply"),
@@ -140,7 +140,7 @@ async function writeCodexSessions(root) {
         type: "item_completed",
         item: {
           type: "UserMessage",
-          content: [{ type: "text", text: "$kramme:pr:create please" }],
+          content: [{ type: "text", text: "$trackbed:pr:create please" }],
         },
       },
     },
@@ -153,7 +153,9 @@ async function writeCodexSessions(root) {
           {
             type: "message",
             role: "user",
-            content: [{ type: "input_text", text: "$kramme:pr:create please" }],
+            content: [
+              { type: "input_text", text: "$trackbed:pr:create please" },
+            ],
           },
         ],
       },
@@ -161,7 +163,7 @@ async function writeCodexSessions(root) {
     "{malformed",
     userMessage(
       "2026-10-12T08:00:00.000Z",
-      "/kramme:qa first, then $kramme:qa again",
+      "/trackbed:qa first, then $trackbed:qa again",
     ),
   ]);
 
@@ -173,7 +175,7 @@ async function writeCodexSessions(root) {
     sessionMeta("thread-exec", { thread_source: "user", source: "exec" }),
     userMessage(
       "2026-10-15T12:00:00.000Z",
-      "$kramme:pr:create then $kramme-cc-workflow:kramme-pr-rebase",
+      "$trackbed:pr:create then $trackbed:pr-rebase",
     ),
   ]);
 
@@ -184,7 +186,7 @@ async function writeCodexSessions(root) {
       parent_thread_id: "thread-top",
       source: SUBAGENT_SOURCE,
     }),
-    userMessage("2026-10-10T10:05:00.000Z", "$kramme:pr:create please"),
+    userMessage("2026-10-10T10:05:00.000Z", "$trackbed:pr:create please"),
     "{malformed subagent line",
     "{another malformed subagent line",
   ]);
@@ -195,7 +197,7 @@ async function writeCodexSessions(root) {
   await writeJsonLines(forkedFile, [
     sessionMeta("thread-fork", { source: SUBAGENT_SOURCE }),
     sessionMeta("thread-top"),
-    userMessage("2026-10-10T10:00:00.000Z", "$kramme:pr:create please"),
+    userMessage("2026-10-10T10:00:00.000Z", "$trackbed:pr:create please"),
   ]);
 
   return { topFile };
@@ -296,10 +298,10 @@ test("readPluginVersion reads the Claude Code manifest, then the Codex one", asy
 });
 
 test("stripConductorInstructions keeps only text after the last block", () => {
-  assert.equal(stripConductorInstructions("$kramme:qa"), "$kramme:qa");
+  assert.equal(stripConductorInstructions("$trackbed:qa"), "$trackbed:qa");
   assert.equal(
-    stripConductorInstructions(`${CONDUCTOR_BLOCK}$kramme:qa`),
-    "\n$kramme:qa",
+    stripConductorInstructions(`${CONDUCTOR_BLOCK}$trackbed:qa`),
+    "\n$trackbed:qa",
   );
   assert.equal(
     stripConductorInstructions(
@@ -345,9 +347,9 @@ test("Codex rollout prompts include only the user's own message text", () => {
   assert.ok(rollout);
   assert.deepEqual(
     rollout.prompts(
-      userMessage("2026-10-10T10:00:00.000Z", CONDUCTOR_BLOCK, "$kramme:qa"),
+      userMessage("2026-10-10T10:00:00.000Z", CONDUCTOR_BLOCK, "$trackbed:qa"),
     ),
-    [{ text: "\n\n$kramme:qa", recordedAt: "2026-10-10T10:00:00.000Z" }],
+    [{ text: "\n\n$trackbed:qa", recordedAt: "2026-10-10T10:00:00.000Z" }],
   );
   assert.deepEqual(
     rollout.prompts(userMessage("t", "  # AGENTS.md instructions for /repo")),
@@ -358,7 +360,7 @@ test("Codex rollout prompts include only the user's own message text", () => {
     [],
   );
   assert.deepEqual(
-    rollout.prompts(message("developer", "t", "$kramme:qa")),
+    rollout.prompts(message("developer", "t", "$trackbed:qa")),
     [],
   );
   assert.deepEqual(
@@ -376,11 +378,11 @@ test("Codex rollout prompts include only the user's own message text", () => {
         role: "user",
         content: [
           { type: "input_image" },
-          { type: "input_text", text: "$kramme:qa" },
+          { type: "input_text", text: "$trackbed:qa" },
         ],
       },
     }),
-    [{ text: "$kramme:qa", recordedAt: "" }],
+    [{ text: "$trackbed:qa", recordedAt: "" }],
   );
 });
 
@@ -394,7 +396,7 @@ test("scan counts explicit invocations in top-level Codex threads only", async (
   assert.deepEqual(JSON.parse(result.stdout), {
     summary: [
       {
-        skill: "kramme:pr:create",
+        skill: "trackbed:pr:create",
         total: 2,
         explicit: 2,
         tool: 0,
@@ -403,7 +405,7 @@ test("scan counts explicit invocations in top-level Codex threads only", async (
         sessions: 2,
       },
       {
-        skill: "kramme:pr:rebase",
+        skill: "trackbed:pr:rebase",
         total: 1,
         explicit: 1,
         tool: 0,
@@ -412,7 +414,7 @@ test("scan counts explicit invocations in top-level Codex threads only", async (
         sessions: 1,
       },
       {
-        skill: "kramme:qa",
+        skill: "trackbed:qa",
         total: 1,
         explicit: 1,
         tool: 0,
@@ -446,9 +448,9 @@ test("scan filters Codex invocations by message timestamp", async (t) => {
       row.total,
     ]),
     [
-      ["kramme:pr:create", 1],
-      ["kramme:pr:rebase", 1],
-      ["kramme:qa", 1],
+      ["trackbed:pr:create", 1],
+      ["trackbed:pr:rebase", 1],
+      ["trackbed:qa", 1],
     ],
   );
 });
@@ -462,14 +464,14 @@ test("scan reports overlong Codex lines and keeps counting", async (t) => {
       type: "event_msg",
       payload: { output: "x".repeat(MIB + 1) },
     }),
-    userMessage("2026-10-10T10:00:00.000Z", "$kramme:qa"),
+    userMessage("2026-10-10T10:00:00.000Z", "$trackbed:qa"),
   ]);
 
   const result = runUsage(["scan", file, "--json"]);
 
   assert.equal(result.status, 0, result.stderr);
   const parsed = JSON.parse(result.stdout);
-  assert.equal(parsed.summary[0].skill, "kramme:qa");
+  assert.equal(parsed.summary[0].skill, "trackbed:qa");
   assert.deepEqual(parsed.diagnostics, { skippedLines: 1, readFailures: 0 });
   assert.equal(
     result.stderr,
@@ -497,7 +499,7 @@ test("record recognises Codex prompt syntax after the Conductor block", async (t
     cwd: "/repo",
     model: "gpt-5",
     permission_mode: "default",
-    prompt: `${CONDUCTOR_BLOCK}$kramme-cc-workflow:kramme-pr-create and /kramme:qa`,
+    prompt: `${CONDUCTOR_BLOCK}$trackbed:pr-create and /trackbed:qa`,
   };
 
   const result = runUsage(["record", "--file", usageFile], {
@@ -510,8 +512,8 @@ test("record recognises Codex prompt syntax after the Conductor block", async (t
   assert.deepEqual(
     records.map((record) => [record.skill, record.platform, record.sessionId]),
     [
-      ["kramme:pr:create", "codex", "thread-1"],
-      ["kramme:qa", "codex", "thread-1"],
+      ["trackbed:pr:create", "codex", "thread-1"],
+      ["trackbed:qa", "codex", "thread-1"],
     ],
   );
 });
@@ -522,7 +524,7 @@ test("record keeps the Claude Code prompt syntax and marks the host", async (t) 
   const payload = {
     hook_event_name: "UserPromptSubmit",
     session_id: "claude-1",
-    prompt: "Ignore $kramme:pr:create but run /kramme:qa",
+    prompt: "Ignore $trackbed:pr:create but run /trackbed:qa",
   };
 
   const claude = runUsage(["record", "--file", usageFile], {
@@ -539,8 +541,8 @@ test("record keeps the Claude Code prompt syntax and marks the host", async (t) 
   assert.deepEqual(
     records.map((record) => [record.skill, record.platform]),
     [
-      ["kramme:qa", "claude-code"],
-      ["kramme:qa", ""],
+      ["trackbed:qa", "claude-code"],
+      ["trackbed:qa", ""],
     ],
   );
 });
@@ -553,12 +555,12 @@ test("record lets explicit platform overrides win over detection", async (t) => 
     input: JSON.stringify({
       platform: "custom",
       turn_id: "turn-1",
-      prompt: "/kramme:qa",
+      prompt: "/trackbed:qa",
     }),
     env: { KRAMME_AGENT_PLATFORM: "codex" },
   });
   const fromEnv = runUsage(["record", "--file", usageFile], {
-    input: JSON.stringify({ prompt: "$kramme:pr:create" }),
+    input: JSON.stringify({ prompt: "$trackbed:pr:create" }),
     env: { KRAMME_AGENT_PLATFORM: "codex", CLAUDECODE: "1" },
   });
 
@@ -568,8 +570,8 @@ test("record lets explicit platform overrides win over detection", async (t) => 
   assert.deepEqual(
     records.map((record) => [record.skill, record.platform]),
     [
-      ["kramme:qa", "custom"],
-      ["kramme:pr:create", "codex"],
+      ["trackbed:qa", "custom"],
+      ["trackbed:pr:create", "codex"],
     ],
   );
 });
@@ -580,9 +582,9 @@ test("report filters usage records by platform", async (t) => {
   await writeJsonLines(
     usageFile,
     [
-      ["kramme:pr:create", "codex"],
-      ["kramme:qa", "claude-code"],
-      ["kramme:verify:run", ""],
+      ["trackbed:pr:create", "codex"],
+      ["trackbed:qa", "claude-code"],
+      ["trackbed:verify:run", ""],
     ].map(([skill, platform], index) => ({
       schemaVersion: 1,
       recordedAt: `2026-10-1${index}T10:00:00.000Z`,
@@ -602,13 +604,13 @@ test("report filters usage records by platform", async (t) => {
     );
   };
 
-  assert.deepEqual(skills("--platform", "codex"), ["kramme:pr:create"]);
-  assert.deepEqual(skills("--platform=claude-code"), ["kramme:qa"]);
-  assert.deepEqual(skills("--platform", "unknown"), ["kramme:verify:run"]);
+  assert.deepEqual(skills("--platform", "codex"), ["trackbed:pr:create"]);
+  assert.deepEqual(skills("--platform=claude-code"), ["trackbed:qa"]);
+  assert.deepEqual(skills("--platform", "unknown"), ["trackbed:verify:run"]);
   assert.deepEqual(skills("--platform", "all"), [
-    "kramme:pr:create",
-    "kramme:qa",
-    "kramme:verify:run",
+    "trackbed:pr:create",
+    "trackbed:qa",
+    "trackbed:verify:run",
   ]);
   assert.deepEqual(skills(), skills("--platform", "all"));
 

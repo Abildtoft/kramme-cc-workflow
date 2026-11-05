@@ -4,9 +4,9 @@ setup() {
 	cd "$BATS_TEST_DIRNAME/.."
 }
 
-SKILL="skills/kramme:product:prd/SKILL.md"
-TEMPLATE="skills/kramme:product:prd/assets/prd-template.md"
-SOURCES="skills/kramme:product:prd/references/sources.yaml"
+SKILL="skills/product:prd/SKILL.md"
+TEMPLATE="skills/product:prd/assets/prd-template.md"
+SOURCES="skills/product:prd/references/sources.yaml"
 
 @test "PRD skill is user-invoked and writes only the resolved PRD file" {
 	test -f "$SKILL"
@@ -86,10 +86,10 @@ SOURCES="skills/kramme:product:prd/references/sources.yaml"
 }
 
 @test "every routed skill exists and accepts user invocation" {
-	routes=$(grep -oE '/kramme:[a-z0-9:-]+' "$SKILL" | sort -u)
+	routes=$(grep -oE '/trackbed:[a-z0-9:-]+' "$SKILL" | sort -u)
 	[ -n "$routes" ]
 	for route in $routes; do
-		skill="skills/${route#/}/SKILL.md"
+		skill="skills/${route#/trackbed:}/SKILL.md"
 		test -f "$skill" || {
 			echo "missing route target: $route"
 			return 1
@@ -99,7 +99,7 @@ SOURCES="skills/kramme:product:prd/references/sources.yaml"
 			return 1
 		}
 	done
-	grep -qF '`/kramme:product:prd`' "skills/kramme:docs:feature-spec/SKILL.md"
+	grep -qF '`/trackbed:product:prd`' "skills/docs:feature-spec/SKILL.md"
 }
 
 @test "sources credit the post as inspiration" {

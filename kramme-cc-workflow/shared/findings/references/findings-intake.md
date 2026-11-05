@@ -1,6 +1,6 @@
 # Findings Intake
 
-Shared source-intake, normalization, theme-sizing, and execution-label rules for `kramme:code:breakdown-findings` and `kramme:linear:breakdown-findings`. Each skill keeps its own prior-artifact, resume, identity, containment, and publication rules.
+Shared source-intake, normalization, theme-sizing, and execution-label rules for `trackbed:code:breakdown-findings` and `trackbed:linear:breakdown-findings`. Each skill keeps its own prior-artifact, resume, identity, containment, and publication rules.
 
 ## Auto-detect candidates
 
@@ -18,7 +18,7 @@ Do not combine a pre-clustered handoff with any other source. If a matching path
 8. `QA_REPORT.md`
 9. `DEPENDENCY_AUDIT.md`
 
-User-supplied paths are accepted regardless of filename — this list only controls auto-detection. Spec-audit reports (`AUDIT_SPEC_REPORT.md`, `siw/AUDIT_SPEC_REPORT.md`) are not auto-detected because SIW audit decisions route through `kramme:siw:resolve-audit`; an explicitly passed spec-audit report is still accepted, without its findings marked `**Status:** [Contested]`.
+User-supplied paths are accepted regardless of filename — this list only controls auto-detection. Spec-audit reports (`AUDIT_SPEC_REPORT.md`, `siw/AUDIT_SPEC_REPORT.md`) are not auto-detected because SIW audit decisions route through `trackbed:siw:resolve-audit`; an explicitly passed spec-audit report is still accepted, without its findings marked `**Status:** [Contested]`.
 
 ## Sibling worktree reports
 
@@ -40,7 +40,7 @@ Resolve the remaining source arguments in this order:
 4. Treat any other non-empty source text as one source named `inline findings`.
 5. With no source argument, use every **Auto-detect candidates** match that holds a findings-mode report at the project root, in candidate order. Then apply **Sibling worktree reports** discovery and add only the reports the user selects. A detected pre-clustered handoff is exclusive and cannot be combined; ask for that handoff alone or a deliberately merged handoff.
 6. If auto-detection finds nothing, inspect the current dialogue. Accept a recent bounded review, audit, scan, or QA set that includes enough structure to extract description, location, severity context, and suggested fix where available, or a valid pre-clustered handoff. Name one accepted dialogue source `current dialogue`; for multiple related findings-mode sets from the current request, preserve their order and assign dialogue `SRC-##` IDs. If candidates span unrelated tasks or include a handoff, list them and ask which compatible set to use. Vague issues, one triage topic, and raw bug ideas are not suitable findings.
-7. If no source is suitable, stop with: `No findings source found. Provide one or more file paths (any markdown files with findings will work), paste findings as the next message, keep a structured findings set in the dialogue, or run report-producing skills first (for example $kramme:pr:code-review, $kramme:code:refactor-opportunities, $kramme:code:agent-readiness, $kramme:code:refactor-opportunities --ranked, or $kramme:qa).`
+7. If no source is suitable, stop with: `No findings source found. Provide one or more file paths (any markdown files with findings will work), paste findings as the next message, keep a structured findings set in the dialogue, or run report-producing skills first (for example $trackbed:pr:code-review, $trackbed:code:refactor-opportunities, $trackbed:code:agent-readiness, $trackbed:code:refactor-opportunities --ranked, or $trackbed:qa).`
 
 ## Check compatibility
 

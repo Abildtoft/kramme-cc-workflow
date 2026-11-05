@@ -18,6 +18,7 @@ from typing import Any
 
 from ..frontmatter import parse_frontmatter, parse_frontmatter_bool
 from ..io import read_text, rel, skill_paths
+from ..naming import qualified_name
 from .types import CheckResult, LintContext
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
@@ -112,7 +113,7 @@ def check_routing_distinctness(context: LintContext) -> CheckResult:
         description = frontmatter.get("description")
         if not description:
             continue
-        name = frontmatter.get("name") or path.parent.name
+        name = qualified_name(frontmatter.get("name") or path.parent.name)
         auto_invocable = not parse_frontmatter_bool(frontmatter, "disable-model-invocation")
         skills.append((relative, description_tokens(description, name, stopwords), auto_invocable))
 

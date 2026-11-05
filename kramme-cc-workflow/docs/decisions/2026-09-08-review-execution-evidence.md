@@ -6,7 +6,7 @@
 
 ## Context
 
-Maintainer dogfooding found Astra shortening `kramme:pr:code-review` despite its required stages. The existing failure policy preserves useful partial findings, but successful reports do not require a positive record of each reviewer and post-processing stage. Convergence can therefore consume an unsupported claim of completion.
+Maintainer dogfooding found Astra shortening `trackbed:pr:code-review` despite its required stages. The existing failure policy preserves useful partial findings, but successful reports do not require a positive record of each reviewer and post-processing stage. Convergence can therefore consume an unsupported claim of completion.
 
 ## Decision
 

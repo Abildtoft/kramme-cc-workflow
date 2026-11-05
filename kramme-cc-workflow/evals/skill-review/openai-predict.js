@@ -20,7 +20,7 @@ const {
 /** @typedef {import('./live-predict').SessionConfig} SessionConfig */
 /** @typedef {(url: string, init: {method: string, headers: Record<string, string>, body: string, signal: AbortSignal}) => Promise<Response>} FetchFunction */
 /** @typedef {{fetch?: FetchFunction, now?: () => number}} Dependencies */
-const SKILL = "kramme:skill:review";
+const SKILL = "trackbed:skill:review";
 // Fingerprinted with each run; change it when the request shape, tools, or retry policy change.
 const RUNTIME = "openai-responses-1";
 const ENDPOINT = "https://api.openai.com/v1/responses";
@@ -129,12 +129,7 @@ function walk(entry) {
  * @param {string} workspace @param {string} name @param {Record<string, unknown>} args */
 function runTool(workspace, name, args) {
   if (name === "Skill") {
-    const directory = path.join(
-      workspace,
-      "plugin",
-      "skills",
-      "kramme:skill:review",
-    );
+    const directory = path.join(workspace, "plugin", "skills", "skill:review");
     const body = fs.readFileSync(path.join(directory, "SKILL.md"), "utf8");
     return `Base directory for this skill: ${directory}\n\n${body}\n\nARGUMENTS: ${args.args}`;
   }

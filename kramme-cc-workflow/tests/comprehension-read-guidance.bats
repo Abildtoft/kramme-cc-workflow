@@ -4,9 +4,9 @@ setup() {
   cd "$BATS_TEST_DIRNAME/.."
   REFERENCE="shared/writing/references/comprehension-read.md"
   REFERENCE_PATH='${CLAUDE_PLUGIN_ROOT}/shared/writing/references/comprehension-read.md'
-  DOCS_REVIEW="skills/kramme:docs:review/SKILL.md"
-  SPEC_AUDIT="skills/kramme:siw:spec-audit/SKILL.md"
-  SPEC_REPORT="skills/kramme:siw:spec-audit/assets/spec-audit-report-format.md"
+  DOCS_REVIEW="skills/docs:review/SKILL.md"
+  SPEC_AUDIT="skills/siw:spec-audit/SKILL.md"
+  SPEC_REPORT="skills/siw:spec-audit/assets/spec-audit-report-format.md"
 }
 
 @test "comprehension prompt asks for a restatement and names only project-specific gaps" {
@@ -68,5 +68,5 @@ setup() {
 }
 
 @test "spec-audit team mode keeps the reader out of the team" {
-  grep -qF 'Launch it as an ordinary subagent, not a teammate' "skills/kramme:siw:spec-audit/references/team-mode.md"
+  grep -qF 'Launch it as an ordinary subagent, not a teammate' "skills/siw:spec-audit/references/team-mode.md"
 }

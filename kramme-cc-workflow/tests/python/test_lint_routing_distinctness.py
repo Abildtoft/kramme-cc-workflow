@@ -21,7 +21,7 @@ class RoutingDistinctnessHelperTest(unittest.TestCase):
     def test_description_tokens_drop_stopwords_and_the_skill_name(self) -> None:
         tokens = lint_skill_contracts.description_tokens(
             "Review the review skill for drift",
-            "kramme:skill:review",
+            "trackbed:skill:review",
             {"the"},
         )
 

@@ -83,7 +83,9 @@ test("converted skill roots contain no executable Claude controls and honor inst
     const built = await buildCodexMarketplace(outputRoot, bundle);
     const skillsRoot = path.join(built.pluginRoot, "skills");
     assert.equal(
-      await pathExists(path.join(skillsRoot, "fixture-reviewer", "SKILL.md")),
+      await pathExists(
+        path.join(skillsRoot, "fixture-plugin:fixture-reviewer", "SKILL.md"),
+      ),
       true,
       "agent skills are packaged beside converted skills",
     );
@@ -237,13 +239,16 @@ test("canonical plugin build preserves runtime path dependency closure", async (
       ),
     );
     assert.match(coldReaderContract, /fork_context: false/);
-    assert.match(coldReaderContract, /have it use \$kramme:cold-reader skill/);
+    assert.match(
+      coldReaderContract,
+      /have it use \$trackbed:cold-reader skill/,
+    );
 
     const skillsRoot = path.join(built.pluginRoot, "skills");
     const { data: coldReader } = parseFrontmatter(
-      await readText(path.join(skillsRoot, "kramme:cold-reader", "SKILL.md")),
+      await readText(path.join(skillsRoot, "trackbed:cold-reader", "SKILL.md")),
     );
-    assert.equal(coldReader.name, "kramme:cold-reader");
+    assert.equal(coldReader.name, "trackbed:cold-reader");
     assert.equal(
       coldReader.omitClaudeMd,
       undefined,
@@ -257,7 +262,7 @@ test("canonical plugin build preserves runtime path dependency closure", async (
       "product-review",
       "review-convergence",
     ]) {
-      const skillDir = path.join(skillsRoot, `kramme:pr:${name}`);
+      const skillDir = path.join(skillsRoot, `trackbed:pr:${name}`);
       assert.match(
         await readText(path.join(skillDir, "SKILL.md")),
         /read and apply `\$\{CODEX_HOME:-\$HOME\/\.codex\}\/plugins\/cache\/[^`]+\/shared\/pr-review\/references\/model-selection\.md`/,
@@ -299,11 +304,11 @@ test("canonical plugin build preserves runtime path dependency closure", async (
       "every plugin-level path a converted skill uses must be packaged",
     );
     const codeReview = await readText(
-      path.join(skillsRoot, "kramme:pr:code-review", "SKILL.md"),
+      path.join(skillsRoot, "trackbed:pr:code-review", "SKILL.md"),
     );
     assert.match(
       codeReview,
-      /"\$\{CODEX_HOME:-\$HOME\/\.codex\}\/plugins\/cache\/kramme-cc-workflow\/kramme-cc-workflow\/[^/]+\/scripts\/collect-review-diff\.sh"/,
+      /"\$\{CODEX_HOME:-\$HOME\/\.codex\}\/plugins\/cache\/trackbed\/trackbed\/[^/]+\/scripts\/collect-review-diff\.sh"/,
       "shared helpers resolve through the Codex plugin cache directory",
     );
   });

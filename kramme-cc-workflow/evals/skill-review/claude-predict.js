@@ -27,7 +27,7 @@ const {
 /** @typedef {(args: {prompt: string, options: SDKOptions}) => Query} QueryFunction */
 /** @typedef {{query?: QueryFunction, now?: () => number}} Dependencies */
 // This SDK normalizes ':' within a skill name to '-' when qualifying a plugin skill.
-const SKILL = "eval-review:kramme-skill-review";
+const SKILL = "eval-review:skill-review";
 
 function runtimeVersion() {
   return String(
