@@ -53,7 +53,7 @@ test("an adapter remains locked if its owner dies; recovery waits for the worker
 
 test("checkpoints preserve progress with private, atomic writes and reject a concurrent writer", (t) => {
   const { root, run, env } = sandbox(t);
-  const file = runFile(env.KRAMME_LIVE_EVAL_STATE, run.id);
+  const file = runFile(env.TRACKBED_LIVE_EVAL_STATE, run.id);
   assert.deepEqual(validateRun(readJson(file)), run);
   writeJson(file, { ...run, status: "PAUSED_NO_CREDITS" });
   assert.equal(validateRun(readJson(file)).status, "PAUSED_NO_CREDITS");

@@ -10,15 +10,15 @@ source "${CLAUDE_PLUGIN_ROOT}/hooks/lib/check-enabled.sh"
 exit_if_hook_disabled "skill-usage-stats" "json"
 
 usage_diagnostic_file() {
-  resolve_kramme_path \
-    "KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE" \
+  resolve_trackbed_path \
+    "TRACKBED_SKILL_USAGE_DIAGNOSTIC_FILE" \
     "XDG_STATE_HOME" \
     ".local/state" \
     "skill-usage-diagnostics.log"
 }
 
 usage_diagnostic_max_lines() {
-  local max="${KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES:-20}"
+  local max="${TRACKBED_SKILL_USAGE_DIAGNOSTIC_MAX_LINES:-${KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES:-20}}"
   case "$max" in
     '' | *[!0-9]*) printf '20\n' ;;
     *)

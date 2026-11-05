@@ -4,7 +4,7 @@ description: Conduct an in-depth interview about a topic, proposal, or spec to u
 argument-hint: "[topic | file-path(s) | siw] [--siw] [--apply] [--ideate] [--decision-tree] [--research]"
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 ---
 
 # Deep Exploration Interview

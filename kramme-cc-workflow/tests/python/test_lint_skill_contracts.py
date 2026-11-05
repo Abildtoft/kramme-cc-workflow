@@ -252,7 +252,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms:
+trackbed-platforms:
   - "" # placeholder
 ---
 """
@@ -261,7 +261,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms:
+trackbed-platforms:
   - "codex" # primary
   - claude-code
 ---
@@ -271,7 +271,7 @@ kramme-platforms:
             frontmatter_type_errors(empty_item_with_comment),
             [
                 (
-                    "kramme-platforms",
+                    "trackbed-platforms",
                     "a non-empty array of non-empty strings",
                 )
             ],
@@ -284,7 +284,7 @@ name: +1
 description: 1e3
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms:
+trackbed-platforms:
   - -1e2
 ---
 """
@@ -297,7 +297,7 @@ name: test-skill
 description: "\n"
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [codex, "\x20"]
+trackbed-platforms: [codex, "\x20"]
 ---
 """
 
@@ -306,7 +306,7 @@ kramme-platforms: [codex, "\x20"]
             [
                 ("description", "a non-empty string"),
                 (
-                    "kramme-platforms",
+                    "trackbed-platforms",
                     "a non-empty array of non-empty strings",
                 ),
             ],
@@ -318,7 +318,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: ["claude\",code", codex]
+trackbed-platforms: ["claude\",code", codex]
 ---
 """
 
@@ -363,7 +363,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [codex,]
+trackbed-platforms: [codex,]
 ---
 """
 
@@ -379,14 +379,14 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [codex, {value}]
+trackbed-platforms: [codex, {value}]
 ---
 """
                 self.assertEqual(
                     frontmatter_type_errors(text),
                     [
                         (
-                            "kramme-platforms",
+                            "trackbed-platforms",
                             "a non-empty array of non-empty strings",
                         )
                     ],
@@ -397,7 +397,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [!!str 1, &target codex]
+trackbed-platforms: [!!str 1, &target codex]
 ---
 """
         self.assertEqual(frontmatter_type_errors(explicitly_tagged_string), [])
@@ -408,7 +408,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms:
+trackbed-platforms:
   - target:
       name: codex
 ---
@@ -418,13 +418,13 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms:
+trackbed-platforms:
   - |
 ---
 """
         expected = [
             (
-                "kramme-platforms",
+                "trackbed-platforms",
                 "a non-empty array of non-empty strings",
             )
         ]
@@ -450,7 +450,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [codex, .5]
+trackbed-platforms: [codex, .5]
 ---
 """
 
@@ -458,7 +458,7 @@ kramme-platforms: [codex, .5]
             frontmatter_type_errors(text),
             [
                 (
-                    "kramme-platforms",
+                    "trackbed-platforms",
                     "a non-empty array of non-empty strings",
                 )
             ],

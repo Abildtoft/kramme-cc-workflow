@@ -243,10 +243,10 @@ Create the PR body through a temporary file. Do not pass generated Markdown thro
 2. Create and capture temp file paths. Use the fixed `/tmp` templates so every captured path is shell-safe. If the second allocation fails, remove the first file before stopping:
 
    ```bash
-   if ! PR_TITLE_FILE=$(mktemp "/tmp/kramme-pr-title.XXXXXX"); then
+   if ! PR_TITLE_FILE=$(mktemp "/tmp/trackbed-pr-title.XXXXXX"); then
      exit 1
    fi
-   if ! PR_BODY_FILE=$(mktemp "/tmp/kramme-pr-body.XXXXXX"); then
+   if ! PR_BODY_FILE=$(mktemp "/tmp/trackbed-pr-body.XXXXXX"); then
      rm -f -- "$PR_TITLE_FILE"
      exit 1
    fi
@@ -254,7 +254,7 @@ Create the PR body through a temporary file. Do not pass generated Markdown thro
    echo "$PR_BODY_FILE"
    ```
 
-3. Require each captured path to match `/tmp/kramme-pr-(title|body).[A-Za-z0-9]+`, then write `{title}` and `{description}` to the corresponding path using the runtime's file-write capability. Do not use `cat <<EOF`, `printf "{description}"`, or any other shell-parsed form for generated Markdown.
+3. Require each captured path to match `/tmp/trackbed-pr-(title|body).[A-Za-z0-9]+`, then write `{title}` and `{description}` to the corresponding path using the runtime's file-write capability. Do not use `cat <<EOF`, `printf "{description}"`, or any other shell-parsed form for generated Markdown.
 
 4. Emit the command below with the shell tool's bounded timeout. `GH_PROMPT_DISABLED=1` makes authentication or other interaction requirements fail closed. Include `--draft` on the first line only when `DRAFT_MODE=true`; otherwise omit it entirely (do not emit an empty flag). Substitute the validated captured paths for `{pr-title-file}` and `{pr-body-file}`. The trap removes both files on success, failure, or interruption.
 

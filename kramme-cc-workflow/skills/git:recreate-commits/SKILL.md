@@ -28,7 +28,7 @@ Auto mode is the default: skip the granularity question, automatically choose th
 - `--manual` — Turn off auto mode: ask for the granularity on a large diff, and confirm before the reset and before any force-push.
 - `--coarse` — Force coarse decomposition: one commit per major grouping (typically 5–15 commits). Skips the granularity question but does not authorize the history rewrite or publication by itself: auto mode keeps authorizing them, and `--manual` keeps their confirmations. Do not combine it with `--granular`.
 - `--granular` — Force atomic-level decomposition. Skips the granularity question. Use for very large PRs where 100+ commits are appropriate.
-- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the shared resolver checks an existing GitHub Pull Request, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`, `origin/main`, or `origin/master`.
+- `--base <branch>` — Use `<branch>` as the base instead of auto-detecting. Without this flag, the shared resolver checks an existing GitHub Pull Request, repository `trackbed.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`, `origin/main`, or `origin/master`.
 - `--base-commit <oid>` — Pin diff and reset-point calculation to a caller-validated full commit OID while retaining the branch metadata from `--base`. Use this when a parent workflow must keep one base snapshot across multiple delegated skills.
 - `--after <commit>` — Only recreate commits after `<commit>`, keeping all earlier history intact. Accepts any valid git ref (SHA, short SHA, `HEAD~3`, etc.). The commit must exist and be an ancestor of `HEAD`. When set, the diff scope becomes `<commit>..HEAD` and the reset point becomes `<commit>` instead of the merge base.
 - `--backup-ref <branch>` — Use a caller-selected conservative recovery branch name. This requires backup mode and is primarily for parent workflows that need retry-safe per-input-tip backup names.
@@ -276,7 +276,7 @@ Synced Conductor workspace boundary contract (keep aligned across git-mutating w
 
 Use this path only when the Step 4 storyline is exactly one commit on the current branch; never with a `{branch_name}-clean` branch. A one-commit plan's final tree is `$ORIGINAL_TIP`'s tree by definition, so the working tree is never reset. Every Step 5 gate — the confirmation or authorization, the stack revalidation, and `verify-rewrite-state.sh` — has already run before this point.
 
-Create `MESSAGE_FILE` with `mktemp "${TMPDIR:-/tmp}/kramme-recreate-message.XXXXXX"`, write the planned message (subject and body resolved under the shared commit conventions from Step 2) to that path with the runtime's file writer, and run the block below with the Step 1 `ORIGINAL_TIP` and `RESET_POINT` values and that path. Delete the file afterwards.
+Create `MESSAGE_FILE` with `mktemp "${TMPDIR:-/tmp}/trackbed-recreate-message.XXXXXX"`, write the planned message (subject and body resolved under the shared commit conventions from Step 2) to that path with the runtime's file writer, and run the block below with the Step 1 `ORIGINAL_TIP` and `RESET_POINT` values and that path. Delete the file afterwards.
 
 ```bash
 [ "$(git rev-parse HEAD)" = "$ORIGINAL_TIP" ] || {

@@ -26,13 +26,13 @@ This directory contains the implementation behind `scripts/convert-plugin.js`. T
 - Keep path containment checks in shared filesystem helpers before writing or deleting managed children.
 - `build` only writes into an absent or empty output directory; `install` builds into a sibling temporary directory and swaps it in, and only replaces a directory holding a marketplace generated for the same name.
 - Codex owns the plugin cache and `config.toml`; the converter never edits them. `install` fails if `codex plugin add` reports an install path other than `codexPlugin.cacheRelativePath`, because converted Markdown references that directory.
-- Keep platform filtering in the transformer so `kramme-platforms` has one conversion meaning.
+- Keep platform filtering in the transformer so `trackbed-platforms` has one conversion meaning.
 - Build shared runtime metadata independently of hook eligibility. The main `CodexBundle` owns `sharedScriptDirs` and `sharedScriptFiles`; hook packaging only adds `hooks/` when the plugin declares hooks and ships the hook control skills.
 - Legacy cleanup removes only entries recorded in `.kramme-install-state.json` or the per-plugin manifest, verifies helper digests before deleting, and asks for confirmation unless `--yes` is given.
 
 ## CLI Contract
 
-`build <plugin-name|path> --out <dir>` loads and converts the plugin and writes the marketplace to `<dir>`. Codex has no plugin prefix, so every converted skill, command skill, and agent skill is named `<plugin>:<name>`, as Claude Code shows it, and plugin-root paths to a skill's own files follow its folder. `install` runs legacy cleanup, including output recorded under the plugin's former name, builds under `<codex-home>/.kramme-plugin-marketplaces/<plugin>` (or `--marketplace-dir`), then runs `codex plugin marketplace add` and `codex plugin add --json`. `uninstall` runs `codex plugin remove` and `codex plugin marketplace remove`, deletes the generated marketplace, and runs legacy cleanup. The Codex home defaults to `$CODEX_HOME` or `~/.codex`.
+`build <plugin-name|path> --out <dir>` loads and converts the plugin and writes the marketplace to `<dir>`. Codex has no plugin prefix, so every converted skill, command skill, and agent skill is named `<plugin>:<name>`, as Claude Code shows it, and plugin-root paths to a skill's own files follow its folder. `install` runs legacy cleanup, including output recorded under the plugin's former name, builds under `<codex-home>/.trackbed-plugin-marketplaces/<plugin>` (or `--marketplace-dir`), then runs `codex plugin marketplace add` and `codex plugin add --json`. `uninstall` runs `codex plugin remove` and `codex plugin marketplace remove`, deletes the generated marketplace, and runs legacy cleanup. The Codex home defaults to `$CODEX_HOME` or `~/.codex`.
 
 `stats <plugin-name|path>` loads and converts the plugin in memory without building it. Its default text output is two `key=value` lines in this order:
 

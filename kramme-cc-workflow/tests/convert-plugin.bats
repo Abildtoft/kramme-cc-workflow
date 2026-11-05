@@ -13,7 +13,7 @@ setup() {
 	FAKE_LOG="$TMP_DIR/codex.log"
 	PLUGIN_VERSION="$(jq -r '.version' "$REPO_ROOT/.claude-plugin/plugin.json")"
 	CACHE_ROOT="$CODEX_HOME_DIR/plugins/cache/trackbed/trackbed/$PLUGIN_VERSION"
-	MARKETPLACE_ROOT="$CODEX_HOME_DIR/.kramme-plugin-marketplaces/trackbed"
+	MARKETPLACE_ROOT="$CODEX_HOME_DIR/.trackbed-plugin-marketplaces/trackbed"
 	chmod +x "$MOCK_BIN/codex"
 }
 
@@ -324,11 +324,27 @@ plugin add trackbed@trackbed --json" ]
 
 	# Reinstalling replaces the generated marketplace in place.
 	printf 'stale\n' >"$MARKETPLACE_ROOT/stale.txt"
-	node -e 'const fs = require("fs"); const file = process.argv[1]; const marker = JSON.parse(fs.readFileSync(file)); marker.pluginVersion = "0.0.1"; fs.writeFileSync(file, JSON.stringify(marker));' "$MARKETPLACE_ROOT/.kramme-plugin-marketplace.json"
+	node -e 'const fs = require("fs"); const file = process.argv[1]; const marker = JSON.parse(fs.readFileSync(file)); marker.pluginVersion = "0.0.1"; fs.writeFileSync(file, JSON.stringify(marker));' "$MARKETPLACE_ROOT/.trackbed-plugin-marketplace.json"
 	install_repo_plugin
 	[ "$status" -eq 0 ]
 	[ ! -e "$MARKETPLACE_ROOT/stale.txt" ]
 	[ -f "$MARKETPLACE_ROOT/.agents/plugins/marketplace.json" ]
+}
+
+@test "install replaces a marketplace generated under the pre-1.0.0 marker names" {
+	require_node
+	install_repo_plugin
+	[ "$status" -eq 0 ]
+
+	node -e 'const fs = require("fs"); const [from, to] = process.argv.slice(1); const marker = JSON.parse(fs.readFileSync(from)); marker.generatedBy = "kramme-cc-workflow"; fs.writeFileSync(to, JSON.stringify(marker)); fs.unlinkSync(from);' \
+		"$MARKETPLACE_ROOT/.trackbed-plugin-marketplace.json" "$MARKETPLACE_ROOT/.kramme-plugin-marketplace.json"
+	printf 'stale\n' >"$MARKETPLACE_ROOT/stale.txt"
+
+	install_repo_plugin
+	[ "$status" -eq 0 ]
+	[ ! -e "$MARKETPLACE_ROOT/stale.txt" ]
+	[ ! -e "$MARKETPLACE_ROOT/.kramme-plugin-marketplace.json" ]
+	[ "$(jq -r '.generatedBy' "$MARKETPLACE_ROOT/.trackbed-plugin-marketplace.json")" = "trackbed" ]
 }
 
 @test "install removes legacy converter output only with confirmation" {

@@ -233,7 +233,9 @@ def step_4_local(root: Path, facts: JsonDict) -> None:
 
 def protected_branches(root: Path) -> list[str]:
     names = {"main", "master"}
-    configured = git(root, "config", "--local", "--get", "kramme.baseBranch", ok=(0, 1))
+    configured = git(root, "config", "--local", "--get", "trackbed.baseBranch", ok=(0, 1))
+    if configured.returncode == 1:  # kramme.baseBranch is the setting's name before 1.0.0.
+        configured = git(root, "config", "--local", "--get", "kramme.baseBranch", ok=(0, 1))
     origin_head = git(root, "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD", ok=(0, 1))
     names.add(text(configured).strip())
     names.add(text(origin_head).strip().removeprefix("origin/") if origin_head.returncode == 0 else "")

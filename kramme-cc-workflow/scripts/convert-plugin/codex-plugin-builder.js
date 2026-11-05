@@ -31,13 +31,17 @@ const SOURCE_SNAPSHOT_DIR = "references/sources-snapshot";
 const SKILL_POLICY_FILE = path.join("agents", "openai.yaml");
 const EXPLICIT_ONLY_SKILL_POLICY =
   "policy:\n  allow_implicit_invocation: false\n";
-const HOOK_BOOTSTRAP_MARKER = "# kramme hook bundle bootstrap";
+const HOOK_BOOTSTRAP_MARKER = "# trackbed hook bundle bootstrap";
 const MARKETPLACE_MANIFEST = path.join(
   ".agents",
   "plugins",
   "marketplace.json",
 );
-const OWNERSHIP_MARKER = ".kramme-plugin-marketplace.json";
+const OWNERSHIP_MARKER = ".trackbed-plugin-marketplace.json";
+// Marketplaces generated before 1.0.0 carry the marker under its old name and
+// generator.
+const LEGACY_OWNERSHIP_MARKER = ".kramme-plugin-marketplace.json";
+const OWNERSHIP_GENERATORS = ["trackbed", "kramme-cc-workflow"];
 const OWNERSHIP_MARKER_VERSION = 1;
 
 /**
@@ -83,7 +87,7 @@ async function buildCodexMarketplace(outputRoot, bundle) {
     marketplaceManifest(codexPlugin),
   );
   await writeJson(path.join(outputRoot, OWNERSHIP_MARKER), {
-    generatedBy: "kramme-cc-workflow",
+    generatedBy: OWNERSHIP_GENERATORS[0],
     markerVersion: OWNERSHIP_MARKER_VERSION,
     marketplaceName: codexPlugin.marketplaceName,
     pluginName: codexPlugin.name,
@@ -286,5 +290,7 @@ function marketplaceManifest(codexPlugin) {
 module.exports = {
   MARKETPLACE_MANIFEST,
   OWNERSHIP_MARKER,
+  LEGACY_OWNERSHIP_MARKER,
+  OWNERSHIP_GENERATORS,
   buildCodexMarketplace,
 };

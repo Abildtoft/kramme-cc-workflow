@@ -2,7 +2,7 @@
 #
 # Local wrapper around the shared dev-server detection scripts. It is inspired
 # by the ce-polish detection cascade cited in this directory, but is not copied
-# from upstream: this script adds the kramme workflow URL contract.
+# from upstream: this script adds the trackbed workflow URL contract.
 #
 # Output contract:
 #   http://localhost:<port>      - one reachable URL was resolved

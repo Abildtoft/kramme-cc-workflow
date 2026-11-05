@@ -21,7 +21,7 @@ setup() {
 	grep -qF 'references/onboarding-explore-agent.md' "$MODE"
 	test -f "skills/visual:explain/references/onboarding-exploration-dimensions.md"
 	test -f "skills/visual:explain/references/onboarding-explore-agent.md"
-	grep -qF '~/.kramme-cc-workflow/diagrams/onboarding-{project-name}.html' "$MODE"
+	grep -qF '~/.trackbed/diagrams/onboarding-{project-name}.html' "$MODE"
 	grep -qF 'Launch **2-3 Explore agents**' "$MODE"
 	grep -qF 'cite `source: file:line`' "$MODE"
 	grep -qF 'Escape repo-derived text' "$MODE"

@@ -76,7 +76,7 @@ If `$ARGUMENTS` contains `--all-open`, set `ALL_OPEN_MODE=true`. Stop with a usa
 
 2. **Resolve base branch:**
 
-   Use the shared plugin script to resolve the base branch. It uses the same order as the sibling review skills: explicit `--base`, PR target branch (via `gh`), repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode and fetches the resolved base, so fetch failures stop the workflow with the script's stderr message.
+   Use the shared plugin script to resolve the base branch. It uses the same order as the sibling review skills: explicit `--base`, PR target branch (via `gh`), repository `trackbed.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode and fetches the resolved base, so fetch failures stop the workflow with the script's stderr message.
 
    ```bash
    RESOLVE_ARGS=(--strict)
@@ -100,7 +100,7 @@ If `$ARGUMENTS` contains `--all-open`, set `ALL_OPEN_MODE=true`. Stop with a usa
 
    > "You are on the base branch. Switch to a feature branch first."
 
-   Also stop if the current branch is `main`, `master`, `develop`, the repository's configured `kramme.baseBranch`, a valid Conductor default, the branch named by `origin/HEAD`, or another protected workbench/production branch named in repository instructions, regardless of the resolved base. This skill never rewrites or force-pushes those branches.
+   Also stop if the current branch is `main`, `master`, `develop`, the repository's configured `trackbed.baseBranch`, a valid Conductor default, the branch named by `origin/HEAD`, or another protected workbench/production branch named in repository instructions, regardless of the resolved base. This skill never rewrites or force-pushes those branches.
 
 ### Step 1.5: Stack Detection
 

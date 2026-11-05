@@ -350,7 +350,7 @@ MD
   git -C "$FIXTURE" update-ref refs/remotes/origin/development HEAD
   git -C "$FIXTURE" update-ref refs/remotes/origin/main HEAD~11
   git -C "$FIXTURE" symbolic-ref refs/remotes/origin/HEAD refs/remotes/origin/main
-  git -C "$FIXTURE" config kramme.baseBranch development
+  git -C "$FIXTURE" config trackbed.baseBranch development
   git -C "$FIXTURE" checkout -b user/cp-1054-fix-x >/dev/null
   git -C "$FIXTURE" commit --allow-empty -m 'Feature-only work' >/dev/null
 
@@ -358,7 +358,7 @@ MD
   [ "$(grep -c '^SUBJECT=' <<<"$output")" -eq 12 ]
   [[ "$output" != *'SUBJECT=Feature-only work'* ]]
 
-  git -C "$FIXTURE" config --unset kramme.baseBranch
+  git -C "$FIXTURE" config --unset trackbed.baseBranch
   collect_signals "$FIXTURE" auto development
   [ "$(grep -c '^SUBJECT=' <<<"$output")" -eq 12 ]
 

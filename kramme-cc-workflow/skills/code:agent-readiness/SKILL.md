@@ -4,7 +4,7 @@ description: "Audit a codebase for agent-nativeness — score how well-optimized
 argument-hint: "[--subagent-model <model>] [--auto]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 ---
 
 # Agent-Native Audit
@@ -19,7 +19,7 @@ Audit a codebase for agent-nativeness — how well-optimized it is for AI coding
 
 **What it touches:** writes one report file (`AGENT_NATIVE_AUDIT.md`) at the project root. Read-only otherwise.
 
-**Subagent models.** First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section for the three dimension agents, named as lens or scan roles. It parses and removes `--subagent-model <model>`, reads `KRAMME_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selection before Step 2, set it on all three launches, and record it in the resumable fan-out `subagent_model` key slot.
+**Subagent models.** First read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section for the three dimension agents, named as lens or scan roles. It parses and removes `--subagent-model <model>`, reads `TRACKBED_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selection before Step 2, set it on all three launches, and record it in the resumable fan-out `subagent_model` key slot.
 
 Parse `$ARGUMENTS` for `--auto` before Step 1.
 

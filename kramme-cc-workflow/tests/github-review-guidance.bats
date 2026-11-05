@@ -647,7 +647,7 @@ import sys
 body = pathlib.Path(sys.argv[1]).read_text().split("---", 2)[2]
 step0 = body[body.index("## Step 0: Parse Arguments"):body.index("```bash")]
 for phrase in [
-    "If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply",
+    "If `$ARGUMENTS` contains `--subagent-model`, or `printenv TRACKBED_REVIEW_SUBAGENT_LEVEL` or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply",
     "Otherwise do not read it:",
     "Keep `SUBAGENT_MODEL_OVERRIDE`, empty when the file was not read,",
 ]:
@@ -1102,7 +1102,7 @@ for message in [
     assert calls == [], f"{message!r} reached GitHub: {calls}"
 
 # A delimiter-looking line in the message must never become shell source.
-marker = pathlib.Path(tempfile.gettempdir(), f"kramme-review-confirmation-{os.getpid()}")
+marker = pathlib.Path(tempfile.gettempdir(), f"trackbed-review-confirmation-{os.getpid()}")
 if marker.exists():
     marker.unlink()
 status, calls = run(f"Post the prepared review to PR 8683 as request changes\nCONFIRMATION\ntouch {marker}")

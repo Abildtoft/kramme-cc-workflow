@@ -9,8 +9,8 @@ setup() {
 	TEST_DIR=$(mktemp -d)
 	ORIG_PWD="$PWD"
 	cd "$TEST_DIR"
-	KRAMME_AUTOFORMAT_TRUST_FILE="$TEST_DIR/autoformat-trusted-roots"
-	export KRAMME_AUTOFORMAT_TRUST_FILE
+	TRACKBED_AUTOFORMAT_TRUST_FILE="$TEST_DIR/autoformat-trusted-roots"
+	export TRACKBED_AUTOFORMAT_TRUST_FILE
 }
 
 teardown() {
@@ -24,7 +24,7 @@ run_format_hook() {
 }
 
 trust_current_project() {
-	printf '%s\n' "$TEST_DIR" >"$KRAMME_AUTOFORMAT_TRUST_FILE"
+	printf '%s\n' "$TEST_DIR" >"$TRACKBED_AUTOFORMAT_TRUST_FILE"
 }
 
 create_fake_command() {
@@ -390,11 +390,11 @@ EOF
 	has_no_formatter
 	[ ! -f untrusted.marker ]
 	[[ "$output" == *'CLAUDE.md formatter not run'* ]]
-	[[ "$output" == *"$KRAMME_AUTOFORMAT_TRUST_FILE"* ]]
+	[[ "$output" == *"$TRACKBED_AUTOFORMAT_TRUST_FILE"* ]]
 }
 
 @test "skips CLAUDE.md format command when trust file lists different root" {
-	echo "$TEST_DIR/other-project" >"$KRAMME_AUTOFORMAT_TRUST_FILE"
+	echo "$TEST_DIR/other-project" >"$TRACKBED_AUTOFORMAT_TRUST_FILE"
 	echo 'format: touch wrong-root.marker' >CLAUDE.md
 	touch test.xyz
 	run run_format_hook "$TEST_DIR/test.xyz"
@@ -460,7 +460,7 @@ EOF
 }
 
 @test "parses CLAUDE.md trust file comments blank lines and whitespace" {
-	cat >"$KRAMME_AUTOFORMAT_TRUST_FILE" <<EOF
+	cat >"$TRACKBED_AUTOFORMAT_TRUST_FILE" <<EOF
 
 # trusted test roots
   $TEST_DIR
@@ -573,7 +573,7 @@ EOF
 
 @test "debug mode retains bounded private formatter stderr without leaking it to JSON" {
 	export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/xdg-cache"
-	export KRAMME_AUTOFORMAT_DEBUG=1
+	export TRACKBED_AUTOFORMAT_DEBUG=1
 	export FORMATTER_LOG="$TEST_DIR/formatter.log"
 	local fake_bin="$TEST_DIR/fake-bin"
 	local debug_log
@@ -628,7 +628,7 @@ EOF
 
 @test "disabling debug removes diagnostics retained by an earlier invocation" {
 	export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/xdg-cache"
-	export KRAMME_AUTOFORMAT_DEBUG=1
+	export TRACKBED_AUTOFORMAT_DEBUG=1
 	export FORMATTER_LOG="$TEST_DIR/formatter.log"
 	export FAKE_FORMATTER_STDERR='known fake formatter error\n'
 	create_fake_file_formatter prettier 1
@@ -641,7 +641,7 @@ EOF
 	[ "$status" -eq 0 ]
 	[ -f "$(formatter_debug_log_file)" ]
 
-	unset KRAMME_AUTOFORMAT_DEBUG
+	unset TRACKBED_AUTOFORMAT_DEBUG
 	run run_format_hook "$TEST_DIR/test.js"
 
 	[ "$status" -eq 0 ]
@@ -667,7 +667,7 @@ EOF
 exit 1
 EOF
 	chmod +x "$TEST_DIR/fake-bin/mktemp"
-	export KRAMME_AUTOFORMAT_DEBUG=1
+	export TRACKBED_AUTOFORMAT_DEBUG=1
 	: >"$FORMATTER_LOG"
 
 	run run_format_hook "$TEST_DIR/test.js"
@@ -681,7 +681,7 @@ EOF
 
 @test "debug mode keeps the latest failed attempt when a fallback succeeds" {
 	export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/xdg-cache"
-	export KRAMME_AUTOFORMAT_DEBUG=1
+	export TRACKBED_AUTOFORMAT_DEBUG=1
 	export FORMATTER_LOG="$TEST_DIR/formatter.log"
 	export FAKE_FORMATTER_STDERR='biome failed safely\n'
 	create_fake_file_formatter biome 1
@@ -703,7 +703,7 @@ EOF
 
 @test "debug mode replaces prior failure evidence with the latest failed attempt" {
 	export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/xdg-cache"
-	export KRAMME_AUTOFORMAT_DEBUG=1
+	export TRACKBED_AUTOFORMAT_DEBUG=1
 	local fake_bin="$TEST_DIR/fake-bin"
 	local debug_log
 	debug_log=$(formatter_debug_log_file)

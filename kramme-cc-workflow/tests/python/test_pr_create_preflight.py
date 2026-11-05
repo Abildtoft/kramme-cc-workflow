@@ -311,14 +311,19 @@ class BranchTests(PreflightCase):
         self.assert_status(self.invoke("--feature-branch", "main"), "blocked", "feature_branch_protected")
 
     def test_protected_branch_that_differs_from_the_base_blocks(self) -> None:
-        for name, setup in (("master", None), ("release", "kramme"), ("prod", "conductor")):
+        for name, setup in (
+            ("master", None),
+            ("release", "trackbed.baseBranch"),
+            ("legacy", "kramme.baseBranch"),
+            ("prod", "conductor"),
+        ):
             with self.subTest(name=name):
                 git(self.repo, "checkout", "-q", "-B", name, "main")
                 self.commit(f"Work on {name}")
-                if setup == "kramme":
-                    git(self.repo, "config", "--local", "kramme.baseBranch", name)
+                if setup and setup.endswith(".baseBranch"):
+                    git(self.repo, "config", "--local", setup, name)
                     payload = self.invoke("--base", "main")
-                    git(self.repo, "config", "--local", "--unset", "kramme.baseBranch")
+                    git(self.repo, "config", "--local", "--unset", setup)
                 elif setup == "conductor":
                     with mock.patch.dict(os.environ, {"CONDUCTOR_DEFAULT_BRANCH": name}):
                         payload = self.invoke()

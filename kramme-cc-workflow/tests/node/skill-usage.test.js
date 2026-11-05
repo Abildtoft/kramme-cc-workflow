@@ -324,6 +324,7 @@ test("strict reports preserve empty first-run defaults", async (t) => {
 
   const result = runUsage(["report", "--json", "--strict"], {
     XDG_STATE_HOME: root,
+    TRACKBED_SKILL_USAGE_FILE: "",
     KRAMME_SKILL_USAGE_FILE: "",
   });
 
@@ -332,10 +333,81 @@ test("strict reports preserve empty first-run defaults", async (t) => {
   assert.equal(result.stderr, "");
 });
 
+test("record and report keep using a pre-1.0.0 usage file until a trackbed one exists", async (t) => {
+  const stateHome = path.join(await tempDir(t), "state");
+  const previousFile = path.join(
+    stateHome,
+    "kramme-cc-workflow",
+    "skill-usage.jsonl",
+  );
+  const currentFile = path.join(stateHome, "trackbed", "skill-usage.jsonl");
+  await fs.mkdir(path.dirname(previousFile), { recursive: true });
+  await writeUsageLines(previousFile, [
+    {
+      recordedAt: "2026-07-01T10:00:00.000Z",
+      sessionId: "s1",
+      skill: "kramme:qa",
+      kind: "explicit",
+    },
+  ]);
+  const env = {
+    XDG_STATE_HOME: stateHome,
+    TRACKBED_SKILL_USAGE_FILE: "",
+    KRAMME_SKILL_USAGE_FILE: "",
+  };
+
+  const recorded = runUsageWithInput(
+    ["record"],
+    JSON.stringify({ prompt: "/trackbed:qa smoke", session_id: "s2" }),
+    env,
+  );
+  assert.deepEqual([recorded.status, recorded.stderr], [0, ""]);
+  assert.deepEqual(
+    (await readUsageLines(previousFile)).map((record) => record.skill),
+    ["kramme:qa", "trackbed:qa"],
+  );
+  await assert.rejects(fs.access(currentFile));
+
+  const report = runUsage(["report", "--json"], env);
+  assert.equal(report.status, 0);
+  assert.equal(JSON.parse(report.stdout)[0].total, 2);
+
+  await fs.mkdir(path.dirname(currentFile), { recursive: true });
+  await writeUsageLines(currentFile, [
+    {
+      recordedAt: "2026-11-06T10:00:00.000Z",
+      sessionId: "s3",
+      skill: "trackbed:qa",
+      kind: "tool",
+    },
+  ]);
+  const current = runUsage(["report", "--json"], env);
+  assert.equal(JSON.parse(current.stdout)[0].total, 1);
+});
+
+test("KRAMME_SKILL_USAGE_FILE still overrides the usage file while TRACKBED_SKILL_USAGE_FILE is unset", async (t) => {
+  const root = await tempDir(t);
+  const legacyFile = path.join(root, "legacy.jsonl");
+  const result = runUsageWithInput(
+    ["record"],
+    JSON.stringify({ prompt: "/trackbed:qa smoke", session_id: "s1" }),
+    {
+      XDG_STATE_HOME: path.join(root, "state"),
+      TRACKBED_SKILL_USAGE_FILE: "",
+      KRAMME_SKILL_USAGE_FILE: legacyFile,
+    },
+  );
+  assert.deepEqual([result.status, result.stderr], [0, ""]);
+  assert.deepEqual(
+    (await readUsageLines(legacyFile)).map((record) => record.skill),
+    ["trackbed:qa"],
+  );
+});
+
 test("strict reports diagnose inaccessible implicit state", async (t) => {
   const root = await tempDir(t);
   const stateHome = path.join(root, "state");
-  const usageDir = path.join(stateHome, "kramme-cc-workflow");
+  const usageDir = path.join(stateHome, "trackbed");
   const usageFile = path.join(usageDir, "skill-usage.jsonl");
   await fs.mkdir(usageDir, { recursive: true });
   await fs.writeFile(
@@ -352,6 +424,7 @@ test("strict reports diagnose inaccessible implicit state", async (t) => {
     }
     result = runUsage(["report", "--json", "--strict"], {
       XDG_STATE_HOME: stateHome,
+      TRACKBED_SKILL_USAGE_FILE: "",
       KRAMME_SKILL_USAGE_FILE: "",
     });
   } finally {
@@ -378,7 +451,7 @@ test("record reports a sanitized cause when the usage directory is unwritable", 
   await fs.mkdir(stateHome, { recursive: true });
   await fs.chmod(stateHome, 0o500);
 
-  const usageDir = path.join(stateHome, "kramme-cc-workflow");
+  const usageDir = path.join(stateHome, "trackbed");
   const usageFile = path.join(usageDir, "skill-usage.jsonl");
 
   let result;
@@ -393,7 +466,11 @@ test("record reports a sanitized cause when the usage directory is unwritable", 
         prompt: "/trackbed:test:blocked",
         session_id: "session-1",
       }),
-      { XDG_STATE_HOME: stateHome, KRAMME_SKILL_USAGE_FILE: "" },
+      {
+        XDG_STATE_HOME: stateHome,
+        TRACKBED_SKILL_USAGE_FILE: "",
+        KRAMME_SKILL_USAGE_FILE: "",
+      },
     );
   } finally {
     await fs.chmod(stateHome, 0o700);

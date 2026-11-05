@@ -35,9 +35,9 @@ function sandbox(t, providerId = "anthropic") {
     ...process.env,
     [`${prefix}A`]: `${secret}-A`,
     [`${prefix}B`]: `${secret}-B`,
-    KRAMME_LIVE_EVAL_CONFIG: config,
-    KRAMME_LIVE_EVAL_STATE: path.join(root, "state"),
-    KRAMME_LIVE_EVAL_RUN: "test-run",
+    TRACKBED_LIVE_EVAL_CONFIG: config,
+    TRACKBED_LIVE_EVAL_STATE: path.join(root, "state"),
+    TRACKBED_LIVE_EVAL_RUN: "test-run",
   };
   const reviewer = path.resolve(__dirname, "../../skills/skill:review");
   const fixture = path.resolve(
@@ -65,19 +65,19 @@ function sandbox(t, providerId = "anthropic") {
     completed: {},
     attempts: [],
   };
-  writeJson(runFile(env.KRAMME_LIVE_EVAL_STATE, run.id), run);
-  unlock = acquireLock(env.KRAMME_LIVE_EVAL_STATE);
+  writeJson(runFile(env.TRACKBED_LIVE_EVAL_STATE, run.id), run);
+  unlock = acquireLock(env.TRACKBED_LIVE_EVAL_STATE);
   const token = String(
-    record(readJson(path.join(env.KRAMME_LIVE_EVAL_STATE, "writer.lock")))
+    record(readJson(path.join(env.TRACKBED_LIVE_EVAL_STATE, "writer.lock")))
       .token,
   );
   return {
     root,
     config,
     // The provider's key variables are dynamic; keep them reachable by name.
-    env: /** @type {NodeJS.ProcessEnv & typeof env & {KRAMME_LIVE_EVAL_OWNER_TOKEN: string}} */ ({
+    env: /** @type {NodeJS.ProcessEnv & typeof env & {TRACKBED_LIVE_EVAL_OWNER_TOKEN: string}} */ ({
       ...env,
-      KRAMME_LIVE_EVAL_OWNER_TOKEN: token,
+      TRACKBED_LIVE_EVAL_OWNER_TOKEN: token,
     }),
     context,
     run,

@@ -1,11 +1,11 @@
 {
-  "name": "kramme-cc-workflow",
+  "name": "trackbed",
   "version": "0.91.0",
   "private": true,
-  "description": "Converter CLI for kramme-cc-workflow",
+  "description": "Converter CLI for the trackbed plugin",
   "license": "MIT",
   "bin": {
-    "kramme-cc-workflow": "scripts/convert-plugin.js"
+    "trackbed": "scripts/convert-plugin.js"
   },
   "scripts": {
     "check:deps": "make check-deps",

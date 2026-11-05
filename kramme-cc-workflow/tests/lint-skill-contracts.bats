@@ -2972,7 +2972,7 @@ description: Test skill
 argument-hint: "[target]"
 disable-model-invocation: "false"
 user-invocable: true
-kramme-platforms: [claude-code, "codex"]
+trackbed-platforms: [claude-code, "codex"]
 ---
 # Test
 EOF
@@ -2997,7 +2997,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms:
+trackbed-platforms:
   # Supported targets
 
   - claude-code
@@ -3076,7 +3076,7 @@ description:
 argument-hint: false
 disable-model-invocation: maybe
 user-invocable: 0
-kramme-platforms: codex
+trackbed-platforms: codex
 ---
 # Test
 EOF
@@ -3096,7 +3096,7 @@ EOF
   [[ "$output" == *"skills/a/SKILL.md frontmatter field 'argument-hint' must be a non-empty string"* ]]
   [[ "$output" == *"skills/a/SKILL.md frontmatter field 'disable-model-invocation' must be a boolean"* ]]
   [[ "$output" == *"skills/a/SKILL.md frontmatter field 'user-invocable' must be a boolean"* ]]
-  [[ "$output" == *"skills/a/SKILL.md frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+  [[ "$output" == *"skills/a/SKILL.md frontmatter field 'trackbed-platforms' must be a non-empty array of non-empty strings"* ]]
 }
 
 @test "mechanical frontmatter rejects non-string nodes in arrays" {
@@ -3106,7 +3106,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [codex, [nested]]
+trackbed-platforms: [codex, [nested]]
 ---
 # Test
 EOF
@@ -3121,7 +3121,7 @@ EOF
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+  [[ "$output" == *"frontmatter field 'trackbed-platforms' must be a non-empty array of non-empty strings"* ]]
 
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
 ---
@@ -3129,7 +3129,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [codex, .5]
+trackbed-platforms: [codex, .5]
 ---
 # Test
 EOF
@@ -3137,7 +3137,7 @@ EOF
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+  [[ "$output" == *"frontmatter field 'trackbed-platforms' must be a non-empty array of non-empty strings"* ]]
 
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
 ---
@@ -3145,7 +3145,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [codex, 0x10]
+trackbed-platforms: [codex, 0x10]
 ---
 # Test
 EOF
@@ -3153,7 +3153,7 @@ EOF
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+  [[ "$output" == *"frontmatter field 'trackbed-platforms' must be a non-empty array of non-empty strings"* ]]
 
   write_file "$TMP_ROOT/kramme-cc-workflow/skills/a/SKILL.md" <<'EOF'
 ---
@@ -3161,7 +3161,7 @@ name: test-skill
 description: Test skill
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms:
+trackbed-platforms:
   - codex
   - [nested]
 ---
@@ -3171,7 +3171,7 @@ EOF
   run python3 "$SCRIPT" --repo-root "$TMP_ROOT" --registry "$TMP_ROOT/registry.yaml"
 
   [ "$status" -eq 1 ]
-  [[ "$output" == *"frontmatter field 'kramme-platforms' must be a non-empty array of non-empty strings"* ]]
+  [[ "$output" == *"frontmatter field 'trackbed-platforms' must be a non-empty array of non-empty strings"* ]]
 }
 
 @test "mechanical agent frontmatter name must match filename" {

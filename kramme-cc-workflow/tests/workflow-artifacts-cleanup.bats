@@ -435,7 +435,7 @@ if len(visual_diagrams) != 1:
     raise SystemExit(f"expected one visual-diagrams entry, found {len(visual_diagrams)}")
 visual_diagram = visual_diagrams[0]
 expected_visual_contract = {
-    "path": "~/.kramme-cc-workflow/diagrams/*.html",
+    "path": "~/.trackbed/diagrams/*.html",
     "category": "shared-diagram",
     "retention": "disposable",
 }

@@ -4,7 +4,7 @@ description: Break spec into atomic, phase-based issues with tests and validatio
 argument-hint: "[spec-file-path] [--auto]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 ---
 
 # Generate Phases from Specification

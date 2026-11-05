@@ -9,10 +9,12 @@ The skills select a workbench branch separately for each repository. Review of a
 For new work, set the local Git configuration when the workbench differs from the remote default:
 
 ```bash
-git config --local kramme.baseBranch development
+git config --local trackbed.baseBranch development
 ```
 
-- For a repository where `main` is the workbench and releases use tags, the remote default can remain `main`; no setting is needed when Conductor also names `main`. Set `kramme.baseBranch` to `main` if a host suggests a different branch.
+Repositories configured before 1.0.0 can keep `kramme.baseBranch`; the skills read it when `trackbed.baseBranch` is unset.
+
+- For a repository where `main` is the workbench and releases use tags, the remote default can remain `main`; no setting is needed when Conductor also names `main`. Set `trackbed.baseBranch` to `main` if a host suggests a different branch.
 - An explicit `--base <branch>` on a base-aware skill overrides the default for that run.
 - Without an explicit or local setting, the shared resolver checks Conductor's configured branch when it has a local `origin` tracking ref, then `origin/HEAD`, `origin/main`, and `origin/master`.
 - A failed GitHub PR lookup stops existing-branch workflows unless GitHub confirms there is no PR; it cannot silently choose the workbench.

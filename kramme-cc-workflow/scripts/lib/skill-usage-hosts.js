@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 
 /**
- * Host vocabulary matches the `kramme-platforms` skill frontmatter values.
+ * Host vocabulary matches the `trackbed-platforms` skill frontmatter values.
  */
 const PLATFORM_CODEX = "codex";
 const PLATFORM_CLAUDE_CODE = "claude-code";
@@ -45,8 +45,12 @@ const CODEX_ROLLOUT_FILE_PATTERN = /^rollout-.+\.jsonl$/;
 function detectPlatform(input, env) {
   const payload = asRecord(input);
   if (isNonEmptyString(payload.platform)) return payload.platform;
-  if (isNonEmptyString(env.KRAMME_AGENT_PLATFORM)) {
-    return env.KRAMME_AGENT_PLATFORM;
+  // KRAMME_AGENT_PLATFORM is the name this override had before 1.0.0.
+  const override = isNonEmptyString(env.TRACKBED_AGENT_PLATFORM)
+    ? env.TRACKBED_AGENT_PLATFORM
+    : env.KRAMME_AGENT_PLATFORM;
+  if (isNonEmptyString(override)) {
+    return override;
   }
   if (
     isNonEmptyString(payload.turn_id) ||

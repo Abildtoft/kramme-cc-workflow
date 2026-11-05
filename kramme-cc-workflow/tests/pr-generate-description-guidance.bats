@@ -96,7 +96,7 @@ PY
     [ "$(grep -cF -- "- [ ] **Regenerate:**" "$checklist")" -eq 5 ]
     if grep -qF "use proper heading hierarchy" "$skill/SKILL.md"; then exit 1; fi
     if grep -qF "using tables for structured data" "$skill/SKILL.md"; then exit 1; fi
-    grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$direct"
+    grep -qF "mktemp -d \"/tmp/trackbed-pr-description.XXXXXX\"" "$direct"
     grep -qF "Capture the single printed line as agent-tracked \`{update-dir}\`" "$direct"
     grep -qF "UPDATE_DIR=\"{update-dir}\"" "$direct"
     grep -qF "gh pr view \"\$PR_NUMBER\" --json number,url,title,body > \"\$PR_BACKUP\"" "$direct"
@@ -105,10 +105,10 @@ PY
     grep -qF "same shell invocation as validation and cleanup" "$checklist"
     grep -qF "self-contained local-exclude and symlink-rejection procedure" "$checklist"
     if grep -qF "repo-root anchored backup, local git exclude update" "$checklist"; then exit 1; fi
-    grep -qF "SAVE_NAMESPACE=\"\$REPO_ROOT/.kramme-cc-workflow\"" "$skill/SKILL.md"
+    grep -qF "SAVE_NAMESPACE=\"\$REPO_ROOT/.trackbed\"" "$skill/SKILL.md"
     grep -qF "Could not update Git'\''s local exclude file; the description was not saved." "$skill/SKILL.md"
     if grep -qF "same idempotent check as step 1" "$skill/SKILL.md"; then exit 1; fi
-    if grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$direct"; then exit 1; fi
+    if grep -qF "\$REPO_ROOT/.trackbed/pr-description" "$direct"; then exit 1; fi
   '
 
 	assert_required_contracts_registered \
@@ -188,7 +188,7 @@ PY
     grep -qF "Step 3 for a check-mode confirmed update" "$check"
 
     grep -qF "### Step 3 for a check-mode confirmed update" "$update"
-    grep -qF "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"" "$update"
+    grep -qF "mktemp -d \"/tmp/trackbed-pr-description.XXXXXX\"" "$update"
     grep -qF "Could not back up and revalidate PR #\$PR_NUMBER; no update was made." "$update"
     grep -qF "LATEST_PR_SNAPSHOT_FINGERPRINT\" != \"\$PR_SNAPSHOT_FINGERPRINT" "$update"
     grep -qF "PR_STATE\" != \"OPEN" "$update"
@@ -197,7 +197,7 @@ PY
     grep -qF "LATEST_WORKTREE_FINGERPRINT\" != \"\$WORKTREE_FINGERPRINT" "$update"
     grep -qF "Generated PR payload storage is missing or indirect" "$update"
     grep -qF "gh api --method PATCH \"repos/{owner}/{repo}/pulls/\$PR_NUMBER\"" "$update"
-    if grep -qF "\$REPO_ROOT/.kramme-cc-workflow/pr-description" "$update"; then exit 1; fi
+    if grep -qF "\$REPO_ROOT/.trackbed/pr-description" "$update"; then exit 1; fi
 
     output_only_line=$(grep -nF "**Skip this phase if \`OUTPUT_ONLY=true\`.**" "$check" | cut -d: -f1)
     base_match_line=$(grep -nF "the confirmed update requires the generated base to match the Pull Request target" "$check" | cut -d: -f1)

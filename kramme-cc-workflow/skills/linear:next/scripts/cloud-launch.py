@@ -36,7 +36,8 @@ CONDUCTOR = "conductor"
 # A message sent from another session expands in Claude Code only under the plugin-qualified skill name.
 INVOCATIONS = {"claude": "/trackbed:linear-issue-to-pr", "codex": "$trackbed:linear:issue-to-pr"}
 MAX_ITEMS = 25
-TIMEOUT_ENV = "KRAMME_CONDUCTOR_TIMEOUT_SECONDS"
+TIMEOUT_ENV = "TRACKBED_CONDUCTOR_TIMEOUT_SECONDS"
+LEGACY_TIMEOUT_ENV = "KRAMME_CONDUCTOR_TIMEOUT_SECONDS"  # its name before 1.0.0
 DEFAULT_TIMEOUT = 60
 MAX_TIMEOUT = 300
 RATE_LIMIT_RE = re.compile(r"\(HTTP 429\)")
@@ -75,7 +76,7 @@ class CliResult(NamedTuple):
 
 
 def timeout_seconds() -> int:
-    raw = os.environ.get(TIMEOUT_ENV, "")
+    raw = os.environ.get(TIMEOUT_ENV) or os.environ.get(LEGACY_TIMEOUT_ENV, "")
     if raw.isdigit() and 1 <= int(raw) <= MAX_TIMEOUT:
         return int(raw)
     return DEFAULT_TIMEOUT

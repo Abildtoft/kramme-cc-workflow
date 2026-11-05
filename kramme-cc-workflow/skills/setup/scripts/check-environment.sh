@@ -27,7 +27,7 @@ usage() {
   cat << 'USAGE'
 Usage: check-environment.sh [--json] [--help]
 
-Runs a read-only health check for common kramme workflow dependencies.
+Runs a read-only health check for common trackbed workflow dependencies.
 
 Options:
   --json   Print machine-readable JSON
@@ -556,16 +556,26 @@ detect_plugin_copy() {
   printf '%s (%s)\n' "$PLUGIN_ROOT" "${version:-version unknown}"
 }
 
-# Resolves the update-check hook's state file the way the hook does.
+# Resolves the update-check hook's state file the way the hook does,
+# including the KRAMME_ override name and kramme-cc-workflow/ directory that
+# releases before 1.0.0 used.
 update_check_state_file() {
-  if [ -n "${KRAMME_UPDATE_CHECK_FILE:-}" ]; then
-    printf '%s\n' "$KRAMME_UPDATE_CHECK_FILE"
-  elif [ -n "${XDG_STATE_HOME:-}" ]; then
-    printf '%s\n' "$XDG_STATE_HOME/kramme-cc-workflow/update-check.json"
+  local state_home override="${TRACKBED_UPDATE_CHECK_FILE:-${KRAMME_UPDATE_CHECK_FILE:-}}"
+  if [ -n "$override" ]; then
+    printf '%s\n' "$override"
+    return 0
+  fi
+  if [ -n "${XDG_STATE_HOME:-}" ]; then
+    state_home="$XDG_STATE_HOME"
   elif [ -n "${HOME:-}" ]; then
-    printf '%s\n' "$HOME/.local/state/kramme-cc-workflow/update-check.json"
+    state_home="$HOME/.local/state"
   else
     return 1
+  fi
+  if [ ! -f "$state_home/trackbed/update-check.json" ] && [ -f "$state_home/kramme-cc-workflow/update-check.json" ]; then
+    printf '%s\n' "$state_home/kramme-cc-workflow/update-check.json"
+  else
+    printf '%s\n' "$state_home/trackbed/update-check.json"
   fi
 }
 
@@ -576,7 +586,7 @@ detect_plugin_update() {
   local summary
 
   if ! state_file="$(update_check_state_file)"; then
-    echo "not checked (HOME, XDG_STATE_HOME, and KRAMME_UPDATE_CHECK_FILE unset)"
+    echo "not checked (HOME, XDG_STATE_HOME, and TRACKBED_UPDATE_CHECK_FILE unset)"
     return
   fi
   if [ ! -f "$state_file" ]; then
@@ -788,7 +798,7 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   exit 0
 fi
 
-echo "kramme setup health check"
+echo "trackbed setup health check"
 echo
 echo "Required"
 tool_status "bash" "Install Bash (Git Bash on Windows)" "bash --version"

@@ -16,7 +16,7 @@ import * as path from "node:path";
 import { applySlopFixes, runSlopGuard } from "./engine.js";
 import { FLAGSHIP_RULES } from "./rules.js";
 
-const VERSION = "0.4.3-kramme.1";
+const VERSION = "0.4.3-trackbed.1";
 const HTML_FILE_RE = /\.html?$/i;
 const MAX_HTML_FILES = 256;
 const MAX_HTML_FILE_BYTES = 512 * 1024;
@@ -118,7 +118,7 @@ function requireContainedPath(candidate: string, root: string): string {
 function printUsage(): void {
   process.stdout.write(
     [
-      `anti-slop v${VERSION} (maintained by kramme; derived from Gesso)`,
+      `anti-slop v${VERSION} (maintained by trackbed; derived from Gesso)`,
       "",
       "Usage:",
       "  anti-slop check <file.html|dir> [--json]",

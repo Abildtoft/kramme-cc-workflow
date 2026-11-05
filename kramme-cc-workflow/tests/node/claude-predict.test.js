@@ -89,7 +89,7 @@ test("A exhausts mid-case, the partial response is discarded, and B supplies a s
   ]);
   assert.equal(closed, 2);
   const run = validateRun(
-    readJson(runFile(env.KRAMME_LIVE_EVAL_STATE, "test-run")),
+    readJson(runFile(env.TRACKBED_LIVE_EVAL_STATE, "test-run")),
   );
   assert.deepEqual(
     run.attempts.map((a) => a.outcome),
@@ -151,7 +151,7 @@ test("all empty organizations pause; a due organization recovers without a calen
     /no_credits/,
   );
   assert.equal(
-    validateRun(readJson(runFile(env.KRAMME_LIVE_EVAL_STATE, "test-run")))
+    validateRun(readJson(runFile(env.TRACKBED_LIVE_EVAL_STATE, "test-run")))
       .status,
     "PAUSED_NO_CREDITS",
   );
@@ -199,7 +199,7 @@ test("rate limits, malformed billing errors, and uninvoked reviews never rotate 
     await assert.rejects(predict(context, env, { query }), /org-a:/);
     assert.equal(attempts, 1);
     assert.deepEqual(
-      validateRun(readJson(runFile(env.KRAMME_LIVE_EVAL_STATE, "test-run")))
+      validateRun(readJson(runFile(env.TRACKBED_LIVE_EVAL_STATE, "test-run")))
         .completed,
       {},
     );
@@ -386,14 +386,14 @@ test("model-authored billing text is a prediction; actual response model and run
     "Credit balance is too low",
   );
   const saved = validateRun(
-    readJson(runFile(env.KRAMME_LIVE_EVAL_STATE, "test-run")),
+    readJson(runFile(env.TRACKBED_LIVE_EVAL_STATE, "test-run")),
   );
   assert.equal(saved.completed["case-1"].model, "claude-test-resolved");
   assert.equal(calls, 1);
   await assert.rejects(
     predict(
       { ...context, item: { ...context.item, id: "case-2" } },
-      { ...env, KRAMME_LIVE_EVAL_DEADLINE: "999" },
+      { ...env, TRACKBED_LIVE_EVAL_DEADLINE: "999" },
       { query, now: () => 1000 },
     ),
     /case_timeout/,

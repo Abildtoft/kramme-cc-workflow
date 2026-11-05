@@ -257,7 +257,7 @@ def valid_args(args: Any) -> bool:
 
 def write_state(path: str, state: JsonDict) -> None:
     try:
-        handle, temporary = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".kramme-issue-to-pr-", suffix=".tmp")
+        handle, temporary = tempfile.mkstemp(dir=os.path.dirname(path), prefix=".trackbed-issue-to-pr-", suffix=".tmp")
         with os.fdopen(handle, "w", encoding="utf-8") as stream:
             json.dump(state, stream, indent=2, sort_keys=True)
         os.replace(temporary, path)
@@ -267,7 +267,7 @@ def write_state(path: str, state: JsonDict) -> None:
 
 def create_state(args_state: JsonDict) -> str:
     try:
-        handle, path = tempfile.mkstemp(prefix="kramme-issue-to-pr-", suffix=".json")
+        handle, path = tempfile.mkstemp(prefix="trackbed-issue-to-pr-", suffix=".json")
     except OSError as error:
         raise usage_error("state_write_failed", f"Could not create a state file: {error}") from error
     os.close(handle)
@@ -387,11 +387,15 @@ def require_absent_remote_branch(root: Path, branch: str, object_id: re.Pattern[
 
 
 def resolve_base(root: Path) -> str:
-    configured = git(root, "config", "--local", "--get", "kramme.baseBranch", reason="base_unresolved", ok=(0, 1))
+    key = "trackbed.baseBranch"
+    configured = git(root, "config", "--local", "--get", key, reason="base_unresolved", ok=(0, 1))
+    if configured.returncode == 1:  # kramme.baseBranch is the setting's name before 1.0.0.
+        key = "kramme.baseBranch"
+        configured = git(root, "config", "--local", "--get", key, reason="base_unresolved", ok=(0, 1))
     if configured.returncode == 0:
         base = decode(configured.stdout, "base_unresolved").strip()
         if not base:
-            raise Stop("base_unresolved", "kramme.baseBranch is empty.")
+            raise Stop("base_unresolved", f"{key} is empty.")
         git(root, "check-ref-format", "--branch", base, reason="base_unresolved")
         return base
     conductor_base = os.environ.get("CONDUCTOR_DEFAULT_BRANCH", "")

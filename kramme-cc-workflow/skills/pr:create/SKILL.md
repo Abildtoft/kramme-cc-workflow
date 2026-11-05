@@ -128,7 +128,7 @@ The helper is read-only apart from the base fetch the shared resolver performs: 
 - `remote_classification_required` (exit 3) — origin already has the current branch and every other check, including Step 4.5, passed. When `branch_action` is `null`, the remote tip differs from `{entry-commit}`: classify it with the frozen-endpoint procedure in `references/branch-and-platform-handling.md`, starting at "If they differ, freeze the one effective push endpoint". When it is `reuse-existing-exact-tip`, the tip matches but auto mode must include dirty work. Then finalize the mode in Step 4.4.
 - `error` (exit 2), or missing or malformed output — stop and report it; never guess the state.
 
-The helper's protected-branch guard covers `main`, `master`, `kramme.baseBranch`, the `origin/HEAD` target, and `CONDUCTOR_DEFAULT_BRANCH`. Before continuing, also apply any protected, workbench, or production branch named in repository instructions to `{entry-branch}` and `{feature-branch}`.
+The helper's protected-branch guard covers `main`, `master`, `trackbed.baseBranch`, the `origin/HEAD` target, and `CONDUCTOR_DEFAULT_BRANCH`. Before continuing, also apply any protected, workbench, or production branch named in repository instructions to `{entry-branch}` and `{feature-branch}`.
 
 ---
 

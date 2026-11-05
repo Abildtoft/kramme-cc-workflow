@@ -56,20 +56,20 @@ PR review subagents default to the orchestrator's own model. This applies to `pr
 
 ### Stepping Reviewers Down One Class
 
-With `KRAMME_REVIEW_SUBAGENT_LEVEL=lower`, reviewers instead step down one model class:
+With `TRACKBED_REVIEW_SUBAGENT_LEVEL=lower`, reviewers instead step down one model class:
 
 | Host   | Orchestrator → reviewer                     |
 | ------ | ------------------------------------------- |
 | Claude | Fable → Opus; Opus → Sonnet; Sonnet → Haiku |
 | Codex  | Astra → Sol; Sol → Luna                     |
 
-Haiku and Luna stay at their own class. `KRAMME_REVIEW_SUBAGENT_LEVEL` accepts `same` (the default when unset) or `lower`; any other value stops the review with an error.
+Haiku and Luna stay at their own class. `TRACKBED_REVIEW_SUBAGENT_LEVEL` accepts `same` (the default when unset) or `lower`; any other value stops the review with an error.
 
 - In Claude Code, put it in the `env` block of `~/.claude/settings.json` (or a project `.claude/settings.json`).
 - In Codex, export it in the shell environment Codex inherits.
 
 ```json
-{ "env": { "KRAMME_REVIEW_SUBAGENT_LEVEL": "lower" } }
+{ "env": { "TRACKBED_REVIEW_SUBAGENT_LEVEL": "lower" } }
 ```
 
 An explicit `--subagent-model` flag or conversational reviewer-model choice still wins over the setting.

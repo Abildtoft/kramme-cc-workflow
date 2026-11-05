@@ -17,7 +17,7 @@ workflow_root="$(cd "$script_dir/../../.." && pwd -P)"
 repo_root="$(cd "$workflow_root/.." && pwd -P)"
 # shellcheck source=../../../scripts/lib/shell-helpers.sh
 source "$workflow_root/scripts/lib/shell-helpers.sh"
-skillopt_env_name="kramme_skill_review"
+skillopt_env_name="trackbed_skill_review"
 
 dry_run=false
 run_id=""

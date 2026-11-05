@@ -492,7 +492,7 @@ class RiskSignalsTests(unittest.TestCase):
         with redirect_stdout(stdout):
             self.assertEqual(self.module.main(["--merge-base", self.base, "--head", head]), 0)
         report = json.loads(stdout.getvalue())
-        self.assertEqual(report["schema"], "kramme-pr-triage-risk-signals/v1")
+        self.assertEqual(report["schema"], "trackbed-pr-triage-risk-signals/v1")
         self.assertEqual(report["range"], {"merge_base": self.base, "head": head})
 
         script_run = subprocess.run(

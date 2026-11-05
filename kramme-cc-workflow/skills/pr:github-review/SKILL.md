@@ -38,7 +38,7 @@ For replies, thread resolution, dismissals, metadata edits, pushes, or merges, t
 
 Parse `$ARGUMENTS` before any network or git call.
 
-If `$ARGUMENTS` contains `--subagent-model`, or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to parse and remove `--subagent-model <model>` and validate the setting before the PR selector and other flags. Otherwise do not read it: this skill launches no reviewer, each delegated review skill applies the policy to its own reviewers, and Step 10a readers run on the session's model. Keep `SUBAGENT_MODEL_OVERRIDE`, empty when the file was not read, for both delegated review passes.
+If `$ARGUMENTS` contains `--subagent-model`, or `printenv TRACKBED_REVIEW_SUBAGENT_LEVEL` or `printenv KRAMME_REVIEW_SUBAGENT_LEVEL` prints a non-empty value, first read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md` to parse and remove `--subagent-model <model>` and validate the setting before the PR selector and other flags. Otherwise do not read it: this skill launches no reviewer, each delegated review skill applies the policy to its own reviewers, and Step 10a readers run on the session's model. Keep `SUBAGENT_MODEL_OVERRIDE`, empty when the file was not read, for both delegated review passes.
 
 - First positional token that is a PR number (`123`, `#123`) or a GitHub PR URL → `PR_SELECTOR`. Otherwise leave `PR_SELECTOR` empty.
 - `--stack` → `STACK_MODE=true`. Review the stack the PR belongs to as a whole instead of the PR itself; Step 2 hands off to `references/stack-mode.md`. It accepts only a PR selector and `--inline`; when any other flag is present, name it and stop.
@@ -192,7 +192,7 @@ if [ "$FETCHED_OID" != "$HEAD_OID" ]; then
   exit 1
 fi
 
-TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-review-pr-${PR_NUMBER}.XXXXXX")
+TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/trackbed-review-pr-${PR_NUMBER}.XXXXXX")
 WORKTREE_DIR="$TMP_PARENT/wt"
 if ! git worktree add --quiet --detach "$WORKTREE_DIR" "$HEAD_OID"; then
   echo "Failed to create review worktree." >&2
@@ -210,7 +210,7 @@ The worktree is a working artifact. **Once it exists, any failure or stop before
 
 From inside the worktree, build the unified change scope with the shared plugin script. Because the worktree is a clean checkout of the PR head, the scope is exactly the PR's committed diff against its base.
 
-Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository trackbed.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
 ```bash
 if ! RESOLVED=$("${CLAUDE_PLUGIN_ROOT}/scripts/collect-review-diff.sh" --base "$BASE_REF_ARG" --strict); then

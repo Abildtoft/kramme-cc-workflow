@@ -13,7 +13,7 @@ import shlex
 from typing import Optional
 
 CONTROL_TOKENS = {";", ";;", "&&", "||", "|", "|&", "&"}
-NON_KEYWORD_TIME_SENTINEL = "\0kramme-non-keyword-time\0"
+NON_KEYWORD_TIME_SENTINEL = "\0trackbed-non-keyword-time\0"
 ASSIGNMENT_WORD = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*=.*$")
 SHELL_FUNCTION_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 SHELL_EXECUTABLES = {"sh", "bash", "zsh", "dash", "ksh"}

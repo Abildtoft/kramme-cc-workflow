@@ -533,6 +533,14 @@
     },
     {
       "id": "visual-diagrams",
+      "path": "~/.trackbed/diagrams/*.html",
+      "type": "glob",
+      "category": "shared-diagram",
+      "retention": "disposable",
+      "producer": "trackbed:visual:*"
+    },
+    {
+      "id": "visual-diagrams-legacy",
       "path": "~/.kramme-cc-workflow/diagrams/*.html",
       "type": "glob",
       "category": "shared-diagram",

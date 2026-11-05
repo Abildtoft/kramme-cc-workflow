@@ -60,7 +60,7 @@ eval "$RESOLVED"
 git checkout -b "{branchName}" "$BASE_REF"
 ```
 
-`--workbench` skips an existing Pull Request target on the current branch because this is a new, independent issue branch. The shared resolver uses the repository's configured workbench when present, including `kramme.baseBranch` or Conductor's default branch, and otherwise uses the remote default. It fetches and validates the chosen ref. Never substitute `main` or `development` solely from its name.
+`--workbench` skips an existing Pull Request target on the current branch because this is a new, independent issue branch. The shared resolver uses the repository's configured workbench when present, including `trackbed.baseBranch` or Conductor's default branch, and otherwise uses the remote default. It fetches and validates the chosen ref. Never substitute `main` or `development` solely from its name.
 
 **If branch exists locally:**
 

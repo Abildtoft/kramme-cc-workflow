@@ -309,7 +309,7 @@ delete_origin_head() {
 
 @test "GitHub lookup failure cannot fall through to a configured workbench" {
 	create_remote_branch development
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 	write_broken_gh
 
 	run "$SCRIPT_DIR/resolve-base.sh" --strict
@@ -321,7 +321,7 @@ delete_origin_head() {
 }
 
 @test "a no-PR result for another branch cannot select the configured workbench" {
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 	cat >"$BIN_DIR/gh" <<'GH'
 #!/bin/sh
 echo 'no pull requests found for branch "other"' >&2
@@ -337,7 +337,7 @@ GH
 
 @test "backup mode does not create a recovery branch after GitHub lookup failure" {
 	create_remote_branch development
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 	write_broken_gh
 
 	run "$SCRIPT_DIR/resolve-base.sh" --backup
@@ -361,7 +361,7 @@ GH
 
 @test "repository base setting selects development while origin HEAD stays on main" {
 	create_remote_branch "development"
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 
 	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
 
@@ -371,9 +371,37 @@ GH
 	[ "$BASE_BRANCH" = "development" ]
 }
 
+@test "the pre-1.0.0 kramme.baseBranch setting still selects the workbench" {
+	create_remote_branch "development"
+	create_remote_branch "release"
+	git config --local kramme.baseBranch development
+
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "development" ]
+
+	git config --local trackbed.baseBranch release
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "release" ]
+}
+
+@test "an empty pre-1.0.0 kramme.baseBranch setting names the key it read" {
+	git config --local kramme.baseBranch ""
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Configured kramme.baseBranch is empty"* ]]
+}
+
 @test "repository base setting keeps main as workbench when Conductor names development" {
 	create_remote_branch development
-	git config --local kramme.baseBranch main
+	git config --local trackbed.baseBranch main
 	git tag v1 main
 
 	run env CONDUCTOR_DEFAULT_BRANCH=development "$SCRIPT_DIR/resolve-base.sh"
@@ -386,7 +414,7 @@ GH
 
 @test "GitHub PR target wins over repository base setting" {
 	create_remote_branch "development"
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 	write_gh_base "main"
 
 	run "$SCRIPT_DIR/resolve-base.sh"
@@ -398,7 +426,7 @@ GH
 
 @test "new-work mode ignores current PR target and uses repository workbench" {
 	create_remote_branch development
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 	write_gh_base main
 
 	run "$SCRIPT_DIR/resolve-base.sh" --strict --workbench
@@ -411,7 +439,7 @@ GH
 
 @test "new-work mode keeps main workbench with tag releases despite another PR target" {
 	create_remote_branch development
-	git config --local kramme.baseBranch main
+	git config --local trackbed.baseBranch main
 	git tag v1 main
 	write_gh_base development
 
@@ -424,21 +452,21 @@ GH
 }
 
 @test "invalid repository base setting stops instead of falling through to main" {
-	git config --local kramme.baseBranch 'bad name'
+	git config --local trackbed.baseBranch 'bad name'
 
 	run "$SCRIPT_DIR/resolve-base.sh"
 
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"Configured kramme.baseBranch 'bad name' is not a valid branch name"* ]]
+	[[ "$output" == *"Configured trackbed.baseBranch 'bad name' is not a valid branch name"* ]]
 }
 
 @test "empty repository base setting stops instead of falling through to main" {
-	git config --local kramme.baseBranch ''
+	git config --local trackbed.baseBranch ''
 
 	run "$SCRIPT_DIR/resolve-base.sh"
 
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"Configured kramme.baseBranch is empty"* ]]
+	[[ "$output" == *"Configured trackbed.baseBranch is empty"* ]]
 }
 
 @test "uses CONDUCTOR_DEFAULT_BRANCH when PR metadata is absent and origin HEAD is missing" {
@@ -524,7 +552,7 @@ GH
 	run env -u CONDUCTOR_DEFAULT_BRANCH "$SCRIPT_DIR/resolve-base.sh"
 
 	[ "$status" -eq 1 ]
-	[[ "$output" == *"Could not determine base branch; expected PR metadata, kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master"* ]]
+	[[ "$output" == *"Could not determine base branch; expected PR metadata, trackbed.baseBranch, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master"* ]]
 }
 
 @test "explicit base branch wins over GitHub metadata and origin HEAD" {
@@ -707,7 +735,7 @@ GH
 
 @test "backup mode rejects production main even when configured workbench is development" {
 	create_remote_branch development
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 	git switch -q main
 
 	run "$SCRIPT_DIR/resolve-base.sh" --backup --base development
@@ -718,7 +746,7 @@ GH
 
 @test "backup mode protects configured development when the explicit base is main" {
 	create_remote_branch development
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 	git switch -q development
 
 	run "$SCRIPT_DIR/resolve-base.sh" --backup --base main

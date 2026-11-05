@@ -4,7 +4,7 @@ description: "Rate a codebase with unprimed raters; cluster complaints, compare 
 argument-hint: "[--subagent-model <model>] [--raters N] [--output <path>] [--compare <report-path>] [--cross-model]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 ---
 
 # Outside-View Codebase Rating
@@ -33,7 +33,7 @@ Structured audits measure conformance to a rubric, and heavily AI-engineered cod
 
 ## Workflow
 
-**Subagent models.** Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section for the in-repo raters, named as lens or scan roles. It parses and removes `--subagent-model <model>`, reads `KRAMME_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selected model and its source before Step 3, launch every in-repo rater with that model, and record it in each Scorecard Model cell and in the resumable fan-out `subagent_model` key slot. The opt-in cross-model rater keeps its own provider and isolation policy in `references/personas.md`; this policy never selects, replaces, or lowers it, and model diversity is still judged only by that rater.
+**Subagent models.** Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section for the in-repo raters, named as lens or scan roles. It parses and removes `--subagent-model <model>`, reads `TRACKBED_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selected model and its source before Step 3, launch every in-repo rater with that model, and record it in each Scorecard Model cell and in the resumable fan-out `subagent_model` key slot. The opt-in cross-model rater keeps its own provider and isolation policy in `references/personas.md`; this policy never selects, replaces, or lowers it, and model diversity is still judged only by that rater.
 
 ### 1. Minimal Orient
 

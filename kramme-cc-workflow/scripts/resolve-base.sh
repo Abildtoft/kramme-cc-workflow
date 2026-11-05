@@ -217,6 +217,27 @@ if [ "$BACKUP_MODE" -eq 1 ] \
   exit 1
 fi
 
+# Reads the repository-local workbench branch setting into CONFIGURED_BASE and
+# names the key it came from in CONFIGURED_BASE_KEY. trackbed.baseBranch wins;
+# kramme.baseBranch is the name it had before 1.0.0. Returns 1 when neither is
+# set and git's status when it cannot read them.
+read_configured_base() {
+  local key status
+  for key in trackbed.baseBranch kramme.baseBranch; do
+    CONFIGURED_BASE_KEY=$key
+    if CONFIGURED_BASE=$(git config --local --get "$key"); then
+      return 0
+    else
+      status=$?
+      if [ "$status" -ne 1 ]; then
+        return "$status"
+      fi
+    fi
+  done
+  CONFIGURED_BASE_KEY=trackbed.baseBranch
+  return 1
+}
+
 fetch_remote_branch() {
   local remote="$1"
   local branch="$2"
@@ -338,20 +359,20 @@ else
     rm -f "$PR_LOOKUP_STDERR"
   fi
   if [ -z "$BASE_BRANCH" ]; then
-    if CONFIGURED_BASE=$(git config --local --get kramme.baseBranch); then
+    if read_configured_base; then
       if [ -z "$CONFIGURED_BASE" ]; then
-        echo "Configured kramme.baseBranch is empty" >&2
+        echo "Configured $CONFIGURED_BASE_KEY is empty" >&2
         exit 1
       fi
       if ! git check-ref-format --branch "$CONFIGURED_BASE" > /dev/null 2>&1; then
-        echo "Configured kramme.baseBranch '$CONFIGURED_BASE' is not a valid branch name" >&2
+        echo "Configured $CONFIGURED_BASE_KEY '$CONFIGURED_BASE' is not a valid branch name" >&2
         exit 1
       fi
       BASE_BRANCH="$CONFIGURED_BASE"
     else
       CONFIG_STATUS=$?
       if [ "$CONFIG_STATUS" -ne 1 ]; then
-        echo "Could not read repository-local kramme.baseBranch setting" >&2
+        echo "Could not read repository-local $CONFIGURED_BASE_KEY setting" >&2
         exit 1
       fi
     fi
@@ -369,7 +390,7 @@ else
     BASE_BRANCH=$(git branch -r | grep -E 'origin/(main|master)$' | head -1 | sed 's@.*origin/@@' || true)
   fi
   if [ -z "$BASE_BRANCH" ]; then
-    echo "Could not determine base branch; expected PR metadata, kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master" >&2
+    echo "Could not determine base branch; expected PR metadata, trackbed.baseBranch, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master" >&2
     exit 1
   fi
 
@@ -410,7 +431,7 @@ fi
 if [ "$BACKUP_MODE" -eq 1 ]; then
   PROTECTED_REMOTE_DEFAULT=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null || true)
   PROTECTED_REMOTE_DEFAULT=${PROTECTED_REMOTE_DEFAULT#origin/}
-  PROTECTED_CONFIGURED_BASE=$(git config --local --get kramme.baseBranch || true)
+  PROTECTED_CONFIGURED_BASE=$(git config --local --get trackbed.baseBranch || git config --local --get kramme.baseBranch || true)
   if [ "$CURRENT_BRANCH" = main ] || [ "$CURRENT_BRANCH" = master ] \
     || { [ -n "$PROTECTED_REMOTE_DEFAULT" ] && [ "$CURRENT_BRANCH" = "$PROTECTED_REMOTE_DEFAULT" ]; } \
     || { [ -n "$PROTECTED_CONFIGURED_BASE" ] && [ "$CURRENT_BRANCH" = "$PROTECTED_CONFIGURED_BASE" ]; } \

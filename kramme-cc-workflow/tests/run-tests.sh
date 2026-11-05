@@ -29,7 +29,7 @@ chmod +x test_helper/mocks/*
 echo "Running hook tests..."
 echo "============================================"
 
-if [ "${KRAMME_BATS_TIMINGS:-}" = 1 ]; then
+if [ "${TRACKBED_BATS_TIMINGS:-}" = 1 ]; then
   if [ -n "$1" ]; then
     suites=("$1")
   else

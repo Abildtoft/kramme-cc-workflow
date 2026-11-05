@@ -55,7 +55,7 @@ SCOPE_MODES = ("none", "exact-files", "containment")
 PROFILES = ("light", "balanced", "full")
 RISK_LEVELS = ("low", "medium", "high")
 FLOOR_PROFILES = {"low": "light", "medium": "balanced", "high": "full"}
-RISK_SCHEMA = "kramme-pr-triage-risk-signals/v1"
+RISK_SCHEMA = "trackbed-pr-triage-risk-signals/v1"
 RISK_SCRIPT_NAME = "risk-signals.py"
 # The same trusted default-branch lookup trackbed:pr:triage-risk uses, so a branch cannot weaken its own profile.
 POLICY_REFS = ("refs/remotes/origin/main", "refs/remotes/origin/master")

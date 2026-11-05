@@ -683,6 +683,15 @@ class ContinueBranchTests(RepoCase):
     def test_continuation_uses_repository_setting_before_conductor_workbench(self) -> None:
         git(self.repo, "push", "-q", "origin", "main:development")
         git(self.repo, "fetch", "-q", "origin")
+        git(self.repo, "config", "--local", "trackbed.baseBranch", "development")
+        os.environ["CONDUCTOR_DEFAULT_BRANCH"] = "main"
+        payload = self.check(self.continuation(self.repo))
+        self.assert_status(payload, "ok")
+        self.assertEqual(payload["base_branch"], "development")
+
+    def test_continuation_reads_the_pre_1_0_0_repository_setting(self) -> None:
+        git(self.repo, "push", "-q", "origin", "main:development")
+        git(self.repo, "fetch", "-q", "origin")
         git(self.repo, "config", "--local", "kramme.baseBranch", "development")
         os.environ["CONDUCTOR_DEFAULT_BRANCH"] = "main"
         payload = self.check(self.continuation(self.repo))

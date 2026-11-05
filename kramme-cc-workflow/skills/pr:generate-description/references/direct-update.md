@@ -8,7 +8,7 @@ Use this when `DIRECT_UPDATE=true`, and for check mode's confirmed update from `
 
    ```bash
    umask 077
-   UPDATE_DIR=$(mktemp -d "/tmp/kramme-pr-description.XXXXXX") || {
+   UPDATE_DIR=$(mktemp -d "/tmp/trackbed-pr-description.XXXXXX") || {
      echo "Error: Could not allocate private PR update storage." >&2
      exit 1
    }
@@ -23,7 +23,7 @@ Use this when `DIRECT_UPDATE=true`, and for check mode's confirmed update from `
    printf '%s\n' "$UPDATE_DIR"
    ```
 
-   Capture the single printed line as agent-tracked `{update-dir}`. Require it to match `/tmp/kramme-pr-description.[A-Za-z0-9]+`, remain a regular non-symlink directory, and contain no newline. Derive and retain these literal paths as agent state; shell variables do not persist between tool calls:
+   Capture the single printed line as agent-tracked `{update-dir}`. Require it to match `/tmp/trackbed-pr-description.[A-Za-z0-9]+`, remain a regular non-symlink directory, and contain no newline. Derive and retain these literal paths as agent state; shell variables do not persist between tool calls:
    - `{pr-title-file}` = `{update-dir}/new-title.txt`
    - `{pr-body-file}` = `{update-dir}/new-body.md`
    - `{pr-backup}` = `{update-dir}/pr-metadata.backup.json`

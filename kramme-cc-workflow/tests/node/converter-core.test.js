@@ -776,7 +776,7 @@ description: Typed skill
 argument-hint: "[target]"
 disable-model-invocation: "false"
 user-invocable: true
-kramme-platforms: [Claude-Code, "CODEX"]
+trackbed-platforms: [Claude-Code, "CODEX"]
 ---
 Typed body.
 `,
@@ -877,7 +877,7 @@ name: +1
 description: 1e3
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms:
+trackbed-platforms:
   - -1e2
   - "claude\",code"
 ---
@@ -896,11 +896,11 @@ test("loader rejects decoded-empty and nested block array values", async () => {
   const invalidFrontmatter = [
     String.raw`description: "\n"`,
     `description: Typed skill
-kramme-platforms:
+trackbed-platforms:
   - target:
       name: codex`,
     `description: Typed skill
-kramme-platforms:
+trackbed-platforms:
   - |`,
   ];
 
@@ -933,7 +933,7 @@ test("loader rejects invalid schema-declared primitive frontmatter types", async
     ["argument-hint", "false", "non-empty string"],
     ["disable-model-invocation", "maybe", "boolean"],
     ["user-invocable", "0", "boolean"],
-    ["kramme-platforms", "codex", "non-empty array of non-empty strings"],
+    ["trackbed-platforms", "codex", "non-empty array of non-empty strings"],
   ];
 
   for (const [field, value, expectedType] of cases) {
@@ -947,7 +947,7 @@ test("loader rejects invalid schema-declared primitive frontmatter types", async
         "argument-hint": '"[target]"',
         "disable-model-invocation": "false",
         "user-invocable": "true",
-        "kramme-platforms": "[claude-code, codex]",
+        "trackbed-platforms": "[claude-code, codex]",
       };
       fields[field] = value;
       const frontmatter = Object.entries(fields)
@@ -1027,7 +1027,7 @@ test("conversion preserves skill and generated command frontmatter contracts", (
   assert.deepEqual(skill["allowed-tools"], ["Read", "Edit(src/**)"]);
   assert.equal(skill["disable-model-invocation"], false);
   assert.equal(skill["user-invocable"], true);
-  assert.deepEqual(skill["kramme-platforms"], ["codex"]);
+  assert.deepEqual(skill["trackbed-platforms"], ["codex"]);
 
   const generated = parseFrontmatter(bundle.generatedSkills[0].content).data;
   assert.equal(generated.name, "contract-plugin:kramme:demo-command");

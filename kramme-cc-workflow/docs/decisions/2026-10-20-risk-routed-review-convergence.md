@@ -57,7 +57,7 @@ Rejected for `light` and `balanced`: it was the largest cost bucket, and on a sm
 
 ### Default reviewers to a lower model class
 
-Deferred. Reviewers stay on the orchestrator's model by default; `KRAMME_REVIEW_SUBAGENT_LEVEL=lower` remains the opt-in.
+Deferred. Reviewers stay on the orchestrator's model by default; `TRACKBED_REVIEW_SUBAGENT_LEVEL=lower` remains the opt-in.
 
 ## Adoption Review
 

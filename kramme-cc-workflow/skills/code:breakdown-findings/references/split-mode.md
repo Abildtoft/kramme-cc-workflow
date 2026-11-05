@@ -6,7 +6,7 @@ Load this only when `SPLIT_MODE=true`, after Phase 0 has passed the prior-artifa
 
 ### 1. Resolve Base Branch
 
-Use the shared plugin script. It resolves in this order: explicit `--base`, PR target branch (via `gh`), repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. Invoke it with `--tolerate-fetch-failure` so a failed fetch falls back to the cached local `origin/<base>` ref with a warning instead of stopping (the script still errors when no cached ref exists):
+Use the shared plugin script. It resolves in this order: explicit `--base`, PR target branch (via `gh`), repository `trackbed.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. Invoke it with `--tolerate-fetch-failure` so a failed fetch falls back to the cached local `origin/<base>` ref with a warning instead of stopping (the script still errors when no cached ref exists):
 
 ```bash
 RESOLVE_ARGS=(--tolerate-fetch-failure)

@@ -15,7 +15,7 @@ Before committing, ensure you're working on a feature branch rather than a repos
 
 ```bash
 CURRENT_BRANCH=$(git branch --show-current)
-CONFIGURED_BASE=$(git config --local --get kramme.baseBranch || true)
+CONFIGURED_BASE=$(git config --local --get trackbed.baseBranch || true)
 CONDUCTOR_BASE=${CONDUCTOR_DEFAULT_BRANCH:-}
 REMOTE_DEFAULT=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null || true)
 REMOTE_DEFAULT=${REMOTE_DEFAULT#origin/}

@@ -108,9 +108,9 @@ JSON
 }
 
 find_chrome() {
-  if [[ -n "${KRAMME_BROWSER_SMOKE_CHROME:-}" ]]; then
-    [[ -x "$KRAMME_BROWSER_SMOKE_CHROME" ]] || return 1
-    printf '%s\n' "$KRAMME_BROWSER_SMOKE_CHROME"
+  if [[ -n "${TRACKBED_BROWSER_SMOKE_CHROME:-}" ]]; then
+    [[ -x "$TRACKBED_BROWSER_SMOKE_CHROME" ]] || return 1
+    printf '%s\n' "$TRACKBED_BROWSER_SMOKE_CHROME"
     return 0
   fi
   local candidate
@@ -130,7 +130,7 @@ find_chrome() {
 }
 
 browser_smoke_unavailable() {
-  if [[ "${KRAMME_REQUIRE_BROWSER_SMOKE:-}" == "1" ]]; then
+  if [[ "${TRACKBED_REQUIRE_BROWSER_SMOKE:-}" == "1" ]]; then
     printf 'Required browser smoke: %s\n' "$1" >&2
     return 1
   fi
@@ -698,13 +698,13 @@ BATS
     '  require_browser_smoke_prerequisites' '}' >>"$fixture"
 
   for missing in python3 node WebSocket Chrome; do
-    run env MISSING_PREREQUISITE="$missing" KRAMME_REQUIRE_BROWSER_SMOKE=1 bats "$fixture"
+    run env MISSING_PREREQUISITE="$missing" TRACKBED_REQUIRE_BROWSER_SMOKE=1 bats "$fixture"
     [ "$status" -ne 0 ]
     [[ "$output" == *"Required browser smoke:"* ]]
     [[ "$output" == *"$missing"* ]]
     [[ "$output" != *"# skip"* ]]
 
-    run env MISSING_PREREQUISITE="$missing" KRAMME_REQUIRE_BROWSER_SMOKE=0 bats "$fixture"
+    run env MISSING_PREREQUISITE="$missing" TRACKBED_REQUIRE_BROWSER_SMOKE=0 bats "$fixture"
     [ "$status" -eq 0 ]
     [[ "$output" == *"# skip"* ]]
     [[ "$output" == *"$missing"* ]]

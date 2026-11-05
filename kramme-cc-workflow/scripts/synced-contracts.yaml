@@ -151,7 +151,7 @@
     },
     {
       "name": "canonical-base-diff-scope-rule",
-      "extract_regex": "Synced base/diff scope contract \\(keep aligned across base-aware and diff-aware skills\\):\\s*(use the shared resolve-base\\.sh script for base refs; use the shared collect-review-diff\\.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE\\.\\.\\.HEAD plus staged, unstaged, and untracked paths\\.)",
+      "extract_regex": "Synced base/diff scope contract \\(keep aligned across base-aware and diff-aware skills\\):\\s*(use the shared resolve-base\\.sh script for base refs; use the shared collect-review-diff\\.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository trackbed.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE\\.\\.\\.HEAD plus staged, unstaged, and untracked paths\\.)",
       "paths": [
         "kramme-cc-workflow/skills/pr:generate-description/references/base-branch-resolution.md",
         "kramme-cc-workflow/skills/qa/references/diff-scope.md",
@@ -1136,8 +1136,8 @@
       "name": "pr-create-body-file-contract",
       "path": "kramme-cc-workflow/skills/pr:create/references/confirmation-and-creation.md",
       "contains": [
-        "PR_TITLE_FILE=$(mktemp \"/tmp/kramme-pr-title.XXXXXX\")",
-        "PR_BODY_FILE=$(mktemp \"/tmp/kramme-pr-body.XXXXXX\")",
+        "PR_TITLE_FILE=$(mktemp \"/tmp/trackbed-pr-title.XXXXXX\")",
+        "PR_BODY_FILE=$(mktemp \"/tmp/trackbed-pr-body.XXXXXX\")",
         "trap cleanup_pr_files EXIT",
         "--base \"{base-branch}\"",
         "--title \"$(cat \"$PR_TITLE_FILE\")\"",
@@ -1257,7 +1257,7 @@
       "path": "kramme-cc-workflow/skills/pr:generate-description/references/direct-update.md",
       "contains": [
         "### Step 3 for a check-mode confirmed update",
-        "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
+        "mktemp -d \"/tmp/trackbed-pr-description.XXXXXX\"",
         "Capture the single printed line as agent-tracked `{update-dir}`",
         "UPDATE_DIR=\"{update-dir}\"",
         "Could not back up and revalidate PR #$PR_NUMBER; no update was made.",
@@ -1408,7 +1408,7 @@
       "path": "kramme-cc-workflow/skills/pr:generate-description/references/direct-update.md",
       "contains": [
         "do not mutate tracked files",
-        "mktemp -d \"/tmp/kramme-pr-description.XXXXXX\"",
+        "mktemp -d \"/tmp/trackbed-pr-description.XXXXXX\"",
         "Capture the single printed line as agent-tracked `{update-dir}`",
         "UPDATE_DIR=\"{update-dir}\"",
         "gh pr view \"$PR_NUMBER\" --json number,url,title,body > \"$PR_BACKUP\"",
@@ -1422,9 +1422,9 @@
       "name": "pr-generate-description-save-and-checklist-contract",
       "path": "kramme-cc-workflow/skills/pr:generate-description/SKILL.md",
       "contains": [
-        "SAVE_NAMESPACE=\"$REPO_ROOT/.kramme-cc-workflow\"",
+        "SAVE_NAMESPACE=\"$REPO_ROOT/.trackbed\"",
         "PR description save path is indirect; no file was written.",
-        "if ! grep -qxF \".kramme-cc-workflow/\" \"$GIT_EXCLUDE\"",
+        "if ! grep -qxF \".trackbed/\" \"$GIT_EXCLUDE\"",
         "Could not update Git's local exclude file; the description was not saved.",
         "write the description there with the runtime's native file-write capability"
       ]

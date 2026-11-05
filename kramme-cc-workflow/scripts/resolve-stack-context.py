@@ -17,7 +17,7 @@ Sources, in order:
 2. The open Pull Request chain on GitHub. A Pull Request's base is its parent layer when that base is
    itself the head of an open same-repository Pull Request, and open Pull Requests that target the head
    branch sit above it. This covers native GitHub stacks and manually chained Pull Requests alike. The
-   walk down stops at a trunk-like branch: the remote default branch, `kramme.baseBranch`, or
+   walk down stops at a trunk-like branch: the remote default branch, `trackbed.baseBranch`, or
    `CONDUCTOR_DEFAULT_BRANCH`. Each walk follows at most `MAX_WALK` layers.
 
 Without `--head`, a detached HEAD is matched to the open Pull Request whose head commit it is.
@@ -317,7 +317,8 @@ def trunk_like() -> set[str]:
         default = gh("repo", "view", "--json", "defaultBranchRef", "--jq", ".defaultBranchRef.name")
         if default.returncode == 0:
             names.add(default.stdout.strip())
-    names.add(git("config", "--local", "--get", "kramme.baseBranch") or "")
+    for key in ("trackbed.baseBranch", "kramme.baseBranch"):  # kramme.baseBranch is the pre-1.0.0 name.
+        names.add(git("config", "--local", "--get", key) or "")
     names.add(os.environ.get("CONDUCTOR_DEFAULT_BRANCH", "").strip())
     return {name for name in names if valid_branch(name)}
 

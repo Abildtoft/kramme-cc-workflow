@@ -47,7 +47,7 @@ RESOLVE_ARGS=(--format json)
 "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh" "${RESOLVE_ARGS[@]}"
 ```
 
-An explicit `--base` wins over PR and default metadata. Otherwise the resolver uses an existing PR target, this repository's `kramme.baseBranch` setting, Conductor's configured branch when available, then the remote default. The same flow supports a `main` workbench and a `development` workbench; branch names alone do not establish their roles.
+An explicit `--base` wins over PR and default metadata. Otherwise the resolver uses an existing PR target, this repository's `trackbed.baseBranch` setting, Conductor's configured branch when available, then the remote default. The same flow supports a `main` workbench and a `development` workbench; branch names alone do not establish their roles.
 
 Require success. Capture its `base_ref` as `{base-source-ref}` and `base_branch` as `{base-branch}`. Apply the agent-side allowlist to both values before any later interpolation, validate `{base-branch}` with the branch-name helper, and require `{base-source-ref}` to start with `refs/remotes/`.
 
@@ -65,7 +65,7 @@ Track `{linear-issue-id}` as nullable workflow state. If `LINEAR_ISSUE_OVERRIDE`
 
 ### Already on a feature branch
 
-Before classifying `{entry-branch}` as a feature, check whether it is `main`, `master`, the repository's configured `kramme.baseBranch`, the branch named by a valid `origin/HEAD`, Conductor's configured default, or another protected/workbench/production branch named in repository instructions. If it matches any of these and differs from `{base-branch}`, stop and explain the conflicting branch roles. Do not publish a Pull Request from a production branch to the configured development workbench or silently move its changes to another branch.
+Before classifying `{entry-branch}` as a feature, check whether it is `main`, `master`, the repository's configured `trackbed.baseBranch`, the branch named by a valid `origin/HEAD`, Conductor's configured default, or another protected/workbench/production branch named in repository instructions. If it matches any of these and differs from `{base-branch}`, stop and explain the conflicting branch roles. Do not publish a Pull Request from a production branch to the configured development workbench or silently move its changes to another branch.
 
 If `{entry-branch}` is neither `<detached>` nor `{base-branch}`, select it as `{feature-branch}`. When `{linear-issue-id}` is empty, scan the validated branch name for `[A-Z]{2,5}-\d+` case-insensitively; normalize a match to uppercase.
 

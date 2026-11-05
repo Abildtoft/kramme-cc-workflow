@@ -41,12 +41,12 @@ async function predictLocked(
   dependencies,
   owner,
 ) {
-  const directory = env.KRAMME_LIVE_EVAL_STATE;
-  const id = env.KRAMME_LIVE_EVAL_RUN;
-  if (!directory || !id || !env.KRAMME_LIVE_EVAL_CONFIG)
+  const directory = env.TRACKBED_LIVE_EVAL_STATE;
+  const id = env.TRACKBED_LIVE_EVAL_RUN;
+  if (!directory || !id || !env.TRACKBED_LIVE_EVAL_CONFIG)
     throw new EvalFailure("use_live_eval_entrypoint");
   const organizations = organizationsFromConfig(
-    readJson(env.KRAMME_LIVE_EVAL_CONFIG),
+    readJson(env.TRACKBED_LIVE_EVAL_CONFIG),
     env,
     provider,
   );
@@ -62,9 +62,9 @@ async function predictLocked(
     previous === null ? null : validatePool(previous),
   );
   const now = dependencies.now || Date.now;
-  const runDeadline = Number(env.KRAMME_LIVE_EVAL_DEADLINE || Infinity);
+  const runDeadline = Number(env.TRACKBED_LIVE_EVAL_DEADLINE || Infinity);
   const deadline = Math.min(
-    now() + Number(env.KRAMME_LIVE_EVAL_CASE_TIMEOUT || 600000),
+    now() + Number(env.TRACKBED_LIVE_EVAL_CASE_TIMEOUT || 600000),
     runDeadline,
   );
   const controller = new AbortController();
@@ -103,10 +103,10 @@ async function predictLocked(
             key: org.key,
             model: run.model,
             timeout: Math.min(
-              Number(env.KRAMME_LIVE_EVAL_ATTEMPT_TIMEOUT || 120000),
+              Number(env.TRACKBED_LIVE_EVAL_ATTEMPT_TIMEOUT || 120000),
               deadline - now(),
             ),
-            maxTurns: Number(env.KRAMME_LIVE_EVAL_MAX_TURNS || 12),
+            maxTurns: Number(env.TRACKBED_LIVE_EVAL_MAX_TURNS || 12),
             attempt,
             signal: controller.signal,
           },
@@ -153,11 +153,11 @@ async function predictWithPool(
   runSession,
   dependencies,
 ) {
-  if (!env.KRAMME_LIVE_EVAL_STATE)
+  if (!env.TRACKBED_LIVE_EVAL_STATE)
     throw new EvalFailure("use_live_eval_entrypoint");
   const worker = registerWorker(
-    env.KRAMME_LIVE_EVAL_STATE,
-    env.KRAMME_LIVE_EVAL_OWNER_TOKEN,
+    env.TRACKBED_LIVE_EVAL_STATE,
+    env.TRACKBED_LIVE_EVAL_OWNER_TOKEN,
   );
   try {
     return await predictLocked(

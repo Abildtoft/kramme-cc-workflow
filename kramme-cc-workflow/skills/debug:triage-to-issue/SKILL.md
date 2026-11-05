@@ -246,7 +246,7 @@ POTENTIAL CONCERNS
 
 ## Output markers
 
-Adopt the kramme plugin-wide vocabulary verbatim, one per line, uppercase, no decoration:
+Adopt the trackbed plugin-wide vocabulary verbatim, one per line, uppercase, no decoration:
 
 - `STACK DETECTED` — language / framework / test runner identified during investigation.
 - `UNVERIFIED` — assumption flagged in the issue body or in this skill's reasoning that has not been confirmed.

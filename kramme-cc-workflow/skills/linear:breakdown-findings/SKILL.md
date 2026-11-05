@@ -125,7 +125,7 @@ Never update delegated issue bodies merely to restyle them or add workflow instr
 
 Return the source-set key, one parent-ledger row per theme, exclusions, blocked themes, relation results, parallel-ready groups, and the first unblocked Linear issue identifiers. If publication stopped partway, emit the exact partial-report artifact and resume-command template from `references/publication.md`.
 
-Recommend the next implementation action in plain language. Do not start implementation and do not place kramme skill names into Linear content.
+Recommend the next implementation action in plain language. Do not start implementation and do not place trackbed skill names into Linear content.
 
 ## Artifact Lifecycle
 

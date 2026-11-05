@@ -17,7 +17,7 @@ setup() {
 	FAKE_BIN="$BATS_TEST_TMPDIR/bin"
 	CURL_LOG="$BATS_TEST_TMPDIR/curl.log"
 	REMOTE_MANIFEST="$BATS_TEST_TMPDIR/remote-plugin.json"
-	STATE_FILE="$BATS_TEST_TMPDIR/xdg-state/kramme-cc-workflow/update-check.json"
+	STATE_FILE="$BATS_TEST_TMPDIR/xdg-state/trackbed/update-check.json"
 	mkdir -p "$FAKE_BIN"
 	cat >"$FAKE_BIN/curl" <<EOF
 #!/bin/sh
@@ -38,9 +38,9 @@ EOF
 
 	export CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT"
 	export XDG_STATE_HOME="$BATS_TEST_TMPDIR/xdg-state"
-	export KRAMME_HOOK_STATE_FILE="$BATS_TEST_TMPDIR/hook-state.json"
+	export TRACKBED_HOOK_STATE_FILE="$BATS_TEST_TMPDIR/hook-state.json"
 	export PATH="$FAKE_BIN:$PATH"
-	unset KRAMME_UPDATE_CHECK_FILE CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC CURL_GATE
+	unset TRACKBED_UPDATE_CHECK_FILE CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC CURL_GATE
 }
 
 write_installed_version() {
@@ -174,7 +174,7 @@ EOF
 	cat >"$CODEX_HOME/config.toml" <<EOF
 [marketplaces.trackbed]
 source_type = "local"
-source = "$CODEX_HOME/.kramme-plugin-marketplaces/trackbed"
+source = "$CODEX_HOME/.trackbed-plugin-marketplaces/trackbed"
 EOF
 	cat >"$FAKE_BIN/codex" <<EOF
 #!/bin/sh
@@ -188,6 +188,20 @@ EOF
 	[ "$status" -eq 0 ]
 	printf '%s' "$output" | jq -e '.systemMessage | contains("For local/checkout installs (including npx), rerun your original install command.") and contains("Restart Codex after updating.")'
 	[ ! -e "$BATS_TEST_TMPDIR/codex-called" ]
+}
+
+@test "keeps updating the pre-1.0.0 state file until a trackbed one exists" {
+	local previous="$BATS_TEST_TMPDIR/xdg-state/kramme-cc-workflow/update-check.json"
+	write_remote_version "0.90.0"
+	mkdir -p "$(dirname "$previous")"
+	printf '%s\n' "{\"checkedAt\":$(stale_check),\"latestVersion\":\"0.89.0\",\"seenVersion\":\"0.89.0\"}" >"$previous"
+
+	run run_hook
+
+	[ "$status" -eq 0 ]
+	[ "$(curl_calls)" = "1" ]
+	[ "$(jq -r '.latestVersion' "$previous")" = "0.90.0" ]
+	[ ! -e "$STATE_FILE" ]
 }
 
 @test "checks GitHub at most once a day" {
@@ -282,7 +296,7 @@ wait_for_fetch() {
 	[ ! -e "$STATE_FILE" ]
 
 	printf 'not a directory\n' >"$BATS_TEST_TMPDIR/blocked"
-	run env KRAMME_UPDATE_CHECK_FILE="$BATS_TEST_TMPDIR/blocked/state.json" bash "$HOOK" </dev/null
+	run env TRACKBED_UPDATE_CHECK_FILE="$BATS_TEST_TMPDIR/blocked/state.json" bash "$HOOK" </dev/null
 	[ "$status" -eq 0 ]
 	[ "$output" = "{}" ]
 	[ "$(curl_calls)" = "0" ]
@@ -401,7 +415,7 @@ wait_for_fetch() {
 
 @test "emits an empty object without side effects when toggled off" {
 	write_remote_version "0.90.0"
-	printf '{"disabled":["update-check"]}\n' >"$KRAMME_HOOK_STATE_FILE"
+	printf '{"disabled":["update-check"]}\n' >"$TRACKBED_HOOK_STATE_FILE"
 
 	run run_hook
 
@@ -446,11 +460,11 @@ wait_for_fetch() {
 	[ "$(curl_calls)" = "1" ]
 }
 
-@test "KRAMME_UPDATE_CHECK_FILE overrides the state path" {
+@test "TRACKBED_UPDATE_CHECK_FILE overrides the state path" {
 	write_remote_version "0.89.0"
 	local override="$BATS_TEST_TMPDIR/custom/update-check.json"
 
-	run env KRAMME_UPDATE_CHECK_FILE="$override" bash -c 'printf "{}" | bash "$1"' _ "$HOOK"
+	run env TRACKBED_UPDATE_CHECK_FILE="$override" bash -c 'printf "{}" | bash "$1"' _ "$HOOK"
 
 	[ "$status" -eq 0 ]
 	[ "$(jq -r '.seenVersion' "$override")" = "0.89.0" ]

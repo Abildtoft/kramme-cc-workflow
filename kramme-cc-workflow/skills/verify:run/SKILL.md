@@ -75,7 +75,7 @@ Parse `$ARGUMENTS` for `--fast`, `--full`, `--force`, `--base <branch>`, and `--
 
 For affected detection and format checks, determine the base branch:
 
-Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository trackbed.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
 1. **Use `--base` when passed.** Set `BASE_BRANCH_OVERRIDE` to it, skip items 2 and 3, and set `PINNED_BASE_COMMIT` to any `--base-commit` value.
 2. **Check the applicable project instruction files** (`AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, markdown instruction files in a nearby `.claude/` directory, or equivalent) for a specified base branch. If one is specified, set `BASE_BRANCH_OVERRIDE` to that value.

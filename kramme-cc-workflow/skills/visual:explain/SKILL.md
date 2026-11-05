@@ -4,7 +4,7 @@ description: Generate beautiful, self-contained HTML pages that visually explain
 argument-hint: "[topic or description | --onboarding [focus-area or audience]]"
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 ---
 
 # Visual Explanation
@@ -156,13 +156,13 @@ Apply these principles to every diagram:
 
 ### 4. Deliver
 
-**Output location:** Write to `~/.kramme-cc-workflow/diagrams/`. Create the directory if it doesn't exist. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions. Re-running with the same descriptive filename overwrites the previous file by design — vary the name only when you want to keep an earlier diagram. In onboarding mode, use the file name and always-open behavior from `references/onboarding-mode.md` instead.
+**Output location:** Write to `~/.trackbed/diagrams/`. Create the directory if it doesn't exist. Use a descriptive filename based on content: `modem-architecture.html`, `pipeline-flow.html`, `schema-overview.html`. The directory persists across sessions. Re-running with the same descriptive filename overwrites the previous file by design — vary the name only when you want to keep an earlier diagram. In onboarding mode, use the file name and always-open behavior from `references/onboarding-mode.md` instead.
 
 **Open in browser** — only when the user explicitly asked for a visual. For proactively-rendered tables, skip this and just report the path.
 
-- macOS: `open ~/.kramme-cc-workflow/diagrams/filename.html`
-- Linux: `xdg-open ~/.kramme-cc-workflow/diagrams/filename.html`
-- Windows: `start "" "%USERPROFILE%\.kramme-cc-workflow\diagrams\filename.html"`
+- macOS: `open ~/.trackbed/diagrams/filename.html`
+- Linux: `xdg-open ~/.trackbed/diagrams/filename.html`
+- Windows: `start "" "%USERPROFILE%\.trackbed\diagrams\filename.html"`
 
 If the open command fails (headless, CI, or SSH with no GUI), don't retry — just report the path.
 

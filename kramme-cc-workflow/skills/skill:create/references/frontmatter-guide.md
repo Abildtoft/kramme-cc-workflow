@@ -71,7 +71,7 @@ Placeholder text shown in the `/` menu. Only include when the skill accepts argu
   - `"<hook-name|status> [enable|disable]"`
   - `"[spec-file-path(s) | 'siw'] [--model opus|sonnet|haiku]"`
 
-### `kramme-platforms`
+### `trackbed-platforms`
 
 Restrict skill to specific platforms. Omit to include on all platforms.
 

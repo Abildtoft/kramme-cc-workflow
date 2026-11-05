@@ -43,7 +43,7 @@ Before aggregation, when `DIFF_COMMENTS=true`, `CONDUCTOR_WORKSPACE_ID` is set, 
 
 ### Step 2: Resolve Base Branch and Collect the Diff
 
-Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It resolves in this order: explicit `--base`, the stack base of a gh-stack layer that has no open Pull Request or needs a restack, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
+Use the shared plugin script to resolve the base branch and build the unified change scope (committed PR diff + staged + unstaged + untracked). It resolves in this order: explicit `--base`, the stack base of a gh-stack layer that has no open Pull Request or needs a restack, PR target branch, repository `trackbed.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
 Two opt-in flags keep this review's deterministic preparation inside the tested helper:
 

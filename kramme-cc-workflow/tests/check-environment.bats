@@ -11,7 +11,7 @@ setup() {
 	export CODEX_HOME="$BATS_TEST_TMPDIR/no-codex"
 	export CLAUDE_CONFIG_DIR="$BATS_TEST_TMPDIR/no-claude"
 	export XDG_STATE_HOME="$BATS_TEST_TMPDIR/no-state"
-	unset CLAUDE_CODE_PLUGIN_CACHE_DIR KRAMME_UPDATE_CHECK_FILE CLAUDE_PROJECT_DIR
+	unset CLAUDE_CODE_PLUGIN_CACHE_DIR TRACKBED_UPDATE_CHECK_FILE CLAUDE_PROJECT_DIR
 	mkdir -p "$BATS_TEST_TMPDIR/repo/.git"
 	cd "$BATS_TEST_TMPDIR/repo"
 }
@@ -856,7 +856,7 @@ assert_context_value() {
 	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
 	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
 	local copied_script="$plugin_root/skills/setup/scripts/check-environment.sh"
-	local state_file="$XDG_STATE_HOME/kramme-cc-workflow/update-check.json"
+	local state_file="$XDG_STATE_HOME/trackbed/update-check.json"
 	mkdir -p "${copied_script%/*}" "$plugin_root/.claude-plugin" "${state_file%/*}"
 	cp "$SCRIPT" "$copied_script"
 	printf '{"version":"0.89.0"}\n' >"$plugin_root/.claude-plugin/plugin.json"
@@ -895,13 +895,13 @@ assert_context_value() {
 	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
 	local copied_script="$plugin_root/skills/setup/scripts/check-environment.sh"
 	local override="$BATS_TEST_TMPDIR/custom/update-check.json"
-	local home_state="$BATS_TEST_TMPDIR/home/.local/state/kramme-cc-workflow/update-check.json"
+	local home_state="$BATS_TEST_TMPDIR/home/.local/state/trackbed/update-check.json"
 	mkdir -p "${copied_script%/*}" "${override%/*}" "${home_state%/*}"
 	cp "$SCRIPT" "$copied_script"
 	printf '{"checkedAt":1793176010,"latestVersion":"0.90.0"}\n' >"$override"
 	printf '{"latestVersion":"0.91.0"}\n' >"$home_state"
 
-	run env PATH="$FAKE_BIN" KRAMME_UPDATE_CHECK_FILE="$override" "$BASH_PATH" "$copied_script" --json
+	run env PATH="$FAKE_BIN" TRACKBED_UPDATE_CHECK_FILE="$override" "$BASH_PATH" "$copied_script" --json
 	[ "$status" -eq 0 ]
 	assert_context_value pluginUpdate "latest release 0.90.0, last checked 2026-10-28"
 
@@ -911,13 +911,41 @@ assert_context_value() {
 
 	run env -u XDG_STATE_HOME -u HOME PATH="$FAKE_BIN" "$BASH_PATH" "$copied_script" --json
 	[ "$status" -eq 0 ]
-	assert_context_value pluginUpdate "not checked (HOME, XDG_STATE_HOME, and KRAMME_UPDATE_CHECK_FILE unset)"
+	assert_context_value pluginUpdate "not checked (HOME, XDG_STATE_HOME, and TRACKBED_UPDATE_CHECK_FILE unset)"
+}
+
+@test "reads update-check state from the pre-1.0.0 names until trackbed ones exist" {
+	setup_all_tools_path
+	ln -sf "$REAL_JQ" "$FAKE_BIN/jq"
+	local plugin_root="$BATS_TEST_TMPDIR/plugin copy"
+	local copied_script="$plugin_root/skills/setup/scripts/check-environment.sh"
+	local override="$BATS_TEST_TMPDIR/legacy/update-check.json"
+	local previous_state="$BATS_TEST_TMPDIR/home/.local/state/kramme-cc-workflow/update-check.json"
+	local current_state="$BATS_TEST_TMPDIR/home/.local/state/trackbed/update-check.json"
+	mkdir -p "${copied_script%/*}" "${override%/*}" "${previous_state%/*}"
+	cp "$SCRIPT" "$copied_script"
+	printf '{"latestVersion":"0.92.0"}\n' >"$override"
+	printf '{"latestVersion":"0.93.0"}\n' >"$previous_state"
+
+	run env -u TRACKBED_UPDATE_CHECK_FILE PATH="$FAKE_BIN" KRAMME_UPDATE_CHECK_FILE="$override" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "latest release 0.92.0"
+
+	run env -u XDG_STATE_HOME -u TRACKBED_UPDATE_CHECK_FILE -u KRAMME_UPDATE_CHECK_FILE PATH="$FAKE_BIN" HOME="$BATS_TEST_TMPDIR/home" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "latest release 0.93.0"
+
+	mkdir -p "${current_state%/*}"
+	printf '{"latestVersion":"0.94.0"}\n' >"$current_state"
+	run env -u XDG_STATE_HOME -u TRACKBED_UPDATE_CHECK_FILE -u KRAMME_UPDATE_CHECK_FILE PATH="$FAKE_BIN" HOME="$BATS_TEST_TMPDIR/home" "$BASH_PATH" "$copied_script" --json
+	[ "$status" -eq 0 ]
+	assert_context_value pluginUpdate "latest release 0.94.0"
 }
 
 @test "reports auto-update and update state as unknown without jq" {
 	setup_core_path
 	local plugins_root="$BATS_TEST_TMPDIR/plugins"
-	local state_file="$XDG_STATE_HOME/kramme-cc-workflow/update-check.json"
+	local state_file="$XDG_STATE_HOME/trackbed/update-check.json"
 	mkdir -p "$plugins_root" "${state_file%/*}"
 	printf '{"trackbed":{"autoUpdate":true}}\n' >"$plugins_root/known_marketplaces.json"
 	printf '{"latestVersion":"0.90.0"}\n' >"$state_file"

@@ -55,7 +55,7 @@ function stageCase(context) {
   )
     throw new EvalFailure("unsupported_reviewer");
   const temporary = fs.realpathSync(
-    fs.mkdtempSync(path.join(os.tmpdir(), "kramme-eval-")),
+    fs.mkdtempSync(path.join(os.tmpdir(), "trackbed-eval-")),
   );
   const workspace = path.join(temporary, "work");
   const plugin = path.join(workspace, "plugin");

@@ -4,7 +4,7 @@ description: "Scan the full codebase, current PR, a path, or a feature for refac
 disable-model-invocation: false
 user-invocable: true
 argument-hint: "[--subagent-model <model>] [full | pr | path <file-or-folder> | feature <name>] [--for <spec-file | description>] [--ranked [--solo] [--output <path>] [--max-findings N] [--base <ref>]]"
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 ---
 
 # Refactor Opportunities
@@ -15,7 +15,7 @@ With `--ranked`, it instead ranks the biggest weaknesses into `CODEBASE_WEAKNESS
 
 **Arguments:** "$ARGUMENTS"
 
-**Subagent models.** Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section with the Phase 2 scan agents and, under `--ranked`, every research reviewer and the challenge reviewer named as lens or scan roles. It parses and removes `--subagent-model <model>` (a model flag, not a scope selector), reads `KRAMME_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selected model and its source before launching, set it on every launch, and record it in the resumable fan-out `subagent_model` key slot.
+**Subagent models.** Before parsing other arguments, read and apply `${CLAUDE_PLUGIN_ROOT}/shared/pr-review/references/model-selection.md`, using its `## Non-Review Subagent Roles` section with the Phase 2 scan agents and, under `--ranked`, every research reviewer and the challenge reviewer named as lens or scan roles. It parses and removes `--subagent-model <model>` (a model flag, not a scope selector), reads `TRACKBED_REVIEW_SUBAGENT_LEVEL`, and keeps the default `same` when neither is set. Report the selected model and its source before launching, set it on every launch, and record it in the resumable fan-out `subagent_model` key slot.
 
 ## Inputs
 
@@ -65,7 +65,7 @@ These rejections are pre-filters — apply them before recording a finding, not 
      1. Resolve the base ref in this order:
         - Explicit `--base <ref>`.
         - `gh pr view --json baseRefName,isCrossRepository` — if it returns metadata for a same-repo PR, use its base branch. For cross-repo PRs (`isCrossRepository == true`), ask for `--base <ref>` instead of guessing. If `gh` is not installed or reports no PR open for this branch, use the next fallback. Authentication, network, and API errors are blockers because the PR target remains unknown.
-        - The repository's configured `kramme.baseBranch`, then a valid `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`, `origin/main`, or `origin/master`. Do not select `development` or `main` merely because the branch exists.
+        - The repository's configured `trackbed.baseBranch`, then a valid `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`, `origin/main`, or `origin/master`. Do not select `development` or `main` merely because the branch exists.
      2. For an explicit `--base <ref>`, set `BASE_REF=$(git rev-parse --verify --quiet --end-of-options "${BASE_ARG}^{commit}")` using the supplied ref as `BASE_ARG`, then set `MERGE_BASE=$(git merge-base "$BASE_REF" HEAD)`; stop if either fails. This accepts a local branch, tag, or commit without treating it as a remote branch. For a same-repo PR, pass its base branch through `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-base.sh --base <branch> --strict`; otherwise run that helper without `--base`. Use its `BASE_REF` and `MERGE_BASE`. If no base can be resolved, report the attempted refs and ask for `--base <ref>` — do not fall back to `full`.
      3. Build the file set from `git diff --name-only <resolved-base>...HEAD`, `git diff --cached --name-only`, `git diff --name-only`, and `git ls-files --others --exclude-standard`. Drop deleted files from the set unless a search of the current tree/worktree shows surviving references to the deleted symbols or paths.
      4. Build `PR_CHANGE_MAP` from `git diff --unified=0 <resolved-base>...HEAD`, `git diff --unified=0 --cached`, and `git diff --unified=0`. Record added/modified/deleted hunk ranges per file. Treat each untracked file's full content as added. Store the merge base as `PR_BASE_REF` for checking whether a candidate issue existed before the branch.

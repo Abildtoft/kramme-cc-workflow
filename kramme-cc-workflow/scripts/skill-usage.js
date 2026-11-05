@@ -13,11 +13,9 @@ const {
   stripConductorInstructions,
 } = require("./lib/skill-usage-hosts");
 
-const STATE_DIR = path.join(
-  process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state"),
-  "kramme-cc-workflow",
-);
-const DEFAULT_USAGE_FILE = path.join(STATE_DIR, "skill-usage.jsonl");
+const STATE_HOME =
+  process.env.XDG_STATE_HOME || path.join(os.homedir(), ".local", "state");
+const DEFAULT_USAGE_FILE = defaultUsageFile();
 const MAX_NON_JSONL_COMPAT_BYTES = 1024 * 1024;
 const MAX_JSONL_LINE_BYTES = 1024 * 1024;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -176,8 +174,9 @@ their transcripts under --projects (default: $CLAUDE_CONFIG_DIR/projects or
 cost-state records, not billed spend. Codex sessions are excluded.
 
 Environment:
-  KRAMME_SKILL_USAGE_FILE  Override the usage JSONL file path.
-  KRAMME_AGENT_PLATFORM    Override the detected platform of recorded events.
+  TRACKBED_SKILL_USAGE_FILE  Override the usage JSONL file path.
+  TRACKBED_AGENT_PLATFORM    Override the detected platform of recorded events.
+  Their pre-1.0.0 KRAMME_ names still work when the TRACKBED_ names are unset.
 
 Examples:
   scripts/skill-usage.js report --since 30d
@@ -269,10 +268,34 @@ function parseArgs(args) {
   return parsed;
 }
 
+/**
+ * Releases before 1.0.0 kept usage under `kramme-cc-workflow/`. Keep using
+ * that file until a `trackbed/` one exists, so the history stays in one place.
+ * @returns {string}
+ */
+function defaultUsageFile() {
+  const current = path.join(STATE_HOME, "trackbed", "skill-usage.jsonl");
+  const previous = path.join(
+    STATE_HOME,
+    "kramme-cc-workflow",
+    "skill-usage.jsonl",
+  );
+  return !fs.existsSync(current) && fs.existsSync(previous)
+    ? previous
+    : current;
+}
+
+/** The override variable, or the `KRAMME_` name it had before 1.0.0. */
+function configuredUsageFile() {
+  return (
+    process.env.TRACKBED_SKILL_USAGE_FILE || process.env.KRAMME_SKILL_USAGE_FILE
+  );
+}
+
 /** @param {ParsedArgs} parsed */
 function usageFile(parsed) {
   return path.resolve(
-    parsed.file || process.env.KRAMME_SKILL_USAGE_FILE || DEFAULT_USAGE_FILE,
+    parsed.file || configuredUsageFile() || DEFAULT_USAGE_FILE,
   );
 }
 
@@ -747,7 +770,7 @@ async function report(args) {
   let unrecognizedEvents = 0;
   let latestUnrecognizedSkill = "";
   const usesExplicitFile =
-    Boolean(parsed.file) || Boolean(process.env.KRAMME_SKILL_USAGE_FILE);
+    Boolean(parsed.file) || Boolean(configuredUsageFile());
   await readUsageRecords(
     file,
     diagnostics,
@@ -859,7 +882,7 @@ async function cost(args) {
     (record) => {
       if (record.platform !== PLATFORM_CODEX) sessions.add(record);
     },
-    !parsed.file && !process.env.KRAMME_SKILL_USAGE_FILE,
+    !parsed.file && !configuredUsageFile(),
   );
 
   /** @type {import("./lib/skill-usage-cost").CostDeps} */

@@ -65,9 +65,9 @@ When a check fails, name it and recommend extending the closest skill or not cre
 
 > Should this skill be available on all platforms, or restricted?
 >
-> A) **All platforms** (default — omit `kramme-platforms`) B) **Claude Code only** (uses Agent Teams or other Claude Code features) C) **Specific combination** (specify which)
+> A) **All platforms** (default — omit `trackbed-platforms`) B) **Claude Code only** (uses Agent Teams or other Claude Code features) C) **Specific combination** (specify which)
 
-Default to harness-neutral phrasing with a declared fallback. Add `kramme-platforms` only when the skill depends on a true platform feature with no sensible fallback, such as a platform-specific agent runtime, MCP provider surface, hook system, or environment variable.
+Default to harness-neutral phrasing with a declared fallback. Add `trackbed-platforms` only when the skill depends on a true platform feature with no sensible fallback, such as a platform-specific agent runtime, MCP provider surface, hook system, or environment variable.
 
 ### Question 6: External inspiration
 
@@ -135,7 +135,7 @@ Capture as `artifact_lifecycle` for use in Phase 5.
    argument-hint: "{if applicable}"
    disable-model-invocation: { true|false }
    user-invocable: { true|false }
-   kramme-platforms: { if applicable }
+   trackbed-platforms: { if applicable }
    ---
    ```
 
@@ -260,8 +260,8 @@ After scaffolding, verify the skill against these checks:
 - [ ] `description` is under 1,024 characters
 - [ ] `description` includes a negative trigger
 - [ ] `argument-hint` present only if the skill accepts arguments
-- [ ] `kramme-platforms` present only if platform-restricted
-- [ ] Platform-specific tool names, environment variables, MCP prefixes, hook systems, or agent runtimes are either written with a declared fallback or gated with `kramme-platforms` when no sensible fallback exists
+- [ ] `trackbed-platforms` present only if platform-restricted
+- [ ] Platform-specific tool names, environment variables, MCP prefixes, hook systems, or agent runtimes are either written with a declared fallback or gated with `trackbed-platforms` when no sensible fallback exists
 
 ### Content
 

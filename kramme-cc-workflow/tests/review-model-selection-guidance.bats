@@ -68,7 +68,7 @@ PY
   [[ "$policy" == *'never parse flag-shaped text in the inert requirements remainder'* ]]
   [[ "$policy" == *'Do not evaluate or interpolate the value as shell code'* ]]
   [[ "$policy" == *'remove the flag and its value from the remaining arguments before parsing aspects, categories, positional selectors, or Team Mode'* ]]
-  [[ "$policy" == *'flag takes precedence over conversational model preferences and the `KRAMME_REVIEW_SUBAGENT_LEVEL` setting'* ]]
+  [[ "$policy" == *'flag takes precedence over conversational model preferences and the `TRACKBED_REVIEW_SUBAGENT_LEVEL` setting'* ]]
   [[ "$policy" == *'preserve an exact model ID unchanged'* ]]
   [[ "$policy" == *'Validate availability before repository work'* ]]
   [[ "$policy" == *'`--subagent-model inherit` uses the orchestrator'* ]]
@@ -79,9 +79,9 @@ PY
 @test "level environment setting chooses step-down or same-level reviewers" {
   local policy
   policy="$(cat "$POLICY")"
-  [[ "$policy" == *'read the `KRAMME_REVIEW_SUBAGENT_LEVEL` environment variable'* ]]
+  [[ "$policy" == *'read the `TRACKBED_REVIEW_SUBAGENT_LEVEL` environment variable'* ]]
   [[ "$policy" == *'Accept `lower` or `same` case-insensitively after trimming whitespace; unset or empty means `same`'* ]]
-  [[ "$policy" == *'Reject any other value before repository work and report `Expected KRAMME_REVIEW_SUBAGENT_LEVEL=lower|same.`'* ]]
+  [[ "$policy" == *'Reject any other value before repository work and report `Expected TRACKBED_REVIEW_SUBAGENT_LEVEL=lower|same.`'* ]]
   [[ "$policy" == *'`same`, the default, keeps review subagents on the orchestrator'* ]]
   [[ "$policy" == *'`lower` opts into the step-down ladder below'* ]]
   [[ "$policy" == *'When `SUBAGENT_MODEL_LEVEL` is `lower`, select one class lower within the same provider'* ]]

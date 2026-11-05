@@ -1,6 +1,7 @@
 # Dependencies and local state
 node_modules/
 .context/
+.trackbed/
 .kramme-cc-workflow/
 
 # Generated and build output

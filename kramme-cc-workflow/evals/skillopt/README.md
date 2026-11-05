@@ -74,7 +74,7 @@ The default command uses SkillOpt's `scripts/train.py` entry point with
 
 ## Real Pilot Run
 
-After `SKILLOPT_REPO`, credentials, and the external `kramme_skill_review`
+After `SKILLOPT_REPO`, credentials, and the external `trackbed_skill_review`
 SkillOpt `EnvAdapter` registration are configured:
 
 ```bash

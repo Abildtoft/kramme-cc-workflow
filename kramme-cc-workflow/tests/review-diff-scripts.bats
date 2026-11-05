@@ -95,7 +95,7 @@ GH
 	printf 'feature\n' > feature.txt
 	git add feature.txt
 	git commit -qm 'Add feature work'
-	git config --local kramme.baseBranch development
+	git config --local trackbed.baseBranch development
 
 	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/collect-review-diff.sh"
 

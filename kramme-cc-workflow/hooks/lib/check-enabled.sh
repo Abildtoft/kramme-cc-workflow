@@ -44,21 +44,28 @@ is_hook_disabled_without_jq() {
 }
 
 # Shared resolver for hook state/config paths that follow XDG Base Directory
-# precedence: an explicit override env var, then the XDG (or platform
-# default) directory, then an optional legacy path -- but only when the
-# XDG/default file does not already exist.
-# Usage: resolve_kramme_path OVERRIDE_VAR XDG_VAR XDG_DEFAULT_SUBDIR FILENAME [LEGACY_PATH]
-resolve_kramme_path() {
+# precedence: an explicit override env var (or the KRAMME_ name it had before
+# 1.0.0), then the XDG (or platform default) trackbed/ directory. While that
+# file does not exist yet, an existing file in the pre-1.0.0
+# kramme-cc-workflow/ directory and then an optional legacy path are used
+# instead, so state written by earlier releases keeps working.
+# Usage: resolve_trackbed_path OVERRIDE_VAR XDG_VAR XDG_DEFAULT_SUBDIR FILENAME [LEGACY_PATH]
+resolve_trackbed_path() {
   local override_var="$1"
   local xdg_var="$2"
   local xdg_default_subdir="$3"
   local filename="$4"
   local legacy_path="${5:-}"
+  local legacy_override_var="KRAMME_${override_var#TRACKBED_}"
   local override_value
   local xdg_base
   local default_path
+  local previous_path
 
   override_value="${!override_var:-}"
+  if [ -z "$override_value" ]; then
+    override_value="${!legacy_override_var:-}"
+  fi
   if [ -n "$override_value" ]; then
     printf '%s\n' "$override_value"
     return 0
@@ -68,19 +75,23 @@ resolve_kramme_path() {
   if [ -z "$xdg_base" ]; then
     xdg_base="${HOME:-}/${xdg_default_subdir}"
   fi
-  default_path="${xdg_base}/kramme-cc-workflow/${filename}"
+  default_path="${xdg_base}/trackbed/${filename}"
+  previous_path="${xdg_base}/kramme-cc-workflow/${filename}"
 
-  if [ -z "$legacy_path" ] || [ -f "$default_path" ] || [ ! -f "$legacy_path" ]; then
+  if [ -f "$default_path" ]; then
     printf '%s\n' "$default_path"
-    return 0
+  elif [ -f "$previous_path" ]; then
+    printf '%s\n' "$previous_path"
+  elif [ -n "$legacy_path" ] && [ -f "$legacy_path" ]; then
+    printf '%s\n' "$legacy_path"
+  else
+    printf '%s\n' "$default_path"
   fi
-
-  printf '%s\n' "$legacy_path"
 }
 
 resolve_hook_state_file() {
-  resolve_kramme_path \
-    "KRAMME_HOOK_STATE_FILE" \
+  resolve_trackbed_path \
+    "TRACKBED_HOOK_STATE_FILE" \
     "XDG_STATE_HOME" \
     ".local/state" \
     "hook-state.json" \

@@ -131,7 +131,7 @@ export_boundary_dir() {
     if env -u SKILLOPT_CMD SKILLOPT_REPO="$fake_repo" bash evals/skillopt/scripts/run-skillopt-skill-review.sh --run-id bats-missing-env > "$BATS_TEST_TMPDIR/out.txt" 2> "$BATS_TEST_TMPDIR/err.txt"; then
       exit 1
     fi
-    grep -q "requires SkillOpt environment '\''kramme_skill_review'\''" "$BATS_TEST_TMPDIR/err.txt"
+    grep -q "requires SkillOpt environment '\''trackbed_skill_review'\''" "$BATS_TEST_TMPDIR/err.txt"
   '
 
   [ "$status" -eq 0 ]

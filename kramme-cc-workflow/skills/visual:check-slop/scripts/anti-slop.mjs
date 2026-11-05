@@ -12713,12 +12713,12 @@ function tagAllows(tagOrAttrs, ruleId) {
 function stripCssComments(css) {
   return css.replace(/\/\*[\s\S]*?\*\//g, "");
 }
-var CSS_COMMENT_MARKER_RE = /--__kramme_slop_comment_(\d+):0;/g;
+var CSS_COMMENT_MARKER_RE = /--__trackbed_slop_comment_(\d+):0;/g;
 function rewriteKeepingCssComments(css, rewrite) {
   const comments = [];
   const protectedCss = css.replace(/\/\*[\s\S]*?\*\//g, (comment) => {
     const index = comments.push(comment) - 1;
-    return `--__kramme_slop_comment_${index}:0;`;
+    return `--__trackbed_slop_comment_${index}:0;`;
   });
   return rewrite(protectedCss).replace(
     CSS_COMMENT_MARKER_RE,
@@ -16893,7 +16893,7 @@ var FLAGSHIP_RULES = [
 ];
 
 // cli.ts
-var VERSION = "0.4.3-kramme.1";
+var VERSION = "0.4.3-trackbed.1";
 var HTML_FILE_RE = /\.html?$/i;
 var MAX_HTML_FILES = 256;
 var MAX_HTML_FILE_BYTES = 512 * 1024;
@@ -16959,7 +16959,7 @@ function requireContainedPath(candidate, root) {
 function printUsage() {
   process.stdout.write(
     [
-      `anti-slop v${VERSION} (maintained by kramme; derived from Gesso)`,
+      `anti-slop v${VERSION} (maintained by trackbed; derived from Gesso)`,
       "",
       "Usage:",
       "  anti-slop check <file.html|dir> [--json]",

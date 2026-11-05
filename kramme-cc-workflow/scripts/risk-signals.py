@@ -25,7 +25,7 @@ from typing import Any
 
 import risk_patterns as patterns
 
-SCHEMA = "kramme-pr-triage-risk-signals/v1"
+SCHEMA = "trackbed-pr-triage-risk-signals/v1"
 POLICY_PATH = ".github/pr-risk.json"
 POLICY_LIST_KEYS = ("high_risk_paths", "medium_risk_paths", "generated_paths")
 MAX_EVIDENCE = 20

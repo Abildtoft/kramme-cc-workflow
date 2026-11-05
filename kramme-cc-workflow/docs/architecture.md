@@ -41,10 +41,10 @@ The live eval entry point `evals/skill-review/run-live-eval.js` delegates to the
 
 ## State and Generated Output
 
-- Hook toggle state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json`.
-- Skill usage events default to `~/.local/state/kramme-cc-workflow/skill-usage.jsonl`.
-- Update-check state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/update-check.json`; see [hooks.md](hooks.md#update-check).
-- Codex conversion writes a generated marketplace under `<codex-home>/.kramme-plugin-marketplaces/`; Codex copies the plugin into `<codex-home>/plugins/cache/`. The Codex home defaults to `$CODEX_HOME` or `~/.codex`.
+- Hook toggle state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/trackbed/hook-state.json`.
+- Skill usage events default to `~/.local/state/trackbed/skill-usage.jsonl`.
+- Update-check state defaults to `${XDG_STATE_HOME:-$HOME/.local/state}/trackbed/update-check.json`; see [hooks.md](hooks.md#update-check).
+- Codex conversion writes a generated marketplace under `<codex-home>/.trackbed-plugin-marketplaces/`; Codex copies the plugin into `<codex-home>/plugins/cache/`. The Codex home defaults to `$CODEX_HOME` or `~/.codex`.
 - SkillOpt and other local run artifacts belong under `.context/` and must not be committed.
 
 ## Verification Model

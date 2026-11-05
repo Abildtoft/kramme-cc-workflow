@@ -84,6 +84,6 @@ Before generating HTML, produce a structured fact sheet:
 
 ## Output
 
-Write to `~/.kramme-cc-workflow/diagrams/onboarding-{project-name}.html`, deriving `{project-name}` from the package manifest's `name`, falling back to the repository directory name. Create the directory if needed. Re-running for the same project overwrites the existing file.
+Write to `~/.trackbed/diagrams/onboarding-{project-name}.html`, deriving `{project-name}` from the package manifest's `name`, falling back to the repository directory name. Create the directory if needed. Re-running for the same project overwrites the existing file.
 
 Open it in the default browser with the platform commands from `SKILL.md` Step 4 (Deliver); onboarding is always an explicit request. If no browser opens (e.g., a headless environment), skip it. Always report the final file path to the user.

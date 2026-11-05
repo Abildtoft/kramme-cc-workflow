@@ -6,7 +6,7 @@ const os = require("os");
 const path = require("path");
 
 const ERROR_CAUSE_DEPTH_LIMIT = 5;
-const MARKETPLACE_DIR_NAME = ".kramme-plugin-marketplaces";
+const MARKETPLACE_DIR_NAME = ".trackbed-plugin-marketplaces";
 // Direct installs from before 1.0.0 recorded their output under the plugin's
 // former name, so legacy cleanup checks that name as well.
 const FORMER_PLUGIN_NAMES = new Map([["trackbed", ["kramme-cc-workflow"]]]);
@@ -224,6 +224,8 @@ async function assertReplaceableMarketplaceRoot(marketplaceRoot, bundle) {
   const {
     MARKETPLACE_MANIFEST,
     OWNERSHIP_MARKER,
+    LEGACY_OWNERSHIP_MARKER,
+    OWNERSHIP_GENERATORS,
   } = require("./convert-plugin/codex-plugin-builder");
   let manifest;
   let ownership;
@@ -235,14 +237,21 @@ async function assertReplaceableMarketplaceRoot(marketplaceRoot, bundle) {
       ),
     );
     ownership = JSON.parse(
-      await fs.readFile(path.join(marketplaceRoot, OWNERSHIP_MARKER), "utf8"),
+      await fs
+        .readFile(path.join(marketplaceRoot, OWNERSHIP_MARKER), "utf8")
+        .catch(() =>
+          fs.readFile(
+            path.join(marketplaceRoot, LEGACY_OWNERSHIP_MARKER),
+            "utf8",
+          ),
+        ),
     );
   } catch {
     manifest = null;
     ownership = null;
   }
   const owned =
-    ownership?.generatedBy === "kramme-cc-workflow" &&
+    OWNERSHIP_GENERATORS.includes(ownership?.generatedBy) &&
     ownership?.markerVersion === 1 &&
     ownership?.marketplaceName === bundle.codexPlugin.marketplaceName &&
     ownership?.pluginName === bundle.codexPlugin.name &&

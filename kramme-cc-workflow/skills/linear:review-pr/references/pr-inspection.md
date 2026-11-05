@@ -27,7 +27,7 @@ if ! git rev-parse --verify --quiet "${PR_BASE_OID}^{commit}" > /dev/null; then
   exit 2
 fi
 
-TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/kramme-linear-review-pr-${PR_NUMBER}.XXXXXX") || {
+TMP_PARENT=$(mktemp -d "${TMPDIR:-/tmp}/trackbed-linear-review-pr-${PR_NUMBER}.XXXXXX") || {
   echo "Could not create a temporary review directory." >&2
   exit 1
 }

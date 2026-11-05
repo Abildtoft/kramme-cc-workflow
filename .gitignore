@@ -7,4 +7,5 @@ kramme-cc-workflow/hooks/hook-state.json
 __pycache__/
 *.pyc
 
+.trackbed/
 .kramme-cc-workflow/

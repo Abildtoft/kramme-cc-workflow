@@ -104,8 +104,8 @@ resolve_command() {
 }
 
 resolve_autoformat_trust_file() {
-  resolve_kramme_path \
-    "KRAMME_AUTOFORMAT_TRUST_FILE" \
+  resolve_trackbed_path \
+    "TRACKBED_AUTOFORMAT_TRUST_FILE" \
     "XDG_CONFIG_HOME" \
     ".config" \
     "autoformat-trusted-roots"
@@ -233,7 +233,7 @@ FORMATTER_DEBUG_BYTE_LIMIT=65536
 FORMATTER_DEBUG_LOG="$CACHE_DIR/$CACHE_KEY.last-error.log"
 FORMATTER_DEBUG_LOG_AVAILABLE=false
 
-if [ "${KRAMME_AUTOFORMAT_DEBUG:-0}" = "1" ]; then
+if [ "${TRACKBED_AUTOFORMAT_DEBUG:-${KRAMME_AUTOFORMAT_DEBUG:-0}}" = "1" ]; then
   chmod 700 "$CACHE_DIR" 2> /dev/null || true
 fi
 rm -f -- "$FORMATTER_DEBUG_LOG" 2> /dev/null || true
@@ -446,7 +446,7 @@ run_formatter_attempt() {
   local capture_pid=""
   local command_status=0
 
-  if [ "${KRAMME_AUTOFORMAT_DEBUG:-0}" != "1" ]; then
+  if [ "${TRACKBED_AUTOFORMAT_DEBUG:-${KRAMME_AUTOFORMAT_DEBUG:-0}}" != "1" ]; then
     "$@" > /dev/null 2>&1
     return $?
   fi

@@ -1,4 +1,4 @@
-// Local regression suite (maintained by kramme; not derived from Gesso).
+// Local regression suite (maintained by trackbed; not derived from Gesso).
 // Every opt-out the catalog documents must reach an opt-out helper in the
 // rules, the opt-outs this suite exercises must suppress their rule in
 // detection and fixing, pill controls are never reported as over-rounded

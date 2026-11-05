@@ -45,7 +45,7 @@ Before proceeding with the workflow, check if the user provided additional instr
 
 1. **Resolve base branch:**
 
-   Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+   Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository trackbed.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
    Use the shared plugin script. The `--base=<branch>` option sets `BASE_BRANCH_OVERRIDE`; otherwise let the script resolve the PR target branch, repository/Conductor configuration, and remote default fallback chain.
 
@@ -81,7 +81,7 @@ Before proceeding with the workflow, check if the user provided additional instr
    fi
    ```
 
-   Also stop when the current branch is `main`, `master`, the repository's configured `kramme.baseBranch`, a valid Conductor default, the branch named by `origin/HEAD`, or another protected workbench/production branch named in repository instructions, even if an explicit `--base` points elsewhere. A production branch must not become a rewriteable feature branch just because the chosen workbench is `development`.
+   Also stop when the current branch is `main`, `master`, the repository's configured `trackbed.baseBranch`, a valid Conductor default, the branch named by `origin/HEAD`, or another protected workbench/production branch named in repository instructions, even if an explicit `--base` points elsewhere. A production branch must not become a rewriteable feature branch just because the chosen workbench is `development`.
 
    Check whether the upstream tracking branch has commits that are not in local `HEAD`:
 

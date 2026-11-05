@@ -39,7 +39,7 @@
   [[ "$(cat "$skill/SKILL.md")" == *'first check for a resumable run under `Resume an interrupted run`'* ]]
   [[ "$(cat "$skill/SKILL.md")" == *'record each reviewer in the execution ledger as soon as its result arrives'* ]]
   [[ "$contract" == *'## Resume an interrupted run'* ]]
-  [[ "$contract" == *'mktemp -d "${TMPDIR:-/tmp}/kramme-code-review.XXXXXX"'* ]]
+  [[ "$contract" == *'mktemp -d "${TMPDIR:-/tmp}/trackbed-code-review.XXXXXX"'* ]]
   [[ "$contract" == *'review-execution.js" status "$CANDIDATE_RUN"'* ]]
   [[ "$contract" == *'review-execution.js" requeue "$REVIEW_RUN"'* ]]
   [[ "$contract" == *'interrupts running jobs without failing them, so never record those jobs as `failed`'* ]]

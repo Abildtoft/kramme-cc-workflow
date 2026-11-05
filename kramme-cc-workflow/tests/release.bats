@@ -24,13 +24,13 @@ EOF
   mkdir -p "$PLUGIN_ROOT/.claude-plugin" "$PLUGIN_ROOT/scripts"
   cat >"$PLUGIN_ROOT/.claude-plugin/plugin.json" <<'EOF'
 {
-  "name": "kramme-cc-workflow",
+  "name": "trackbed",
   "version": "0.64.0"
 }
 EOF
   cat >"$PLUGIN_ROOT/package.json" <<'EOF'
 {
-  "name": "kramme-cc-workflow",
+  "name": "trackbed",
   "version": "0.64.0"
 }
 EOF

@@ -43,7 +43,7 @@ test("only completed runs of this workflow on the original main branch are trust
 
 test("checkpoint export and zip restore include validated progress but no runtime/auth files", (t) => {
   const { root, env, config, run } = sandbox(t);
-  const source = env.KRAMME_LIVE_EVAL_STATE;
+  const source = env.TRACKBED_LIVE_EVAL_STATE;
   writeJson(
     path.join(source, "pool-state.json"),
     reconcilePool(

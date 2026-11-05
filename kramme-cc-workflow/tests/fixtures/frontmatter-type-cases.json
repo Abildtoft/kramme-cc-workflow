@@ -3,12 +3,12 @@
   "cases": [
     {
       "name": "all fields valid (flow array)",
-      "text": "---\nname: kramme:demo:sample\ndescription: A demo skill\nargument-hint: \"[target]\"\ndisable-model-invocation: \"false\"\nuser-invocable: true\nkramme-platforms: [claude-code, \"codex\"]\n---\n# Body\n",
+      "text": "---\nname: kramme:demo:sample\ndescription: A demo skill\nargument-hint: \"[target]\"\ndisable-model-invocation: \"false\"\nuser-invocable: true\ntrackbed-platforms: [claude-code, \"codex\"]\n---\n# Body\n",
       "invalidFields": []
     },
     {
       "name": "all fields valid (block array)",
-      "text": "---\nname: kramme:demo:sample\ndescription: A demo skill\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms:\n  - claude-code\n  - codex\n---\n# Body\n",
+      "text": "---\nname: kramme:demo:sample\ndescription: A demo skill\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms:\n  - claude-code\n  - codex\n---\n# Body\n",
       "invalidFields": []
     },
     {
@@ -18,7 +18,7 @@
     },
     {
       "name": "legacy numeric-looking strings stay strings",
-      "text": "---\nname: +1\ndescription: 1e3\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms:\n  - -1e2\n---\n# Body\n",
+      "text": "---\nname: +1\ndescription: 1e3\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms:\n  - -1e2\n---\n# Body\n",
       "invalidFields": []
     },
     {
@@ -28,7 +28,7 @@
     },
     {
       "name": "block array quoted item with trailing comment",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms:\n  - \"codex\" # primary\n  - claude-code\n---\n# Body\n",
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms:\n  - \"codex\" # primary\n  - claude-code\n---\n# Body\n",
       "invalidFields": []
     },
     {
@@ -38,27 +38,27 @@
     },
     {
       "name": "flow array with escaped quote",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms: [\"claude\\\",code\", codex]\n---\n# Body\n",
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms: [\"claude\\\",code\", codex]\n---\n# Body\n",
       "invalidFields": []
     },
     {
       "name": "flow array trailing comma",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms: [codex,]\n---\n# Body\n",
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms: [codex,]\n---\n# Body\n",
       "invalidFields": []
     },
     {
       "name": "explicit !!str tag and anchor in flow array",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms: [!!str 1, &target codex]\n---\n# Body\n",
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms: [!!str 1, &target codex]\n---\n# Body\n",
       "invalidFields": []
     },
     {
       "name": "every primitive field invalid",
-      "text": "---\nname: false\ndescription:\nargument-hint: false\ndisable-model-invocation: maybe\nuser-invocable: 0\nkramme-platforms: codex\n---\n# Body\n",
+      "text": "---\nname: false\ndescription:\nargument-hint: false\ndisable-model-invocation: maybe\nuser-invocable: 0\ntrackbed-platforms: codex\n---\n# Body\n",
       "invalidFields": [
         "argument-hint",
         "description",
         "disable-model-invocation",
-        "kramme-platforms",
+        "trackbed-platforms",
         "name",
         "user-invocable"
       ]
@@ -66,65 +66,47 @@
     {
       "name": "empty block scalar description",
       "text": "---\nname: s\ndescription: |\ndisable-model-invocation: false\nuser-invocable: true\n---\n# Body\n",
-      "invalidFields": [
-        "description"
-      ]
+      "invalidFields": ["description"]
     },
     {
       "name": "quoted-empty block array item with comment",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms:\n  - \"\" # placeholder\n---\n# Body\n",
-      "invalidFields": [
-        "kramme-platforms"
-      ]
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms:\n  - \"\" # placeholder\n---\n# Body\n",
+      "invalidFields": ["trackbed-platforms"]
     },
     {
       "name": "flow array with numeric leading-dot item",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms: [codex, .5]\n---\n# Body\n",
-      "invalidFields": [
-        "kramme-platforms"
-      ]
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms: [codex, .5]\n---\n# Body\n",
+      "invalidFields": ["trackbed-platforms"]
     },
     {
       "name": "flow array with nested sequence item",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms: [codex, [nested]]\n---\n# Body\n",
-      "invalidFields": [
-        "kramme-platforms"
-      ]
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms: [codex, [nested]]\n---\n# Body\n",
+      "invalidFields": ["trackbed-platforms"]
     },
     {
       "name": "block array with nested mapping item",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms:\n  - target:\n      name: codex\n---\n# Body\n",
-      "invalidFields": [
-        "kramme-platforms"
-      ]
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms:\n  - target:\n      name: codex\n---\n# Body\n",
+      "invalidFields": ["trackbed-platforms"]
     },
     {
       "name": "flow array alias and non-string tag rejected",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms: [codex, *target]\n---\n# Body\n",
-      "invalidFields": [
-        "kramme-platforms"
-      ]
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms: [codex, *target]\n---\n# Body\n",
+      "invalidFields": ["trackbed-platforms"]
     },
     {
       "name": "boolean field given a number",
       "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: 1\n---\n# Body\n",
-      "invalidFields": [
-        "user-invocable"
-      ]
+      "invalidFields": ["user-invocable"]
     },
     {
       "name": "string field given a plain integer",
       "text": "---\nname: 42\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\n---\n# Body\n",
-      "invalidFields": [
-        "name"
-      ]
+      "invalidFields": ["name"]
     },
     {
       "name": "bare string for platforms rejected",
-      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\nkramme-platforms: codex\n---\n# Body\n",
-      "invalidFields": [
-        "kramme-platforms"
-      ]
+      "text": "---\nname: s\ndescription: d\ndisable-model-invocation: false\nuser-invocable: true\ntrackbed-platforms: codex\n---\n# Body\n",
+      "invalidFields": ["trackbed-platforms"]
     }
   ]
 }

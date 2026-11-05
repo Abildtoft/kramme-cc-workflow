@@ -178,7 +178,7 @@ class CloudLaunchTest(unittest.TestCase):
     def test_launch_never_infers_review_consent_from_environment(self) -> None:
         code, result = self.run_helper(
             "launch", "--project-id", "proj_1", "--item", "DISC-1", "codex", "gpt-5.5",
-            responses=[created(1)], ADVERSARIAL_REVIEW="true", KRAMME_ADVERSARIAL_REVIEW="1",
+            responses=[created(1)], ADVERSARIAL_REVIEW="true", TRACKBED_ADVERSARIAL_REVIEW="1",
         )  # fmt: skip
         self.assertEqual(code, 0)
         self.assertEqual(result["results"][0]["message"], "$trackbed:linear:issue-to-pr DISC-1 --ship")
@@ -253,7 +253,12 @@ class CloudLaunchTest(unittest.TestCase):
             with self.subTest(name):
                 self.log.unlink(missing_ok=True)
                 code, result = self.run_helper(
-                    "launch", "--project-id", "proj_1", *item, responses=responses, KRAMME_CONDUCTOR_TIMEOUT_SECONDS="1"
+                    "launch",
+                    "--project-id",
+                    "proj_1",
+                    *item,
+                    responses=responses,
+                    TRACKBED_CONDUCTOR_TIMEOUT_SECONDS="1",
                 )
                 self.assertEqual(code, 1)
                 self.assertEqual([entry["outcome"] for entry in result["results"]], ["unknown", "not_started"])

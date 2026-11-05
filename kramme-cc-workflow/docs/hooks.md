@@ -23,7 +23,7 @@ Use `/trackbed:hooks:toggle` to enable or disable hooks:
 /trackbed:hooks:toggle reset
 ```
 
-State is stored in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` by default, with `KRAMME_HOOK_STATE_FILE` override support and legacy fallback to `hooks/hook-state.json`. When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
+State is stored in `${XDG_STATE_HOME:-$HOME/.local/state}/trackbed/hook-state.json` by default, with `TRACKBED_HOOK_STATE_FILE` override support and legacy fallback to `hooks/hook-state.json`. Releases before 1.0.0 kept state under `kramme-cc-workflow/` and read `KRAMME_*` overrides; every hook state and config path still uses an existing file there until a `trackbed/` file exists, and still reads a `KRAMME_*` override while the `TRACKBED_*` one is unset. When a hook is disabled, the hook script drains stdin before exiting to avoid broken-pipe errors if the runner is piping JSON input.
 
 For `confirm-review-responses`, edit `hooks/confirm-review-artifacts.txt` to configure which staged files should trigger confirmation. Entries support shell-style glob patterns, so generated artifacts like `PR_PLAN_*.md` can be guarded without listing every file explicitly.
 
@@ -70,7 +70,7 @@ Releases before 1.0.0 named skills `kramme:*` under the plugin name `kramme-cc-w
 Each record's `platform` field names the host that produced the event. The recorder resolves it in this order:
 
 1. A non-empty `platform` field in the hook payload.
-2. A non-empty `KRAMME_AGENT_PLATFORM` environment variable.
+2. A non-empty `TRACKBED_AGENT_PLATFORM` environment variable.
 3. `codex` when the payload has a non-empty `turn_id` or a `transcript_path` named `rollout-*.jsonl`.
 4. `claude-code` when `CLAUDECODE` is `1`.
 5. Otherwise an empty string.
@@ -86,10 +86,10 @@ For Codex prompts, the recorder ignores everything up to the last Conductor `</s
 Records are stored outside the repository at:
 
 ```text
-~/.local/state/kramme-cc-workflow/skill-usage.jsonl
+~/.local/state/trackbed/skill-usage.jsonl
 ```
 
-Set `KRAMME_SKILL_USAGE_FILE` to override the path, for example in tests or when keeping separate per-platform stats.
+Set `TRACKBED_SKILL_USAGE_FILE` to override the path, for example in tests or when keeping separate per-platform stats.
 
 Generate a report:
 
@@ -237,9 +237,9 @@ formatter: npm run format
 
 Because this directive is executable project-controlled code, the hook only runs it when the project root is listed in a user-side trust file outside the repository.
 
-Default trust file: `${XDG_CONFIG_HOME:-$HOME/.config}/kramme-cc-workflow/autoformat-trusted-roots`
+Default trust file: `${XDG_CONFIG_HOME:-$HOME/.config}/trackbed/autoformat-trusted-roots`
 
-Override the trust file location with `KRAMME_AUTOFORMAT_TRUST_FILE`.
+Override the trust file location with `TRACKBED_AUTOFORMAT_TRUST_FILE`.
 
 The trust file format is one absolute project root per line. Blank lines and `#` comments are ignored:
 
@@ -266,9 +266,9 @@ Malformed cache data is ignored and replaced by a fresh detection result.
 
 ### Failure Diagnostics
 
-Set `KRAMME_AUTOFORMAT_DEBUG=1` to retain bounded formatter failure evidence locally. The hook stores only the latest failed attempt for the project at `${XDG_CACHE_HOME:-$HOME/.cache}/claude-format/<project-cache-key>.last-error.log`, limits retained stderr to 64 KiB, creates the file with mode `0600`, and reports its path in the hook message. Successful-attempt output is discarded, raw diagnostics never enter hook JSON, and an inability to create the diagnostic file does not prevent formatting.
+Set `TRACKBED_AUTOFORMAT_DEBUG=1` to retain bounded formatter failure evidence locally. The hook stores only the latest failed attempt for the project at `${XDG_CACHE_HOME:-$HOME/.cache}/claude-format/<project-cache-key>.last-error.log`, limits retained stderr to 64 KiB, creates the file with mode `0600`, and reports its path in the hook message. Successful-attempt output is discarded, raw diagnostics never enter hook JSON, and an inability to create the diagnostic file does not prevent formatting.
 
-Debug retention is off by default. Unset `KRAMME_AUTOFORMAT_DEBUG` or set it to any value other than `1` to keep formatter output ephemeral.
+Debug retention is off by default. Unset `TRACKBED_AUTOFORMAT_DEBUG` or set it to any value other than `1` to keep formatter output ephemeral.
 
 ### Skipped Files
 
@@ -289,7 +289,7 @@ The hook automatically skips:
 
 Claude Code notices recommend `/plugin marketplace update trackbed`, then `/reload-plugins`. Codex notices give both install paths explicitly: Git marketplaces use `codex plugin marketplace upgrade trackbed`, then `codex plugin add trackbed@trackbed`; local/checkout installs, including `npx`, rerun their original install command. Restart Codex after updating. The hook does not inspect Codex configuration or invoke the Codex CLI to select a path.
 
-State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/update-check.json` by default; set `KRAMME_UPDATE_CHECK_FILE` to override the path. It holds three fields:
+State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/trackbed/update-check.json` by default; set `TRACKBED_UPDATE_CHECK_FILE` to override the path. It holds three fields:
 
 - `checkedAt`: epoch seconds of the last check attempt, successful or not. A failed check is not retried until the next day.
 - `latestVersion`: the newest release the last successful check found.

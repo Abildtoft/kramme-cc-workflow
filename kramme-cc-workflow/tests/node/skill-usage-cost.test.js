@@ -28,7 +28,7 @@ const LIMIT_TEXT = "You've hit your session limit · resets 5pm";
 /** @param {string[]} args @param {NodeJS.ProcessEnv} [overrides] */
 function runUsage(args, overrides = {}) {
   const env = { ...process.env };
-  delete env.KRAMME_SKILL_USAGE_FILE;
+  delete env.TRACKBED_SKILL_USAGE_FILE;
   delete env.CLAUDE_CONFIG_DIR;
   return spawnSync(process.execPath, [SCRIPT, ...args], {
     encoding: "utf8",

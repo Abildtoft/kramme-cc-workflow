@@ -192,7 +192,7 @@ def benchmark_auto_format_cache_hit(
         env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
         env["HOME"] = str(project_path)
         env["XDG_CACHE_HOME"] = str(project_path / "cache")
-        env.pop("KRAMME_HOOK_STATE_FILE", None)
+        env.pop("TRACKBED_HOOK_STATE_FILE", None)
 
         payload = json.dumps(
             {"tool_input": {"file_path": str(target_file)}},
@@ -244,8 +244,8 @@ def main() -> int:
             encoding="utf-8",
         )
 
-        enabled_env = base_env | {"KRAMME_HOOK_STATE_FILE": str(enabled_state)}
-        disabled_env = base_env | {"KRAMME_HOOK_STATE_FILE": str(disabled_state)}
+        enabled_env = base_env | {"TRACKBED_HOOK_STATE_FILE": str(enabled_state)}
+        disabled_env = base_env | {"TRACKBED_HOOK_STATE_FILE": str(disabled_state)}
 
         startup_samples = benchmark_python_startup(
             args.iterations, args.warmups, base_env

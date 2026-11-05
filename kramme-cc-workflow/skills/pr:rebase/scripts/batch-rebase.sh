@@ -226,7 +226,7 @@ find_worktree() {
 load_protected() {
   local configured origin_head
   PROTECTED=(main master develop)
-  configured=$(git config --get kramme.baseBranch || true)
+  configured=$(git config --get trackbed.baseBranch || git config --get kramme.baseBranch || true)
   [ -z "$configured" ] || PROTECTED+=("$configured")
   [ -z "${CONDUCTOR_DEFAULT_BRANCH:-}" ] || PROTECTED+=("$CONDUCTOR_DEFAULT_BRANCH")
   origin_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)

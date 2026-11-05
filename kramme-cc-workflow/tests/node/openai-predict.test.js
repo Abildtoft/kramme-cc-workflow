@@ -115,7 +115,7 @@ test("A exhausts its credits mid-case; B restarts the case in a fresh conversati
         !sent.includes("expected_findings"),
     );
   }
-  const directory = String(env.KRAMME_LIVE_EVAL_STATE);
+  const directory = String(env.TRACKBED_LIVE_EVAL_STATE);
   const run = validateRun(readJson(runFile(directory, "test-run")));
   assert.deepEqual(
     run.attempts.map((a) => a.outcome),
@@ -177,7 +177,7 @@ test("spend limits, usage limits, ambiguous quota, and auth failures stop withou
     );
     assert.equal(requests.length, 1);
   }
-  const directory = String(env.KRAMME_LIVE_EVAL_STATE);
+  const directory = String(env.TRACKBED_LIVE_EVAL_STATE);
   const run = validateRun(readJson(runFile(directory, "test-run")));
   assert.deepEqual(run.completed, {});
   assert.equal(run.status, "ERROR");
@@ -200,7 +200,7 @@ test("rate limits retry on the same key, then stop resumably instead of rotating
     "Recovered review",
   );
   assert.equal(new Set(flaky.requests.map((request) => request.key)).size, 1);
-  const directory = String(env.KRAMME_LIVE_EVAL_STATE);
+  const directory = String(env.TRACKBED_LIVE_EVAL_STATE);
   const saved = validateRun(readJson(runFile(directory, "test-run")));
   assert.equal(
     saved.attempts[0].trace.filter((event) => event.event === "api_retry")
@@ -233,7 +233,7 @@ test("response-body connection failures retry on the same key within the retry b
     "Recovered review",
   );
   assert.equal(flaky.requests.length, 4);
-  const directory = String(env.KRAMME_LIVE_EVAL_STATE);
+  const directory = String(env.TRACKBED_LIVE_EVAL_STATE);
   const saved = validateRun(readJson(runFile(directory, "test-run")));
   assert.equal(
     saved.attempts[0].trace.filter((event) => event.event === "api_retry")

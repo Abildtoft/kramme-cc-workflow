@@ -393,7 +393,7 @@ class PullRequestChain(StackContextCase):
 
     def test_configured_workbench_with_a_release_pull_request_stops_the_walk(self) -> None:
         self.layers()
-        git(self.repo, "config", "--local", "kramme.baseBranch", "layer-a")
+        git(self.repo, "config", "--local", "trackbed.baseBranch", "layer-a")
         self.respond(
             NO_STACK_EXTENSION,
             (heads("layer-b"), pulls((12, "layer-b", "layer-a"))),

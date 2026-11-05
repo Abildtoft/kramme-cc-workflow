@@ -2,7 +2,7 @@
 
 Use this in Phase 1 to confirm the current branch and compute `BASE_BRANCH`.
 
-Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository kramme.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
+Synced base/diff scope contract (keep aligned across base-aware and diff-aware skills): use the shared resolve-base.sh script for base refs; use the shared collect-review-diff.sh script for unified changed-file scope; canonical base priority is explicit --base, PR target branch, repository trackbed.baseBranch, CONDUCTOR_DEFAULT_BRANCH, then origin/HEAD, origin/main, or origin/master, and canonical diff scope is committed PR diff from MERGE_BASE...HEAD plus staged, unstaged, and untracked paths.
 
 1. **ALWAYS** confirm the current branch:
 
@@ -37,7 +37,7 @@ Synced base/diff scope contract (keep aligned across base-aware and diff-aware s
    echo "Base branch: $BASE_BRANCH"
    ```
 
-   Otherwise, resolve the base/target branch with the shared plugin script. It resolves in this order: explicit `BASE_BRANCH_OVERRIDE` from `--base`, PR target branch, repository `kramme.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. When `BASE_COMMIT_OVERRIDE` is present, it retains the branch metadata but pins all diff calculations to that exact commit. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
+   Otherwise, resolve the base/target branch with the shared plugin script. It resolves in this order: explicit `BASE_BRANCH_OVERRIDE` from `--base`, PR target branch, repository `trackbed.baseBranch`, `CONDUCTOR_DEFAULT_BRANCH`, then `origin/HEAD`/`origin/main`/`origin/master`. When `BASE_COMMIT_OVERRIDE` is present, it retains the branch metadata but pins all diff calculations to that exact commit. It runs in strict mode, so fetch failures stop the workflow with the script's stderr message.
 
    ```bash
    RESOLVE_ARGS=(--strict)

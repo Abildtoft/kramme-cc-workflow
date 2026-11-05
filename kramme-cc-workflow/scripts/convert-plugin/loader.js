@@ -43,7 +43,7 @@ const USER_INVOCABLE_FIELD = skillFrontmatterFieldByLoaderProperty(
 );
 const PLATFORMS_FIELD = skillFrontmatterFieldByLoaderProperty(
   "platforms",
-  "kramme-platforms",
+  "trackbed-platforms",
 );
 
 /** @param {unknown} value */

@@ -4,7 +4,7 @@ description: "Run one read-only PR review through a different model provider and
 argument-hint: "[--provider claude|codex] [--model <id>] [--base <branch>] [--requirements <authoritative requirements>]"
 disable-model-invocation: false
 user-invocable: true
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 permissions:
   - shell
 ---

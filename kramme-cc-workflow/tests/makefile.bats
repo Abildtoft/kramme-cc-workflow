@@ -136,7 +136,7 @@ SH
 @test "Bats timing mode runs every top-level suite once and reports to stderr" {
   setup_bats_runner_repo
 
-  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C KRAMME_BATS_TIMINGS=1 \
+  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C TRACKBED_BATS_TIMINGS=1 \
     bash "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh"
 
   [ "$status" -eq 0 ]
@@ -164,7 +164,7 @@ All tests passed!" ]
 @test "Bats timing mode preserves focused paths with spaces and failure status" {
   setup_bats_runner_repo
 
-  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" KRAMME_BATS_TIMINGS=1 FAIL_SUITE='a suite.bats' \
+  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" TRACKBED_BATS_TIMINGS=1 FAIL_SUITE='a suite.bats' \
     bash "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh" 'a suite.bats'
 
   [ "$status" -eq 7 ]
@@ -177,7 +177,7 @@ All tests passed!" ]
 @test "Bats timing mode records failures and continues through remaining suites" {
   setup_bats_runner_repo
 
-  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C KRAMME_BATS_TIMINGS=1 FAIL_SUITE=example.bats \
+  run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C TRACKBED_BATS_TIMINGS=1 FAIL_SUITE=example.bats \
     bash "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh"
 
   [ "$status" -eq 7 ]
@@ -192,7 +192,7 @@ All tests passed!" ]
   setup_bats_runner_repo
   local mode
   for mode in '' 0 true; do
-    run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C KRAMME_BATS_TIMINGS="$mode" \
+    run --separate-stderr env PATH="$MAKEFILE_CONTRACT_BIN:/usr/bin:/bin" LC_ALL=C TRACKBED_BATS_TIMINGS="$mode" \
       bash "$MAKEFILE_CONTRACT_REPO/plugin/tests/run-tests.sh"
 
     [ "$status" -eq 0 ]

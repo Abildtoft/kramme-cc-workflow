@@ -115,13 +115,13 @@ In that historical sample, the coverage gates were cheap relative to the suite t
 
 #### Measuring Bats suite cost
 
-Set `KRAMME_BATS_TIMINGS=1` to run each selected top-level suite serially in its own Bats process and report `suite`, `elapsed_seconds`, and numeric exit `status` to stderr. Use `LC_ALL=C` for repeatable filename ordering:
+Set `TRACKBED_BATS_TIMINGS=1` to run each selected top-level suite serially in its own Bats process and report `suite`, `elapsed_seconds`, and numeric exit `status` to stderr. Use `LC_ALL=C` for repeatable filename ordering:
 
 ```bash
-LC_ALL=C KRAMME_BATS_TIMINGS=1 bash kramme-cc-workflow/tests/run-tests.sh
+LC_ALL=C TRACKBED_BATS_TIMINGS=1 bash kramme-cc-workflow/tests/run-tests.sh
 
 # Repeat one suite; the path is relative to tests/, including paths with spaces.
-LC_ALL=C KRAMME_BATS_TIMINGS=1 bash kramme-cc-workflow/tests/run-tests.sh makefile.bats
+LC_ALL=C TRACKBED_BATS_TIMINGS=1 bash kramme-cc-workflow/tests/run-tests.sh makefile.bats
 ```
 
 The existing `test-bats` Make target also inherits the switch. Only the exact value `1` enables timing. The default runner still invokes `bats --tap` once, and `test-smoke` retains its separate representative selection. Timing mode uses the same top-level `*.bats` inventory without recursion, records failing suites, completes the remaining suites, and returns the first nonzero suite status. Focused mode preserves the selected suite's status.

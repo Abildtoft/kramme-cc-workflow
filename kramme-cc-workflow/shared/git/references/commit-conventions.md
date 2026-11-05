@@ -30,7 +30,7 @@ Run this read-only Bash block from the target repository. Replace `{history-ref}
 HISTORY_REF="{history-ref}"
 ROOT=$(git rev-parse --show-toplevel) && cd "$ROOT" || exit 1
 if [ "$HISTORY_REF" = auto ]; then
-  WORKBENCH=$(git config --local --get kramme.baseBranch || true)
+  WORKBENCH=$(git config --local --get trackbed.baseBranch || true)
   [ -n "$WORKBENCH" ] || WORKBENCH=${CONDUCTOR_DEFAULT_BRANCH:-}
   if [ -z "$WORKBENCH" ]; then
     WORKBENCH=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2> /dev/null || true)

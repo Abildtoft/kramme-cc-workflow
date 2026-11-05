@@ -124,7 +124,7 @@ Skills derived from external content — another agent-skills repository, a pape
 
 Why this matters:
 
-- **Skills go stale silently otherwise.** When the upstream source is revised — Pocock rewrites a skill, an Anthropic doc page changes, an OWASP item is renumbered — the kramme skill that absorbed those patterns will not pick up the revision unless the manifest declares the source. The drift only surfaces if a human notices independently, which scales poorly across dozens of skills.
+- **Skills go stale silently otherwise.** When the upstream source is revised — Pocock rewrites a skill, an Anthropic doc page changes, an OWASP item is renumbered — the trackbed skill that absorbed those patterns will not pick up the revision unless the manifest declares the source. The drift only surfaces if a human notices independently, which scales poorly across dozens of skills.
 - **Attribution discipline.** Writing the rationale line ("what in this skill is derived from this source") forces curation. If the connection cannot be articulated in one sentence, the source is not really an inspiration source — it might be an illustrative reference, a tool the skill calls but doesn't derive content from, or unrelated reading. Only inspiration sources go into the manifest.
 
 Apply the manifest convention every time:

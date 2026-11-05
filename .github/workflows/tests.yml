@@ -76,11 +76,11 @@ jobs:
           sudo apt-get install -y bats
           chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           "$chrome" --version
-          echo "KRAMME_BROWSER_SMOKE_CHROME=$chrome" >> "$GITHUB_ENV"
+          echo "TRACKBED_BROWSER_SMOKE_CHROME=$chrome" >> "$GITHUB_ENV"
 
       - name: Run required walkthrough interactions
         env:
-          KRAMME_REQUIRE_BROWSER_SMOKE: "1"
+          TRACKBED_REQUIRE_BROWSER_SMOKE: "1"
         run: >-
           bats --filter '^PR walkthrough supports initial render, tab switch, search, and tour navigation$' kramme-cc-workflow/tests/pr-walkthrough.bats
 

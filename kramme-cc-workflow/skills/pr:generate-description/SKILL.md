@@ -310,7 +310,7 @@ If yes, prepare the save-only namespace with this self-contained procedure. It i
 
 ```bash
 REPO_ROOT=$(git rev-parse --show-toplevel) || exit 1
-SAVE_NAMESPACE="$REPO_ROOT/.kramme-cc-workflow"
+SAVE_NAMESPACE="$REPO_ROOT/.trackbed"
 SAVE_DIR="$SAVE_NAMESPACE/pr-description"
 PR_DESCRIPTION_FILE="$SAVE_DIR/PR_DESCRIPTION.md"
 if [ -L "$SAVE_NAMESPACE" ] || [ -L "$SAVE_DIR" ] || [ -L "$PR_DESCRIPTION_FILE" ]; then
@@ -325,7 +325,7 @@ fi
 GIT_EXCLUDE=$(git rev-parse --git-path info/exclude) || exit 1
 mkdir -p "$(dirname "$GIT_EXCLUDE")" || exit 1
 touch "$GIT_EXCLUDE" || exit 1
-if ! grep -qxF ".kramme-cc-workflow/" "$GIT_EXCLUDE"; then
+if ! grep -qxF ".trackbed/" "$GIT_EXCLUDE"; then
   printf '\n.kramme-cc-workflow/\n' >> "$GIT_EXCLUDE" || {
     echo "Error: Could not update Git's local exclude file; the description was not saved." >&2
     exit 1
@@ -354,7 +354,7 @@ Read the platform-specific notes from `references/platform-notes.md`. Covers mag
 
 ## Notes
 
-- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When directly invoked in auto mode, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh api --method PATCH repos/{owner}/{repo}/pulls/<number> --hostname <pr-host>`, using the hostname from the backed-up PR URL. Check mode updates a PR only after a direct user invocation without `--no-update` answers `y` to its prompt, and then only the exact PR it checked. When saving output, it may write local files under `.kramme-cc-workflow/pr-description/` and add `.kramme-cc-workflow/` to git's local exclude file if missing.
+- **NOTE**: This skill generates PR title/body content and does NOT create a new PR. When directly invoked in auto mode, an existing PR is found, `--no-update` is absent, and no blocking missing requirement is present, it may update that PR's title/body through `gh api --method PATCH repos/{owner}/{repo}/pulls/<number> --hostname <pr-host>`, using the hostname from the backed-up PR URL. Check mode updates a PR only after a direct user invocation without `--no-update` answers `y` to its prompt, and then only the exact PR it checked. When saving output, it may write local files under `.trackbed/pr-description/` and add `.trackbed/` to git's local exclude file if missing.
 - **NOTE**: After generation, review the description and adjust as needed before using it
 - **NOTE**: This skill is self-contained. If a downstream installation needs custom PR-title policy, adapt this skill locally instead of depending on repo-root instruction files.
 - **NOTE**: If Linear issue lookup fails, continue anyway and note the issue ID in the summary without detailed context

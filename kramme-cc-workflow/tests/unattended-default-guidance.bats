@@ -39,7 +39,7 @@ setup() {
 }
 
 @test "no component passes --auto to the shipping skills" {
-	run grep -rnE 'kramme:(git:recreate-commits|pr:create|pr:fix-ci|pr:generate-description|pr:rebase) --auto' \
+	run grep -rnE 'trackbed:(git:recreate-commits|pr:create|pr:fix-ci|pr:generate-description|pr:rebase) --auto' \
 		"$REPO_ROOT/skills" "$REPO_ROOT/shared" "$REPO_ROOT/agents" "$REPO_ROOT/docs/shipping.md" "$REPO_ROOT/docs/review.md"
 	[ "$status" -eq 1 ]
 }

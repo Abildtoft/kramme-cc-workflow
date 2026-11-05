@@ -11,8 +11,8 @@ setup() {
 }
 
 write_hook_state() {
-	mkdir -p "$TEST_XDG_STATE_HOME/kramme-cc-workflow"
-	printf '%s\n' "$1" >"$TEST_XDG_STATE_HOME/kramme-cc-workflow/hook-state.json"
+	mkdir -p "$TEST_XDG_STATE_HOME/trackbed"
+	printf '%s\n' "$1" >"$TEST_XDG_STATE_HOME/trackbed/hook-state.json"
 }
 
 write_legacy_hook_state() {
@@ -84,12 +84,12 @@ run_exit_if_hook_disabled_without_jq() {
 	[ -z "$output" ]
 }
 
-@test "KRAMME_HOOK_STATE_FILE overrides default hook state path" {
+@test "TRACKBED_HOOK_STATE_FILE overrides default hook state path" {
 	local override_file="$BATS_TEST_TMPDIR/override-state.json"
 	write_hook_state '{"disabled":["block-rm-rf"]}'
 	printf '%s\n' '{"disabled":["auto-format"]}' >"$override_file"
 
-	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" KRAMME_HOOK_STATE_FILE="$override_file" bash -c \
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" TRACKBED_HOOK_STATE_FILE="$override_file" bash -c \
 		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "auto-format"
 
 	[ "$status" -eq 1 ]
@@ -223,41 +223,74 @@ run_exit_if_hook_disabled_without_jq() {
 	[ -z "$output" ]
 }
 
-run_resolve_kramme_path() {
+run_resolve_trackbed_path() {
 	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" bash -c \
-		'source "$1"; shift; resolve_kramme_path "$@"' _ "$LIB" "$@"
+		'source "$1"; shift; resolve_trackbed_path "$@"' _ "$LIB" "$@"
 }
 
-@test "resolve_kramme_path prefers the override env var over XDG and legacy paths" {
+@test "resolve_trackbed_path prefers the override env var over XDG and legacy paths" {
 	local override_file="$BATS_TEST_TMPDIR/override.config"
 	local xdg_home="$BATS_TEST_TMPDIR/xdg-config"
-	mkdir -p "$xdg_home/kramme-cc-workflow"
-	printf 'xdg\n' >"$xdg_home/kramme-cc-workflow/thing.config"
+	mkdir -p "$xdg_home/trackbed"
+	printf 'xdg\n' >"$xdg_home/trackbed/thing.config"
 	printf 'legacy\n' >"$TEST_PLUGIN_ROOT/hooks/thing.config"
 	printf 'override\n' >"$override_file"
 
-	KRAMME_TEST_OVERRIDE="$override_file" XDG_TEST_HOME="$xdg_home" \
-		run_resolve_kramme_path "KRAMME_TEST_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config" \
+	TRACKBED_TEST_OVERRIDE="$override_file" XDG_TEST_HOME="$xdg_home" \
+		run_resolve_trackbed_path "TRACKBED_TEST_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config" \
 		"$TEST_PLUGIN_ROOT/hooks/thing.config"
 
 	[ "$status" -eq 0 ]
 	[ "$output" = "$override_file" ]
 }
 
-@test "resolve_kramme_path falls back to the XDG default subdir when the XDG var is unset" {
+@test "resolve_trackbed_path falls back to the XDG default subdir when the XDG var is unset" {
 	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" HOME="$BATS_TEST_TMPDIR/home" bash -c \
-		'source "$1"; unset XDG_TEST_HOME KRAMME_TEST_UNSET_OVERRIDE; resolve_kramme_path "KRAMME_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"' _ "$LIB"
+		'source "$1"; unset XDG_TEST_HOME TRACKBED_TEST_UNSET_OVERRIDE; resolve_trackbed_path "TRACKBED_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"' _ "$LIB"
 
 	[ "$status" -eq 0 ]
-	[ "$output" = "$BATS_TEST_TMPDIR/home/.config/kramme-cc-workflow/thing.config" ]
+	[ "$output" = "$BATS_TEST_TMPDIR/home/.config/trackbed/thing.config" ]
 }
 
-@test "resolve_kramme_path never falls back to a legacy path when none is given" {
+@test "resolve_trackbed_path never falls back to a legacy path when none is given" {
 	printf 'legacy\n' >"$TEST_PLUGIN_ROOT/hooks/thing.config"
 	local xdg_home="$BATS_TEST_TMPDIR/xdg-config-empty"
 
-	XDG_TEST_HOME="$xdg_home" run_resolve_kramme_path "KRAMME_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"
+	XDG_TEST_HOME="$xdg_home" run_resolve_trackbed_path "TRACKBED_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"
 
 	[ "$status" -eq 0 ]
+	[ "$output" = "$xdg_home/trackbed/thing.config" ]
+}
+
+@test "resolve_trackbed_path reads the pre-1.0.0 KRAMME_ override while the TRACKBED_ one is unset" {
+	local override_file="$BATS_TEST_TMPDIR/legacy-override.config"
+
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" KRAMME_TEST_OVERRIDE="$override_file" bash -c \
+		'source "$1"; unset TRACKBED_TEST_OVERRIDE; resolve_trackbed_path "TRACKBED_TEST_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"' _ "$LIB"
+	[ "$status" -eq 0 ]
+	[ "$output" = "$override_file" ]
+
+	TRACKBED_TEST_OVERRIDE="$BATS_TEST_TMPDIR/new.config" KRAMME_TEST_OVERRIDE="$override_file" \
+		run_resolve_trackbed_path "TRACKBED_TEST_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"
+	[ "$status" -eq 0 ]
+	[ "$output" = "$BATS_TEST_TMPDIR/new.config" ]
+}
+
+@test "resolve_trackbed_path keeps using a pre-1.0.0 file until a trackbed file exists" {
+	local xdg_home="$BATS_TEST_TMPDIR/xdg-config-previous"
+	mkdir -p "$xdg_home/kramme-cc-workflow"
+	printf 'previous\n' >"$xdg_home/kramme-cc-workflow/thing.config"
+	printf 'legacy\n' >"$TEST_PLUGIN_ROOT/hooks/thing.config"
+
+	XDG_TEST_HOME="$xdg_home" run_resolve_trackbed_path "TRACKBED_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config" \
+		"$TEST_PLUGIN_ROOT/hooks/thing.config"
+	[ "$status" -eq 0 ]
 	[ "$output" = "$xdg_home/kramme-cc-workflow/thing.config" ]
+
+	mkdir -p "$xdg_home/trackbed"
+	printf 'current\n' >"$xdg_home/trackbed/thing.config"
+	XDG_TEST_HOME="$xdg_home" run_resolve_trackbed_path "TRACKBED_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config" \
+		"$TEST_PLUGIN_ROOT/hooks/thing.config"
+	[ "$status" -eq 0 ]
+	[ "$output" = "$xdg_home/trackbed/thing.config" ]
 }

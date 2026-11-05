@@ -8,9 +8,9 @@ setup() {
 	SCRIPT="$BATS_TEST_DIRNAME/../scripts/skill-usage.js"
 	USAGE_FILE="$BATS_TEST_TMPDIR/skill-usage.jsonl"
 	DIAGNOSTIC_FILE="$BATS_TEST_TMPDIR/skill-usage-diagnostics.log"
-	export KRAMME_SKILL_USAGE_FILE="$USAGE_FILE"
-	export KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$DIAGNOSTIC_FILE"
-	unset KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES
+	export TRACKBED_SKILL_USAGE_FILE="$USAGE_FILE"
+	export TRACKBED_SKILL_USAGE_DIAGNOSTIC_FILE="$DIAGNOSTIC_FILE"
+	unset TRACKBED_SKILL_USAGE_DIAGNOSTIC_MAX_LINES
 	rm -f "$USAGE_FILE" "$DIAGNOSTIC_FILE"
 }
 
@@ -191,7 +191,7 @@ create_usage_plugin_root() {
 	create_usage_plugin_root "$PLUGIN_ROOT"
 	printf '%s\n' '#!/usr/bin/env node' 'process.exit(64);' >"$PLUGIN_ROOT/hooks/skill-usage.js"
 
-	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
+	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" TRACKBED_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
 		'{"prompt":"/trackbed:test:script-owner","session_id":"session-script"}' \
 		"$PLUGIN_ROOT" \
 		"$USAGE_FILE"
@@ -213,7 +213,7 @@ create_usage_plugin_root() {
 	rm "$PLUGIN_ROOT/scripts/skill-usage.js"
 	printf '%s\n' '#!/usr/bin/env node' 'process.exit(64);' >"$PLUGIN_ROOT/hooks/skill-usage.js"
 
-	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
+	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" TRACKBED_SKILL_USAGE_FILE="$3" TRACKBED_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
 		'{"prompt":"/kramme:missing-owner","session_id":"session-missing"}' \
 		"$PLUGIN_ROOT" \
 		"$USAGE_FILE" \
@@ -233,15 +233,15 @@ create_usage_plugin_root() {
 	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
 	create_usage_plugin_root "$PLUGIN_ROOT"
 	printf '%s\n' '#!/usr/bin/env node' 'process.exit(42);' >"$PLUGIN_ROOT/scripts/skill-usage.js"
-	export KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES=2
+	export TRACKBED_SKILL_USAGE_DIAGNOSTIC_MAX_LINES=2
 
 	for skill in one two three; do
-		run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES="$5" bash "$2/hooks/skill-usage-stats.sh"' _ \
+		run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" TRACKBED_SKILL_USAGE_FILE="$3" TRACKBED_SKILL_USAGE_DIAGNOSTIC_FILE="$4" TRACKBED_SKILL_USAGE_DIAGNOSTIC_MAX_LINES="$5" bash "$2/hooks/skill-usage-stats.sh"' _ \
 			"{\"prompt\":\"/trackbed:$skill\",\"session_id\":\"session-diag\"}" \
 			"$PLUGIN_ROOT" \
 			"$USAGE_FILE" \
 			"$DIAGNOSTIC_FILE" \
-			"$KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES"
+			"$TRACKBED_SKILL_USAGE_DIAGNOSTIC_MAX_LINES"
 		[ "$status" -eq 0 ]
 		[ "$output" = "{}" ]
 	done
@@ -265,7 +265,7 @@ create_usage_plugin_root() {
 		'process.exit(1);' \
 		>"$PLUGIN_ROOT/scripts/skill-usage.js"
 
-	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
+	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" TRACKBED_SKILL_USAGE_FILE="$3" TRACKBED_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
 		'{"prompt":"/kramme:blocked","session_id":"session-eacces"}' \
 		"$PLUGIN_ROOT" \
 		"$USAGE_FILE" \
@@ -290,7 +290,7 @@ create_usage_plugin_root() {
 		'process.exit(1);' \
 		>"$PLUGIN_ROOT/scripts/skill-usage.js"
 
-	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
+	run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" TRACKBED_SKILL_USAGE_FILE="$3" TRACKBED_SKILL_USAGE_DIAGNOSTIC_FILE="$4" bash "$2/hooks/skill-usage-stats.sh"' _ \
 		'{"prompt":"/kramme:overlong-cause","session_id":"session-overlong"}' \
 		"$PLUGIN_ROOT" \
 		"$USAGE_FILE" \
@@ -312,17 +312,17 @@ create_usage_plugin_root() {
 	PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
 	create_usage_plugin_root "$PLUGIN_ROOT"
 	printf '%s\n' '#!/usr/bin/env node' 'process.exit(42);' >"$PLUGIN_ROOT/scripts/skill-usage.js"
-	export KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES=2
+	export TRACKBED_SKILL_USAGE_DIAGNOSTIC_MAX_LINES=2
 	printf 'existing\n' >"$DIAGNOSTIC_FILE"
 	chmod 600 "$DIAGNOSTIC_FILE"
 
 	for skill in one two three; do
-		run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" KRAMME_SKILL_USAGE_DIAGNOSTIC_FILE="$4" KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES="$5" bash "$2/hooks/skill-usage-stats.sh"' _ \
+		run bash -c 'printf "%s" "$1" | env CLAUDE_PLUGIN_ROOT="$2" TRACKBED_SKILL_USAGE_FILE="$3" TRACKBED_SKILL_USAGE_DIAGNOSTIC_FILE="$4" TRACKBED_SKILL_USAGE_DIAGNOSTIC_MAX_LINES="$5" bash "$2/hooks/skill-usage-stats.sh"' _ \
 			"{\"prompt\":\"/trackbed:$skill\",\"session_id\":\"session-diag\"}" \
 			"$PLUGIN_ROOT" \
 			"$USAGE_FILE" \
 			"$DIAGNOSTIC_FILE" \
-			"$KRAMME_SKILL_USAGE_DIAGNOSTIC_MAX_LINES"
+			"$TRACKBED_SKILL_USAGE_DIAGNOSTIC_MAX_LINES"
 		[ "$status" -eq 0 ]
 		[ "$output" = "{}" ]
 	done
@@ -364,7 +364,7 @@ create_usage_plugin_root() {
 	create_usage_plugin_root "$PLUGIN_ROOT"
 	PAYLOAD="$(jq -cn '{hook_event_name: "UserPromptSubmit", session_id: "thread-1", turn_id: "turn-1", transcript_path: null, cwd: "/tmp/repo", model: "gpt-5", permission_mode: "default", prompt: "<system_instruction>\nRun /kramme:conductor:hidden\n</system_instruction>\n$trackbed:pr:create now"}')"
 
-	run bash -c 'printf "%s" "$1" | env -u CLAUDECODE -u KRAMME_AGENT_PLATFORM CLAUDE_PLUGIN_ROOT="$2" KRAMME_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
+	run bash -c 'printf "%s" "$1" | env -u CLAUDECODE -u TRACKBED_AGENT_PLATFORM CLAUDE_PLUGIN_ROOT="$2" TRACKBED_SKILL_USAGE_FILE="$3" bash "$2/hooks/skill-usage-stats.sh"' _ \
 		"$PAYLOAD" \
 		"$PLUGIN_ROOT" \
 		"$USAGE_FILE"
@@ -381,7 +381,7 @@ create_usage_plugin_root() {
 		skip "node is required for skill usage tests"
 	fi
 
-	run bash -c 'printf "%s" "$1" | env -u KRAMME_AGENT_PLATFORM CLAUDECODE=1 bash "$2"' _ \
+	run bash -c 'printf "%s" "$1" | env -u TRACKBED_AGENT_PLATFORM CLAUDECODE=1 bash "$2"' _ \
 		'{"hook_event_name":"UserPromptSubmit","prompt":"Run /trackbed:qa","session_id":"session-1"}' \
 		"$HOOK"
 	[ "$status" -eq 0 ]

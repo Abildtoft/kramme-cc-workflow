@@ -16,7 +16,7 @@ Read this before selecting standard or Team Mode. It applies to default, filtere
 
 Resolve this skill's installed directory as `REVIEW_SKILL_DIR`; use its own `scripts/review-execution.js`. Do not depend on a repository checkout or installed files from a different skill. Node.js 20+ and Git are required. Missing tooling means incomplete coverage, not permission to bypass the gate.
 
-Create a fresh run directory **outside the working tree**, including for inline and validation-only runs, with `mktemp -d "${TMPDIR:-/tmp}/kramme-code-review.XXXXXX"`. This avoids adding review evidence to the untracked diff or triggering shared-tree mutation checks. Never reuse a run directory except to resume the same interrupted run under `Resume an interrupted run`, and never manually edit generated ledgers. The orchestrator alone serializes ledger writes; reviewers return outputs and never write the ledger.
+Create a fresh run directory **outside the working tree**, including for inline and validation-only runs, with `mktemp -d "${TMPDIR:-/tmp}/trackbed-code-review.XXXXXX"`. This avoids adding review evidence to the untracked diff or triggering shared-tree mutation checks. Never reuse a run directory except to resume the same interrupted run under `Resume an interrupted run`, and never manually edit generated ledgers. The orchestrator alone serializes ledger writes; reviewers return outputs and never write the ledger.
 
 After standard Steps 1–6 (Team Step 1), save a plan JSON outside the run directory:
 
@@ -116,7 +116,7 @@ Store a `resume` object in every plan so a later invocation can tell whether it 
 }
 ```
 
-Before `init`, look for a run to resume: first the run directory this conversation already holds, then every `${TMPDIR:-/tmp}/kramme-code-review.*` directory, newest first. Read each with:
+Before `init`, look for a run to resume: first the run directory this conversation already holds, then every `${TMPDIR:-/tmp}/trackbed-code-review.*` directory, newest first. Read each with:
 
 ```bash
 node "$REVIEW_SKILL_DIR/scripts/review-execution.js" status "$CANDIDATE_RUN"

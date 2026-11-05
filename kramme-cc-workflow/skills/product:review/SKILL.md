@@ -4,7 +4,7 @@ description: (experimental) Whole-product review across flows and surfaces. Requ
 argument-hint: "<url|auto> [--flows <flow1,flow2,...>] [--focus <dimension>] [--inline]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 ---
 
 # Whole-Product Review

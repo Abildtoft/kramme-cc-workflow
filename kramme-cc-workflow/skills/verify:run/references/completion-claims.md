@@ -17,7 +17,7 @@ Read this before claiming that a regression test protects a fix, that a delegate
 A regression test earns trust only if it fails without the fix. Take the fix out with a uniquely tagged stash entry and restore it by commit ID. Every worktree of a repository shares one stash list, including parallel Conductor workspaces and other agent sessions, so never run a bare `git stash pop` or assume the entry is still `stash@{0}`.
 
 ```bash
-RG_TAG="kramme-red-green-$(date +%s)-$$"
+RG_TAG="trackbed-red-green-$(date +%s)-$$"
 git stash push --include-untracked --message "$RG_TAG" -- <files changed by the fix>
 RG_SHA=$(git stash list --format='%H %gs' | awk -v tag="$RG_TAG" 'index($0, tag) { print $1; exit }')
 [ -n "$RG_SHA" ] || { echo "No red-green stash entry was created; stop and inspect git stash list." >&2; exit 1; }

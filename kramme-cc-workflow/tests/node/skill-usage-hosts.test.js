@@ -30,8 +30,8 @@ const CONDUCTOR_BLOCK =
 function hostEnv(overrides = {}) {
   const env = { ...process.env };
   delete env.CLAUDECODE;
-  delete env.KRAMME_AGENT_PLATFORM;
-  delete env.KRAMME_SKILL_USAGE_FILE;
+  delete env.TRACKBED_AGENT_PLATFORM;
+  delete env.TRACKBED_SKILL_USAGE_FILE;
   return { ...env, ...overrides };
 }
 
@@ -208,13 +208,13 @@ test("detectPlatform prefers explicit overrides over detected hosts", () => {
   assert.equal(
     detectPlatform(
       { ...codexPayload, platform: "custom" },
-      { KRAMME_AGENT_PLATFORM: "env-value", CLAUDECODE: "1" },
+      { TRACKBED_AGENT_PLATFORM: "env-value", CLAUDECODE: "1" },
     ),
     "custom",
   );
   assert.equal(
     detectPlatform(codexPayload, {
-      KRAMME_AGENT_PLATFORM: "env-value",
+      TRACKBED_AGENT_PLATFORM: "env-value",
       CLAUDECODE: "1",
     }),
     "env-value",
@@ -222,7 +222,7 @@ test("detectPlatform prefers explicit overrides over detected hosts", () => {
   assert.equal(
     detectPlatform(
       { platform: "", turn_id: "turn-1" },
-      { KRAMME_AGENT_PLATFORM: "" },
+      { TRACKBED_AGENT_PLATFORM: "" },
     ),
     PLATFORM_CODEX,
   );
@@ -283,7 +283,7 @@ test("readPluginVersion reads the Claude Code manifest, then the Codex one", asy
       ".codex-plugin/plugin.json": '{"version":"0.88.0"}',
     }),
     await pluginRoot("unversioned", {
-      ".claude-plugin/plugin.json": '{"name":"kramme-cc-workflow"}',
+      ".claude-plugin/plugin.json": '{"name":"trackbed"}',
     }),
     path.join(root, "missing"),
   ];
@@ -557,11 +557,11 @@ test("record lets explicit platform overrides win over detection", async (t) => 
       turn_id: "turn-1",
       prompt: "/trackbed:qa",
     }),
-    env: { KRAMME_AGENT_PLATFORM: "codex" },
+    env: { TRACKBED_AGENT_PLATFORM: "codex" },
   });
   const fromEnv = runUsage(["record", "--file", usageFile], {
     input: JSON.stringify({ prompt: "$trackbed:pr:create" }),
-    env: { KRAMME_AGENT_PLATFORM: "codex", CLAUDECODE: "1" },
+    env: { TRACKBED_AGENT_PLATFORM: "codex", CLAUDECODE: "1" },
   });
 
   assert.equal(fromPayload.status, 0, fromPayload.stderr);

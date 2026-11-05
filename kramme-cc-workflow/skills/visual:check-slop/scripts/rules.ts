@@ -90,7 +90,7 @@ function stripCssComments(css: string): string {
 
 // Authored comments become inert placeholder declarations while a fixer
 // rewrites a <style> body, then return as their original text.
-const CSS_COMMENT_MARKER_RE = /--__kramme_slop_comment_(\d+):0;/g;
+const CSS_COMMENT_MARKER_RE = /--__trackbed_slop_comment_(\d+):0;/g;
 
 function rewriteKeepingCssComments(
   css: string,
@@ -99,7 +99,7 @@ function rewriteKeepingCssComments(
   const comments: string[] = [];
   const protectedCss = css.replace(/\/\*[\s\S]*?\*\//g, (comment) => {
     const index = comments.push(comment) - 1;
-    return `--__kramme_slop_comment_${index}:0;`;
+    return `--__trackbed_slop_comment_${index}:0;`;
   });
   return rewrite(protectedCss).replace(
     CSS_COMMENT_MARKER_RE,

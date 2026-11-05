@@ -4,7 +4,7 @@ description: "Generate a local visual walkthrough as a self-contained HTML artif
 argument-hint: "[--report [branch|commit|PR#|range] | --report --base <ref> | --base <ref>] [--output <path>]"
 disable-model-invocation: true
 user-invocable: true
-kramme-platforms: [claude-code, codex]
+trackbed-platforms: [claude-code, codex]
 ---
 
 # PR Walkthrough
@@ -245,7 +245,7 @@ Make sections 1-3 dominate the viewport. Keep sections 6 onward compact and coll
 
 ### Output
 
-If `--output <path>` is present, use it. Otherwise write the report to `~/.kramme-cc-workflow/diagrams/diff-review-{descriptive-name}.html`, creating the parent directory when needed and choosing a descriptive name for the current scope.
+If `--output <path>` is present, use it. Otherwise write the report to `~/.trackbed/diagrams/diff-review-{descriptive-name}.html`, creating the parent directory when needed and choosing a descriptive name for the current scope.
 
 Open the report in a browser:
 

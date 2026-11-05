@@ -295,7 +295,7 @@ More review skills cover product, convention, UX, and GitHub-reviewer flows. Whi
 
 `/trackbed:pr:github-review` is report-only by default; it writes a pending review or submits one only when you explicitly ask. A re-review covers only what changed since your last review, and `--stack` maps a whole stack first. Review skills handle stacked Pull Requests one layer at a time, and interrupted reviews resume within 24 hours. The [review guide](kramme-cc-workflow/docs/review.md) covers reviewer models, review convergence, stacks, and GitHub write rules.
 
-New work starts from the repository's workbench branch. Set it with `git config --local kramme.baseBranch <branch>` when it differs from the remote default; the [shipping guide](kramme-cc-workflow/docs/shipping.md#base-branch) explains how the skills choose it.
+New work starts from the repository's workbench branch. Set it with `git config --local trackbed.baseBranch <branch>` when it differs from the remote default; the [shipping guide](kramme-cc-workflow/docs/shipping.md#base-branch) explains how the skills choose it.
 
 ### Inspect and test a live app
 
@@ -322,11 +322,11 @@ All skills are listed in the [reference below](#skills). Background skills, such
 
 | Setting | Where | Effect |
 | --- | --- | --- |
-| `kramme.baseBranch` | `git config --local`, per repository | The workbench branch new work starts from, when it differs from the remote default. `--base <branch>` overrides it for one run. See [Base Branch](kramme-cc-workflow/docs/shipping.md#base-branch). |
-| `KRAMME_REVIEW_SUBAGENT_LEVEL` | The `env` block of Claude Code's `settings.json`, or the shell environment Codex inherits | `same` (default) keeps review subagents on the orchestrator's model; `lower` steps them down one model class. See [Reviewer Models](kramme-cc-workflow/docs/review.md#reviewer-models). |
-| `--subagent-model <model>` | Flag on review skills and codebase audits | Picks the reviewer model for one run and wins over `KRAMME_REVIEW_SUBAGENT_LEVEL`. |
-| Hook toggles | `/trackbed:hooks:toggle` | Enable, disable, or reset hooks. State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` unless `KRAMME_HOOK_STATE_FILE` points elsewhere. See [Toggling Hooks](kramme-cc-workflow/docs/hooks.md#toggling-hooks). |
-| `KRAMME_AUTOFORMAT_DEBUG=1` | Environment | Keeps the latest failed auto-format attempt's stderr in a private local file. Off by default. See [Failure Diagnostics](kramme-cc-workflow/docs/hooks.md#failure-diagnostics). |
+| `trackbed.baseBranch` | `git config --local`, per repository | The workbench branch new work starts from, when it differs from the remote default. `--base <branch>` overrides it for one run. See [Base Branch](kramme-cc-workflow/docs/shipping.md#base-branch). |
+| `TRACKBED_REVIEW_SUBAGENT_LEVEL` | The `env` block of Claude Code's `settings.json`, or the shell environment Codex inherits | `same` (default) keeps review subagents on the orchestrator's model; `lower` steps them down one model class. See [Reviewer Models](kramme-cc-workflow/docs/review.md#reviewer-models). |
+| `--subagent-model <model>` | Flag on review skills and codebase audits | Picks the reviewer model for one run and wins over `TRACKBED_REVIEW_SUBAGENT_LEVEL`. |
+| Hook toggles | `/trackbed:hooks:toggle` | Enable, disable, or reset hooks. State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/trackbed/hook-state.json` unless `TRACKBED_HOOK_STATE_FILE` points elsewhere. See [Toggling Hooks](kramme-cc-workflow/docs/hooks.md#toggling-hooks). |
+| `TRACKBED_AUTOFORMAT_DEBUG=1` | Environment | Keeps the latest failed auto-format attempt's stderr in a private local file. Off by default. See [Failure Diagnostics](kramme-cc-workflow/docs/hooks.md#failure-diagnostics). |
 | `CODEX_HOME` | Environment | A non-default Codex home. Keep it exported in shells Codex runs. |
 | `.context/` in `.gitignore` | Your repository | Required to resume interrupted GitHub reviews and codebase audits, which save their progress there. |
 
@@ -644,7 +644,13 @@ codex plugin remove kramme-cc-workflow@kramme-cc-workflow
 codex plugin marketplace remove kramme-cc-workflow
 ```
 
-Usage records from before the rename count toward the new names. Hook toggles, the update-check state, and other settings under `kramme-cc-workflow` state and config directories keep working unchanged.
+Usage records from before the rename count toward the new names. Your settings carry over:
+
+- `TRACKBED_*` environment variables replace the `KRAMME_*` ones. The old names still work while the new ones are unset.
+- `git config trackbed.baseBranch` replaces `kramme.baseBranch`, which is still read when the new key is unset.
+- Hook toggles, usage records, and update-check state now live in `trackbed/` state and config folders. Files already in the `kramme-cc-workflow/` folders keep being used until a `trackbed/` file exists.
+- Diagrams and walkthrough reports now go to `~/.trackbed/diagrams/`, and saved Pull Request descriptions to `.trackbed/` in the repository. Older files stay where they are, and `/trackbed:workflow:cleanup-artifacts` still cleans old diagrams.
+- Checkout installs of the Codex plugin build their marketplace under `<codex-home>/.trackbed-plugin-marketplaces/`.
 
 ### Renamed
 
@@ -804,7 +810,7 @@ The source tree above feeds both host packages. Claude Code reads the plugin met
 See [AGENTS.md](AGENTS.md) for detailed conventions. Quick reference:
 
 - **Agents**: Create markdown files in `kramme-cc-workflow/agents/` with `name`, `description`, `model`, and `color` frontmatter.
-- **Skills**: Create a subdirectory in `kramme-cc-workflow/skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `kramme-platforms`.
+- **Skills**: Create a subdirectory in `kramme-cc-workflow/skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `trackbed-platforms`.
 - **Hooks**: Edit `kramme-cc-workflow/hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
 - **README summaries**: Give each new skill or agent a one-line summary of at most 160 characters under `summaries` in `readme_skill_sync` or `readme_agent_sync` in [synced-contracts.yaml](kramme-cc-workflow/scripts/synced-contracts.yaml). Hooks use `readme_hook_sync.descriptions`.
 - **External sources**: Record every adapted source in the skill's `references/sources.yaml` as `usage: inspiration` or `usage: copied`, following [External Sources and Rights](AGENTS.md#external-sources-and-rights). Use `/trackbed:skill:create` and `/trackbed:skill:review` for the detailed checks.

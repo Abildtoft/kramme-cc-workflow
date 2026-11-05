@@ -50,7 +50,7 @@ function childEnvironment(key, auth, parent) {
     LANG: "en_US.UTF-8",
     ANTHROPIC_API_KEY: key,
     CLAUDE_CONFIG_DIR: auth,
-    CLAUDE_AGENT_SDK_CLIENT_APP: "kramme-skill-review-evals/1.0.0",
+    CLAUDE_AGENT_SDK_CLIENT_APP: "trackbed-skill-review-evals/1.0.0",
     CLAUDE_CODE_MAX_RETRIES: "2",
     CLAUDE_CODE_NONSTREAMING_TIMEOUT_RETRIES: "0",
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",

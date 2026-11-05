@@ -46,7 +46,7 @@ const USER_INVOCABLE_FIELD = skillFrontmatterFieldByLoaderProperty(
 );
 const PLATFORMS_FIELD = skillFrontmatterFieldByLoaderProperty(
   "platforms",
-  "kramme-platforms",
+  "trackbed-platforms",
 );
 const REQUIRED_HOOK_CONTROL_SKILLS = ["hooks:toggle"];
 // Skill Markdown reaches its own files through the plugin root; Codex skill

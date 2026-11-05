@@ -350,16 +350,16 @@ function runLive(options, dependencies = {}) {
         timeout: 25 * 60 * 1000,
         env: {
           ...env,
-          KRAMME_LIVE_EVAL_STATE: options.stateDir,
-          KRAMME_LIVE_EVAL_OWNER_TOKEN: String(
+          TRACKBED_LIVE_EVAL_STATE: options.stateDir,
+          TRACKBED_LIVE_EVAL_OWNER_TOKEN: String(
             record(readJson(path.join(options.stateDir, "writer.lock"))).token,
           ),
-          KRAMME_LIVE_EVAL_RUN: run.id,
-          KRAMME_LIVE_EVAL_CONFIG: options.organizations,
-          KRAMME_LIVE_EVAL_ATTEMPT_TIMEOUT: String(options.attemptTimeout),
-          KRAMME_LIVE_EVAL_CASE_TIMEOUT: String(options.caseTimeout),
-          KRAMME_LIVE_EVAL_MAX_TURNS: String(options.maxTurns),
-          KRAMME_LIVE_EVAL_DEADLINE: String(Date.now() + 24 * 60 * 1000),
+          TRACKBED_LIVE_EVAL_RUN: run.id,
+          TRACKBED_LIVE_EVAL_CONFIG: options.organizations,
+          TRACKBED_LIVE_EVAL_ATTEMPT_TIMEOUT: String(options.attemptTimeout),
+          TRACKBED_LIVE_EVAL_CASE_TIMEOUT: String(options.caseTimeout),
+          TRACKBED_LIVE_EVAL_MAX_TURNS: String(options.maxTurns),
+          TRACKBED_LIVE_EVAL_DEADLINE: String(Date.now() + 24 * 60 * 1000),
           SKILL_REVIEW_EVAL_PREDICTION_TIMEOUT_MS: String(
             options.caseTimeout + 15000,
           ),
