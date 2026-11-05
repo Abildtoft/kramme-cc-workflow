@@ -5,46 +5,53 @@ sources:
     rationale: "The skill uses this source for listing review-requested PRs (gh pr list --search), reading PR context (gh pr view), and the gh CLI conventions used throughout the workflow."
     usage: inspiration
     last_reviewed_at: 2026-07-01
+    fetch_mode: curl-html
     baseline_hash: "sha256:942dc20e453a203a438e45de88efc625e8b7a9ec6feb5ba2a556238a93c0ed0b"
   - id: github-search-review-requested
     url: https://docs.github.com/en/search-github/searching-on-github/searching-issues-and-pull-requests
     title: "GitHub search syntax for issues and pull requests"
     rationale: "The skill uses this source for the user-review-requested:@me search qualifier that surfaces PRs awaiting the user's direct review."
     usage: inspiration
-    last_reviewed_at: 2026-07-01
-    baseline_hash: "sha256:f369d83f66b2711949c1cb7605939d49ee07d2c5927a419e41f90fa6646c47de"
+    last_reviewed_at: 2026-11-06
+    fetch_mode: curl-html
+    baseline_hash: "sha256:7e88cd419f39188f8f882b34a8104b74f7d153697b27722196dd4311bfe083a4"
   - id: github-rest-pull-reviews
     url: https://docs.github.com/en/rest/pulls/reviews
     title: "GitHub REST API endpoints for pull request reviews"
     rationale: "The skill uses this source for reading prior review verdicts, creating an unsubmitted PENDING review by omitting event, attaching inline comments, and keeping final review submission outside the automated workflow."
     usage: inspiration
-    last_reviewed_at: 2026-08-03
-    baseline_hash: "sha256:f38e7c959a6e53b6547aa933702f38eacd69189e776ad8b062bab9da5b95b635"
+    last_reviewed_at: 2026-11-06
+    fetch_mode: curl-html
+    baseline_hash: "sha256:7b99f729cd6599835c6ac4ebcf67ce7b523736a7c1cf98fc8afb30f5d9341c3f"
   - id: github-rest-pull-review-comments
     url: https://docs.github.com/en/rest/pulls/comments
     title: "GitHub REST API endpoints for pull request review comments"
     rationale: "The skill uses this source for listing existing inline review comments and for the manual-posting appendix that replies to an existing review thread."
     usage: inspiration
-    last_reviewed_at: 2026-07-01
-    baseline_hash: "sha256:861cb767042b0b43b251b9412caac42cdbe07e717091140d53c4fca30c70befe"
+    last_reviewed_at: 2026-11-06
+    fetch_mode: curl-html
+    baseline_hash: "sha256:4140e04f34b55d1f2f3e9393530e1f0e998aecd4fc83e8478e395e07771e0da5"
   - id: github-graphql-pull-review-threads
     url: https://docs.github.com/en/graphql/reference/pulls
     title: "GitHub GraphQL Pull requests reference"
     rationale: "The skill uses this source for reviewThreads metadata and resolution state when mapping an ongoing review conversation."
     usage: inspiration
-    last_reviewed_at: 2026-07-01
-    baseline_hash: "sha256:d19e7b9140abf8e8665bf71624f490d0a41193a0c43b3a0e1e929a65aa5b8683"
+    last_reviewed_at: 2026-11-06
+    fetch_mode: curl-html
+    baseline_hash: "sha256:b8511e2b9174efee14420a1fd0830ee48f7838dd3c00a2f2201d44c6ac9778e0"
   - id: github-rest-issue-comments
     url: https://docs.github.com/en/rest/issues/comments
     title: "GitHub REST API endpoints for issue comments"
     rationale: "The skill uses this source for listing the PR's general (non-inline) discussion comments when mapping an ongoing review conversation."
     usage: inspiration
-    last_reviewed_at: 2026-07-01
-    baseline_hash: "sha256:43a10ab7f69c92557a8d4151fbd57b9ddccafd1e60e1e764de19bc9aa7a7c339"
+    last_reviewed_at: 2026-11-06
+    fetch_mode: curl-html
+    baseline_hash: "sha256:487b508c97e0e4d040158dc482ad9c3c388ca114523eca04fb1e575dbb4bdd8e"
   - id: egm-codex-integration
     url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/docs/codex.md
     title: "google/elephant-goldfish-model - Codex integration"
     rationale: "Naming the Codex fork_context spawn variant for clarity readers is informed by this source; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
     usage: inspiration
-    last_reviewed_at: 2026-11-02
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "6a8001ea31ccf72430ba0603a467ec6df9f69dd7"
     baseline_hash: "sha256:6042c8eb7639c7fee9f61b1036027c038009a1a91175cf73551c4e5c75178301"
