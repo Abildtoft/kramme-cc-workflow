@@ -1,0 +1,296 @@
+#!/usr/bin/env bats
+# Tests for hooks/lib/check-enabled.sh toggle behavior.
+
+load 'test_helper/common'
+
+setup() {
+	LIB="$BATS_TEST_DIRNAME/../hooks/lib/check-enabled.sh"
+	TEST_PLUGIN_ROOT="$BATS_TEST_TMPDIR/plugin"
+	TEST_XDG_STATE_HOME="$BATS_TEST_TMPDIR/xdg-state"
+	mkdir -p "$TEST_PLUGIN_ROOT/hooks"
+}
+
+write_hook_state() {
+	mkdir -p "$TEST_XDG_STATE_HOME/trackbed"
+	printf '%s\n' "$1" >"$TEST_XDG_STATE_HOME/trackbed/hook-state.json"
+}
+
+write_legacy_hook_state() {
+	printf '%s\n' "$1" >"$TEST_PLUGIN_ROOT/hooks/hook-state.json"
+}
+
+run_is_hook_enabled() {
+	local hook_name="$1"
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" bash -c \
+		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "$hook_name"
+}
+
+run_exit_if_hook_disabled() {
+	local hook_name="$1"
+	local mode="${2:-}"
+	if [ -n "$mode" ]; then
+		run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" bash -c \
+			'source "$1"; exit_if_hook_disabled "$2" "$3"; echo continued' _ "$LIB" "$hook_name" "$mode"
+	else
+		run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" bash -c \
+		'source "$1"; exit_if_hook_disabled "$2"; echo continued' _ "$LIB" "$hook_name"
+	fi
+}
+
+run_is_hook_enabled_without_jq() {
+	local hook_name="$1"
+	local fake_bin
+	local bash_path
+	fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
+	bash_path="$(command -v bash)"
+	mkdir -p "$fake_bin"
+
+	run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" "$bash_path" -c \
+		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "$hook_name"
+}
+
+run_exit_if_hook_disabled_without_jq() {
+	local hook_name="$1"
+	local mode="${2:-}"
+	local fake_bin
+	local bash_path
+	fake_bin="$BATS_TEST_TMPDIR/no-jq-bin"
+	bash_path="$(command -v bash)"
+	mkdir -p "$fake_bin"
+	ln -sf "$(command -v cat)" "$fake_bin/cat"
+
+	if [ -n "$mode" ]; then
+		run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" "$bash_path" -c \
+			'source "$1"; exit_if_hook_disabled "$2" "$3"; echo continued' _ "$LIB" "$hook_name" "$mode"
+	else
+		run env PATH="$fake_bin" CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" "$bash_path" -c \
+			'source "$1"; exit_if_hook_disabled "$2"; echo continued' _ "$LIB" "$hook_name"
+	fi
+}
+
+@test "treats missing hook state as enabled" {
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "reads hook state from XDG state home by default" {
+	write_hook_state '{"disabled":["auto-format"]}'
+
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "TRACKBED_HOOK_STATE_FILE overrides default hook state path" {
+	local override_file="$BATS_TEST_TMPDIR/override-state.json"
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+	printf '%s\n' '{"disabled":["auto-format"]}' >"$override_file"
+
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" XDG_STATE_HOME="$TEST_XDG_STATE_HOME" TRACKBED_HOOK_STATE_FILE="$override_file" bash -c \
+		'source "$1"; is_hook_enabled "$2"' _ "$LIB" "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "falls back to legacy hook state when XDG state is absent" {
+	write_legacy_hook_state '{"disabled":["auto-format"]}'
+
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "prefers XDG hook state over legacy hook state" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+	write_legacy_hook_state '{"disabled":["auto-format"]}'
+
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "treats hooks absent from disabled state as enabled" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "returns disabled status when hook is listed in disabled state" {
+	write_hook_state '{"disabled":["auto-format"]}'
+
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "fails open when hook state is malformed" {
+	write_hook_state '{"disabled":['
+
+	run_is_hook_enabled "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "exits silently for disabled plain hooks" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+
+	run_exit_if_hook_disabled "block-rm-rf"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "emits empty json object for disabled json-mode hooks" {
+	write_hook_state '{"disabled":["auto-format"]}'
+
+	run_exit_if_hook_disabled "auto-format" "json"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "{}" ]
+}
+
+@test "continues for enabled hooks" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+
+	run_exit_if_hook_disabled "auto-format" "json"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "continued" ]
+}
+
+@test "treats hooks absent from disabled state as enabled when jq is unavailable" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+
+	run_is_hook_enabled_without_jq "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "returns disabled status when jq is unavailable and hook is listed" {
+	write_hook_state '{"disabled":["auto-format"]}'
+
+	run_is_hook_enabled_without_jq "auto-format"
+
+	[ "$status" -eq 1 ]
+	[ -z "$output" ]
+}
+
+@test "exits silently for disabled plain hooks when jq is unavailable" {
+	write_hook_state '{"disabled":["block-rm-rf"]}'
+
+	run_exit_if_hook_disabled_without_jq "block-rm-rf"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "fails open for malformed hook state when jq is unavailable" {
+	write_hook_state '{"disabled":['
+
+	run_is_hook_enabled_without_jq "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "fails open for malformed hook state after matching hook when jq is unavailable" {
+	write_hook_state '{"disabled":["auto-format",]}'
+
+	run_is_hook_enabled_without_jq "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+@test "fails open for non-json content containing disabled state when jq is unavailable" {
+	write_hook_state 'not-json {"disabled":["auto-format"]}'
+
+	run_is_hook_enabled_without_jq "auto-format"
+
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+}
+
+run_resolve_trackbed_path() {
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" bash -c \
+		'source "$1"; shift; resolve_trackbed_path "$@"' _ "$LIB" "$@"
+}
+
+@test "resolve_trackbed_path prefers the override env var over XDG and legacy paths" {
+	local override_file="$BATS_TEST_TMPDIR/override.config"
+	local xdg_home="$BATS_TEST_TMPDIR/xdg-config"
+	mkdir -p "$xdg_home/trackbed"
+	printf 'xdg\n' >"$xdg_home/trackbed/thing.config"
+	printf 'legacy\n' >"$TEST_PLUGIN_ROOT/hooks/thing.config"
+	printf 'override\n' >"$override_file"
+
+	TRACKBED_TEST_OVERRIDE="$override_file" XDG_TEST_HOME="$xdg_home" \
+		run_resolve_trackbed_path "TRACKBED_TEST_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config" \
+		"$TEST_PLUGIN_ROOT/hooks/thing.config"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "$override_file" ]
+}
+
+@test "resolve_trackbed_path falls back to the XDG default subdir when the XDG var is unset" {
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" HOME="$BATS_TEST_TMPDIR/home" bash -c \
+		'source "$1"; unset XDG_TEST_HOME TRACKBED_TEST_UNSET_OVERRIDE; resolve_trackbed_path "TRACKBED_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"' _ "$LIB"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "$BATS_TEST_TMPDIR/home/.config/trackbed/thing.config" ]
+}
+
+@test "resolve_trackbed_path never falls back to a legacy path when none is given" {
+	printf 'legacy\n' >"$TEST_PLUGIN_ROOT/hooks/thing.config"
+	local xdg_home="$BATS_TEST_TMPDIR/xdg-config-empty"
+
+	XDG_TEST_HOME="$xdg_home" run_resolve_trackbed_path "TRACKBED_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "$xdg_home/trackbed/thing.config" ]
+}
+
+@test "resolve_trackbed_path reads the pre-1.0.0 KRAMME_ override while the TRACKBED_ one is unset" {
+	local override_file="$BATS_TEST_TMPDIR/legacy-override.config"
+
+	run env CLAUDE_PLUGIN_ROOT="$TEST_PLUGIN_ROOT" KRAMME_TEST_OVERRIDE="$override_file" bash -c \
+		'source "$1"; unset TRACKBED_TEST_OVERRIDE; resolve_trackbed_path "TRACKBED_TEST_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"' _ "$LIB"
+	[ "$status" -eq 0 ]
+	[ "$output" = "$override_file" ]
+
+	TRACKBED_TEST_OVERRIDE="$BATS_TEST_TMPDIR/new.config" KRAMME_TEST_OVERRIDE="$override_file" \
+		run_resolve_trackbed_path "TRACKBED_TEST_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config"
+	[ "$status" -eq 0 ]
+	[ "$output" = "$BATS_TEST_TMPDIR/new.config" ]
+}
+
+@test "resolve_trackbed_path keeps using a pre-1.0.0 file until a trackbed file exists" {
+	local xdg_home="$BATS_TEST_TMPDIR/xdg-config-previous"
+	mkdir -p "$xdg_home/kramme-cc-workflow"
+	printf 'previous\n' >"$xdg_home/kramme-cc-workflow/thing.config"
+	printf 'legacy\n' >"$TEST_PLUGIN_ROOT/hooks/thing.config"
+
+	XDG_TEST_HOME="$xdg_home" run_resolve_trackbed_path "TRACKBED_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config" \
+		"$TEST_PLUGIN_ROOT/hooks/thing.config"
+	[ "$status" -eq 0 ]
+	[ "$output" = "$xdg_home/kramme-cc-workflow/thing.config" ]
+
+	mkdir -p "$xdg_home/trackbed"
+	printf 'current\n' >"$xdg_home/trackbed/thing.config"
+	XDG_TEST_HOME="$xdg_home" run_resolve_trackbed_path "TRACKBED_TEST_UNSET_OVERRIDE" "XDG_TEST_HOME" ".config" "thing.config" \
+		"$TEST_PLUGIN_ROOT/hooks/thing.config"
+	[ "$status" -eq 0 ]
+	[ "$output" = "$xdg_home/trackbed/thing.config" ]
+}

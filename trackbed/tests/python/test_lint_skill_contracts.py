@@ -1,0 +1,1355 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "scripts"
+SCRIPT_PATH = SCRIPTS_DIR / "lint-skill-contracts.py"
+sys.path.insert(0, str(SCRIPTS_DIR))
+
+import lint_skill_contracts  # noqa: E402
+from lint_skill_contracts.catalog import skill_catalog_entries  # noqa: E402
+from lint_skill_contracts.frontmatter import frontmatter_boolean_value, frontmatter_type_errors  # noqa: E402
+
+
+def load_compat_script(module_name="lint_skill_contracts_cli"):
+    spec = importlib.util.spec_from_file_location(module_name, SCRIPT_PATH)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    previous = sys.modules.get(module_name)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+        return module
+    finally:
+        if previous is None:
+            sys.modules.pop(module_name, None)
+        else:
+            sys.modules[module_name] = previous
+
+
+class MarkdownTableHelpersTest(unittest.TestCase):
+    def test_split_markdown_table_row_keeps_escaped_pipes_in_cells(self) -> None:
+        cells = lint_skill_contracts.split_markdown_table_row(r"| Skill | `foo\|bar` | Uses \<value\> |")
+
+        self.assertEqual(cells, ["Skill", r"`foo\|bar`", r"Uses \<value\>"])
+        self.assertEqual(lint_skill_contracts.normalize_markdown_cell(cells[1]), "foo|bar")
+        self.assertEqual(lint_skill_contracts.normalize_markdown_cell(cells[2]), "Uses <value>")
+
+    def test_render_skill_reference_row_escapes_table_cells(self) -> None:
+        reference = lint_skill_contracts.SkillReference(
+            name="trackbed:test",
+            display_name="/trackbed:test",
+            invocation="User",
+            arguments="[left|right]",
+            description="Use a | b",
+        )
+
+        self.assertEqual(
+            lint_skill_contracts.render_skill_reference_row(reference),
+            r"| `/trackbed:test` | User | `[left\|right]` | Use a \| b |",
+        )
+
+    def test_render_agent_and_hook_reference_rows_escape_table_cells(self) -> None:
+        self.assertEqual(
+            lint_skill_contracts.render_agent_reference_row(
+                lint_skill_contracts.AgentReference(
+                    name="trackbed:reviewer",
+                    description="Use a | b",
+                )
+            ),
+            r"| `trackbed:reviewer` | Use a \| b |",
+        )
+        self.assertEqual(
+            lint_skill_contracts.render_hook_reference_row(
+                lint_skill_contracts.HookReference(
+                    name="sample-hook",
+                    event="PostToolUse (Write|Edit)",
+                    description="Use a | b",
+                )
+            ),
+            r"| `sample-hook` | PostToolUse (Write\|Edit) | Use a \| b |",
+        )
+
+    def test_load_hook_references_aggregates_duplicate_hook_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            hooks_path = root / "hooks" / "hooks.json"
+            hooks_path.parent.mkdir(parents=True)
+            hooks_path.write_text(
+                """
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/sample-hook.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/sample-hook.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+""".strip(),
+                encoding="utf-8",
+            )
+            failures: list[str] = []
+
+            references = lint_skill_contracts.load_hook_references(
+                root,
+                {
+                    "hooks_json": "hooks/hooks.json",
+                    "descriptions": {"sample-hook": "Runs a sample hook"},
+                },
+                failures,
+            )
+
+        self.assertEqual(failures, [])
+        self.assertEqual(
+            references["sample-hook"],
+            lint_skill_contracts.HookReference(
+                name="sample-hook",
+                event="PreToolUse (Skill), UserPromptSubmit",
+                description="Runs a sample hook",
+                path="trackbed/hooks/sample-hook.sh",
+            ),
+        )
+
+
+FRONTMATTER_TYPE_CASES = json.loads(
+    (Path(__file__).resolve().parents[1] / "fixtures" / "frontmatter-type-cases.json").read_text(encoding="utf-8")
+)["cases"]
+
+
+class FrontmatterTypeContractTest(unittest.TestCase):
+    """Pin the Python linter to the shared converter oracle fixtures."""
+
+    def test_shared_fixtures_are_non_empty(self) -> None:
+        self.assertGreater(len(FRONTMATTER_TYPE_CASES), 0)
+
+    def test_type_errors_match_shared_converter_fixtures(self) -> None:
+        for case in FRONTMATTER_TYPE_CASES:
+            with self.subTest(case=case["name"]):
+                fields = sorted(field for field, _ in frontmatter_type_errors(case["text"]))
+                self.assertEqual(fields, sorted(case["invalidFields"]))
+
+
+class FrontmatterContractHelpersTest(unittest.TestCase):
+    def test_decoded_boolean_distinguishes_false_from_missing_or_invalid(self) -> None:
+        for value, expected in [
+            ('"true" # enabled', True),
+            ('"false" # disabled', False),
+            ("maybe", None),
+            ("[true]", None),
+        ]:
+            with self.subTest(value=value):
+                self.assertIs(frontmatter_boolean_value(f"---\nflag: {value}\n---\n", "flag"), expected)
+        self.assertIsNone(frontmatter_boolean_value("---\n---\n", "flag"))
+
+    def test_invocation_scalar_forms_reach_readme_and_catalog(self) -> None:
+        forms = [
+            ("true", "false"),
+            ('"true" # enabled', "'false' # disabled"),
+            (r'"\x74rue"', r'"\u0066alse"'),
+            ('"true\n  "', "'false\n  '"),
+            ('"tr\\\n  ue"', '"fal\\\n  se"'),
+            ("|-\n  true", ">-\n  false"),
+            ("\n  true", "\n  false"),
+            ('" TRUE "', "' FALSE '"),
+        ]
+        for true_value, false_value in forms:
+            for user, disabled, invocation in [
+                (true_value, true_value, "User"),
+                (true_value, false_value, "User, Auto"),
+                (false_value, true_value, "Hidden"),
+                (false_value, false_value, "Background"),
+            ]:
+                with self.subTest(user=user, disabled=disabled):
+                    self.assert_generated_invocation(
+                        f"user-invocable: {user}\ndisable-model-invocation: {disabled}\n",
+                        invocation,
+                        user == true_value,
+                    )
+
+    def assert_generated_invocation(self, fields, invocation, user_invocable, schema=None) -> None:
+        text = f"---\nname: test\ndescription: Test skill\nargument-hint: '[path]'\n{fields}---\nBody.\n"
+        self.assertEqual(frontmatter_type_errors(text, schema), [])
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            skill_path = root / "skills/test/SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(text, encoding="utf-8")
+            failures = []
+            reference = lint_skill_contracts.load_skill_references(root, "skills", failures, schema)["trackbed:test"]
+            catalog = skill_catalog_entries(root, {"readme_skill_sync": {"skills_dir": "skills"}}, schema, failures)
+        self.assertEqual(failures, [])
+        display = "/trackbed:test" if user_invocable else "trackbed:test"
+        arguments = "`[path]`" if user_invocable else "—"
+        self.assertEqual(
+            lint_skill_contracts.render_skill_reference_row(reference),
+            f"| `{display}` | {invocation} | {arguments} | Test skill |",
+        )
+        self.assertEqual(catalog, [{"name": "trackbed:test", "invocation": invocation, "path": "skills/test/SKILL.md"}])
+
+    def test_invocation_missing_fields_keep_false_defaults(self) -> None:
+        self.assert_generated_invocation("", "Background", False)
+        self.assert_generated_invocation('user-invocable: "true" # enabled\n', "User, Auto", True)
+        self.assert_generated_invocation('disable-model-invocation: "true" # disabled\n', "Hidden", False)
+
+    def test_invocation_uses_schema_selected_fields_only(self) -> None:
+        schema = {
+            "skill_frontmatter": {
+                "fields": {
+                    "manual": {"type": "boolean", "loader_property": "userInvocable"},
+                    "no-auto": {"type": "boolean", "loader_property": "disableModelInvocation"},
+                }
+            }
+        }
+        self.assert_generated_invocation(
+            'manual: "true" # enabled\nno-auto: "true" # disabled\n'
+            "user-invocable: false\ndisable-model-invocation: false\n",
+            "User",
+            True,
+            schema,
+        )
+
+    def test_raw_parser_and_dictionary_helpers_keep_their_contract(self) -> None:
+        text = '---\ndescription: "true" # prose\nuser-invocable: "true" # enabled\n---\n'
+        raw = lint_skill_contracts.parse_frontmatter(text)
+        self.assertEqual(raw, {"description": '"true" # prose', "user-invocable": '"true" # enabled'})
+        self.assertEqual(lint_skill_contracts.expected_invocation(raw), "Background")
+
+    def test_invalid_invocation_scalars_still_fail_type_validation(self) -> None:
+        for value in ['"maybe" # invalid', r'"\qtrue"', "[true]", "\n  - true", "null", '"true" trailing']:
+            with self.subTest(value=value):
+                text = f"---\nuser-invocable: {value}\ndisable-model-invocation: {value}\n---\n"
+                self.assertEqual(
+                    {field for field, _ in frontmatter_type_errors(text)},
+                    {"user-invocable", "disable-model-invocation"},
+                )
+
+    def test_type_errors_strip_comments_from_quoted_block_array_items(self) -> None:
+        empty_item_with_comment = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms:
+  - "" # placeholder
+---
+"""
+        valid_items_with_comment = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms:
+  - "codex" # primary
+  - claude-code
+---
+"""
+
+        self.assertEqual(
+            frontmatter_type_errors(empty_item_with_comment),
+            [
+                (
+                    "trackbed-platforms",
+                    "a non-empty array of non-empty strings",
+                )
+            ],
+        )
+        self.assertEqual(frontmatter_type_errors(valid_items_with_comment), [])
+
+    def test_type_errors_match_converter_legacy_numeric_strings(self) -> None:
+        text = """---
+name: +1
+description: 1e3
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms:
+  - -1e2
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_decode_quoted_yaml_before_checking_emptiness(self) -> None:
+        text = r"""---
+name: test-skill
+description: "\n"
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms: [codex, "\x20"]
+---
+"""
+
+        self.assertEqual(
+            frontmatter_type_errors(text),
+            [
+                ("description", "a non-empty string"),
+                (
+                    "trackbed-platforms",
+                    "a non-empty array of non-empty strings",
+                ),
+            ],
+        )
+
+    def test_type_errors_accept_escaped_quotes_in_flow_arrays(self) -> None:
+        text = r"""---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms: ["claude\",code", codex]
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_read_complete_multiline_quoted_scalars(self) -> None:
+        whitespace_string = """---
+name: test-skill
+description: "
+  "
+disable-model-invocation: false
+user-invocable: true
+---
+"""
+        multiline_boolean = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: "true
+  "
+---
+"""
+
+        self.assertEqual(
+            frontmatter_type_errors(whitespace_string),
+            [("description", "a non-empty string")],
+        )
+        self.assertEqual(frontmatter_type_errors(multiline_boolean), [])
+
+        quoted_boolean_with_comment = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: "true" # Remains user invocable
+---
+"""
+        self.assertEqual(frontmatter_type_errors(quoted_boolean_with_comment), [])
+
+    def test_type_errors_accept_a_trailing_flow_array_comma(self) -> None:
+        text = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms: [codex,]
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_reject_non_string_flow_tags_and_aliases(self) -> None:
+        invalid_values = ['!!int "1"', "*target", "&target 1"]
+
+        for value in invalid_values:
+            with self.subTest(value=value):
+                text = f"""---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms: [codex, {value}]
+---
+"""
+                self.assertEqual(
+                    frontmatter_type_errors(text),
+                    [
+                        (
+                            "trackbed-platforms",
+                            "a non-empty array of non-empty strings",
+                        )
+                    ],
+                )
+
+        explicitly_tagged_string = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms: [!!str 1, &target codex]
+---
+"""
+        self.assertEqual(frontmatter_type_errors(explicitly_tagged_string), [])
+
+    def test_type_errors_reject_nested_and_empty_block_array_values(self) -> None:
+        nested_mapping = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms:
+  - target:
+      name: codex
+---
+"""
+        empty_block_scalar = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms:
+  - |
+---
+"""
+        expected = [
+            (
+                "trackbed-platforms",
+                "a non-empty array of non-empty strings",
+            )
+        ]
+
+        self.assertEqual(frontmatter_type_errors(nested_mapping), expected)
+        self.assertEqual(frontmatter_type_errors(empty_block_scalar), expected)
+
+    def test_type_errors_accepts_an_indented_continued_string(self) -> None:
+        text = """---
+name: test-skill
+description:
+  Test skill continued on the next line
+disable-model-invocation: false
+user-invocable: true
+---
+"""
+
+        self.assertEqual(frontmatter_type_errors(text), [])
+
+    def test_type_errors_rejects_a_leading_dot_number_in_a_string_array(self) -> None:
+        text = """---
+name: test-skill
+description: Test skill
+disable-model-invocation: false
+user-invocable: true
+trackbed-platforms: [codex, .5]
+---
+"""
+
+        self.assertEqual(
+            frontmatter_type_errors(text),
+            [
+                (
+                    "trackbed-platforms",
+                    "a non-empty array of non-empty strings",
+                )
+            ],
+        )
+
+    def test_expected_invocation_distinguishes_user_and_background_modes(self) -> None:
+        self.assertEqual(
+            lint_skill_contracts.expected_invocation(
+                {
+                    "user-invocable": "true",
+                    "disable-model-invocation": "true",
+                }
+            ),
+            "User",
+        )
+        self.assertEqual(
+            lint_skill_contracts.expected_invocation({"user-invocable": "false"}),
+            "Background",
+        )
+
+    def test_expected_arguments_hides_non_user_invocable_skills(self) -> None:
+        self.assertEqual(
+            lint_skill_contracts.expected_arguments(
+                {
+                    "user-invocable": "false",
+                    "argument-hint": "[path]",
+                }
+            ),
+            "\u2014",
+        )
+        self.assertEqual(
+            lint_skill_contracts.expected_arguments(
+                {
+                    "user-invocable": "true",
+                    "argument-hint": "'[path]'",
+                }
+            ),
+            "[path]",
+        )
+
+
+class SourceProvenanceCheckTest(unittest.TestCase):
+    def _context(self, root: Path) -> lint_skill_contracts.LintContext:
+        return lint_skill_contracts.LintContext(
+            root=root,
+            registry={
+                "source_provenance": {
+                    "manifest_glob": ("trackbed/skills/*/references/sources.yaml"),
+                    "forbidden_snapshot_globs": [("trackbed/skills/*/references/sources-snapshot")],
+                }
+            },
+            schema={},
+        )
+
+    def test_accepts_inspiration_and_licensed_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            references = root / "trackbed" / "skills" / "example" / "references"
+            references.mkdir(parents=True)
+            (references / "UPSTREAM-LICENSE").write_text("license notice\n", encoding="utf-8")
+            (references / "sources.yaml").write_text(
+                """
+sources:
+  - id: concepts
+    url: https://example.com/concepts
+    usage: inspiration
+  - id: copied
+    url: https://example.com/copied
+    usage: copied
+    license: MIT
+    notice: references/UPSTREAM-LICENSE
+    upstream_path: scripts/copied.sh
+    upstream_commit: 0123456789abcdef0123456789abcdef01234567
+""".strip(),
+                encoding="utf-8",
+            )
+
+            result = lint_skill_contracts.check_source_provenance(self._context(root))
+
+        self.assertEqual(result.failures, [])
+
+    def test_rejects_snapshots_invalid_usage_and_incomplete_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            references = root / "trackbed" / "skills" / "example" / "references"
+            snapshot = references / "sources-snapshot"
+            snapshot.mkdir(parents=True)
+            (references / "UPSTREAM-LICENSE").write_text("license notice\n", encoding="utf-8")
+            (references / "sources.yaml").write_text(
+                """
+sources:
+  - id: missing-usage
+    url: https://example.com/missing
+  - id: invalid-usage
+    url: https://example.com/invalid
+    usage: quoted
+  - id: incomplete-copy
+    url: https://example.com/copied
+    usage: copied
+  - id: moving-copy
+    url: https://example.com/moving
+    usage: copied
+    license: MIT
+    notice: references/UPSTREAM-LICENSE
+    upstream_path: scripts/moving.sh
+    upstream_commit: main
+""".strip(),
+                encoding="utf-8",
+            )
+
+            result = lint_skill_contracts.check_source_provenance(self._context(root))
+
+        failures = "\n".join(result.failures)
+        self.assertIn("committed upstream source bodies are forbidden", failures)
+        self.assertIn("is missing non-empty 'usage'", failures)
+        self.assertIn("has invalid usage 'quoted'", failures)
+        self.assertIn("is missing non-empty 'license'", failures)
+        self.assertIn("is missing non-empty 'notice'", failures)
+        self.assertIn("is missing non-empty 'upstream_path'", failures)
+        self.assertIn("is missing an immutable upstream revision", failures)
+        self.assertIn("'upstream_commit' must be immutable, not 'main'", failures)
+        self.assertIn("'upstream_commit' must be a full 40- or 64-character commit hash", failures)
+
+    def test_rejects_notice_outside_skill_or_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            references = root / "trackbed" / "skills" / "example" / "references"
+            references.mkdir(parents=True)
+            (references / "sources.yaml").write_text(
+                """
+sources:
+  - id: traversal
+    url: https://example.com/traversal
+    usage: copied
+    license: MIT
+    notice: ../../OUTSIDE-LICENSE
+    upstream_path: scripts/traversal.sh
+    upstream_commit: 0123456789abcdef0123456789abcdef01234567
+  - id: missing
+    url: https://example.com/missing
+    usage: copied
+    license: MIT
+    notice: references/MISSING-LICENSE
+    upstream_path: scripts/missing.sh
+    upstream_commit: 0123456789abcdef0123456789abcdef01234567
+""".strip(),
+                encoding="utf-8",
+            )
+
+            result = lint_skill_contracts.check_source_provenance(self._context(root))
+
+        failures = "\n".join(result.failures)
+        self.assertIn("must stay within the skill directory", failures)
+        self.assertIn("notice file does not exist", failures)
+
+
+COMPONENT_CATALOG_REGISTRY = {
+    "component_catalog": {"path": "catalog.json", "canonical_reference": "README.md"},
+    "readme_skill_sync": {"skills_dir": "skills"},
+    "readme_agent_sync": {"agents_dir": "agents"},
+    "readme_hook_sync": {
+        "hooks_json": "hooks/hooks.json",
+        "plugin_root": "plugin",
+        "descriptions": {"sample-hook": "Runs a sample hook"},
+    },
+}
+
+
+class ComponentCatalogTest(unittest.TestCase):
+    def _write_tree(self, root: Path) -> None:
+        skill = root / "skills" / "sample"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text(
+            """
+---
+name: sample
+description: Sample skill
+disable-model-invocation: true
+user-invocable: true
+---
+# trackbed:sample
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        agents = root / "agents"
+        agents.mkdir()
+        (agents / "reviewer.md").write_text(
+            """
+---
+name: reviewer
+description: Reviews code
+---
+# trackbed:reviewer
+""".strip()
+            + "\n",
+            encoding="utf-8",
+        )
+        hooks = root / "plugin" / "hooks"
+        hooks.mkdir(parents=True)
+        (hooks / "sample-hook.sh").write_text("#!/usr/bin/env bash\n", encoding="utf-8")
+        manifest = root / "hooks"
+        manifest.mkdir()
+        (manifest / "hooks.json").write_text(
+            json.dumps(
+                {
+                    "hooks": {
+                        "PreToolUse": [
+                            {
+                                "matcher": "Bash",
+                                "hooks": [
+                                    {
+                                        "type": "command",
+                                        "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/sample-hook.sh",
+                                    }
+                                ],
+                            }
+                        ]
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def _context(self, root: Path) -> lint_skill_contracts.LintContext:
+        return lint_skill_contracts.LintContext(
+            root=root,
+            registry=COMPONENT_CATALOG_REGISTRY,
+            schema=lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA,
+        )
+
+    def test_render_returns_nothing_without_registry_config(self) -> None:
+        relative, rendered, failures = lint_skill_contracts.render_component_catalog(Path("/tmp/repo"), {}, {})
+
+        self.assertEqual((relative, rendered, failures), (None, None, []))
+
+    def test_document_indexes_every_component_type_by_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root)
+            failures: list[str] = []
+
+            document = lint_skill_contracts.component_catalog_document(
+                root,
+                COMPONENT_CATALOG_REGISTRY,
+                lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA,
+                failures,
+            )
+
+        self.assertEqual(failures, [])
+        assert document is not None
+        self.assertEqual(document["canonical_reference"], "README.md")
+        self.assertEqual(
+            document["skills"],
+            [
+                {
+                    "name": "trackbed:sample",
+                    "invocation": "User",
+                    "path": "skills/sample/SKILL.md",
+                }
+            ],
+        )
+        self.assertEqual(
+            document["agents"],
+            [{"name": "trackbed:reviewer", "path": "agents/reviewer.md"}],
+        )
+        self.assertEqual(
+            document["hooks"],
+            [
+                {
+                    "name": "sample-hook",
+                    "event": "PreToolUse (Bash)",
+                    "path": "plugin/hooks/sample-hook.sh",
+                }
+            ],
+        )
+
+    def test_render_is_deterministic_json_with_trailing_newline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root)
+
+            first = lint_skill_contracts.render_component_catalog(
+                root, COMPONENT_CATALOG_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA
+            )
+            second = lint_skill_contracts.render_component_catalog(
+                root, COMPONENT_CATALOG_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA
+            )
+
+        self.assertEqual(first, second)
+        self.assertEqual(first[0], "catalog.json")
+        assert first[1] is not None
+        self.assertTrue(first[1].endswith("\n"))
+        self.assertEqual(json.loads(first[1]), json.loads(second[1] or ""))
+
+    def test_check_reports_missing_and_stale_catalog(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root)
+            context = self._context(root)
+
+            missing = lint_skill_contracts.check_component_catalog(context)
+
+            (root / "catalog.json").write_text("{}\n", encoding="utf-8")
+            stale = lint_skill_contracts.check_component_catalog(context)
+
+            _relative, rendered, _failures = lint_skill_contracts.render_component_catalog(
+                root, COMPONENT_CATALOG_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA
+            )
+            (root / "catalog.json").write_text(rendered or "", encoding="utf-8")
+            synced = lint_skill_contracts.check_component_catalog(context)
+
+        self.assertIn("registered path is missing: catalog.json", "\n".join(missing.failures))
+        self.assertIn("catalog.json is stale", "\n".join(stale.failures))
+        self.assertIn(
+            "run python3 trackbed/scripts/generate-component-reference.py --write",
+            "\n".join(stale.failures),
+        )
+        self.assertEqual(synced.failures, [])
+
+    def test_check_requires_readme_sync_configs(self) -> None:
+        failures: list[str] = []
+
+        lint_skill_contracts.check_component_catalog_drift(
+            Path("/tmp/repo"),
+            {"component_catalog": {"path": "catalog.json"}},
+            {},
+            failures,
+        )
+
+        self.assertIn("readme_skill_sync", "\n".join(failures))
+        self.assertIn("readme_agent_sync", "\n".join(failures))
+        self.assertIn("readme_hook_sync", "\n".join(failures))
+
+
+SUMMARY_REGISTRY = {
+    "readme_skill_sync": {
+        "skills_dir": "skills",
+        "start_marker": "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
+        "end_marker": "<!-- END SOURCE-SYNCED SKILL ROWS -->",
+        "max_summary_chars": 40,
+        "summaries": {"trackbed:sample": "Short sample summary"},
+    },
+    "readme_agent_sync": {
+        "agents_dir": "agents",
+        "start_marker": "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
+        "end_marker": "<!-- END SOURCE-SYNCED AGENT ROWS -->",
+        "summaries": {"trackbed:reviewer": "Short reviewer summary"},
+    },
+}
+
+
+class ReadmeSummariesTest(unittest.TestCase):
+    def _write_tree(self, root: Path, skill_description: str) -> None:
+        skill = root / "skills" / "sample"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text(
+            "---\nname: sample\ndescription: Sample skill\n"
+            "disable-model-invocation: true\nuser-invocable: true\n---\n# trackbed:sample\n",
+            encoding="utf-8",
+        )
+        agents = root / "agents"
+        agents.mkdir()
+        (agents / "reviewer.md").write_text(
+            "---\nname: reviewer\ndescription: Reviews code\n---\n# trackbed:reviewer\n",
+            encoding="utf-8",
+        )
+        self._write_readme(root, skill_description)
+
+    def _write_readme(self, root: Path, skill_description: str) -> None:
+        (root / "README.md").write_text(
+            "\n".join(
+                [
+                    "# Plugin",
+                    "",
+                    "<!-- BEGIN SOURCE-SYNCED SKILL ROWS -->",
+                    "| Skill | Invocation | Arguments | Description |",
+                    "| --- | --- | --- | --- |",
+                    f"| `/trackbed:sample` | User | — | {skill_description} |",
+                    "<!-- END SOURCE-SYNCED SKILL ROWS -->",
+                    "",
+                    "<!-- BEGIN SOURCE-SYNCED AGENT ROWS -->",
+                    "<!-- END SOURCE-SYNCED AGENT ROWS -->",
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+    def test_rendered_rows_show_summaries_instead_of_source_descriptions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root, "Sample skill")
+
+            rendered, failures = lint_skill_contracts.render_readme_component_sync(root, SUMMARY_REGISTRY)
+
+        self.assertEqual(failures, [])
+        assert rendered is not None
+        self.assertIn("| `/trackbed:sample` | User | — | Short sample summary |", rendered)
+        self.assertIn("| `trackbed:reviewer` | Short reviewer summary |", rendered)
+        self.assertNotIn("Reviews code", rendered)
+
+    def test_check_compares_description_cells_with_summaries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            self._write_tree(root, "Sample skill")
+            stale: list[str] = []
+            lint_skill_contracts.check_readme_skill_rows_sync(
+                root, SUMMARY_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA, stale
+            )
+
+            self._write_readme(root, "Short sample summary")
+            synced: list[str] = []
+            lint_skill_contracts.check_readme_skill_rows_sync(
+                root, SUMMARY_REGISTRY, lint_skill_contracts.DEFAULT_CONTRACT_SCHEMA, synced
+            )
+
+        self.assertEqual(len(stale), 1)
+        self.assertIn("'trackbed:sample' description differs from source metadata", stale[0])
+        self.assertEqual(synced, [])
+
+    def test_summaries_cover_every_component_within_the_length_budget(self) -> None:
+        def reference(name: str) -> lint_skill_contracts.SkillReference:
+            return lint_skill_contracts.SkillReference(
+                name=name,
+                display_name=f"/{name}",
+                invocation="User",
+                arguments="—",
+                description="Full routing description",
+            )
+
+        failures: list[str] = []
+        summarized = lint_skill_contracts.apply_readme_summaries(
+            "readme skill sync",
+            "skill",
+            {"trackbed:long": reference("trackbed:long"), "trackbed:missing": reference("trackbed:missing")},
+            {"summaries": {"trackbed:long": "x" * 11, "trackbed:gone": "Stale"}, "max_summary_chars": 10},
+            failures,
+        )
+
+        self.assertEqual(
+            failures,
+            [
+                "readme skill sync: summaries names unknown skill 'trackbed:gone'",
+                "readme skill sync: summary for 'trackbed:long' is 11 chars, exceeds 10",
+                "readme skill sync: summaries is missing skill 'trackbed:missing'",
+            ],
+        )
+        self.assertEqual(summarized["trackbed:long"].description, "x" * 11)
+        self.assertEqual(summarized["trackbed:missing"].description, "Full routing description")
+
+    def test_source_descriptions_stay_without_summaries(self) -> None:
+        references = {"trackbed:reviewer": lint_skill_contracts.AgentReference("trackbed:reviewer", "Reviews code")}
+        failures: list[str] = []
+
+        result = lint_skill_contracts.apply_readme_summaries("readme agent sync", "agent", references, {}, failures)
+
+        self.assertIs(result, references)
+        self.assertEqual(failures, [])
+
+
+class ReadmeProseCheckTest(unittest.TestCase):
+    def test_blocks_are_paragraphs_and_list_items_outside_tables_code_and_comments(self) -> None:
+        text = "\n".join(
+            [
+                "# Title",
+                "",
+                "First paragraph line one",
+                "continues here.",
+                "",
+                "- item one",
+                "  continued",
+                "- item two",
+                "",
+                "| a | b |",
+                "| --- | --- |",
+                "",
+                "```bash",
+                "echo not prose",
+                "```",
+                "",
+                "<!-- comment",
+                "still comment -->",
+                "> [!NOTE]",
+                "> Quoted text",
+            ]
+        )
+
+        self.assertEqual(
+            lint_skill_contracts.readme_prose_blocks(text),
+            [
+                (3, "First paragraph line one continues here."),
+                (6, "item one continued"),
+                (8, "item two"),
+                (19, "[!NOTE] Quoted text"),
+            ],
+        )
+
+    def test_check_warns_on_long_blocks_longest_first_within_the_report_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            (root / "README.md").write_text(
+                "\n".join(
+                    [
+                        "Short paragraph.",
+                        "",
+                        "x" * 30,
+                        "",
+                        "- " + "y" * 40,
+                        "",
+                        "[" + "z" * 26 + "](https://example.com/a-long-link-target)",
+                        "",
+                        "| " + "w" * 80 + " |",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            result = lint_skill_contracts.check_readme_prose(
+                lint_skill_contracts.LintContext(
+                    root=root,
+                    registry={"readme_prose": {"warn_paragraph_chars": 25, "report_limit": 2}},
+                    schema={},
+                )
+            )
+
+        self.assertEqual(result.failures, [])
+        self.assertEqual(
+            [warning.split(" (warn at")[0] for warning in result.warnings],
+            [
+                "readme prose: long-paragraph burndown: README.md:5 is 40 chars",
+                "readme prose: long-paragraph burndown: README.md:3 is 30 chars",
+            ],
+        )
+
+    def test_check_is_disabled_without_config_and_rejects_invalid_settings(self) -> None:
+        def run(registry):
+            return lint_skill_contracts.check_readme_prose(
+                lint_skill_contracts.LintContext(root=Path("/tmp/repo"), registry=registry, schema={})
+            )
+
+        disabled = run({})
+        invalid = run({"readme_prose": {"warn_paragraph_chars": 0}})
+
+        self.assertEqual((disabled.failures, disabled.warnings), ([], []))
+        self.assertEqual(invalid.failures, ["readme prose: warn_paragraph_chars must be a positive integer"])
+
+
+class CheckRegistryTest(unittest.TestCase):
+    def test_registry_preserves_cli_check_order(self) -> None:
+        self.assertEqual(
+            [name for name, _check in lint_skill_contracts.CHECKS],
+            [
+                "text_contracts",
+                "ordered_heading_contracts",
+                "required_file_contracts",
+                "base_diff_scope",
+                "ui_relevance_contracts",
+                "marker_manifests",
+                "source_provenance",
+                "epilogue_forbidden",
+                "hooks_json",
+                "readme_skill_sync",
+                "readme_prose",
+                "component_catalog",
+                "routing_distinctness",
+                "invocation_graph",
+                "mechanical",
+            ],
+        )
+
+    def test_run_checks_accumulates_results_in_registry_order(self) -> None:
+        context = lint_skill_contracts.LintContext(
+            root=Path("/tmp/repo"),
+            registry={},
+            schema={},
+        )
+
+        def first(_context):
+            return lint_skill_contracts.CheckResult(
+                failures=["first failure"],
+                warnings=["first warning"],
+            )
+
+        def second(_context):
+            return lint_skill_contracts.CheckResult(
+                failures=["second failure"],
+                warnings=["second warning"],
+            )
+
+        result = lint_skill_contracts.run_checks(
+            context,
+            checks=(("first", first), ("second", second)),
+        )
+
+        self.assertEqual(result.failures, ["first failure", "second failure"])
+        self.assertEqual(result.warnings, ["first warning", "second warning"])
+
+
+class BaseDiffScopeCheckTest(unittest.TestCase):
+    def test_rejects_quoted_and_unquoted_manual_remote_snippets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            skill_path = root / "skills" / "example" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(
+                "\n".join(
+                    [
+                        "```bash",
+                        "BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2> /dev/null)",
+                        "git fetch origin refs/heads/${BASE_BRANCH}:refs/remotes/origin/${BASE_BRANCH}",
+                        'git merge-base "origin/${BASE_BRANCH}" HEAD',
+                        'git diff --name-only "origin/$BASE_BRANCH"...HEAD',
+                        "```",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            registry = lint_skill_contracts.load_registry(SCRIPTS_DIR / "synced-contracts.yaml")
+            config = dict(registry["base_diff_scope"])
+            config["paths"] = ["skills/example/SKILL.md"]
+            context = lint_skill_contracts.LintContext(
+                root=root,
+                registry={"base_diff_scope": config},
+                schema={},
+            )
+
+            result = lint_skill_contracts.check_base_diff_scope(context)
+
+            failures = "\n".join(result.failures)
+            self.assertIn("manual-origin-head-base-detection", failures)
+            self.assertIn("manual-base-fetch", failures)
+            self.assertIn("manual-origin-base-merge-base", failures)
+            self.assertIn("manual-origin-base-diff", failures)
+
+
+class UIRelevanceContractTest(unittest.TestCase):
+    def test_ui_relevance_matcher_classifies_fixture_paths(self) -> None:
+        matcher = {
+            "extensions": [".tsx", ".astro", ".mdx", ".htm", ".hbs", ".css", ".styl"],
+            "basename_prefixes": ["tailwind.config.", "theme."],
+            "directory_segments": ["design-tokens", "pages", "component", "components", "ui"],
+            "asset_directory_segments": ["public", "assets"],
+            "asset_extensions": [".svg", ".webp"],
+        }
+
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/components/Button.tsx", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("tailwind.config.ts", matcher))
+        self.assertTrue(
+            lint_skill_contracts.is_ui_relevant_path(
+                "packages/ui/design-tokens/colors.json",
+                matcher,
+            )
+        )
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("public/logo.svg", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/components/Button.TSX", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/Page.astro", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("docs/component.mdx", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("public/index.htm", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/styles/theme.styl", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/ui/Button.ts", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("src/component/Button.ts", matcher))
+        self.assertTrue(lint_skill_contracts.is_ui_relevant_path("public/Logo.SVG", matcher))
+        self.assertFalse(lint_skill_contracts.is_ui_relevant_path("src/assets/data.json", matcher))
+        self.assertFalse(lint_skill_contracts.is_ui_relevant_path("src/server/user.ts", matcher))
+
+    def test_ui_relevance_contract_reports_missing_terms_and_fixture_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir).resolve()
+            canonical = root / "canonical.md"
+            local = root / "skill.md"
+            canonical.write_text(
+                "\n".join(
+                    [
+                        "UI relevance path contract: ui-relevance-path-contract-v1",
+                        "Required terms: *.tsx, assets/",
+                        "| Path | Expected |",
+                        "| --- | --- |",
+                        "| `src/components/Button.tsx` | Non-UI |",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            local.write_text(
+                "UI relevance path contract: ui-relevance-path-contract-v1\nRequired terms: *.tsx\n",
+                encoding="utf-8",
+            )
+            context = lint_skill_contracts.LintContext(
+                root=root,
+                registry={
+                    "ui_relevance_contracts": [
+                        {
+                            "name": "fixture-ui-contract",
+                            "contract_id": "ui-relevance-path-contract-v1",
+                            "canonical_path": "canonical.md",
+                            "paths": ["skill.md"],
+                            "required_terms": ["*.tsx", "assets/"],
+                            "matcher": {
+                                "extensions": [".tsx"],
+                                "asset_directory_segments": ["assets"],
+                                "asset_extensions": [".svg"],
+                            },
+                            "fixtures": [
+                                {
+                                    "path": "src/components/Button.tsx",
+                                    "ui_relevant": True,
+                                }
+                            ],
+                        }
+                    ]
+                },
+                schema={},
+            )
+
+            result = lint_skill_contracts.check_ui_relevance_contracts(context)
+
+        self.assertEqual(
+            result.failures,
+            [
+                "fixture-ui-contract: skill.md is missing UI relevance term 'assets/'",
+                "fixture-ui-contract: canonical.md fixture 'src/components/Button.tsx' documents False; expected True",
+            ],
+        )
+
+
+class VerifyRunGuidanceTest(unittest.TestCase):
+    def test_nx_affected_guidance_uses_resolved_base_ref(self) -> None:
+        plugin_root = SCRIPTS_DIR.parent
+        skill_text = (plugin_root / "skills" / "verify:run" / "SKILL.md").read_text(encoding="utf-8")
+        commands_text = (
+            plugin_root / "skills" / "verify:run" / "references" / "commands-by-project-type.md"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("Nx `--base=$BASE_REF`", skill_text)
+        self.assertIn("use the `$BASE_REF`", skill_text)
+        self.assertIn("--base=$BASE_REF", commands_text)
+        self.assertNotIn("--base=$BASE_BRANCH", skill_text + commands_text)
+
+
+class MechanicalCheckTest(unittest.TestCase):
+    def test_mechanical_returns_structured_warnings_and_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            skill_path = root / "skills" / "example" / "SKILL.md"
+            skill_path.parent.mkdir(parents=True)
+            skill_path.write_text(
+                "\n".join(
+                    [
+                        "---",
+                        "name: example",
+                        "description: Example skill",
+                        "disable-model-invocation: true",
+                        "---",
+                        "one",
+                        "two",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            context = lint_skill_contracts.LintContext(
+                root=root,
+                registry={
+                    "mechanical": {
+                        "skill_glob": "skills/*/SKILL.md",
+                        "max_skill_lines": 6,
+                        "warn_skill_lines": 5,
+                        "skill_line_report_limit": 1,
+                        "required_frontmatter": [
+                            "name",
+                            "description",
+                            "disable-model-invocation",
+                            "user-invocable",
+                        ],
+                    }
+                },
+                schema={},
+            )
+
+            result = lint_skill_contracts.check_mechanical(context)
+
+        self.assertEqual(
+            result.failures,
+            [
+                "mechanical: skills/example/SKILL.md has 7 lines, exceeds 6; "
+                "move reference material out of SKILL.md or add a registry burndown entry",
+                "mechanical: skills/example/SKILL.md is missing frontmatter field 'user-invocable'",
+            ],
+        )
+        self.assertEqual(
+            result.warnings,
+            [
+                "mechanical: long-skill burndown: skills/example/SKILL.md has 7 lines "
+                "(over hard budget; warn at 5, fail above 6)"
+            ],
+        )
+
+    def test_description_warnings_apply_threshold_order_cap_and_hard_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            fixtures = "below:4 aaa-at:5 zzz-at:5 middle:6 beta:7 alpha:7 high:9 over:10"
+            for fixture in fixtures.split():
+                name, length = fixture.split(":")
+                path = root / "skills" / name / "SKILL.md"
+                path.parent.mkdir(parents=True)
+                skill = (
+                    f"---\nname: {name}\ndescription: {'x' * int(length)}\n"
+                    "disable-model-invocation: false\nuser-invocable: true\n---\nBody.\n"
+                )
+                path.write_text(skill, encoding="utf-8")
+            config = {
+                "skill_glob": "skills/*/SKILL.md",
+                "max_description_chars": 9,
+                "warn_description_chars": 5,
+                "skill_description_report_limit": 6,
+            }
+            context = lint_skill_contracts.LintContext(root=root, registry={"mechanical": config}, schema={})
+            result = lint_skill_contracts.check_mechanical(context)
+
+        self.assertEqual(result.failures, ["mechanical: skills/over/SKILL.md description is 10 chars, exceeds 9"])
+        warning_paths = [warning.split("burndown: ", 1)[1].split(" description", 1)[0] for warning in result.warnings]
+        expected_paths = (
+            "skills/over/SKILL.md skills/high/SKILL.md skills/alpha/SKILL.md "
+            "skills/beta/SKILL.md skills/middle/SKILL.md skills/aaa-at/SKILL.md"
+        ).split()
+        self.assertEqual(warning_paths, expected_paths)
+        self.assertIn("(over hard budget; warn at 5, fail above 9)", result.warnings[0])
+
+    def test_agent_description_uses_yaml_value_and_canonical_hard_limit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            root = Path(tmp_dir)
+            agent_path = root / "agents" / "example.md"
+            agent_path.parent.mkdir(parents=True)
+            agent_path.write_text(
+                """---
+name: example
+description: >-
+  abc
+  def
+model: inherit
+color: blue
+---
+# Example
+""",
+                encoding="utf-8",
+            )
+            (agent_path.parent / "missing.md").write_text(
+                """---
+name: missing
+model: inherit
+color: blue
+---
+# Missing description
+""",
+                encoding="utf-8",
+            )
+            context = lint_skill_contracts.LintContext(
+                root=root,
+                registry={
+                    "mechanical": {
+                        "skill_glob": "skills/*/SKILL.md",
+                        "agent_glob": "agents/*.md",
+                        "max_description_chars": 6,
+                    }
+                },
+                schema={},
+            )
+
+            result = lint_skill_contracts.check_mechanical(context)
+
+        self.assertEqual(
+            result.failures,
+            [
+                "mechanical: agents/example.md description is 7 chars, exceeds 6",
+                "mechanical: agents/missing.md is missing frontmatter field 'description'",
+            ],
+        )
+
+
+class CompatibilityEntryPointTest(unittest.TestCase):
+    def test_legacy_script_reexports_package_api(self) -> None:
+        compat = load_compat_script()
+
+        self.assertEqual(compat.CHECKS[-1][0], "mechanical")
+        self.assertIsNotNone(compat.main)
+
+    def test_legacy_script_reexports_when_loaded_as_package_name(self) -> None:
+        compat = load_compat_script("lint_skill_contracts")
+
+        self.assertEqual(compat.CHECKS[-1][0], "mechanical")
+        self.assertIsNotNone(compat.main)
+
+
+if __name__ == "__main__":
+    unittest.main()

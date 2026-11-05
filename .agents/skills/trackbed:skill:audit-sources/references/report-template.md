@@ -74,7 +74,7 @@ Totals: {{X changed, Y unchanged, M moved or gone, S skipped, Z errors, B bootst
 
 ### Bootstrapped
 
-Manifest created at `kramme-cc-workflow/skills/pr:product-review/references/sources.yaml` with {{N}} sources. No baselines yet — first audit will populate them.
+Manifest created at `trackbed/skills/pr:product-review/references/sources.yaml` with {{N}} sources. No baselines yet — first audit will populate them.
 
 Proposed sources:
 

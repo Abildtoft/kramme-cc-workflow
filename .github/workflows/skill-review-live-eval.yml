@@ -40,7 +40,7 @@ jobs:
       - name: Restore prior progress
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js restore anthropic
+        run: node trackbed/evals/skill-review/ci-checkpoint.js restore anthropic
 
       - name: Run live eval
         id: eval
@@ -53,9 +53,9 @@ jobs:
           set -uo pipefail
           config="$RUNNER_TEMP/eval-organizations.json"
           node -e 'require("node:fs").writeFileSync(process.argv[1], process.env.ANTHROPIC_EVAL_ORGANIZATIONS, { mode: 0o600 });' "$config"
-          node kramme-cc-workflow/evals/skill-review/run-live-eval.js --provider anthropic --organizations "$config" > "$RUNNER_TEMP/live-eval-report.json"
+          node trackbed/evals/skill-review/run-live-eval.js --provider anthropic --organizations "$config" > "$RUNNER_TEMP/live-eval-report.json"
           result=$?
-          node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js summary "$RUNNER_TEMP/live-eval-report.json"
+          node trackbed/evals/skill-review/ci-checkpoint.js summary "$RUNNER_TEMP/live-eval-report.json"
           if [ "$result" -eq 2 ]; then
             echo "Credits exhausted; evaluation is incomplete and progress is saved."
             exit 0
@@ -64,7 +64,7 @@ jobs:
 
       - name: Stage validated checkpoint
         if: ${{ always() }}
-        run: node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js stage anthropic "$RUNNER_TEMP/eval-checkpoint"
+        run: node trackbed/evals/skill-review/ci-checkpoint.js stage anthropic "$RUNNER_TEMP/eval-checkpoint"
 
       - name: Upload progress
         if: ${{ always() }}
@@ -109,7 +109,7 @@ jobs:
       - name: Restore prior progress
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js restore openai
+        run: node trackbed/evals/skill-review/ci-checkpoint.js restore openai
 
       - name: Run live eval
         id: eval
@@ -122,9 +122,9 @@ jobs:
           set -uo pipefail
           config="$RUNNER_TEMP/eval-organizations.json"
           node -e 'require("node:fs").writeFileSync(process.argv[1], process.env.OPENAI_EVAL_ORGANIZATIONS, { mode: 0o600 });' "$config"
-          node kramme-cc-workflow/evals/skill-review/run-live-eval.js --provider openai --organizations "$config" > "$RUNNER_TEMP/live-eval-report.json"
+          node trackbed/evals/skill-review/run-live-eval.js --provider openai --organizations "$config" > "$RUNNER_TEMP/live-eval-report.json"
           result=$?
-          node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js summary "$RUNNER_TEMP/live-eval-report.json"
+          node trackbed/evals/skill-review/ci-checkpoint.js summary "$RUNNER_TEMP/live-eval-report.json"
           if [ "$result" -eq 2 ]; then
             echo "Credits exhausted; evaluation is incomplete and progress is saved."
             exit 0
@@ -133,7 +133,7 @@ jobs:
 
       - name: Stage validated checkpoint
         if: ${{ always() }}
-        run: node kramme-cc-workflow/evals/skill-review/ci-checkpoint.js stage openai "$RUNNER_TEMP/eval-checkpoint"
+        run: node trackbed/evals/skill-review/ci-checkpoint.js stage openai "$RUNNER_TEMP/eval-checkpoint"
 
       - name: Upload progress
         if: ${{ always() }}

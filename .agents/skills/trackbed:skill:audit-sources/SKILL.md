@@ -29,7 +29,7 @@ Fetched source bodies are never repository artifacts. Do not create or commit a 
    - Exact skill name (e.g. `trackbed:code:harden-security`) → single target.
    - Glob (e.g. `trackbed:code:*`) → expand against every skills directory in the repo.
    - `all` → every skill found in the repo.
-2. Resolve the target list by globbing skill directories under (in order): `.agents/skills/`, `kramme-cc-workflow/skills/`, `kramme-connect-workflow/skills/`. Skip the `.claude/skills/` symlink to avoid double-counting. Deduplicate. If the list is empty, stop and report "no skills matched".
+2. Resolve the target list by globbing skill directories under (in order): `.agents/skills/`, `trackbed/skills/`, `kramme-connect-workflow/skills/`. Skip the `.claude/skills/` symlink to avoid double-counting. Deduplicate. If the list is empty, stop and report "no skills matched".
 3. If the list has more than 10 skills, confirm with the user before proceeding (audits make network calls and can be slow).
 
 ## Phase 2: Collect Sources and Group by Upstream
@@ -105,7 +105,7 @@ On accept:
 1. Update `last_reviewed_at` for each changed or baseline-initialized source in its `sources.yaml`, and write each staged `baseline_hash` with its staged `fetch_mode` on the line immediately before it. On an unchanged or availability-checked entry, only record a staged `fetch_mode` that the entry lacks. Never write a vendored runtime library entry.
 2. For each GitHub source whose helper `status` was `changed` or `unchanged`, set `baseline_commit` to its staged full 40-character `head_commit`; when the field is absent, add it after `last_reviewed_at` as a quoted string. Change nothing else on an `unchanged` GitHub source that step 1 does not cover.
 3. Never write `baseline_commit` for a `moved`, `gone`, or errored source. Never change a pinned `url`, `upstream_commit`, `upstream_revision`, `upstream_release`, or `version`. Never change `baseline_commit` on a `usage: copied` entry that has no other immutable revision field, because there it records the copy origin; list that entry in the hand-off instead.
-4. Before replacing a `baseline_hash` or `baseline_commit` value, run `git grep -n -F "<old value>" -- kramme-cc-workflow/tests`; before replacing `last_reviewed_at`, search for `last_reviewed_at: <old date>` the same way. List every match in the hand-off, because those tests pin the old value and need the same update.
+4. Before replacing a `baseline_hash` or `baseline_commit` value, run `git grep -n -F "<old value>" -- trackbed/tests`; before replacing `last_reviewed_at`, search for `last_reviewed_at: <old date>` the same way. List every match in the hand-off, because those tests pin the old value and need the same update.
 5. Discard fetched and normalized source bodies after the report is complete. Do not write them under a skill, `.context/`, or another durable cache.
 6. Do not commit. Leave staging to the user.
 

@@ -1,0 +1,31 @@
+{
+  "name": "trackbed",
+  "version": "0.91.0",
+  "private": true,
+  "description": "Converter CLI for the trackbed plugin",
+  "license": "MIT",
+  "bin": {
+    "trackbed": "scripts/convert-plugin.js"
+  },
+  "scripts": {
+    "check:deps": "make check-deps",
+    "coverage": "make coverage",
+    "format:check": "make format-check",
+    "lint-js": "make lint-js",
+    "test": "make test",
+    "test:node": "make test-node",
+    "test:node:file": "node --test",
+    "test:node:watch": "make test-node-watch",
+    "test:python": "make test-python",
+    "test:smoke": "make test-smoke",
+    "verify": "make verify",
+    "verify:pr": "make pr-verify"
+  },
+  "dependencies": {
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "typescript": "^6.0.3"
+  }
+}

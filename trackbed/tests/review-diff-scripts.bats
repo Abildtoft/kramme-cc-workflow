@@ -1,0 +1,683 @@
+#!/usr/bin/env bats
+
+load 'test_helper/common'
+
+setup() {
+	SCRIPT_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)/scripts"
+	TMP_DIR="$(mktemp -d)"
+	ORIGIN="$TMP_DIR/origin.git"
+	WORK="$TMP_DIR/work"
+	BIN_DIR="$TMP_DIR/bin"
+	mkdir -p "$BIN_DIR"
+	write_no_pr_gh
+	export PATH="$BIN_DIR:$PATH"
+
+	init_test_git_repo "$WORK" --origin "$ORIGIN"
+	cd "$WORK"
+	git remote set-head origin main >/dev/null 2>&1
+	git switch -c feature >/dev/null 2>&1
+}
+
+teardown() {
+	if [ -n "$TMP_DIR" ] && [ -d "$TMP_DIR" ]; then
+		rm -rf "$TMP_DIR"
+	fi
+}
+
+write_no_pr_gh() {
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+echo "no pull requests found for branch \"$(git branch --show-current)\"" >&2
+exit 1
+GH
+	chmod +x "$BIN_DIR/gh"
+}
+
+@test "resolve-base resolves origin HEAD and merge base" {
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"BASE_BRANCH=main"* ]]
+	[[ "$output" == *"BASE_REF=refs/remotes/origin/main"* ]]
+	[[ "$output" == *"MERGE_BASE="* ]]
+}
+
+@test "resolve-base strict mode fails when fetch fails" {
+	git fetch origin main >/dev/null 2>&1
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Failed to fetch origin/main"* ]]
+}
+
+@test "resolve-base can tolerate fetch failure when cached ref exists" {
+	git fetch origin main >/dev/null 2>&1
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --tolerate-fetch-failure
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"BASE_BRANCH=main"* ]]
+	[[ "$output" == *"Warning: failed to fetch origin/main"* ]]
+}
+
+@test "collect-review-diff includes committed staged unstaged and untracked files" {
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	printf 'staged\n' >staged.txt
+	git add staged.txt
+
+	printf 'base\nunstaged\n' >tracked.txt
+	printf 'untracked\n' >untracked.txt
+
+	run bash -c '
+    set -e
+    eval "$("'"$SCRIPT_DIR"'/collect-review-diff.sh")"
+    printf "%s\n" "$CHANGED_FILES"
+  '
+
+	[ "$status" -eq 0 ]
+	[ "$output" = $'committed.txt\nstaged.txt\ntracked.txt\nuntracked.txt' ]
+}
+
+@test "collect-review-diff excludes development trunk commits when production main is remote default" {
+	git switch -q -c development main
+	printf 'trunk\n' > development.txt
+	git add development.txt
+	git commit -qm 'Add development work'
+	git push -q origin development
+	git switch -q feature
+	git merge -q --ff-only development
+	printf 'feature\n' > feature.txt
+	git add feature.txt
+	git commit -qm 'Add feature work'
+	git config --local trackbed.baseBranch development
+
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/collect-review-diff.sh"
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_BRANCH" = development ]
+	[ "$CHANGED_FILES" = feature.txt ]
+}
+
+@test "collect-review-diff keeps a caller-pinned base without refetching" {
+	local pinned_base
+	pinned_base="$(git rev-parse refs/remotes/origin/main)"
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --base main --base-commit "$pinned_base"
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_REF" = "$pinned_base" ]
+	[ "$BASE_BRANCH" = "main" ]
+	[ "$CHANGED_FILES" = "committed.txt" ]
+}
+
+@test "collect-review-diff scopes an explicit local commit base without fetching a branch" {
+	printf 'first\n' >first.txt
+	git add first.txt
+	git commit -m "first feature commit" >/dev/null
+	local pre_batch_commit
+	pre_batch_commit="$(git rev-parse HEAD)"
+	printf 'remediation\n' >remediation.txt
+	git add remediation.txt
+	git commit -m "remediation commit" >/dev/null
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --base "$pre_batch_commit" --strict --format json --exclude-review-artifacts
+
+	[ "$status" -eq 0 ]
+	COLLECTED_JSON="$output" PRE_BATCH_COMMIT="$pre_batch_commit" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["COLLECTED_JSON"])
+assert data["base_ref"] == os.environ["PRE_BATCH_COMMIT"], data
+assert data["base_branch"] == "", data
+assert data["merge_base"] == os.environ["PRE_BATCH_COMMIT"], data
+assert data["changed_files"] == ["remediation.txt"], data
+PY
+}
+
+@test "collect-review-diff emits JSON for structured consumers" {
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	printf 'staged\n' >staged.txt
+	git add staged.txt
+
+	printf 'base\nunstaged\n' >tracked.txt
+	printf 'untracked\n' >untracked.txt
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --format json
+
+	[ "$status" -eq 0 ]
+	COLLECTED_JSON="$output" python3 - <<'PY'
+import json
+import os
+import sys
+
+data = json.loads(os.environ["COLLECTED_JSON"])
+expected_changed_files = [
+    "committed.txt",
+    "staged.txt",
+    "tracked.txt",
+    "untracked.txt",
+]
+assert data["base_ref"] == "refs/remotes/origin/main", data
+assert data["base_branch"] == "main", data
+assert isinstance(data["merge_base"], str) and data["merge_base"], data
+assert data["changed_files"] == expected_changed_files, data
+PY
+}
+
+@test "collect-review-diff emits collected fields directly as NUL-delimited values" {
+	local fields="$TMP_DIR/collected-fields"
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	printf 'staged\n' >staged.txt
+	git add staged.txt
+
+	printf 'base\nunstaged\n' >tracked.txt
+	printf 'untracked\n' >untracked.txt
+
+	run bash -c '"$1" --format nul >"$2"' \
+		_ "$SCRIPT_DIR/collect-review-diff.sh" "$fields"
+
+	[ "$status" -eq 0 ]
+	run bash -c '
+    if ! {
+      IFS= read -r -d "" base_ref &&
+        IFS= read -r -d "" base_branch &&
+        IFS= read -r -d "" merge_base &&
+        IFS= read -r -d "" changed_files &&
+        IFS= read -r -d "" stack_context
+    } <"$1"; then
+      exit 1
+    fi
+    [ "$base_ref" = "refs/remotes/origin/main" ]
+    [ "$base_branch" = "main" ]
+    [ -n "$merge_base" ]
+    [ "$changed_files" = "$2" ]
+    [ -z "$stack_context" ]
+  ' _ "$fields" $'committed.txt\nstaged.txt\ntracked.txt\nuntracked.txt'
+	[ "$status" -eq 0 ]
+}
+
+@test "collect-review-diff NUL output preserves hostile values without evaluating them" {
+	local fields="$TMP_DIR/hostile-collected-fields"
+	local pwned="$WORK/nul-output-pwned"
+	local hostile='$(touch${IFS}nul-output-pwned)'
+	printf 'hostile\n' >"$hostile"
+
+	run bash -c '"$1" --format nul >"$2"' \
+		_ "$SCRIPT_DIR/collect-review-diff.sh" "$fields"
+
+	[ "$status" -eq 0 ]
+	[ ! -e "$pwned" ]
+	FIELDS_FILE="$fields" HOSTILE_FILE="$hostile" python3 - <<'PY'
+import os
+from pathlib import Path
+
+fields = Path(os.environ["FIELDS_FILE"]).read_bytes().split(b"\0")
+assert fields[0] == b"refs/remotes/origin/main", fields
+assert fields[1] == b"main", fields
+assert fields[2], fields
+assert fields[3] == os.environ["HOSTILE_FILE"].encode(), fields
+assert fields[4] == b"", fields
+assert fields[5:] == [b""], fields
+PY
+	[ ! -e "$pwned" ]
+}
+
+@test "collect-review-diff decodes validated JSON fields once without evaluating content" {
+	local decoded="$TMP_DIR/decoded-fields"
+	local pwned="$TMP_DIR/decoder-pwned"
+	local fixture
+	fixture=$(PWNED_FILE="$pwned" python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "base_ref": "refs/remotes/origin/main",
+    "base_branch": "main branch\n$(touch${IFS}" + os.environ["PWNED_FILE"] + ")",
+    "merge_base": "abc 123",
+    "changed_files": ["space name.txt", "nested/line\nbreak.txt", "$(false)"],
+}, separators=(",", ":")))
+PY
+)
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json >"$3"' \
+		_ "$fixture" "$SCRIPT_DIR/collect-review-diff.sh" "$decoded"
+
+	[ "$status" -eq 0 ]
+	run bash -c '
+    if ! {
+      IFS= read -r -d "" base_ref &&
+        IFS= read -r -d "" base_branch &&
+        IFS= read -r -d "" merge_base &&
+        IFS= read -r -d "" changed_files
+    } <"$1"; then
+      exit 1
+    fi
+    [ "$base_ref" = "$2" ]
+    [ "$base_branch" = "$3" ]
+    [ "$merge_base" = "$4" ]
+    [ "$changed_files" = "$5" ]
+  ' _ "$decoded" \
+		'refs/remotes/origin/main' \
+		$'main branch\n$(touch${IFS}'"$pwned"')' \
+		'abc 123' \
+		$'space name.txt\nnested/line\nbreak.txt\n$(false)'
+	[ "$status" -eq 0 ]
+	DECODED_FILE="$decoded" PWNED_FILE="$pwned" python3 - <<'PY'
+import os
+from pathlib import Path
+
+fields = Path(os.environ["DECODED_FILE"]).read_bytes().split(b"\0")
+assert fields == [
+    b"refs/remotes/origin/main",
+    b"main branch\n$(touch${IFS}" + os.environ["PWNED_FILE"].encode() + b")",
+    b"abc 123",
+    b"space name.txt\nnested/line\nbreak.txt\n$(false)",
+    b"",
+], fields
+assert not Path(os.environ["PWNED_FILE"]).exists()
+PY
+}
+
+@test "collect-review-diff decoder rejects malformed and missing JSON fields" {
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{not-json' "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Invalid collect-review-diff JSON output"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{"base_ref":"origin/main","base_branch":"main","changed_files":[]}' \
+		"$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"field 'merge_base' must be a string"* ]]
+}
+
+@test "collect-review-diff decoder rejects wrong field types" {
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{"base_ref":[],"base_branch":"main","merge_base":"abc","changed_files":[]}' \
+		"$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"field 'base_ref' must be a string"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{"base_ref":"origin/main","base_branch":"main","merge_base":"abc","changed_files":["ok",7]}' \
+		"$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"field 'changed_files' must be a string list"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json' \
+		_ '{"base_ref":"origin/main","base_branch":"main\u0000evil","merge_base":"abc","changed_files":[]}' \
+		"$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"field 'base_branch' must not contain NUL"* ]]
+}
+
+@test "collect-review-diff propagates resolver failure" {
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --strict --format json
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Base resolution failed; see the message above and stop."* ]]
+}
+
+@test "collect-review-diff NUL output propagates resolver failure without partial fields" {
+	local fields="$TMP_DIR/failed-collected-fields"
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run bash -c '"$1" --strict --format nul >"$2"' \
+		_ "$SCRIPT_DIR/collect-review-diff.sh" "$fields"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Base resolution failed; see the message above and stop."* ]]
+	[ ! -s "$fields" ]
+}
+
+@test "collect-review-diff parses JSON resolver output without eval" {
+	local fake_scripts="$TMP_DIR/fake-scripts"
+	local pwned="$TMP_DIR/collect-pwned"
+	local merge_base
+	merge_base="$(git merge-base refs/remotes/origin/main HEAD)"
+	mkdir -p "$fake_scripts/lib"
+	cp "$SCRIPT_DIR/collect-review-diff.sh" "$fake_scripts/collect-review-diff.sh"
+	cp "$SCRIPT_DIR/lib/shell-helpers.sh" "$fake_scripts/lib/shell-helpers.sh"
+	cat >"$fake_scripts/resolve-base.sh" <<'SH'
+#!/usr/bin/env bash
+if [ "${1-}" != "--format" ] || [ "${2-}" != "json" ]; then
+  echo "expected JSON format request" >&2
+  exit 2
+fi
+python3 - <<'PY'
+import json
+import os
+
+print(json.dumps({
+    "base_ref": "refs/remotes/origin/main",
+    "base_branch": "main$(touch${IFS}$PWNED_FILE)",
+    "merge_base": os.environ["MERGE_BASE_FOR_TEST"],
+    "after_commit": "",
+    "reset_point": "",
+    "original_tip": "",
+    "backup_ref": "",
+}, separators=(",", ":")))
+PY
+SH
+	chmod +x "$fake_scripts/resolve-base.sh"
+	export MERGE_BASE_FOR_TEST="$merge_base"
+	export PWNED_FILE="$pwned"
+
+	run "$fake_scripts/collect-review-diff.sh" --format json
+
+	[ "$status" -eq 0 ]
+	COLLECTED_JSON="$output" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["COLLECTED_JSON"])
+assert data["base_ref"] == "refs/remotes/origin/main", data
+assert "touch" in data["base_branch"], data
+PY
+	[ ! -e "$pwned" ]
+}
+
+@test "collect-review-diff excludes canonical review artifacts only when asked" {
+	local expected
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	printf 'report\n' >REVIEW_OVERVIEW.md
+	printf 'plan\n' >PR_PLAN_W03A_EXAMPLE.md
+	printf 'baseline\n' >QA_BASELINE.json
+	printf 'source\n' >REVIEW_OVERVIEW_helper.md
+	mkdir -p docs
+	printf 'nested\n' >docs/REVIEW_OVERVIEW.md
+
+	run "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 0 ]
+	eval "$output"
+	expected="$(printf '%s\n' committed.txt docs/REVIEW_OVERVIEW.md \
+		PR_PLAN_W03A_EXAMPLE.md QA_BASELINE.json REVIEW_OVERVIEW.md \
+		REVIEW_OVERVIEW_helper.md | sort)"
+	[ "$CHANGED_FILES" = "$expected" ]
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --exclude-review-artifacts
+	[ "$status" -eq 0 ]
+	eval "$output"
+	# Exact entries and glob entries drop; a near-miss name and a same-named
+	# file nested below the root stay in scope as ordinary changed content.
+	expected="$(printf '%s\n' committed.txt docs/REVIEW_OVERVIEW.md \
+		REVIEW_OVERVIEW_helper.md | sort)"
+	[ "$CHANGED_FILES" = "$expected" ]
+}
+
+@test "collect-review-diff filtering does not evaluate hostile file names" {
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+	printf 'report\n' >REVIEW_OVERVIEW.md
+	printf 'hostile\n' >'$(touch${IFS}filter-pwned).md'
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --exclude-review-artifacts --format json
+
+	[ "$status" -eq 0 ]
+	[ ! -e filter-pwned ]
+	COLLECTED_JSON="$output" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["COLLECTED_JSON"])
+assert data["changed_files"] == [
+    "$(touch${IFS}filter-pwned).md",
+    "committed.txt",
+], data
+PY
+}
+
+@test "collect-review-diff accepts an absent or untracked local review artifact" {
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" \
+		--require-local-artifact OVERENGINEERING_REVIEW_OVERVIEW.md
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$CHANGED_FILES" = "committed.txt" ]
+
+	printf 'previous review\n' >OVERENGINEERING_REVIEW_OVERVIEW.md
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --exclude-review-artifacts \
+		--require-local-artifact OVERENGINEERING_REVIEW_OVERVIEW.md
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$CHANGED_FILES" = "committed.txt" ]
+}
+
+@test "collect-review-diff rejects branch-controlled previous-review state" {
+	local artifact=OVERENGINEERING_REVIEW_OVERVIEW.md
+	local trust_message="must be an untracked local workflow artifact"
+
+	printf 'staged report\n' >"$artifact"
+	git add "$artifact"
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact "$artifact"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"$artifact $trust_message"* ]]
+
+	git commit -m "commit review report" >/dev/null
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact "$artifact"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"$trust_message"* ]]
+
+	git rm -q "$artifact"
+	git commit -m "remove review report" >/dev/null
+	ln -s /etc/passwd "$artifact"
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact "$artifact"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"$trust_message"* ]]
+
+	rm "$artifact"
+	mkdir "$artifact"
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact "$artifact"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"$trust_message"* ]]
+}
+
+@test "collect-review-diff fails closed without the canonical artifact list" {
+	local fake_scripts="$TMP_DIR/no-hooks/scripts"
+	mkdir -p "$fake_scripts/lib"
+	cp "$SCRIPT_DIR/collect-review-diff.sh" "$fake_scripts/collect-review-diff.sh"
+	cp "$SCRIPT_DIR/lib/shell-helpers.sh" "$fake_scripts/lib/shell-helpers.sh"
+
+	run "$fake_scripts/collect-review-diff.sh" --exclude-review-artifacts
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Review artifact list not found"* ]]
+	[[ "$output" == *"refusing to filter review scope without it"* ]]
+}
+
+@test "collect-review-diff rejects review-preparation options in decoder mode" {
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json --exclude-review-artifacts' \
+		_ '{}' "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--decode-json cannot be combined with collection options"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json --format nul' \
+		_ '{}' "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--decode-json cannot be combined with collection options"* ]]
+
+	run bash -c 'printf "%s" "$1" | "$2" --decode-json --require-local-artifact "$3"' \
+		_ '{}' "$SCRIPT_DIR/collect-review-diff.sh" OVERENGINEERING_REVIEW_OVERVIEW.md
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--decode-json cannot be combined with collection options"* ]]
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --require-local-artifact
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--require-local-artifact requires a value"* ]]
+}
+
+# Two local gh-stack layers on main with no Pull Requests: layer-b is checked
+# out on top of layer-a. A github.com remote lets the stack helper consult the
+# mocked gh while origin stays the local bare repository.
+setup_unsubmitted_stack() {
+	git remote add github https://github.com/acme/demo.git
+	git switch -q -c layer-a main
+	printf 'a\n' >a.txt
+	git add a.txt
+	git commit -qm 'Add layer a'
+	git switch -q -c layer-b
+	printf 'b\n' >b.txt
+	git add b.txt
+	git commit -qm 'Add layer b'
+	MOCK_STACK_VIEW=$(printf '{"trunk":"main","currentBranch":"layer-b","branches":[{"name":"layer-a","base":"%s","isMerged":false,"needsRebase":false},{"name":"layer-b","base":"%s","isMerged":false,"needsRebase":false}]}' \
+		"$(git rev-parse main)" "$(git rev-parse layer-a)")
+	export MOCK_STACK_VIEW
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+case "$1 $2" in
+"stack --version") echo "gh stack version 0.2.1" ;;
+"stack view") printf '%s\n' "$MOCK_STACK_VIEW" ;;
+"pr list") echo "[]" ;;
+"pr view")
+	echo "no pull requests found for branch \"$(git branch --show-current)\"" >&2
+	exit 1
+	;;
+*) exit 97 ;;
+esac
+GH
+	chmod +x "$BIN_DIR/gh"
+}
+
+@test "collect-review-diff reviews an unsubmitted gh-stack layer against its parent" {
+	setup_unsubmitted_stack
+
+	run bash -c '
+    "$1" --stack-context --format nul >"$2" || exit 1
+    {
+      IFS= read -r -d "" base_ref &&
+        IFS= read -r -d "" base_branch &&
+        IFS= read -r -d "" merge_base &&
+        IFS= read -r -d "" changed_files &&
+        IFS= read -r -d "" stack_context
+    } <"$2" || exit 1
+    printf "%s\n%s\n%s\n" "$base_ref" "$base_branch" "$changed_files"
+    printf "%s" "$stack_context" >"$3"
+  ' _ "$SCRIPT_DIR/collect-review-diff.sh" "$TMP_DIR/fields" "$TMP_DIR/context.json"
+
+	[ "$status" -eq 0 ]
+	[ "$output" = "$(git rev-parse layer-a)"$'\nlayer-a\nb.txt' ]
+	CONTEXT_FILE="$TMP_DIR/context.json" LAYER_A="$(git rev-parse layer-a)" python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+context = json.loads(Path(os.environ["CONTEXT_FILE"]).read_text())
+assert (context["state"], context["source"], context["position"], context["size"]) == ("stacked", "gh-stack", 2, 2), context
+assert context["review_base"] == {"branch": "layer-a", "commit": os.environ["LAYER_A"]}, context
+PY
+}
+
+@test "collect-review-diff accepts an unsubmitted bottom layer without a pinned commit" {
+	setup_unsubmitted_stack
+	git switch -q layer-a
+	MOCK_STACK_VIEW=$(printf '{"trunk":"main","currentBranch":"layer-a","branches":[{"name":"layer-a","base":"%s","isMerged":false,"needsRebase":false},{"name":"layer-b","base":"%s","isMerged":false,"needsRebase":false}]}' \
+		"$(git rev-parse main)" "$(git rev-parse layer-a)")
+	export MOCK_STACK_VIEW
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --stack-context
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_BRANCH" = main ]
+	[ "$CHANGED_FILES" = a.txt ]
+	[[ "$STACK_CONTEXT" == *'"review_base":{"branch":"main","commit":null}'* ]]
+}
+
+@test "collect-review-diff keeps an explicit base over the stack base" {
+	setup_unsubmitted_stack
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --stack-context --base main
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_BRANCH" = main ]
+	[ "$CHANGED_FILES" = $'a.txt\nb.txt' ]
+	[[ "$STACK_CONTEXT" == *'"state":"stacked"'* ]]
+}
+
+@test "collect-review-diff embeds the stack context object in JSON output" {
+	setup_unsubmitted_stack
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --stack-context --format json
+
+	[ "$status" -eq 0 ]
+	OUTPUT="$output" python3 - <<'PY'
+import json
+import os
+
+data = json.loads(os.environ["OUTPUT"])
+assert data["changed_files"] == ["b.txt"], data
+assert data["stack_context"]["parent"]["branch"] == "layer-a", data
+PY
+}
+
+@test "collect-review-diff reports a failed stack helper as an unknown stack" {
+	local real_python
+	real_python="$(command -v python3)"
+	printf '#!/bin/sh\ncase "$1" in */resolve-stack-context.py) echo "helper exploded" >&2; exit 1 ;; esac\nexec "%s" "$@"\n' \
+		"$real_python" >"$BIN_DIR/python3"
+	chmod +x "$BIN_DIR/python3"
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -qm 'feature commit'
+
+	run "$SCRIPT_DIR/collect-review-diff.sh" --stack-context
+
+	[ "$status" -eq 0 ]
+	eval "$output"
+	[ "$BASE_BRANCH" = main ]
+	[ "$CHANGED_FILES" = committed.txt ]
+	[[ "$STACK_CONTEXT" == *'"state":"unknown"'* ]]
+	[[ "$STACK_CONTEXT" == *'helper exploded'* ]]
+}
+
+@test "resolve-base backup mode creates recovery branch" {
+	printf 'committed\n' >committed.txt
+	git add committed.txt
+	git commit -m "feature commit" >/dev/null
+	feature_tip=$(git rev-parse HEAD)
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"BACKUP_REF=feature-recreate-backup"* ]]
+	[ "$(git rev-parse feature-recreate-backup)" = "$feature_tip" ]
+}
+
+@test "shared scripts parse as bash" {
+	run bash -n "$SCRIPT_DIR/resolve-base.sh"
+	[ "$status" -eq 0 ]
+
+	run bash -n "$SCRIPT_DIR/collect-review-diff.sh"
+	[ "$status" -eq 0 ]
+}

@@ -107,7 +107,7 @@ The enabled safety hooks fail closed when `jq` or Python is unavailable. Without
 | Security scans of local skill directories | [SkillSpector](https://github.com/NVIDIA/SkillSpector) |
 | AI-generated illustrations in visual diagrams | [surf-cli](https://github.com/nicobailon/surf-cli) |
 
-The Claude Code marketplace install does not need Node.js, and Codex marketplace installs need no checkout. [docs/mcp-servers.md](kramme-cc-workflow/docs/mcp-servers.md) covers MCP server setup. After installing on either host, run `/trackbed:setup` for a read-only environment check. Contributors need the broader toolchain described in [Development](#development).
+The Claude Code marketplace install does not need Node.js, and Codex marketplace installs need no checkout. [docs/mcp-servers.md](trackbed/docs/mcp-servers.md) covers MCP server setup. After installing on either host, run `/trackbed:setup` for a read-only environment check. Contributors need the broader toolchain described in [Development](#development).
 
 ## Installation & Updating
 
@@ -136,7 +136,7 @@ Other installs — run from your terminal:
 claude /plugin install git+https://github.com/trackbed/skills
 
 # Local development
-claude /plugin install /path/to/skills/kramme-cc-workflow
+claude /plugin install /path/to/skills/trackbed
 ```
 
 ### Codex
@@ -155,16 +155,16 @@ Or build and install it yourself:
 ```bash
 # From a checkout
 npm install
-node kramme-cc-workflow/scripts/convert-plugin.js install trackbed
+node trackbed/scripts/convert-plugin.js install trackbed
 
 # With npx, without a clone
 npx --yes github:trackbed/skills install trackbed
 
 # Local development from this repository
-./kramme-cc-workflow/scripts/install-codex.sh
+./trackbed/scripts/install-codex.sh
 ```
 
-Checkout installs build the marketplace under the Codex home (`$CODEX_HOME` or `~/.codex`; override it with `--codex-home`) and offer to remove output left by earlier converter releases. The [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md#installing-from-a-checkout) covers installer options, build output, and publishing.
+Checkout installs build the marketplace under the Codex home (`$CODEX_HOME` or `~/.codex`; override it with `--codex-home`) and offer to remove output left by earlier converter releases. The [Agent Portability Matrix](trackbed/docs/agent-portability.md#installing-from-a-checkout) covers installer options, build output, and publishing.
 
 To uninstall:
 
@@ -174,12 +174,12 @@ codex plugin remove trackbed@trackbed
 codex plugin marketplace remove trackbed
 
 # Checkout install, including the marketplace and any legacy output
-node kramme-cc-workflow/scripts/convert-plugin.js uninstall trackbed
+node trackbed/scripts/convert-plugin.js uninstall trackbed
 ```
 
 ### Updating
 
-When a new release is out, the `update-check` hook tells you at the start of a session and gives the update commands for your host. It checks at most once a day, so the notice can arrive up to a day after the release. After you update, the next session names the new version and, in Claude Code, how many breaking changes it includes. To turn the hook off or keep it offline, see [update-check](kramme-cc-workflow/docs/hooks.md#update-check).
+When a new release is out, the `update-check` hook tells you at the start of a session and gives the update commands for your host. It checks at most once a day, so the notice can arrive up to a day after the release. After you update, the next session names the new version and, in Claude Code, how many breaking changes it includes. To turn the hook off or keep it offline, see [update-check](trackbed/docs/hooks.md#update-check).
 
 | Install | How to update |
 | --- | --- |
@@ -238,7 +238,7 @@ SIW refines non-trivial work into a spec-driven initial issue set, then migrates
 /trackbed:workflow:cleanup-artifacts --siw # retire local SIW files after verified transfer
 ```
 
-See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow reference.
+See [docs/siw.md](trackbed/docs/siw.md) for the full workflow reference.
 
 ### Implement and ship a Linear issue
 
@@ -250,7 +250,7 @@ See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow referenc
 1. **Preflight:** checks Linear's target branch and confirms there is no existing Pull Request or remote branch for it. Needs a clean tree unless you pass `--continue`.
 2. **Start:** moves a Backlog issue to the team's started status, preferring In Progress; any other state asks first. Renames a detected Conductor workspace, best-effort.
 3. **Implement** the issue with `/trackbed:linear:issue-implement`.
-4. **Review:** freezes the issue's requirements and runs [review convergence](kramme-cc-workflow/docs/review.md#review-convergence) on the branch.
+4. **Review:** freezes the issue's requirements and runs [review convergence](trackbed/docs/review.md#review-convergence) on the branch.
 5. **Ship** (`--ship` only): opens the PR and runs `/trackbed:pr:fix-ci` until CI and review feedback are clear.
 6. **Hand off:** summarizes what was built, what review found, and what to check when you review it.
 
@@ -263,7 +263,7 @@ See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow referenc
 | `--adversarial-review` | Also get a review from the model provider opposite your host on medium- and high-risk work; you decide any of its findings the run wants to reject |
 | `--continue` | Resume on the issue's exact unpublished branch; the issue must already be started and every changed path must belong to it |
 
-`/trackbed:code:plan-to-pr` runs the same pipeline for one `PR_PLAN_*.md` file. The [shipping guide](kramme-cc-workflow/docs/shipping.md) covers preconditions, status changes, and the handoff in full.
+`/trackbed:code:plan-to-pr` runs the same pipeline for one `PR_PLAN_*.md` file. The [shipping guide](trackbed/docs/shipping.md) covers preconditions, status changes, and the handoff in full.
 
 ### Review and ship a PR
 
@@ -274,7 +274,7 @@ See [docs/siw.md](kramme-cc-workflow/docs/siw.md) for the full workflow referenc
 /trackbed:pr:fix-ci         # iterate until CI passes
 ```
 
-`/trackbed:pr:create` and `/trackbed:pr:fix-ci` run unattended, including history rewrites and force-pushes; add `--manual` to keep their prompts. The [shipping guide](kramme-cc-workflow/docs/shipping.md#unattended-by-default) covers all five skills that work this way.
+`/trackbed:pr:create` and `/trackbed:pr:fix-ci` run unattended, including history rewrites and force-pushes; add `--manual` to keep their prompts. The [shipping guide](trackbed/docs/shipping.md#unattended-by-default) covers all five skills that work this way.
 
 More review skills cover product, convention, UX, and GitHub-reviewer flows. Which one should you use?
 
@@ -293,9 +293,9 @@ More review skills cover product, convention, UX, and GitHub-reviewer flows. Whi
 | Implement fixes from local review findings | `/trackbed:pr:resolve-review` |
 | Whether an open PR's title and body still match the branch diff | `/trackbed:pr:generate-description --check` |
 
-`/trackbed:pr:github-review` is report-only by default; it writes a pending review or submits one only when you explicitly ask. A re-review covers only what changed since your last review, and `--stack` maps a whole stack first. Review skills handle stacked Pull Requests one layer at a time, and interrupted reviews resume within 24 hours. The [review guide](kramme-cc-workflow/docs/review.md) covers reviewer models, review convergence, stacks, and GitHub write rules.
+`/trackbed:pr:github-review` is report-only by default; it writes a pending review or submits one only when you explicitly ask. A re-review covers only what changed since your last review, and `--stack` maps a whole stack first. Review skills handle stacked Pull Requests one layer at a time, and interrupted reviews resume within 24 hours. The [review guide](trackbed/docs/review.md) covers reviewer models, review convergence, stacks, and GitHub write rules.
 
-New work starts from the repository's workbench branch. Set it with `git config --local kramme.baseBranch <branch>` when it differs from the remote default; the [shipping guide](kramme-cc-workflow/docs/shipping.md#base-branch) explains how the skills choose it.
+New work starts from the repository's workbench branch. Set it with `git config --local trackbed.baseBranch <branch>` when it differs from the remote default; the [shipping guide](trackbed/docs/shipping.md#base-branch) explains how the skills choose it.
 
 ### Inspect and test a live app
 
@@ -322,11 +322,11 @@ All skills are listed in the [reference below](#skills). Background skills, such
 
 | Setting | Where | Effect |
 | --- | --- | --- |
-| `kramme.baseBranch` | `git config --local`, per repository | The workbench branch new work starts from, when it differs from the remote default. `--base <branch>` overrides it for one run. See [Base Branch](kramme-cc-workflow/docs/shipping.md#base-branch). |
-| `KRAMME_REVIEW_SUBAGENT_LEVEL` | The `env` block of Claude Code's `settings.json`, or the shell environment Codex inherits | `same` (default) keeps review subagents on the orchestrator's model; `lower` steps them down one model class. See [Reviewer Models](kramme-cc-workflow/docs/review.md#reviewer-models). |
-| `--subagent-model <model>` | Flag on review skills and codebase audits | Picks the reviewer model for one run and wins over `KRAMME_REVIEW_SUBAGENT_LEVEL`. |
-| Hook toggles | `/trackbed:hooks:toggle` | Enable, disable, or reset hooks. State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/kramme-cc-workflow/hook-state.json` unless `KRAMME_HOOK_STATE_FILE` points elsewhere. See [Toggling Hooks](kramme-cc-workflow/docs/hooks.md#toggling-hooks). |
-| `KRAMME_AUTOFORMAT_DEBUG=1` | Environment | Keeps the latest failed auto-format attempt's stderr in a private local file. Off by default. See [Failure Diagnostics](kramme-cc-workflow/docs/hooks.md#failure-diagnostics). |
+| `trackbed.baseBranch` | `git config --local`, per repository | The workbench branch new work starts from, when it differs from the remote default. `--base <branch>` overrides it for one run. See [Base Branch](trackbed/docs/shipping.md#base-branch). |
+| `TRACKBED_REVIEW_SUBAGENT_LEVEL` | The `env` block of Claude Code's `settings.json`, or the shell environment Codex inherits | `same` (default) keeps review subagents on the orchestrator's model; `lower` steps them down one model class. See [Reviewer Models](trackbed/docs/review.md#reviewer-models). |
+| `--subagent-model <model>` | Flag on review skills and codebase audits | Picks the reviewer model for one run and wins over `TRACKBED_REVIEW_SUBAGENT_LEVEL`. |
+| Hook toggles | `/trackbed:hooks:toggle` | Enable, disable, or reset hooks. State lives in `${XDG_STATE_HOME:-$HOME/.local/state}/trackbed/hook-state.json` unless `TRACKBED_HOOK_STATE_FILE` points elsewhere. See [Toggling Hooks](trackbed/docs/hooks.md#toggling-hooks). |
+| `TRACKBED_AUTOFORMAT_DEBUG=1` | Environment | Keeps the latest failed auto-format attempt's stderr in a private local file. Off by default. See [Failure Diagnostics](trackbed/docs/hooks.md#failure-diagnostics). |
 | `CODEX_HOME` | Environment | A non-default Codex home. Keep it exported in shells Codex runs. |
 | `.context/` in `.gitignore` | Your repository | Required to resume interrupted GitHub reviews and codebase audits, which save their progress there. |
 
@@ -347,7 +347,7 @@ All plugin functionality is delivered through skills. The Invocation column show
 - **User, Auto:** you, or the host when the context matches the skill.
 - **Background:** only the host, automatically. These skills set `user-invocable: false` and don't appear in the menu.
 
-Each row gives a one-line summary. The full description lives in the skill's `SKILL.md`, and the generated [component catalog](kramme-cc-workflow/docs/component-catalog.json) indexes every skill, agent, and hook by name, invocation mode, and source path.
+Each row gives a one-line summary. The full description lives in the skill's `SKILL.md`, and the generated [component catalog](trackbed/docs/component-catalog.json) indexes every skill, agent, and hook by name, invocation mode, and source path.
 
 ### Find a Skill by Task
 
@@ -383,7 +383,7 @@ Each row gives a one-line summary. The full description lives in the skill's `SK
 
 #### Structured Implementation Workflow (SIW)
 
-Local specification refinement and initial issue planning before a one-way Linear transfer. See [docs/siw.md](kramme-cc-workflow/docs/siw.md).
+Local specification refinement and initial issue planning before a one-way Linear transfer. See [docs/siw.md](trackbed/docs/siw.md).
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
@@ -420,7 +420,7 @@ Product direction, demand validation, post-prototype PRDs, behavior documentatio
 
 #### Linear
 
-Linear issue tracking. These skills need an authenticated Linear MCP server; `issue-to-pr` and `review-pr` also use the GitHub CLI. See the [shipping guide](kramme-cc-workflow/docs/shipping.md#linear-issue-to-pull-request).
+Linear issue tracking. These skills need an authenticated Linear MCP server; `issue-to-pr` and `review-pr` also use the GitHub CLI. See the [shipping guide](trackbed/docs/shipping.md#linear-issue-to-pull-request).
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
@@ -434,7 +434,7 @@ Linear issue tracking. These skills need an authenticated Linear MCP server; `is
 
 #### Pull Requests
 
-PR creation, review, iteration, and resolution. See the [review guide](kramme-cc-workflow/docs/review.md) and the [shipping guide](kramme-cc-workflow/docs/shipping.md).
+PR creation, review, iteration, and resolution. See the [review guide](trackbed/docs/review.md) and the [shipping guide](trackbed/docs/shipping.md).
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
@@ -491,7 +491,7 @@ Codebase, dependency, test-suite, and agent-practice audits that report findings
 
 #### Git
 
-Git history management and commit operations. History rewrites are covered in the [shipping guide](kramme-cc-workflow/docs/shipping.md#rewriting-history).
+Git history management and commit operations. History rewrites are covered in the [shipping guide](trackbed/docs/shipping.md#rewriting-history).
 
 | Skill | Invocation | Arguments | Description |
 | --- | --- | --- | --- |
@@ -578,7 +578,7 @@ Auto-triggered by the host based on context. These don't appear in the `/` menu.
 
 ## Agents
 
-Specialized subagents for PR review and UX audit tasks. Review skills such as `/trackbed:pr:code-review` and `/trackbed:pr:product-review` invoke them, and you can also call them directly through the Task tool. Code review records completion evidence for every reviewer run; see [Completion Evidence](kramme-cc-workflow/docs/review.md#completion-evidence).
+Specialized subagents for PR review and UX audit tasks. Review skills such as `/trackbed:pr:code-review` and `/trackbed:pr:product-review` invoke them, and you can also call them directly through the Task tool. Code review records completion evidence for every reviewer run; see [Completion Evidence](trackbed/docs/review.md#completion-evidence).
 
 <!-- prettier-ignore-start -->
 <!-- BEGIN SOURCE-SYNCED AGENT ROWS -->
@@ -610,7 +610,7 @@ Specialized subagents for PR review and UX audit tasks. Review skills such as `/
 
 ## Hooks
 
-Event handlers defined once in the plugin source and packaged for both hosts. Each host maps them to its own lifecycle events. Toggle them with `/trackbed:hooks:toggle`; [docs/hooks.md](kramme-cc-workflow/docs/hooks.md) covers configuration, pattern lists, and formatter tables.
+Event handlers defined once in the plugin source and packaged for both hosts. Each host maps them to its own lifecycle events. Toggle them with `/trackbed:hooks:toggle`; [docs/hooks.md](trackbed/docs/hooks.md) covers configuration, pattern lists, and formatter tables.
 
 <!-- prettier-ignore-start -->
 <!-- BEGIN SOURCE-SYNCED HOOK ROWS -->
@@ -626,7 +626,7 @@ Event handlers defined once in the plugin source and packaged for both hosts. Ea
 
 ## Renamed and Removed Commands
 
-Update saved prompts and automation before upgrading; the old names no longer resolve. [CHANGELOG.md](kramme-cc-workflow/CHANGELOG.md) has the release-by-release detail.
+Update saved prompts and automation before upgrading; the old names no longer resolve. [CHANGELOG.md](trackbed/CHANGELOG.md) has the release-by-release detail.
 
 ### From `kramme-cc-workflow` to `trackbed`
 
@@ -644,7 +644,14 @@ codex plugin remove kramme-cc-workflow@kramme-cc-workflow
 codex plugin marketplace remove kramme-cc-workflow
 ```
 
-Usage records from before the rename count toward the new names. Hook toggles, the update-check state, and other settings under `kramme-cc-workflow` state and config directories keep working unchanged.
+Usage records from before the rename count toward the new names. Your settings carry over:
+
+- `TRACKBED_*` environment variables replace the `KRAMME_*` ones. The old names still work while the new ones are unset.
+- `git config trackbed.baseBranch` replaces `kramme.baseBranch`, which is still read when the new key is unset.
+- Hook toggles, usage records, and update-check state now live in `trackbed/` state and config folders. Files already in the `kramme-cc-workflow/` folders keep being used until a `trackbed/` file exists.
+- Diagrams and walkthrough reports now go to `~/.trackbed/diagrams/`, and saved Pull Request descriptions to `.trackbed/` in the repository. Older files stay where they are, and `/trackbed:workflow:cleanup-artifacts` still cleans old diagrams.
+- Checkout installs of the Codex plugin build their marketplace under `<codex-home>/.trackbed-plugin-marketplaces/`.
+- The plugin source moved from `kramme-cc-workflow/` to `trackbed/` in the repository, so local paths into a checkout change, for example `claude /plugin install /path/to/skills/trackbed`.
 
 ### Renamed
 
@@ -667,7 +674,7 @@ Usage records from before the rename count toward the new names. Hook toggles, t
 | `/kramme:pr:update-split-plans` → `/trackbed:code:breakdown-findings --reconcile` | Pass the same plan paths, `--all`, `--worktree`, `--source`, `--base`, and `--auto` options. Former no-scope calls must add `--all` to preserve the removed command's active-plan-only default; zero-scope reconcile intentionally retains `trackbed:code:breakdown-findings`'s existing all-indexed behavior. |
 | `/kramme:workflow-artifacts:cleanup` → `/trackbed:workflow:cleanup-artifacts` | Nothing; every argument, mode, and safety gate is unchanged. |
 | `/kramme:linear:select-next` → `/trackbed:linear:next` | Pass `--agent-ready` instead of `--agent-ready-only`; other arguments and behavior are unchanged. |
-| `--auto` → default on `/trackbed:git:recreate-commits`, `/trackbed:pr:create`, `/trackbed:pr:fix-ci`, `/trackbed:pr:generate-description`, and `/trackbed:pr:rebase` | Typed commands, and requests that name one of these skills, now run unattended. Add `--manual` wherever you relied on the prompts; a leftover `--auto` is ignored. `/trackbed:pr:rebase` now skips its safety gates unless you pass `--manual` or `--force-push`. See [Unattended by Default](kramme-cc-workflow/docs/shipping.md#unattended-by-default). |
+| `--auto` → default on `/trackbed:git:recreate-commits`, `/trackbed:pr:create`, `/trackbed:pr:fix-ci`, `/trackbed:pr:generate-description`, and `/trackbed:pr:rebase` | Typed commands, and requests that name one of these skills, now run unattended. Add `--manual` wherever you relied on the prompts; a leftover `--auto` is ignored. `/trackbed:pr:rebase` now skips its safety gates unless you pass `--manual` or `--force-push`. See [Unattended by Default](trackbed/docs/shipping.md#unattended-by-default). |
 
 ### Removed
 
@@ -690,18 +697,18 @@ Usage records from before the rename count toward the new names. Hook toggles, t
 
 Guides in this repository:
 
-- [Review Workflows](kramme-cc-workflow/docs/review.md) — reviewer models, review convergence, stacked PRs, GitHub review rules, and resuming runs
-- [Implementing and Shipping](kramme-cc-workflow/docs/shipping.md) — base-branch selection, Linear issue and plan to PR, PR creation, and history rewrites
-- [SIW Workflow Reference](kramme-cc-workflow/docs/siw.md)
-- [Hook Reference](kramme-cc-workflow/docs/hooks.md)
-- [Recommended MCP Servers](kramme-cc-workflow/docs/mcp-servers.md)
-- [Agent Autonomy Model](kramme-cc-workflow/docs/agent-autonomy.md)
-- [Agent Portability Matrix](kramme-cc-workflow/docs/agent-portability.md)
-- [Repository Architecture](kramme-cc-workflow/docs/architecture.md)
-- [Repository Code Map](kramme-cc-workflow/docs/code-map.md)
-- [Development Guide](kramme-cc-workflow/docs/development.md)
-- [Decision Index](kramme-cc-workflow/docs/decisions/README.md)
-- [Component Catalog](kramme-cc-workflow/docs/component-catalog.json) (generated compact index of skills, agents, and hooks)
+- [Review Workflows](trackbed/docs/review.md) — reviewer models, review convergence, stacked PRs, GitHub review rules, and resuming runs
+- [Implementing and Shipping](trackbed/docs/shipping.md) — base-branch selection, Linear issue and plan to PR, PR creation, and history rewrites
+- [SIW Workflow Reference](trackbed/docs/siw.md)
+- [Hook Reference](trackbed/docs/hooks.md)
+- [Recommended MCP Servers](trackbed/docs/mcp-servers.md)
+- [Agent Autonomy Model](trackbed/docs/agent-autonomy.md)
+- [Agent Portability Matrix](trackbed/docs/agent-portability.md)
+- [Repository Architecture](trackbed/docs/architecture.md)
+- [Repository Code Map](trackbed/docs/code-map.md)
+- [Development Guide](trackbed/docs/development.md)
+- [Decision Index](trackbed/docs/decisions/README.md)
+- [Component Catalog](trackbed/docs/component-catalog.json) (generated compact index of skills, agents, and hooks)
 
 Host documentation:
 
@@ -717,13 +724,13 @@ Host documentation:
 
 ## Releases
 
-See [CHANGELOG.md](kramme-cc-workflow/CHANGELOG.md) for version history and [GitHub Releases](https://github.com/trackbed/skills/releases) for release notes.
+See [CHANGELOG.md](trackbed/CHANGELOG.md) for version history and [GitHub Releases](https://github.com/trackbed/skills/releases) for release notes.
 
-For maintainers: see [RELEASE.md](kramme-cc-workflow/RELEASE.md) for the release process.
+For maintainers: see [RELEASE.md](trackbed/RELEASE.md) for the release process.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor and agent workflow, including source maps, verification commands, and documentation expectations. For repository work, start there, then use [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) and [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to find the relevant subsystem and tests.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor and agent workflow, including source maps, verification commands, and documentation expectations. For repository work, start there, then use [docs/architecture.md](trackbed/docs/architecture.md) and [docs/code-map.md](trackbed/docs/code-map.md) to find the relevant subsystem and tests.
 
 ### PR Title Format
 
@@ -747,42 +754,42 @@ Regular branch commits should use plain-English commit messages (no Conventional
 
 ## Development
 
-[CONTRIBUTING.md](CONTRIBUTING.md) covers local setup, and the [development guide](kramme-cc-workflow/docs/development.md) has the complete test-target catalog, coverage baselines, pre-PR verification, skill security scans, and the SkillOpt eval pilot. The short version:
+[CONTRIBUTING.md](CONTRIBUTING.md) covers local setup, and the [development guide](trackbed/docs/development.md) has the complete test-target catalog, coverage baselines, pre-PR verification, skill security scans, and the SkillOpt eval pilot. The short version:
 
 ```bash
 # Read-only prerequisite check
-bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check
+bash trackbed/scripts/bootstrap-dev.sh --check
 
 # Explicit macOS, Debian 12+, or Ubuntu 22.04+ setup
-bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
+bash trackbed/scripts/bootstrap-dev.sh --install
 
 # Closest focused test for a documentation change
-make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats
+make -C trackbed test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats
 
 # Representative cross-language feedback
-make -C kramme-cc-workflow test-smoke
+make -C trackbed test-smoke
 
 # Complete default suite (Node + Python + Bats)
-make -C kramme-cc-workflow test
+make -C trackbed test
 
 # Ordinary Pull Request gate
-make -C kramme-cc-workflow pr-verify
+make -C trackbed pr-verify
 
 # Stronger release-candidate gate
-make -C kramme-cc-workflow verify
+make -C trackbed verify
 ```
 
-Skill changes also need a separate SkillSpector installation for the changed-skill security gate. [CONTRIBUTING.md](CONTRIBUTING.md#optional-pre-commit-check) describes the optional managed pre-commit hook, and the [skill-review eval guide](kramme-cc-workflow/evals/skill-review/README.md#live-provider-adapters) covers the optional live evals that spend Anthropic or OpenAI API credits.
+Skill changes also need a separate SkillSpector installation for the changed-skill security gate. [CONTRIBUTING.md](CONTRIBUTING.md#optional-pre-commit-check) describes the optional managed pre-commit hook, and the [skill-review eval guide](trackbed/evals/skill-review/README.md#live-provider-adapters) covers the optional live evals that spend Anthropic or OpenAI API credits.
 
 ## Plugin Structure
 
-The shared plugin source lives in `kramme-cc-workflow/`; this root README is the canonical entry point for both Claude Code and Codex. Claude Code source files are canonical, and Codex output is generated from them at build time.
+The shared plugin source lives in `trackbed/`; this root README is the canonical entry point for both Claude Code and Codex. Claude Code source files are canonical, and Codex output is generated from them at build time.
 
 ```
 .
 ├── .claude-plugin/
 │   └── marketplace.json     # Root marketplace definition
-├── kramme-cc-workflow/
+├── trackbed/
 │   ├── .claude-plugin/
 │   │   └── plugin.json      # Plugin metadata
 │   ├── agents/              # Specialized subagents
@@ -797,19 +804,19 @@ The shared plugin source lives in `kramme-cc-workflow/`; this root README is the
 └── README.md                # Canonical entry point
 ```
 
-The source tree above feeds both host packages. Claude Code reads the plugin metadata, skills, agents, and hooks directly; the converter packages the same behavior as the native Codex plugin described in [the portability matrix](kramme-cc-workflow/docs/agent-portability.md).
+The source tree above feeds both host packages. Claude Code reads the plugin metadata, skills, agents, and hooks directly; the converter packages the same behavior as the native Codex plugin described in [the portability matrix](trackbed/docs/agent-portability.md).
 
 ## Adding Components
 
 See [AGENTS.md](AGENTS.md) for detailed conventions. Quick reference:
 
-- **Agents**: Create markdown files in `kramme-cc-workflow/agents/` with `name`, `description`, `model`, and `color` frontmatter.
-- **Skills**: Create a subdirectory in `kramme-cc-workflow/skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `kramme-platforms`.
-- **Hooks**: Edit `kramme-cc-workflow/hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
-- **README summaries**: Give each new skill or agent a one-line summary of at most 160 characters under `summaries` in `readme_skill_sync` or `readme_agent_sync` in [synced-contracts.yaml](kramme-cc-workflow/scripts/synced-contracts.yaml). Hooks use `readme_hook_sync.descriptions`.
+- **Agents**: Create markdown files in `trackbed/agents/` with `name`, `description`, `model`, and `color` frontmatter.
+- **Skills**: Create a subdirectory in `trackbed/skills/` with a `SKILL.md` file. Key frontmatter: `name`, `description`, `disable-model-invocation`, `user-invocable`, `trackbed-platforms`.
+- **Hooks**: Edit `trackbed/hooks/hooks.json` to add event handlers. Available events: `PreToolUse`, `PostToolUse`, `UserPromptSubmit`, `SessionStart`, `Stop`.
+- **README summaries**: Give each new skill or agent a one-line summary of at most 160 characters under `summaries` in `readme_skill_sync` or `readme_agent_sync` in [synced-contracts.yaml](trackbed/scripts/synced-contracts.yaml). Hooks use `readme_hook_sync.descriptions`.
 - **External sources**: Record every adapted source in the skill's `references/sources.yaml` as `usage: inspiration` or `usage: copied`, following [External Sources and Rights](AGENTS.md#external-sources-and-rights). Use `/trackbed:skill:create` and `/trackbed:skill:review` for the detailed checks.
 
-The skill, agent, and hook table rows in this README and the compact [component catalog](kramme-cc-workflow/docs/component-catalog.json) are generated from component source metadata and the README summaries. Run `python3 kramme-cc-workflow/scripts/generate-component-reference.py --write` to refresh both, or `python3 kramme-cc-workflow/scripts/generate-component-reference.py --check` to validate without writing. `make -C kramme-cc-workflow skill-contracts` fails on drift and warns on README paragraphs of 500 characters or more.
+The skill, agent, and hook table rows in this README and the compact [component catalog](trackbed/docs/component-catalog.json) are generated from component source metadata and the README summaries. Run `python3 trackbed/scripts/generate-component-reference.py --write` to refresh both, or `python3 trackbed/scripts/generate-component-reference.py --check` to validate without writing. `make -C trackbed skill-contracts` fails on drift and warns on README paragraphs of 500 characters or more.
 
 ## Local Repository Maintenance
 

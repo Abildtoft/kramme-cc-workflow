@@ -34,8 +34,8 @@ jobs:
           OUT_DIR="$RUNNER_TEMP/${plugin}-marketplace"
           rm -rf "$OUT_DIR"
 
-          node ./kramme-cc-workflow/scripts/convert-plugin.js build "$plugin" --out "$OUT_DIR"
-          eval "$(node ./kramme-cc-workflow/scripts/convert-plugin.js stats "$plugin" | sed 's/^/EXPECTED_/')"
+          node ./trackbed/scripts/convert-plugin.js build "$plugin" --out "$OUT_DIR"
+          eval "$(node ./trackbed/scripts/convert-plugin.js stats "$plugin" | sed 's/^/EXPECTED_/')"
 
           PLUGIN_ROOT="$OUT_DIR/plugins/$plugin"
           test -f "$OUT_DIR/.agents/plugins/marketplace.json"
@@ -64,12 +64,12 @@ jobs:
           rm -rf "$WORK_DIR"
           mkdir -p "$CODEX_HOME" "$AGENTS_HOME"
 
-          ./kramme-cc-workflow/scripts/install-codex.sh \
+          ./trackbed/scripts/install-codex.sh \
             --non-interactive \
             --codex-home "$CODEX_HOME" \
             --agents-home "$AGENTS_HOME"
 
-          VERSION=$(node -e "console.log(require('./kramme-cc-workflow/.claude-plugin/plugin.json').version)")
+          VERSION=$(node -e "console.log(require('./trackbed/.claude-plugin/plugin.json').version)")
           CACHE_ROOT="$CODEX_HOME/plugins/cache/$plugin/$plugin/$VERSION"
           test -f "$CACHE_ROOT/.codex-plugin/plugin.json"
           test -f "$CACHE_ROOT/skills/trackbed:pr:create/SKILL.md"

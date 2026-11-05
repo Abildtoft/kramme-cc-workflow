@@ -44,13 +44,13 @@ jobs:
           fi
 
       - name: Run measured smoke suite
-        run: time make -C kramme-cc-workflow test-smoke
+        run: time make -C trackbed test-smoke
 
       - name: Run tests
-        run: make -C kramme-cc-workflow test
+        run: make -C trackbed test
 
       - name: Run coverage gates
-        run: make -C kramme-cc-workflow coverage
+        run: make -C trackbed coverage
 
   walkthrough-browser-smoke:
     name: Run walkthrough browser smoke
@@ -76,13 +76,13 @@ jobs:
           sudo apt-get install -y bats
           chrome="$(command -v google-chrome || command -v chromium || command -v chromium-browser)"
           "$chrome" --version
-          echo "KRAMME_BROWSER_SMOKE_CHROME=$chrome" >> "$GITHUB_ENV"
+          echo "TRACKBED_BROWSER_SMOKE_CHROME=$chrome" >> "$GITHUB_ENV"
 
       - name: Run required walkthrough interactions
         env:
-          KRAMME_REQUIRE_BROWSER_SMOKE: "1"
+          TRACKBED_REQUIRE_BROWSER_SMOKE: "1"
         run: >-
-          bats --filter '^PR walkthrough supports initial render, tab switch, search, and tour navigation$' kramme-cc-workflow/tests/pr-walkthrough.bats
+          bats --filter '^PR walkthrough supports initial render, tab switch, search, and tour navigation$' trackbed/tests/pr-walkthrough.bats
 
 
   hooks-required:
@@ -116,7 +116,7 @@ jobs:
           python-version: "3.8"
 
       - name: Run session-search compatibility smoke tests
-        run: python3 kramme-cc-workflow/tests/python/test_session_search_python38.py
+        run: python3 trackbed/tests/python/test_session_search_python38.py
 
   node18-visual-check-slop:
     name: Run visual check-slop on Node.js 18
@@ -134,7 +134,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime="kramme-cc-workflow/skills/visual:check-slop/scripts/anti-slop.mjs"
+          runtime="trackbed/skills/visual:check-slop/scripts/anti-slop.mjs"
           fixture="$(mktemp -d)"
           trap 'rm -rf -- "$fixture"' EXIT
           printf '%s\n' '<html><style>p{text-align:justify}</style><p>Copy</p></html>' >"$fixture/page.html"
@@ -177,4 +177,4 @@ jobs:
         run: python3 -m pip install -r requirements-dev.txt
 
       - name: Run static checks
-        run: make -C kramme-cc-workflow lint format-check
+        run: make -C trackbed lint format-check

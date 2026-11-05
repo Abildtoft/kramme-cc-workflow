@@ -1,0 +1,1155 @@
+#!/usr/bin/env bats
+
+load 'test_helper/common'
+
+setup() {
+	SCRIPT_DIR="$(cd "$BATS_TEST_DIRNAME/.." && pwd)/scripts"
+	TMP_DIR="$(mktemp -d)"
+	ORIGIN="$TMP_DIR/origin.git"
+	WORK="$TMP_DIR/work"
+	BIN_DIR="$TMP_DIR/bin"
+	mkdir -p "$BIN_DIR"
+	write_no_pr_gh
+	export PATH="$BIN_DIR:$PATH"
+
+	init_test_git_repo "$WORK" --origin "$ORIGIN"
+	cd "$WORK"
+	git remote set-head origin main >/dev/null 2>&1
+	git switch -c feature >/dev/null 2>&1
+}
+
+teardown() {
+	if [ -n "${TMP_DIR:-}" ] && [ -d "$TMP_DIR" ]; then
+		rm -rf "$TMP_DIR"
+	fi
+}
+
+write_no_pr_gh() {
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+echo "no pull requests found for branch \"$(git branch --show-current)\"" >&2
+exit 1
+GH
+	chmod +x "$BIN_DIR/gh"
+}
+
+write_broken_gh() {
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+echo 'failed to connect to api.github.com' >&2
+exit 1
+GH
+	chmod +x "$BIN_DIR/gh"
+}
+
+write_gh_base() {
+	local branch="$1"
+	cat >"$BIN_DIR/gh" <<GH
+#!/bin/sh
+if [ "\$*" = "pr view --json baseRefName --jq .baseRefName" ]; then
+  if [ "\${GH_PROMPT_DISABLED:-}" != "1" ]; then
+    exit 3
+  fi
+  printf '%s\n' "$branch"
+  exit 0
+fi
+exit 1
+GH
+	chmod +x "$BIN_DIR/gh"
+}
+
+write_git_fetch_env_assertion() {
+	local real_git
+	real_git="${CONDUCTOR_REAL_GIT_PATH:-$(command -v git)}"
+	cat >"$BIN_DIR/git" <<GIT
+#!/bin/sh
+if [ "\$1" = "fetch" ]; then
+  if [ "\${GIT_TERMINAL_PROMPT:-}" != "0" ]; then
+    echo "missing GIT_TERMINAL_PROMPT=0" >&2
+    exit 86
+  fi
+  if [ "\${GCM_INTERACTIVE:-}" != "Never" ]; then
+    echo "missing GCM_INTERACTIVE=Never" >&2
+    exit 86
+  fi
+  case "\${GIT_SSH_COMMAND:-}" in
+    *"-oBatchMode=yes"*) ;;
+    *)
+      echo "missing SSH BatchMode" >&2
+      exit 86
+      ;;
+  esac
+  if [ -n "\${EXPECTED_GIT_SSH_COMMAND_FRAGMENT:-}" ]; then
+    case "\${GIT_SSH_COMMAND:-}" in
+      *"\${EXPECTED_GIT_SSH_COMMAND_FRAGMENT}"*) ;;
+      *)
+        echo "missing caller SSH command" >&2
+        exit 86
+        ;;
+    esac
+  fi
+fi
+exec "$real_git" "\$@"
+GIT
+	chmod +x "$BIN_DIR/git"
+}
+
+write_slow_git_fetch() {
+	local real_git
+	real_git="${CONDUCTOR_REAL_GIT_PATH:-$(command -v git)}"
+	cat >"$BIN_DIR/git" <<GIT
+#!/bin/sh
+if [ "\$1" = "fetch" ]; then
+  if [ -n "\${MOCK_GIT_FETCH_CHILD_MARKER:-}" ]; then
+    sh -c 'sleep "\$1"; printf alive > "\$2"' sh "\${MOCK_GIT_FETCH_CHILD_SLEEP_SECONDS:-0.2}" "\$MOCK_GIT_FETCH_CHILD_MARKER" &
+    wait
+    exit 87
+  fi
+  sleep "\${MOCK_GIT_FETCH_SLEEP_SECONDS:-1}"
+  exit 87
+fi
+exec "$real_git" "\$@"
+GIT
+	chmod +x "$BIN_DIR/git"
+}
+
+write_failing_git_ls_tree() {
+	local real_git
+	real_git="${CONDUCTOR_REAL_GIT_PATH:-$(command -v git)}"
+	cat >"$BIN_DIR/git" <<GIT
+#!/bin/sh
+if [ "\$1" = "ls-tree" ]; then
+  last_argument=""
+  for argument in "\$@"; do
+    last_argument="\$argument"
+  done
+  if [ "\$last_argument" = "\${MOCK_GIT_LS_TREE_PATH:-}" ]; then
+    exit 88
+  fi
+fi
+exec "$real_git" "\$@"
+GIT
+	chmod +x "$BIN_DIR/git"
+}
+
+load_assignments() {
+	local assignments
+	assignments=$(printf '%s\n' "$output" | grep -E '^(BASE_REF|BASE_BRANCH|MERGE_BASE|AFTER_COMMIT|RESET_POINT|ORIGINAL_BRANCH|ORIGINAL_TIP|BACKUP_REF)=' || true)
+	eval "$assignments"
+}
+
+json_value() {
+	local key="$1"
+	JSON_OUTPUT="$output" python3 - "$key" <<'PY'
+import json
+import os
+import sys
+
+print(json.loads(os.environ["JSON_OUTPUT"])[sys.argv[1]])
+PY
+}
+
+json_keys() {
+	JSON_OUTPUT="$output" python3 - <<'PY'
+import json
+import os
+
+print("\n".join(json.loads(os.environ["JSON_OUTPUT"]).keys()))
+PY
+}
+
+commit_file() {
+	local file="$1"
+	local content="$2"
+	local message="$3"
+	printf '%s\n' "$content" >"$file"
+	git add "$file"
+	git commit -m "$message" >/dev/null
+}
+
+create_remote_branch() {
+	local branch="$1"
+	git branch "$branch" main
+	git push origin "$branch" >/dev/null 2>&1
+	git fetch origin "$branch:refs/remotes/origin/$branch" >/dev/null 2>&1
+}
+
+delete_origin_head() {
+	git symbolic-ref --delete refs/remotes/origin/HEAD
+}
+
+@test "resolves origin HEAD and prints the stdout assignment contract" {
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	[ "$(printf '%s\n' "$output" | sed 's/=.*//')" = $'BASE_REF\nBASE_BRANCH\nMERGE_BASE\nAFTER_COMMIT\nRESET_POINT\nORIGINAL_BRANCH\nORIGINAL_TIP\nBACKUP_REF' ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+	[ -n "$MERGE_BASE" ]
+	[ "$AFTER_COMMIT" = "" ]
+	[ "$RESET_POINT" = "" ]
+	[ "$ORIGINAL_BRANCH" = "" ]
+	[ "$ORIGINAL_TIP" = "" ]
+	[ "$BACKUP_REF" = "" ]
+}
+
+@test "json format exports structured fields matching shell compatibility output" {
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	local expected_base_ref="$BASE_REF"
+	local expected_base_branch="$BASE_BRANCH"
+	local expected_merge_base="$MERGE_BASE"
+	local expected_after_commit="$AFTER_COMMIT"
+	local expected_reset_point="$RESET_POINT"
+	local expected_original_branch="$ORIGINAL_BRANCH"
+	local expected_original_tip="$ORIGINAL_TIP"
+	local expected_backup_ref="$BACKUP_REF"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --format json
+
+	[ "$status" -eq 0 ]
+	[ "$(json_keys)" = $'base_ref\nbase_branch\nmerge_base\nafter_commit\nreset_point\noriginal_branch\noriginal_tip\nbackup_ref' ]
+	[ "$(json_value base_ref)" = "$expected_base_ref" ]
+	[ "$(json_value base_branch)" = "$expected_base_branch" ]
+	[ "$(json_value merge_base)" = "$expected_merge_base" ]
+	[ "$(json_value after_commit)" = "$expected_after_commit" ]
+	[ "$(json_value reset_point)" = "$expected_reset_point" ]
+	[ "$(json_value original_branch)" = "$expected_original_branch" ]
+	[ "$(json_value original_tip)" = "$expected_original_tip" ]
+	[ "$(json_value backup_ref)" = "$expected_backup_ref" ]
+}
+
+@test "json format treats shell metacharacters as data" {
+	local branch='topic-$(touch${IFS}$PWNED_FILE)'
+	export PWNED_FILE="$TMP_DIR/json-pwned"
+	create_remote_branch "$branch"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --format json --base "$branch"
+
+	[ "$status" -eq 0 ]
+	[ "$(json_value base_branch)" = "$branch" ]
+	[ ! -e "$PWNED_FILE" ]
+}
+
+@test "pinned base commit skips refetch and remains stable when remote base moves" {
+	local pinned_base
+	pinned_base="$(git rev-parse refs/remotes/origin/main)"
+
+	git switch main >/dev/null 2>&1
+	commit_file "remote-move.txt" "remote move" "move remote main"
+	git push origin main >/dev/null 2>&1
+	git switch feature >/dev/null 2>&1
+
+	write_slow_git_fetch
+	export MOCK_GIT_FETCH_SLEEP_SECONDS=10
+	run "$SCRIPT_DIR/resolve-base.sh" --base main --base-commit "$pinned_base"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "$pinned_base" ]
+	[ "$BASE_BRANCH" = "main" ]
+	[ "$MERGE_BASE" = "$pinned_base" ]
+}
+
+@test "pinned base commit rejects non-full and missing OIDs" {
+	run "$SCRIPT_DIR/resolve-base.sh" --base main --base-commit HEAD
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base-commit must be a full 40-character lowercase commit OID"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base main --base-commit 0000000000000000000000000000000000000000
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Pinned base commit '0000000000000000000000000000000000000000' does not resolve locally"* ]]
+}
+
+@test "explicit commit OID base resolves locally without fetching a branch" {
+	commit_file "first.txt" "first" "first feature commit"
+	local pre_batch_commit
+	pre_batch_commit="$(git rev-parse HEAD)"
+	commit_file "remediation.txt" "remediation" "remediation commit"
+	write_gh_base "main"
+	write_slow_git_fetch
+	export MOCK_GIT_FETCH_SLEEP_SECONDS=10
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict --base "$pre_batch_commit"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "$pre_batch_commit" ]
+	[ "$BASE_BRANCH" = "" ]
+	[ "$MERGE_BASE" = "$pre_batch_commit" ]
+}
+
+@test "explicit commit OID base rejects missing commits and a branch pin" {
+	run "$SCRIPT_DIR/resolve-base.sh" --base 0000000000000000000000000000000000000000
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Explicit base commit '0000000000000000000000000000000000000000' does not resolve locally"* ]]
+	[[ "$output" != *"Failed to fetch"* ]]
+
+	local head_commit
+	head_commit="$(git rev-parse HEAD)"
+	run "$SCRIPT_DIR/resolve-base.sh" --base "$head_commit" --base-commit "$head_commit"
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base-commit pins a branch base; it cannot be combined with a commit OID --base"* ]]
+}
+
+@test "uses GitHub PR base metadata before origin HEAD" {
+	create_remote_branch "develop"
+	write_gh_base "develop"
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "GitHub lookup failure cannot fall through to a configured workbench" {
+	create_remote_branch development
+	git config --local trackbed.baseBranch development
+	write_broken_gh
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"failed to connect to api.github.com"* ]]
+	[[ "$output" == *"Could not determine whether the current branch has a Pull Request"* ]]
+	[[ "$output" != *"BASE_BRANCH=development"* ]]
+}
+
+@test "a no-PR result for another branch cannot select the configured workbench" {
+	git config --local trackbed.baseBranch development
+	cat >"$BIN_DIR/gh" <<'GH'
+#!/bin/sh
+echo 'no pull requests found for branch "other"' >&2
+exit 1
+GH
+	chmod +x "$BIN_DIR/gh"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not determine whether the current branch has a Pull Request"* ]]
+}
+
+@test "backup mode does not create a recovery branch after GitHub lookup failure" {
+	create_remote_branch development
+	git config --local trackbed.baseBranch development
+	write_broken_gh
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not determine whether the current branch has a Pull Request"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "GitHub PR base metadata wins over CONDUCTOR_DEFAULT_BRANCH" {
+	create_remote_branch "develop"
+	write_gh_base "develop"
+
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "repository base setting selects development while origin HEAD stays on main" {
+	create_remote_branch "development"
+	git config --local trackbed.baseBranch development
+
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/development" ]
+	[ "$BASE_BRANCH" = "development" ]
+}
+
+@test "the pre-1.0.0 kramme.baseBranch setting still selects the workbench" {
+	create_remote_branch "development"
+	create_remote_branch "release"
+	git config --local kramme.baseBranch development
+
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "development" ]
+
+	git config --local trackbed.baseBranch release
+	run env CONDUCTOR_DEFAULT_BRANCH=main "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "release" ]
+}
+
+@test "an empty pre-1.0.0 kramme.baseBranch setting names the key it read" {
+	git config --local kramme.baseBranch ""
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Configured kramme.baseBranch is empty"* ]]
+}
+
+@test "repository base setting keeps main as workbench when Conductor names development" {
+	create_remote_branch development
+	git config --local trackbed.baseBranch main
+	git tag v1 main
+
+	run env CONDUCTOR_DEFAULT_BRANCH=development "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "main" ]
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+}
+
+@test "GitHub PR target wins over repository base setting" {
+	create_remote_branch "development"
+	git config --local trackbed.baseBranch development
+	write_gh_base "main"
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "new-work mode ignores current PR target and uses repository workbench" {
+	create_remote_branch development
+	git config --local trackbed.baseBranch development
+	write_gh_base main
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict --workbench
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = development ]
+	[ "$BASE_REF" = refs/remotes/origin/development ]
+}
+
+@test "new-work mode keeps main workbench with tag releases despite another PR target" {
+	create_remote_branch development
+	git config --local trackbed.baseBranch main
+	git tag v1 main
+	write_gh_base development
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict --workbench
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = main ]
+	[ "$BASE_REF" = refs/remotes/origin/main ]
+}
+
+@test "invalid repository base setting stops instead of falling through to main" {
+	git config --local trackbed.baseBranch 'bad name'
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Configured trackbed.baseBranch 'bad name' is not a valid branch name"* ]]
+}
+
+@test "empty repository base setting stops instead of falling through to main" {
+	git config --local trackbed.baseBranch ''
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Configured trackbed.baseBranch is empty"* ]]
+}
+
+@test "uses CONDUCTOR_DEFAULT_BRANCH when PR metadata is absent and origin HEAD is missing" {
+	create_remote_branch "develop"
+	delete_origin_head
+
+	run env CONDUCTOR_DEFAULT_BRANCH=develop "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "CONDUCTOR_DEFAULT_BRANCH wins over origin HEAD" {
+	create_remote_branch "develop"
+
+	run env CONDUCTOR_DEFAULT_BRANCH=develop "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "ignores invalid or missing CONDUCTOR_DEFAULT_BRANCH and falls through" {
+	run env CONDUCTOR_DEFAULT_BRANCH='bad name' "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+
+	run env CONDUCTOR_DEFAULT_BRANCH=nonexistent "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "fetch disables interactive credential prompts" {
+	export GIT_SSH_COMMAND="custom-ssh --identity test-key"
+	export EXPECTED_GIT_SSH_COMMAND_FRAGMENT="$GIT_SSH_COMMAND"
+	write_git_fetch_env_assertion
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base main
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "falls back to origin main when origin HEAD is missing" {
+	delete_origin_head
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "falls back to origin master when no origin HEAD or origin main tracking ref exists" {
+	create_remote_branch "master"
+	delete_origin_head
+	git update-ref -d refs/remotes/origin/main
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/master" ]
+	[ "$BASE_BRANCH" = "master" ]
+}
+
+@test "fails when no automatic base source is available" {
+	delete_origin_head
+	git update-ref -d refs/remotes/origin/main
+
+	run env -u CONDUCTOR_DEFAULT_BRANCH "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not determine base branch; expected PR metadata, trackbed.baseBranch, CONDUCTOR_DEFAULT_BRANCH, origin/HEAD, origin/main, or origin/master"* ]]
+}
+
+@test "explicit base branch wins over GitHub metadata and origin HEAD" {
+	create_remote_branch "develop"
+	write_gh_base "main"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base develop
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "explicit local base ref is normalized to origin remote branch" {
+	create_remote_branch "develop"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base refs/heads/develop
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/develop" ]
+	[ "$BASE_BRANCH" = "develop" ]
+}
+
+@test "explicit remote base ref preserves its remote" {
+	local upstream="$TMP_DIR/upstream.git"
+	git init --bare "$upstream" >/dev/null
+	git remote add upstream "$upstream"
+	git push upstream main:release >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base refs/remotes/upstream/release
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/upstream/release" ]
+	[ "$BASE_BRANCH" = "release" ]
+}
+
+@test "explicit branch name with slash is treated as an origin branch when prefix is not a remote" {
+	create_remote_branch "release/next"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base release/next
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/release/next" ]
+	[ "$BASE_BRANCH" = "release/next" ]
+}
+
+@test "explicit remote-qualified base uses the named remote when it exists" {
+	local upstream="$TMP_DIR/upstream.git"
+	git init --bare "$upstream" >/dev/null
+	git remote add upstream "$upstream"
+	git push upstream main:release >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base upstream/release
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/upstream/release" ]
+	[ "$BASE_BRANCH" = "release" ]
+}
+
+@test "explicit base fails when origin remote is missing" {
+	git remote remove origin
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base main
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Explicit base ref 'main' names unknown remote 'origin'"* ]]
+}
+
+@test "invalid explicit base branch fails before fetch" {
+	run "$SCRIPT_DIR/resolve-base.sh" --base "bad..name"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Explicit base branch 'bad..name' is not a valid branch name"* ]]
+}
+
+@test "strict mode fails when fetching the resolved base fails" {
+	git fetch origin main >/dev/null 2>&1
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Failed to fetch origin/main"* ]]
+}
+
+@test "default fetch mode is strict" {
+	git fetch origin main >/dev/null 2>&1
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Failed to fetch origin/main"* ]]
+}
+
+@test "strict mode fails when fetching the resolved base times out" {
+	write_slow_git_fetch
+	export RESOLVE_BASE_FETCH_TIMEOUT_SECONDS="0.05"
+	export MOCK_GIT_FETCH_SLEEP_SECONDS="1"
+	export MOCK_GIT_FETCH_CHILD_MARKER="$TMP_DIR/leaked-fetch-child"
+	export MOCK_GIT_FETCH_CHILD_SLEEP_SECONDS="0.2"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --strict
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Timed out fetching origin/main after 0.05s"* ]]
+	sleep 0.3
+	[ ! -e "$MOCK_GIT_FETCH_CHILD_MARKER" ]
+}
+
+@test "tolerates fetch failure when a cached remote ref exists" {
+	git fetch origin main >/dev/null 2>&1
+	git remote set-url origin "$TMP_DIR/missing-origin.git"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --tolerate-fetch-failure
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Warning: failed to fetch origin/main; using existing refs/remotes/origin/main"* ]]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "tolerates fetch timeout when a cached remote ref exists" {
+	write_slow_git_fetch
+	export RESOLVE_BASE_FETCH_TIMEOUT_SECONDS="0.05"
+	export MOCK_GIT_FETCH_SLEEP_SECONDS="1"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --tolerate-fetch-failure
+
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Warning: timed out fetching origin/main; using existing refs/remotes/origin/main"* ]]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "normal mode allows detached HEAD" {
+	git checkout --detach HEAD >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "backup mode rejects detached HEAD" {
+	git checkout --detach HEAD >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"HEAD is detached; switch to the feature branch first"* ]]
+}
+
+@test "normal mode allows running on the base branch itself" {
+	git switch main >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_BRANCH" = "main" ]
+}
+
+@test "backup mode rejects running on the base branch itself" {
+	git switch main >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Current branch is the base branch 'main'; switch to a feature branch first"* ]]
+}
+
+@test "backup mode rejects production main even when configured workbench is development" {
+	create_remote_branch development
+	git config --local trackbed.baseBranch development
+	git switch -q main
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --base development
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"protected workbench or production branch"* ]]
+}
+
+@test "backup mode protects configured development when the explicit base is main" {
+	create_remote_branch development
+	git config --local trackbed.baseBranch development
+	git switch -q development
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --base main
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"protected workbench or production branch"* ]]
+	! git show-ref --verify --quiet refs/heads/development-recreate-backup
+}
+
+@test "fails when histories are unrelated" {
+	git switch --orphan unrelated >/dev/null 2>&1
+	git rm -r --cached . >/dev/null 2>&1 || true
+	rm -f tracked.txt
+	commit_file "unrelated.txt" "unrelated" "unrelated root"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base main
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"No merge base between 'refs/remotes/origin/main' and HEAD; histories are unrelated"* ]]
+}
+
+@test "base-only mode resolves a workbench across unrelated histories" {
+	git switch --orphan unrelated >/dev/null 2>&1
+	git rm -r --cached . >/dev/null 2>&1 || true
+	rm -f tracked.txt
+	commit_file "unrelated.txt" "unrelated" "unrelated root"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --workbench --base-only
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BASE_REF" = "refs/remotes/origin/main" ]
+	[ "$MERGE_BASE" = "" ]
+}
+
+@test "base-only mode cannot bypass backup ancestry checks" {
+	run "$SCRIPT_DIR/resolve-base.sh" --base-only --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base-only cannot be combined with --backup or --after"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "after commit is resolved and exported when it is an ancestor of HEAD" {
+	commit_file "one.txt" "one" "feature one"
+	local after_commit
+	after_commit="$(git rev-parse HEAD)"
+	commit_file "two.txt" "two" "feature two"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --after "$after_commit"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$AFTER_COMMIT" = "$after_commit" ]
+	[ "$RESET_POINT" = "" ]
+}
+
+@test "after commit fails when it does not resolve" {
+	run "$SCRIPT_DIR/resolve-base.sh" --after missing-commit
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--after commit 'missing-commit' does not resolve"* ]]
+}
+
+@test "after commit fails when it is not an ancestor of HEAD" {
+	git switch -c sibling main >/dev/null 2>&1
+	commit_file "sibling.txt" "sibling" "sibling"
+	local sibling_commit
+	sibling_commit="$(git rev-parse HEAD)"
+	git switch feature >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh" --after "$sibling_commit"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--after commit '$sibling_commit' is not an ancestor of HEAD"* ]]
+}
+
+@test "backup mode exports reset point original tip and creates recovery branch" {
+	commit_file "feature.txt" "feature" "feature commit"
+	local feature_tip
+	feature_tip="$(git rev-parse HEAD)"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$RESET_POINT" = "$MERGE_BASE" ]
+	[ "$ORIGINAL_BRANCH" = "feature" ]
+	[ "$ORIGINAL_TIP" = "$feature_tip" ]
+	[ "$BACKUP_REF" = "feature-recreate-backup" ]
+	[ "$(git rev-parse feature-recreate-backup)" = "$feature_tip" ]
+}
+
+@test "backup mode reuses an existing exact-tip recovery branch on retry" {
+	commit_file "feature.txt" "feature" "feature commit"
+	local feature_tip
+	feature_tip="$(git rev-parse HEAD)"
+	git branch feature-recreate-backup "$feature_tip"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$ORIGINAL_TIP" = "$feature_tip" ]
+	[ "$BACKUP_REF" = "feature-recreate-backup" ]
+	[ "$(git rev-parse feature-recreate-backup)" = "$feature_tip" ]
+}
+
+@test "backup mode honors a caller-selected retry-safe backup ref" {
+	commit_file "feature.txt" "feature" "feature commit"
+	local feature_tip
+	feature_tip="$(git rev-parse HEAD)"
+	local backup_ref="feature-recreate-backup-${feature_tip}"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --backup-ref "$backup_ref"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$BACKUP_REF" = "$backup_ref" ]
+	[ "$(git rev-parse "$backup_ref")" = "$feature_tip" ]
+}
+
+@test "backup mode rejects a custom backup ref that aliases the current branch" {
+	commit_file "feature.txt" "feature" "feature commit"
+	local feature_tip
+	feature_tip="$(git rev-parse HEAD)"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --backup-ref feature
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--backup-ref must not name the current branch being rewritten"* ]]
+	[ "$(git rev-parse feature)" = "$feature_tip" ]
+}
+
+@test "backup mode uses after commit as reset point" {
+	commit_file "one.txt" "one" "feature one"
+	local after_commit
+	after_commit="$(git rev-parse HEAD)"
+	commit_file "two.txt" "two" "feature two"
+	local feature_tip
+	feature_tip="$(git rev-parse HEAD)"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --after "$after_commit"
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$AFTER_COMMIT" = "$after_commit" ]
+	[ "$RESET_POINT" = "$after_commit" ]
+	[ "$ORIGINAL_TIP" = "$feature_tip" ]
+}
+
+@test "backup mode rejects dirty working tree" {
+	printf 'dirty\n' >>tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Working tree has uncommitted or untracked changes; commit them or use 'git stash --include-untracked' first"* ]]
+}
+
+@test "backup mode rejects untracked work that reset hard would overwrite" {
+	git rm tracked.txt >/dev/null
+	git commit -m "delete tracked file" >/dev/null
+	printf 'untracked replacement\n' >tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Working tree has uncommitted or untracked changes; commit them or use 'git stash --include-untracked' first"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode rejects ignored work that overlaps the reset point" {
+	git rm tracked.txt >/dev/null
+	printf 'tracked.txt\n' >.gitignore
+	git add .gitignore
+	git commit -m "delete and ignore tracked file" >/dev/null
+	printf 'ignored replacement\n' >tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Ignored path 'tracked.txt' overlaps content restored by the reset"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode rejects modified assume-unchanged tracked content" {
+	git update-index --assume-unchanged tracked.txt
+	printf 'hidden modification\n' >tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Assume-unchanged tracked content differs from the index"* ]]
+	[ "$(cat tracked.txt)" = "hidden modification" ]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode permits clean assume-unchanged tracked content" {
+	git update-index --assume-unchanged tracked.txt
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 0 ]
+	load_assignments
+	[ "$ORIGINAL_BRANCH" = "feature" ]
+	[[ "$(git ls-files -v tracked.txt)" == h* ]]
+}
+
+@test "backup mode fails closed when direct reset-tree inspection fails" {
+	git rm tracked.txt >/dev/null
+	printf 'tracked.txt\n' >.gitignore
+	git add .gitignore
+	git commit -m "delete and ignore tracked file" >/dev/null
+	printf 'ignored replacement\n' >tracked.txt
+	export MOCK_GIT_LS_TREE_PATH=tracked.txt
+	write_failing_git_ls_tree
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not inspect reset point path 'tracked.txt'"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode fails closed when parent reset-tree inspection fails" {
+	git switch main >/dev/null 2>&1
+	commit_file "blocked" "base file" "add blocking base file"
+	git push origin main >/dev/null 2>&1
+	git switch feature >/dev/null 2>&1
+	git rebase main >/dev/null
+	git rm blocked >/dev/null
+	printf 'blocked/ignored.txt\n' >.gitignore
+	git add .gitignore
+	git commit -m "replace file with ignored directory" >/dev/null
+	mkdir -p blocked
+	printf 'ignored replacement\n' >blocked/ignored.txt
+	export MOCK_GIT_LS_TREE_PATH=blocked
+	write_failing_git_ls_tree
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not inspect reset point path 'blocked'"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "backup mode fails closed when git status cannot inspect the worktree" {
+	printf 'broken' >.git/index
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Could not inspect the working tree; stop before creating a recovery backup"* ]]
+	! git show-ref --verify --quiet refs/heads/feature-recreate-backup
+}
+
+@test "rewrite-state verification rejects commits created after backup" {
+	commit_file "feature.txt" "feature" "feature commit"
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+	[ "$status" -eq 0 ]
+	load_assignments
+	local original_tip="$ORIGINAL_TIP"
+	local reset_point="$RESET_POINT"
+	commit_file "late.txt" "late" "late commit"
+
+	run "$SCRIPT_DIR/verify-rewrite-state.sh" \
+		--expected-branch "$ORIGINAL_BRANCH" \
+		--expected-tip "$original_tip" \
+		--reset-point "$reset_point"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"current tip no longer matches the captured original tip"* ]]
+}
+
+@test "rewrite-state verification rejects a branch change after backup" {
+	commit_file "feature.txt" "feature" "feature commit"
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+	[ "$status" -eq 0 ]
+	load_assignments
+	local original_tip="$ORIGINAL_TIP"
+	local reset_point="$RESET_POINT"
+	git switch main >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/verify-rewrite-state.sh" \
+		--expected-branch "$ORIGINAL_BRANCH" \
+		--expected-tip "$original_tip" \
+		--reset-point "$reset_point"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"current branch changed from 'feature' to 'main'"* ]]
+}
+
+@test "backup mode fast-forwards matching local base branch to origin" {
+	git switch main >/dev/null 2>&1
+	local old_main
+	old_main="$(git rev-parse HEAD)"
+	commit_file "remote.txt" "remote" "remote main"
+	git push origin main >/dev/null 2>&1
+	git reset --hard "$old_main" >/dev/null
+	git switch feature >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 0 ]
+	[ "$(git rev-parse main)" = "$(git rev-parse refs/remotes/origin/main)" ]
+}
+
+@test "backup mode rejects diverged local base branch" {
+	git switch main >/dev/null 2>&1
+	commit_file "local.txt" "local" "local main"
+	git switch feature >/dev/null 2>&1
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Local base branch 'main' has diverged from origin/main; resolve manually before retrying"* ]]
+}
+
+@test "backup mode refuses to replace existing backup branch without force" {
+	commit_file "one.txt" "one" "feature one"
+	local old_tip
+	old_tip="$(git rev-parse HEAD)"
+	git branch feature-recreate-backup "$old_tip"
+	commit_file "two.txt" "two" "feature two"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Backup branch 'feature-recreate-backup' already exists at $old_tip; refusing to move it."* ]]
+}
+
+@test "force backup moves existing backup branch to current tip" {
+	commit_file "one.txt" "one" "feature one"
+	git branch feature-recreate-backup HEAD
+	commit_file "two.txt" "two" "feature two"
+	local new_tip
+	new_tip="$(git rev-parse HEAD)"
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup --force-backup
+
+	[ "$status" -eq 0 ]
+	[ "$(git rev-parse feature-recreate-backup)" = "$new_tip" ]
+}
+
+@test "force backup without backup mode is rejected" {
+	run "$SCRIPT_DIR/resolve-base.sh" --force-backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--force-backup requires --backup"* ]]
+}
+
+@test "custom backup ref without backup mode is rejected" {
+	run "$SCRIPT_DIR/resolve-base.sh" --backup-ref feature-recovery
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--backup-ref requires --backup"* ]]
+}
+
+@test "backup mode refuses to run from the plugin repository itself" {
+	cd "$SCRIPT_DIR/.."
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Refusing to run backup mode against the repository that contains this plugin script."* ]]
+}
+
+@test "fails outside a git repository" {
+	cd "$TMP_DIR"
+
+	run "$SCRIPT_DIR/resolve-base.sh"
+
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Not inside a git repository"* ]]
+}
+
+@test "argument parser rejects missing values and unknown arguments" {
+	run "$SCRIPT_DIR/resolve-base.sh" --base
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --base-commit
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--base-commit requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --backup-ref
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--backup-ref requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --after --strict
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--after requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --format
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--format requires a value"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --format yaml
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"--format must be 'shell' or 'json'"* ]]
+
+	run "$SCRIPT_DIR/resolve-base.sh" --bogus
+	[ "$status" -eq 1 ]
+	[[ "$output" == *"Unknown argument: --bogus"* ]]
+}

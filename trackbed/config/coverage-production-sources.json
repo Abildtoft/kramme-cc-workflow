@@ -1,0 +1,791 @@
+{
+  "javascript": {
+    "measured": [
+      "trackbed/evals/skill-review/ci-checkpoint.js",
+      "trackbed/evals/skill-review/claude-predict.js",
+      "trackbed/evals/skill-review/credit-pool.js",
+      "trackbed/evals/skill-review/eval-state.js",
+      "trackbed/evals/skill-review/live-predict.js",
+      "trackbed/evals/skill-review/openai-predict.js",
+      "trackbed/evals/skill-review/providers.js",
+      "trackbed/evals/skill-review/review-profile.js",
+      "trackbed/evals/skill-review/run-live-eval.js",
+      "trackbed/evals/skill-review/scorer.js",
+      "trackbed/scripts/convert-plugin/ask-user-question-parser.js",
+      "trackbed/scripts/convert-plugin/codex-cli.js",
+      "trackbed/scripts/convert-plugin/codex-markdown-resources.js",
+      "trackbed/scripts/convert-plugin/codex-plugin-builder.js",
+      "trackbed/scripts/convert-plugin/codex-shared-scripts.js",
+      "trackbed/scripts/convert-plugin/codex-transformer.js",
+      "trackbed/scripts/convert-plugin/confirm.js",
+      "trackbed/scripts/convert-plugin/filesystem.js",
+      "trackbed/scripts/convert-plugin/frontmatter.js",
+      "trackbed/scripts/convert-plugin/legacy-install-cleanup.js",
+      "trackbed/scripts/convert-plugin/loader.js",
+      "trackbed/scripts/lib/skill-usage-cost.js",
+      "trackbed/scripts/lib/skill-usage-hosts.js",
+      "trackbed/scripts/probe-cold-reader-isolation.js",
+      "trackbed/scripts/schemas/skill-contracts.js"
+    ],
+    "contract_only": {
+      "trackbed/skills/pr:code-review/scripts/review-execution.js": [
+        "trackbed/tests/review-execution-guidance.bats"
+      ],
+      "trackbed/evals/review-completion/score.js": [
+        "trackbed/tests/review-execution-guidance.bats"
+      ],
+      "trackbed/evals/skill-review/run-eval.js": [
+        "trackbed/tests/skill-review-eval.bats"
+      ],
+      "trackbed/scripts/convert-plugin.js": [
+        "trackbed/tests/convert-plugin.bats"
+      ],
+      "trackbed/scripts/skill-usage.js": [
+        "trackbed/tests/skill-usage-stats.bats"
+      ],
+      "trackbed/skills/pr:walkthrough/assets/walkthrough-runtime.js": [
+        "trackbed/tests/pr-walkthrough.bats"
+      ]
+    },
+    "excluded": {
+      "trackbed/skills/pr:walkthrough/assets/d3.v7.9.0.min.js": "Vendored minified D3 distribution; runtime wrapper remains checked separately."
+    }
+  },
+  "python": {
+    "measured": [
+      ".agents/skills/trackbed:skill:audit-sources/scripts/extract_graphql_definitions.py",
+      ".agents/skills/trackbed:skill:audit-sources/scripts/github_changes.py",
+      ".agents/skills/trackbed:skill:audit-sources/scripts/normalize.py",
+      "trackbed/hooks/lib/command_safety/cli.py",
+      "trackbed/hooks/lib/command_safety/commit.py",
+      "trackbed/hooks/lib/command_safety/heredoc.py",
+      "trackbed/hooks/lib/command_safety/lexer.py",
+      "trackbed/hooks/lib/command_safety/prefix.py",
+      "trackbed/hooks/lib/command_safety/rm_rf.py",
+      "trackbed/hooks/lib/command_safety/structs.py",
+      "trackbed/hooks/lib/command_safety/syntax.py",
+      "trackbed/hooks/lib/command_safety/vocabulary.py",
+      "trackbed/hooks/lib/git_command_parser.py",
+      "trackbed/scripts/changelog.py",
+      "trackbed/scripts/check-doc-citations.py",
+      "trackbed/scripts/json_object.py",
+      "trackbed/scripts/lint-skill-contracts.py",
+      "trackbed/scripts/lint_skill_contracts/catalog.py",
+      "trackbed/scripts/lint_skill_contracts/checks/base_diff_scope.py",
+      "trackbed/scripts/lint_skill_contracts/checks/basic.py",
+      "trackbed/scripts/lint_skill_contracts/checks/component_catalog.py",
+      "trackbed/scripts/lint_skill_contracts/checks/epilogue.py",
+      "trackbed/scripts/lint_skill_contracts/checks/hooks_json.py",
+      "trackbed/scripts/lint_skill_contracts/checks/invocation_graph.py",
+      "trackbed/scripts/lint_skill_contracts/checks/marker_manifest.py",
+      "trackbed/scripts/lint_skill_contracts/checks/mechanical.py",
+      "trackbed/scripts/lint_skill_contracts/checks/readme_prose.py",
+      "trackbed/scripts/lint_skill_contracts/checks/readme_sync.py",
+      "trackbed/scripts/lint_skill_contracts/checks/registry.py",
+      "trackbed/scripts/lint_skill_contracts/checks/routing_distinctness.py",
+      "trackbed/scripts/lint_skill_contracts/checks/source_provenance.py",
+      "trackbed/scripts/lint_skill_contracts/checks/ui_relevance.py",
+      "trackbed/scripts/lint_skill_contracts/cli.py",
+      "trackbed/scripts/lint_skill_contracts/frontmatter.py",
+      "trackbed/scripts/lint_skill_contracts/markdown.py",
+      "trackbed/scripts/lint_skill_contracts/naming.py",
+      "trackbed/scripts/lint_skill_contracts/readme.py",
+      "trackbed/scripts/lint_skill_contracts/readme_summaries.py",
+      "trackbed/scripts/lint_skill_contracts/schema.py",
+      "trackbed/scripts/lint_skill_contracts/strings.py",
+      "trackbed/skills/linear:issue-to-pr/scripts/preflight.py",
+      "trackbed/skills/linear:next/scripts/cloud-launch.py",
+      "trackbed/skills/pr:create/scripts/pr-create-preflight.py",
+      "trackbed/skills/pr:github-review/scripts/review-delta.py",
+      "trackbed/skills/pr:github-review/scripts/stack-overview.py",
+      "trackbed/skills/pr:review-convergence/scripts/convergence-state.py",
+      "trackbed/skills/code:audit-practice/scripts/session-signals.py",
+      "trackbed/skills/code:audit-practice/scripts/signal_patterns.py",
+      "trackbed/scripts/risk-signals.py",
+      "trackbed/scripts/risk_patterns.py",
+      "trackbed/scripts/resolve-stack-context.py"
+    ],
+    "contract_only": {
+      "trackbed/scripts/generate-component-reference.py": [
+        "trackbed/tests/lint-skill-contracts.bats"
+      ],
+      "trackbed/scripts/lint_skill_contracts/checks/types.py": [
+        "trackbed/tests/lint-skill-contracts.bats"
+      ],
+      "trackbed/scripts/lint_skill_contracts/io.py": [
+        "trackbed/tests/lint-skill-contracts.bats"
+      ],
+      "trackbed/scripts/release.py": ["trackbed/tests/release.bats"],
+      "trackbed/skills/code:plan-to-pr/scripts/validate-plan-state.py": [
+        "trackbed/tests/plan-to-pr-validation.bats"
+      ],
+      "trackbed/skills/pr:github-review/scripts/check-submit-confirmation.py": [
+        "trackbed/tests/github-review-guidance.bats"
+      ],
+      "trackbed/skills/pr:walkthrough/scripts/render_walkthrough.py": [
+        "trackbed/tests/pr-walkthrough.bats"
+      ],
+      "trackbed/skills/pr:walkthrough/scripts/validate_walkthrough.py": [
+        "trackbed/tests/pr-walkthrough.bats"
+      ],
+      "trackbed/skills/session:automate-repeats/scripts/extract-errors.py": [
+        "trackbed/tests/session-search-scripts.bats"
+      ],
+      "trackbed/skills/session:automate-repeats/scripts/extract-metadata.py": [
+        "trackbed/tests/session-search-scripts.bats"
+      ],
+      "trackbed/skills/session:automate-repeats/scripts/extract-skill-usage.py": [
+        "trackbed/tests/session-search-scripts.bats"
+      ],
+      "trackbed/skills/session:automate-repeats/scripts/extract-skeleton.py": [
+        "trackbed/tests/session-search-scripts.bats"
+      ],
+      "trackbed/skills/session:automate-repeats/scripts/session_common.py": [
+        "trackbed/tests/session-search-scripts.bats"
+      ]
+    },
+    "measured_floors": {
+      "trackbed/scripts/lint_skill_contracts/checks/epilogue.py": 8,
+      "trackbed/scripts/lint_skill_contracts/checks/hooks_json.py": 5
+    }
+  },
+  "skill_contracts": [
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/review-model-selection-guidance.bats",
+      "skills": [
+        "trackbed/skills/pr:code-review/SKILL.md",
+        "trackbed/skills/pr:convention-review/SKILL.md",
+        "trackbed/skills/pr:overengineering-review/SKILL.md",
+        "trackbed/skills/pr:product-review/SKILL.md",
+        "trackbed/skills/pr:github-review/SKILL.md",
+        "trackbed/skills/pr:review-convergence/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/review-execution-guidance.bats",
+      "skills": [
+        "trackbed/skills/pr:code-review/SKILL.md",
+        "trackbed/skills/pr:review-convergence/SKILL.md"
+      ]
+    },
+    {
+      "kind": "registry",
+      "suite": "trackbed/tests/lint-skill-contracts.bats",
+      "skills": [
+        "trackbed/skills/code:breakdown-findings/SKILL.md",
+        "trackbed/skills/code:copy-review/SKILL.md",
+        "trackbed/skills/code:optimize/SKILL.md",
+        "trackbed/skills/code:plan-to-pr/SKILL.md",
+        "trackbed/skills/code:refactor-pass/SKILL.md",
+        "trackbed/skills/code:work-from-plan/SKILL.md",
+        "trackbed/skills/debug:triage-to-issue/SKILL.md",
+        "trackbed/skills/git:fixup/SKILL.md",
+        "trackbed/skills/git:recreate-commits/SKILL.md",
+        "trackbed/skills/linear:issue-implement/SKILL.md",
+        "trackbed/skills/linear:issue-to-pr/SKILL.md",
+        "trackbed/skills/linear:review-pr/SKILL.md",
+        "trackbed/skills/pr:adversarial-review/SKILL.md",
+        "trackbed/skills/pr:code-review/SKILL.md",
+        "trackbed/skills/pr:convention-review/SKILL.md",
+        "trackbed/skills/pr:create/SKILL.md",
+        "trackbed/skills/pr:fix-ci/SKILL.md",
+        "trackbed/skills/pr:generate-description/SKILL.md",
+        "trackbed/skills/pr:github-review/SKILL.md",
+        "trackbed/skills/pr:overengineering-review/SKILL.md",
+        "trackbed/skills/pr:product-review/SKILL.md",
+        "trackbed/skills/pr:resolve-review/SKILL.md",
+        "trackbed/skills/pr:walkthrough/SKILL.md",
+        "trackbed/skills/qa/SKILL.md",
+        "trackbed/skills/qa:intake/SKILL.md",
+        "trackbed/skills/siw:generate-phases/SKILL.md",
+        "trackbed/skills/siw:init/SKILL.md",
+        "trackbed/skills/siw:resolve-audit/SKILL.md",
+        "trackbed/skills/siw:spec-audit/SKILL.md",
+        "trackbed/skills/siw:transfer-to-linear/SKILL.md",
+        "trackbed/skills/verify:run/SKILL.md",
+        "trackbed/skills/visual:explain/SKILL.md",
+        "trackbed/skills/workflow:cleanup-artifacts/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/adversarial-review-guidance.bats",
+      "skills": [
+        "trackbed/skills/pr:adversarial-review/SKILL.md",
+        "trackbed/skills/pr:review-convergence/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/forward-progress-guidance.bats",
+      "skills": [
+        "trackbed/skills/code:plan-to-pr/SKILL.md",
+        "trackbed/skills/code:work-from-plan/SKILL.md",
+        "trackbed/skills/linear:issue-implement/SKILL.md"
+      ]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/adversarial-review-runner.bats",
+      "skills": ["trackbed/skills/pr:adversarial-review/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/feature-spec-guidance.bats",
+      "skills": ["trackbed/skills/docs:feature-spec/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/experience-quality-guidance.bats",
+      "skills": [
+        "trackbed/skills/code:agent-readiness/SKILL.md",
+        "trackbed/skills/code:api-design/SKILL.md",
+        "trackbed/skills/docs:feature-spec/SKILL.md",
+        "trackbed/skills/linear:issue-implement/SKILL.md",
+        "trackbed/skills/pr:resolve-review/SKILL.md",
+        "trackbed/skills/skill:create/SKILL.md",
+        "trackbed/skills/skill:review/SKILL.md",
+        "trackbed/skills/verify:run/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/audit-agent-config-guidance.bats",
+      "skills": ["trackbed/skills/code:audit-agent-config/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/code-deprecate-guidance.bats",
+      "skills": ["trackbed/skills/code:deprecate/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/code-migrate-guidance.bats",
+      "skills": ["trackbed/skills/code:migrate/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/code-encode-constraint-guidance.bats",
+      "skills": [
+        "trackbed/skills/code:audit-agent-config/SKILL.md",
+        "trackbed/skills/code:encode-constraint/SKILL.md",
+        "trackbed/skills/debug:find-sibling-bugs/SKILL.md",
+        "trackbed/skills/docs:update-agents-md/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/debug-root-cause-guidance.bats",
+      "skills": [
+        "trackbed/skills/debug:investigate/SKILL.md",
+        "trackbed/skills/debug:triage-to-issue/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/test-audit-guidance.bats",
+      "skills": ["trackbed/skills/test:audit/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/check-environment.bats",
+      "skills": ["trackbed/skills/setup/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/visual-check-slop.bats",
+      "skills": ["trackbed/skills/visual:check-slop/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/docs-adr-guidance.bats",
+      "skills": [
+        "trackbed/skills/discovery:interview/SKILL.md",
+        "trackbed/skills/docs:adr/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/discovery-delegation-guidance.bats",
+      "skills": [
+        "trackbed/skills/discovery:interview/SKILL.md",
+        "trackbed/skills/siw:init/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/docs-sync-release-guidance.bats",
+      "skills": ["trackbed/skills/docs:sync-release/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/solution-note-guidance.bats",
+      "skills": ["trackbed/skills/docs:solution-note/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/find-sibling-bugs-guidance.bats",
+      "skills": ["trackbed/skills/debug:find-sibling-bugs/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/github-review-guidance.bats",
+      "skills": [
+        "trackbed/skills/linear:review-pr/SKILL.md",
+        "trackbed/skills/pr:github-review-reply/SKILL.md",
+        "trackbed/skills/pr:github-review/SKILL.md",
+        "trackbed/skills/pr:product-review/SKILL.md",
+        "trackbed/skills/pr:resolve-review/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/text-clarify-guidance.bats",
+      "skills": [
+        "trackbed/skills/pr:github-review-reply/SKILL.md",
+        "trackbed/skills/pr:github-review/SKILL.md",
+        "trackbed/skills/text:clarify/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/gut-check-guidance.bats",
+      "skills": ["trackbed/skills/pr:gut-check/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/stacked-pr-review-guidance.bats",
+      "skills": [
+        "trackbed/skills/code:copy-review/SKILL.md",
+        "trackbed/skills/debug:find-sibling-bugs/SKILL.md",
+        "trackbed/skills/pr:code-review/SKILL.md",
+        "trackbed/skills/pr:convention-review/SKILL.md",
+        "trackbed/skills/pr:github-review/SKILL.md",
+        "trackbed/skills/pr:gut-check/SKILL.md",
+        "trackbed/skills/pr:overengineering-review/SKILL.md",
+        "trackbed/skills/pr:product-review/SKILL.md",
+        "trackbed/skills/pr:review-convergence/SKILL.md",
+        "trackbed/skills/pr:triage-risk/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/pr-triage-risk-guidance.bats",
+      "skills": ["trackbed/skills/pr:triage-risk/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/harden-security-guidance.bats",
+      "skills": ["trackbed/skills/code:harden-security/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/issue-and-plan-to-pr-guidance.bats",
+      "skills": [
+        "trackbed/skills/code:breakdown-findings/SKILL.md",
+        "trackbed/skills/code:plan-to-pr/SKILL.md",
+        "trackbed/skills/code:work-from-plan/SKILL.md",
+        "trackbed/skills/debug:triage-to-issue/SKILL.md",
+        "trackbed/skills/pr:review-convergence/SKILL.md",
+        "trackbed/skills/pr:fix-ci/SKILL.md",
+        "trackbed/skills/siw:init/SKILL.md",
+        "trackbed/skills/siw:resolve-audit/SKILL.md",
+        "trackbed/skills/workflow:cleanup-artifacts/SKILL.md"
+      ]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/plan-to-pr-validation.bats",
+      "skills": [
+        "trackbed/skills/code:breakdown-findings/SKILL.md",
+        "trackbed/skills/code:plan-to-pr/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/product-describe-behavior-guidance.bats",
+      "skills": ["trackbed/skills/product:describe-behavior/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/product-prd-guidance.bats",
+      "skills": ["trackbed/skills/product:prd/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/linear-breakdown-findings-guidance.bats",
+      "skills": [
+        "trackbed/skills/linear:breakdown-findings/SKILL.md",
+        "trackbed/skills/linear:issue-define/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/linear-issue-define-guidance.bats",
+      "skills": ["trackbed/skills/linear:issue-define/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/linear-issue-implement-guidance.bats",
+      "skills": ["trackbed/skills/linear:issue-implement/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/linear-backlog-refine-guidance.bats",
+      "skills": ["trackbed/skills/linear:backlog-refine/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/linear-next-guidance.bats",
+      "skills": ["trackbed/skills/linear:next/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/python/test_linear_next_cloud_launch.py",
+      "skills": ["trackbed/skills/linear:next/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/linear-issue-to-pr-guidance.bats",
+      "skills": [
+        "trackbed/skills/pr:review-convergence/SKILL.md",
+        "trackbed/skills/linear:issue-to-pr/SKILL.md"
+      ]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/python/test_issue_to_pr_preflight.py",
+      "skills": ["trackbed/skills/linear:issue-to-pr/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/python/test_pr_create_preflight.py",
+      "skills": ["trackbed/skills/pr:create/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/linear-review-pr-guidance.bats",
+      "skills": ["trackbed/skills/linear:review-pr/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/lint-skill-contracts.bats",
+      "skills": ["trackbed/skills/learn:verify-understanding/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/optimize-skill.bats",
+      "skills": ["trackbed/skills/code:optimize/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/outside-view-guidance.bats",
+      "skills": ["trackbed/skills/code:outside-view/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/codebase-audit-guidance.bats",
+      "skills": ["trackbed/skills/code:refactor-opportunities/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/commit-conventions-guidance.bats",
+      "skills": [
+        "trackbed/skills/git:commit-message/SKILL.md",
+        "trackbed/skills/git:recreate-commits/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/pr-create-guidance.bats",
+      "skills": [
+        "trackbed/skills/git:recreate-commits/SKILL.md",
+        "trackbed/skills/pr:create/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/pr-generate-description-guidance.bats",
+      "skills": ["trackbed/skills/pr:generate-description/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/pr-rebase-batch.bats",
+      "skills": ["trackbed/skills/pr:rebase/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/pr-walkthrough.bats",
+      "skills": ["trackbed/skills/pr:walkthrough/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/qa-intake-guidance.bats",
+      "skills": ["trackbed/skills/qa:intake/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/recreate-commits-push-target.bats",
+      "skills": ["trackbed/skills/git:recreate-commits/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/refactor-pass-guidance.bats",
+      "skills": ["trackbed/skills/code:refactor-pass/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/resolve-stack-membership.bats",
+      "skills": [
+        "trackbed/skills/code:breakdown-findings/SKILL.md",
+        "trackbed/skills/git:fixup/SKILL.md",
+        "trackbed/skills/git:recreate-commits/SKILL.md",
+        "trackbed/skills/pr:create/SKILL.md",
+        "trackbed/skills/pr:fix-ci/SKILL.md",
+        "trackbed/skills/pr:rebase/SKILL.md",
+        "trackbed/skills/pr:stack/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/session-automate-repeats-guidance.bats",
+      "skills": ["trackbed/skills/session:automate-repeats/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/session-search-scripts.bats",
+      "skills": ["trackbed/skills/session:automate-repeats/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/siw-issue-reservation.bats",
+      "skills": ["trackbed/skills/siw:generate-phases/SKILL.md"]
+    },
+    {
+      "kind": "evaluation",
+      "suite": "trackbed/tests/skillopt-candidate-review.bats",
+      "skills": ["trackbed/skills/skill:review/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/skill-create-guidance.bats",
+      "skills": ["trackbed/skills/skill:create/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/skill-resource-references.bats",
+      "skills": ["trackbed/skills/siw:spec-audit/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/visual-explain-guidance.bats",
+      "skills": ["trackbed/skills/visual:explain/SKILL.md"]
+    },
+    {
+      "kind": "registry",
+      "suite": "trackbed/tests/workflow-artifacts-cleanup.bats",
+      "skills": [
+        "trackbed/skills/code:breakdown-findings/SKILL.md",
+        "trackbed/skills/workflow:cleanup-artifacts/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/audit-practice-guidance.bats",
+      "skills": ["trackbed/skills/code:audit-practice/SKILL.md"]
+    },
+    {
+      "kind": "executable",
+      "suite": "trackbed/tests/python/test_audit_practice_session_signals.py",
+      "skills": ["trackbed/skills/code:audit-practice/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/module-design-guidance.bats",
+      "skills": [
+        "trackbed/skills/code:agent-readiness/SKILL.md",
+        "trackbed/skills/code:api-design/SKILL.md",
+        "trackbed/skills/code:audit-agent-config/SKILL.md",
+        "trackbed/skills/code:plan-to-pr/SKILL.md",
+        "trackbed/skills/code:refactor-opportunities/SKILL.md",
+        "trackbed/skills/code:work-from-plan/SKILL.md",
+        "trackbed/skills/debug:find-sibling-bugs/SKILL.md",
+        "trackbed/skills/discovery:interview/SKILL.md",
+        "trackbed/skills/docs:feature-spec/SKILL.md",
+        "trackbed/skills/docs:update-agents-md/SKILL.md",
+        "trackbed/skills/linear:issue-define/SKILL.md",
+        "trackbed/skills/linear:issue-implement/SKILL.md",
+        "trackbed/skills/pr:code-review/SKILL.md",
+        "trackbed/skills/siw:generate-phases/SKILL.md",
+        "trackbed/skills/siw:init/SKILL.md",
+        "trackbed/skills/test:audit/SKILL.md",
+        "trackbed/skills/visual:explain/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/cold-reader-guidance.bats",
+      "skills": [
+        "trackbed/skills/code:outside-view/SKILL.md",
+        "trackbed/skills/docs:review/SKILL.md",
+        "trackbed/skills/pr:generate-description/SKILL.md",
+        "trackbed/skills/pr:github-review/SKILL.md",
+        "trackbed/skills/siw:spec-audit/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/comprehension-read-guidance.bats",
+      "skills": [
+        "trackbed/skills/docs:review/SKILL.md",
+        "trackbed/skills/siw:spec-audit/SKILL.md"
+      ]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/spec-audit-guidance.bats",
+      "skills": ["trackbed/skills/siw:spec-audit/SKILL.md"]
+    },
+    {
+      "kind": "guidance",
+      "suite": "trackbed/tests/finding-disputes-guidance.bats",
+      "skills": [
+        "trackbed/skills/pr:github-review-reply/SKILL.md",
+        "trackbed/skills/pr:resolve-review/SKILL.md",
+        "trackbed/skills/siw:resolve-audit/SKILL.md",
+        "trackbed/skills/siw:spec-audit/SKILL.md"
+      ]
+    }
+  ],
+  "shell": {
+    "contract_only": {
+      "trackbed/evals/skillopt/scripts/export-candidate.sh": [
+        "trackbed/tests/skillopt-adapter.bats"
+      ],
+      "trackbed/evals/skillopt/scripts/prepare-splits.sh": [
+        "trackbed/tests/skillopt-adapter.bats"
+      ],
+      "trackbed/evals/skillopt/scripts/review-candidate.sh": [
+        "trackbed/tests/skillopt-candidate-review.bats"
+      ],
+      "trackbed/evals/skillopt/scripts/run-skillopt-skill-review.sh": [
+        "trackbed/tests/skillopt-adapter.bats"
+      ],
+      "trackbed/hooks/auto-format.sh": ["trackbed/tests/auto-format.bats"],
+      "trackbed/hooks/block-rm-rf.sh": ["trackbed/tests/block-rm-rf.bats"],
+      "trackbed/hooks/confirm-review-responses.sh": [
+        "trackbed/tests/confirm-review-responses.bats"
+      ],
+      "trackbed/hooks/lib/check-enabled.sh": [
+        "trackbed/tests/check-enabled.bats"
+      ],
+      "trackbed/hooks/lib/safety-hook-parser.sh": [
+        "trackbed/tests/block-rm-rf.bats",
+        "trackbed/tests/confirm-review-responses.bats"
+      ],
+      "trackbed/hooks/skill-usage-stats.sh": [
+        "trackbed/tests/skill-usage-stats.bats"
+      ],
+      "trackbed/hooks/update-check.sh": ["trackbed/tests/update-check.bats"],
+      "trackbed/scripts/benchmark-hook-overhead.sh": [
+        "trackbed/tests/benchmark-hook-overhead.bats"
+      ],
+      "trackbed/scripts/bootstrap-dev.sh": [
+        "trackbed/tests/bootstrap-dev.bats"
+      ],
+      "trackbed/scripts/collect-review-diff.sh": [
+        "trackbed/tests/review-diff-scripts.bats"
+      ],
+      "trackbed/scripts/dev-server/framework-registry.sh": [
+        "trackbed/tests/dev-server-scripts.bats"
+      ],
+      "trackbed/scripts/dev-server/detect-project-type.sh": [
+        "trackbed/tests/dev-server-scripts.bats"
+      ],
+      "trackbed/scripts/dev-server/detect-url.sh": [
+        "trackbed/tests/dev-server-scripts.bats"
+      ],
+      "trackbed/scripts/dev-server/read-launch-json.sh": [
+        "trackbed/tests/dev-server-scripts.bats"
+      ],
+      "trackbed/scripts/dev-server/resolve-package-manager.sh": [
+        "trackbed/tests/dev-server-scripts.bats"
+      ],
+      "trackbed/scripts/dev-server/resolve-port.sh": [
+        "trackbed/tests/dev-server-scripts.bats"
+      ],
+      "trackbed/scripts/lib/shell-helpers.sh": [
+        "trackbed/tests/dev-server-scripts.bats",
+        "trackbed/tests/resolve-base.bats",
+        "trackbed/tests/review-diff-scripts.bats",
+        "trackbed/tests/skillspector-runner.bats"
+      ],
+      "trackbed/scripts/install-codex.sh": [
+        "trackbed/tests/convert-plugin.bats"
+      ],
+      "trackbed/scripts/resolve-base.sh": ["trackbed/tests/resolve-base.bats"],
+      "trackbed/scripts/resolve-stack-membership.sh": [
+        "trackbed/tests/resolve-stack-membership.bats"
+      ],
+      "trackbed/scripts/review-tree-fingerprint.sh": [
+        "trackbed/tests/review-shared-tree.bats"
+      ],
+      "trackbed/scripts/run-skillspector.sh": [
+        "trackbed/tests/skillspector-runner.bats"
+      ],
+      "trackbed/scripts/siw-issue-reservation.sh": [
+        "trackbed/tests/siw-issue-reservation.bats"
+      ],
+      "trackbed/scripts/verify-rewrite-state.sh": [
+        "trackbed/tests/resolve-base.bats"
+      ],
+      "trackbed/scripts/worktree-tree-id.sh": [
+        "trackbed/tests/worktree-tree-id.bats"
+      ],
+      "trackbed/skills/code:optimize/scripts/experiment-worktree.sh": [
+        "trackbed/tests/optimize-skill.bats"
+      ],
+      "trackbed/skills/code:optimize/scripts/measure.sh": [
+        "trackbed/tests/optimize-skill.bats"
+      ],
+      "trackbed/skills/code:optimize/scripts/parallel-probe.sh": [
+        "trackbed/tests/optimize-skill.bats"
+      ],
+      "trackbed/skills/git:recreate-commits/scripts/resolve-push-target.sh": [
+        "trackbed/tests/recreate-commits-push-target.bats"
+      ],
+      "trackbed/skills/pr:adversarial-review/scripts/run-adversarial-review.sh": [
+        "trackbed/tests/adversarial-review-runner.bats"
+      ],
+      "trackbed/skills/pr:github-review/scripts/check-comment-anchors.sh": [
+        "trackbed/tests/github-review-guidance.bats"
+      ],
+      "trackbed/skills/pr:create/scripts/validate-branch-name.sh": [
+        "trackbed/tests/pr-create-guidance.bats"
+      ],
+      "trackbed/skills/pr:create/scripts/resolve-origin-push-url.sh": [
+        "trackbed/tests/pr-create-guidance.bats"
+      ],
+      "trackbed/skills/pr:create/scripts/verify-clean-worktree.sh": [
+        "trackbed/tests/pr-create-guidance.bats"
+      ],
+      "trackbed/skills/pr:rebase/scripts/batch-rebase.sh": [
+        "trackbed/tests/pr-rebase-batch.bats"
+      ],
+      "trackbed/skills/session:automate-repeats/scripts/discover-sessions.sh": [
+        "trackbed/tests/session-search-scripts.bats"
+      ],
+      "trackbed/skills/setup/scripts/check-environment.sh": [
+        "trackbed/tests/check-environment.bats"
+      ],
+      "trackbed/skills/verify:run/scripts/discovery-cache.sh": [
+        "trackbed/tests/verify-run-discovery-cache.bats"
+      ],
+      "trackbed/skills/workflow:wizard/assets/template.sh": [
+        "trackbed/tests/skill-resource-references.bats"
+      ]
+    }
+  }
+}

@@ -2,9 +2,10 @@ node_modules/
 .context/
 .venv/
 
-kramme-cc-workflow/hooks/hook-state.json
+trackbed/hooks/hook-state.json
 .claude/scheduled_tasks.lock
 __pycache__/
 *.pyc
 
+.trackbed/
 .kramme-cc-workflow/

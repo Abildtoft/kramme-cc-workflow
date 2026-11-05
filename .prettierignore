@@ -1,6 +1,7 @@
 # Dependencies and local state
 node_modules/
 .context/
+.trackbed/
 .kramme-cc-workflow/
 
 # Generated and build output
@@ -17,10 +18,10 @@ package-lock.json
 
 # Intentional fixtures and verbatim upstream snapshots
 *.bats
-kramme-cc-workflow/evals/**/fixtures/
+trackbed/evals/**/fixtures/
 
 # Vendored browser asset
-kramme-cc-workflow/skills/pr:walkthrough/assets/d3.v7.9.0.min.js
+trackbed/skills/pr:walkthrough/assets/d3.v7.9.0.min.js
 
 # Generated offline skill runtime (reproducibility checked by its Bats suite)
-kramme-cc-workflow/skills/visual:check-slop/scripts/anti-slop.mjs
+trackbed/skills/visual:check-slop/scripts/anti-slop.mjs

@@ -74,11 +74,11 @@ jobs:
           ln -s "$RUNNER_TEMP/skillspector-venv/bin/skillspector" "$RUNNER_TEMP/skillspector-bin/skillspector"
 
       - name: Check release verification dependencies
-        run: PATH="$RUNNER_TEMP/skillspector-bin:$PATH" make -C kramme-cc-workflow check-deps
+        run: PATH="$RUNNER_TEMP/skillspector-bin:$PATH" make -C trackbed check-deps
 
       - name: Run dry-run release verification
         if: ${{ inputs.dry_run }}
-        run: PATH="$RUNNER_TEMP/skillspector-bin:$PATH" make -C kramme-cc-workflow verify
+        run: PATH="$RUNNER_TEMP/skillspector-bin:$PATH" make -C trackbed verify
 
       - name: Run SkillSpector release scan
         env:
@@ -90,7 +90,7 @@ jobs:
           SCAN_LOG="$RUNNER_TEMP/skillspector-release-scan.log"
           SUMMARY_FILE="$RUNNER_TEMP/skillspector-summary.md"
 
-          make -C kramme-cc-workflow skill-security 2>&1 | tee "$SCAN_LOG"
+          make -C trackbed skill-security 2>&1 | tee "$SCAN_LOG"
 
           {
             echo "Static-only full-tree SkillSpector scan completed before release creation."
@@ -123,8 +123,8 @@ jobs:
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             RELEASE_ARGS+=(--dry-run)
           fi
-          python3 kramme-cc-workflow/scripts/release.py "${RELEASE_ARGS[@]}"
-          VERSION=$(python3 -c "import json; print(json.load(open('kramme-cc-workflow/.claude-plugin/plugin.json'))['version'])")
+          python3 trackbed/scripts/release.py "${RELEASE_ARGS[@]}"
+          VERSION=$(python3 -c "import json; print(json.load(open('trackbed/.claude-plugin/plugin.json'))['version'])")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create Pull Request
@@ -138,7 +138,7 @@ jobs:
           CHANGELOG_SECTION=$(python3 -c "
           import re, sys
           version = sys.argv[1]
-          content = open('kramme-cc-workflow/CHANGELOG.md').read()
+          content = open('trackbed/CHANGELOG.md').read()
           pattern = rf'## \[{re.escape(version)}\].*?(?=## \[|\Z)'
           match = re.search(pattern, content, re.DOTALL)
           print(match.group(0).strip() if match else '')

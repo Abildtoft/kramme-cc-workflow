@@ -11,8 +11,8 @@ export default {
   overrides: [
     {
       files: [
-        "kramme-cc-workflow/scripts/synced-contracts.yaml",
-        "kramme-cc-workflow/skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml",
+        "trackbed/scripts/synced-contracts.yaml",
+        "trackbed/skills/workflow:cleanup-artifacts/references/disposable-artifacts.yaml",
       ],
       options: { parser: "json" },
     },
