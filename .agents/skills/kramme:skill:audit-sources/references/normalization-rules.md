@@ -14,7 +14,7 @@ Defines what `scripts/normalize.py` strips and keeps when turning a transient fe
 
 - `<script>`, `<style>`, `<noscript>`, `<iframe>`, `<svg>` blocks (entire element including content).
 - HTML comments (`<!-- ... -->`).
-- Navigation: `<nav>`, `<header>`, `<footer>`, `<aside>`, and elements with class/id matching `nav|navigation|sidebar|topbar|header|footer|cookie|banner|breadcrumb|menu|toc-fixed`.
+- Navigation: `<nav>`, `<header>`, `<footer>`, `<aside>`, and elements whose class or id has a plain name token matching `nav|navigation|sidebar|topbar|header|footer|cookie|banner|breadcrumb|menu|toc-fixed` as a whole `-` or `_` separated part. Utility tokens with framework syntax, such as brackets, parentheses, or colons, are ignored: Tailwind's `[--fd-header-height:0px]` on a docs layout wrapper names a CSS variable, and matching it would drop the whole page body.
 - Forms and inputs: `<form>`, `<input>`, `<button>`, `<select>`.
 - Image binaries (keep `alt` text inline as `[image: <alt>]`).
 - Inline event handlers and `data-*` attributes.
