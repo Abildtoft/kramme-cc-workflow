@@ -33,6 +33,29 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - `/kramme:pr:generate-description` now finds repository PR templates when the agent's shell is zsh. The lookup looped over a variable named `path`, which zsh ties to `PATH`, so every later command in the lookup failed and it reported no template.
 
+## [1.0.0] - 2026-11-05
+
+### Added
+
+- **BREAKING:** Namespace skills and agents through the trackbed plugin (#1081)
+- Require evidence and isolate adversarial reviews (#1080)
+- Make web source hashes reproducible (#1079)
+- Check each upstream once across skills (#1078)
+- Add cold readers and evidence-based finding disputes (#1077)
+- Let the model write ADRs and announce each write (#1075)
+- Add opt-in cross-provider review (#1074)
+- Detect GitHub changes from commit history (#1070)
+
+### Changed
+
+- Repoint Compound sources to upstream root (#1069)
+
+### Fixed
+
+- Keep manual-only skills out of implicit selection (#1073)
+- Keep long reviews alive past host time limits (#1072)
+- Repoint dead source links to live upstream paths (#1071)
+
 ## [0.91.0] - 2026-11-02
 
 ### Added
@@ -1230,6 +1253,7 @@ This changelog is maintained from v0.38.0 onward. For earlier releases, see the 
 
 - Preserve skill resources in conversion (#222)
 
+[1.0.0]: https://github.com/trackbed/skills/compare/v0.91.0...v1.0.0
 [0.91.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.90.0...v0.91.0
 [0.90.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.89.0...v0.90.0
 [0.89.0]: https://github.com/Abildtoft/kramme-cc-workflow/compare/v0.88.0...v0.89.0
