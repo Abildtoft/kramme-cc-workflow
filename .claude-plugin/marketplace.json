@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "trackbed",
-      "source": "./kramme-cc-workflow",
+      "source": "./trackbed",
       "description": "Tooling for the workflows that Abildtoft encounters in his daily work"
     }
   ]

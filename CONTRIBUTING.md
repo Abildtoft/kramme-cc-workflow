@@ -1,15 +1,15 @@
 # Contributing
 
-This repository ships the `trackbed` Claude Code plugin from `kramme-cc-workflow/`. The root [README.md](README.md) is the canonical entry point for public documentation, and the guides under [kramme-cc-workflow/docs/](kramme-cc-workflow/docs/) hold the deep usage reference it links; plugin source and tests live under [kramme-cc-workflow/](kramme-cc-workflow/).
+This repository ships the `trackbed` Claude Code plugin from `trackbed/`. The root [README.md](README.md) is the canonical entry point for public documentation, and the guides under [trackbed/docs/](trackbed/docs/) hold the deep usage reference it links; plugin source and tests live under [trackbed/](trackbed/).
 
 ## Start Here
 
 Before changing files, read the narrowest docs that match the work:
 
 - [AGENTS.md](AGENTS.md) for component conventions.
-- [docs/architecture.md](kramme-cc-workflow/docs/architecture.md) for subsystem boundaries.
-- [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) for source-to-test mapping.
-- [docs/decisions/README.md](kramme-cc-workflow/docs/decisions/README.md) for settled repository decisions.
+- [docs/architecture.md](trackbed/docs/architecture.md) for subsystem boundaries.
+- [docs/code-map.md](trackbed/docs/code-map.md) for source-to-test mapping.
+- [docs/decisions/README.md](trackbed/docs/decisions/README.md) for settled repository decisions.
 
 Check the working tree before editing and preserve unrelated local changes:
 
@@ -22,13 +22,13 @@ git status --short
 Check the portable baseline toolchain without changing the host:
 
 ```bash
-bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check
+bash trackbed/scripts/bootstrap-dev.sh --check
 ```
 
 To install missing dependencies, choose the explicit install mode:
 
 ```bash
-bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install
+bash trackbed/scripts/bootstrap-dev.sh --install
 ```
 
 On macOS, installation uses Homebrew for Make, Bats, `jq`, Node.js 20+, and Python 3.10+. On Debian 12+ and Ubuntu 22.04+, install Node.js 20+ with npm first; Python 3.10+ must also be available before setup mutates the host. The bootstrap then uses `apt-get` for `make`, `bats`, `jq`, `python3`, and `python3-venv`. Both paths create a repository-local `.venv` from the pinned `requirements-dev.txt` and install Node packages with `npm ci`. The Makefile automatically prefers ShellCheck, Ruff, and mypy from `.venv`.
@@ -37,15 +37,15 @@ The equivalent npm aliases are `npm run bootstrap:check` and `npm run bootstrap:
 
 ### Converter changes
 
-For a focused converter change, run `make -C kramme-cc-workflow test-convert`.
+For a focused converter change, run `make -C trackbed test-convert`.
 
-The repository-root `package.json` versions the npm installer entrypoint. `kramme-cc-workflow/package.json` versions the plugin package and is managed by the plugin release flow. These versions are intentionally independent; do not synchronize them. See the [release guide](kramme-cc-workflow/RELEASE.md) for the complete versioning and release contract.
+The repository-root `package.json` versions the npm installer entrypoint. `trackbed/package.json` versions the plugin package and is managed by the plugin release flow. These versions are intentionally independent; do not synchronize them. See the [release guide](trackbed/RELEASE.md) for the complete versioning and release contract.
 
 ## Change Guidelines
 
 - Keep changes scoped to the subsystem being modified.
-- Add or update README entries when adding skills, agents, hooks, commands, or user-facing workflows, including a one-line summary for each new skill or agent in `kramme-cc-workflow/scripts/synced-contracts.yaml`. Keep README paragraphs short, and put deep usage detail in the matching guide under `kramme-cc-workflow/docs/`.
-- Keep skills self-contained within the installed plugin. A skill may use its own directory, plugin-level `kramme-cc-workflow/shared/` references and assets, and `kramme-cc-workflow/scripts/` helpers, but never repository-level docs. Put a file that two or more skills need in one of those plugin-level locations instead of copying it, and name its `${CLAUDE_PLUGIN_ROOT}/...` path in each consuming `SKILL.md`.
+- Add or update README entries when adding skills, agents, hooks, commands, or user-facing workflows, including a one-line summary for each new skill or agent in `trackbed/scripts/synced-contracts.yaml`. Keep README paragraphs short, and put deep usage detail in the matching guide under `trackbed/docs/`.
+- Keep skills self-contained within the installed plugin. A skill may use its own directory, plugin-level `trackbed/shared/` references and assets, and `trackbed/scripts/` helpers, but never repository-level docs. Put a file that two or more skills need in one of those plugin-level locations instead of copying it, and name its `${CLAUDE_PLUGIN_ROOT}/...` path in each consuming `SKILL.md`.
 - Keep `SKILL.md` files focused; move reference material to `references/`, templates to `assets/`, and executable helpers to `scripts/`.
 - Treat public availability as provenance, not permission. Copy external prose, code, templates, or substantial assets only under a verified compatible license; preserve the complete required notice in the affected skill and mark the source `usage: copied` in `references/sources.yaml` with its exact upstream path and an immutable commit, revision, release, or version. For conceptual inspiration, use `usage: inspiration` and rewrite in original language.
 - Never commit fetched upstream source bodies or `references/sources-snapshot/` directories. Store source URLs, original notes, review dates, upstream commit IDs, and normalized hashes only.
@@ -57,25 +57,25 @@ Choose the smallest meaningful focused check first. Use the smoke target for rep
 
 ```bash
 # Closest focused test for a documentation change (use the code map for other changes)
-make -C kramme-cc-workflow test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats
+make -C trackbed test-bats-file BATS_TEST_FILE=tests/repository-instructions.bats
 
 # Representative cross-language feedback
-make -C kramme-cc-workflow test-smoke
+make -C trackbed test-smoke
 
 # Complete default suite
-make -C kramme-cc-workflow test
+make -C trackbed test
 
 # Shell, Python, and JavaScript linting
-make -C kramme-cc-workflow lint
+make -C trackbed lint
 
 # Normal Pull Request gate
-make -C kramme-cc-workflow pr-verify
+make -C trackbed pr-verify
 
 # Release-candidate gate
-make -C kramme-cc-workflow verify
+make -C trackbed verify
 ```
 
-Focused targets are listed in [docs/development.md](kramme-cc-workflow/docs/development.md#running-the-tests). Use [docs/code-map.md](kramme-cc-workflow/docs/code-map.md) to map files to likely tests.
+Focused targets are listed in [docs/development.md](trackbed/docs/development.md#running-the-tests). Use [docs/code-map.md](trackbed/docs/code-map.md) to map files to likely tests.
 
 ### Optional pre-commit check
 

@@ -4,9 +4,9 @@ on:
   pull_request:
     paths:
       - ".github/workflows/skill-review-eval.yml"
-      - "kramme-cc-workflow/Makefile"
-      - "kramme-cc-workflow/evals/skill-review/**"
-      - "kramme-cc-workflow/skills/skill:review/**"
+      - "trackbed/Makefile"
+      - "trackbed/evals/skill-review/**"
+      - "trackbed/skills/skill:review/**"
       - "package.json"
       - "package-lock.json"
   schedule:
@@ -37,7 +37,7 @@ jobs:
       - name: Run aggregate skill-review eval
         run: |
           set -o pipefail
-          cd kramme-cc-workflow
+          cd trackbed
           node evals/skill-review/run-eval.js --split all --json | tee "$RUNNER_TEMP/skill-review-eval.json"
 
       - name: Upload eval result

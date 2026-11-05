@@ -10,7 +10,7 @@ Use the separate $200 monthly Claude API allocations to run automated evaluation
 
 ### In scope
 
-- Evaluate only `trackbed:skill:review`, using its existing train/validation/test fixtures and scorer. This stays inside the accepted [skill quality regime](kramme-cc-workflow/docs/decisions/2026-07-06-skill-quality-regime.md).
+- Evaluate only `trackbed:skill:review`, using its existing train/validation/test fixtures and scorer. This stays inside the accepted [skill quality regime](trackbed/docs/decisions/2026-07-06-skill-quality-regime.md).
 - Add an opt-in Claude Agent SDK prediction adapter behind the runner's existing `--prediction-command` interface.
 - Add sequential organization selection, restart of an unfinished read-only case after credit exhaustion, persistent progress, bounded retries, and per-attempt evidence.
 - Support local execution and a separate scheduled/manual GitHub Actions workflow. Existing fixture-only tests and CI remain credential-free.
@@ -30,7 +30,7 @@ flowchart TD
 
 ### Implementation components and dependencies
 
-All new runtime files below live in `kramme-cc-workflow/evals/skill-review/`; no additional skill-behavior eval directory is introduced. Filenames and options are proposed interfaces for this implementation.
+All new runtime files below live in `trackbed/evals/skill-review/`; no additional skill-behavior eval directory is introduced. Filenames and options are proposed interfaces for this implementation.
 
 | Component | Responsibility and dependency |
 | --- | --- |
@@ -117,7 +117,7 @@ Anthropic documents both billing errors and other 400/429 failures, so a status 
 
 Proposed focused suites: `tests/node/credit-pool.test.js`, `tests/node/eval-state.test.js`, `tests/node/claude-predict.test.js`, and `tests/skill-review-live-eval.bats`. Extend `tests/skill-review-eval.bats` only for preserved/new entry-point contracts. Register new JS production sources in `config/coverage-production-sources.json` and include them in JS linting.
 
-Run each closest focused suite first, then `make -C kramme-cc-workflow test-skill-review-eval`, `make -C kramme-cc-workflow skill-eval-skill-review`, and `make -C kramme-cc-workflow test-smoke`. Finish with `make -C kramme-cc-workflow pr-verify` for the SDK dependency, CI, and runtime additions. Every default check remains offline and must pass without API credentials. The live smoke is separate and reports its actual outcome.
+Run each closest focused suite first, then `make -C trackbed test-skill-review-eval`, `make -C trackbed skill-eval-skill-review`, and `make -C trackbed test-smoke`. Finish with `make -C trackbed pr-verify` for the SDK dependency, CI, and runtime additions. Every default check remains offline and must pass without API credentials. The live smoke is separate and reports its actual outcome.
 
 ## 5. Open Questions
 

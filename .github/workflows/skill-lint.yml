@@ -20,7 +20,7 @@ jobs:
           python-version: "3.11"
 
       - name: Run skill contract lint
-        run: make -C kramme-cc-workflow skill-contracts
+        run: make -C trackbed skill-contracts
 
   skillspector:
     name: SkillSpector static skill scan
@@ -56,7 +56,7 @@ jobs:
           python3 -m pip install "git+https://github.com/NVIDIA/SkillSpector.git@$SKILLSPECTOR_COMMIT"
 
       - name: Run changed skill static scan
-        run: make -C kramme-cc-workflow skill-security-changed
+        run: make -C trackbed skill-security-changed
 
       - name: Summarize SkillSpector reports
         if: ${{ always() }}

@@ -5,23 +5,23 @@
   "description": "Root entrypoint for npx GitHub installs",
   "license": "MIT",
   "bin": {
-    "trackbed": "kramme-cc-workflow/scripts/convert-plugin.js"
+    "trackbed": "trackbed/scripts/convert-plugin.js"
   },
   "scripts": {
-    "bootstrap:check": "bash kramme-cc-workflow/scripts/bootstrap-dev.sh --check",
-    "bootstrap:install": "bash kramme-cc-workflow/scripts/bootstrap-dev.sh --install",
-    "check:deps": "make -C kramme-cc-workflow check-deps",
-    "check:pre-commit": "make -C kramme-cc-workflow pre-commit",
-    "format:check": "make -C kramme-cc-workflow format-check",
+    "bootstrap:check": "bash trackbed/scripts/bootstrap-dev.sh --check",
+    "bootstrap:install": "bash trackbed/scripts/bootstrap-dev.sh --install",
+    "check:deps": "make -C trackbed check-deps",
+    "check:pre-commit": "make -C trackbed pre-commit",
+    "format:check": "make -C trackbed format-check",
     "hooks:install": "pre-commit install",
     "hooks:uninstall": "pre-commit uninstall",
-    "lint-js": "make -C kramme-cc-workflow lint-js",
-    "test": "make -C kramme-cc-workflow test",
+    "lint-js": "make -C trackbed lint-js",
+    "test": "make -C trackbed test",
     "test:node:file": "node --test",
-    "test:node:watch": "make -C kramme-cc-workflow test-node-watch",
-    "test:smoke": "make -C kramme-cc-workflow test-smoke",
-    "verify": "make -C kramme-cc-workflow verify",
-    "verify:pr": "make -C kramme-cc-workflow pr-verify"
+    "test:node:watch": "make -C trackbed test-node-watch",
+    "test:smoke": "make -C trackbed test-smoke",
+    "verify": "make -C trackbed verify",
+    "verify:pr": "make -C trackbed pr-verify"
   },
   "dependencies": {
     "yaml": "^2.9.0"
