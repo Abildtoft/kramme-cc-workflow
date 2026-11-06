@@ -35,7 +35,7 @@ It needs `gh` (authenticated) and `jq`, and runs under the Bash 3.2 that macOS s
 
 `checkedAt` is taken before the first search, so passing it as the next `--since` misses nothing.
 
-Exit code 2 means malformed arguments: show the script's message and stop. On any other nonzero exit, report its stderr and stop; never rebuild the queue by hand. Carry each stderr warning into the report's notes: a search capped at its first 100 results, an unreadable ref, or workflow runs that could not be listed.
+Exit code 2 means malformed arguments: show the script's message and stop. On any other nonzero exit, report its stderr and stop; never rebuild the queue by hand. Carry each stderr warning into the report's notes: a search capped at its first 100 results, a PR with more than 100 checks, an unreadable ref, or workflow runs that could not be listed.
 
 ## Step 2: Read Each PR
 
@@ -50,11 +50,13 @@ Exit code 2 means malformed arguments: show the script's message and stop. On an
 | `requestedOfMe`, `myLastReview` null | Not reviewed | "Not reviewed", plus approvals from `otherReviews` |
 | `state` is `MERGED` or `CLOSED` | Finished | "Merged by <mergedBy> at <mergedAt>", adding "without your review" when `myLastReview` is null. Skip CI and merge state. |
 
+`myLastReview` is your latest approval, changes request, or dismissed review. A thread reply is a separate `COMMENTED` review on GitHub, so comments count only when you have none of the others.
+
 Mark a `draft` PR as a draft; its author has not asked for a final review yet.
 
 `reviewDecision` tells whether the approvals suffice. `REVIEW_REQUIRED` although others approved means a particular approver is still missing, often a code owner; say so without guessing who. When it is null, the repository requires no review, so rely on `mergeStateStatus`.
 
-**CI:** `ci` is computed after dropping checks from superseded runs: a newer run of the same workflow and event on the same head replaces the older one.
+**CI:** `ci` is computed after dropping checks from superseded runs: a newer run of the same workflow and event on the same head replaces the older one. The script reads the first 100 checks; when `unreadChecks > 0`, a failing or pending rollup outranks the checks read, so `ci` can be `failing` or `running` with no named entry. Say the rest are on the PR's Checks tab.
 
 | `ci` | Say |
 | --- | --- |

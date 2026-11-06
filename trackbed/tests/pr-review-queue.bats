@@ -346,6 +346,39 @@ EOF
 	assert_json '.prs[1] | [.requestedOfMe, .myLastReview.onHead]' '[false,true]'
 }
 
+@test "a thread reply after your approval does not hide that approval" {
+	serve_search open "$(pr_node 101 '.myReviews.nodes = [review("CHANGES_REQUESTED"; $old_head; 2),
+		review("APPROVED"; $old_head; 0), review("COMMENTED"; $head; 1)]')"
+
+	run_queue
+
+	[ "$status" -eq 0 ]
+	assert_json '.prs[0].myLastReview | [.state, .onHead]' '["APPROVED",false]'
+}
+
+@test "a failing rollup outranks the first 100 checks when more exist" {
+	serve_search open "$(pr_node 101 'rollup("FAILURE"; [check("test"; "SUCCESS"; 7001)])
+		| .commits.nodes[0].commit.statusCheckRollup.contexts.totalCount = 130')"
+	serve_runs "$HEAD" '[workflow_run(7001; 11; "pull_request")]'
+
+	run_queue
+
+	[ "$status" -eq 0 ]
+	assert_stderr_contains "warning: only the first 100 of 130 checks read for acme/widgets#101"
+	assert_json '.prs[0] | [.ci, .unreadChecks, .failing]' '["failing",129,[]]'
+}
+
+@test "a pending rollup turns green checks read into running when more exist" {
+	serve_search open "$(pr_node 101 'rollup("PENDING"; [check("test"; "SUCCESS"; 7001)])
+		| .commits.nodes[0].commit.statusCheckRollup.contexts.totalCount = 101')"
+	serve_runs "$HEAD" '[workflow_run(7001; 11; "pull_request")]'
+
+	run_queue
+
+	[ "$status" -eq 0 ]
+	assert_json '.prs[0] | [.ci, .unreadChecks]' '["running",100]'
+}
+
 @test "stays portable to the Bash 3.2 that macOS ships" {
 	# Every test runs the script through /bin/bash, so on macOS the whole suite
 	# exercises Bash 3.2. These checks also hold the line where /bin/bash is newer.

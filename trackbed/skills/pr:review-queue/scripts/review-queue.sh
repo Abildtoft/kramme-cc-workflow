@@ -79,7 +79,7 @@ fragment PR on PullRequest {
   latestReviews(first: 20) { nodes { author { login } state } }
   myReviews: reviews(author: $me, last: 20) { nodes { state submittedAt commit { oid } comments { totalCount } } }
   reviewThreads(first: 100) { nodes { isResolved comments(first: 1) { nodes { author { login } pullRequestReview { state } } } } }
-  commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state contexts(first: 100) { nodes {
+  commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state contexts(first: 100) { totalCount nodes {
     ... on CheckRun { name status conclusion startedAt checkSuite { workflowRun { databaseId } } }
     ... on StatusContext { context state createdAt }
   } } } } } }
@@ -151,6 +151,11 @@ me=$(gh api user --jq .login)
 scope=${repo:+ repo:$repo}
 prs=$(collect_prs | jq -s 'unique_by(.url)')
 
+jq -r '.[] | .commits.nodes[0].commit.statusCheckRollup.contexts.totalCount as $n
+    | select(($n // 0) > 100)
+    | "warning: only the first 100 of \($n) checks read for \(.repository.nameWithOwner)#\(.number)"' \
+  <<< "$prs" >&2
+
 superseded=$(jq -r '.[]
     | select(.state == "OPEN" and (.commits.nodes[0].commit.statusCheckRollup.state // "SUCCESS") != "SUCCESS")
     | "\(.repository.nameWithOwner) \(.headRefOid)"' <<< "$prs" \
@@ -162,12 +167,20 @@ SUMMARY='
 def result: .conclusion // .state;
 def failed: result | IN("FAILURE", "ERROR", "TIMED_OUT", "STARTUP_FAILURE", "ACTION_REQUIRED");
 def running: (.status // "COMPLETED") != "COMPLETED" or ((.state // "") | IN("PENDING", "EXPECTED"));
+def rollup_ci: if IN("FAILURE", "ERROR") then "failing" elif IN("PENDING", "EXPECTED") then "running" else null end;
 {checkedAt: $checkedAt, me: $me, prs: (sort_by(.repository.nameWithOwner, .number) | map(
   .commits.nodes[0].commit as $c
   | ($c.statusCheckRollup.contexts.nodes // []) as $all
   | ($superseded["\(.repository.nameWithOwner)@\(.headRefOid)"] // []) as $old
   | [$all[] | select((.checkSuite.workflowRun.databaseId // -1) | IN($old[]) | not)] as $checks
-  | ([.myReviews.nodes[] | select(.state != "PENDING")] | last) as $mine
+  # Checks past the first 100 are unread, so a failure among them shows only in
+  # the rollup state; let that state outrank a verdict from the checks read.
+  | (($c.statusCheckRollup.contexts.totalCount // ($all | length)) - ($all | length)) as $unread
+  | (if $unread > 0 then $c.statusCheckRollup.state | rollup_ci else null end) as $rollupCi
+  # A thread reply outside a review is a submitted COMMENTED review of its own,
+  # so a reply must not hide an earlier approval or changes request.
+  | [.myReviews.nodes[] | select(.state != "PENDING")] as $submitted
+  | ([$submitted[] | select(.state != "COMMENTED")] | last // ($submitted | last)) as $mine
   | {
       pr: "\(.repository.nameWithOwner)#\(.number)", url, title,
       issue: ([.title | scan("\\b[A-Z][A-Z0-9]+-[0-9]+\\b")] | first),
@@ -185,15 +198,18 @@ def running: (.status // "COMPLETED") != "COMPLETED" or ((.state // "") | IN("PE
       otherOpenThreads: [.reviewThreads.nodes[] | select((.isResolved | not) and .comments.nodes[0].author.login != $me)] | length,
       otherReviews: [.latestReviews.nodes[] | select(.author.login != $me) | "\(.author.login): \(.state)"],
       reviewDecision, mergeable, mergeStateStatus,
-      ci: (if ($checks | length) == 0 then "none"
-           elif any($checks[]; failed) then "failing"
-           elif any($checks[]; running) then "running"
-           elif any($checks[]; result == "CANCELLED") then "cancelled"
-           else "green" end),
+      ci: ((if ($checks | length) == 0 then "none"
+            elif any($checks[]; failed) then "failing"
+            elif any($checks[]; running) then "running"
+            elif any($checks[]; result == "CANCELLED") then "cancelled"
+            else "green" end) as $read
+           | if $rollupCi == "failing" or ($rollupCi == "running" and $read != "failing") then $rollupCi
+             else $read end),
       failing: [$checks[] | select(failed) | {name: (.name // .context), run: .checkSuite.workflowRun.databaseId}] | unique,
       running: [$checks[] | select(running) | {name: (.name // .context), since: (.startedAt // .createdAt)}] | unique,
       cancelled: [$checks[] | select(result == "CANCELLED") | .name] | unique,
-      supersededChecks: (($all | length) - ($checks | length))
+      supersededChecks: (($all | length) - ($checks | length)),
+      unreadChecks: $unread
     }
 ))}'
 
