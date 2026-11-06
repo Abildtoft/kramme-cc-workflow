@@ -74,12 +74,13 @@ set -eu
 }
 endpoint=$2
 shift 2
-q="" owner="" name="" number="" filter=""
+q="" after="" owner="" name="" number="" filter=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -f | -F)
       case "$2" in
         q=*) q=${2#q=} ;;
+        after=*) after=${2#after=} ;;
         owner=*) owner=${2#owner=} ;;
         name=*) name=${2#name=} ;;
         number=*) number=${2#number=} ;;
@@ -107,14 +108,14 @@ case "$endpoint" in
     ;;
   graphql)
     if [ -n "$q" ]; then
-      printf 'search %s\n' "$q" >>"$GH_LOG"
+      printf 'search %s%s\n' "$q" "${after:+ after=$after}" >>"$GH_LOG"
       case "$q" in
         *reviewed-by:@me*) kind=reviewed ;;
         *is:closed*) kind=closed ;;
         *) kind=open ;;
       esac
       [ ! -f "$GH_FIXTURES/search-$kind.error" ] || fail "$(cat "$GH_FIXTURES/search-$kind.error")" "search failed"
-      file=$GH_FIXTURES/search-$kind.json
+      file=$GH_FIXTURES/search-$kind${after:+-$after}.json
       [ -f "$file" ] || {
         printf '%s\n' '{"data":{"search":{"issueCount":0,"nodes":[]}}}'
         exit 0
@@ -159,6 +160,17 @@ serve_search() {
 	local kind=$1
 	shift
 	printf '%s\n' "$@" | jq -s '{data: {search: {issueCount: length, nodes: .}}}' >"$GH_FIXTURES/search-$kind.json"
+}
+
+# Serves one page of the <kind> search: the page after cursor <after> (empty for
+# the first page), reporting <total> results and the cursor <next> of the next
+# page (empty for the last page), with the PR nodes given after <next>.
+serve_search_page() {
+	local kind=$1 after=$2 total=$3 next=$4
+	shift 4
+	printf '%s\n' "$@" | jq -s --argjson total "$total" --arg next "$next" '{data: {search: {issueCount: $total,
+		pageInfo: {hasNextPage: ($next != ""), endCursor: (if $next == "" then null else $next end)}, nodes: .}}}' \
+		>"$GH_FIXTURES/search-$kind${after:+-$after}.json"
 }
 
 # Serves a PR node for the ref OWNER/NAME#N.
@@ -249,6 +261,37 @@ EOF
 	assert_json '.prs[0].issue' null
 }
 
+@test "reads search results in pages and follows the cursor" {
+	serve_search_page open "" 2 c1 "$(pr_node 101)"
+	serve_search_page open c1 2 "" "$(pr_node 102)"
+
+	run_queue
+
+	[ "$status" -eq 0 ]
+	diff -u - "$GH_LOG" <<'EOF'
+user
+search is:pr is:open archived:false user-review-requested:@me
+search is:pr is:open archived:false user-review-requested:@me after=c1
+EOF
+	assert_json '[.prs[].pr]' '["acme/widgets#101","acme/widgets#102"]'
+	[ -z "$stderr" ]
+}
+
+@test "stops paging at 100 results and warns about the rest" {
+	serve_search_page open "" 130 c1 "$(pr_node 101)"
+	serve_search_page open c1 130 c2 "$(pr_node 102)"
+	serve_search_page open c2 130 c3 "$(pr_node 103)"
+	serve_search_page open c3 130 c4 "$(pr_node 104)"
+
+	run_queue
+
+	[ "$status" -eq 0 ]
+	[ "$(grep -c '^search ' "$GH_LOG")" -eq 4 ]
+	[ -z "$(grep 'after=c4' "$GH_LOG")" ]
+	assert_stderr_contains "warning: only the first 100 of 130 results for: is:pr is:open archived:false user-review-requested:@me"
+	assert_json '.prs | length' 4
+}
+
 @test "an unreadable ref warns and leaves the rest of the report intact" {
 	serve_search open "$(pr_node 101)"
 
@@ -280,6 +323,18 @@ EOF
 	[ "$status" -eq 0 ]
 	grep -qx "runs repos/acme/widgets/actions/runs?head_sha=$HEAD&per_page=100" "$GH_LOG"
 	assert_json '.prs[0] | [.ci, .supersededChecks, .cancelled, .failing]' '["green",1,[],[]]'
+}
+
+@test "a skipped run does not replace an earlier run of the same workflow and event" {
+	serve_search open "$(pr_node 101 'rollup("FAILURE"; [check("test"; "FAILURE"; 7001), check("test"; "SKIPPED"; 7002),
+		check("label"; "SKIPPED"; 7003), check("label"; "SUCCESS"; 7004)])')"
+	serve_runs "$HEAD" '[workflow_run(7004; 12; "pull_request"), workflow_run(7003; 12; "pull_request") + {conclusion: "skipped"},
+		workflow_run(7002; 11; "pull_request") + {conclusion: "skipped"}, workflow_run(7001; 11; "pull_request") + {conclusion: "failure"}]'
+
+	run_queue
+
+	[ "$status" -eq 0 ]
+	assert_json '.prs[0] | [.ci, .supersededChecks, .failing]' '["failing",1,[{"name":"test","run":7001}]]'
 }
 
 @test "keeps checks from other workflows and events, even when they share a workflow name" {

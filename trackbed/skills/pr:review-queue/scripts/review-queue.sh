@@ -84,9 +84,15 @@ fragment PR on PullRequest {
     ... on StatusContext { context state createdAt }
   } } } } } }
 }'
-SEARCH_QUERY='query($q: String!, $me: String!) {
-  search(query: $q, type: ISSUE, first: 100) { issueCount nodes { ...PR } }
-}'
+# GitHub times out a search that returns 100 of these PRs in one response, so
+# read the results in pages of SEARCH_PAGE, up to SEARCH_LIMIT in all.
+SEARCH_PAGE=25
+SEARCH_LIMIT=100
+SEARCH_QUERY="query(\$q: String!, \$me: String!, \$after: String) {
+  search(query: \$q, type: ISSUE, first: $SEARCH_PAGE, after: \$after) {
+    issueCount pageInfo { hasNextPage endCursor } nodes { ...PR }
+  }
+}"
 PR_QUERY='query($owner: String!, $name: String!, $number: Int!, $me: String!) {
   repository(owner: $owner, name: $name) { pullRequest(number: $number) { ...PR } }
 }'
@@ -98,13 +104,21 @@ graphql() {
 # Bash clears set -e inside command substitutions, so every function that runs
 # inside one returns its failures explicitly.
 search() {
-  local out count
-  out=$(graphql "$SEARCH_QUERY" -f q="$1") || return
-  count=$(jq '.data.search.issueCount' <<< "$out") || return
-  if [ "$count" -gt 100 ]; then
-    echo "warning: only the first 100 of $count results for: $1" >&2
-  fi
-  jq '.data.search.nodes[]' <<< "$out"
+  local q=$1 out count more cursor="" seen=0
+  while :; do
+    out=$(graphql "$SEARCH_QUERY" -f q="$q" ${cursor:+-f "after=$cursor"}) || return
+    if [ "$seen" -eq 0 ]; then
+      count=$(jq '.data.search.issueCount' <<< "$out") || return
+      if [ "$count" -gt "$SEARCH_LIMIT" ]; then
+        echo "warning: only the first $SEARCH_LIMIT of $count results for: $q" >&2
+      fi
+    fi
+    jq '.data.search.nodes[]' <<< "$out" || return
+    seen=$((seen + SEARCH_PAGE))
+    more=$(jq -r '.data.search.pageInfo.hasNextPage // false' <<< "$out") || return
+    [ "$more" = true ] && [ "$seen" -lt "$SEARCH_LIMIT" ] || return 0
+    cursor=$(jq -r '.data.search.pageInfo.endCursor' <<< "$out") || return
+  done
 }
 
 # gh skips --jq and prints the raw error body when a call fails, so capture the
@@ -122,11 +136,15 @@ read_ref() {
 
 # A cancelled duplicate run leaves its checks on the head commit, so the rollup
 # reads FAILURE although the run that replaced it passed. Print the IDs of runs
-# that a newer run of the same workflow and event on the same head replaced.
+# that a newer run of the same workflow and event on the same head replaced. A
+# skipped run replaces nothing: a workflow that skips its jobs for some PR
+# actions, such as adding a label, would otherwise hide an earlier failure.
 superseded_runs() {
   local slug=$1 sha=$2 ids
   if ids=$(gh api "repos/$slug/actions/runs?head_sha=$sha&per_page=100" \
-    --jq '[.workflow_runs | group_by([.workflow_id, .event])[] | sort_by(.id) | .[:-1][] | .id]'); then
+    --jq '[.workflow_runs | group_by([.workflow_id, .event])[] | sort_by(.id)
+      | ([.[] | select(.conclusion != "skipped") | .id] | last) as $latest
+      | .[] | select($latest != null and .id < $latest) | .id]'); then
     jq -n --arg key "$slug@$sha" --argjson ids "$ids" '{key: $key, value: $ids}'
   else
     echo "warning: cannot list workflow runs for $slug@$sha" >&2
