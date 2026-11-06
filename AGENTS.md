@@ -16,6 +16,11 @@
 - **ALWAYS** read [agent-portability.md](trackbed/docs/agent-portability.md) before changing converter, hook, MCP, or host-adapter behavior.
 - **NOTE** `CLAUDE.md` imports this file so every host receives the same repository instructions.
 
+## Issue Tracking
+
+- **ALWAYS** track this repository's issues in Linear, in the **Trackbed Skills** team (key `SKILLS`, issues such as `SKILLS-1`) of the `trackbed` workspace.
+- **ALWAYS** confirm that a Linear MCP server is connected to the `trackbed` workspace before using it for these issues, including through the `trackbed:linear:*` skills; otherwise call the Linear GraphQL API at `https://api.linear.app/graphql` with the API key from `LINEAR_TRACKBED_API_KEY` in the `Authorization` header, and never print the key.
+
 ## Project Structure
 
 - **NOTE** The repository has one canonical Claude Code plugin source plus local-only maintenance skills:
