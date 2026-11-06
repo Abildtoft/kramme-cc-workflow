@@ -516,6 +516,11 @@
       "skills": ["trackbed/skills/pr:rebase/SKILL.md"]
     },
     {
+      "kind": "executable",
+      "suite": "trackbed/tests/pr-review-queue.bats",
+      "skills": ["trackbed/skills/pr:review-queue/SKILL.md"]
+    },
+    {
       "kind": "guidance",
       "suite": "trackbed/tests/pr-walkthrough.bats",
       "skills": ["trackbed/skills/pr:walkthrough/SKILL.md"]
@@ -773,6 +778,9 @@
       ],
       "trackbed/skills/pr:rebase/scripts/batch-rebase.sh": [
         "trackbed/tests/pr-rebase-batch.bats"
+      ],
+      "trackbed/skills/pr:review-queue/scripts/review-queue.sh": [
+        "trackbed/tests/pr-review-queue.bats"
       ],
       "trackbed/skills/session:automate-repeats/scripts/discover-sessions.sh": [
         "trackbed/tests/session-search-scripts.bats"

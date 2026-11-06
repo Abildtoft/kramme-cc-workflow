@@ -288,6 +288,7 @@ More review skills cover product, convention, UX, and GitHub-reviewer flows. Whi
 | Convention drift and overcaution vs. established codebase practice | `/trackbed:pr:convention-review` |
 | Needless complexity and unlikely-edge-case hedging vs. what the task requires | `/trackbed:pr:overengineering-review` |
 | Product-value, flow, copy, and edge-case review, plus UX, visual, and accessibility review when UI files changed | `/trackbed:pr:product-review` |
+| Which PRs wait on your review, and where each one stands | `/trackbed:pr:review-queue` |
 | Review someone else's GitHub PR as the assigned reviewer | `/trackbed:pr:github-review` |
 | Triage and respond to review comments on your own PR | `/trackbed:pr:github-review-reply` |
 | Implement fixes from local review findings | `/trackbed:pr:resolve-review` |
@@ -366,6 +367,7 @@ Each row gives a one-line summary. The full description lives in the skill's `SK
 | Review my branch | `/trackbed:pr:code-review`, or see [which review to use](#review-and-ship-a-pr) |
 | Open a PR | `/trackbed:pr:create` |
 | Fix failing CI on my PR | `/trackbed:pr:fix-ci` |
+| See which PRs wait on my review | `/trackbed:pr:review-queue` |
 | Review someone else's PR | `/trackbed:pr:github-review` |
 | Respond to review comments on my PR | `/trackbed:pr:github-review-reply` |
 | Run tests, linting, and type checks | `/trackbed:verify:run` |
@@ -446,6 +448,7 @@ PR creation, review, iteration, and resolution. See the [review guide](trackbed/
 | `/trackbed:pr:resolve-review` | User, Auto | `[--team] [--implement-only] [--granular] [--severity ...] [--source local\|online\|conductor] [review\|url\|instructions]` | Implement fixes for code-review or Conductor diff-comment findings as commits on the current branch. |
 | `/trackbed:pr:github-review-reply` | User | `[--auto] [--implement\|--no-implement] [--post] [--resolve] [--inline] [--humanize] [--human-only\|--include-bots] [--all] [--only <login>] [pr-url\|instructions]` | Triage review comments on your own PR, make the needed changes, and draft or post replies. |
 | `/trackbed:pr:github-review` | User | `[--subagent-model <model>] [pr-number\|pr-url] [--stack] [--draft-review] [--no-clarity-check] [--base <ref>] [--categories a11y,ux,product,visual] [--code-only] [--sequential] [--fresh] [--full] [--include-bots] [--all-threads] [--inline] [--keep-worktree]` | Review someone else's GitHub PR or its whole stack, including linked Linear issues. Report-only unless you ask for a pending review. |
+| `/trackbed:pr:review-queue` | User, Auto | `[--repo OWNER/NAME] [--since ISO-8601] [OWNER/NAME#N ...]` | See which PRs wait on your review and where each stands: your part, CI, merge state, and linked issue; rechecks report what changed. Read-only. |
 | `/trackbed:pr:fix-ci` | User, Auto | `[--fixup] [--manual] [--no-consolidate] [--rebase] [--scope-plan <archived-plan>]` | Repair failing CI checks and reviewer feedback on an open PR with targeted pushes until checks pass; `--manual` keeps the prompts. |
 | `/trackbed:pr:generate-description` | User, Auto | `[--manual] [--no-update] [--check [--strict]] [--base <ref>] [--base-commit <oid>] [--linear-issue <ISSUE-ID>] [--independent-review-line <line>]` | Write a PR title and body from the diff, commits, and Linear context, updating an open PR unless `--manual`; `--check` reports drift. |
 | `/trackbed:pr:walkthrough` | User | `[--report [branch\|commit\|PR#\|range] \| --report --base <ref> \| --base <ref>] [--output <path>]` | Generate a visual HTML walkthrough of a branch or PR; `--report` produces a shareable before/after architecture report. |

@@ -1,0 +1,234 @@
+#!/usr/bin/env bash
+#
+# Print a JSON snapshot of the pull requests waiting on your review.
+#
+# Usage: review-queue.sh [--repo OWNER/NAME] [--since ISO-8601] [OWNER/NAME#NUMBER ...]
+#   --repo   limit every search to one repository
+#   --since  also include PRs you reviewed that changed since then, and PRs that
+#            requested you and closed since then (merged without your review)
+#   refs     PRs to re-query by number, such as every PR in the previous report
+#
+# Prints {checkedAt, me, prs: [...]} with one summarised object per PR, and
+# warnings on stderr. Exits 2 on a usage error and nonzero when a search fails;
+# an unreadable ref or an unlistable set of workflow runs only warns. Needs an
+# authenticated gh and jq. Runs under the Bash 3.2 that macOS ships, so guard
+# empty-array expansions under set -u and do not use mapfile.
+
+set -euo pipefail
+
+usage() {
+  echo "Usage: review-queue.sh [--repo OWNER/NAME] [--since ISO-8601] [OWNER/NAME#NUMBER ...]"
+}
+
+usage_error() {
+  echo "review-queue.sh: $1" >&2
+  usage >&2
+  exit 2
+}
+
+repo=""
+since=""
+refs=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repo)
+      [ $# -ge 2 ] || usage_error "--repo requires OWNER/NAME"
+      repo=$2
+      shift 2
+      ;;
+    --since)
+      [ $# -ge 2 ] || usage_error "--since requires an ISO-8601 date or time"
+      since=$2
+      shift 2
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -*) usage_error "unknown option: $1" ;;
+    *)
+      refs+=("$1")
+      shift
+      ;;
+  esac
+done
+
+# Validate every value before it reaches a search query or a GraphQL variable.
+slug_re='[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+'
+repo_re="^$slug_re\$"
+ref_re="^$slug_re#[0-9]+\$"
+since_re='^[0-9]{4}-[0-9]{2}-[0-9]{2}(T[0-9]{2}:[0-9]{2}(:[0-9]{2})?(Z|[+-][0-9]{2}:[0-9]{2})?)?$'
+if [ -n "$repo" ] && ! [[ $repo =~ $repo_re ]]; then
+  usage_error "--repo must be OWNER/NAME, got: $repo"
+fi
+if [ -n "$since" ] && ! [[ $since =~ $since_re ]]; then
+  usage_error "--since must be an ISO-8601 date or time, got: $since"
+fi
+for ref in ${refs[@]+"${refs[@]}"}; do
+  [[ $ref =~ $ref_re ]] || usage_error "a PR must be OWNER/NAME#NUMBER, got: $ref"
+done
+
+FRAGMENT='
+fragment PR on PullRequest {
+  number title url isDraft state mergedAt mergedBy { login }
+  repository { nameWithOwner defaultBranchRef { name } }
+  author { login }
+  baseRefName headRefOid additions deletions changedFiles
+  mergeable mergeStateStatus reviewDecision
+  reviewRequests(first: 20) { nodes { requestedReviewer { ... on User { login } ... on Team { slug } } } }
+  latestReviews(first: 20) { nodes { author { login } state } }
+  myReviews: reviews(author: $me, last: 20) { nodes { state submittedAt commit { oid } comments { totalCount } } }
+  reviewThreads(first: 100) { nodes { isResolved comments(first: 1) { nodes { author { login } pullRequestReview { state } } } } }
+  commits(last: 1) { nodes { commit { committedDate statusCheckRollup { state contexts(first: 100) { totalCount nodes {
+    ... on CheckRun { name status conclusion startedAt checkSuite { workflowRun { databaseId } } }
+    ... on StatusContext { context state createdAt }
+  } } } } } }
+}'
+# GitHub times out a search that returns 100 of these PRs in one response, so
+# read the results in pages of SEARCH_PAGE, up to SEARCH_LIMIT in all.
+SEARCH_PAGE=25
+SEARCH_LIMIT=100
+SEARCH_QUERY="query(\$q: String!, \$me: String!, \$after: String) {
+  search(query: \$q, type: ISSUE, first: $SEARCH_PAGE, after: \$after) {
+    issueCount pageInfo { hasNextPage endCursor } nodes { ...PR }
+  }
+}"
+PR_QUERY='query($owner: String!, $name: String!, $number: Int!, $me: String!) {
+  repository(owner: $owner, name: $name) { pullRequest(number: $number) { ...PR } }
+}'
+
+graphql() {
+  gh api graphql -f query="$1 $FRAGMENT" -f me="$me" "${@:2}"
+}
+
+# Bash clears set -e inside command substitutions, so every function that runs
+# inside one returns its failures explicitly.
+search() {
+  local q=$1 out count more cursor="" seen=0
+  while :; do
+    out=$(graphql "$SEARCH_QUERY" -f q="$q" ${cursor:+-f "after=$cursor"}) || return
+    if [ "$seen" -eq 0 ]; then
+      count=$(jq '.data.search.issueCount' <<< "$out") || return
+      if [ "$count" -gt "$SEARCH_LIMIT" ]; then
+        echo "warning: only the first $SEARCH_LIMIT of $count results for: $q" >&2
+      fi
+    fi
+    jq '.data.search.nodes[]' <<< "$out" || return
+    seen=$((seen + SEARCH_PAGE))
+    more=$(jq -r '.data.search.pageInfo.hasNextPage // false' <<< "$out") || return
+    [ "$more" = true ] && [ "$seen" -lt "$SEARCH_LIMIT" ] || return 0
+    cursor=$(jq -r '.data.search.pageInfo.endCursor' <<< "$out") || return
+  done
+}
+
+# gh skips --jq and prints the raw error body when a call fails, so capture the
+# output and print it only on success.
+read_ref() {
+  local ref=$1 slug node
+  slug=${ref%%#*}
+  if node=$(graphql "$PR_QUERY" -f owner="${slug%%/*}" -f name="${slug#*/}" \
+    -F number="${ref##*#}" --jq '.data.repository.pullRequest'); then
+    printf '%s\n' "$node"
+  else
+    echo "warning: cannot read $ref" >&2
+  fi
+}
+
+# A cancelled duplicate run leaves its checks on the head commit, so the rollup
+# reads FAILURE although the run that replaced it passed. Print the IDs of runs
+# that a newer run of the same workflow and event on the same head replaced. A
+# skipped run replaces nothing: a workflow that skips its jobs for some PR
+# actions, such as adding a label, would otherwise hide an earlier failure.
+superseded_runs() {
+  local slug=$1 sha=$2 ids
+  if ids=$(gh api "repos/$slug/actions/runs?head_sha=$sha&per_page=100" \
+    --jq '[.workflow_runs | group_by([.workflow_id, .event])[] | sort_by(.id)
+      | ([.[] | select(.conclusion != "skipped") | .id] | last) as $latest
+      | .[] | select($latest != null and .id < $latest) | .id]'); then
+    jq -n --arg key "$slug@$sha" --argjson ids "$ids" '{key: $key, value: $ids}'
+  else
+    echo "warning: cannot list workflow runs for $slug@$sha" >&2
+  fi
+}
+
+# A failed search fails the run; an unreadable ref only warns.
+collect_prs() {
+  search "is:pr is:open archived:false user-review-requested:@me$scope" || return
+  if [ -n "$since" ]; then
+    search "is:pr reviewed-by:@me -author:@me updated:>=$since$scope" || return
+    search "is:pr is:closed user-review-requested:@me closed:>=$since$scope" || return
+  fi
+  for ref in ${refs[@]+"${refs[@]}"}; do
+    read_ref "$ref"
+  done
+}
+
+# Take the time first, so passing it as the next --since misses nothing.
+checked_at=$(date -u +%FT%TZ)
+me=$(gh api user --jq .login)
+scope=${repo:+ repo:$repo}
+prs=$(collect_prs | jq -s 'unique_by(.url)')
+
+jq -r '.[] | .commits.nodes[0].commit.statusCheckRollup.contexts.totalCount as $n
+    | select(($n // 0) > 100)
+    | "warning: only the first 100 of \($n) checks read for \(.repository.nameWithOwner)#\(.number)"' \
+  <<< "$prs" >&2
+
+superseded=$(jq -r '.[]
+    | select(.state == "OPEN" and (.commits.nodes[0].commit.statusCheckRollup.state // "SUCCESS") != "SUCCESS")
+    | "\(.repository.nameWithOwner) \(.headRefOid)"' <<< "$prs" \
+  | while read -r slug sha; do
+    superseded_runs "$slug" "$sha"
+  done | jq -s 'from_entries')
+
+SUMMARY='
+def result: .conclusion // .state;
+def failed: result | IN("FAILURE", "ERROR", "TIMED_OUT", "STARTUP_FAILURE", "ACTION_REQUIRED");
+def running: (.status // "COMPLETED") != "COMPLETED" or ((.state // "") | IN("PENDING", "EXPECTED"));
+def rollup_ci: if IN("FAILURE", "ERROR") then "failing" elif IN("PENDING", "EXPECTED") then "running" else null end;
+{checkedAt: $checkedAt, me: $me, prs: (sort_by(.repository.nameWithOwner, .number) | map(
+  .commits.nodes[0].commit as $c
+  | ($c.statusCheckRollup.contexts.nodes // []) as $all
+  | ($superseded["\(.repository.nameWithOwner)@\(.headRefOid)"] // []) as $old
+  | [$all[] | select((.checkSuite.workflowRun.databaseId // -1) | IN($old[]) | not)] as $checks
+  # Checks past the first 100 are unread, so a failure among them shows only in
+  # the rollup state; let that state outrank a verdict from the checks read.
+  | (($c.statusCheckRollup.contexts.totalCount // ($all | length)) - ($all | length)) as $unread
+  | (if $unread > 0 then $c.statusCheckRollup.state | rollup_ci else null end) as $rollupCi
+  # A thread reply outside a review is a submitted COMMENTED review of its own,
+  # so a reply must not hide an earlier approval or changes request.
+  | [.myReviews.nodes[] | select(.state != "PENDING")] as $submitted
+  | ([$submitted[] | select(.state != "COMMENTED")] | last // ($submitted | last)) as $mine
+  | {
+      pr: "\(.repository.nameWithOwner)#\(.number)", url, title,
+      issue: ([.title | scan("\\b[A-Z][A-Z0-9]+-[0-9]+\\b")] | first),
+      author: .author.login, state, mergedAt, mergedBy: .mergedBy.login, draft: .isDraft,
+      size: "+\(.additions)/-\(.deletions) in \(.changedFiles) files",
+      base: .baseRefName, defaultBranch: .repository.defaultBranchRef.name,
+      head: .headRefOid, lastCommitAt: $c.committedDate,
+      requestedOfMe: any(.reviewRequests.nodes[]; .requestedReviewer.login == $me),
+      requestedTeams: [.reviewRequests.nodes[].requestedReviewer.slug // empty],
+      myPendingComments: ([.myReviews.nodes[] | select(.state == "PENDING") | .comments.totalCount] | add // 0),
+      myLastReview: (if $mine then {state: $mine.state, at: $mine.submittedAt, onHead: ($mine.commit.oid == .headRefOid)} else null end),
+      myOpenThreads: [.reviewThreads.nodes[] | select((.isResolved | not)
+        and .comments.nodes[0].author.login == $me
+        and .comments.nodes[0].pullRequestReview.state != "PENDING")] | length,
+      otherOpenThreads: [.reviewThreads.nodes[] | select((.isResolved | not) and .comments.nodes[0].author.login != $me)] | length,
+      otherReviews: [.latestReviews.nodes[] | select(.author.login != $me) | "\(.author.login): \(.state)"],
+      reviewDecision, mergeable, mergeStateStatus,
+      ci: ((if ($checks | length) == 0 then "none"
+            elif any($checks[]; failed) then "failing"
+            elif any($checks[]; running) then "running"
+            elif any($checks[]; result == "CANCELLED") then "cancelled"
+            else "green" end) as $read
+           | if $rollupCi == "failing" or ($rollupCi == "running" and $read != "failing") then $rollupCi
+             else $read end),
+      failing: [$checks[] | select(failed) | {name: (.name // .context), run: .checkSuite.workflowRun.databaseId}] | unique,
+      running: [$checks[] | select(running) | {name: (.name // .context), since: (.startedAt // .createdAt)}] | unique,
+      cancelled: [$checks[] | select(result == "CANCELLED") | .name] | unique,
+      supersededChecks: (($all | length) - ($checks | length)),
+      unreadChecks: $unread
+    }
+))}'
+
+jq --arg me "$me" --arg checkedAt "$checked_at" --argjson superseded "$superseded" "$SUMMARY" <<< "$prs"
