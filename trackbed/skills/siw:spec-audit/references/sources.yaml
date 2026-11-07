@@ -4,14 +4,16 @@ sources:
     title: "EveryInc compound-engineering-plugin - ce-strategy"
     rationale: "The `--product` dimension's strategy-alignment checks against target users, active tracks, metrics, and non-goals are adapted from this source."
     usage: inspiration
-    last_reviewed_at: 2026-07-29
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "7dc50943bbf959dbe6a93a175e41e5fff8395e00"
     baseline_hash: "sha256:a8c17c0ba2240fce618d344f595f2a6b3ea1bc2d1db3c87fef2e34d70af05da5"
   - id: compound-ce-product-pulse
     url: https://raw.githubusercontent.com/EveryInc/compound-engineering-plugin/main/skills/ce-product-pulse/SKILL.md
     title: "EveryInc compound-engineering-plugin - ce-product-pulse"
     rationale: "The use of recent pulse reports as evidence for the `--product` dimension's priority, risk, and success-criteria checks is adapted from this source."
     usage: inspiration
-    last_reviewed_at: 2026-07-29
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "7dc50943bbf959dbe6a93a175e41e5fff8395e00"
     baseline_hash: "sha256:bd61757fdbe1b5441af3d995b3fa50ce89eb8934fcfe38188de7f13b18e9f101"
   - id: egm-comprehension-persona
     url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/agents/comprehension.md
@@ -19,6 +21,7 @@ sources:
     rationale: "Testing a spec with a fresh reader who restates it, and treating a section it cannot restate as blocking, is informed by this source; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
     usage: inspiration
     last_reviewed_at: 2026-11-02
+    baseline_commit: "6a8001ea31ccf72430ba0603a467ec6df9f69dd7"
     baseline_hash: "sha256:974f4972f717dc7b102a9b1407b3a625749149f2ae905727241e919f43cc3fa5"
   - id: egm-codebase-details-persona
     url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/agents/codebase_details.md
@@ -26,18 +29,21 @@ sources:
     rationale: "Checking what a spec presents as existing against the code, while not flagging files the plan proposes to create, is informed by this source; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
     usage: inspiration
     last_reviewed_at: 2026-11-02
+    baseline_commit: "6a8001ea31ccf72430ba0603a467ec6df9f69dd7"
     baseline_hash: "sha256:d80db07e449b57b3b3776d1401cca72a54b6b65a0ab218b86f9064ee4b8167bc"
   - id: egm-implementation-readiness-standard
     url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/resources/document_standards/implementation-readiness-standard.md
     title: "google/elephant-goldfish-model - implementation readiness standard"
     rationale: "The Actionability check for design decisions left to the implementer is informed by this source; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
     usage: inspiration
-    last_reviewed_at: 2026-11-02
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "6a8001ea31ccf72430ba0603a467ec6df9f69dd7"
     baseline_hash: "sha256:ed0d2a085eac0fd9581d504a2ec0df2a92d6b2538636a22b16e0b1370fba6dbb"
   - id: egm-review-design
     url: https://raw.githubusercontent.com/google/elephant-goldfish-model/403d8881d62022490637d740657b33f01e321ea8/docs/designs/review.md
     title: "google/elephant-goldfish-model - review protocol design"
     rationale: "The Scope check that re-examines what review fixes added, without reopening accepted decisions, is informed by this source's post-critic pruning stage; reviewed at upstream commit 403d8881d62022490637d740657b33f01e321ea8."
     usage: inspiration
-    last_reviewed_at: 2026-11-02
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "6a8001ea31ccf72430ba0603a467ec6df9f69dd7"
     baseline_hash: "sha256:d8d2b680c76073d58522db07f7ff5c54772fa259eb421395555e2187201fadf3"
