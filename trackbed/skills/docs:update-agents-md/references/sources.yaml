@@ -11,5 +11,6 @@ sources:
     title: "AI Hero - How To Make Codebases AI Agents Love"
     rationale: "The enforce-before-instructing writing rule and the Module Map authoring example follow this article's argument that the codebase shapes agent output more than its instruction files, and that agents need the developer's map of the modules."
     usage: inspiration
-    last_reviewed_at: 2026-10-19
-    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"
+    last_reviewed_at: 2026-11-06
+    fetch_mode: curl-html
+    baseline_hash: "sha256:5cef0c99088b7d110dcb3c211c10d00d6d8dd7bdd03add3d6b9a2249fad3f893"
