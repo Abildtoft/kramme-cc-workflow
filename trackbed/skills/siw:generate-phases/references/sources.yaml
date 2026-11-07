@@ -4,19 +4,22 @@ sources:
     title: "EveryInc compound-engineering-plugin - ce-plan"
     rationale: "Stable issue identifier rules, repo-relative path discipline, and the risk-triggered confidence deepening gate are adapted from ce-plan's stable implementation-unit IDs and confidence-check/deepening workflow."
     usage: inspiration
-    last_reviewed_at: 2026-07-29
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "7dc50943bbf959dbe6a93a175e41e5fff8395e00"
     baseline_hash: "sha256:16e4b8333e0db8dce5ce215d913075d7fb828a2820b1d544dc60e76e1c4e0ef9"
   - id: pocock-to-tickets
     url: https://raw.githubusercontent.com/mattpocock/skills/main/skills/engineering/to-tickets/SKILL.md
     title: "Matt Pocock skills - to-tickets"
     rationale: "The tracer-bullet vertical-slice rule, wide-refactor expand-contract exception, explicit blocking edges, and frontier-based issue sequencing are adapted from this source; the local HITL/AUTO mode tag preserves earlier Pocock HITL/AFK lineage."
     usage: inspiration
-    last_reviewed_at: 2026-07-09
+    last_reviewed_at: 2026-11-06
+    baseline_commit: "4ae2317ddb22b046e26455e4f9c9b3aaaf62212d"
     baseline_hash: "sha256:918bdefab9313100cb1f7ccb412e2a773fe2f2801dd20d44f6b2acf7a42ca456"
   - id: aihero-codebases-ai-agents-love
     url: https://www.aihero.dev/how-to-make-codebases-ai-agents-love
     title: "AI Hero - How To Make Codebases AI Agents Love"
     rationale: "The issue template's Interface Impact section and the interface-aware task rule, which makes an unsettled interface a HITL blocker for the AUTO tasks behind it, follow this article's division of labor in which people own module interfaces and agents own implementations."
     usage: inspiration
-    last_reviewed_at: 2026-10-19
-    baseline_hash: "sha256:65468e66b9717bd9c50ef2578ae140ec4953ead1955139499b9303e3e56a1870"
+    last_reviewed_at: 2026-11-06
+    fetch_mode: curl-html
+    baseline_hash: "sha256:5cef0c99088b7d110dcb3c211c10d00d6d8dd7bdd03add3d6b9a2249fad3f893"
